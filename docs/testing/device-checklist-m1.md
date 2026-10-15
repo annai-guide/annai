@@ -21,6 +21,8 @@ Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), agains
 - [ ] Open the saved file from Trips → "Open a trip someone sent you", enter the passphrase, tick "Replace my profile and memory", Import. Everything is back, including history.
 - [ ] Android: share a `.annai.zip` from Files to annai; the import screen opens with it.
 - [ ] AirDrop or message a trip export to the other phone and import it there.
+- [ ] **Big backup on the oldest iPhone you will travel with.** Upload a few hundred photos to a trip (or one trip per day of the real trip), then export everything with a passphrase, erase, and import it again. Both directions finish without the page reloading or going blank. annai reads and writes backups a piece at a time, but how much Safari keeps in memory for a large file can only be measured on the phone.
+- [ ] Drop a `.annai.zip` onto annai in a desktop browser; the import screen opens with it.
 
 ## One instance and errors
 - [ ] Open annai in a second Safari/Chrome tab: "annai is open in another tab" → "Use it here"; the first tab shows that it stopped.
@@ -29,4 +31,4 @@ Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), agains
 - [ ] Install `test/fixtures/plugins/hello` zipped; creating `/hello/a.json` in a trip is refused until the plugin is turned off.
 
 ## Updates
-- [ ] Deploy a version bump while the app is open: "An update is ready" appears; it does not reload by itself; "Restart now" reloads into the new version.
+- [ ] Deploy a change (the Pages build runs `node scripts/stamp.mjs`) while the app is open: "An update is ready" appears; it does not reload by itself; "Restart now" reloads into the new version.

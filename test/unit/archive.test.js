@@ -11,6 +11,7 @@ import { exportArchive, openArchive, describeArchive, importArchive, archiveName
 import { PassphraseError } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
+import { PiecesOnly } from './pieces.js';
 
 const FAST = 100_000;
 const bytesOf = async (/** @type {Blob} */ b) => new Uint8Array(await b.arrayBuffer());
@@ -260,16 +261,16 @@ async function rewrite(blob, edit) {
   return bytesOf(z.finish());
 }
 
-/** A store whose writes can be made to fail as if the device were full. */
+/** A store whose writes can be made to fail as if the device were full: now (full), or after room more blobs. */
 function fillableDevice() {
   const inner = createMemoryStore();
-  const state = { full: false };
+  const state = { full: false, room: Infinity };
   /** @type {import('../../src/core/types.js').Store} */
   const store = {
     close() {},
     tx(stores, mode, fn) {
       return inner.tx(stores, mode, (t) => fn({ ...t, putBlob: async (rec) => {
-        if (state.full) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        if (state.full || state.room-- <= 0) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
         return t.putBlob(rec);
       } }));
     },
@@ -352,5 +353,42 @@ test('importing onto a full device says storage is full and imports nothing', as
   b.state.full = true;
   await assert.rejects(importArchive(b.store, await openArchive(await bytesOf(blob))), StorageFullError);
   b.state.full = false;
+  assert.deepEqual((await listTrips(b.store)).active, []);
+});
+
+/** @param {number} n */
+function noise(n) {
+  const b = new Uint8Array(n);
+  for (let i = 0; i < n; i += 65536) crypto.getRandomValues(b.subarray(i, i + 65536));
+  return b;
+}
+
+test('opening and importing a backup reads the file in pieces, never whole (spec §12.1)', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'Big Sur' });
+  for (let i = 0; i < 4; i++) await a.ws.write(trip, `/files/p${i}.jpg`, noise(1024 * 1024), { author: 'user' });
+  for (const passphrase of [undefined, 'p']) {
+    const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', passphrase, iterations: FAST });
+    const file = new PiecesOnly([blob]);
+    const b = await device();
+    const r = await importArchive(b.store, await openArchive(file, passphrase));
+    assert.deepEqual((await b.ws.read(r.trips[0], '/files/p3.jpg'))?.bytes, (await a.ws.read(trip, '/files/p3.jpg'))?.bytes);
+    assert.ok(file.largest < 2 * 1024 * 1024, `read ${file.largest} of ${file.size} bytes at once`);
+  }
+});
+
+test('an import that runs out of space partway leaves none of its content behind', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const b = fillableDevice();
+  await ensureBaseScopes(b.ws);
+  const has = (/** @type {string} */ h) => b.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(h));
+  const hashes = [...new Set([...manifest.files, ...manifest.blobs].map((x) => x.hash))];
+  const before = new Set((await Promise.all(hashes.map(async (h) => [h, await has(h)]))).filter(([, x]) => x).map(([h]) => h));
+  b.state.room = 2;
+  await assert.rejects(importArchive(b.store, await openArchive(await bytesOf(blob))), StorageFullError);
+  b.state.room = Infinity;
+  for (const h of hashes) assert.equal(await has(h), before.has(h), h);
   assert.deepEqual((await listTrips(b.store)).active, []);
 });

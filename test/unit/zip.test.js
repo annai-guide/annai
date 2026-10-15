@@ -4,7 +4,8 @@ import { readFile, writeFile, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { ZipWriter, readZip, ZipError } from '../../src/core/zip.js';
+import { ZipWriter, ZipReader, readZip, ZipError } from '../../src/core/zip.js';
+import { PiecesOnly } from './pieces.js';
 import { utf8, text } from '../../src/core/bytes.js';
 
 const bytesOf = async (/** @type {Blob} */ blob) => new Uint8Array(await blob.arrayBuffer());
@@ -104,4 +105,45 @@ test('archives whose contents add up past the limit are refused before inflating
   const b = await bytesOf(z.finish());
   await assert.rejects(readZip(b, { maxTotal: 8000 }), (e) => e instanceof ZipError && /too large/.test(e.message));
   assert.equal((await readZip(b, { maxTotal: 10000 })).size, 2);
+});
+
+/** @param {number} n */
+function noise(n) {
+  const b = new Uint8Array(n);
+  for (let i = 0; i < n; i += 65536) crypto.getRandomValues(b.subarray(i, i + 65536));
+  return b;
+}
+
+test('ZipReader reads one entry at a time from a file, never the whole file', async () => {
+  const z = new ZipWriter();
+  const photos = [noise(512 * 1024), noise(512 * 1024), noise(512 * 1024)];
+  for (const [i, b] of photos.entries()) await z.add(`p${i}.jpg`, b, { compress: false });
+  await z.add('notes.md', utf8('# 案内\n'.repeat(1000)));
+  const file = new PiecesOnly([z.finish()]);
+  const zip = await ZipReader.open(file);
+  assert.deepEqual(zip.names(), ['p0.jpg', 'p1.jpg', 'p2.jpg', 'notes.md']);
+  assert.equal(zip.has('p1.jpg'), true);
+  assert.equal(zip.size('p1.jpg'), 512 * 1024);
+  assert.deepEqual(await zip.read('p1.jpg'), photos[1]);
+  assert.equal(text(await zip.read('notes.md')), '# 案内\n'.repeat(1000));
+  await assert.rejects(zip.read('missing'), ZipError);
+  assert.ok(file.largest < 600 * 1024, `read ${file.largest} of ${file.size} bytes at once`);
+});
+
+test('an archive with two entries of the same name is refused', async () => {
+  const z = new ZipWriter();
+  await z.add('a.txt', utf8('one'));
+  await z.add('b.txt', utf8('two'));
+  const bytes = await bytesOf(z.finish());
+  const [a, b] = [utf8('a.txt'), utf8('b.txt')];
+  for (let i = 0; i + b.length <= bytes.length; i++) {
+    if (b.every((x, j) => bytes[i + j] === x)) bytes.set(a, i); // rename b.txt to a.txt in every header
+  }
+  await assert.rejects(ZipReader.open(new Blob([bytes])), (e) => e instanceof ZipError && /two entries/.test(e.message));
+});
+
+test('an entry that declares more than the limit is refused before it is read', async () => {
+  const z = new ZipWriter();
+  await z.add('big.txt', utf8('x'.repeat(5000)));
+  await assert.rejects(ZipReader.open(z.finish(), { maxEntry: 4000 }), (e) => e instanceof ZipError && /too large/.test(e.message));
 });

@@ -79,7 +79,7 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   await page.getByLabel('Passphrase (optional)').fill('pine needle');
   await page.getByLabel('Repeat passphrase').fill('pine needle');
   const file = await buildAndSave(page);
-  expect((await readFile(file)).subarray(0, 10).toString()).toBe('ANNAI-ENC1');
+  expect((await readFile(file)).subarray(0, 10).toString()).toBe('ANNAI-ENC2');
 
   await page.getByRole('link', { name: 'Trips', exact: true }).click();
   await page.getByLabel('Open a trip someone sent you').setInputFiles(file);

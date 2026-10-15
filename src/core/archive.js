@@ -1,4 +1,4 @@
-import { ZipWriter, readZip } from './zip.js';
+import { ZipWriter, ZipReader } from './zip.js';
 import { encrypt, decrypt, isEncrypted } from './archive-crypto.js';
 import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
@@ -18,8 +18,8 @@ import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
  *   encrypted: boolean, scopes: ManifestScope[], files: ManifestFile[],
  *   blobs: { name: string, hash: string, type: string, size: number }[],
  *   extras: { name: string, hash: string }[], secrets?: string }} Manifest
- * @typedef {{ manifest: Manifest, entries: Map<string, Uint8Array>, events: Map<string, EventRecord[]> }} OpenedArchive
- *   events: each scope's history log, parsed and checked, by entry name
+ * @typedef {{ manifest: Manifest, zip: ZipReader, events: Map<string, EventRecord[]> }} OpenedArchive
+ *   zip: the archive's entries, read on demand; events: each scope's history log, parsed and checked, by entry name
  */
 
 export const ARCHIVE_FORMAT = 1;
@@ -190,10 +190,7 @@ export async function exportArchive(store, opts) {
 
   await zip.add(MANIFEST_NAME, utf8(JSON.stringify(manifest, null, 2)), { mtime: now });
   let blob = zip.finish();
-  if (opts.passphrase) {
-    const sealed = await encrypt(new Uint8Array(await blob.arrayBuffer()), opts.passphrase, opts.iterations);
-    blob = new Blob([/** @type {BlobPart} */ (sealed)], { type: 'application/octet-stream' });
-  }
+  if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
   const title = opts.kind === 'trip' ? scopes[0].title : '';
   return { blob, manifest, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
 }
@@ -206,31 +203,33 @@ async function readBlob(store, hash, path) {
 }
 
 /**
- * Decrypts (if needed), unzips and verifies an archive. Throws ArchiveError
- * (or NeedsPassphraseError / PassphraseError) without touching storage.
- * @param {Uint8Array} bytes
+ * Decrypts (if needed), opens and verifies an archive, reading the file one entry
+ * at a time (spec §12.1). Throws ArchiveError (or NeedsPassphraseError /
+ * PassphraseError) without touching storage.
+ * @param {Blob | Uint8Array} file
  * @param {string} [passphrase]
  * @returns {Promise<OpenedArchive>}
  */
-export async function openArchive(bytes, passphrase) {
-  if (isEncrypted(bytes)) {
+export async function openArchive(file, passphrase) {
+  let blob = file instanceof Blob ? file : new Blob([/** @type {BlobPart} */ (file)]);
+  if (isEncrypted(new Uint8Array(await blob.slice(0, 64).arrayBuffer()))) {
     if (!passphrase) throw new NeedsPassphraseError();
-    bytes = await decrypt(bytes, passphrase);
+    blob = await decrypt(blob, passphrase);
   }
-  /** @type {Map<string, Uint8Array>} */
-  let entries;
+  /** @type {ZipReader} */
+  let zip;
   try {
-    entries = await readZip(bytes);
+    zip = await ZipReader.open(blob);
   } catch (e) {
     throw new ArchiveError(`This file isn't an annai file, or it is damaged (${/** @type {Error} */ (e).message}).`);
   }
-  const raw = entries.get(MANIFEST_NAME);
-  if (!raw) throw new ArchiveError("This zip isn't an annai file: it has no annai-archive.json.");
+  if (!zip.has(MANIFEST_NAME)) throw new ArchiveError("This zip isn't an annai file: it has no annai-archive.json.");
   /** @type {any} */
   let manifest;
   try {
-    manifest = JSON.parse(text(raw));
-  } catch {
+    manifest = JSON.parse(text(await readEntry(zip, MANIFEST_NAME)));
+  } catch (e) {
+    if (e instanceof ArchiveError) throw e;
     throw new ArchiveError('This file is damaged: its manifest is not readable.');
   }
   const newer = (/** @type {unknown} */ f) => typeof f === 'number' && f > FORMAT;
@@ -246,9 +245,8 @@ export async function openArchive(bytes, passphrase) {
   /** @type {string[]} */
   const problems = [];
   const check = async (/** @type {string} */ name, /** @type {string} */ hash) => {
-    const b = entries.get(name);
-    if (!b) problems.push(`${name} is missing`);
-    else if ((await sha256Hex(b)) !== hash) problems.push(`${name} was changed`);
+    if (!zip.has(name)) problems.push(`${name} is missing`);
+    else if ((await sha256Hex(await readEntry(zip, name))) !== hash) problems.push(`${name} was changed`);
   };
   for (const f of manifest.files) await check(f.name, f.hash);
   for (const b of manifest.blobs) await check(b.name, b.hash);
@@ -257,9 +255,25 @@ export async function openArchive(bytes, passphrase) {
   /** @type {Map<string, EventRecord[]>} */
   const events = new Map();
   for (const s of manifest.scopes) {
-    if (s.events) events.set(s.events, readLog(s.events, entries.get(s.events)));
+    if (s.events) events.set(s.events, readLog(s.events, await readEntry(zip, s.events)));
   }
-  return { manifest, entries, events };
+  return { manifest, zip, events };
+}
+
+/** One entry of an archive; a damaged entry is an ArchiveError. @param {ZipReader} zip @param {string} name */
+async function readEntry(zip, name) {
+  try {
+    return await zip.read(name);
+  } catch (e) {
+    throw new ArchiveError(`This file is damaged: ${/** @type {Error} */ (e).message}.`);
+  }
+}
+
+/** An entry whose content must still be what the manifest says (the file may have changed since it was opened). @param {ZipReader} zip @param {string} name @param {string} hash */
+async function readChecked(zip, name, hash) {
+  const bytes = await readEntry(zip, name);
+  if ((await sha256Hex(bytes)) !== hash) throw new ArchiveError(`This file is damaged: ${name} was changed.`);
+  return bytes;
 }
 
 /**
@@ -317,14 +331,15 @@ export async function describeArchive(store, { manifest }) {
 }
 
 /**
- * Imports an opened archive in one transaction: everything or nothing.
+ * Imports an opened archive: everything or nothing. Content is stored one entry at a time,
+ * then one transaction makes it all appear (see below).
  * Trips default to "new". "me", settings and plugins default to "keep".
  * @param {Store} store
  * @param {OpenedArchive} opened
  * @param {{ trips?: Record<string, 'new'|'replace'|'skip'>, me?: 'keep'|'replace', settings?: 'keep'|'replace',
  *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number }} [choices]
  */
-export async function importArchive(store, { manifest, entries, events: logs }, choices = {}) {
+export async function importArchive(store, { manifest, zip, events: logs }, choices = {}) {
   const now = choices.now ?? Date.now();
   /** @type {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[]} */
   const plan = [];
@@ -358,7 +373,7 @@ export async function importArchive(store, { manifest, entries, events: logs }, 
         if (f.path !== '/installed.json') continue;
         /** @type {Record<string, any>} */
         let state = {};
-        try { state = JSON.parse(text(/** @type {Uint8Array} */ (entries.get(f.name)))); } catch { /* treat as empty */ }
+        try { state = JSON.parse(text(await readEntry(zip, f.name))); } catch { /* treat as empty */ }
         const off = Object.fromEntries(Object.entries(state ?? {}).map(([id, s]) => [id, { ...s, enabled: false }]));
         const bytes = utf8(JSON.stringify(off, null, 2) + '\n');
         overrides.set(f.name, { bytes, hash: await sha256Hex(bytes) });
@@ -366,13 +381,51 @@ export async function importArchive(store, { manifest, entries, events: logs }, 
     }
   }
   /** @type {{ id: string, value: any }[]} */
-  const secrets = choices.secrets && manifest.secrets ? JSON.parse(text(/** @type {Uint8Array} */ (entries.get(manifest.secrets)))) : [];
+  const secrets = choices.secrets && manifest.secrets ? JSON.parse(text(await readEntry(zip, manifest.secrets))) : [];
 
   const result = {
     trips: /** @type {string[]} */ ([]), archived: /** @type {string[]} */ ([]), me: false, settings: false, plugins: false, secrets: 0,
     /** ids of API keys in the file that were not imported because this device already has a key with that id */
     keptSecrets: /** @type {string[]} */ ([]),
   };
+
+  // Content first, one entry at a time, each in its own transaction (spec §12.1: an archive
+  // needn't fit in memory). Blobs are stored by their hash and nothing points at them yet, so
+  // until the last step nothing is visible; if any step fails, the ones stored here go again.
+  /** @type {Map<string, { name: string, type: string, bytes?: Uint8Array }>} */
+  const content = new Map();
+  for (const p of plan) {
+    for (const f of p.files) {
+      const o = overrides.get(f.name);
+      content.set(o?.hash ?? f.hash, { name: f.name, type: f.type, bytes: o?.bytes });
+    }
+  }
+  for (const b of manifest.blobs) if (!content.has(b.hash)) content.set(b.hash, { name: b.name, type: b.type });
+  /** @type {string[]} */
+  const added = [];
+  try {
+    for (const [hash, c] of content) {
+      if (await store.tx(['blobs'], 'readonly', (t) => t.hasBlob(hash))) continue;
+      const bytes = c.bytes ?? (await readChecked(zip, c.name, hash));
+      await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
+      added.push(hash);
+    }
+    await commitImport(store, { manifest, plan, overrides, secrets, now, result });
+  } catch (e) {
+    await removeUnused(store, added).catch(() => {});
+    throw e;
+  }
+  return result;
+}
+
+/**
+ * The last step of an import, in one transaction: scopes, files, history and keys appear together or not at all.
+ * @param {Store} store
+ * @param {{ manifest: Manifest, plan: { rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[],
+ *   overrides: Map<string, { bytes: Uint8Array, hash: string }>, secrets: { id: string, value: any }[], now: number,
+ *   result: { trips: string[], archived: string[], me: boolean, settings: boolean, plugins: boolean, secrets: number, keptSecrets: string[] } }} job
+ */
+async function commitImport(store, { manifest, plan, overrides, secrets, now, result }) {
   await store.tx(['blobs', 'files', 'events', 'scopes', 'secrets'], 'readwrite', async (t) => {
     for (const p of plan) {
       if (p.mode === 'replace') {
@@ -391,9 +444,6 @@ export async function importArchive(store, { manifest, entries, events: logs }, 
         const o = overrides.get(f.name);
         const hash = o?.hash ?? f.hash;
         const size = o?.bytes.byteLength ?? f.size;
-        if (!(await t.hasBlob(hash))) {
-          await t.putBlob({ hash, type: f.type, size, data: ownBuffer(o?.bytes ?? /** @type {Uint8Array} */ (entries.get(f.name))) });
-        }
         await t.putFile({
           scope: p.target, path: f.path, hash, size, type: f.type, author: f.author,
           created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}),
@@ -406,11 +456,6 @@ export async function importArchive(store, { manifest, entries, events: logs }, 
       else if (p.target === SYS_SETTINGS) result.settings = true;
       else if (p.target === SYS_PLUGINS) result.plugins = true;
     }
-    for (const b of manifest.blobs) {
-      if (!(await t.hasBlob(b.hash))) {
-        await t.putBlob({ hash: b.hash, type: b.type, size: b.size, data: ownBuffer(/** @type {Uint8Array} */ (entries.get(b.name))) });
-      }
-    }
     // Keys already on this device always win: an archive must never swap in someone else's key.
     for (const s of secrets) {
       if ((await t.getSecret(s.id)) !== undefined) {
@@ -421,7 +466,20 @@ export async function importArchive(store, { manifest, entries, events: logs }, 
       result.secrets++;
     }
   });
-  return result;
+}
+
+/**
+ * Deletes blobs an import stored before it failed, unless a file now uses them.
+ * @param {Store} store @param {string[]} hashes
+ */
+async function removeUnused(store, hashes) {
+  if (!hashes.length) return;
+  await store.tx(['scopes', 'files', 'blobs'], 'readwrite', async (t) => {
+    /** @type {Set<string>} */
+    const used = new Set();
+    for (const s of await t.listScopes()) for (const f of await t.listFiles(s.id, '/')) used.add(f.hash);
+    for (const h of hashes) if (!used.has(h)) await t.deleteBlob(h);
+  });
 }
 
 /**

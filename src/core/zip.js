@@ -22,10 +22,11 @@ export async function deflateRaw(bytes) {
 
 /**
  * Inflates raw DEFLATE data, stopping as soon as the output passes limit.
- * @param {Uint8Array} bytes @param {number} [limit]
+ * @param {Uint8Array | Blob} data @param {number} [limit]
  */
-export async function inflateRaw(bytes, limit = Infinity) {
-  const reader = new Blob([/** @type {BlobPart} */ (bytes)]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+export async function inflateRaw(data, limit = Infinity) {
+  const source = data instanceof Blob ? data : new Blob([/** @type {BlobPart} */ (data)]);
+  const reader = source.stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
   /** @type {Uint8Array[]} */
   const chunks = [];
   let total = 0;
@@ -43,13 +44,13 @@ export async function inflateRaw(bytes, limit = Infinity) {
 }
 
 /**
- * Builds a zip archive one entry at a time. Each entry is compressed when it is
- * added, and the archive is returned as a Blob of the collected chunks, so a
- * large archive never needs one contiguous buffer. No zip64: at most 65,535
- * entries and 4 GiB.
+ * Builds a zip archive one entry at a time (spec §12.1: written as a stream). Each
+ * entry is compressed when it is added and moved into a Blob straight away, where
+ * the browser may keep it on disk, so only the entry being added is in memory. The
+ * archive is a Blob of those Blobs. No zip64: at most 65,535 entries and 4 GiB.
  */
 export class ZipWriter {
-  /** @type {Uint8Array[]} */ #chunks = [];
+  /** @type {Blob[]} */ #parts = [];
   /** @type {{ name: Uint8Array, method: number, time: number, date: number, crc: number, csize: number, usize: number, offset: number }[]} */ #central = [];
   /** @type {Set<string>} */ #names = new Set();
   #offset = 0;
@@ -88,7 +89,7 @@ export class ZipWriter {
     h.setUint32(22, bytes.length, true);
     h.setUint16(26, nameBytes.length, true);
     h.setUint16(28, 0, true);
-    this.#chunks.push(new Uint8Array(h.buffer), nameBytes, data);
+    this.#parts.push(new Blob(/** @type {BlobPart[]} */ ([new Uint8Array(h.buffer), nameBytes, data])));
     this.#central.push({ name: nameBytes, method, time, date, crc, csize: data.length, usize: bytes.length, offset: this.#offset });
     this.#offset += 30 + nameBytes.length + data.length;
   }
@@ -122,7 +123,7 @@ export class ZipWriter {
     end.setUint16(10, this.#central.length, true);
     end.setUint32(12, size, true);
     end.setUint32(16, start, true);
-    return new Blob(/** @type {BlobPart[]} */ ([...this.#chunks, ...cd, new Uint8Array(end.buffer)]), { type: 'application/zip' });
+    return new Blob(/** @type {BlobPart[]} */ ([...this.#parts, ...cd, new Uint8Array(end.buffer)]), { type: 'application/zip' });
   }
 }
 
@@ -136,76 +137,144 @@ function dosTime(ms) {
   };
 }
 
-/** Archives larger than this (uncompressed, in total) are refused before anything is inflated. */
+/** Archives larger than this (uncompressed, in total) are refused by readZip before anything is inflated. */
 export const MAX_TOTAL = 2 * 1024 * 1024 * 1024;
+/** Entries larger than this (uncompressed) are refused: each one is in memory while it is read. */
+export const MAX_ENTRY = 1024 * 1024 * 1024;
+
+/** @param {Blob} b */
+const bytesOf = async (b) => new Uint8Array(await b.arrayBuffer());
+/** @param {Uint8Array} b */
+const view = (b) => new DataView(b.buffer, b.byteOffset, b.byteLength);
 
 /**
- * Reads a whole archive into memory. Supports stored and deflated entries,
- * checks every CRC-32, and skips folder entries. Defends against zip bombs:
- * the declared sizes must add up to at most maxTotal, and inflating stops as
- * soon as an entry produces more than it declared.
- * @param {Uint8Array} zip
+ * @typedef {{ flags: number, method: number, crc: number, csize: number, usize: number, local: number }} Entry
+ */
+
+/**
+ * Reads a zip archive straight from a file (a Blob), one entry at a time: only the
+ * index and the entry being read are ever in memory, so an archive larger than memory
+ * can be read (spec §12.1). Supports stored and deflated entries, checks every CRC-32,
+ * skips folder entries and refuses two entries with one name. Against zip bombs, an
+ * entry may declare at most maxEntry bytes, and inflating stops as soon as it produces
+ * more than it declared.
+ */
+export class ZipReader {
+  /** @type {Blob} */ #file;
+  /** @type {Map<string, Entry>} */ #entries;
+
+  /** @param {Blob} file @param {Map<string, Entry>} entries */
+  constructor(file, entries) {
+    this.#file = file;
+    this.#entries = entries;
+  }
+
+  /** @param {Blob} file @param {{ maxEntry?: number }} [opts] */
+  static async open(file, opts = {}) {
+    const maxEntry = opts.maxEntry ?? MAX_ENTRY;
+    const tailStart = Math.max(0, file.size - 22 - 0xffff);
+    const tail = await bytesOf(file.slice(tailStart));
+    const tv = view(tail);
+    let end = -1;
+    for (let i = tail.length - 22; i >= 0; i--) {
+      if (tv.getUint32(i, true) === END) {
+        end = i;
+        break;
+      }
+    }
+    if (end < 0) throw new ZipError('this is not a zip archive');
+    const count = tv.getUint16(end + 10, true);
+    const cdSize = tv.getUint32(end + 12, true);
+    const cdOffset = tv.getUint32(end + 16, true);
+    if (count === 0xffff || cdOffset === 0xffffffff) throw new ZipError('zip64 archives are not supported');
+    if (cdOffset + cdSize > tailStart + end) throw new ZipError('the archive index is damaged');
+    const cd = await bytesOf(file.slice(cdOffset, cdOffset + cdSize));
+    const v = view(cd);
+    /** @type {Map<string, Entry>} */
+    const entries = new Map();
+    let p = 0;
+    for (let i = 0; i < count; i++) {
+      if (p + 46 > cd.length || v.getUint32(p, true) !== CENTRAL) throw new ZipError('the archive index is damaged');
+      const nlen = v.getUint16(p + 28, true);
+      if (p + 46 + nlen > cd.length) throw new ZipError('the archive index is damaged');
+      const name = text(cd.subarray(p + 46, p + 46 + nlen));
+      /** @type {Entry} */
+      const entry = {
+        flags: v.getUint16(p + 8, true),
+        method: v.getUint16(p + 10, true),
+        crc: v.getUint32(p + 16, true),
+        csize: v.getUint32(p + 20, true),
+        usize: v.getUint32(p + 24, true),
+        local: v.getUint32(p + 42, true),
+      };
+      p += 46 + nlen + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+      if (name.endsWith('/')) continue;
+      if (entries.has(name)) throw new ZipError(`the archive has two entries called ${name}`);
+      if (entry.usize > maxEntry) throw new ZipError(`${name} is too large to open here (over ${Math.floor(maxEntry / 1048576)} MB)`);
+      entries.set(name, entry);
+    }
+    return new ZipReader(file, entries);
+  }
+
+  /** Entry names in archive order. */
+  names() {
+    return [...this.#entries.keys()];
+  }
+
+  /** @param {string} name */
+  has(name) {
+    return this.#entries.has(name);
+  }
+
+  /** The uncompressed size the entry declares. @param {string} name */
+  size(name) {
+    return this.#entries.get(name)?.usize ?? 0;
+  }
+
+  /** Reads, inflates and checks one entry. @param {string} name @returns {Promise<Uint8Array>} */
+  async read(name) {
+    const e = this.#entries.get(name);
+    if (!e) throw new ZipError(`the archive has no entry called ${name}`);
+    if (e.flags & 1) throw new ZipError(`${name} is encrypted with zip encryption, which annai does not read`);
+    const head = await bytesOf(this.#file.slice(e.local, e.local + 30));
+    const hv = view(head);
+    if (head.length < 30 || hv.getUint32(0, true) !== LOCAL) throw new ZipError(`the entry ${name} is damaged`);
+    const start = e.local + 30 + hv.getUint16(26, true) + hv.getUint16(28, true);
+    if (start + e.csize > this.#file.size) throw new ZipError(`the entry ${name} is damaged`);
+    const raw = this.#file.slice(start, start + e.csize);
+    /** @type {Uint8Array} */
+    let bytes;
+    if (e.method === 0) bytes = await bytesOf(raw);
+    else if (e.method === 8) {
+      try {
+        bytes = await inflateRaw(raw, e.usize);
+      } catch (err) {
+        if (err instanceof ZipError) throw new ZipError(`${name} ${err.message}`);
+        throw new ZipError(`${name} is corrupted (it cannot be decompressed)`);
+      }
+    } else throw new ZipError(`${name} uses compression method ${e.method}, which annai does not read`);
+    if (bytes.length !== e.usize || crc32(bytes) !== e.crc) throw new ZipError(`${name} is corrupted (checksum mismatch)`);
+    return bytes;
+  }
+}
+
+/**
+ * Reads a whole (small) archive into memory, e.g. a plugin package. The declared sizes
+ * must add up to at most maxTotal before anything is inflated.
+ * @param {Uint8Array | Blob} zip
  * @param {{ maxTotal?: number }} [opts]
  * @returns {Promise<Map<string, Uint8Array>>}
  */
 export async function readZip(zip, opts = {}) {
   const maxTotal = opts.maxTotal ?? MAX_TOTAL;
-  const v = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
-  let end = -1;
-  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 22 - 0xffff); i--) {
-    if (v.getUint32(i, true) === END) {
-      end = i;
-      break;
-    }
-  }
-  if (end < 0) throw new ZipError('this is not a zip archive');
-  const count = v.getUint16(end + 10, true);
-  const cdOffset = v.getUint32(end + 16, true);
-  if (count === 0xffff || cdOffset === 0xffffffff) throw new ZipError('zip64 archives are not supported');
-
-  /** @type {{ name: string, flags: number, method: number, crc: number, csize: number, usize: number, local: number }[]} */
-  const entries = [];
+  const reader = await ZipReader.open(zip instanceof Blob ? zip : new Blob([/** @type {BlobPart} */ (zip)]), { maxEntry: maxTotal });
   let total = 0;
-  let p = cdOffset;
-  for (let i = 0; i < count; i++) {
-    if (p + 46 > zip.length || v.getUint32(p, true) !== CENTRAL) throw new ZipError('the archive index is damaged');
-    const nlen = v.getUint16(p + 28, true);
-    const entry = {
-      name: text(zip.subarray(p + 46, p + 46 + nlen)),
-      flags: v.getUint16(p + 8, true),
-      method: v.getUint16(p + 10, true),
-      crc: v.getUint32(p + 16, true),
-      csize: v.getUint32(p + 20, true),
-      usize: v.getUint32(p + 24, true),
-      local: v.getUint32(p + 42, true),
-    };
-    p += 46 + nlen + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
-    if (entry.name.endsWith('/')) continue;
-    total += entry.usize;
+  for (const name of reader.names()) {
+    total += reader.size(name);
     if (total > maxTotal) throw new ZipError(`this archive is too large to open here (over ${Math.floor(maxTotal / 1048576)} MB uncompressed)`);
-    entries.push(entry);
   }
-
   /** @type {Map<string, Uint8Array>} */
   const out = new Map();
-  for (const { name, flags, method, crc, csize, usize, local } of entries) {
-    if (flags & 1) throw new ZipError(`${name} is encrypted with zip encryption, which annai does not read`);
-    if (local + 30 > zip.length || v.getUint32(local, true) !== LOCAL) throw new ZipError(`the entry ${name} is damaged`);
-    const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
-    const raw = zip.subarray(start, start + csize);
-    /** @type {Uint8Array} */
-    let bytes;
-    if (method === 0) bytes = raw.slice();
-    else if (method === 8) {
-      try {
-        bytes = await inflateRaw(raw, usize);
-      } catch (e) {
-        if (e instanceof ZipError) throw new ZipError(`${name} ${e.message}`);
-        throw new ZipError(`${name} is corrupted (it cannot be decompressed)`);
-      }
-    } else throw new ZipError(`${name} uses compression method ${method}, which annai does not read`);
-    if (bytes.length !== usize || crc32(bytes) !== crc) throw new ZipError(`${name} is corrupted (checksum mismatch)`);
-    out.set(name, bytes);
-  }
+  for (const name of reader.names()) out.set(name, await reader.read(name));
   return out;
 }

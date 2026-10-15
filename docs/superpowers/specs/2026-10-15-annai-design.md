@@ -642,7 +642,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - **Backup:** everything.
   - **Share:** plan, bookings, files and notes. No conversation, trace, memory or location history unless ticked.
 - **Keys** are included only in an encrypted Backup, and only when explicitly chosen.
-- **Encryption (optional):** the whole zip is encrypted with a passphrase, using PBKDF2-SHA-256 to derive the key and AES-GCM to encrypt.
+- **Encryption (optional):** the whole zip is encrypted with a passphrase, using PBKDF2-SHA-256 to derive the key and AES-GCM to encrypt. It is sealed in 1 MiB chunks, each bound to its position and to whether it is the last, so neither side holds the whole file in memory and a dropped, moved or cut-off chunk is refused.
 - **File names:** encrypted files end in `.annai`; plain ones end in `.annai.zip`.
 - **Saving:** the share sheet on phones (Files, iCloud Drive, AirDrop…), a download on desktop.
 

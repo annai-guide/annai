@@ -1,6 +1,6 @@
 import { sha256Hex } from '../../../src/core/hash.js';
 import { ZipWriter, readZip } from '../../../src/core/zip.js';
-import { encrypt, decrypt } from '../../../src/core/archive-crypto.js';
+import { encrypt, decrypt, CHUNK } from '../../../src/core/archive-crypto.js';
 import { utf8, text } from '../../../src/core/bytes.js';
 import { createIdbStore, eraseDatabase } from '../../../src/core/store-idb.js';
 import { Workspace } from '../../../src/core/workspace.js';
@@ -22,9 +22,10 @@ export default function (test, assert) {
     assert.equal(text(/** @type {Uint8Array} */ (out.get('notes/案内.md'))), '案内 '.repeat(500));
   });
 
-  test('archive encryption round-trips here', async () => {
-    const enc = await encrypt(utf8('trip'), 'pass', 100_000);
-    assert.equal(text(await decrypt(enc, 'pass')), 'trip');
+  test('archive encryption round-trips here, a chunk at a time', async () => {
+    const plain = new Uint8Array(CHUNK * 2 + 3).map((_, i) => i % 251);
+    const enc = await encrypt(new Blob([plain]), 'pass', 100_000);
+    assert.deepEqual(new Uint8Array(await (await decrypt(enc, 'pass')).arrayBuffer()), plain);
   });
 
   test('a trip exported from one IndexedDB imports into another', async () => {
@@ -41,7 +42,7 @@ export default function (test, assert) {
     await a.write(trip, '/notes/day1.md', 'two', { author: 'user' });
     await a.write(trip, '/files/photo.jpg', crypto.getRandomValues(new Uint8Array(30000)), { author: 'user' });
     const { blob } = await exportArchive(sa, { kind: 'trip', scopes: [trip], include: PRESETS.backup, passphrase: 'p', iterations: 100_000, app: '0.1.0' });
-    const r = await importArchive(sb, await openArchive(new Uint8Array(await blob.arrayBuffer()), 'p'));
+    const r = await importArchive(sb, await openArchive(blob, 'p'));
     const copy = r.trips[0];
     assert.equal(await b.readText(copy, '/notes/day1.md'), 'two');
     assert.equal((await b.history(copy, '/notes/day1.md')).length, 2);

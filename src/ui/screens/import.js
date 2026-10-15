@@ -6,7 +6,7 @@ import { openFileButton } from '../open-file.js';
 import { relTime, bytes } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 
-/** @typedef {{ name: string, bytes: Uint8Array }} Source */
+/** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob }} Source */
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderImport(ctx, route) {
@@ -31,7 +31,7 @@ export async function renderImport(ctx, route) {
 /** @param {Record<string, string>} params @returns {Promise<Source | null>} */
 async function pickSource(params) {
   const pending = takePendingImport();
-  if (pending) return { name: pending.name, bytes: new Uint8Array(await pending.arrayBuffer()) };
+  if (pending) return { name: pending.name, blob: pending };
   if (params.url) {
     /** @type {Response} */
     let res;
@@ -42,7 +42,7 @@ async function pickSource(params) {
     }
     if (!res.ok) throw new Error(`The download failed (${res.status} ${res.statusText}).`);
     const name = decodeURIComponent(new URL(params.url).pathname.split('/').pop() || 'trip');
-    return { name, bytes: new Uint8Array(await res.arrayBuffer()) };
+    return { name, blob: await res.blob() };
   }
   if (params.inbox) {
     const inbox = await caches.open('annai-inbox');
@@ -51,7 +51,7 @@ async function pickSource(params) {
     const res = await inbox.match(first);
     await inbox.delete(first);
     if (!res) return null;
-    return { name: decodeURIComponent(res.headers.get('X-Annai-Name') ?? 'shared file'), bytes: new Uint8Array(await res.arrayBuffer()) };
+    return { name: decodeURIComponent(res.headers.get('X-Annai-Name') ?? 'shared file'), blob: await res.blob() };
   }
   return null;
 }
@@ -62,7 +62,7 @@ async function step(ctx, body, source, passphrase) {
   /** @type {any} */
   let opened;
   try {
-    opened = await openArchive(source.bytes, passphrase);
+    opened = await openArchive(source.blob, passphrase);
   } catch (e) {
     if (e instanceof NeedsPassphraseError || e instanceof PassphraseError) {
       body.replaceChildren(passphraseForm(ctx, body, source, e instanceof PassphraseError ? e.message : null));
