@@ -50,6 +50,32 @@ async function boot() {
     shell.notices.card({ tone: 'warn', title: `The plugin "${f.id}" didn't start`, body: `${/** @type {any} */ (f.error)?.message ?? f.error} You can turn it off in Settings → Plugins.` });
   }
   if (isStandalone()) requestPersist();
+  registerServiceWorker(store, shell);
+}
+
+/** @param {any} store @param {ReturnType<typeof startShell>} shell */
+async function registerServiceWorker(store, shell) {
+  if (!('serviceWorker' in navigator)) return;
+  let restartRequested = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (restartRequested) location.reload(); // never on the first install, which also changes the controller
+  });
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    const announce = () => shell.setUpdateReady(() => {
+      restartRequested = true;
+      reg.waiting?.postMessage('skip-waiting');
+    });
+    if (reg.waiting && navigator.serviceWorker.controller) announce();
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      w?.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) announce();
+      });
+    });
+  } catch (e) {
+    logEvent(store, SYS, { type: 'error', data: { message: `The offline service didn't start: ${/** @type {any} */ (e)?.message ?? e}` } }).catch(() => {});
+  }
 }
 
 /** Spec §17 rule 4: record unexpected errors, show a card, keep running. */
