@@ -97,6 +97,8 @@ The result is version history and undo of any change (including Shiori's) for fr
 
 App settings (providers, plugins, tool switches, budgets) live outside this view, so Shiori can't change her own setup. Personalities are the deliberate exception (§14).
 
+The top-level folder `/.annai` is reserved inside every scope; archives keep their metadata there.
+
 ### 4.4 Records
 
 - Structured records are JSON files with a JSON Schema tied to their path. Plugins can register schemas for their own paths. An invalid write is rejected, and the validation error comes back as the tool result.
@@ -620,12 +622,15 @@ When the app becomes visible:
 A zip written and read by our own code: `CompressionStream` / `DecompressionStream` with `deflate-raw`, plus a CRC-32 of our own.
 
 ```
-annai-archive.json       manifest: format version, app version, kind (trip | everything),
-                         contents, SHA-256 of every file, encrypted flag
-me/…                     global files (only in "everything")
-trips/<id>/…             current files at readable paths
-trips/<id>/events.jsonl  the event log
-blobs/<sha256>           content the log references that isn't a current file
+annai-archive.json                   manifest: format version, app version, kind (trip | everything),
+                                     contents, SHA-256 of every entry, encrypted flag (written last)
+me/<path>                            global files (only in "everything")
+trips/<id>/<path>                    a trip's current files at readable paths
+trips/<id>/.annai/events.jsonl       that trip's event log (when history is included)
+system/settings/…, system/plugins/…  app settings and installed plugins (only in "everything")
+system/log/.annai/events.jsonl       the system log (only in a "Backup" of everything)
+blobs/<sha256>                       older versions the logs reference that aren't current files
+system/secrets.json                  API keys (encrypted backups only, when chosen)
 ```
 
 The archive is written as a stream, so photo-heavy trips don't need to fit in memory.
