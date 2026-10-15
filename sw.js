@@ -57,6 +57,7 @@ const SHELL = [
   '/src/ui/save.js',
   '/src/ui/screens/file.js',
   '/src/ui/screens/import.js',
+  '/src/ui/screens/plugins.js',
   '/src/ui/screens/settings.js',
   '/src/ui/screens/trace.js',
   '/src/ui/screens/trip.js',
