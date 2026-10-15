@@ -202,3 +202,40 @@ test('settings are kept unless the user chooses to replace them', async () => {
   assert.equal((await readAppSettings(b.ws)).units, 'metric');
   assert.equal((await b.ws.list(SYS_SETTINGS)).length, 1);
 });
+
+test('imported plugins arrive switched off, so running their code is always an explicit choice', async () => {
+  const a = await device();
+  await a.ws.write('sys:plugins', '/hello/index.js', 'export function activate() {}', { author: 'system' });
+  await a.ws.write('sys:plugins', '/installed.json', { hello: { version: '1.0.0', name: 'Hello', enabled: true, installed: 1, source: 'x' } }, { author: 'system' });
+  const { blob } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  const b = await device();
+  await importArchive(b.store, await openArchive(await bytesOf(blob)), { plugins: 'replace' });
+  assert.equal((await b.ws.readJSON('sys:plugins', '/installed.json')).hello.enabled, false);
+  assert.equal(await b.ws.readText('sys:plugins', '/hello/index.js'), 'export function activate() {}');
+});
+
+test('imported API keys never replace keys already on this device', async () => {
+  const a = await device();
+  await a.store.tx(['secrets'], 'readwrite', async (t) => { await t.putSecret('openrouter', 'theirs'); await t.putSecret('groq', 'gk-1'); });
+  const { blob } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, secrets: true, passphrase: 'p', iterations: FAST, app: '0.1.0' });
+  const b = await device();
+  await b.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('openrouter', 'mine'));
+  const r = await importArchive(b.store, await openArchive(await bytesOf(blob), 'p'), { secrets: true });
+  assert.equal(r.secrets, 1);
+  assert.equal(await b.store.tx(['secrets'], 'readonly', (t) => t.getSecret('openrouter')), 'mine');
+  assert.equal(await b.store.tx(['secrets'], 'readonly', (t) => t.getSecret('groq')), 'gk-1');
+});
+
+test('archives with unsafe file paths are refused', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  const entries = await readZip(await bytesOf(blob));
+  for (const bad of ['/.annai/events.jsonl', '/notes/../../me/profile.md', 'no-slash.md']) {
+    const manifest = JSON.parse(text(entries.get(MANIFEST_NAME)));
+    manifest.files[0].path = bad;
+    const z = new ZipWriter();
+    for (const [name, bytes] of entries) await z.add(name, name === MANIFEST_NAME ? utf8(JSON.stringify(manifest)) : bytes);
+    await assert.rejects(openArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /unsafe file path/.test(e.message), bad);
+  }
+});

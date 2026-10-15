@@ -2,7 +2,7 @@ import { ZipWriter, readZip } from './zip.js';
 import { encrypt, decrypt, isEncrypted } from './archive-crypto.js';
 import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
-import { isCompressedType } from './paths.js';
+import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, newId } from './scopes.js';
 
@@ -194,6 +194,9 @@ export async function openArchive(bytes, passphrase) {
   }
   const errors = validate(MANIFEST_SCHEMA, manifest);
   if (errors.length) throw new ArchiveError(`This file is damaged: ${errors.join('; ')}`);
+  for (const f of manifest.files) {
+    if (!isSafePath(f.path)) throw new ArchiveError(`This file contains an unsafe file path (${JSON.stringify(f.path)}), so annai won't open it.`);
+  }
   /** @type {string[]} */
   const problems = [];
   const check = async (/** @type {string} */ name, /** @type {string} */ hash) => {
@@ -246,6 +249,8 @@ export async function importArchive(store, { manifest, entries }, choices = {}) 
   const now = choices.now ?? Date.now();
   /** @type {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[]} */
   const plan = [];
+  /** @type {Map<string, { bytes: Uint8Array, hash: string }>} */
+  const overrides = new Map();
   for (const s of manifest.scopes) {
     const rec = s.record;
     /** @type {string} */ let target;
@@ -269,6 +274,19 @@ export async function importArchive(store, { manifest, entries }, choices = {}) 
       ? text(/** @type {Uint8Array} */ (entries.get(s.events))).split('\n').filter(Boolean).map((l) => JSON.parse(l))
       : [];
     plan.push({ rec, target, mode, files, events });
+    // Imported plugins arrive switched off: running their code must be an explicit choice
+    // on the plugins screen, with its "full access" warning (spec §5.1).
+    if (target === SYS_PLUGINS) {
+      for (const f of files) {
+        if (f.path !== '/installed.json') continue;
+        /** @type {Record<string, any>} */
+        let state = {};
+        try { state = JSON.parse(text(/** @type {Uint8Array} */ (entries.get(f.name)))); } catch { /* treat as empty */ }
+        const off = Object.fromEntries(Object.entries(state ?? {}).map(([id, s]) => [id, { ...s, enabled: false }]));
+        const bytes = utf8(JSON.stringify(off, null, 2) + '\n');
+        overrides.set(f.name, { bytes, hash: await sha256Hex(bytes) });
+      }
+    }
   }
   /** @type {{ id: string, value: any }[]} */
   const secrets = choices.secrets && manifest.secrets ? JSON.parse(text(/** @type {Uint8Array} */ (entries.get(manifest.secrets)))) : [];
@@ -287,11 +305,14 @@ export async function importArchive(store, { manifest, entries }, choices = {}) 
       if (p.mode === 'system') await t.deleteScope(p.target);
       await t.putScope({ ...p.rec, id: p.target, status: 'active', updated: now });
       for (const f of p.files) {
-        if (!(await t.hasBlob(f.hash))) {
-          await t.putBlob({ hash: f.hash, type: f.type, size: f.size, data: ownBuffer(/** @type {Uint8Array} */ (entries.get(f.name))) });
+        const o = overrides.get(f.name);
+        const hash = o?.hash ?? f.hash;
+        const size = o?.bytes.byteLength ?? f.size;
+        if (!(await t.hasBlob(hash))) {
+          await t.putBlob({ hash, type: f.type, size, data: ownBuffer(o?.bytes ?? /** @type {Uint8Array} */ (entries.get(f.name))) });
         }
         await t.putFile({
-          scope: p.target, path: f.path, hash: f.hash, size: f.size, type: f.type, author: f.author,
+          scope: p.target, path: f.path, hash, size, type: f.type, author: f.author,
           created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}),
         });
       }
@@ -307,7 +328,9 @@ export async function importArchive(store, { manifest, entries }, choices = {}) 
         await t.putBlob({ hash: b.hash, type: b.type, size: b.size, data: ownBuffer(/** @type {Uint8Array} */ (entries.get(b.name))) });
       }
     }
+    // Keys already on this device always win: an archive must never swap in someone else's key.
     for (const s of secrets) {
+      if ((await t.getSecret(s.id)) !== undefined) continue;
       await t.putSecret(s.id, s.value);
       result.secrets++;
     }
@@ -329,4 +352,13 @@ export function archiveName({ kind, title, encrypted, now }) {
 function slug(s) {
   const out = s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   return out || 'trip';
+}
+
+/** A path an archive may write: already in normal form (no "..", no reserved folder, leading "/"). @param {unknown} p */
+function isSafePath(p) {
+  try {
+    return typeof p === 'string' && normPath(p) === p;
+  } catch {
+    return false;
+  }
 }
