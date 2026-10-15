@@ -1,5 +1,5 @@
 import { crc32 } from './crc32.js';
-import { utf8, text } from './bytes.js';
+import { utf8, text, concat } from './bytes.js';
 
 const LOCAL = 0x04034b50;
 const CENTRAL = 0x02014b50;
@@ -20,10 +20,26 @@ export async function deflateRaw(bytes) {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-/** @param {Uint8Array} bytes */
-export async function inflateRaw(bytes) {
-  const stream = new Blob([/** @type {BlobPart} */ (bytes)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+/**
+ * Inflates raw DEFLATE data, stopping as soon as the output passes limit.
+ * @param {Uint8Array} bytes @param {number} [limit]
+ */
+export async function inflateRaw(bytes, limit = Infinity) {
+  const reader = new Blob([/** @type {BlobPart} */ (bytes)]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  /** @type {Uint8Array[]} */
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel().catch(() => {});
+      throw new ZipError('is larger than it says (it may be a zip bomb), so annai stopped reading it');
+    }
+    chunks.push(value);
+  }
+  return concat(chunks);
 }
 
 /**
@@ -120,13 +136,20 @@ function dosTime(ms) {
   };
 }
 
+/** Archives larger than this (uncompressed, in total) are refused before anything is inflated. */
+export const MAX_TOTAL = 2 * 1024 * 1024 * 1024;
+
 /**
  * Reads a whole archive into memory. Supports stored and deflated entries,
- * checks every CRC-32, and skips folder entries.
+ * checks every CRC-32, and skips folder entries. Defends against zip bombs:
+ * the declared sizes must add up to at most maxTotal, and inflating stops as
+ * soon as an entry produces more than it declared.
  * @param {Uint8Array} zip
+ * @param {{ maxTotal?: number }} [opts]
  * @returns {Promise<Map<string, Uint8Array>>}
  */
-export async function readZip(zip) {
+export async function readZip(zip, opts = {}) {
+  const maxTotal = opts.maxTotal ?? MAX_TOTAL;
   const v = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
   let end = -1;
   for (let i = zip.length - 22; i >= Math.max(0, zip.length - 22 - 0xffff); i--) {
@@ -139,23 +162,33 @@ export async function readZip(zip) {
   const count = v.getUint16(end + 10, true);
   const cdOffset = v.getUint32(end + 16, true);
   if (count === 0xffff || cdOffset === 0xffffffff) throw new ZipError('zip64 archives are not supported');
-  /** @type {Map<string, Uint8Array>} */
-  const out = new Map();
+
+  /** @type {{ name: string, flags: number, method: number, crc: number, csize: number, usize: number, local: number }[]} */
+  const entries = [];
+  let total = 0;
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
     if (p + 46 > zip.length || v.getUint32(p, true) !== CENTRAL) throw new ZipError('the archive index is damaged');
-    const flags = v.getUint16(p + 8, true);
-    const method = v.getUint16(p + 10, true);
-    const crc = v.getUint32(p + 16, true);
-    const csize = v.getUint32(p + 20, true);
-    const usize = v.getUint32(p + 24, true);
     const nlen = v.getUint16(p + 28, true);
-    const xlen = v.getUint16(p + 30, true);
-    const clen = v.getUint16(p + 32, true);
-    const local = v.getUint32(p + 42, true);
-    const name = text(zip.subarray(p + 46, p + 46 + nlen));
-    p += 46 + nlen + xlen + clen;
-    if (name.endsWith('/')) continue;
+    const entry = {
+      name: text(zip.subarray(p + 46, p + 46 + nlen)),
+      flags: v.getUint16(p + 8, true),
+      method: v.getUint16(p + 10, true),
+      crc: v.getUint32(p + 16, true),
+      csize: v.getUint32(p + 20, true),
+      usize: v.getUint32(p + 24, true),
+      local: v.getUint32(p + 42, true),
+    };
+    p += 46 + nlen + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+    if (entry.name.endsWith('/')) continue;
+    total += entry.usize;
+    if (total > maxTotal) throw new ZipError(`this archive is too large to open here (over ${Math.floor(maxTotal / 1048576)} MB uncompressed)`);
+    entries.push(entry);
+  }
+
+  /** @type {Map<string, Uint8Array>} */
+  const out = new Map();
+  for (const { name, flags, method, crc, csize, usize, local } of entries) {
     if (flags & 1) throw new ZipError(`${name} is encrypted with zip encryption, which annai does not read`);
     if (local + 30 > zip.length || v.getUint32(local, true) !== LOCAL) throw new ZipError(`the entry ${name} is damaged`);
     const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
@@ -165,8 +198,9 @@ export async function readZip(zip) {
     if (method === 0) bytes = raw.slice();
     else if (method === 8) {
       try {
-        bytes = await inflateRaw(raw);
-      } catch {
+        bytes = await inflateRaw(raw, usize);
+      } catch (e) {
+        if (e instanceof ZipError) throw new ZipError(`${name} ${e.message}`);
         throw new ZipError(`${name} is corrupted (it cannot be decompressed)`);
       }
     } else throw new ZipError(`${name} uses compression method ${method}, which annai does not read`);

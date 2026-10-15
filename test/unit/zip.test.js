@@ -76,3 +76,32 @@ test('Info-ZIP accepts our archives', { skip: !hasUnzip && 'unzip is not install
   await writeFile(file, await bytesOf(z.finish()));
   execFileSync('unzip', ['-t', file], { stdio: 'pipe' });
 });
+
+/** Rewrites the uncompressed size of the only entry in a one-entry archive (local and central headers). @param {Uint8Array} b @param {number} size */
+function lieAboutSize(b, size) {
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  v.setUint32(22, size, true);
+  for (let i = b.length - 22; i >= 0; i--) {
+    if (v.getUint32(i, true) === 0x06054b50) {
+      v.setUint32(v.getUint32(i + 16, true) + 24, size, true);
+      break;
+    }
+  }
+  return b;
+}
+
+test('an entry that inflates beyond its declared size is stopped early (zip bomb)', async () => {
+  const z = new ZipWriter();
+  await z.add('zeros.bin', new Uint8Array(4 * 1024 * 1024));
+  const b = lieAboutSize(await bytesOf(z.finish()), 1024);
+  await assert.rejects(readZip(b), (e) => e instanceof ZipError && /larger than it says/.test(e.message));
+});
+
+test('archives whose contents add up past the limit are refused before inflating', async () => {
+  const z = new ZipWriter();
+  await z.add('a.txt', utf8('a'.repeat(5000)));
+  await z.add('b.txt', utf8('b'.repeat(5000)));
+  const b = await bytesOf(z.finish());
+  await assert.rejects(readZip(b, { maxTotal: 8000 }), (e) => e instanceof ZipError && /too large/.test(e.message));
+  assert.equal((await readZip(b, { maxTotal: 10000 })).size, 2);
+});
