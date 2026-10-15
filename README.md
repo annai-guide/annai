@@ -31,3 +31,17 @@ memories afterwards.
 
 [AGPL-3.0](LICENSE). annai is a hosted web app, so anyone who serves a
 modified version must publish their source too.
+
+## Develop
+
+annai has no build step and no runtime dependencies. Node 26 runs the tools.
+
+```bash
+npm install
+npx playwright install chromium webkit
+npm run serve      # http://127.0.0.1:8790 with the production CSP
+npm run check      # type-check, unit tests, size budget
+npm run e2e        # Playwright: Chromium as a Pixel 7, WebKit as an iPhone 15
+```
+
+`docs/testing/device-checklist-m1.md` lists what to verify by hand on real phones.
