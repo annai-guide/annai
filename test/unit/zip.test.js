@@ -1,0 +1,78 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, writeFile, mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { ZipWriter, readZip, ZipError } from '../../src/core/zip.js';
+import { utf8, text } from '../../src/core/bytes.js';
+
+const bytesOf = async (/** @type {Blob} */ blob) => new Uint8Array(await blob.arrayBuffer());
+const hasUnzip = (() => { try { execFileSync('unzip', ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } })();
+
+test('round-trips text, binary, empty files and UTF-8 names', async () => {
+  const z = new ZipWriter();
+  const note = '# 案内\n'.repeat(50);
+  const bin = crypto.getRandomValues(new Uint8Array(60000));
+  await z.add('trips/trip-1/notes/案内.md', utf8(note));
+  await z.add('trips/trip-1/files/photo.jpg', bin, { compress: false });
+  await z.add('empty.txt', new Uint8Array());
+  const out = await readZip(await bytesOf(z.finish()));
+  assert.deepEqual([...out.keys()], ['trips/trip-1/notes/案内.md', 'trips/trip-1/files/photo.jpg', 'empty.txt']);
+  assert.equal(text(out.get('trips/trip-1/notes/案内.md')), note);
+  assert.deepEqual(out.get('trips/trip-1/files/photo.jpg'), bin);
+  assert.equal(out.get('empty.txt')?.length, 0);
+});
+
+test('compressible text is deflated', async () => {
+  const z = new ZipWriter();
+  const big = utf8('a'.repeat(10000));
+  await z.add('a.txt', big);
+  const blob = z.finish();
+  assert.ok(blob.size < 1000, `archive is ${blob.size} bytes`);
+  assert.deepEqual((await readZip(await bytesOf(blob))).get('a.txt'), big);
+});
+
+test('incompressible data is stored even when compression is requested', async () => {
+  const z = new ZipWriter();
+  const noise = crypto.getRandomValues(new Uint8Array(4000));
+  await z.add('noise.bin', noise);
+  const blob = z.finish();
+  assert.ok(blob.size < 4000 + 200);
+  assert.deepEqual((await readZip(await bytesOf(blob))).get('noise.bin'), noise);
+});
+
+test('duplicate names are refused', async () => {
+  const z = new ZipWriter();
+  await z.add('a', utf8('1'));
+  await assert.rejects(z.add('a', utf8('2')), ZipError);
+});
+
+test('a flipped byte is caught by the checksum', async () => {
+  const z = new ZipWriter();
+  await z.add('a.txt', utf8('hello world'), { compress: false });
+  const b = await bytesOf(z.finish());
+  b[30 + 'a.txt'.length] ^= 1; // first data byte follows the 30-byte header and the name
+  await assert.rejects(readZip(b), (e) => e instanceof ZipError && /corrupted/.test(e.message));
+});
+
+test('something that is not a zip is refused', async () => {
+  await assert.rejects(readZip(utf8('just text, no zip here')), (e) => e instanceof ZipError && /not a zip/.test(e.message));
+});
+
+test('reads an archive made by Info-ZIP', async () => {
+  const z = await readZip(new Uint8Array(await readFile(new URL('../fixtures/infozip.zip', import.meta.url))));
+  assert.equal(text(z.get('hello.txt')), 'hello zip\n'.repeat(200));
+  assert.equal(text(z.get('dir/annai.txt')), 'annai\n');
+  assert.equal(z.has('dir/'), false);
+});
+
+test('Info-ZIP accepts our archives', { skip: !hasUnzip && 'unzip is not installed' }, async () => {
+  const z = new ZipWriter();
+  await z.add('hello.txt', utf8('hello\n'.repeat(100)));
+  await z.add('notes/案内.md', utf8('案内'), { compress: false });
+  const dir = await mkdtemp(join(tmpdir(), 'annai-zip-'));
+  const file = join(dir, 'ours.zip');
+  await writeFile(file, await bytesOf(z.finish()));
+  execFileSync('unzip', ['-t', file], { stdio: 'pipe' });
+});
