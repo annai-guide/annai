@@ -1,0 +1,901 @@
+<title>annai UI mockups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: a quiet gallery of phone frames on cool paper; the app's accent follows Shiori's chosen look */
+:root {
+  --paper: #f1f2f5;
+  --sheet: #ffffff;
+  --ink: #1d2030;
+  --ink-2: #5b6075;
+  --line: #dcdfe8;
+  --ai: #b84a35;
+  --ai-ink: #ffffff;
+  --ai-wash: #fbe8e2;
+  --amber: #a86a12;
+  --amber-wash: #fbf0dc;
+  --risk: #b3343b;
+  --risk-wash: #fbe6e7;
+  --ok: #2d7a5c;
+  --bezel: #171923;
+  --shadow: rgba(20, 22, 40, 0.28);
+  --eye: #3a2a26;
+  --twig: #6e4a30;
+  --lattice: #e6e3ea;
+  --photo-top: #0d4658;
+  --photo-bottom: #2b7867;
+  --kelp: #a7c97e;
+  --f-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", ui-rounded, system-ui, sans-serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e0f15; --sheet: #181a23; --ink: #eceef4; --ink-2: #a2a7b8; --line: #2b2e3c;
+    --ai: #ff9d84; --ai-ink: #2b120c; --ai-wash: #3b221c; --amber: #e6ae55; --amber-wash: #33270f;
+    --risk: #f08a8f; --risk-wash: #3a1a1d; --ok: #7fcaa8; --bezel: #050608; --shadow: rgba(0, 0, 0, 0.6); --twig: #c9a07a; --lattice: #262833;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e0f15; --sheet: #181a23; --ink: #eceef4; --ink-2: #a2a7b8; --line: #2b2e3c;
+  --ai: #ff9d84; --ai-ink: #2b120c; --ai-wash: #3b221c; --amber: #e6ae55; --amber-wash: #33270f;
+  --risk: #f08a8f; --risk-wash: #3a1a1d; --ok: #7fcaa8; --bezel: #050608; --shadow: rgba(0, 0, 0, 0.6); --twig: #c9a07a; --lattice: #262833;
+  color-scheme: dark;
+}
+/* app accent: Shiori's vermilion */
+body { --ai: light-dark(#b8392b, #ff9a8a); --ai-wash: light-dark(#fbe5e1, #3b1d18); --ai-ink: light-dark(#ffffff, #2a0d09); }
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 36px 72px;
+}
+h1, h2, h3, h4, p, dl, dd, ul { margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 64px; }
+
+/* ---------- page chrome ---------- */
+.intro { max-width: 660px; display: flex; flex-direction: column; gap: 14px; }
+.wordmark { font-family: var(--f-display); font-weight: 700; font-size: 46px; line-height: 1; letter-spacing: -0.01em; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.wordmark .ai { color: var(--ai); }
+.wordmark small { font-size: 15px; font-weight: 500; color: var(--ink-2); letter-spacing: 0.04em; }
+.intro p { color: var(--ink-2); max-width: 62ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend .av { width: 26px; height: 26px; }
+
+.sec { display: flex; flex-direction: column; gap: 26px; }
+.sec > header { display: flex; flex-direction: column; gap: 6px; max-width: 680px; }
+.sec h2 { font-family: var(--f-display); font-size: 25px; font-weight: 700; text-wrap: balance; }
+.sec > header p { color: var(--ink-2); }
+
+/* ---------- look picker ---------- */
+.looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.look { background: var(--sheet); border: 1px solid var(--line); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 12px; position: relative; }
+.look.on { border-color: var(--ai); box-shadow: 0 0 0 1px var(--ai); }
+.look-top { display: flex; gap: 14px; align-items: center; }
+.look-top .av { width: 92px; height: 92px; flex: none; }
+.look h3 { font-family: var(--f-display); font-size: 18px; font-weight: 700; }
+.look .jp { font-size: 12px; color: var(--ink-2); letter-spacing: 0.04em; }
+.look p { font-size: 13.5px; color: var(--ink-2); }
+.look-states { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; font-size: 10.5px; color: var(--ink-2); }
+.look-states > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.look-states .av { width: 46px; height: 46px; }
+.pick { align-self: flex-start; }
+.badge { position: absolute; top: 14px; right: 14px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--ai); border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px; }
+.look-top > div { min-width: 0; padding-right: 64px; }
+.look-foot { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.look-foot .sub { flex: 1; }
+.icon-tile { width: 58px; height: 58px; border-radius: 14px; background: var(--ai-wash); display: grid; place-items: center; flex: none; box-shadow: inset 0 0 0 1px var(--line); }
+.icon-tile .av { width: 50px; height: 50px; }
+
+/* the 枝折り story, on a 枝折戸 diamond lattice */
+.story { border-radius: 22px; padding: 18px; border: 1px solid var(--line); background-color: var(--sheet);
+  background-image: repeating-linear-gradient(60deg, transparent 0 13px, var(--lattice) 13px 15px),
+                    repeating-linear-gradient(-60deg, transparent 0 13px, var(--lattice) 13px 15px); }
+.story-text { background: var(--sheet); border-radius: 16px; padding: 18px 20px; max-width: 72ch; display: flex; flex-direction: column; gap: 10px; }
+.story blockquote { margin: 2px 0; font-family: var(--f-display); font-size: 19px; line-height: 1.7; color: var(--ai); }
+.cite { font-size: 13.5px; color: var(--ink-2); }
+
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 48px 28px; align-items: start; }
+figure.shot { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
+figcaption { width: min(100%, 352px); display: flex; flex-direction: column; gap: 4px; }
+figcaption h3 { font-family: var(--f-display); font-size: 17px; font-weight: 700; }
+figcaption p { color: var(--ink-2); font-size: 14px; }
+
+/* ---------- phone ---------- */
+.phone { width: min(100%, 352px); background: var(--bezel); border-radius: 40px; padding: 9px; box-shadow: 0 22px 44px -26px var(--shadow); }
+.screen { background: var(--sheet); color: var(--ink); border-radius: 31px; min-height: 690px; display: flex; flex-direction: column; overflow: hidden; font-size: 14px; line-height: 1.45; position: relative; }
+.sbar { display: flex; justify-content: space-between; align-items: center; padding: 13px 20px 4px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; gap: 8px; }
+.pane { padding: 8px 18px 16px; display: flex; flex-direction: column; gap: 14px; flex: 1; min-width: 0; }
+.chips { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+.chip.live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.chip.warn { color: var(--amber); border-color: currentColor; background: var(--amber-wash); }
+.chip.ai { color: var(--ai); border-color: currentColor; }
+.trip { font-size: 12px; color: var(--ink-2); letter-spacing: 0.03em; }
+.title { font-family: var(--f-display); font-weight: 700; font-size: 21px; line-height: 1.2; text-wrap: balance; }
+.label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ai); }
+.sub { font-size: 12px; color: var(--ink-2); }
+.now { background: var(--ai-wash); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+
+/* timetable: the shiori booklet's schedule page */
+.tt { display: flex; flex-direction: column; }
+.tt .row { display: grid; grid-template-columns: 44px 12px 1fr; gap: 9px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.tt .row:last-child { border-bottom: 0; }
+.tt .t { font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.tt .what { min-width: 0; }
+.tt .what b { font-weight: 700; }
+.tt .leg { color: var(--ink-2); font-size: 12px; border-bottom: 1px solid var(--line); }
+.mk { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--ai); align-self: center; display: inline-block; }
+.mk.fx { background: var(--ai); }
+.mk.dash { width: 2px; height: 16px; border: 0; border-radius: 0; justify-self: center; background: repeating-linear-gradient(var(--ink-2) 0 2px, transparent 2px 5px); }
+.was { text-decoration: line-through; color: var(--ink-2); }
+
+/* Shiori's words on screen: named, no second avatar */
+.msg { background: var(--sheet); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.who { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--ai); }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: inherit; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 7px 14px; border: 1px solid var(--line); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.btn.pri { background: var(--ai); color: var(--ai-ink); border-color: var(--ai); }
+.btn.ghost { border-color: transparent; color: var(--ai); padding-inline: 6px; }
+.btn:focus-visible, .ib:focus-visible, .talk:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
+
+/* dock: camera · Shiori · type, always at the bottom */
+.dock { margin-top: auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 24px 18px; border-top: 1px solid var(--line); }
+.ib { justify-self: center; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); border: 1px solid var(--line); background: var(--sheet); cursor: pointer; }
+.talk { display: flex; flex-direction: column; align-items: center; gap: 4px; font: inherit; font-size: 11px; color: var(--ink-2); background: none; border: 0; cursor: pointer; }
+.talk .ring { width: 70px; height: 70px; border-radius: 50%; background: var(--ai-wash); display: grid; place-items: center; }
+.talk .av { width: 54px; height: 54px; }
+.dock.voice { padding-top: 12px; }
+.dock.voice .ib { width: 54px; height: 54px; }
+.dock.voice .talk .ring { width: 100px; height: 100px; }
+.dock.voice .talk .av { width: 78px; height: 78px; }
+.dock.voice .talk { font-size: 12px; font-weight: 700; color: var(--ink); }
+.ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic.sm { width: 16px; height: 16px; }
+
+/* driving */
+.stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding-block: 6px; }
+.stage .state-name { font-family: var(--f-display); font-weight: 700; font-size: 22px; }
+.cap { font-size: 15px; max-width: 30ch; }
+.route { display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+.route .r { display: flex; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; }
+.route .r span:last-child { color: var(--ink-2); white-space: nowrap; }
+.big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.big .btn { border-radius: 14px; padding: 12px; text-align: left; font-size: 13px; }
+.maps { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--ai-wash); border-radius: 14px; padding: 10px 12px; font-size: 13px; }
+
+/* camera */
+.photo { height: 250px; border-radius: 18px; background: linear-gradient(180deg, var(--photo-top), var(--photo-bottom)); position: relative; overflow: hidden; }
+.photo svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.photo .kelp path { fill: none; stroke: var(--kelp); stroke-width: 5; stroke-linecap: round; opacity: 0.85; }
+.photo .fish ellipse { fill: var(--amber-wash); opacity: 0.9; }
+.photo .tag { position: absolute; left: 10px; bottom: 10px; font-size: 11px; font-weight: 700; color: var(--ink); background: var(--sheet); border-radius: 8px; padding: 2px 8px; }
+
+/* plan */
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.tab { flex: none; font-size: 12px; font-weight: 500; padding: 5px 10px; border-radius: 10px; border: 1px solid var(--line); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tab.on { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.working { display: flex; gap: 10px; align-items: center; font-size: 12.5px; color: var(--ink-2); border: 1px dashed var(--line); border-radius: 12px; padding: 8px 10px; }
+.working .av { width: 36px; height: 36px; flex: none; }
+.ask-input { margin-top: auto; border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; color: var(--ink-2); font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+
+/* import */
+.doc { display: grid; grid-template-columns: 62px 1fr; gap: 12px; align-items: start; }
+.thumb { height: 86px; border-radius: 8px; border: 1px solid var(--line); background: repeating-linear-gradient(180deg, var(--line) 0 2px, transparent 2px 9px), var(--sheet); }
+.kv { display: grid; grid-template-columns: 92px 1fr; gap: 7px 10px; font-size: 13px; }
+.kv dt { color: var(--ink-2); }
+.kv dd { font-weight: 500; font-variant-numeric: tabular-nums; min-width: 0; }
+.flag { background: var(--amber-wash); border-radius: 12px; padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
+.flag b { color: var(--amber); }
+
+/* trips */
+.risk { background: var(--risk-wash); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.risk strong { color: var(--risk); }
+.tcard { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.tcard .name { font-family: var(--f-display); font-weight: 700; font-size: 16px; }
+.stamps { display: flex; padding-left: 8px; }
+.stamp { width: 34px; height: 34px; border-radius: 50%; border: 3px double var(--ai); color: var(--ai); background: var(--sheet); font-size: 10px; font-weight: 700; display: grid; place-items: center; margin-left: -9px; line-height: 1; }
+.stamp:nth-child(1) { transform: rotate(-9deg); }
+.stamp:nth-child(2) { transform: rotate(6deg); }
+.stamp:nth-child(3) { transform: rotate(-3deg); font-family: var(--f-mono); }
+.rowline { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.rowline span:last-child { color: var(--ink-2); }
+
+/* models */
+.role { display: flex; flex-direction: column; gap: 6px; }
+.mrow { display: grid; grid-template-columns: 14px 18px 1fr auto; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.mrow .n { font-family: var(--f-mono); font-size: 11px; color: var(--ink-2); }
+.mrow .g { color: var(--ink-2); }
+.mrow .nm { min-width: 0; }
+.mrow .nm b { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.mrow .nm span { font-size: 11px; color: var(--ink-2); }
+.caps { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; max-width: 92px; }
+.cp { font-size: 9.5px; font-weight: 700; border-radius: 5px; padding: 1px 5px; background: var(--ai-wash); color: var(--ai); }
+.cp.free { background: var(--amber-wash); color: var(--amber); }
+.add { color: var(--ai); font-weight: 700; font-size: 12.5px; padding-left: 4px; }
+
+/* trace */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.tr { font-family: var(--f-mono); font-size: 10.5px; line-height: 1.4; display: flex; flex-direction: column; }
+.tr .row { display: grid; grid-template-columns: 52px 46px 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.tr .tm { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tr .k { color: var(--ai); font-weight: 500; }
+.tr .d { min-width: 0; overflow-wrap: anywhere; }
+.tr .d em { font-style: normal; color: var(--ink-2); }
+.switches { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: center; font-size: 13px; }
+.sw { width: 34px; height: 20px; border-radius: 999px; background: var(--line); position: relative; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--sheet); }
+.sw.on { background: var(--ai); }
+.sw.on::after { left: 16px; }
+
+/* plugin slots */
+.slot { outline: 2px dashed var(--amber); outline-offset: 3px; border-radius: 12px; position: relative; }
+.slot > .tag { position: absolute; top: -11px; right: 8px; z-index: 1; background: var(--amber); color: var(--sheet); font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 6px; letter-spacing: 0.02em; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 32px; align-items: start; }
+.slotlist { display: flex; flex-direction: column; gap: 14px; max-width: 60ch; }
+.slotlist li { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.slotlist b { font-family: var(--f-display); font-size: 16px; }
+.slotlist span { color: var(--ink-2); }
+.slotlist ul { padding: 0; display: flex; flex-direction: column; gap: 14px; }
+
+/* avatar states */
+.states { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 128px), 1fr)); gap: 14px; }
+.state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 10px 14px; border-radius: 18px; background: var(--sheet); border: 1px solid var(--line); text-align: center; }
+.state .av { width: 74px; height: 74px; margin-bottom: 4px; }
+.state b { font-family: var(--f-display); font-size: 15px; }
+.state span { font-size: 12px; color: var(--ink-2); }
+
+/* ---------- Shiori: white fox, trail-tape hairpin, vermilion scarf ---------- */
+.av { display: inline-block; position: relative; }
+.avsvg { width: 100%; height: 100%; overflow: visible; display: block; }
+.avsvg .fox, .avsvg .face, .avsvg .eyes, .avsvg .ear-l, .avsvg .ear-r, .avsvg .marker, .avsvg .tails {
+  transform-box: view-box; transition: transform .6s cubic-bezier(.3, .7, .2, 1), opacity .5s ease, filter .5s ease; }
+.avsvg .fox { transform-origin: 32px 56px; }
+.avsvg .ear-l { transform-origin: 21px 20px; }
+.avsvg .ear-r { transform-origin: 43px 20px; }
+.avsvg .fox .tails { transform-origin: 9px 9px; }
+.avsvg .marker .tails { transform-origin: 33px 27px; }
+.avsvg .eyes { transition-duration: .3s; }
+.avsvg .lid { transform-box: fill-box; transform-origin: center; transition: transform .1s ease; }
+.avsvg .closed { opacity: 0; transition: opacity .25s; }
+.avsvg .marker { opacity: 0; transform: translateY(12px); }
+.av.blink .lid { transform: scaleY(.1); }
+
+/* asleep: eyes closed, head lowered, ears relaxed, slow breathing */
+.av[data-state="sleeping"] .lid { transform: scaleY(0); }
+.av[data-state="sleeping"] .closed { opacity: 1; }
+.av[data-state="sleeping"] .fox { transform: translateY(3px); animation: breathe 5s ease-in-out infinite; }
+.av[data-state="sleeping"] .ear-l { transform: rotate(-14deg); }
+.av[data-state="sleeping"] .ear-r { transform: rotate(14deg); }
+/* ready for you: facing you, ears up */
+.av[data-state="listening"] .ear-l { transform: rotate(5deg) scale(1.05); }
+.av[data-state="listening"] .ear-r { transform: rotate(-5deg) scale(1.05); }
+.av[data-state="hearing"] .ear-l { transform: rotate(9deg) scale(1.1); }
+.av[data-state="hearing"] .ear-r { transform: rotate(-9deg) scale(1.1); }
+.av[data-state="waiting"] .fox { transform: rotate(-7deg); }
+.av[data-state="waiting"] .ear-l { transform: rotate(6deg) scale(1.06); }
+.av[data-state="waiting"] .ear-r { transform: rotate(-3deg) scale(1.03); }
+/* working out a reply: looks up and away */
+.av[data-state="thinking"] .face { transform: translate(-3.5px, -1px); }
+.av[data-state="thinking"] .eyes { transform: translate(-1.5px, -2.4px); }
+.av[data-state="thinking"] .ear-l { transform: rotate(-7deg); }
+.av[data-state="thinking"] .ear-r { transform: rotate(-3deg); }
+/* talking: the tape on her hairpin moves with her voice */
+.av[data-state="speaking"] .fox .tails { transform: rotate(calc(var(--amp, 0) * -18deg)); transition-duration: .12s; }
+/* working in the background: she steps out and leaves her marker */
+.av[data-state="away"] .fox { transform: translateY(64px); opacity: 0; }
+.av[data-state="away"] .marker { opacity: 1; transform: none; }
+.av[data-state="away"] .marker .tails { animation: drift 3.4s ease-in-out infinite; }
+/* offline: still here, muted */
+.av[data-state="offline"] .fox { filter: grayscale(1); opacity: .6; }
+.av[data-state="offline"] .ear-l { transform: rotate(-12deg); }
+.av[data-state="offline"] .ear-r { transform: rotate(12deg); }
+
+@keyframes breathe { 0%, 100% { transform: translateY(3px) scale(1); } 50% { transform: translateY(3px) scale(1.02); } }
+@keyframes drift { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-9deg); } }
+
+/* her seat: the glow follows sound, her voice (accent) or yours (grey) */
+.seat { border-radius: 50%; display: grid; place-items: center; background: var(--ai-wash); overflow: hidden; flex: none;
+  box-shadow: 0 0 0 calc(var(--amp, 0) * 8px) color-mix(in srgb, var(--ai) 38%, transparent); transition: box-shadow .12s linear; }
+.seat[data-glow="you"] { box-shadow: 0 0 0 calc(var(--amp, 0) * 8px) color-mix(in srgb, var(--ink-2) 32%, transparent); }
+.seat.sm { width: 40px; height: 40px; }
+.seat.sm .av { width: 36px; height: 36px; }
+.seat.md { width: 86px; height: 86px; }
+.seat.md .av { width: 72px; height: 72px; }
+.seat.big { width: 176px; height: 176px; }
+.seat.big .av { width: 150px; height: 150px; }
+
+/* meet Shiori: live demo */
+.meet { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; align-items: start; }
+.demo { background: var(--sheet); border: 1px solid var(--line); border-radius: 24px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.demo-stage { position: relative; width: 100%; display: flex; justify-content: center; align-items: center; min-height: 196px; }
+.demo-card { position: absolute; right: 0; top: 8px; max-width: 46%; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 8px 10px; font-size: 12.5px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 10px 24px -18px var(--shadow); }
+.demo-now { text-align: center; display: flex; flex-direction: column; gap: 2px; min-height: 64px; }
+.demo-now b { font-family: var(--f-display); font-size: 19px; }
+.demo-now span { color: var(--ink-2); font-size: 14px; max-width: 36ch; }
+.demo-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.demo-btns .btn { font-size: 12px; padding: 5px 11px; }
+.demo-btns .btn[aria-pressed="true"] { background: var(--ai); color: var(--ai-ink); border-color: var(--ai); }
+.rules { display: flex; flex-direction: column; gap: 12px; }
+.rule { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: center; background: var(--sheet); border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px; }
+.rule b { font-family: var(--f-display); font-size: 15px; display: block; }
+.rule span { color: var(--ink-2); font-size: 13.5px; }
+.sheet-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.sheet-row .icon-tile { width: 76px; height: 76px; border-radius: 18px; }
+.sheet-row .icon-tile .av { width: 66px; height: 66px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .avsvg, .avsvg *, .seat { animation: none !important; transition: none !important; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="av-glow">
+      <stop offset="0" stop-color="#ffd27a" stop-opacity=".95"/>
+      <stop offset=".55" stop-color="#ffc06a" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#ffb35a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-keys" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M10.5 10h.01M14 10h.01M17.5 10h.01M8 14h8"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><path d="M8 7h8M8 12h8M8 17h8"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 11 3.5 3.5 0 0 0 7 18z"/><path d="m10 13.5 2 2 3.5-4"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="intro">
+    <div class="wordmark">ann<span class="ai">ai</span><small>案内 · UI mockups, draft 6</small></div>
+    <p>A first pass at the main screens, using an example Thanksgiving road trip down Big Sur. Every booking, price and confirmation number here is made up. The rule on every screen: one main thing to glance at, big targets to tap, and Shiori's voice for everything else. Each screen has exactly one Shiori, in the dock at the bottom.</p>
+    <div class="legend">
+      <span><i class="mk fx"></i> fixed (booked)</span>
+      <span><i class="mk"></i> flexible</span>
+      <span><span class="av follow" data-state="listening"></span> Shiori</span>
+    </div>
+  </header>
+
+  <!-- ===================== LOOK PICKER ===================== -->
+  <section class="sec" id="looks">
+    <header>
+      <h2>Meet Shiori</h2>
+      <p>A white fox (白狐, Inari's messenger) with a vermilion scarf, wearing her 枝折り as a hairpin: a twig with a strip of trail tape tied on. Where she looks tells you if she's ready for you. She moves when something happens, not on a loop.</p>
+    </header>
+    <div class="meet">
+      <div class="demo">
+        <div class="demo-stage">
+          <span class="seat big" id="demo-seat"><span class="av" id="demo-av" data-state="listening"></span></span>
+          <div class="demo-card" id="demo-card" hidden><span class="who">SHIORI</span>Bixby Bridge is two miles ahead, on your right.</div>
+        </div>
+        <div class="demo-now" aria-live="polite"><b id="demo-name">Listening</b><span id="demo-desc">Facing you, ears up. The mic is on.</span></div>
+        <div class="demo-btns" id="demo-btns">
+          <button class="btn" type="button" data-set="sleeping">Asleep</button>
+          <button class="btn" type="button" data-set="listening">Listening</button>
+          <button class="btn" type="button" data-set="hearing">Hearing you</button>
+          <button class="btn" type="button" data-set="thinking">Thinking</button>
+          <button class="btn" type="button" data-set="speaking">Talking</button>
+          <button class="btn" type="button" data-set="waiting">Your turn</button>
+          <button class="btn" type="button" data-set="away">Working</button>
+          <button class="btn" type="button" data-set="offline">Offline</button>
+        </div>
+        <button class="btn pri" type="button" id="demo-play">Play a moment on the road</button>
+      </div>
+      <div class="rules">
+        <div class="rule"><span class="seat md"><span class="av" data-state="listening"></span></span><div><b>Facing you</b><span>She's ready for you: listening, talking, or waiting for your answer.</span></div></div>
+        <div class="rule"><span class="seat md"><span class="av" data-state="thinking"></span></span><div><b>Looking away</b><span>She's working out a reply.</span></div></div>
+        <div class="rule"><span class="seat md"><span class="av" data-state="away"></span></span><div><b>Marker in her seat</b><span>She stepped out to work on something and marked her spot. Tap it to see what she's doing.</span></div></div>
+        <div class="rule"><span class="seat md"><span class="av" data-state="sleeping"></span></span><div><b>Eyes closed</b><span>Asleep. The mic is off.</span></div></div>
+        <div class="rule"><span class="seat md" style="--amp:.7"><span class="av" data-state="speaking" style="--amp:.7"></span></span><div><b>Glow around her seat</b><span>Sound. It follows her voice, or yours in grey.</span></div></div>
+        <div class="sheet-row"><span class="icon-tile"><span class="av" data-state="listening"></span></span><span class="sub">Home Screen icon</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ON THE TRIP ===================== -->
+  <section class="sec">
+    <header>
+      <h2>On the trip</h2>
+      <p>The home screen is "now": where you are, what's next, and Shiori's latest card. Nothing scrolls by itself, and spoken content isn't shown as text unless you ask.</p>
+    </header>
+    <div class="shots">
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>4:12 PM</span><span class="chips"><span class="chip live">Live</span><span class="chip">Voice auto · off</span></span></div>
+          <div class="pane">
+            <div class="trip">Big Sur · Day 2 · Thanksgiving</div>
+            <div class="now">
+              <span class="label">Now</span>
+              <div class="title">McWay Falls Overlook</div>
+              <div class="sub">Julia Pfeiffer Burns State Park</div>
+              <div class="chips"><span class="chip ai">Golden hour 4:15–4:53</span><span class="chip">Car is 12 min back</span></div>
+            </div>
+            <div class="tt">
+              <div class="row"><span class="t">4:53</span><i class="mk"></i><span class="what">Sunset from the overlook</span></div>
+              <div class="row"><span class="t">5:50</span><i class="mk fx"></i><span class="what">Leave for dinner <span class="sub">· 25 min drive</span></span></div>
+              <div class="row"><span class="t">6:30</span><i class="mk fx"></i><span class="what"><b>Nepenthe</b> <span class="sub">· table for 4</span></span></div>
+            </div>
+            <div class="msg">
+              <span class="who">SHIORI</span>
+              <span>The falls drop 80 feet straight onto the beach. It's one of only two in California that land in the ocean at high tide.</span>
+              <div class="acts"><button class="btn" type="button">Tell me more</button><button class="btn ghost" type="button">Quiet for now</button></div>
+            </div>
+          </div>
+          <div class="dock">
+            <button class="ib" type="button" aria-label="Camera"><svg class="ic"><use href="#i-camera"/></svg></button>
+            <button class="talk" type="button"><span class="ring seat"><span class="av follow" data-state="sleeping"></span></span>Tap to talk</button>
+            <button class="ib" type="button" aria-label="Type"><svg class="ic"><use href="#i-keys"/></svg></button>
+          </div>
+        </div></div>
+        <figcaption><h3>Now, on foot</h3><p>On the phone speaker, voice stays off by default, so Shiori's insight arrives as one short card. Golden hour and sunset are worked out on the phone. "Car is 12 min back" is a walking estimate.</p></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>2:41 PM</span><span class="chips"><span class="chip live">Live</span><span class="chip ai">Voice on · car</span></span></div>
+          <div class="pane">
+            <div class="route">
+              <div class="r"><b>Highway 1 south</b><span>Moving fast</span></div>
+              <div class="r"><span>Bixby Bridge</span><span>2 mi</span></div>
+              <div class="r"><span>Big Sur Lodge</span><span>41 min</span></div>
+            </div>
+            <div class="stage">
+              <div class="state-name">Shiori is talking</div>
+              <p class="cap" id="drive-cap" hidden>"Bixby Bridge is coming up in two miles. When it opened in 1932 it was one of the tallest single-span concrete bridges in the world."</p>
+              <button class="btn" type="button" data-toggle="drive-cap" aria-expanded="false">Show what she's saying</button>
+            </div>
+            <div class="maps"><span>Directions are open in Apple Maps</span><button class="btn" type="button">Back to Maps</button></div>
+            <div class="big">
+              <button class="btn" type="button">Photo pull-out ahead</button>
+              <button class="btn" type="button">Coffee or a restroom</button>
+              <button class="btn" type="button">Something for the kids</button>
+              <button class="btn" type="button">Quiet for a while</button>
+            </div>
+          </div>
+          <div class="dock voice">
+            <button class="ib" type="button" aria-label="Camera"><svg class="ic"><use href="#i-camera"/></svg></button>
+            <button class="talk" type="button"><span class="ring seat"><span class="av follow" data-state="speaking"></span></span>Tap to interrupt</button>
+            <button class="ib" type="button" aria-label="Type"><svg class="ic"><use href="#i-keys"/></svg></button>
+          </div>
+        </div></div>
+        <figcaption><h3>Driving</h3><p>Same dock at the bottom as every screen, only bigger: easy to reach, and Shiori is the largest target. Maps runs on CarPlay or Android Auto while annai stays on the phone. Her words stay hidden unless someone asks to see them.</p></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>11:05 AM</span><span class="chips"><span class="chip live">Live</span><span class="chip">Voice auto · off</span></span></div>
+          <div class="pane">
+            <div class="trip">Monterey Bay Aquarium · indoors</div>
+            <div class="photo" role="img" aria-label="Your photo of the kelp forest tank">
+              <svg viewBox="0 0 300 250" preserveAspectRatio="none" aria-hidden="true">
+                <g class="kelp">
+                  <path d="M40 250 C 30 190, 60 150, 44 90 S 58 30, 50 0"/>
+                  <path d="M95 250 C 110 200, 80 150, 100 100 S 90 40, 104 0"/>
+                  <path d="M180 250 C 170 200, 200 160, 186 110 S 200 50, 190 0"/>
+                  <path d="M250 250 C 262 190, 236 140, 256 80 S 244 30, 258 0"/>
+                </g>
+                <g class="fish"><ellipse cx="140" cy="120" rx="16" ry="6"/><ellipse cx="214" cy="70" rx="11" ry="4"/></g>
+              </svg>
+              <span class="tag">Your photo</span>
+            </div>
+            <div class="msg">
+              <span class="who">SHIORI</span>
+              <span>That's giant kelp. It can grow about two feet a day, and this tank is open to the sky, so it grows in real sunlight.</span>
+              <div class="acts"><button class="btn" type="button">What's that fish?</button><button class="btn" type="button">A story, please</button><button class="btn ghost" type="button">Save to notes</button></div>
+            </div>
+          </div>
+          <div class="dock">
+            <button class="ib" type="button" aria-label="Camera"><svg class="ic"><use href="#i-camera"/></svg></button>
+            <button class="talk" type="button"><span class="ring seat"><span class="av follow" data-state="listening"></span></span>Listening</button>
+            <button class="ib" type="button" aria-label="Type"><svg class="ic"><use href="#i-keys"/></svg></button>
+          </div>
+        </div></div>
+        <figcaption><h3>Snap and ask, indoors</h3><p>GPS is useless here, so the camera leads. Shiori guesses why you took the photo and answers at the right depth. Each follow-up is one tap.</p></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>4:18 PM</span><span class="chips"><span class="chip live">Live</span><span class="chip">Voice auto · off</span></span></div>
+          <div class="pane">
+            <div class="now">
+              <span class="label">Off plan</span>
+              <div class="title">Pfeiffer Beach</div>
+              <div class="sub">You've been here 38 min</div>
+            </div>
+            <div class="msg">
+              <span class="who">SHIORI</span>
+              <span>Nice find. You can stay until 5:05 and still make dinner at 6:30. I moved the Partington Cove walk to tomorrow morning.</span>
+              <div class="acts"><button class="btn pri" type="button">Sounds good</button><button class="btn" type="button">Undo</button></div>
+            </div>
+            <div class="tt">
+              <div class="row"><span class="t">5:05</span><i class="mk"></i><span class="what">Head back to the car</span></div>
+              <div class="row"><span class="t was">4:30</span><i class="mk"></i><span class="what">Partington Cove walk <span class="sub">→ Fri 9:00</span></span></div>
+              <div class="row"><span class="t">6:30</span><i class="mk fx"></i><span class="what"><b>Nepenthe</b> <span class="sub">· kept, it's booked</span></span></div>
+            </div>
+          </div>
+          <div class="dock">
+            <button class="ib" type="button" aria-label="Camera"><svg class="ic"><use href="#i-camera"/></svg></button>
+            <button class="talk" type="button"><span class="ring seat"><span class="av follow" data-state="waiting"></span></span>Waiting for your OK</button>
+            <button class="ib" type="button" aria-label="Type"><svg class="ic"><use href="#i-keys"/></svg></button>
+          </div>
+        </div></div>
+        <figcaption><h3>A detour</h3><p>No nagging to get back on plan. Shiori says what the detour costs, keeps the booked dinner, and moves the flexible walk. Undo restores the plan from file history.</p></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===================== BEFORE THE TRIP ===================== -->
+  <section class="sec">
+    <header>
+      <h2>Before the trip</h2>
+      <p>Planning reads like the schedule page of a trip booklet. Imported bookings stay marked until you confirm them.</p>
+    </header>
+    <div class="shots">
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>9:20 PM</span><span class="chips"><span class="chip">Planning</span></span></div>
+          <div class="pane">
+            <div class="trip">Big Sur · Thanksgiving</div>
+            <div class="tabs"><span class="tab on">Wed 25</span><span class="tab">Thu 26</span><span class="tab">Fri 27</span><span class="tab">Sat 28</span><span class="tab">Sun 29</span></div>
+            <div class="tt">
+              <div class="row"><span class="t">08:15</span><i class="mk fx"></i><span class="what"><b>Fly Newark → SFO</b> <span class="sub">· UA 1528 · lands 11:40</span></span></div>
+              <div class="row"><span class="t">12:30</span><i class="mk fx"></i><span class="what"><b>Rental car</b> <span class="sub">· SFO rental center</span></span></div>
+              <div class="row leg"><span class="t"></span><i class="mk dash"></i><span>Drive 2 h 50 m via Highway 1</span></div>
+              <div class="row"><span class="t">15:40</span><i class="mk fx"></i><span class="what"><b>Check in</b> <span class="sub">· Big Sur Lodge</span> <span class="chip warn">Check this</span></span></div>
+              <div class="row"><span class="t">16:40</span><i class="mk"></i><span class="what">Sunset walk <span class="sub">· Garrapata State Park</span></span></div>
+              <div class="row"><span class="t">18:30</span><i class="mk"></i><span class="what">Dinner <span class="sub">· Big Sur Taphouse</span></span></div>
+            </div>
+            <div class="working"><span class="seat sm"><span class="av" data-state="away"></span></span><span>Shiori is looking for a Thanksgiving dinner with an ocean view for 4.</span></div>
+            <div class="ask-input"><span>Ask Shiori to change the plan…</span><svg class="ic sm"><use href="#i-keys"/></svg></div>
+          </div>
+        </div></div>
+        <figcaption><h3>The plan</h3><p>Filled dots are booked and protected. Hollow dots move when plans change. Drive times sit between stops. With no dock on this screen, Shiori has stepped out to research, and her marker shows it.</p></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>9:24 PM</span><span class="chips"><span class="chip">Planning</span></span></div>
+          <div class="pane">
+            <div class="label">New booking</div>
+            <div class="title">From your screenshot</div>
+            <div class="doc">
+              <div class="thumb" role="img" aria-label="Screenshot thumbnail"></div>
+              <dl class="kv">
+                <dt>Place</dt><dd>Big Sur Lodge</dd>
+                <dt>Dates</dt><dd>Wed Nov 25 → Fri Nov 27</dd>
+                <dt>Nights</dt><dd>2 · 2 rooms · 4 guests</dd>
+                <dt>Check-in</dt><dd>4:00 PM?</dd>
+                <dt>Confirmation</dt><dd>BSL-48213</dd>
+                <dt>Total</dt><dd>$612.40</dd>
+              </dl>
+            </div>
+            <div class="flag">
+              <span><b>One thing to check:</b> the screenshot shows both 3:00 and 4:00 PM. Which is check-in?</span>
+              <div class="acts"><button class="btn" type="button">3:00 PM</button><button class="btn" type="button">4:00 PM</button></div>
+            </div>
+            <div class="acts"><button class="btn pri" type="button">Looks right</button><button class="btn" type="button">Fix something</button></div>
+            <p class="sub">The original screenshot is kept with the booking.</p>
+          </div>
+          <div class="dock">
+            <button class="ib" type="button" aria-label="Camera"><svg class="ic"><use href="#i-camera"/></svg></button>
+            <button class="talk" type="button"><span class="ring seat"><span class="av follow" data-state="waiting"></span></span>Waiting for your OK</button>
+            <button class="ib" type="button" aria-label="Type"><svg class="ic"><use href="#i-keys"/></svg></button>
+          </div>
+        </div></div>
+        <figcaption><h3>Importing a booking</h3><p>Shiori reads the screenshot and fills in a record, then asks only about what she's unsure of. Until you confirm, it shows as "Check this" in the plan.</p></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>8:02 PM</span><span></span></div>
+          <div class="pane">
+            <div class="risk">
+              <span><strong>annai isn't installed yet.</strong> Safari can erase your trips after 7 days without a visit. Add annai to your Home Screen to keep them.</span>
+              <div class="acts"><button class="btn pri" type="button">Show me how</button></div>
+            </div>
+            <div class="title">Trips</div>
+            <div class="tcard">
+              <div><div class="name">Big Sur · Thanksgiving</div><div class="sub">Nov 25–29 · in 41 days</div></div>
+              <span class="chip ai">Planning</span>
+            </div>
+            <div class="tcard">
+              <div><div class="name">Kyoto in spring</div><div class="sub">Apr 3–10 · 23 stamps</div></div>
+              <div class="stamps"><span class="stamp">伏見</span><span class="stamp">嵐山</span><span class="stamp">+21</span></div>
+            </div>
+            <div>
+              <div class="rowline"><span><svg class="ic sm" style="vertical-align:-3px"><use href="#i-cloud"/></svg> Backed up to GitHub</span><span>2 h ago</span></div>
+              <div class="rowline"><span>Open a trip someone sent you</span><span>.annai.zip</span></div>
+            </div>
+            <div class="acts" style="margin-top:auto"><button class="btn pri" type="button"><svg class="ic sm" style="vertical-align:-3px"><use href="#i-plus"/></svg> New trip</button></div>
+          </div>
+        </div></div>
+        <figcaption><h3>Trips, and the install warning</h3><p>The warning stays until annai runs from the Home Screen. Past trips keep stamps for the places you visited, like Japanese station stamps.</p></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===================== UNDER THE HOOD ===================== -->
+  <section class="sec">
+    <header>
+      <h2>Under the hood</h2>
+      <p>For people who want control: models in fallback order, and a trace of everything Shiori sent, read and heard.</p>
+    </header>
+    <div class="shots">
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>9:40 PM</span><span class="chips"><span class="chip">Settings</span></span></div>
+          <div class="pane">
+            <div class="title">Models</div>
+            <div class="role">
+              <span class="label">Main · tried in order</span>
+              <div class="mrow"><span class="n">1</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>opus@anthropic</b><span>Anthropic · Messages</span></span><span class="caps"><span class="cp">tools</span><span class="cp">images</span><span class="cp">PDF</span></span></div>
+              <div class="mrow"><span class="n">2</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>opus@openrouter</b><span>OpenRouter · Chat Completions</span></span><span class="caps"><span class="cp">tools</span><span class="cp">images</span></span></div>
+              <div class="mrow"><span class="n">3</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>flash-free</b><span>OpenRouter · Chat Completions</span></span><span class="caps"><span class="cp">tools</span><span class="cp">audio</span><span class="cp free">free</span></span></div>
+              <span class="add">+ Add a model</span>
+            </div>
+            <div class="role">
+              <span class="label">Speech in</span>
+              <div class="mrow"><span class="n">1</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>Send audio to the model</b><span>When the model accepts audio</span></span><span class="caps"></span></div>
+              <div class="mrow"><span class="n">2</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>whisper@groq</b><span>Groq · transcription</span></span><span class="caps"></span></div>
+              <div class="mrow"><span class="n">3</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>Phone dictation</b><span>Android only</span></span><span class="caps"></span></div>
+            </div>
+            <div class="role">
+              <span class="label">Speech out</span>
+              <div class="mrow"><span class="n">1</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>aria@elevenlabs</b><span>ElevenLabs</span></span><span class="caps"></span></div>
+              <div class="mrow"><span class="n">2</span><svg class="ic sm g"><use href="#i-grip"/></svg><span class="nm"><b>Browser voice</b><span>Works offline</span></span><span class="caps"></span></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><h3>Models and voices</h3><p>Every role is a list you drag into order. Names are yours. The same model can appear once per provider, so a failing provider falls back to the next copy.</p></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>4:20 PM</span><span class="chips"><span class="chip">Trace</span></span></div>
+          <div class="pane">
+            <div class="title">Today</div>
+            <div class="filters"><span class="chip ai">All</span><span class="chip">Model</span><span class="chip">Tools</span><span class="chip">Web</span><span class="chip">Heard</span></div>
+            <div class="tr">
+              <div class="row"><span class="tm">16:02:11</span><span class="k">WAKE</span><span class="d">arrived · McWay Falls Overlook</span></div>
+              <div class="row"><span class="tm">16:02:12</span><span class="k">MODEL</span><span class="d">opus@anthropic · 3.1k in <em>(2.8k cached)</em> · 212 out · $0.004</span></div>
+              <div class="row"><span class="tm">16:02:13</span><span class="k">TOOL</span><span class="d">nearby 35.158,−121.672 400 m → 9 rows</span></div>
+              <div class="row"><span class="tm">16:02:14</span><span class="k">WEB</span><span class="d">GET en.wikipedia.org/wiki/McWay_Falls · 18 KB</span></div>
+              <div class="row"><span class="tm">16:02:16</span><span class="k">SPEAK</span><span class="d">"The falls drop 80 feet…" <em>heard:</em> "how tall is it?"</span></div>
+              <div class="row"><span class="tm">16:02:17</span><span class="k">DECIDE</span><span class="d">quick · for Shiori 0.94</span></div>
+              <div class="row"><span class="tm">16:02:18</span><span class="k">MODEL</span><span class="d">opus@anthropic · 3.4k in <em>(3.1k cached)</em> · 96 out · $0.002</span></div>
+            </div>
+            <div class="label" style="margin-top:4px">Tools</div>
+            <div class="switches">
+              <span>fetch</span><span class="sw on"></span>
+              <span>web_search <span class="sub">· via provider</span></span><span class="sw on"></span>
+              <span>nearby</span><span class="sw on"></span>
+              <span>mcp.kiwi.search-flight</span><span class="sw"></span>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><h3>Trace and tool switches</h3><p>Every wake, model call, tool, web request and heard phrase, with cost and cache hits. Any tool can be switched off.</p></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===================== AVATAR ===================== -->
+  <section class="sec">
+    <header>
+      <h2>Shiori's states</h2>
+      <p>All eight states. The avatar is also the privacy signal, so listening is unmistakable. Personality packs and plugins can ship their own art for the same states.</p>
+    </header>
+    <div class="states">
+      <div class="state"><span class="seat md"><span class="av" data-state="sleeping"></span></span><b>Asleep</b><span>Mic off</span></div>
+      <div class="state"><span class="seat md"><span class="av" data-state="listening"></span></span><b>Listening</b><span>Mic on, facing you</span></div>
+      <div class="state"><span class="seat md"><span class="av" data-state="hearing"></span></span><b>Hearing you</b><span>Grey glow follows your voice</span></div>
+      <div class="state"><span class="seat md"><span class="av" data-state="thinking"></span></span><b>Thinking</b><span>Looking away</span></div>
+      <div class="state"><span class="seat md"><span class="av" data-state="speaking"></span></span><b>Talking</b><span>Tap to interrupt</span></div>
+      <div class="state"><span class="seat md"><span class="av" data-state="waiting"></span></span><b>Your turn</b><span>Needs your answer</span></div>
+      <div class="state"><span class="seat md"><span class="av" data-state="away"></span></span><b>Working</b><span>Stepped out, marker left</span></div>
+      <div class="state"><span class="seat md"><span class="av" data-state="offline"></span></span><b>Offline</b><span>Reminders still work</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== PLUGINS ===================== -->
+  <section class="sec">
+    <header>
+      <h2>Where plugins change the UI</h2>
+      <p>The screens are built from named slots and components, and our own screens register through the same registry plugins use. A plugin can add to a slot, replace a named piece, or restyle everything.</p>
+    </header>
+    <div class="split">
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>4:12 PM</span><span class="chips slot"><span class="tag">status chips</span><span class="chip live">Live</span><span class="chip">Voice auto · off</span><span class="chip">☂ 10%</span></span></div>
+          <div class="pane">
+            <div class="trip">Big Sur · Day 2 · Thanksgiving</div>
+            <div class="now slot">
+              <span class="tag">now card sections</span>
+              <span class="label">Now</span>
+              <div class="title">McWay Falls Overlook</div>
+              <div class="chips"><span class="chip ai">Golden hour 4:15–4:53</span><span class="chip">Tide 2.1 ft, falling</span></div>
+            </div>
+            <div class="msg slot">
+              <span class="tag">card types</span>
+              <span class="who">SHIORI · TIDES</span>
+              <span>Low tide at 5:40. The tide pools below the overlook open up after sunset.</span>
+            </div>
+          </div>
+          <div class="dock slot">
+            <span class="tag">dock actions · avatar art</span>
+            <button class="ib" type="button" aria-label="Camera"><svg class="ic"><use href="#i-camera"/></svg></button>
+            <button class="talk" type="button"><span class="ring seat"><span class="av follow" data-state="sleeping"></span></span>Tap to talk</button>
+            <button class="ib" type="button" aria-label="Type"><svg class="ic"><use href="#i-keys"/></svg></button>
+          </div>
+        </div></div>
+        <figcaption><h3>Example: a tides plugin</h3><p>It adds a tide chip to the Now card, a "low tide" card type, and a rain chip in the status bar, without touching the rest of the screen.</p></figcaption>
+      </figure>
+      <div class="slotlist">
+        <ul>
+          <li><b>Slots</b><span>Places a plugin can add to: status chips, Now card sections, dock actions, trip tabs, settings pages.</span></li>
+          <li><b>Card types</b><span>A renderer for a kind of card, often paired with a schema, like a ferry ticket or a tide table.</span></li>
+          <li><b>Named components</b><span>Every piece has a name: avatar, now-card, dock, plan-row. A plugin can replace one, for example different avatar art or a map-first Now card.</span></li>
+          <li><b>Whole screens</b><span>A plugin can add a tab, or offer itself as the home screen for a mode such as hiking.</span></li>
+          <li><b>Themes</b><span>All colors, type and spacing are CSS variables. A theme plugin changes the variables, so every screen follows, including other plugins' cards.</span></li>
+          <li><b>Stable vs. anything</b><span>Plugins run with full access, so they could rewrite the page directly. Slots, components and variables are the parts that keep working across updates.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  var OUT = '#e0cdb9', FUR = '#fbf5ee', INNER = '#f4a7a0', TAPE = '#f05a87', TAPE2 = '#e3487a', SCARF = '#d9473a';
+  var TAILS = function (x, y, len) {
+    return '<g class="tails"><path d="M' + x + ' ' + y + 'c-1.5 3-1.3 5.5-3 ' + len + '" fill="none" stroke="' + TAPE + '" stroke-width="2.8" stroke-linecap="round"/>' +
+      '<path d="M' + (x + 1) + ' ' + (y + .5) + 'c1 3 .5 5.5 1.5 ' + (len + .5) + '" fill="none" stroke="' + TAPE2 + '" stroke-width="2.8" stroke-linecap="round"/></g>';
+  };
+  var FOX =
+    '<g class="fox">' +
+      '<g class="ear-l"><path d="M12 25L16.5 2 30 14z" fill="' + FUR + '" stroke="' + OUT + '" stroke-width="1.2" stroke-linejoin="round"/>' +
+        '<path d="M16 19l2.5-10.5L26 15z" fill="' + INNER + '"/>' +
+        '<path d="M21 15C16 11 11 8.5 4.5 8" fill="none" stroke="var(--twig)" stroke-width="2.4" stroke-linecap="round"/>' +
+        '<path d="M13 10.5c-1.6-3.4-.4-6.4 2.8-7.6.9 3.2-.4 6-2.8 7.6z" fill="#7fb069"/>' +
+        TAILS(8.5, 9, 8) +
+        '<rect x="5.5" y="5.6" width="6" height="4.6" rx="1.4" fill="' + TAPE + '" transform="rotate(-20 8.5 7.9)"/></g>' +
+      '<g class="ear-r"><path d="M52 25L47.5 2 34 14z" fill="' + FUR + '" stroke="' + OUT + '" stroke-width="1.2" stroke-linejoin="round"/>' +
+        '<path d="M48 19l-2.5-10.5L38 15z" fill="' + INNER + '"/></g>' +
+      '<path d="M32 10c14 0 22 8 22 19 0 9-6 14-11 17-4 2.5-7 6-11 6s-7-3.5-11-6c-5-3-11-8-11-17 0-11 8-19 22-19z" fill="' + FUR + '" stroke="' + OUT + '" stroke-width="1.2"/>' +
+      '<path d="M19.5 47.5Q32 55 44.5 47.5l-.8 4.2Q32 59 20.3 51.7z" fill="' + SCARF + '"/>' +
+      '<circle cx="32" cy="55" r="2.6" fill="' + SCARF + '"/><path d="M31 56.5l-4 6.5 4.2-1zM33 56.5l4 6.5-4.2-1z" fill="' + SCARF + '"/>' +
+      '<g class="face">' +
+        '<path d="M10.5 31c3 9 11 12 16 13 2.2.5 3.8 3 5.5 3s3.3-2.5 5.5-3c5-1 13-4 16-13-5 5-11 6-15 5.5-3-.4-4.5 1-6.5 1s-3.5-1.4-6.5-1C21.5 37 15.5 36 10.5 31z" fill="#ffffff"/>' +
+        '<ellipse cx="18.5" cy="35" rx="3.2" ry="1.9" fill="#f6a4a4" opacity=".7"/><ellipse cx="45.5" cy="35" rx="3.2" ry="1.9" fill="#f6a4a4" opacity=".7"/>' +
+        '<g class="eyes"><g class="lid">' +
+          '<ellipse cx="24" cy="28.5" rx="2.7" ry="3.4" fill="var(--eye)"/><ellipse cx="40" cy="28.5" rx="2.7" ry="3.4" fill="var(--eye)"/>' +
+          '<circle cx="25" cy="27.3" r="1" fill="#fff"/><circle cx="41" cy="27.3" r="1" fill="#fff"/></g></g>' +
+        '<path class="closed" d="M21 29q3 2.6 6 0M37 29q3 2.6 6 0" fill="none" stroke="var(--eye)" stroke-width="1.9" stroke-linecap="round"/>' +
+        '<ellipse cx="32" cy="42.5" rx="2.2" ry="1.6" fill="var(--eye)"/>' +
+      '</g>' +
+    '</g>';
+  var MARKER =
+    '<g class="marker">' +
+      '<path d="M33 64C31.5 52 33.5 40 32 22" fill="none" stroke="var(--twig)" stroke-width="3.6" stroke-linecap="round"/>' +
+      '<path d="M32.6 38C36 35 39 33.5 43 33" fill="none" stroke="var(--twig)" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<path d="M43 33c2-3 5-3.8 7.5-2.8-1.4 2.8-4.2 3.8-7.5 2.8z" fill="#7fb069"/>' +
+      TAILS(33, 28, 12) +
+      '<rect x="28" y="23.5" width="9" height="6" rx="1.8" fill="' + TAPE + '" transform="rotate(-12 32.5 26.5)"/>' +
+    '</g>';
+  var SVG = '<svg class="avsvg" viewBox="-10 -10 84 84" aria-hidden="true">' + FOX + MARKER + '</svg>';
+
+  var reduce = false;
+  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  var avatars = Array.prototype.slice.call(document.querySelectorAll('.av'));
+  avatars.forEach(function (el) { el.innerHTML = SVG; });
+
+  /* blinks at random moments, only when her eyes are open */
+  function scheduleBlink(el) {
+    setTimeout(function () {
+      var s = el.getAttribute('data-state');
+      if (s !== 'sleeping' && s !== 'away' && s !== 'offline') {
+        el.classList.add('blink');
+        setTimeout(function () { el.classList.remove('blink'); }, 130);
+      }
+      scheduleBlink(el);
+    }, 2600 + Math.random() * 5200);
+  }
+  if (!reduce) avatars.forEach(scheduleBlink);
+
+  /* the seat glow follows sound: her voice while talking, yours while hearing */
+  var level = {};
+  function tick() {
+    document.querySelectorAll('.seat').forEach(function (seat, i) {
+      var av = seat.querySelector('.av');
+      var s = av && av.getAttribute('data-state');
+      var on = s === 'speaking' || s === 'hearing';
+      var prev = level[i] || 0;
+      var target = on ? (Math.random() < 0.18 ? 0.1 : 0.35 + Math.random() * 0.65) : 0;
+      var v = prev + (target - prev) * 0.45;
+      level[i] = v;
+      seat.setAttribute('data-glow', s === 'hearing' ? 'you' : 'her');
+      seat.style.setProperty('--amp', v.toFixed(3));
+      av && av.style.setProperty('--amp', v.toFixed(3));
+    });
+  }
+  if (!reduce) setInterval(tick, 110); else tick();
+
+  function blinkOnce(el) {
+    if (reduce) return;
+    el.classList.add('blink');
+    setTimeout(function () { el.classList.remove('blink'); }, 130);
+  }
+  function glance(el, dx, dy) {
+    if (reduce) return;
+    var eyes = el.querySelector('.eyes');
+    if (!eyes) return;
+    eyes.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    setTimeout(function () { eyes.style.transform = ''; }, 1100);
+  }
+
+  /* live demo */
+  var demoAv = document.getElementById('demo-av');
+  var card = document.getElementById('demo-card');
+  var nameEl = document.getElementById('demo-name');
+  var descEl = document.getElementById('demo-desc');
+  var TEXT = {
+    sleeping: ['Asleep', 'Eyes closed, mic off. Tap her to talk.'],
+    listening: ['Listening', 'Facing you, ears up. The mic is on.'],
+    hearing: ['Hearing you', 'Ears forward. The grey glow follows your voice.'],
+    thinking: ['Thinking', 'Looking up and away while she works out a reply.'],
+    speaking: ['Talking', 'Facing you. The glow and the tape on her hairpin move with her voice.'],
+    waiting: ['Your turn', 'Head tilted, eyes on you: she needs your answer.'],
+    away: ['Working', 'She stepped out to plan something and left her marker in her seat. Tap it to see what.'],
+    offline: ['Offline', 'No connection. She is still here, and reminders still work.']
+  };
+  var timers = [];
+  function setDemo(s) {
+    if (!demoAv) return;
+    var was = demoAv.getAttribute('data-state');
+    demoAv.setAttribute('data-state', s);
+    if (was !== s && s !== 'sleeping' && s !== 'away') blinkOnce(demoAv);
+    nameEl.textContent = TEXT[s][0];
+    descEl.textContent = TEXT[s][1];
+    document.querySelectorAll('#demo-btns [data-set]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === s));
+    });
+  }
+  function stopPlay() { timers.forEach(clearTimeout); timers = []; if (card) card.hidden = true; }
+  document.querySelectorAll('#demo-btns [data-set]').forEach(function (b) {
+    b.addEventListener('click', function () { stopPlay(); setDemo(b.getAttribute('data-set')); });
+  });
+  var play = document.getElementById('demo-play');
+  if (play) play.addEventListener('click', function () {
+    stopPlay();
+    var steps = [
+      [0, function () { setDemo('sleeping'); }],
+      [1500, function () { setDemo('listening'); }],
+      [2900, function () { setDemo('hearing'); }],
+      [5100, function () { setDemo('thinking'); }],
+      [6900, function () { setDemo('speaking'); }],
+      [7500, function () { card.hidden = false; glance(demoAv, 2.6, .4); }],
+      [10400, function () { setDemo('waiting'); }],
+      [12400, function () { card.hidden = true; setDemo('away'); }],
+      [15600, function () { setDemo('sleeping'); }]
+    ];
+    steps.forEach(function (st) { timers.push(setTimeout(st[1], st[0])); });
+  });
+  setDemo('listening');
+})();
+</script>

@@ -1,0 +1,932 @@
+# annai: design spec
+
+- **Date:** 2026-10-15
+- **Status:** approved in conversation, section by section; this document is awaiting review
+- **Inputs:** [docs/vision.md](../../vision.md) (the brief and recorded decisions), UI mockups (draft 6, copied to [docs/mockups/ui-mockups-2026-10-15.html](../../mockups/ui-mockups-2026-10-15.html))
+- **Scope:** the whole application. Each build milestone in §20 gets its own implementation plan.
+
+---
+
+## 1. What annai is
+
+annai (案内, "guidance; showing someone around") is a free, open-source (AGPL-3.0), local-first travel guide agent that runs entirely in the browser, installed to the phone's Home Screen. Its guide is **Shiori**. She helps plan a trip, wakes up during the trip when time passes or the user moves, and helps recap the trip afterwards. Everything is stored on the user's device, and the user brings their own AI model.
+
+- **Audience:** the public, worldwide, free of charge. It isn't marketed yet. The author's trips are the test bed, starting with Thanksgiving 2026 (Nov 26).
+- **Main uses:** a companion on trails and at photo spots; a driving companion (planning, explaining, guiding, entertaining); a companion in museums and other indoor places.
+- **Platforms:** iOS (Safari) and Android (Chrome) are both required. Modern browsers only. A feature may be platform-exclusive only because of a real platform limit.
+
+### Non-goals
+
+- Booking through annai, or integrating booking APIs. Shiori researches; the user books and then imports the confirmation.
+- Turn-by-turn navigation or a map engine. annai opens the user's maps app.
+- Accounts, logins, or user data stored on our servers.
+- Real-time multi-device sync. Sharing and backup work through archives (§12).
+- On-device models in v1. These are future plugins: Chrome's built-in model, WebGPU models.
+
+## 2. Principles
+
+1. **Local-first.** Data lives in the browser. The site serves the app; the only server component is the optional push relay (§11.6), which stores only encrypted, expiring messages.
+2. **The user's own agent.** Like a coding agent: powerful tools, including fetching any URL. What the user imports or fetches is their responsibility. Every tool can be switched off, and every request and everything read is traceable.
+3. **Minimal working parts.** Use platform APIs and small modules we write ourselves. Runtime dependencies: zero. Dev-only tooling is a separate, lower bar.
+4. **Glance, tap or talk; never read.** No walls of text, never block the user, big targets. Spoken content isn't shown as text unless asked.
+5. **The plan is a suggestion.** Detours, rest stops and whims are welcome. Shiori protects fixed commitments and helps the user enjoy each unplanned choice. (Saigyō: 吉野山 去年の枝折の 道かへて まだ見ぬかたの 花をたづねむ.)
+6. **Data safety over convenience.** Install to Home Screen, request persistent storage, back up often (§12, and §17 rule 1).
+
+## 3. Architecture
+
+The core is small, runs on the page's main thread, and everything else is a plugin, including our built-ins.
+
+```
+page (main thread)
+ ├─ core: storage · event log · plugin registry · trigger scheduler · agent loop · context builder
+ └─ plugins (built-in, official on-demand, and third-party; one interface)
+     ├─ sensors:   clock, GPS, visibility, connectivity, mic, camera, wake lock
+     ├─ tools:     files, talk, web, places, time, go, self, mcp.*
+     ├─ providers: chat, speech-in, speech-out, search, fetch-reader, quick decision
+     ├─ triggers:  time, every, enter, leave, dwell, arrived, moved, activity, plan
+     ├─ schemas:   path pattern → JSON Schema (+ card renderer)
+     ├─ ui:        slots, card types, components, screens, themes, avatar art
+     └─ storage:   backup/export targets
+service worker: offline app shell · serves installed plugin files at /plugins/<id>/ · push → notification
+push relay (optional, separate service): sends scheduled, client-encrypted notifications
+```
+
+- **Why the main thread:** GPS, the microphone, speech, the camera and the wake lock exist only there. The agent loop mostly waits on the network. Heavy one-off work (zipping, image resizing) may use a Worker without changing the design.
+- **The core never touches the DOM.** It is testable in Node and could move into a Worker later.
+- **Rejected alternatives:** the agent in a Worker (it needs a message layer for every sensor, and gains no lifetime); a service-worker-centric design (killed when idle, no GPS or audio).
+
+## 4. Storage
+
+### 4.1 Stores
+
+One IndexedDB database:
+
+| Store | Key | Holds |
+|---|---|---|
+| `blobs` | SHA-256 of content | all content: text, JSON, photos, PDFs, fetched pages, model responses. Deduplicated. |
+| `files` | `[scope, path]` | current state: path → blob hash, plus metadata: type, size, author (`user` · `shiori` · `plugin:<id>`), source, created, modified |
+| `events` | `[scope, seq]` | append-only log: seq, time, type, actor, small data, blob refs |
+| `secrets` | id | API keys and tokens. Never in Shiori's view, never in the trace, excluded from exports unless the user explicitly includes them in an encrypted backup. |
+| `scopes` | id | the trip list plus `me`: kind, title, dates, status, data-format version |
+
+Not OPFS: one engine lets a file change and its log entry commit in **one transaction**.
+
+### 4.2 Write path
+
+Every write goes through one function:
+1. Compute the SHA-256 fingerprint *before* opening the transaction. IndexedDB commits a transaction early if code awaits anything else inside it.
+2. In one transaction: put the blob, point the path at it, and append `file.write {path, old, new, author}`.
+
+The result is version history and undo of any change (including Shiori's) for free. Deleting is the same: the path is removed, and the history keeps the blob.
+
+### 4.3 What Shiori sees
+
+```
+/trip/                 the active trip
+  trip.json            title, dates, places, time zones, travel party
+  plan/*.json          plan items
+  bookings/*.json      extracted records; each links to its original
+  files/…              originals: imports and photos
+  notes/*.md           anything Shiori decides to keep
+  memory.md            trip memory
+/me/
+  profile.md           what to call the user, language, units, preferences
+  memory.md            global memory
+  personalities/<name>.md
+```
+
+App settings (providers, plugins, tool switches, budgets) live outside this view, so Shiori can't change her own setup. Personalities are the deliberate exception (§14).
+
+### 4.4 Records
+
+- Structured records are JSON files with a JSON Schema tied to their path. Plugins can register schemas for their own paths. An invalid write is rejected, and the validation error comes back as the tool result.
+- Times are stored as an ISO 8601 string with offset, plus an IANA time zone.
+- Free text (notes, memory, personalities, profile) is Markdown.
+- Schemas, in brief:
+  - **trip.json:** `id, title, start, end, places[], timezones[], party[] {name, age?, interests[], driver?}`
+  - **plan item:** `id, title, kind, fixed: bool, priority, start {at, tz}, end?, place? {name, lat, lng, address}, booking?, notes?`
+  - **booking:** `id, kind (flight · lodging · car · rail · event · restaurant · other), status (unverified · confirmed), source (path of original), times, place, confirmation, cost {amount, currency}, fields{}`. New records must be `unverified`.
+  - **watch** (stored as a record so it survives reloads): `id, owner, when {type, …}, repeat, fallback, expires`
+
+### 4.5 Events
+
+Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `plugin.error`, `error`, `state` (live mode on/off, voice mode).
+
+- **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it.
+- **A model request is logged as a reference,** not a copy: the range of events in context, the prefix fingerprint, token counts, cost. Copying every context would grow storage quadratically.
+- **Location points are thinned.** A point is kept only after moving about 20 m (or the GPS accuracy, if worse), or after 1 minute while moving.
+
+### 4.6 Robustness
+
+- **One running instance.** A Web Lock (`navigator.locks`) allows one instance per device. A second tab shows "annai is open elsewhere. Use it here?"
+- **Reconnection.** On iOS, Safari's IndexedDB connection can drop after backgrounding. The storage layer reopens and retries transparently.
+- **Format upgrades.** The data format is versioned, with ordered migrations in the IndexedDB `versionchange` transaction, which is all-or-nothing. A failed migration leaves the old version intact. Before a large migration, annai writes an automatic backup.
+- **Persistent storage.** annai calls `navigator.storage.persist()` and shows usage in settings.
+
+### 4.7 Formats for the model
+
+- **Flat homogeneous lists** (listings, search results, `nearby`, hourly weather): TSV with a header row. Cells escape tabs, newlines and `<` with the `<sep>`, `<LF>`, `<CR>`, `<lt>` tokens from the TSVZ spec.
+- **Single or nested objects:** JSON.
+- **Prose:** plain text.
+
+## 5. Plugin system
+
+### 5.1 Kinds
+
+- **Skills.** The open Agent Skills format: a folder with `SKILL.md`, plus optional `references/` and `assets/`.
+  - Only `name` and `description` sit in Shiori's context. She loads the body with the `skill` tool.
+  - The front matter is parsed by a small parser for the subset the standard uses: strings, plus a one-level `metadata` map.
+  - `scripts/` are not run.
+- **MCP servers.** Remote servers over HTTP. A built-in MCP client plugin registers each server's tools as `mcp.<server>.<tool>`.
+  - The server must allow browser access (CORS).
+  - Auth is a URL plus headers or a bearer token. OAuth for MCP comes later.
+- **Code plugins.** Full-trust ES modules with the same powers as built-ins. The install screen says so plainly: "This plugin gets full access to your trips and API keys."
+
+### 5.2 Package and manifest
+
+A plugin is a folder, zip or URL containing `annai-plugin.json`:
+- `id`, `name`, `version`, `description`, `author`, `homepage`
+- `api`: the interface major version
+- `entry`: an optional ES module
+- `skills[]`, `personalities[]`, `templates`
+- `settings`: a JSON Schema, from which we render a settings form automatically
+
+### 5.3 Installing and loading
+
+- **Sources:** the official catalog (`annai.guide/catalog/plugins.json`), a URL, or a zip.
+- **Files are copied into storage.** They work offline, and they change only when the user accepts an update.
+- **The service worker serves installed plugin files** from storage at `/plugins/<id>/…` on our own origin. Multi-file plugins can use relative imports, and the security policy stays `script-src 'self'`.
+- **Official on-demand plugins** have a SHA-256 for every file in the catalog, and downloads are checked against it.
+- **Choosing an unavailable type installs its plugin.** When a user picks an endpoint type, search provider or speech provider whose plugin isn't installed, it installs automatically.
+- **Plugins can add new types,** which become selectable once the plugin is installed.
+
+### 5.4 Interface
+
+A module exports `activate(annai)`, which returns a cleanup function.
+
+- **What plugins can add:**
+  - `tools` (name, description, input JSON Schema, `run`)
+  - `providers` (chat, speech-in, speech-out, search, fetch-reader, decision, and endpoint types)
+  - `sensors`, `triggers`
+  - `schemas`
+  - `ui` (§16.4)
+  - `hooks` (subscribe to log appends; read-only in v1)
+  - `storage` (backup targets)
+- **What plugins can use:**
+  - `files`, `events`
+  - `net.fetch` (traced)
+  - `llm(role, request)`
+  - their own `settings` and `secrets`
+  - `wake(reason)`
+  - `ui.card`, `ui.toast`
+  - shared helpers: the streamed-response reader, the half-finished-JSON reader, retry with backoff, TSV, merge patch
+- **Built-ins are plugins.** The core is storage, registry, scheduler, loop and context builder; everything else is a built-in plugin in the same format.
+- **Switches and trace come from the registry,** so they cover third-party tools automatically.
+
+### 5.5 Isolation and versioning
+
+- Every call into a plugin is wrapped. An error becomes a `plugin.error` event.
+- A plugin that keeps failing is disabled automatically, with a card saying why.
+- A plugin built for an incompatible `api` major version is disabled cleanly.
+- The interface scopes are for organization, not security.
+
+## 6. Agent loop
+
+### 6.1 Wakes
+
+Sources:
+- the user: text, photo, or tap-to-talk
+- a trigger firing
+- the app returning to the screen (catch-up)
+- a plugin calling `wake(reason)`
+- a push notification being opened
+- speech heard while she was thinking (§10.4)
+
+All wakes go into one queue:
+- Wakes that arrive mid-turn are delivered at the next model call ("meanwhile: …").
+- Simultaneous triggers merge into one wake.
+- User input goes ahead of triggers.
+- If the queue isn't empty when a turn ends, the next turn starts immediately.
+
+### 6.2 A turn
+
+1. Build the context.
+2. Stream the model call.
+3. Run the tool calls in order. `sleep` always runs last.
+4. Append the results and call the model again.
+
+The turn ends when the model calls no tool (the convention), calls `sleep`, or hits a budget. **Sleeping means the microphone is off.**
+
+### 6.3 Context order (for prompt caching)
+
+1. Core instructions (how annai works; address the user only through output tools; safety rules), then the personality, then the definitions of enabled tools.
+2. Profile, global memory, skill index, trip memory. These are snapshotted at wake, so edits made during a turn show up at the next wake.
+3. Transcript: the latest compaction summary plus every event after it. It only grows at the end.
+4. A **now block**, last:
+   - local time and zone
+   - place and coordinates
+   - activity
+   - voice mode
+   - the next plan items, as TSV
+   - connectivity
+   - the wake reasons
+
+The provider adapter places cache markers where the provider needs them (Anthropic) or relies on automatic caching (OpenAI, Gemini).
+
+### 6.4 Cache lifetime awareness
+
+Each model declares its cache TTL options and prices (§9.2). The core tracks, per model and prefix fingerprint, when the prefix was last sent, so it knows whether the cache is **warm or cold**.
+
+- **Prefix rewrites happen only when the cache is cold:** compaction, and refreshing the memory or plan snapshot. The one exception is when the context would overflow (above 90% of the model's window).
+- **The trace shows actual cache hits,** from the token counts each provider reports.
+- **Plugins can read TTL and warmth,** and can schedule wakes (for example, "keep warm and catch up on the world"). Nothing like that is built in.
+
+### 6.5 Compaction ("housekeeping")
+
+- When the transcript passes a per-model threshold (default 70% of the context window, editable per model), the utility model summarizes the older part into a `compaction` event.
+- It runs during sleep when possible.
+- The full log is never altered.
+- During housekeeping, Shiori may move lasting facts into memory files.
+
+### 6.6 Budgets and safeguards
+
+- **All budgets are opt-in, with no defaults:**
+  - steps per wake
+  - spend per day
+  - trigger wakes per hour
+  - quiet hours
+
+  Hitting a budget ends the turn with a card.
+- **Cost is always visible** in the trace.
+- **Stuck-loop detection is always on.** Three identical tool calls in a row with identical results end the turn with a card.
+
+### 6.7 Failures
+
+| Failure | Handling |
+|---|---|
+| A tool errors | The error is returned as the tool result; the model adapts. |
+| The model errors | §9.6 fallback. When every model is exhausted, a card says "Shiori can't reach her model". |
+| The user interrupts | Tapping the avatar cancels the stream. Partial output is logged. |
+| Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. |
+| Voice is off | `speak` becomes an on-screen bubble and doesn't listen. The now block tells Shiori the mode. |
+
+## 7. Output model and tools
+
+### 7.1 Talking to the user
+
+Shiori addresses the user **only** through output tools. Any plain text the model writes is her internal transcript: hidden from the user, visible in the trace. (This follows the precedent of MemGPT/Letta's `send_message`.)
+
+| Tool | Behaviour | Result |
+|---|---|---|
+| `speak(text)` | Plays sentence by sentence, then listens (§10). | What was heard, or where she was interrupted plus what was heard, or "heard nothing" after a silence timeout (default 8 s). |
+| `show(card)` | A card: text, place, links, booking, image, or choice. | "shown" |
+| `ask(question, options)` | Shows the question and buttons. Also spoken when voice is on. | The tap or the spoken answer. |
+| `wait(seconds)` | Keeps listening. | What was heard. |
+| `sleep()` | Ends the turn and turns the mic off. In the same response as `speak`, it stops `speak` from listening. | — |
+
+These rules make the loop work:
+- The `speak` result *is* the follow-up call, so there's always one unless she chose to sleep.
+- Every `speak` call gets a recorded result even if the loop ends without the main model seeing it, because both API styles reject an unmatched tool call.
+
+### 7.2 Built-in tools
+
+Every tool can be switched off, except `show`, `ask`, `wait` and `sleep`. Turning off `speak` means voice off.
+
+| Group | Tools |
+|---|---|
+| Talk | `speak`, `show`, `ask`, `wait`, `sleep` |
+| Files | `list(path)` → TSV · `read(path)` → text / JSON / image / PDF-as-document · `write(path, text \| object)` · `edit(path, old, new)` (text files) · `patch(path, mergePatch)` (JSON files) · `search(query, path?)` → TSV · `delete(path)` |
+| Web | `web_search(query)` → TSV (title, url, snippet) · `fetch(url)` → readable text |
+| Places | `nearby(lat, lng, radius, kinds?)` → TSV (OpenStreetMap Overpass + Wikipedia geosearch) · `geocode(query)` · `reverse(lat, lng)` (Nominatim) · `weather(lat, lng, when)` (Open-Meteo, also returns the time zone) · `guide(place)` (Wikivoyage sections) |
+| Time | `watch.set({when, fallback, repeat?, expires?})` · `watch.list` · `watch.cancel` |
+| Go | `maps_link(destination, mode)` → Apple/Google Maps card · `search_link(kind, params)` → prefilled flight, hotel or car-rental search links |
+| Self | `tune_personality(text, reason)` · `skill(name)` · `task(prompt, tools?, reasoning?)` (a subagent on the utility model, with its own loop and a subset of tools, returning its result) |
+
+- **Link formats.** `search_link` and `maps_link` build URLs from formats kept in the catalog (`annai.guide/catalog/links.json`). When a site changes its URL format, the catalog is updated without an app release.
+- **Places data** comes from free services that accept direct browser calls (verified 2026-10-14). The tools read the offline pack first (§11.5). Nominatim's rate limit (1 request per second) is enforced on our side.
+- **The fetch chain:**
+  1. Fetch the URL directly, which works when the site allows browser access.
+  2. Otherwise use the configured reader service, by default Jina Reader (r.jina.ai), which accepts browser calls.
+  3. Otherwise use the model provider's own fetch tool, if one is enabled (§9.5).
+  4. Otherwise return a clear error.
+
+  The agent sees a single `fetch` tool. A self-hosted fetch relay is added only if real use shows gaps.
+- **Search** goes to the search role's provider list (§9.6), or to the provider's own search tool, depending on the role's "search via" setting.
+- **PDFs** go to the model as a document when it accepts PDFs. Otherwise Shiori asks for a screenshot; we don't add a PDF library.
+
+### 7.3 Importing a booking
+
+There's no special machinery:
+1. The file is saved to `/trip/files/`.
+2. Shiori is woken with "new file".
+3. She `read`s it, `write`s an `unverified` booking, and `ask`s about only the fields she's unsure of.
+4. The plan shows unconfirmed bookings as "Check this".
+
+## 8. Planning
+
+- **Order:** Shiori plans in the brief's order: getting there, getting around, where to stay, then the rest. She researches with web, places and guide tools, and hands over `search_link` cards for booking.
+- **Plan items** are `fixed` (booked: flights, reservations, check-ins, last ferries) or `flexible`, each with a priority.
+- **Calendar files:** importing `.ics` creates plan items. Exporting the plan as `.ics` uses the share sheet or a download.
+- **Apple Wallet passes:** `.pkpass` files are zips containing `pass.json`, read by our own unzip. They become bookings.
+
+## 9. Models and providers
+
+### 9.1 Endpoint types are plugins
+
+The core contains no protocol. Settings offer these endpoint types, each mapped to an official on-demand plugin:
+- Chat Completions
+- Anthropic Messages
+- OpenAI Responses
+- Gemini
+
+Plugins can add further types.
+
+The core provides:
+- the provider contract: our message format in and out, streaming events, normalized usage, normalized errors
+- role resolution and fallback
+- cost accounting
+- shared helpers: the streamed-response reader, the half-finished-JSON reader, retry
+
+Search and speech providers work the same way, as on-demand plugins with their own quirk settings.
+
+### 9.2 Endpoint vs model settings
+
+| Endpoint: how to talk to a server | Model: what one model can do and costs |
+|---|---|
+| name, type, base URL | name (unique, chosen by the user; defaults to the provider's id) |
+| API key (in `secrets`), extra headers | the provider's model id; free text or picked from the fetched list |
+| the type's tunables, e.g. `max_tokens` vs `max_completion_tokens`, `system` vs `developer`, usage in stream, image/PDF format | belongs to exactly one endpoint |
+| `extraBody` for all its models | capabilities: tools, images, PDFs, audio input |
+| provider tools offered endpoint-wide | context window, maximum output |
+| "fetch model list" | prices: input, output, cache read, cache write per TTL, per-call tool fees |
+| | cache TTL options |
+| | reasoning map, provider tools it supports |
+| | its own tunables and `extraBody`, which override the endpoint's |
+
+Precedence: **user setting > template > plugin default.** Roles reference models by stable internal id, so renames are safe.
+
+### 9.3 Reasoning
+
+- **Five abstract levels:** `off · low · medium · high · max`.
+  - Each role has a default level the user can edit: main → medium, utility → low, quick decision → off.
+  - The core overrides per kind of call: the "is this for me?" check is always `off`, and compaction is `low`. `task` may request a level.
+- **Each model has a map from level → request patch.** The template ships it, and the user can edit it.
+- **A missing level uses the nearest one; on a tie, the cheaper one.**
+- **Each endpoint type also declares where the reasoning text comes back:** `thinking` blocks, `reasoning_content`, or `reasoning`. Reasoning is stored, never shown to the user, and visible in the trace.
+- **The Test button can try each level** and record which ones work.
+
+### 9.4 Patch format
+
+Request patches use JSON Merge Patch (RFC 7396), plus one extension: a key ending in `+` appends to an array. This is how a provider tool is added to `tools` without replacing our own. It applies to `extraBody`, reasoning maps and provider tools. Record patches in §7.2 use plain RFC 7396.
+
+### 9.5 Provider-side tools
+
+- **What a model lists:** its built-in provider tools, such as Anthropic web search and fetch, Gemini Google Search and URL context, OpenRouter web search, and OpenAI web search. Each has a name, a switch, the patch that enables it, and a price per call.
+- **They sit next to ours** in the tool list, with the same switches.
+- **Each role chooses "search via"** (provider · search plugin · off) and "fetch via" the same way, so Shiori never sees two competing tools.
+- **The trace records only what the provider reports back:** URLs and citations, not full pages.
+
+### 9.6 Roles and fallback
+
+**Roles:** main (required), utility, quick decision, speech-in, speech-out, search.
+
+Each role is an **ordered list** of models, tried front to back:
+- Empty chat roles fall back to the main list.
+- Speech-out ends with the browser voice by default. Speech-in ends with phone dictation where available.
+- Users can reorder or remove these defaults.
+
+| What happened | What we do |
+|---|---|
+| can't connect, blocked by browser, bad key, out of credit (402) | next model |
+| rate-limited | wait if the provider asks for a short wait, otherwise next model |
+| overloaded | two quick retries, then next model |
+| no first output within a time limit (configurable; tighter for voice) | next model |
+| request too long | compact first; skip models whose window is too small |
+| the model answers, including declining | that's an answer: no fallback |
+
+- **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size.
+- **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model.
+- **Switching back.** Each provider caches separately, so the switch back to a preferred model happens when the backup's cache is cold.
+- **The transcript stays portable.** It's stored in our own format. When the model changes:
+  - tool-call ids are rewritten for the new provider
+  - reasoning blocks signed for another model are dropped
+- **A stream that breaks partway** is handled like an interruption. The next model gets "said so far: … ✂" and continues without repeating anything.
+- **The trace records every attempt,** which model answered, and the cost of each attempt.
+
+### 9.7 Quick decision
+
+The interface is `decide({prompt, options[]}) → {optionId: probability}`.
+
+- **Default implementation: a chat model.** Where the model reports token probabilities (logprobs), options are labelled A, B, C… and we request a one-token answer, which gives real probabilities. Otherwise it's a forced tool choice with confidence 1.0.
+- **Dedicated decision models** that return calibrated probabilities over fixed outputs can be added as plugins, for example TypeSafe's Jev.
+- **Below a confidence threshold, the main model decides.**
+
+### 9.8 Templates and onboarding
+
+- **The catalog** (`annai.guide/catalog/templates.json`) holds endpoints, popular models, capabilities, prices, TTLs, reasoning maps, provider tools, and quirks for chat, search and speech providers.
+  - It refreshes when the app is online.
+  - Users' settings are copies. When a template changes, they're offered the update, never changed silently.
+- **Default onboarding is "Sign in with OpenRouter"** (OAuth PKCE, with no client registration on our side). It creates the endpoint and suggests models for each role.
+  - OpenRouter's free models allow 50 requests per day (1,000 per day after $10 of lifetime purchases), enough to try annai.
+  - Templates cover Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral and local servers. The local-server template notes that a phone needs an HTTPS address, such as a tunnel.
+- **The Test button** sends one tiny request with a small tool and a small image.
+  - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
+  - It explains failures in plain words: "this endpoint blocks web apps" is a different message from "key rejected".
+
+### 9.9 Usage, cost, errors, keys
+
+- **Usage is normalized** to input, cache read, cache write, output and reasoning. Multiplied by the model's prices, that gives cost per call, wake and trip.
+- **Error kinds:**
+
+  | Kind | Response |
+  |---|---|
+  | bad key | ask the user to fix the key |
+  | rate-limited | wait as instructed, or fall back |
+  | overloaded | retry, then fall back |
+  | context too long | compact and retry |
+  | blocked by browser | explain that the endpoint doesn't allow web apps |
+  | bad request | hint: check the endpoint's tunables |
+  | network | retry with backoff |
+
+- **Keys** live only in `secrets`. They're never in context and are redacted from the trace.
+
+## 10. Voice
+
+### 10.1 Speaking
+
+- **Sentence by sentence.** The text of `speak` streams in as the model generates it (read from partial tool arguments), and `Intl.Segmenter` cuts it into sentences.
+- **Each sentence goes to the first working entry in the speech-out list.** The list is user-ordered; the browser voice sits last by default.
+- **No gaps.** With API voices, the next sentence's audio is fetched while the current one plays.
+- **Mid-answer fallback.** If a voice fails partway through, the same sentence replays on the next voice in the list, and the failed voice is benched.
+- **Audio unlock.** Playback goes through one audio player, unlocked by the first tap of each session (an iOS rule).
+- **Audio session type:**
+  - `transient` while speaking, so the car's music ducks rather than stopping
+  - `play-and-record` while listening
+  - `playback` afterwards, to restore full-quality Bluetooth audio
+- **The interruption point** is tracked by sentence plus elapsed fraction, or by word timings when the voice provides them.
+
+### 10.2 Listening sessions
+
+A speech-in provider implements a **listening session**: start, stop, and a stream of segments. Two kinds:
+
+- **Record and transcribe.**
+  1. The mic opens only for the listening window.
+  2. An `AudioWorklet` captures PCM audio.
+  3. Our end-of-sentence detector measures energy in the speech band against a background-noise floor that keeps adapting. Speech followed by a pause of about 700 ms (tunable) becomes a segment.
+  4. The detector only cuts audio; it never decides to stop listening.
+- **Phone dictation.** The browser's speech recognition produces the segments itself. It can't run alongside recording.
+
+Privacy:
+- Audio leaves the phone only when speech was detected, and only to the configured speech-in entry.
+- Transcripts go into the log.
+- Audio is discarded unless the user turns on "keep voice clips".
+
+### 10.3 Speech-in list resolution
+
+Entries:
+- each configured transcription model
+- one stand-in entry, **"Send audio to the model"**
+- phone dictation, where available
+
+The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template. With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
+
+**The list is resolved again for each model attempt, against the model actually receiving the speech.** That applies to any role, including quick decision.
+- "Send audio to the model" is used only if that model accepts audio. Otherwise it's skipped.
+- Example: main = `M1 (audio) → M2 (text only) → M3 (audio)`, speech-in = `send audio → ASR-A → dictation`. The attempts go M1 with audio → M2 with ASR-A's transcript → M3 with audio again.
+
+What makes this work:
+- Each segment stays in memory until the turn that used it succeeds.
+- Transcripts are cached per segment and per ASR model, so ASR-A runs once however many models need its transcript.
+- A failed ASR model is benched like any other model.
+- **Text versions are made lazily.** A segment sent as raw audio is transcribed only when something text-only first needs it: a later text-only model, compaction, or the trace. The first transcription-capable entry does it, and the result is cached. With no such entry, it's stored as "[audio, not transcribed]".
+- **Dictation is exclusive.** If phone dictation is the first *usable* entry, segments arrive as text only, and audio-based entries can't apply to them. If dictation fails, listening switches to recording from the next segment.
+
+### 10.4 Turn-taking
+
+- **`speak` returns** when the first segment arrives, or after about 8 s of silence (tunable). Shiori can call `wait(seconds)` to listen longer.
+- **During a listening window, the mic keeps recording while a model call runs.** New segments go into the wake queue as "heard while you were thinking: …". Nothing heard is lost: if the turn ends with `sleep` but speech arrived meanwhile, a new turn starts.
+- **The quick-decision gate** sits between what was heard and the main model. It runs only when a quick-decision model is configured, because falling back to the main model would double the calls. Without one, what was heard goes straight to the main model, which can respond or sleep. When the gate runs:
+  - meant for Shiori → main model
+  - chatter → record it and sleep
+  - unsure → main model
+
+  Dismissed speech still goes into the transcript, so Shiori knows what was said.
+- **Speaking and listening never overlap** (half-duplex). Tapping the avatar while she speaks stops her, records the cut-off point, and opens the mic. Tapping it while she sleeps starts listening.
+
+### 10.5 Voice mode: Auto / On / Off
+
+The setting is always one tap away. **Auto:**
+- moving fast (driving or riding) → on
+- headphones or car audio detected → on
+- otherwise, on the phone speaker → off
+
+Where the browser can't detect headphones, Auto falls back to the user's last explicit choice in that situation.
+
+## 11. Triggers and live mode
+
+### 11.1 Live mode
+
+A switch. While it's on and annai is on screen:
+- GPS tracking runs.
+- Triggers are evaluated.
+- The screen wake lock is the user's choice per situation (on the car charger, yes; walking, probably not).
+
+When the phone locks, the app freezes, and catch-up (§11.4) covers the gap.
+
+### 11.2 Sensors (built-in plugins)
+
+| Sensor | Behaviour |
+|---|---|
+| Clock | One timer, set for the next due watch. Re-checked whenever the app becomes visible. |
+| Location | `watchPosition`, thinned as in §4.5. |
+| Activity | still / walking / moving fast, from GPS speed, with 30–60 s hysteresis. GPS can't tell driving from riding a bus, so voice Auto treats both the same and a passenger can switch voice off. |
+| Visibility | the app going off and back on screen |
+| Connectivity | online or offline |
+
+### 11.3 Triggers and watches
+
+| Type | Fires when |
+|---|---|
+| `time` | at a moment |
+| `every` | at an interval |
+| `enter`, `leave` | crossing a circle around a place, with a margin so GPS jitter at the edge doesn't refire it |
+| `dwell` | inside a place longer than X |
+| `arrived` | stopped somewhere new for N minutes |
+| `moved` | X km travelled since the last wake |
+| `activity` | an activity starts or stops |
+| `plan` | a plan item is coming up, running late, or the user is off-plan |
+
+Plugins can add types.
+
+**Every watch has a fallback message.** When the watch fires and the model can't be reached, the fallback is shown or spoken directly.
+
+**Plan items create their own watches.** The system sets these, so they don't depend on Shiori remembering:
+- leave in X minutes
+- arrived
+- running late
+
+The travel-time estimate is deliberately rough (straight-line distance × a detour factor ÷ a typical speed for the mode of travel), so reminders err early. The fallbacks are filled in from the plan data, for example "Flight UA123 departs 14:05, SFO T3".
+
+### 11.4 Catch-up
+
+When the app becomes visible:
+- time watches that came due while frozen fire late, labelled "late by N min"
+- arriving at and leaving places is inferred from the last known position versus the current one
+- everything goes into one catch-up wake, with the elapsed time and distance
+
+### 11.5 Replanning, narration, offline pack
+
+- **Off-plan detection.** The user is far from the current item while it's scheduled, or lingers somewhere not on the plan. Either wakes Shiori, who:
+  - welcomes the detour
+  - says what it costs
+  - reshuffles flexible items while protecting fixed ones
+
+  Every replan is a set of patches to the plan files, so it can be undone.
+- **Narration is a built-in skill, not code.** The driving-companion skill tells Shiori to set a `moved`/`every` watch when driving starts, and to check `nearby` along the road when it fires. Narration takes into account the travel party, preferences, personality and mood.
+- **The offline pack.** Before the trip, or whenever the phone is on Wi-Fi, annai downloads data for each destination and along the planned route:
+  - Wikivoyage sections
+  - Wikipedia summaries of nearby places
+  - OpenStreetMap points of interest
+
+  The estimated size is shown before downloading. Sunrise, sunset and golden hour are computed on the phone.
+
+### 11.6 Push relay (closed app)
+
+- **Scope.** Only time watches are mirrored, and only when notifications are enabled. Location triggers never leave the phone.
+- **Encryption.** The page encrypts each notification itself with the push subscription's keys (RFC 8291, `aes128gcm`, using WebCrypto's ECDH, HKDF and AES-GCM). The relay never sees the content.
+- **The relay** holds the VAPID keypair and does three things:
+  - stores `{push endpoint, ciphertext, sendAt, id, cancel token}`
+  - sends at `sendAt`
+  - deletes the record after sending or on expiry
+
+  It learns only the push endpoint, the timing, and how many reminders there are.
+- **API:**
+  - `GET /v1/vapid`: the public key
+  - `POST /v1/schedule`
+  - `DELETE /v1/schedule/:id` (requires the cancel token)
+- **Abuse limits** live on the relay: payloads up to 4 KB, at most 200 pending per subscription, at most 30 days ahead, and rate limits per IP.
+- **Cancelling a watch** deletes it at the relay. **Opening a notification** starts a catch-up wake with "opened the reminder for X".
+- **Deployment:** a Cloudflare Worker at `push.annai.guide`. Each push subscription gets its own Durable Object, which holds that subscription's pending messages and uses its alarm to fire at the next `sendAt`. The source is published under `relay/` for self-hosting.
+
+### 11.7 Privacy
+
+- The Places tools send coordinates to OpenStreetMap, Wikipedia and Open-Meteo.
+- Location otherwise goes only to the user's own model provider.
+
+## 12. Import, export and backup
+
+### 12.1 Archive format
+
+A zip written and read by our own code: `CompressionStream` / `DecompressionStream` with `deflate-raw`, plus a CRC-32 of our own.
+
+```
+annai-archive.json       manifest: format version, app version, kind (trip | everything),
+                         contents, SHA-256 of every file, encrypted flag
+me/…                     global files (only in "everything")
+trips/<id>/…             current files at readable paths
+trips/<id>/events.jsonl  the event log
+blobs/<sha256>           content the log references that isn't a current file
+```
+
+The archive is written as a stream, so photo-heavy trips don't need to fit in memory.
+
+### 12.2 Export
+
+- **Scope:** one trip, or everything.
+- **Contents, as tickboxes with presets:**
+  - **Backup:** everything.
+  - **Share:** plan, bookings, files and notes. No conversation, trace, memory or location history unless ticked.
+- **Keys** are included only in an encrypted Backup, and only when explicitly chosen.
+- **Encryption (optional):** the whole zip is encrypted with a passphrase, using PBKDF2-SHA-256 to derive the key and AES-GCM to encrypt.
+- **File names:** encrypted files end in `.annai`; plain ones end in `.annai.zip`.
+- **Saving:** the share sheet on phones (Files, iCloud Drive, AirDrop…), a download on desktop.
+
+### 12.3 Import
+
+- **Ways in:**
+  - the file picker, or drag-and-drop
+  - Android share target (installed web apps can receive shares on Android; iOS doesn't support it)
+  - `annai.guide/#import=<url>`, for archives the sender hosts somewhere that allows browser access, such as GitHub raw files or Dropbox
+- **Preview card:** name, dates, size, contents, exporter, format version.
+- **Choice:** "Add as a new trip", or "Replace mine", which moves the existing copy to archived trips. Nothing is overwritten silently.
+- **Checks:** fingerprints are verified and older formats are migrated. Files belonging to plugins that aren't installed are kept, inactive.
+- **A trip archive never contains the sender's global memory.** The recipient's own Shiori, personality and memory pick up the trip.
+
+### 12.4 Backup targets
+
+- **Interface:** archive-level `put / get / list / delete`, via storage plugins.
+- **Automatic backup:** daily or after changes, while on Wi-Fi with the app open. It runs alongside the install nudge, not instead of it.
+- **Git targets store the unpacked tree, not a zip.** One backup is one commit, and only changed files are uploaded.
+- **Single writer.** A newer remote backup from another device triggers a warning and an offer to import it as a copy.
+- **First targets:**
+  - **GitHub:** through its web API (the Git Data API), which accepts browser calls.
+  - **S3-compatible:** the user configures the bucket's browser-access (CORS) rules; we show the exact JSON to paste.
+  - **WebDAV:** where the server allows browser access.
+- **Later targets:**
+  - GitLab
+  - Google Drive and Dropbox (each needs us to register an OAuth app)
+  - the user's own git server (needs browser-access headers in Apache, plus a small commit-and-push git client of our own)
+- **iCloud** is manual only, through the share sheet.
+
+## 13. After the trip
+
+- **Recap.** The utility model summarizes the event log, notes and photos into a recap stored as `/trip/recap.md`. Shiori can tell it by voice.
+- **Replay.** A timeline of the trip:
+  - places, Shiori's cards, photos, and the user's messages
+  - the route drawn as an SVG polyline from the location points, using a simple equirectangular projection and no map tiles
+  - playback at adjustable speed
+- **Stamps.** Each `arrived` event at a plan place or point of interest earns a stamp, shown on trip cards and in replay. Stamps are computed from the log, not stored.
+- **Trip simulation.** Developer → "Simulate a trip" feeds a recorded or fake GPS track and clock through the same machinery. Replay and testing share it.
+
+## 14. Personalities, memory, profile
+
+### 14.1 Personalities
+
+- **Every personality is a full Markdown file that Shiori can rewrite completely,** whether shipped or user-made.
+- **Shipped originals stay read-only** for "reset to original". File history allows rollback to any version.
+- **When we update an original:**
+  - an unedited copy follows the update silently
+  - an edited copy gets "a new version of the original is available", with compare, keep mine, or let Shiori merge
+- **Shiori changes a personality only through `tune_personality`.** The flow:
+  1. The utility model reviews the change: is it about behaviour only (facts about the user go to memory)? Has it bloated? Does it contradict the base safety rules?
+  2. An approved change applies at her next wake, never mid-conversation.
+  3. A card reports it ("I adjusted: shorter answers while driving") with one-tap undo.
+  4. Setting: "Ask me before Shiori changes her personality".
+- Three presets ship with the app. Users can create their own, or ask Shiori to.
+  - **Shiori:** the default. Warm, concise, and speaks up when something is worth it.
+  - **Storyteller:** more narration, history and local stories, especially on drives.
+  - **Quiet:** speaks only when asked, or for reminders and fixed commitments.
+
+### 14.2 Memory and profile
+
+- **Memory** is plain Markdown in `/me/memory.md` (global) and `/trip/memory.md` (per trip). Shiori writes it with the file tools and consolidates it during housekeeping.
+- **The profile** (`/me/profile.md`) holds what to call the user, their language, units, and lasting preferences.
+- **The travel party** lives in `trip.json`.
+
+### 14.3 Language
+
+- The UI ships in English. All strings live in one module, ready for translation.
+- Shiori replies in the user's language.
+- Dates, numbers, units and currency are formatted with `Intl` according to the profile.
+
+## 15. Security and privacy
+
+- **No third-party scripts.** A strict Content Security Policy (served via `_headers`):
+  - `default-src 'self'`
+  - `script-src 'self'`
+  - `style-src 'self'`
+  - `connect-src https: http://localhost:* http://127.0.0.1:*` (user-configured endpoints)
+  - `img-src 'self' blob: data: https:`
+  - `media-src 'self' blob:`
+  - `worker-src 'self' blob:`
+  - `frame-ancestors 'none'`
+- **Model output never goes into `innerHTML`.** Our own small Markdown renderer builds DOM nodes and escapes everything else.
+- **API keys:** stored in `secrets`, never in context, redacted from the trace, and excluded from exports by default.
+- **The responsibility model (§2, principle 2):**
+  - Imported and fetched content is the user's responsibility.
+  - The trace makes everything the agent sent and read visible.
+  - Third-party code plugins run with full trust, and their install screen says so.
+- **No telemetry.** "Copy diagnostics" produces a redacted report for the user to share if they choose.
+
+## 16. UI
+
+### 16.1 Principles
+
+- Glance, tap or talk.
+- One main thing per screen.
+- Big targets.
+- Short cards.
+- Spoken words hidden unless asked.
+- **System cards are not Shiori.** System problems appear as system cards, never in Shiori's voice.
+
+### 16.2 Layout and screens
+
+Reference: mockups draft 6.
+
+- **The dock** sits at the bottom of every screen: camera · Shiori · type. Voice layouts, such as driving, enlarge the dock; they never move it.
+- **One Shiori per screen.** Speech bubbles carry a "SHIORI" label instead of a second avatar.
+- **The top bar** shows the trip name (tap to switch trips) and a menu: Plan, Conversation, Files, Trace, Settings.
+- **Screens:**
+  - **Now**, the home screen during a trip: current place, golden hour and other chips, the next items as a timetable, the latest card
+  - **Driving:** route strip, "Show what she's saying", a maps card, big quick-ask buttons
+  - **Camera / snap and ask**
+  - **Plan:** day tabs, a timetable with ● fixed and ○ flexible, drive legs between stops, and "Check this" chips
+  - **Booking confirmation**
+  - **Trips:** the install warning, trip cards with stamps, backup status, "Open a trip someone sent you"
+  - **Conversation**
+  - **Files**
+  - **Trace:** filters plus tool switches
+  - **Settings:** Models, Voice, Tools, Plugins, Storage & backup, Privacy, Developer
+  - **Onboarding:** install guide, OpenRouter sign-in, profile
+  - **Import preview**
+  - **Recap and Replay**
+- **Visual identity:**
+  - vermilion accent
+  - cool, plain paper neutrals
+  - Zen Maru Gothic for display text, Zen Kaku Gothic New for body text, IBM Plex Mono for data
+  - timetable rows like a trip booklet's schedule page
+  - the 枝折戸 diamond-lattice pattern as a quiet texture
+  - station-stamp marks for visited places
+  - light and dark themes
+
+  Fonts are self-hosted, since the security policy allows only `'self'`.
+
+### 16.3 Shiori, the character
+
+- **Design:** a white fox (白狐, Inari's messenger) in a vermilion scarf. Her 枝折り hairpin is a twig with a strip of pink trail tape tied on, worn at her left ear.
+  - Eyes only.
+  - No tail beside her face.
+  - The Inari foxes hold a token in their mouths; Shiori's token is the hairpin.
+- **Her gaze carries the state:**
+
+| State | Look | Dock label |
+|---|---|---|
+| Asleep | eyes closed, head lowered, ears relaxed, slow breathing (the only loop) | Tap to talk |
+| Listening | facing you, ears up | Listening |
+| Hearing you | ears forward; the seat glow (grey) follows your voice level | Hearing you |
+| Thinking | looks up and away | Thinking |
+| Talking | facing you; the seat glow (vermilion) and the tape follow her voice level | Tap to interrupt |
+| Your turn | facing you, head tilted | Waiting for your OK |
+| Working | stepped out of her seat, leaving her trail marker; tap it to see what she's doing | Working on … |
+| Offline | present, muted, ears down | Offline · reminders still work |
+
+- **Movement is driven by events and transitions,** not loops: blinks at random intervals, a glance toward a newly appearing card, ears reacting.
+- **The glow follows the real audio level,** read from Web Audio analysers on output and input.
+- **Reduced-motion preference:** no glances and no transitions.
+- **The avatar is a named component** with this interface:
+  - `setState(state)`
+  - `setLevel(0..1)`
+  - `glance(dx, dy)`
+  - `blink()`
+
+  Plugins and personality packs can replace the art.
+
+**Polish list for the UI build:**
+- The nose currently reads as a mouth hole: drop it or redraw it.
+- Final art pass on the fox.
+
+### 16.4 UI extension
+
+- **Slots:** status chips, Now-card sections, dock actions, trip tabs, settings pages.
+- **Card types:** renderers, often paired with a schema.
+- **Named components that plugins can replace:** avatar, now-card, dock, plan-row, and others.
+- **Whole screens:** a new tab, or the home screen for a mode such as hiking.
+- **Themes:** all colors, type and spacing are CSS variables.
+- **Only slots, components and variables are stable across updates.**
+
+### 16.5 Accessibility
+
+- semantic HTML
+- labelled controls
+- large targets
+- visible focus
+- the reduced-motion preference respected
+
+Eyes-free voice mode also serves users with low vision.
+
+## 17. Error handling
+
+1. **Never lose data.**
+   - Writes are transactional (§4.2).
+   - "Storage full" shows a card with real options: export a backup, delete trace bodies or cached photos, or free up space.
+   - The IndexedDB connection reconnects automatically.
+   - Migrations are atomic, with a backup first.
+2. **Degrade, don't die.**
+
+   | What's missing | What still works |
+   |---|---|
+   | a connection | reminders with fallback messages, the offline pack, the plan; wakes queue up |
+   | every model | the same reminders with their fallbacks, plus a card |
+   | the mic | typing |
+   | GPS or location permission | time triggers, and a manual place |
+   | a plugin (crashed) | the plugin is disabled; everything else runs |
+
+3. **Plain errors with a next step.** Denied permissions get instructions specific to iPhone or Android.
+4. **A global catch.** `error` and `unhandledrejection` are recorded as `error` events with a small card, and the app keeps running. "Copy diagnostics" produces a redacted report.
+5. **Updates never land mid-trip.** The service worker installs new versions in the background. They activate on the next start, and never during a turn.
+
+## 18. Testing
+
+- **Unit tests** (`node:test`) for the core and the pure modules:
+  - event log and registry
+  - scheduler and trigger math
+  - context builder
+  - merge patch (with `+` append), TSV, schema checks
+  - zip, CRC-32, archive encryption
+  - streamed-response reader and half-finished-JSON reader
+  - fallback ordering and benching
+  - cost accounting
+  - speech-in list resolution
+  - end-of-sentence detector, run on recorded PCM fixtures
+- **Storage contract tests:** one suite, run against an in-memory store in Node and against real IndexedDB in a browser.
+- **Provider adapters:** recorded fixtures (streams, tool calls, errors, quirks) for every endpoint type. An opt-in live suite uses the developer's own keys and never runs in CI.
+- **Scripted fake model:** a provider plugin that replies with predetermined text and tool calls, for deterministic, free end-to-end tests. Plugin authors can use it too.
+- **Trip simulation:** a GPS track plus a fake clock at 10× speed, with assertions on which triggers fired and what Shiori did.
+- **End-to-end (Playwright):** Chromium and WebKit, with simulated location, a fake microphone fed from a WAV file, pre-granted permissions, and phone-sized viewports.
+- **Device checklist** (manual, on a real iPhone and Android phone):
+  - car Bluetooth quality while the mic is open; whether `transient` ducks music
+  - built-in voice needing a first tap; word timings
+  - dictation in the installed app on iOS
+  - headphone or car-audio detection
+  - steering-wheel media buttons as a talk button (experiment)
+  - CarPlay and Android Auto flows; split screen with Maps on Android
+  - installing to the Home Screen; storage persistence
+  - wake lock in the installed app
+  - push notifications on iOS
+  - catch-up after locking the phone
+  - airplane-mode offline use
+  - import and export through the share sheet
+- **CI (GitHub Actions):**
+  - `tsc --checkJs` type-checking
+  - unit tests
+  - end-to-end tests
+  - a total-JavaScript-size check
+  - deployment on `main`
+- **Dogfooding:** the Thanksgiving trip. The trip's log is the bug report.
+
+## 19. Tech stack, hosting, repository
+
+- **Code:**
+  - native ES modules with no build step
+  - plain DOM plus small components of our own
+  - JSDoc types checked by `tsc --checkJs`
+  - **zero runtime dependencies**
+  - dev dependencies: TypeScript (type-checking only), Playwright
+  - Node 26 for tooling
+- **Hosting:**
+  - static files on Cloudflare Pages at `annai.guide`
+  - `anai.guide` is a 301 redirect only, never shown as the name
+  - the push relay is a Cloudflare Worker at `push.annai.guide`
+  - the domain is registered at Porkbun; a transfer to Cloudflare Registrar is possible later
+- **Repository layout:**
+
+```
+index.html  manifest.webmanifest  sw.js  _headers
+src/core/          storage, events, registry, scheduler, loop, context, patch, tsv, zip, crypto, schema
+src/plugins/       built-ins: files, talk, web, places, time, go, self, mcp, sensors, voice-browser, ui-*
+src/ui/            components, screens, tokens.css, i18n
+plugins-official/  on-demand: chat-completions, anthropic-messages, openai-responses, gemini, speech-*, search-*, storage-*
+catalog/           plugins.json, templates.json, links.json
+skills/            built-in skills (driving companion, …)
+relay/             push relay (Cloudflare Worker)
+test/              unit, contract, e2e, fixtures
+docs/              vision, specs, plans, mockups
+```
+
+## 20. Build order
+
+Each milestone gets its own implementation plan. The plugin interface exists from milestone 1. The target is to build everything before November; the Thanksgiving trip (Nov 25–29) is the field test.
+
+| # | Milestone | Done when |
+|---|---|---|
+| 1 | **Foundation:** app shell, service worker, install and data-loss warnings, `persist()`, storage (§4), event log, registry and plugin loading (§5), settings, archive export and import (§12.1–12.3), trace viewer | A trip can be created, edited as files, exported, wiped and imported back intact on iOS and Android. |
+| 2 | **Shiori core:** provider contract, the Chat Completions and Anthropic Messages plugins, catalog and templates, OpenRouter sign-in, roles and fallback (§9), agent loop and context (§6), output and built-in tools (§7), dock and avatar, conversation, personalities and memory (§14), the scripted fake model | A text-and-photo conversation with tool use works with fallback across two providers, and the trace shows everything. |
+| 3 | **Voice:** speaking, listening sessions, speech-in resolution, turn-taking and gate, voice modes (§10), speech provider plugins | A hands-free spoken back-and-forth works in a car on both phones. |
+| 4 | **Planning and bookings:** schemas, plan screen, import and confirmation flow, link catalog, `.ics` / `.pkpass` (§7.3, §8) | The real Thanksgiving trip is planned and its bookings imported. |
+| 5 | **Live mode:** sensors, triggers and watches, catch-up, replanning, the driving skill, offline pack (§11.1–11.5) | A simulated Big Sur drive produces the expected wakes, and a real local drive works. |
+| 6 | **Push relay** (§11.6) | A reminder arrives on a locked iPhone and opens a catch-up wake. |
+| 7 | **After the trip:** recap, replay, stamps, trip simulation UI (§13) | The Thanksgiving trip can be replayed and recapped. |
+| 8 | **Extensions:** skills, MCP client, code-plugin install UX, UI slots (§5, §16.4) | A third-party skill, an MCP server and a code plugin can each be installed and used. |
+| 9 | **Backup targets:** GitHub, S3-compatible, WebDAV (§12.4) | Automatic backup and restore to GitHub works. |
+
+Remaining official plugins (OpenAI Responses, Gemini, more speech and search providers) are added during milestones 2 and 3 as needed.
