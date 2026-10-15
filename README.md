@@ -29,4 +29,5 @@ memories afterwards.
 
 ## License
 
-TBD.
+[AGPL-3.0](LICENSE). annai is a hosted web app, so anyone who serves a
+modified version must publish their source too.
