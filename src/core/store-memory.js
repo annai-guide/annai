@@ -1,4 +1,5 @@
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').Tx} Tx */
+import { storeError } from './errors.js';
 
 /**
  * An in-memory Store with the same contract as the IndexedDB store, for unit
@@ -21,7 +22,7 @@ export function createMemoryStore() {
       };
       const p = queue.then(run, run);
       queue = p.catch(() => {});
-      return p;
+      return p.catch((e) => { throw storeError(e); });
     },
     close() {},
   };

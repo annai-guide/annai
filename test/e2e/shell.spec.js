@@ -34,3 +34,21 @@ test('an unexpected error shows a card and annai keeps running', async ({ page }
   await page.getByRole('link', { name: 'Trips' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
 });
+
+test('a mangled link opens Trips', async ({ page }) => {
+  await openApp(page, '#/trip/%E6');
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+});
+
+test('dropping a file on annai opens it', async ({ page }) => {
+  await openApp(page);
+  const files = await page.evaluateHandle(() => {
+    const d = new DataTransfer();
+    d.items.add(new File(['not a zip'], 'trip.annai.zip', { type: 'application/zip' }));
+    return d;
+  });
+  await page.dispatchEvent('main.view', 'dragover', { dataTransfer: files });
+  await page.dispatchEvent('main.view', 'drop', { dataTransfer: files });
+  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText("isn't an annai file");
+});

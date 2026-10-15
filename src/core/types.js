@@ -35,6 +35,9 @@
  * @typedef {object} Store
  * @property {<T>(stores: StoreName[], mode: 'readonly'|'readwrite', fn: (tx: Tx) => Promise<T>) => Promise<T>} tx
  *   Runs fn in one transaction. A read-write transaction commits only if fn resolves.
+ *   When the device is out of space it rejects with StorageFullError (errors.js) and writes nothing.
+|'readwrite', fn: (tx: Tx) => Promise<T>) => Promise<T>} tx
+ *   Runs fn in one transaction. A read-write transaction commits only if fn resolves.
  *   Inside fn, await only Tx calls: awaiting anything else lets IndexedDB commit early.
  * @property {() => void} close
  */

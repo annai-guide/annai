@@ -3,10 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { openApp, waitForServiceWorker } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 
-async function helloZip() {
+/** A test plugin from test/fixtures/plugins, as a zip. @param {string} [dir] */
+async function fixtureZip(dir = 'hello') {
   const z = new ZipWriter();
   for (const name of ['annai-plugin.json', 'index.js']) {
-    await z.add(`hello/${name}`, new Uint8Array(await readFile(new URL(`../fixtures/plugins/hello/${name}`, import.meta.url))));
+    await z.add(`${dir}/${name}`, new Uint8Array(await readFile(new URL(`../fixtures/plugins/${dir}/${name}`, import.meta.url))));
   }
   return Buffer.from(await z.finish().arrayBuffer());
 }
@@ -22,7 +23,7 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
   await page.goto('/#/plugins');
   await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   await expect(page.getByText('Trip record checks')).toBeVisible();
-  await page.getByLabel('Install a plugin from a file').setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await helloZip() });
+  await page.getByLabel('Install a plugin from a file').setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
   await expect(page.getByText('Hello checks 1.0.0')).toBeVisible();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
 
@@ -50,4 +51,44 @@ test('a bad plugin file is refused with a reason', async ({ page }) => {
   await waitForServiceWorker(page);
   await page.getByLabel('Install a plugin from a file').setInputFiles({ name: 'junk.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') });
   await expect(page.getByText("That plugin wasn't installed")).toBeVisible();
+});
+
+test("a plugin that never finishes starting doesn't keep annai from opening", async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  const files = await Promise.all(['annai-plugin.json', 'index.js'].map(async (name) => [name, await readFile(new URL(`../fixtures/plugins/hang/${name}`, import.meta.url), 'utf8')]));
+  await page.evaluate(async (files) => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    for (const [name, body] of files) await ws.write('sys:plugins', `/hang/${name}`, body, { author: 'system' });
+    await ws.write('sys:plugins', '/installed.json', { hang: { version: '1.0.0', name: 'Never starts', enabled: true, installed: 1, source: 'test' } }, { author: 'system' });
+    store.close();
+  }, files);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText(`The plugin "hang" didn't start`)).toBeVisible({ timeout: 15_000 });
+});
+
+test('reinstalling a plugin that is running asks for a restart, which runs the new version', async ({ page }) => {
+  await openApp(page, '#/plugins');
+  await waitForServiceWorker(page);
+  const input = page.getByLabel('Install a plugin from a file');
+  await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await expect(page.getByText('On', { exact: true })).toBeVisible();
+  await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await expect(page.getByText('Restart annai to run the new version of Hello checks.')).toBeVisible();
+  await page.getByRole('status').getByRole('button', { name: 'Restart annai' }).click();
+  await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect(page.getByText('On', { exact: true })).toBeVisible();
+});
+
+test("a plugin that installs but won't start says so, and stays installed", async ({ page }) => {
+  await openApp(page, '#/plugins');
+  await waitForServiceWorker(page);
+  await page.getByLabel('Install a plugin from a file').setInputFiles({ name: 'broken.zip', mimeType: 'application/zip', buffer: await fixtureZip('broken') });
+  await expect(page.getByText("Broken was installed, but it didn't start")).toBeVisible();
+  await expect(page.getByText('Broken 0.0.1')).toBeVisible();
 });

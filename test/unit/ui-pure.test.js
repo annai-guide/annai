@@ -26,3 +26,10 @@ test('format helpers', () => {
   assert.match(dateRange('2026-11-25', '2026-11-29'), /25/);
   assert.match(dateRange('2026-11-25'), /Nov 25/);
 });
+
+test('parseHash: a mangled link opens Trips instead of failing', () => {
+  const trips = { name: 'trips', parts: ['trips'], params: {} };
+  assert.deepEqual(parseHash('#/trip/%E6'), trips);
+  assert.deepEqual(parseHash('#/trip/trip-1/file?path=%E6%A1'), { name: 'file', parts: ['trip', 'trip-1', 'file'], params: { path: '�' } });
+  assert.deepEqual(parseHash('#import=%ZZ'), trips);
+});

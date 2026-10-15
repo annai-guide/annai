@@ -725,6 +725,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - `media-src 'self' blob:`
   - `worker-src 'self' blob:`
   - `frame-ancestors 'none'`
+  - `object-src 'none'`
 - **Model output never goes into `innerHTML`.** Our own small Markdown renderer builds DOM nodes and escapes everything else.
 - **API keys:** stored in `secrets`, never in context, redacted from the trace, and excluded from exports by default.
 - **The responsibility model (§2, principle 2):**

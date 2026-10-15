@@ -4,6 +4,7 @@ import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
 import { relTime, bytes } from '../format.js';
+import { explainStorageFull } from '../storage-full.js';
 
 /** @typedef {{ name: string, bytes: Uint8Array }} Source */
 
@@ -117,8 +118,10 @@ function preview(ctx, body, opened, desc) {
           h('div', { class: 'acts' }, ...result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, `Open ${titles[i] ?? 'trip'}`))),
           result.archived.length ? h('p', { class: 'sub', text: `${result.archived.length} older ${result.archived.length === 1 ? 'copy' : 'copies'} moved to archived trips.` }) : null,
           result.settings || result.plugins ? h('p', { class: 'sub', text: 'Restart annai to use the imported settings and plugins.' }) : null,
-          result.plugins ? h('p', { class: 'sub', text: 'Imported plugins arrive switched off. Turn on the ones you trust in Plugins.' }) : null));
+          result.plugins ? h('p', { class: 'sub', text: 'Imported plugins arrive switched off. Turn on the ones you trust in Plugins.' }) : null,
+          result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null));
       } catch (e) {
+        explainStorageFull(ctx, e);
         status.textContent = String(/** @type {any} */ (e)?.message ?? e);
         go.disabled = false;
       }
@@ -130,4 +133,11 @@ function preview(ctx, body, opened, desc) {
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
     h('div', { class: 'acts' }, go),
     status);
+}
+
+/** @param {string[]} ids */
+function keptKeys(ids) {
+  return ids.length === 1
+    ? `Kept your own API key for ${ids[0]}; the one in the file wasn't used.`
+    : `Kept your own API keys for ${ids.join(', ')}; the ones in the file weren't used.`;
 }

@@ -4,7 +4,7 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, newId } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -18,7 +18,8 @@ import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, newId } from './scopes.js';
  *   encrypted: boolean, scopes: ManifestScope[], files: ManifestFile[],
  *   blobs: { name: string, hash: string, type: string, size: number }[],
  *   extras: { name: string, hash: string }[], secrets?: string }} Manifest
- * @typedef {{ manifest: Manifest, entries: Map<string, Uint8Array> }} OpenedArchive
+ * @typedef {{ manifest: Manifest, entries: Map<string, Uint8Array>, events: Map<string, EventRecord[]> }} OpenedArchive
+ *   events: each scope's history log, parsed and checked, by entry name
  */
 
 export const ARCHIVE_FORMAT = 1;
@@ -49,17 +50,60 @@ export class NeedsPassphraseError extends ArchiveError {
 const DIRS = { [ME]: 'me', [SYS]: 'system/log', [SYS_SETTINGS]: 'system/settings', [SYS_PLUGINS]: 'system/plugins' };
 const dirFor = (/** @type {string} */ id) => DIRS[id] ?? `trips/${id}`;
 
+const HASH = { type: 'string', pattern: '^[0-9a-f]{64}$' };
+const SIZE = { type: 'integer', minimum: 0 };
+const TIME = { type: 'number' };
+const TEXT = { type: 'string' };
+
+/** Everything an archive says about itself is checked, not just the bytes it carries. */
 const MANIFEST_SCHEMA = {
   type: 'object',
   required: ['format', 'app', 'kind', 'created', 'include', 'scopes', 'files', 'blobs', 'extras'],
   properties: {
     format: { type: 'integer', minimum: 1 },
+    app: TEXT,
     kind: { enum: ['trip', 'everything'] },
-    scopes: { type: 'array', items: { type: 'object', required: ['dir', 'record'] } },
-    files: { type: 'array', items: { type: 'object', required: ['name', 'scope', 'path', 'hash', 'size', 'type'] } },
-    blobs: { type: 'array', items: { type: 'object', required: ['name', 'hash', 'type', 'size'] } },
-    extras: { type: 'array', items: { type: 'object', required: ['name', 'hash'] } },
+    created: TIME,
+    include: { type: 'object', properties: { history: { type: 'boolean' }, memory: { type: 'boolean' }, photos: { type: 'boolean' } } },
+    encrypted: { type: 'boolean' },
+    secrets: TEXT,
+    scopes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['dir', 'record'],
+        properties: {
+          dir: TEXT,
+          events: TEXT,
+          record: {
+            type: 'object',
+            required: ['id', 'kind', 'title', 'status', 'created', 'updated', 'format'],
+            properties: {
+              id: { type: 'string', minLength: 1 }, kind: { enum: ['me', 'trip', 'sys'] }, title: TEXT,
+              status: { enum: ['active', 'archived'] }, created: TIME, updated: TIME, format: { type: 'integer', minimum: 1 }, tripId: TEXT,
+            },
+          },
+        },
+      },
+    },
+    files: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['name', 'scope', 'path', 'hash', 'size', 'type', 'author', 'created', 'modified'],
+        properties: { name: TEXT, scope: TEXT, path: TEXT, hash: HASH, size: SIZE, type: TEXT, author: TEXT, created: TIME, modified: TIME, source: TEXT },
+      },
+    },
+    blobs: { type: 'array', items: { type: 'object', required: ['name', 'hash', 'type', 'size'], properties: { name: TEXT, hash: HASH, type: TEXT, size: SIZE } } },
+    extras: { type: 'array', items: { type: 'object', required: ['name', 'hash'], properties: { name: TEXT, hash: HASH } } },
   },
+};
+
+/** One line of a history log. */
+const EVENT_SCHEMA = {
+  type: 'object',
+  required: ['seq', 'ts', 'type', 'actor'],
+  properties: { seq: { type: 'integer', minimum: 1 }, ts: TIME, type: { type: 'string', minLength: 1 }, actor: TEXT, refs: { type: 'array', items: TEXT } },
 };
 
 /**
@@ -189,7 +233,9 @@ export async function openArchive(bytes, passphrase) {
   } catch {
     throw new ArchiveError('This file is damaged: its manifest is not readable.');
   }
-  if (typeof manifest?.format === 'number' && manifest.format > ARCHIVE_FORMAT) {
+  const newer = (/** @type {unknown} */ f) => typeof f === 'number' && f > FORMAT;
+  if ((typeof manifest?.format === 'number' && manifest.format > ARCHIVE_FORMAT)
+    || (Array.isArray(manifest?.scopes) && manifest.scopes.some((/** @type {any} */ s) => newer(s?.record?.format)))) {
     throw new ArchiveError('This file was made by a newer version of annai. Update annai, then open it again.');
   }
   const errors = validate(MANIFEST_SCHEMA, manifest);
@@ -208,7 +254,40 @@ export async function openArchive(bytes, passphrase) {
   for (const b of manifest.blobs) await check(b.name, b.hash);
   for (const x of manifest.extras) await check(x.name, x.hash);
   if (problems.length) throw new ArchiveError(`This file is damaged: ${problems.join('; ')}.`);
-  return { manifest, entries };
+  /** @type {Map<string, EventRecord[]>} */
+  const events = new Map();
+  for (const s of manifest.scopes) {
+    if (s.events) events.set(s.events, readLog(s.events, entries.get(s.events)));
+  }
+  return { manifest, entries, events };
+}
+
+/**
+ * Parses and checks a history log: every line an event, numbered upwards from 1 without repeats.
+ * @param {string} name @param {Uint8Array | undefined} bytes
+ * @returns {EventRecord[]}
+ */
+function readLog(name, bytes) {
+  if (!bytes) throw new ArchiveError(`This file is damaged: ${name} is missing.`);
+  /** @type {EventRecord[]} */
+  const out = [];
+  let last = 0;
+  for (const [i, line] of text(bytes).split('\n').entries()) {
+    if (!line) continue;
+    /** @type {any} */
+    let e;
+    try {
+      e = JSON.parse(line);
+    } catch {
+      throw new ArchiveError(`This file is damaged: line ${i + 1} of ${name} is not readable.`);
+    }
+    const errors = validate(EVENT_SCHEMA, e);
+    if (!errors.length && e.seq <= last) errors.push(`$.seq: ${e.seq} comes after ${last}`);
+    if (errors.length) throw new ArchiveError(`This file is damaged: line ${i + 1} of ${name}: ${errors.join('; ')}`);
+    last = e.seq;
+    out.push(e);
+  }
+  return out;
 }
 
 /**
@@ -245,7 +324,7 @@ export async function describeArchive(store, { manifest }) {
  * @param {{ trips?: Record<string, 'new'|'replace'|'skip'>, me?: 'keep'|'replace', settings?: 'keep'|'replace',
  *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number }} [choices]
  */
-export async function importArchive(store, { manifest, entries }, choices = {}) {
+export async function importArchive(store, { manifest, entries, events: logs }, choices = {}) {
   const now = choices.now ?? Date.now();
   /** @type {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[]} */
   const plan = [];
@@ -270,9 +349,7 @@ export async function importArchive(store, { manifest, entries }, choices = {}) 
       continue; // kept, or the system log, which belongs to the device it came from
     }
     const files = manifest.files.filter((f) => f.scope === rec.id);
-    const events = s.events
-      ? text(/** @type {Uint8Array} */ (entries.get(s.events))).split('\n').filter(Boolean).map((l) => JSON.parse(l))
-      : [];
+    const events = (s.events && logs.get(s.events)) || [];
     plan.push({ rec, target, mode, files, events });
     // Imported plugins arrive switched off: running their code must be an explicit choice
     // on the plugins screen, with its "full access" warning (spec §5.1).
@@ -291,19 +368,25 @@ export async function importArchive(store, { manifest, entries }, choices = {}) 
   /** @type {{ id: string, value: any }[]} */
   const secrets = choices.secrets && manifest.secrets ? JSON.parse(text(/** @type {Uint8Array} */ (entries.get(manifest.secrets)))) : [];
 
-  const result = { trips: /** @type {string[]} */ ([]), archived: /** @type {string[]} */ ([]), me: false, settings: false, plugins: false, secrets: 0 };
+  const result = {
+    trips: /** @type {string[]} */ ([]), archived: /** @type {string[]} */ ([]), me: false, settings: false, plugins: false, secrets: 0,
+    /** ids of API keys in the file that were not imported because this device already has a key with that id */
+    keptSecrets: /** @type {string[]} */ ([]),
+  };
   await store.tx(['blobs', 'files', 'events', 'scopes', 'secrets'], 'readwrite', async (t) => {
     for (const p of plan) {
       if (p.mode === 'replace') {
-        const old = (await t.listScopes()).find((l) => l.kind === 'trip' && l.status === 'active' && l.tripId === p.rec.tripId);
-        if (old) {
+        const copies = (await t.listScopes()).filter((l) => l.kind === 'trip' && l.status === 'active' && l.tripId && l.tripId === p.rec.tripId);
+        for (const old of copies) {
           await t.putScope({ ...old, status: 'archived', updated: now });
           await t.appendEvent(old.id, { ts: now, type: 'scope.archive', actor: 'user', data: { reason: 'replaced by an import' } });
           result.archived.push(old.id);
         }
       }
       if (p.mode === 'system') await t.deleteScope(p.target);
-      await t.putScope({ ...p.rec, id: p.target, status: 'active', updated: now });
+      // The target decides the kind: a record that calls "me" a trip must not make it one.
+      const kind = p.target === ME ? 'me' : p.mode === 'system' ? 'sys' : 'trip';
+      await t.putScope({ ...p.rec, id: p.target, kind, status: 'active', updated: now });
       for (const f of p.files) {
         const o = overrides.get(f.name);
         const hash = o?.hash ?? f.hash;
@@ -330,7 +413,10 @@ export async function importArchive(store, { manifest, entries }, choices = {}) 
     }
     // Keys already on this device always win: an archive must never swap in someone else's key.
     for (const s of secrets) {
-      if ((await t.getSecret(s.id)) !== undefined) continue;
+      if ((await t.getSecret(s.id)) !== undefined) {
+        result.keptSecrets.push(s.id);
+        continue;
+      }
       await t.putSecret(s.id, s.value);
       result.secrets++;
     }
@@ -348,10 +434,15 @@ export function archiveName({ kind, title, encrypted, now }) {
   return `annai-${base}-${day}${encrypted ? '.annai' : '.annai.zip'}`;
 }
 
-/** @param {string} s */
+/**
+ * A file-name-safe form of a title in any script: Latin accents are dropped ("Café" → "cafe"),
+ * other letters, marks and digits are kept, everything else becomes "-". At most 60 characters.
+ * @param {string} s
+ */
 function slug(s) {
-  const out = s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return out || 'trip';
+  const out = s.normalize('NFKD').replace(/[̀-ͯ]/g, '').normalize('NFC').toLowerCase()
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+  return [...out].slice(0, 60).join('').replace(/-+$/, '') || 'trip';
 }
 
 /** A path an archive may write: already in normal form (no "..", no reserved folder, leading "/"). @param {unknown} p */

@@ -4,12 +4,15 @@ import { normPath, normPrefix, typeForPath } from './paths.js';
 import { mergePatch } from './patch.js';
 import { validate } from './schema.js';
 
+export { StorageFullError } from './errors.js';
+
 /**
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').Tx} Tx
  * @typedef {import('./types.js').FileEntry} FileEntry
  * @typedef {{ author: string, type?: string, source?: string }} WriteOptions
  * @typedef {{ op: 'write'|'delete', scope: string, path: string, entry?: FileEntry }} Change
+ * @typedef {{ hash: string, type: string, size: number, bytes?: Uint8Array }} Version
  */
 
 export class ValidationError extends Error {
@@ -27,13 +30,6 @@ export class NotFoundError extends Error {
   constructor(what) {
     super(`${what} doesn't exist`);
     this.name = 'NotFoundError';
-  }
-}
-
-export class StorageFullError extends Error {
-  constructor() {
-    super("annai's storage on this device is full. Export a backup, then delete photos or old trips to make room.");
-    this.name = 'StorageFullError';
   }
 }
 
@@ -107,15 +103,18 @@ export class Workspace {
   }
 
   /**
-   * Applies a JSON Merge Patch to a JSON file.
-   * @param {string} scope @param {string} path @param {any} changes @param {WriteOptions} opts
+   * Applies a JSON Merge Patch to a JSON file. With create, a missing file starts as {}.
+   * @param {string} scope @param {string} path @param {any} changes @param {WriteOptions & { create?: boolean }} opts
    * @returns {Promise<FileEntry>}
    */
   async patch(scope, path, changes, opts) {
     const p = normPath(path);
     return this.#locked(scope, p, async () => {
-      const current = await this.readJSON(scope, p);
-      if (current === undefined) throw new NotFoundError(p);
+      let current = await this.readJSON(scope, p);
+      if (current === undefined) {
+        if (!opts.create) throw new NotFoundError(p);
+        current = {};
+      }
       return this.#write(scope, p, mergePatch(current, changes), opts);
     });
   }
@@ -125,28 +124,68 @@ export class Workspace {
     const p = normPath(path);
     return this.#locked(scope, p, async () => {
       const now = this.now();
-      await guardStorage(this.store.tx(['files', 'events', 'scopes'], 'readwrite', async (t) => {
-        await touchScope(t, scope, now);
-        const old = await t.getFile(scope, p);
-        if (!old) throw new NotFoundError(p);
-        await t.deleteFile(scope, p);
-        await t.appendEvent(scope, { ts: now, type: 'file.delete', actor: opts.author, data: { path: p, old: old.hash } });
-      }));
+      await this.store.tx(['files', 'events', 'scopes'], 'readwrite', (t) => removeFile(t, scope, p, opts.author, now));
       await this.#emit({ op: 'delete', scope, path: p });
     });
   }
 
   /**
+   * Writes and deletes several files in one transaction: all of them or none.
+   * Content null deletes the file. Like write(), unchanged content is left alone.
+   * @param {string} scope
+   * @param {{ path: string, content: string | Uint8Array | ArrayBuffer | object | null, type?: string }[]} changes
+   * @param {WriteOptions} opts
+   */
+  async writeMany(scope, changes, opts) {
+    /** @type {{ path: string, version: Version | null }[]} */
+    const prepared = [];
+    for (const c of changes) {
+      const path = normPath(c.path);
+      if (c.content === null) {
+        prepared.push({ path, version: null });
+        continue;
+      }
+      const type = c.type ?? typeForPath(path);
+      const bytes = contentBytes(c.content);
+      if (type === 'application/json') this.#validateJSON(scope, path, bytes);
+      prepared.push({ path, version: { hash: await sha256Hex(bytes), type, size: bytes.byteLength, bytes } });
+    }
+    const now = this.now();
+    const done = await this.store.tx(['blobs', 'files', 'events', 'scopes'], 'readwrite', async (t) => {
+      /** @type {Change[]} */
+      const out = [];
+      for (const { path, version } of prepared) {
+        if (!version) {
+          await removeFile(t, scope, path, opts.author, now);
+          out.push({ op: 'delete', scope, path });
+          continue;
+        }
+        const entry = await putVersion(t, scope, path, version, opts, now);
+        if (entry) out.push({ op: 'write', scope, path, entry });
+      }
+      return out;
+    });
+    for (const change of done) await this.#emit(change);
+  }
+
+  /**
    * Points the path back at an earlier version (its blob is kept forever in M1).
+   * The version keeps the type it was saved with: blobs are shared between files
+   * with the same bytes, so the blob's own type may belong to another file.
    * @param {string} scope @param {string} path @param {string} hash @param {WriteOptions} opts
    * @returns {Promise<FileEntry>}
    */
   async restore(scope, path, hash, opts) {
     const p = normPath(path);
     return this.#locked(scope, p, async () => {
-      const blob = await this.store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
+      const { blob, events } = await this.store.tx(['blobs', 'events'], 'readonly', async (t) => ({
+        blob: await t.getBlob(hash),
+        events: await t.listEvents(scope, { types: ['file.write'], reverse: true }),
+      }));
       if (!blob) throw new NotFoundError(`that version of ${p}`);
-      return this.#commit(scope, p, { hash, type: blob.type, size: blob.size }, opts);
+      const saved = events.find((e) => e.data?.path === p && e.data?.new === hash);
+      const type = typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(p);
+      return this.#commit(scope, p, { hash, type, size: blob.size }, opts);
     });
   }
 
@@ -168,30 +207,13 @@ export class Workspace {
     return this.#commit(scope, path, { hash, type, size: bytes.byteLength, bytes }, opts);
   }
 
-  /**
-   * @param {string} scope @param {string} path
-   * @param {{ hash: string, type: string, size: number, bytes?: Uint8Array }} blob
-   * @param {WriteOptions} opts
-   * @returns {Promise<FileEntry>}
-   */
-  async #commit(scope, path, blob, opts) {
+  /** @param {string} scope @param {string} path @param {Version} version @param {WriteOptions} opts @returns {Promise<FileEntry>} */
+  async #commit(scope, path, version, opts) {
     const now = this.now();
-    const { entry, changed } = await guardStorage(this.store.tx(['blobs', 'files', 'events', 'scopes'], 'readwrite', async (t) => {
-      await touchScope(t, scope, now);
-      const old = await t.getFile(scope, path);
-      if (old && old.hash === blob.hash && old.type === blob.type) return { entry: old, changed: false };
-      if (blob.bytes && !(await t.hasBlob(blob.hash))) {
-        await t.putBlob({ hash: blob.hash, type: blob.type, size: blob.size, data: ownBuffer(blob.bytes) });
-      }
-      /** @type {FileEntry} */
-      const next = {
-        scope, path, hash: blob.hash, size: blob.size, type: blob.type, author: opts.author,
-        created: old?.created ?? now, modified: now, ...(opts.source ? { source: opts.source } : {}),
-      };
-      await t.putFile(next);
-      await t.appendEvent(scope, { ts: now, type: 'file.write', actor: opts.author, data: { path, old: old?.hash ?? null, new: blob.hash, size: blob.size } });
-      return { entry: next, changed: true };
-    }));
+    const { entry, changed } = await this.store.tx(['blobs', 'files', 'events', 'scopes'], 'readwrite', async (t) => {
+      const next = await putVersion(t, scope, path, version, opts, now);
+      return next ? { entry: next, changed: true } : { entry: /** @type {FileEntry} */ (await t.getFile(scope, path)), changed: false };
+    });
     if (changed) await this.#emit({ op: 'write', scope, path, entry });
     return entry;
   }
@@ -252,12 +274,37 @@ async function touchScope(t, scope, now) {
   await t.putScope({ ...rec, updated: now });
 }
 
-/** @template T @param {Promise<T>} p @returns {Promise<T>} */
-async function guardStorage(p) {
-  try {
-    return await p;
-  } catch (e) {
-    if (/** @type {any} */ (e)?.name === 'QuotaExceededError') throw new StorageFullError();
-    throw e;
+/**
+ * Points path at a version inside transaction t: stores the blob if it is new, then the
+ * entry, then a file.write event. Returns null, touching nothing, when the content is unchanged.
+ * @param {Tx} t @param {string} scope @param {string} path @param {Version} version @param {WriteOptions} opts @param {number} now
+ * @returns {Promise<FileEntry | null>}
+ */
+async function putVersion(t, scope, path, version, opts, now) {
+  const old = await t.getFile(scope, path);
+  if (old && old.hash === version.hash && old.type === version.type) return null;
+  await touchScope(t, scope, now);
+  if (version.bytes && !(await t.hasBlob(version.hash))) {
+    await t.putBlob({ hash: version.hash, type: version.type, size: version.size, data: ownBuffer(version.bytes) });
   }
+  /** @type {FileEntry} */
+  const next = {
+    scope, path, hash: version.hash, size: version.size, type: version.type, author: opts.author,
+    created: old?.created ?? now, modified: now, ...(opts.source ? { source: opts.source } : {}),
+  };
+  await t.putFile(next);
+  await t.appendEvent(scope, {
+    ts: now, type: 'file.write', actor: opts.author,
+    data: { path, old: old?.hash ?? null, new: version.hash, size: version.size, type: version.type },
+  });
+  return next;
+}
+
+/** @param {Tx} t @param {string} scope @param {string} path @param {string} author @param {number} now */
+async function removeFile(t, scope, path, author, now) {
+  await touchScope(t, scope, now);
+  const old = await t.getFile(scope, path);
+  if (!old) throw new NotFoundError(path);
+  await t.deleteFile(scope, path);
+  await t.appendEvent(scope, { ts: now, type: 'file.delete', actor: author, data: { path, old: old.hash } });
 }

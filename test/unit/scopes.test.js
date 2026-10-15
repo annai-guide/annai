@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
-import { Workspace, ValidationError } from '../../src/core/workspace.js';
+import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles } from '../../src/core/scopes.js';
 import { logEvent } from '../../src/core/events.js';
@@ -110,4 +110,34 @@ test('the core-schemas plugin registers its schemas and unregisters them', () =>
   assert.equal(registered.length, CORE_SCHEMAS.length);
   dispose();
   assert.equal(registered.length, 0);
+});
+
+test('two first changes to the app settings at once both stick', async () => {
+  const { ws } = setup();
+  await ensureBaseScopes(ws);
+  await Promise.all([updateAppSettings(ws, { units: 'metric' }), updateAppSettings(ws, { theme: 'dark' })]);
+  assert.deepEqual(await readAppSettings(ws), { units: 'metric', theme: 'dark' });
+});
+
+test('creating a trip on a full device says storage is full and leaves nothing behind', async () => {
+  const inner = createMemoryStore();
+  let full = false;
+  /** @type {import('../../src/core/types.js').Store} */
+  const store = {
+    close() {},
+    tx(stores, mode, fn) {
+      return inner.tx(stores, mode, (t) => fn({ ...t, putScope: async (rec) => {
+        if (full) throw new DOMException('no space', 'QuotaExceededError');
+        return t.putScope(rec);
+      } }));
+    },
+  };
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+  await ensureBaseScopes(ws);
+  const kept = await createTrip(ws, { title: 'Kyoto' });
+  full = true;
+  await assert.rejects(createTrip(ws, { title: 'Big Sur' }), StorageFullError);
+  await assert.rejects(setTripStatus(store, kept, 'archived'), StorageFullError);
+  full = false;
+  assert.deepEqual((await listTrips(store)).active.map((s) => s.id), [kept]);
 });

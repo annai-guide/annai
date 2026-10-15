@@ -7,7 +7,10 @@ open-source, local-first travel agent that runs entirely in your browser:
 plan a trip before you go, get woken-up help while you travel, and keep the
 memories afterwards.
 
-> **Status:** idea / pre-design. Nothing to run yet. See [docs/vision.md](docs/vision.md).
+> **Status:** milestone 1 (foundation) is built: trips with versioned files, export and import
+> (optionally encrypted), plugins, offline use and the trace. Shiori, the guide herself, comes in
+> milestone 2. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Principles
 
@@ -40,8 +43,21 @@ annai has no build step and no runtime dependencies. Node 26 runs the tools.
 npm install
 npx playwright install chromium webkit
 npm run serve      # http://127.0.0.1:8790 with the production CSP
-npm run check      # type-check, unit tests, size budget
+npm run check      # type-check, unit tests, size budget, sw.js stamp
 npm run e2e        # Playwright: Chromium as a Pixel 7, WebKit as an iPhone 15
+npm run stamp      # after changing any shipped file: re-stamps sw.js
 ```
+
+On Linux without WebKit's system libraries, run the browser tests in Playwright's image
+(its tag must match `@playwright/test` in package.json):
+
+```bash
+docker run --rm --ipc=host -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v1.63.0-noble npx playwright test
+```
+
+**Deploying.** `sw.js` names its offline cache after a hash of every file it ships
+(`BUILD`, written by `npm run stamp`), so installed copies update whenever anything
+changes. CI fails when the stamp is stale; the Cloudflare Pages build command should be
+`node scripts/stamp.mjs`, so the deployed `sw.js` is always current.
 
 `docs/testing/device-checklist-m1.md` lists what to verify by hand on real phones.

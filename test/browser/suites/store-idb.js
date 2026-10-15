@@ -1,5 +1,5 @@
 import { storeContract } from '../../contract/store-contract.js';
-import { createIdbStore, eraseDatabase } from '../../../src/core/store-idb.js';
+import { createIdbStore, eraseDatabase, openDatabase } from '../../../src/core/store-idb.js';
 
 /** @param {any} test @param {any} assert */
 export default function (test, assert) {
@@ -46,6 +46,33 @@ export default function (test, assert) {
     await eraseDatabase(name);
     assert.equal(await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')), undefined);
     s.close();
+    await eraseDatabase(name);
+  });
+
+  test("idb: retries once when Safari reports the connection to the database server lost", async () => {
+    const s = await fresh();
+    let first = true;
+    await s.tx(['files'], 'readwrite', async (t) => {
+      if (first) {
+        first = false;
+        // The error WebKit gives a transaction that was in flight when it dropped the connection.
+        throw new DOMException('Connection to Indexed Database server lost. Refresh the page to try again', 'UnknownError');
+      }
+      await t.putFile(rec);
+    });
+    assert.equal((await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')))?.hash, 'h1');
+    s.close();
+  });
+
+  test('idb: opening waits while another connection blocks an upgrade, instead of failing', async () => {
+    const name = `annai-test-blocked-${Date.now()}`;
+    await eraseDatabase(name);
+    const old = await openDatabase(name);
+    // An old connection with no versionchange handler, like a service worker mid-read.
+    setTimeout(() => old.close(), 100);
+    const upgraded = await openDatabase(name, 2);
+    assert.equal(upgraded.version, 2);
+    upgraded.close();
     await eraseDatabase(name);
   });
 }

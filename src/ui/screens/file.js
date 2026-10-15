@@ -2,6 +2,7 @@ import { h, field, twoStep } from '../dom.js';
 import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
+import { explainStorageFull } from '../storage-full.js';
 import { relTime, bytes } from '../format.js';
 import { saveFile } from '../save.js';
 
@@ -13,6 +14,11 @@ export async function renderFile(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
   const back = `#/trip/${encodeURIComponent(id)}`;
+  // Only trips open here: a link must not lead someone into editing their profile or annai's own files.
+  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
+  if (!scope || scope.kind !== 'trip') {
+    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
+  }
   const head = [h('p', { class: 'crumbs' }, h('a', { href: back }, '← Back to trip')), h('h1', { class: 'title mono', text: path })];
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
@@ -41,6 +47,7 @@ function editor(ctx, id, entry, content) {
         await ctx.render();
         ctx.notices.toast('Saved');
       } catch (e) {
+        explainStorageFull(ctx, e);
         const lines = e instanceof ValidationError ? e.errors : [String(/** @type {any} */ (e)?.message ?? e)];
         errors.replaceChildren(...lines.map((m) => h('li', { text: m })));
         errors.hidden = false;

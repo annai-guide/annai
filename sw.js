@@ -1,6 +1,8 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
-const CACHE = `annai-shell-${VERSION}`;
+// A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
+const BUILD = '101b6435aa39';
+const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
@@ -27,6 +29,7 @@ const SHELL = [
   '/src/core/archive.js',
   '/src/core/bytes.js',
   '/src/core/crc32.js',
+  '/src/core/errors.js',
   '/src/core/events.js',
   '/src/core/hash.js',
   '/src/core/lock.js',
@@ -63,6 +66,7 @@ const SHELL = [
   '/src/ui/screens/trip.js',
   '/src/ui/screens/trips.js',
   '/src/ui/shell.js',
+  '/src/ui/storage-full.js',
   '/src/ui/tokens.css',
 ];
 
@@ -118,7 +122,10 @@ function openExisting() {
   return new Promise((resolve, reject) => {
     const r = indexedDB.open('annai');
     r.onupgradeneeded = () => r.transaction?.abort();
-    r.onsuccess = () => resolve(r.result);
+    r.onsuccess = () => {
+      r.result.onversionchange = () => r.result.close(); // never hold up the app's upgrade
+      resolve(r.result);
+    };
     r.onerror = () => reject(r.error);
   });
 }
@@ -143,8 +150,9 @@ async function servePlugin(req, pathname) {
   if (!m) return deny('not a plugin file');
   let id, path;
   try {
-    id = decodeURIComponent(m[1]);
-    path = `/${id}/${decodeURIComponent(m[2])}`;
+    // Stored paths are NFC (paths.js); a module written on a Mac may ask for the NFD spelling.
+    id = decodeURIComponent(m[1]).normalize('NFC');
+    path = `/${id}/${decodeURIComponent(m[2]).normalize('NFC')}`;
   } catch {
     return deny('not a plugin file');
   }

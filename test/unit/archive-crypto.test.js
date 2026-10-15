@@ -33,3 +33,10 @@ test('empty passphrases, plain files and damaged headers are refused', async () 
   new DataView(bad.buffer).setUint32(11, 1); // iterations field right after the 11-byte magic
   await assert.rejects(decrypt(bad, 'p'), (e) => e instanceof PassphraseError && /damaged/.test(e.message));
 });
+
+test('an encrypted file cut short is called damaged, not a crash', async () => {
+  const enc = await encrypt(utf8('our trip'), 'p', FAST);
+  for (const n of [11, 13, 20, 43, 50]) {
+    await assert.rejects(decrypt(enc.slice(0, n), 'p'), (e) => e instanceof PassphraseError && /damaged/.test(e.message), `${n} bytes`);
+  }
+});

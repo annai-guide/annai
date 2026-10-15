@@ -2,6 +2,7 @@ import { h, field, twoStep } from '../dom.js';
 import { setTripStatus } from '../../core/scopes.js';
 import { normPath, typeForPath } from '../../core/paths.js';
 import { ValidationError } from '../../core/workspace.js';
+import { explainStorageFull } from '../storage-full.js';
 import { relTime, bytes, dateRange } from '../format.js';
 import { exportPanel } from '../export-panel.js';
 
@@ -75,6 +76,7 @@ function newFile(ctx, id) {
   const path = h('input', { id: 'new-path', value: '/notes/', autocomplete: 'off', spellcheck: 'false' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   const show = (/** @type {any} */ e) => {
+    explainStorageFull(ctx, e);
     error.textContent = e instanceof ValidationError ? `That file doesn't match its format: ${e.errors.join('; ')}` : String(e?.message ?? e);
     error.hidden = false;
   };

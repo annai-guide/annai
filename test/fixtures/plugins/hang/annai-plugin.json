@@ -1,0 +1,8 @@
+{
+  "id": "hang",
+  "name": "Never starts",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "index.js",
+  "description": "Test plugin: activate() never finishes."
+}

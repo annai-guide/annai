@@ -70,3 +70,26 @@ test('a bad trip name gets a plain explanation', async ({ page }) => {
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('alert')).toContainText('Give the trip a name');
 });
+
+test('a full device says what to do, and nothing is half-saved', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('File path').fill('/notes/day1.md');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
+  await page.evaluate(() => {
+    IDBObjectStore.prototype.put = function () { throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); };
+  });
+  await page.getByLabel('Content').fill('# Day 1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText("annai's storage is full", { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Export a backup' }).click();
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel('Content')).toHaveValue('# day1\n'); // still the version from before the failed save
+});
+
+test("a trip link can't open your profile or annai's own files", async ({ page }) => {
+  await openApp(page, '#/trip/me/file?path=%2Fprofile.md');
+  await expect(page.getByRole('heading', { name: "This trip isn't on this device" })).toBeVisible();
+});

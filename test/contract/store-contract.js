@@ -1,3 +1,5 @@
+import { StorageFullError } from '../../src/core/errors.js';
+
 /**
  * Behaviour every Store must have. Runs under node:test against the memory
  * store and in browsers against IndexedDB (test/browser/suites/store-idb.js).
@@ -130,5 +132,14 @@ export function storeContract(test, assert, makeStore) {
     assert.equal(await s.tx(['files'], 'readonly', async () => 42), 42);
     await assert.rejects(s.tx(['files'], 'readonly', (t) => t.putFile(file('trip-1', '/a.md'))));
     await assert.rejects(s.tx(['files'], 'readonly', (t) => t.getBlob('x')));
+  });
+
+  test('tx: running out of space rejects with StorageFullError and writes nothing', async () => {
+    const s = await makeStore();
+    await assert.rejects(s.tx(['files'], 'readwrite', async (t) => {
+      await t.putFile(file('trip-1', '/a.md'));
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    }), StorageFullError);
+    assert.deepEqual(await s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), []);
   });
 }

@@ -1,16 +1,21 @@
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').Tx} Tx */
+import { storeError } from './errors.js';
 
 export const DB_NAME = 'annai';
 export const DB_VERSION = 1;
 
-/** Opens the database, creating or upgrading it. @param {string} [name] @returns {Promise<IDBDatabase>} */
-export function openDatabase(name = DB_NAME) {
+/**
+ * Opens the database, creating or upgrading it. An upgrade that another connection
+ * blocks waits for that connection to close (ours close on versionchange) instead of failing.
+ * @param {string} [name] @param {number} [version] differs from DB_VERSION only in tests
+ * @returns {Promise<IDBDatabase>}
+ */
+export function openDatabase(name = DB_NAME, version = DB_VERSION) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(name, DB_VERSION);
+    const req = indexedDB.open(name, version);
     req.onupgradeneeded = (e) => upgrade(req.result, e.oldVersion);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
-    req.onblocked = () => reject(new Error('annai is open in another tab that needs to close first.'));
   });
 }
 
@@ -70,7 +75,7 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
             if (db === d) db = null;
             continue;
           }
-          throw e;
+          throw storeError(e);
         }
       }
     },
@@ -81,9 +86,15 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
   };
 }
 
-/** @param {any} e */
+/**
+ * A transaction that failed because the connection went away: a closed connection
+ * throws InvalidStateError, and WebKit fails the transaction in flight with
+ * "UnknownError: Connection to Indexed Database server lost". Nothing was committed
+ * either way, so one retry is safe.
+ * @param {any} e
+ */
 function connectionLost(e) {
-  return e?.name === 'InvalidStateError' || /connection (is )?(lost|closing|closed)|database (is )?clos/i.test(String(e?.message));
+  return e?.name === 'InvalidStateError' || e?.name === 'UnknownError' || /connection (is )?(lost|closing|closed)|server lost|database (is )?clos/i.test(String(e?.message));
 }
 
 /**

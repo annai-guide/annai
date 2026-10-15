@@ -51,6 +51,7 @@ export async function encrypt(bytes, passphrase, iterations = ITERATIONS) {
 /** @param {Uint8Array} bytes @param {string} passphrase */
 export async function decrypt(bytes, passphrase) {
   if (!isEncrypted(bytes)) throw new PassphraseError('This file is not encrypted.');
+  if (bytes.length < MAGIC.length + 4 + 16 + 12 + 16) throw new PassphraseError('This file is damaged.'); // header + the 16-byte tag
   let o = MAGIC.length;
   const iterations = new DataView(bytes.buffer, bytes.byteOffset + o, 4).getUint32(0);
   o += 4;

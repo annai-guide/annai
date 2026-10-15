@@ -141,3 +141,71 @@ test('a name in decomposed Unicode (as macOS writes it) and the same name typed 
   assert.equal(await ws.readText('trip-1', typed), 'from a Mac');
   assert.deepEqual((await ws.list('trip-1', '/files/')).map((f) => f.path), [typed]);
 });
+
+test('saving content that has not changed leaves the trip where it is in Trips', async () => {
+  const { ws, store } = await setup();
+  await ws.write('trip-1', '/a.md', 'same', { author: 'user' });
+  const updated = async () => (await store.tx(['scopes'], 'readonly', (t) => t.getScope('trip-1')))?.updated;
+  const before = await updated();
+  await ws.write('trip-1', '/a.md', 'same', { author: 'user' });
+  assert.equal(await updated(), before);
+});
+
+test('restoring a version gives the file the type it had, not the type of a twin with the same bytes', async () => {
+  const { ws } = await setup();
+  await ws.write('trip-1', '/n.md', 'x', { author: 'user' });
+  const first = await ws.write('trip-1', '/n.txt', 'x', { author: 'user' }); // same bytes, so the blob is shared
+  await ws.write('trip-1', '/n.txt', 'y', { author: 'user' });
+  assert.equal((await ws.restore('trip-1', '/n.txt', first.hash, { author: 'user' })).type, 'text/plain');
+  const photo = await ws.write('trip-1', '/files/p', new Uint8Array([1]), { author: 'user', type: 'image/heic' });
+  await ws.write('trip-1', '/files/p', new Uint8Array([2]), { author: 'user', type: 'image/heic' });
+  assert.equal((await ws.restore('trip-1', '/files/p', photo.hash, { author: 'user' })).type, 'image/heic');
+});
+
+test('patch can create a missing file, and two first patches at once both apply', async () => {
+  const { ws } = await setup();
+  await Promise.all([
+    ws.patch('trip-1', '/s.json', { a: 1 }, { author: 'system', create: true }),
+    ws.patch('trip-1', '/s.json', { b: 2 }, { author: 'system', create: true }),
+  ]);
+  assert.deepEqual(await ws.readJSON('trip-1', '/s.json'), { a: 1, b: 2 });
+});
+
+test('writeMany writes and deletes several files in one transaction', async () => {
+  const { ws, store } = await setup();
+  await ws.write('trip-1', '/old.md', 'old', { author: 'user' });
+  /** @type {any[]} */
+  const seen = [];
+  ws.onChange((c) => { seen.push([c.op, c.path]); });
+  await ws.writeMany('trip-1', [
+    { path: 'a.md', content: 'a' },
+    { path: '/b.json', content: { x: 1 } },
+    { path: '/old.md', content: null },
+  ], { author: 'system' });
+  assert.deepEqual((await ws.list('trip-1')).map((f) => f.path), ['/a.md', '/b.json']);
+  assert.deepEqual(await ws.readJSON('trip-1', '/b.json'), { x: 1 });
+  const events = await store.tx(['events'], 'readonly', (t) => t.listEvents('trip-1'));
+  assert.deepEqual(events.slice(1).map((e) => [e.type, e.data.path]), [['file.write', '/a.md'], ['file.write', '/b.json'], ['file.delete', '/old.md']]);
+  assert.deepEqual(seen, [['write', '/a.md'], ['write', '/b.json'], ['delete', '/old.md']]);
+  await assert.rejects(ws.writeMany('trip-1', [{ path: '/c.md', content: 'c' }, { path: '/plan/x.json', content: { id: 'x' } }], { author: 'user' }), ValidationError);
+  await assert.rejects(ws.writeMany('trip-1', [{ path: '/c.md', content: 'c' }, { path: '/missing.md', content: null }], { author: 'user' }), NotFoundError);
+  assert.equal(await ws.read('trip-1', '/c.md'), undefined);
+});
+
+test('writeMany is all or nothing when storage runs out partway', async () => {
+  const inner = createMemoryStore();
+  let blobs = 0;
+  /** @type {import('../../src/core/types.js').Store} */
+  const filling = {
+    close() {},
+    tx(stores, mode, fn) {
+      return inner.tx(stores, mode, (t) => fn({ ...t, putBlob: async (rec) => {
+        if (++blobs === 2) throw new DOMException('no space', 'QuotaExceededError');
+        return t.putBlob(rec);
+      } }));
+    },
+  };
+  const { ws } = await setup(filling);
+  await assert.rejects(ws.writeMany('trip-1', [{ path: '/a.md', content: 'a' }, { path: '/b.md', content: 'b' }], { author: 'user' }), StorageFullError);
+  assert.deepEqual(await ws.list('trip-1'), []);
+});

@@ -2,6 +2,7 @@ import { h } from './dom.js';
 import { parseHash } from './router.js';
 import { createNotices } from './notices.js';
 import { installBanner } from './install.js';
+import { setPendingImport } from './import-state.js';
 import { renderTrips } from './screens/trips.js';
 import { renderTrip } from './screens/trip.js';
 import { renderFile } from './screens/file.js';
@@ -56,6 +57,15 @@ export function startShell(root, core) {
     }
   }
   addEventListener('hashchange', render);
+  // Spec §12.3: a file dropped anywhere on annai opens on the import screen.
+  addEventListener('dragover', (e) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault(); });
+  addEventListener('drop', (e) => {
+    const file = e.dataTransfer?.files[0];
+    if (!file) return;
+    e.preventDefault();
+    setPendingImport(file);
+    ctx.go('#/import');
+  });
   render();
   return {
     notices,

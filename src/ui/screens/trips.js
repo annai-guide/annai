@@ -2,6 +2,7 @@ import { h, field } from '../dom.js';
 import { listTrips, createTrip } from '../../core/scopes.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
+import { explainStorageFull } from '../storage-full.js';
 import { relTime, dateRange } from '../format.js';
 import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
@@ -46,6 +47,7 @@ function newTripForm(ctx) {
         const id = await createTrip(ctx.ws, { title: title.value, start: start.value || undefined, end: end.value || undefined });
         ctx.go(`#/trip/${encodeURIComponent(id)}`);
       } catch (err) {
+        explainStorageFull(ctx, err);
         error.textContent = explain(err);
         error.hidden = false;
       }

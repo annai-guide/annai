@@ -73,3 +73,20 @@ test('plugin files are only served for enabled plugins, only as safe types, neve
   const nav = await page.goto('/plugins/on/ok.js');
   expect(nav?.status()).toBe(403);
 });
+
+test('a plugin file named in decomposed Unicode, as macOS writes it, is still found', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  const status = await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    await ws.write('sys:plugins', '/demo/café.js', 'export const answer = 7;', { author: 'system' });
+    await ws.write('sys:plugins', '/installed.json', { demo: { enabled: true } }, { author: 'system' });
+    store.close();
+    return (await fetch(`/plugins/demo/${encodeURIComponent('café.js'.normalize('NFD'))}`)).status;
+  });
+  expect(status).toBe(200);
+});

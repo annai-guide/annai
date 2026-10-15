@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
-import { Workspace } from '../../src/core/workspace.js';
+import { Workspace, StorageFullError } from '../../src/core/workspace.js';
+import { sha256Hex } from '../../src/core/hash.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, listTrips, ME, SYS_SETTINGS } from '../../src/core/scopes.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
@@ -94,7 +95,7 @@ test('encrypted exports need the passphrase', async () => {
   const a = await device();
   const trip = await sampleTrip(a.ws);
   const { blob, filename } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, passphrase: 'pine needle', iterations: FAST, app: '0.1.0' });
-  assert.match(filename, /^annai-in-spring-\d{4}-\d{2}-\d{2}\.annai$/);
+  assert.match(filename, /^annai-京都-in-spring-\d{4}-\d{2}-\d{2}\.annai$/);
   const bytes = await bytesOf(blob);
   await assert.rejects(openArchive(bytes), NeedsPassphraseError);
   await assert.rejects(openArchive(bytes, 'wrong'), PassphraseError);
@@ -185,7 +186,7 @@ test('Japanese names round-trip and file names stay readable', async () => {
   const trip = await createTrip(a.ws, { title: '京都' });
   await a.ws.write(trip, '/notes/伏見稲荷.md', '千本鳥居', { author: 'user' });
   const { blob, filename } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
-  assert.match(filename, /^annai-trip-/);
+  assert.match(filename, /^annai-京都-/);
   const b = await device();
   const r = await importArchive(b.store, await openArchive(await bytesOf(blob)));
   assert.equal(await b.ws.readText(r.trips[0], '/notes/伏見稲荷.md'), '千本鳥居');
@@ -222,6 +223,7 @@ test('imported API keys never replace keys already on this device', async () => 
   await b.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('openrouter', 'mine'));
   const r = await importArchive(b.store, await openArchive(await bytesOf(blob), 'p'), { secrets: true });
   assert.equal(r.secrets, 1);
+  assert.deepEqual(r.keptSecrets, ['openrouter']);
   assert.equal(await b.store.tx(['secrets'], 'readonly', (t) => t.getSecret('openrouter')), 'mine');
   assert.equal(await b.store.tx(['secrets'], 'readonly', (t) => t.getSecret('groq')), 'gk-1');
 });
@@ -238,4 +240,117 @@ test('archives with unsafe file paths are refused', async () => {
     for (const [name, bytes] of entries) await z.add(name, name === MANIFEST_NAME ? utf8(JSON.stringify(manifest)) : bytes);
     await assert.rejects(openArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /unsafe file path/.test(e.message), bad);
   }
+});
+
+/**
+ * Re-zips an archive after edit() changes its manifest or entries. Fingerprints are
+ * recomputed, so the edit is the only thing wrong with the result.
+ * @param {Blob} blob @param {(manifest: any, entries: Map<string, Uint8Array>) => void} edit
+ */
+async function rewrite(blob, edit) {
+  const entries = await readZip(await bytesOf(blob));
+  const manifest = JSON.parse(text(/** @type {Uint8Array} */ (entries.get(MANIFEST_NAME))));
+  edit(manifest, entries);
+  for (const x of [...manifest.files, ...manifest.blobs, ...manifest.extras]) {
+    const b = entries.get(x.name);
+    if (b) x.hash = await sha256Hex(b);
+  }
+  const z = new ZipWriter();
+  for (const [name, bytes] of entries) await z.add(name, name === MANIFEST_NAME ? utf8(JSON.stringify(manifest)) : bytes);
+  return bytesOf(z.finish());
+}
+
+/** A store whose writes can be made to fail as if the device were full. */
+function fillableDevice() {
+  const inner = createMemoryStore();
+  const state = { full: false };
+  /** @type {import('../../src/core/types.js').Store} */
+  const store = {
+    close() {},
+    tx(stores, mode, fn) {
+      return inner.tx(stores, mode, (t) => fn({ ...t, putBlob: async (rec) => {
+        if (state.full) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        return t.putBlob(rec);
+      } }));
+    },
+  };
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+  return { store, ws, state };
+}
+
+test('"replace mine" archives every active copy of the trip, not just the first', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  const bytes = await bytesOf(blob);
+  const b = await device();
+  const one = (await importArchive(b.store, await openArchive(bytes))).trips[0];
+  const two = (await importArchive(b.store, await openArchive(bytes))).trips[0];
+  const r = await importArchive(b.store, await openArchive(bytes), { trips: { [trip]: 'replace' } });
+  assert.deepEqual(r.archived.slice().sort(), [one, two].sort());
+  assert.deepEqual((await listTrips(b.store)).active.map((s) => s.id), r.trips);
+});
+
+test('an archive whose history log is damaged is refused before anything is imported', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const bad = [
+    'not json',
+    '{"seq":"one","ts":1,"type":"file.write","actor":"user"}',
+    '{"seq":0,"ts":1,"type":"file.write","actor":"user"}',
+    '{"seq":99,"type":"file.write","actor":"user"}',
+    '{"seq":99,"ts":1,"actor":"user"}',
+    '{"seq":1,"ts":1,"type":"file.write","actor":"user"}', // a second seq 1 would silently replace the first
+  ];
+  for (const line of bad) {
+    const tampered = await rewrite(blob, (m, entries) => {
+      const name = m.scopes[0].events;
+      entries.set(name, utf8(text(/** @type {Uint8Array} */ (entries.get(name))) + line + '\n'));
+    });
+    await assert.rejects(openArchive(tampered), (e) => e instanceof ArchiveError && /damaged/.test(e.message), line);
+  }
+});
+
+test('an archive that describes its contents wrongly is refused', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  /** @type {((m: any) => void)[]} */
+  const edits = [
+    (m) => { delete m.scopes[0].record.title; },
+    (m) => { m.scopes[0].record.kind = 'admin'; },
+    (m) => { m.scopes[0].record.updated = 'yesterday'; },
+    (m) => { m.files[0].size = 'big'; },
+    (m) => { m.files[0].type = 7; },
+    (m) => { m.files[0].created = null; },
+  ];
+  for (const edit of edits) {
+    await assert.rejects(openArchive(await rewrite(blob, edit)), (e) => e instanceof ArchiveError && /damaged/.test(e.message), String(edit));
+  }
+  await assert.rejects(openArchive(await rewrite(blob, (m) => { m.scopes[0].record.format = 2; })), (e) => e instanceof ArchiveError && /newer version of annai/.test(e.message));
+});
+
+test('export file names keep titles in any script', () => {
+  const now = Date.UTC(2026, 10, 30);
+  const name = (/** @type {string} */ title) => archiveName({ kind: 'trip', title, encrypted: false, now });
+  assert.equal(name('京都'), 'annai-京都-2026-11-30.annai.zip');
+  assert.equal(name('北海道・冬'), 'annai-北海道-冬-2026-11-30.annai.zip');
+  assert.equal(name('ながの'), 'annai-ながの-2026-11-30.annai.zip');
+  assert.equal(name('Café Été'), 'annai-cafe-ete-2026-11-30.annai.zip');
+  assert.equal(name('नई दिल्ली'), 'annai-नई-दिल्ली-2026-11-30.annai.zip');
+  assert.equal(name('!!!'), 'annai-trip-2026-11-30.annai.zip');
+  assert.equal(name('a'.repeat(200)).length, 'annai--2026-11-30.annai.zip'.length + 60);
+});
+
+test('importing onto a full device says storage is full and imports nothing', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const b = fillableDevice();
+  await ensureBaseScopes(b.ws);
+  b.state.full = true;
+  await assert.rejects(importArchive(b.store, await openArchive(await bytesOf(blob))), StorageFullError);
+  b.state.full = false;
+  assert.deepEqual((await listTrips(b.store)).active, []);
 });

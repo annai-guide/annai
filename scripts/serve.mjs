@@ -19,7 +19,7 @@ const TYPES = {
 };
 const rules = parseHeaders(await readFile(join(root, '_headers'), 'utf8'));
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   for (const [k, v] of headersFor(rules, url.pathname)) res.setHeader(k, v);
   if (req.method === 'POST') {
@@ -27,7 +27,13 @@ http.createServer(async (req, res) => {
     res.writeHead(303, { Location: '/#/import' }).end();
     return;
   }
-  let path = decodeURIComponent(url.pathname);
+  let path;
+  try {
+    path = decodeURIComponent(url.pathname);
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }).end('bad request: the path is not valid percent-encoding');
+    return;
+  }
   if (path.endsWith('/')) path += 'index.html';
   const file = normalize(join(root, path));
   if (!file.startsWith(root) || file.includes(`${sep}.git${sep}`)) {
@@ -43,4 +49,5 @@ http.createServer(async (req, res) => {
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('not found');
   }
-}).listen(port, '127.0.0.1', () => console.log(`annai dev server: http://127.0.0.1:${port}/`));
+});
+server.listen(port, '127.0.0.1', () => console.log(`annai dev server: http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}/`));

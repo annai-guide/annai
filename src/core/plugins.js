@@ -3,12 +3,19 @@ import { text } from './bytes.js';
 import { normPath, typeForPath } from './paths.js';
 import { SYS_PLUGINS } from './scopes.js';
 import { logEvent } from './events.js';
+import { readZip } from './zip.js';
 import { PluginError } from './registry.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
 export const API_VERSION = 1;
 export const MANIFEST_FILE = 'annai-plugin.json';
+/** A plugin package may unpack to at most this much. */
+export const PLUGIN_MAX_BYTES = 64 * 1024 * 1024;
+/** How long a plugin's activate() may take before annai gives up on it. */
+export const START_TIMEOUT = 10_000;
+/** Launches in a row a plugin may fail to start on before annai turns it off. */
+export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
 
 export const PLUGIN_MANIFEST_SCHEMA = {
@@ -38,6 +45,18 @@ function checkManifest(manifest) {
   if (manifest.api !== API_VERSION) {
     throw new PluginError(id, `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION}`);
   }
+  if (manifest.entry !== undefined && !insidePlugin(manifest.entry)) {
+    throw new PluginError(id, `its entry "${manifest.entry}" isn't a file inside the plugin`);
+  }
+}
+
+/** A relative path that stays inside the plugin's folder. @param {string} rel */
+function insidePlugin(rel) {
+  try {
+    return normPath(`/p/${rel}`) === `/p/${rel}`;
+  } catch {
+    return false;
+  }
 }
 
 /** The folder the package lives in: "" or "name/" when everything sits in one top folder. @param {Map<string, Uint8Array>} files */
@@ -61,16 +80,23 @@ export class PluginHost {
   active = new Map();
   /** @type {Map<string, any>} built-in manifests by id */
   builtins = new Map();
+  /** Plugins whose code was imported in this session. The browser keeps a module by its URL until annai restarts. */
+  #loaded = new Set();
+  /** Plugins installed or removed after their code was imported: only a restart runs the new code. */
+  #stale = new Set();
 
   /**
    * @param {{ registry: Registry, workspace: Workspace, importModule?: (url: string) => Promise<any>,
-   *   pluginUrl?: (id: string, file: string) => string }} deps
+   *   pluginUrl?: (id: string, file: string) => string, startTimeout?: number, maxPackageBytes?: number }} deps
    */
-  constructor({ registry, workspace, importModule = (url) => import(url), pluginUrl = (id, file) => `/plugins/${encodeURIComponent(id)}/${file}` }) {
+  constructor({ registry, workspace, importModule = (url) => import(url), pluginUrl = (id, file) => `/plugins/${encodeURIComponent(id)}/${file}`,
+    startTimeout = START_TIMEOUT, maxPackageBytes = PLUGIN_MAX_BYTES }) {
     this.registry = registry;
     this.ws = workspace;
     this.importModule = importModule;
     this.pluginUrl = pluginUrl;
+    this.startTimeout = startTimeout;
+    this.maxPackageBytes = maxPackageBytes;
   }
 
   /** Starts a plugin that ships with the app. @param {string} moduleUrl */
@@ -82,14 +108,26 @@ export class PluginHost {
     return mod.manifest;
   }
 
-  /** @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string }>>} */
+  /** @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string, startFailures?: number }>>} */
   async installed() {
     return (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {};
   }
 
+  /** Installs (or replaces) a plugin from a zip file. @param {Uint8Array} bytes @param {{ source?: string }} [opts] */
+  async installZip(bytes, opts) {
+    /** @type {Map<string, Uint8Array>} */
+    let files;
+    try {
+      files = await readZip(bytes, { maxTotal: this.maxPackageBytes });
+    } catch (e) {
+      throw new PluginError('plugin', `this file isn't a plugin package annai can open: ${/** @type {any} */ (e)?.message ?? e}`);
+    }
+    return this.install(files, opts);
+  }
+
   /**
    * Installs (or replaces) a plugin from its files, e.g. an unzipped package.
-   * Everything is checked before anything is written.
+   * Everything is checked first, then written in one transaction: all or nothing.
    * @param {Map<string, Uint8Array>} files
    * @param {{ source?: string }} [opts]
    */
@@ -108,34 +146,53 @@ export class PluginHost {
     const id = manifest.id;
     if (this.builtins.has(id)) throw new PluginError(id, 'has the same id as a plugin built into annai');
     if (manifest.entry && !files.has(root + manifest.entry)) throw new PluginError(id, `its entry file ${manifest.entry} is missing`);
-    /** @type {[string, Uint8Array][]} */
-    const toWrite = [];
+    /** @type {Map<string, Uint8Array>} */
+    const toWrite = new Map();
     for (const [name, bytes] of files) {
       if (!name.startsWith(root) || name.endsWith('/')) continue;
       const rel = name.slice(root.length);
       try {
-        toWrite.push([normPath(`/${id}/${rel}`), bytes]);
+        toWrite.set(normPath(`/${id}/${rel}`), bytes);
       } catch {
         throw new PluginError(id, `the file name "${rel}" isn't allowed`);
       }
     }
     await this.stop(id);
-    for (const f of await this.ws.list(SYS_PLUGINS, `/${id}/`)) await this.ws.delete(SYS_PLUGINS, f.path, { author: 'system' });
-    for (const [path, bytes] of toWrite) await this.ws.write(SYS_PLUGINS, path, bytes, { author: 'system', type: typeForPath(path) });
-    await this.#updateState(id, { version: manifest.version, name: manifest.name, enabled: true, installed: this.ws.now(), source });
+    const state = await this.installed();
+    state[id] = { version: manifest.version, name: manifest.name, enabled: true, installed: this.ws.now(), source };
+    const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
+    await this.ws.writeMany(SYS_PLUGINS, [
+      ...gone.map((f) => ({ path: f.path, content: null })),
+      ...[...toWrite].map(([path, bytes]) => ({ path, content: bytes, type: typeForPath(path) })),
+      { path: STATE, content: state },
+    ], { author: 'system' });
+    if (this.#loaded.has(id)) this.#stale.add(id);
     return manifest;
   }
 
-  /** Starts every enabled installed plugin; returns the ones that failed. */
+  /** Whether annai must restart before this plugin's current code can run. @param {string} id */
+  needsRestart(id) {
+    return this.#stale.has(id);
+  }
+
+  /**
+   * Starts every enabled installed plugin and returns the ones that failed. A plugin that
+   * fails on MAX_START_FAILURES launches in a row is turned off (disabled: true).
+   * @returns {Promise<{ id: string, error: unknown, disabled: boolean }[]>}
+   */
   async startInstalled() {
-    /** @type {{ id: string, error: unknown }[]} */
     const failures = [];
     for (const [id, s] of Object.entries(await this.installed())) {
       if (!s.enabled) continue;
       try {
         await this.start(id);
+        if (s.startFailures) await this.#updateState(id, { startFailures: 0 }).catch(() => {});
       } catch (error) {
-        failures.push({ id, error });
+        const n = (s.startFailures ?? 0) + 1;
+        const disabled = n >= MAX_START_FAILURES;
+        await this.#updateState(id, { startFailures: n, ...(disabled ? { enabled: false } : {}) }).catch(() => {});
+        if (disabled) this.#log({ type: 'plugin.disabled', actor: 'system', data: { plugin: id, reason: `didn't start on ${n} launches in a row` } });
+        failures.push({ id, error, disabled });
       }
     }
     return failures;
@@ -144,8 +201,9 @@ export class PluginHost {
   /** @param {string} id */
   async start(id) {
     if (this.active.has(id)) return;
-    const manifest = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${MANIFEST_FILE}`);
-    if (!manifest) throw new PluginError(id, 'is not installed');
+    if (this.#stale.has(id)) throw new PluginError(id, 'was updated. Restart annai to run the new version.');
+    const manifest = await this.#stored(id);
+    this.#loaded.add(id);
     const mod = manifest.entry ? await this.importModule(this.pluginUrl(id, manifest.entry)) : {};
     await this.#start(manifest, mod, false);
   }
@@ -166,7 +224,7 @@ export class PluginHost {
 
   /** @param {string} id @param {boolean} enabled */
   async setEnabled(id, enabled) {
-    await this.#updateState(id, { enabled });
+    await this.#updateState(id, enabled ? { enabled, startFailures: 0 } : { enabled });
     if (enabled) {
       this.registry.enable(id);
       await this.start(id);
@@ -178,36 +236,95 @@ export class PluginHost {
   /** @param {string} id */
   async uninstall(id) {
     await this.stop(id);
-    for (const f of await this.ws.list(SYS_PLUGINS, `/${id}/`)) await this.ws.delete(SYS_PLUGINS, f.path, { author: 'system' });
     const state = await this.installed();
     delete state[id];
-    await this.ws.write(SYS_PLUGINS, STATE, state, { author: 'system' });
+    await this.ws.writeMany(SYS_PLUGINS, [
+      ...(await this.ws.list(SYS_PLUGINS, `/${id}/`)).map((f) => ({ path: f.path, content: null })),
+      { path: STATE, content: state },
+    ], { author: 'system' });
+    if (this.#loaded.has(id)) this.#stale.add(id);
   }
 
-  /** Rows for the plugins screen. */
+  /** Rows for the plugins screen. problem: why an installed plugin can't start, if it can't. */
   async describe() {
     const rows = [];
     for (const m of this.builtins.values()) {
-      rows.push({ id: m.id, name: m.name, version: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id), failing: this.registry.isDisabled(m.id) });
+      rows.push({ id: m.id, name: m.name, version: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id), failing: this.registry.isDisabled(m.id), problem: null, restart: false });
     }
     for (const [id, s] of Object.entries(await this.installed())) {
-      const m = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${MANIFEST_FILE}`);
-      rows.push({ id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, description: m?.description ?? '', builtin: false, enabled: Boolean(s.enabled), active: this.active.has(id), failing: this.registry.isDisabled(id) });
+      /** @type {any} */
+      let m = null;
+      /** @type {string | null} */
+      let problem = null;
+      try {
+        m = await this.#stored(id);
+      } catch (e) {
+        problem = String(/** @type {any} */ (e)?.message ?? e);
+      }
+      rows.push({
+        id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, description: m?.description ?? '', builtin: false,
+        enabled: Boolean(s.enabled), active: this.active.has(id), failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
+      });
     }
     return rows;
+  }
+
+  /** The stored manifest, checked again: storage can hold one that was never installed through install(). @param {string} id */
+  async #stored(id) {
+    /** @type {any} */
+    let manifest;
+    try {
+      manifest = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${MANIFEST_FILE}`);
+    } catch {
+      throw new PluginError(id, `its ${MANIFEST_FILE} is not valid JSON`);
+    }
+    if (!manifest) throw new PluginError(id, 'is not installed');
+    checkManifest(manifest);
+    if (manifest.id !== id) throw new PluginError(id, `its ${MANIFEST_FILE} names "${manifest.id}", not the folder it is installed in`);
+    return manifest;
   }
 
   /** @param {any} manifest @param {any} mod @param {boolean} builtin */
   async #start(manifest, mod, builtin) {
     const id = manifest.id;
     let dispose = () => {};
-    if (typeof mod?.activate === 'function') {
-      const r = await this.registry.guard(id, 'starting', mod.activate)(this.#api(id));
-      if (typeof r === 'function') dispose = r;
-    } else if (manifest.entry) {
-      throw new PluginError(id, 'its module has no activate() function');
+    try {
+      if (typeof mod?.activate === 'function') {
+        const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, () => mod.activate(api)))(this.#api(id));
+        if (typeof r === 'function') dispose = r;
+      } else if (manifest.entry) {
+        throw new PluginError(id, 'its module has no activate() function');
+      }
+    } catch (e) {
+      this.registry.removePlugin(id); // whatever it registered before failing
+      throw e;
     }
     this.active.set(id, { manifest, builtin, dispose });
+  }
+
+  /**
+   * Runs activate(), giving up after startTimeout so one plugin can't keep annai from
+   * starting. If it finishes later, whatever it set up is taken down again.
+   * @param {string} id @param {() => any} activate
+   */
+  #inTime(id, activate) {
+    const work = Promise.resolve().then(activate);
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let timer;
+    const late = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`it didn't finish starting within ${Math.round(this.startTimeout / 100) / 10} seconds`));
+        work.then((r) => {
+          if (this.active.has(id)) return;
+          try {
+            if (typeof r === 'function') r();
+          } finally {
+            this.registry.removePlugin(id);
+          }
+        }).catch(() => {});
+      }, this.startTimeout);
+    });
+    return Promise.race([work, late]).finally(() => clearTimeout(timer));
   }
 
   /** The object a plugin's activate() receives (milestone 1 subset of spec §5.4). @param {string} id */
@@ -218,7 +335,10 @@ export class PluginHost {
       register: (/** @type {string} */ kind, /** @type {any} */ item) => registry.add(id, kind, item),
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
       tools: Object.freeze({
-        register: (/** @type {any} */ tool) => registry.add(id, 'tool', { ...tool, run: registry.guard(id, `tool ${tool.name}`, tool.run) }),
+        register: (/** @type {any} */ tool) => {
+          if (typeof tool?.run !== 'function') throw new PluginError(id, `the tool ${tool?.name} has no run() function`);
+          return registry.add(id, 'tool', { ...tool, run: registry.guard(id, `tool ${tool.name}`, tool.run.bind(tool)) });
+        },
       }),
       events: Object.freeze({
         append: (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data) => logEvent(this.ws.store, scope, { type, actor: `plugin:${id}`, data }),
@@ -227,10 +347,17 @@ export class PluginHost {
     });
   }
 
+  /** @param {{ type: string, actor: string, data: any }} ev */
+  #log(ev) {
+    try {
+      Promise.resolve(this.registry.log(ev)).catch(() => {});
+    } catch {
+      // logging must never break the caller
+    }
+  }
+
   /** @param {string} id @param {Record<string, any>} changes */
   async #updateState(id, changes) {
-    const state = await this.installed();
-    state[id] = { ...state[id], ...changes };
-    await this.ws.write(SYS_PLUGINS, STATE, state, { author: 'system' });
+    await this.ws.patch(SYS_PLUGINS, STATE, { [id]: changes }, { author: 'system', create: true });
   }
 }

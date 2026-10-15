@@ -12,7 +12,8 @@
     "serve": "node scripts/serve.mjs",
     "e2e": "playwright test",
     "size": "node scripts/size.mjs",
-    "check": "npm run typecheck && npm test && npm run size"
+    "stamp": "node scripts/stamp.mjs",
+    "check": "npm run typecheck && npm test && npm run size && node scripts/stamp.mjs --check"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

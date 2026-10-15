@@ -1,11 +1,20 @@
 /**
  * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/settings",
  * "#/plugins", "#/trace", "#/import?inbox=1". "#import=<url>" (spec §12.3)
- * becomes the import screen with that URL.
+ * becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash
  * @returns {{ name: string, parts: string[], params: Record<string, string> }}
  */
 export function parseHash(hash) {
+  try {
+    return parse(hash);
+  } catch {
+    return { name: 'trips', parts: ['trips'], params: {} };
+  }
+}
+
+/** @param {string} hash */
+function parse(hash) {
   const raw = hash.replace(/^#/, '');
   if (raw.startsWith('import=')) return { name: 'import', parts: ['import'], params: { url: decodeURIComponent(raw.slice('import='.length)) } };
   const h = raw.startsWith('/') ? raw : '/trips';

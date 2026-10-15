@@ -10,6 +10,8 @@ import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
 import { isStandalone, requestPersist } from '../ui/platform.js';
+import { explainStorageFull } from '../ui/storage-full.js';
+import { StorageFullError } from '../core/errors.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -42,15 +44,26 @@ async function boot() {
   syncTripTitles(ws);
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);
-  const failures = await plugins.startInstalled();
 
   const shell = startShell(root, { store, ws, registry, plugins, version: VERSION });
   watchErrors(store, shell);
-  for (const f of failures) {
-    shell.notices.card({ tone: 'warn', title: `The plugin "${f.id}" didn't start`, body: `${/** @type {any} */ (f.error)?.message ?? f.error} You can turn it off in Settings → Plugins.` });
-  }
   if (isStandalone()) requestPersist();
   registerServiceWorker(store, shell);
+  // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
+  // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
+  startPlugins(plugins, shell);
+}
+
+/** @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, render: () => unknown }} shell */
+async function startPlugins(plugins, shell) {
+  const failures = await plugins.startInstalled();
+  for (const f of failures) {
+    const why = String(/** @type {any} */ (f.error)?.message ?? f.error);
+    shell.notices.card(f.disabled
+      ? { tone: 'warn', title: `The plugin "${f.id}" was turned off`, body: `It didn't start the last few times annai opened: ${why} You can turn it back on in Settings → Plugins.` }
+      : { tone: 'warn', title: `The plugin "${f.id}" didn't start`, body: `${why} You can turn it off in Settings → Plugins.` });
+  }
+  if (location.hash.startsWith('#/plugins')) shell.render(); // show which plugins are now running
 }
 
 /** @param {any} store @param {ReturnType<typeof startShell>} shell */
@@ -81,6 +94,11 @@ async function registerServiceWorker(store, shell) {
 /** Spec §17 rule 4: record unexpected errors, show a card, keep running. */
 function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof startShell>} */ shell) {
   const report = (/** @type {any} */ err) => {
+    if (err instanceof StorageFullError) {
+      // Logging it would need the space that ran out; the card says what to do.
+      explainStorageFull({ notices: shell.notices, go: (/** @type {string} */ hash) => { location.hash = hash; } }, err);
+      return;
+    }
     logEvent(store, SYS, { type: 'error', data: { message: String(err?.message ?? err), stack: String(err?.stack ?? '').slice(0, 2000) } }).catch(() => {});
     shell.notices.card({
       tone: 'warn', title: 'Something went wrong',

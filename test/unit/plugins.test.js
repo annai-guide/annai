@@ -2,11 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { createMemoryStore } from '../../src/core/store-memory.js';
-import { Workspace, ValidationError } from '../../src/core/workspace.js';
+import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, SYS_PLUGINS } from '../../src/core/scopes.js';
 import { Registry, PluginError } from '../../src/core/registry.js';
-import { PluginHost } from '../../src/core/plugins.js';
+import { PluginHost, PLUGIN_MAX_BYTES } from '../../src/core/plugins.js';
+import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
 /** @param {string} dir @param {string} [prefix] */
@@ -18,8 +19,8 @@ async function fixture(dir, prefix = '') {
   return files;
 }
 
-async function setup() {
-  const store = createMemoryStore();
+/** @param {{ store?: import("../../src/core/types.js").Store } & Record<string, any>} [opts] */
+async function setup({ store = createMemoryStore(), ...hostOpts } = {}) {
   /** @type {any[]} */
   const logged = [];
   const registry = new Registry({ log: (ev) => logged.push(ev) });
@@ -32,8 +33,10 @@ async function setup() {
     const code = await ws.readText(SYS_PLUGINS, `/${decodeURIComponent(m[1])}/${m[2]}`);
     return import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
   };
-  const host = new PluginHost({ registry, workspace: ws, importModule });
-  return { store, ws, registry, host, logged };
+  const host = new PluginHost({ registry, workspace: ws, importModule, ...hostOpts });
+  /** A new launch of annai on the same storage. */
+  const relaunch = () => new PluginHost({ registry: new Registry(), workspace: ws, importModule });
+  return { store, ws, registry, host, logged, importModule, relaunch };
 }
 
 test('registry: add, list, remove one, remove a plugin, onChange', () => {
@@ -138,4 +141,126 @@ test('host: a plugin whose activate throws is not started and is logged', async 
   assert.equal(logged.at(-1).type, 'plugin.error');
   const failures = await host.startInstalled();
   assert.deepEqual(failures.map((f) => f.id), ['broken']);
+});
+
+/** A one-file plugin package. @param {string} id @param {string} code @param {Record<string, any>} [extra] manifest fields */
+function inline(id, code, extra = {}) {
+  return new Map([
+    ['annai-plugin.json', utf8(JSON.stringify({ id, name: id, version: '1.0.0', api: 1, entry: 'index.js', ...extra }))],
+    ['index.js', utf8(code)],
+  ]);
+}
+
+test('host: a plugin that never finishes starting is given up on, and annai carries on', async () => {
+  const { host, logged } = await setup({ startTimeout: 50 });
+  await host.install(await fixture('hang'));
+  const failures = await host.startInstalled();
+  assert.deepEqual(failures.map((f) => f.id), ['hang']);
+  assert.match(String(/** @type {any} */ (failures[0].error)?.message), /didn't finish starting/);
+  assert.equal(host.active.has('hang'), false);
+  assert.equal(logged.at(-1).type, 'plugin.error');
+});
+
+test('host: what a plugin sets up after it timed out is taken down again', async () => {
+  const { host, registry } = await setup({ startTimeout: 20 });
+  await host.install(inline('late', `export async function activate(annai) {
+    await new Promise((r) => setTimeout(r, 60));
+    annai.register('thing', { from: 'late' });
+    return () => { globalThis.lateDisposed = true; };
+  }`));
+  await assert.rejects(host.start('late'), /didn't finish starting/);
+  await new Promise((r) => setTimeout(r, 150));
+  assert.deepEqual(registry.list('thing'), []);
+  assert.equal(/** @type {any} */ (globalThis).lateDisposed, true);
+});
+
+test('host: a stored plugin is checked again before it starts', async () => {
+  const { ws, host } = await setup();
+  const put = (/** @type {string} */ path, /** @type {any} */ content) => ws.write(SYS_PLUGINS, path, content, { author: 'system' });
+  await put('/evil/index.js', 'export function activate() {}');
+  await put('/installed.json', { evil: { version: '1.0.0', name: 'Evil', enabled: true, installed: 1, source: 'x' } });
+  /** @type {[any, RegExp][]} */
+  const cases = [
+    [{ id: 'evil', name: 'Evil', version: '1.0.0', api: 99, entry: 'index.js' }, /API 99/],
+    [{ id: 'evil', name: 'Evil', version: '1.0.0', api: 1, entry: '../../whatever.js' }, /entry/],
+    [{ id: 'other', name: 'Evil', version: '1.0.0', api: 1, entry: 'index.js' }, /folder/],
+  ];
+  for (const [manifest, why] of cases) {
+    await put('/evil/annai-plugin.json', manifest);
+    await assert.rejects(host.start('evil'), (e) => e instanceof PluginError && why.test(e.message), String(why));
+    assert.equal(host.active.has('evil'), false);
+    assert.match(String((await host.describe()).find((r) => r.id === 'evil')?.problem), why);
+  }
+});
+
+test('host: reinstalling a plugin that already ran asks for a restart instead of running old code', async () => {
+  const { host, relaunch } = await setup();
+  await host.install(await fixture('hello'));
+  await host.install(await fixture('hello')); // never ran yet: nothing stale
+  assert.equal(host.needsRestart('hello'), false);
+  await host.start('hello');
+  await host.install(await fixture('hello'));
+  assert.equal(host.needsRestart('hello'), true);
+  await assert.rejects(host.start('hello'), /Restart annai/);
+  assert.equal(host.active.has('hello'), false);
+  assert.equal((await host.describe()).find((r) => r.id === 'hello')?.restart, true);
+  const next = relaunch();
+  await next.start('hello');
+  assert.equal(next.active.has('hello'), true);
+});
+
+test('host: a plugin that fails to start on three launches in a row is turned off', async () => {
+  const { host, relaunch } = await setup();
+  await host.install(await fixture('broken'));
+  for (let launch = 1; launch <= 3; launch++) {
+    const failures = await relaunch().startInstalled();
+    assert.deepEqual(failures.map((f) => [f.id, f.disabled]), [['broken', launch === 3]], `launch ${launch}`);
+  }
+  assert.equal((await host.installed()).broken.enabled, false);
+  assert.deepEqual(await relaunch().startInstalled(), []);
+  await assert.rejects(host.setEnabled('broken', true), PluginError); // turning it back on is a fresh start
+  assert.equal((await host.installed()).broken.startFailures, 0);
+});
+
+test('host: an install that runs out of space leaves nothing behind', async () => {
+  const inner = createMemoryStore();
+  let full = false;
+  /** @type {import('../../src/core/types.js').Store} */
+  const store = {
+    close() {},
+    tx(stores, mode, fn) {
+      let blobs = 0;
+      return inner.tx(stores, mode, (t) => fn({ ...t, putBlob: async (rec) => {
+        if (full && ++blobs === 2) throw new DOMException('no space', 'QuotaExceededError');
+        return t.putBlob(rec);
+      } }));
+    },
+  };
+  const { ws, host } = await setup({ store });
+  full = true;
+  await assert.rejects(host.install(await fixture('hello')), StorageFullError);
+  full = false;
+  assert.deepEqual(await ws.list(SYS_PLUGINS, '/hello/'), []);
+  assert.deepEqual(await host.installed(), {});
+});
+
+test('host: plugin packages are limited to 64 MB unpacked', async () => {
+  assert.equal(PLUGIN_MAX_BYTES, 64 * 1024 * 1024);
+  const { host } = await setup({ maxPackageBytes: 4000 });
+  const z = new ZipWriter();
+  for (const [name, bytes] of await fixture('hello')) await z.add(name, bytes);
+  await z.add('big.txt', utf8('x'.repeat(5000)));
+  const zip = new Uint8Array(await z.finish().arrayBuffer());
+  await assert.rejects(host.installZip(zip), (e) => e instanceof PluginError && /too large/.test(e.message));
+  await assert.rejects(host.installZip(utf8('not a zip')), PluginError);
+  assert.equal((await (await setup()).host.installZip(zip)).id, 'hello'); // fine under the real limit
+});
+
+test('host: a tool keeps its own "this" when annai runs it', async () => {
+  const { host, registry } = await setup();
+  await host.install(inline('tooly', `export function activate(annai) {
+    annai.tools.register({ name: 'greet', prefix: 'hi ', run(x) { return this.prefix + x; } });
+  }`));
+  await host.start('tooly');
+  assert.equal(await registry.list('tool')[0].run('there'), 'hi there');
 });
