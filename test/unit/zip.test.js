@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ZipWriter, ZipReader, readZip, ZipError } from '../../src/core/zip.js';
-import { PiecesOnly } from './pieces.js';
+import { PiecesOnly, blobOf } from './pieces.js';
 import { utf8, text } from '../../src/core/bytes.js';
 
 const bytesOf = async (/** @type {Blob} */ blob) => new Uint8Array(await blob.arrayBuffer());
@@ -146,4 +146,38 @@ test('an entry that declares more than the limit is refused before it is read', 
   const z = new ZipWriter();
   await z.add('big.txt', utf8('x'.repeat(5000)));
   await assert.rejects(ZipReader.open(z.finish(), { maxEntry: 4000 }), (e) => e instanceof ZipError && /too large/.test(e.message));
+});
+
+/** Rewrites the uncompressed size of every entry (local and central headers). @param {Uint8Array} b @param {number} size */
+function lieAboutAllSizes(b, size) {
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let end = b.length - 22;
+  while (v.getUint32(end, true) !== 0x06054b50) end--;
+  let p = v.getUint32(end + 16, true);
+  for (let i = 0; i < v.getUint16(end + 10, true); i++) {
+    v.setUint32(p + 24, size, true);
+    v.setUint32(v.getUint32(p + 42, true) + 22, size, true);
+    p += 46 + v.getUint16(p + 28, true) + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+  }
+  return b;
+}
+
+test('a small file that says it unpacks to far more than its size is refused before anything is inflated (zip bomb)', async () => {
+  // Every entry is under the per-entry limit; only the whole archive gives it away.
+  const z = new ZipWriter();
+  for (let i = 0; i < 8; i++) await z.add(`${i}.bin`, new Uint8Array(1024));
+  const b = lieAboutAllSizes(await bytesOf(z.finish()), 900 * 1024 * 1024);
+  await assert.rejects(ZipReader.open(blobOf(b)), (e) => e instanceof ZipError && /zip bomb/.test(e.message));
+  const one = new ZipWriter();
+  await one.add('zeros.bin', new Uint8Array(1024));
+  await assert.rejects(ZipReader.open(blobOf(lieAboutSize(await bytesOf(one.finish()), 500 * 1024 * 1024))), (e) => e instanceof ZipError && /zip bomb/.test(e.message));
+});
+
+test('the declared total of an archive is capped as well as each entry', async () => {
+  const z = new ZipWriter();
+  await z.add('a.bin', noise(5000));
+  await z.add('b.bin', noise(5000));
+  const file = z.finish();
+  await assert.rejects(ZipReader.open(file, { maxTotal: 8000 }), (e) => e instanceof ZipError && /too large/.test(e.message));
+  assert.equal((await ZipReader.open(file, { maxTotal: 10000 })).names().length, 2);
 });

@@ -27,20 +27,23 @@ export async function deflateRaw(bytes) {
 export async function inflateRaw(data, limit = Infinity) {
   const source = data instanceof Blob ? data : new Blob([/** @type {BlobPart} */ (data)]);
   const reader = source.stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  // With a known size, inflate into one buffer of that size: half the memory of collecting chunks and joining them.
+  const out = Number.isFinite(limit) ? new Uint8Array(limit) : null;
   /** @type {Uint8Array[]} */
   const chunks = [];
   let total = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
+    if (total + value.byteLength > limit) {
       await reader.cancel().catch(() => {});
       throw new ZipError('is larger than it says (it may be a zip bomb), so annai stopped reading it');
     }
-    chunks.push(value);
+    if (out) out.set(value, total);
+    else chunks.push(value);
+    total += value.byteLength;
   }
-  return concat(chunks);
+  return out ? out.subarray(0, total) : concat(chunks);
 }
 
 /**
@@ -141,6 +144,14 @@ function dosTime(ms) {
 export const MAX_TOTAL = 2 * 1024 * 1024 * 1024;
 /** Entries larger than this (uncompressed) are refused: each one is in memory while it is read. */
 export const MAX_ENTRY = 1024 * 1024 * 1024;
+/** What a ZipReader accepts in total, uncompressed. Without zip64 an archive is at most 4 GiB, and photos barely compress. */
+export const MAX_ARCHIVE = 8 * 1024 * 1024 * 1024;
+/**
+ * An archive may say it unpacks to at most MAX_RATIO times its own size, plus RATIO_ALLOWANCE.
+ * Photos are stored as they are and notes compress a few times over; a zip bomb claims thousands.
+ */
+export const MAX_RATIO = 100;
+export const RATIO_ALLOWANCE = 64 * 1024 * 1024;
 
 /** @param {Blob} b */
 const bytesOf = async (b) => new Uint8Array(await b.arrayBuffer());
@@ -155,9 +166,10 @@ const view = (b) => new DataView(b.buffer, b.byteOffset, b.byteLength);
  * Reads a zip archive straight from a file (a Blob), one entry at a time: only the
  * index and the entry being read are ever in memory, so an archive larger than memory
  * can be read (spec §12.1). Supports stored and deflated entries, checks every CRC-32,
- * skips folder entries and refuses two entries with one name. Against zip bombs, an
- * entry may declare at most maxEntry bytes, and inflating stops as soon as it produces
- * more than it declared.
+ * skips folder entries and refuses two entries with one name. Against zip bombs, before
+ * anything is inflated: an entry may declare at most maxEntry bytes, all of them together
+ * at most maxTotal, and no more than maxRatio times the file's own size (plus
+ * RATIO_ALLOWANCE). Inflating stops as soon as an entry produces more than it declared.
  */
 export class ZipReader {
   /** @type {Blob} */ #file;
@@ -169,9 +181,11 @@ export class ZipReader {
     this.#entries = entries;
   }
 
-  /** @param {Blob} file @param {{ maxEntry?: number }} [opts] */
+  /** @param {Blob} file @param {{ maxEntry?: number, maxTotal?: number, maxRatio?: number }} [opts] */
   static async open(file, opts = {}) {
     const maxEntry = opts.maxEntry ?? MAX_ENTRY;
+    const maxTotal = opts.maxTotal ?? MAX_ARCHIVE;
+    const maxRatio = opts.maxRatio ?? MAX_RATIO;
     const tailStart = Math.max(0, file.size - 22 - 0xffff);
     const tail = await bytesOf(file.slice(tailStart));
     const tv = view(tail);
@@ -192,6 +206,7 @@ export class ZipReader {
     const v = view(cd);
     /** @type {Map<string, Entry>} */
     const entries = new Map();
+    let total = 0;
     let p = 0;
     for (let i = 0; i < count; i++) {
       if (p + 46 > cd.length || v.getUint32(p, true) !== CENTRAL) throw new ZipError('the archive index is damaged');
@@ -211,7 +226,12 @@ export class ZipReader {
       if (name.endsWith('/')) continue;
       if (entries.has(name)) throw new ZipError(`the archive has two entries called ${name}`);
       if (entry.usize > maxEntry) throw new ZipError(`${name} is too large to open here (over ${Math.floor(maxEntry / 1048576)} MB)`);
+      total += entry.usize;
       entries.set(name, entry);
+    }
+    if (total > maxTotal) throw new ZipError(`this archive is too large to open here (over ${Math.floor(maxTotal / 1048576)} MB uncompressed)`);
+    if (total > maxRatio * file.size + RATIO_ALLOWANCE) {
+      throw new ZipError('this archive says it unpacks to far more than its own size, the way a zip bomb does, so annai won\'t open it');
     }
     return new ZipReader(file, entries);
   }
@@ -267,12 +287,7 @@ export class ZipReader {
  */
 export async function readZip(zip, opts = {}) {
   const maxTotal = opts.maxTotal ?? MAX_TOTAL;
-  const reader = await ZipReader.open(zip instanceof Blob ? zip : new Blob([/** @type {BlobPart} */ (zip)]), { maxEntry: maxTotal });
-  let total = 0;
-  for (const name of reader.names()) {
-    total += reader.size(name);
-    if (total > maxTotal) throw new ZipError(`this archive is too large to open here (over ${Math.floor(maxTotal / 1048576)} MB uncompressed)`);
-  }
+  const reader = await ZipReader.open(zip instanceof Blob ? zip : new Blob([/** @type {BlobPart} */ (zip)]), { maxEntry: maxTotal, maxTotal });
   /** @type {Map<string, Uint8Array>} */
   const out = new Map();
   for (const name of reader.names()) out.set(name, await reader.read(name));

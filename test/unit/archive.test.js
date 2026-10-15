@@ -392,3 +392,15 @@ test('an import that runs out of space partway leaves none of its content behind
   for (const h of hashes) assert.equal(await has(h), before.has(h), h);
   assert.deepEqual((await listTrips(b.store)).active, []);
 });
+
+test('opening a file that says it unpacks to gigabytes is refused before anything is unpacked (zip bomb)', async () => {
+  const z = new ZipWriter();
+  await z.add('trips/x/files/zeros.bin', new Uint8Array(1024));
+  const b = await bytesOf(z.finish());
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  v.setUint32(22, 1000 * 1024 * 1024, true); // the local header's uncompressed size
+  const cd = v.getUint32(b.length - 22 + 16, true);
+  v.setUint32(cd + 24, 1000 * 1024 * 1024, true); // and the index's
+  const file = new PiecesOnly([b]);
+  await assert.rejects(openArchive(file), (e) => e instanceof ArchiveError && /zip bomb/.test(e.message));
+});
