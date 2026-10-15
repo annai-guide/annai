@@ -5,9 +5,12 @@ import { installBanner } from './install.js';
 import { renderTrips } from './screens/trips.js';
 import { renderTrip } from './screens/trip.js';
 import { renderFile } from './screens/file.js';
+import { renderSettings } from './screens/settings.js';
+import { renderImport } from './screens/import.js';
+import { renderTrace } from './screens/trace.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace };
 
 /**
  * @param {HTMLElement} root

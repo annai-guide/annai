@@ -3,6 +3,7 @@ import { setTripStatus } from '../../core/scopes.js';
 import { normPath, typeForPath } from '../../core/paths.js';
 import { ValidationError } from '../../core/workspace.js';
 import { relTime, bytes, dateRange } from '../format.js';
+import { exportPanel } from '../export-panel.js';
 
 /** @param {string} id @param {string} path */
 export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;
@@ -17,7 +18,7 @@ export async function renderTrip(ctx, route) {
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
   const files = await ctx.ws.list(id, '/');
   const archived = scope.status === 'archived';
-  const extra = h('div', {}); // Task 16 puts the export panel here
+  const extra = h('div', {}); // the export panel opens here
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/trips' }, '← Trips')),
     h('h1', { class: 'title', text: scope.title }),
@@ -32,9 +33,12 @@ export async function renderTrip(ctx, route) {
     newFile(ctx, id));
 }
 
-/** Extra trip buttons; Task 16 adds "Export trip". @param {any} ctx @param {string} id @param {any} scope @param {HTMLElement} slot @returns {HTMLElement[]} */
+/** @param {any} ctx @param {string} id @param {any} scope @param {HTMLElement} slot @returns {HTMLElement[]} */
 function tripActions(ctx, id, scope, slot) {
-  return [];
+  return [h('button', {
+    class: 'btn', type: 'button',
+    onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scope.title })])),
+  }, 'Export trip')];
 }
 
 /** @param {string} id @param {any[]} files */
