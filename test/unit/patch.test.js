@@ -49,3 +49,14 @@ test('append: "k+" creates the array when missing and works when nested', () => 
 test('without the append option, "k+" is an ordinary key', () => {
   assert.deepEqual(mergePatch({ tools: [1] }, { 'tools+': [2] }), { tools: [1], 'tools+': [2] });
 });
+
+test('a "__proto__" key is plain data: it neither changes the prototype nor pollutes Object', () => {
+  const patch = JSON.parse('{"__proto__": {"polluted": 1}, "ok": true}');
+  const out = mergePatch({}, patch);
+  assert.equal(Object.getPrototypeOf(out), Object.prototype);
+  assert.equal(Object.hasOwn(out, '__proto__'), true);
+  assert.equal(JSON.stringify(out), '{"__proto__":{"polluted":1},"ok":true}');
+  assert.equal(/** @type {any} */ ({}).polluted, undefined);
+  const nested = mergePatch({ a: {} }, JSON.parse('{"a": {"__proto__": {"x": 1}}}'));
+  assert.equal(Object.getPrototypeOf(nested.a), Object.prototype);
+});

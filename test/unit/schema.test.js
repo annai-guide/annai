@@ -63,3 +63,10 @@ test('makeSchemaFor picks the last matching registration for the scope kind', ()
   assert.equal(schemaFor('trip-1', '/notes/a.json'), null);
   assert.equal(schemaFor('me', '/plan/a.json'), first);
 });
+
+test('inherited names like "constructor" are not mistaken for declared or present properties', () => {
+  const strict = { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string' } } };
+  assert.deepEqual(validate(strict, { id: 'x', constructor: 'sneaky' }), ['$.constructor: is not allowed']);
+  assert.deepEqual(validate(strict, JSON.parse('{"id": "x", "__proto__": 1}')), ['$.__proto__: is not allowed']);
+  assert.deepEqual(validate({ type: 'object', required: ['toString'] }, {}), ['$.toString: is required']);
+});

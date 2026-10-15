@@ -19,14 +19,27 @@ export function mergePatch(target, patch, opts = {}) {
     if (opts.append && key.length > 1 && key.endsWith('+')) {
       const base = key.slice(0, -1);
       const add = Array.isArray(value) ? value : [value];
-      out[base] = [...(Array.isArray(out[base]) ? out[base] : []), ...add.map(clone)];
+      const prev = own(out, base);
+      define(out, base, [...(Array.isArray(prev) ? prev : []), ...add.map(clone)]);
     } else if (value === null) {
       delete out[key];
     } else {
-      out[key] = mergePatch(out[key], value, opts);
+      define(out, key, mergePatch(own(out, key), value, opts));
     }
   }
   return out;
+}
+
+// Keys are always own data properties, so "__proto__" in a patch is plain data
+// and never changes an object's prototype (no pollution from untrusted patches).
+/** @param {Record<string, any>} o @param {string} k */
+function own(o, k) {
+  return Object.hasOwn(o, k) ? o[k] : undefined;
+}
+
+/** @param {Record<string, any>} o @param {string} k @param {any} v */
+function define(o, k, v) {
+  Object.defineProperty(o, k, { value: v, writable: true, enumerable: true, configurable: true });
 }
 
 /** @param {unknown} x @returns {x is Record<string, any>} */

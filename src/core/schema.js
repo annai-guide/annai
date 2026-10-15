@@ -50,10 +50,11 @@ function check(s, v, at, errors) {
     if (s.items) v.forEach((item, i) => check(s.items, item, `${at}[${i}]`, errors));
   }
   if (is('object', v)) {
-    for (const r of s.required ?? []) if (!(r in v)) errors.push(`${at}.${r}: is required`);
+    // Own properties only: inherited names like "constructor" must not count as present or declared.
+    for (const r of s.required ?? []) if (!Object.hasOwn(v, r)) errors.push(`${at}.${r}: is required`);
     const props = s.properties ?? {};
     for (const [k, val] of Object.entries(v)) {
-      if (k in props) check(props[k], val, `${at}.${k}`, errors);
+      if (Object.hasOwn(props, k)) check(props[k], val, `${at}.${k}`, errors);
       else if (s.additionalProperties === false) errors.push(`${at}.${k}: is not allowed`);
       else if (s.additionalProperties && typeof s.additionalProperties === 'object') check(s.additionalProperties, val, `${at}.${k}`, errors);
     }
