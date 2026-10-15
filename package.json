@@ -1,0 +1,22 @@
+{
+  "name": "annai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "annai.guide: an AI guide for your trips. Local-first, runs in the browser.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"test/unit/**/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.sw.json",
+    "serve": "node scripts/serve.mjs",
+    "e2e": "playwright test",
+    "size": "node scripts/size.mjs",
+    "check": "npm run typecheck && npm test && npm run size"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.19.0",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,55 @@
+// Byte helpers shared by the core. No dependencies.
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+/** @param {string} s @returns {Uint8Array} */
+export function utf8(s) {
+  return encoder.encode(s);
+}
+
+/** @param {Uint8Array | ArrayBuffer} b @returns {string} */
+export function text(b) {
+  return decoder.decode(b instanceof Uint8Array ? b : new Uint8Array(b));
+}
+
+/**
+ * Normalizes byte-like input to a Uint8Array view (no copy when possible).
+ * @param {Uint8Array | ArrayBuffer | string} x
+ * @returns {Uint8Array}
+ */
+export function toBytes(x) {
+  if (typeof x === 'string') return utf8(x);
+  if (x instanceof Uint8Array) return x;
+  if (x instanceof ArrayBuffer) return new Uint8Array(x);
+  throw new TypeError('expected bytes or a string');
+}
+
+/** @param {Uint8Array} b @returns {string} lowercase hex */
+export function hex(b) {
+  let s = '';
+  for (const v of b) s += v.toString(16).padStart(2, '0');
+  return s;
+}
+
+/**
+ * Returns an ArrayBuffer holding exactly these bytes, safe to store or hand to WebCrypto.
+ * @param {Uint8Array} b
+ * @returns {ArrayBuffer}
+ */
+export function ownBuffer(b) {
+  if (b.byteOffset === 0 && b.byteLength === b.buffer.byteLength && b.buffer instanceof ArrayBuffer) return b.buffer;
+  return /** @type {ArrayBuffer} */ (b.slice().buffer);
+}
+
+/** @param {Uint8Array[]} parts @returns {Uint8Array} */
+export function concat(parts) {
+  let n = 0;
+  for (const p of parts) n += p.byteLength;
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const p of parts) {
+    out.set(p, o);
+    o += p.byteLength;
+  }
+  return out;
+}
