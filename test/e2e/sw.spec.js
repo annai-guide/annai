@@ -1,13 +1,18 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker } from './helpers.js';
+import { openApp, waitForServiceWorker, startServer } from './helpers.js';
 
-test('annai opens offline after the first visit', async ({ page, context }) => {
-  await openApp(page);
-  await waitForServiceWorker(page);
-  await context.setOffline(true);
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
-  await context.setOffline(false);
+test('annai opens offline after the first visit', async ({ page }) => {
+  const server = await startServer(8791);
+  try {
+    await page.goto(`${server.origin}/`);
+    await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+    await waitForServiceWorker(page);
+    await server.stop();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  } finally {
+    await server.stop();
+  }
 });
 
 test('installed plugin files are served from storage', async ({ page }) => {

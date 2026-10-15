@@ -1,4 +1,27 @@
 import { expect } from '@playwright/test';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Starts a dev server of the test's own, so a test can take the network away for real by stopping it.
+ * (Playwright's offline mode in WebKit also blocks requests the service worker answers itself.)
+ * @param {number} port
+ */
+export async function startServer(port) {
+  const script = fileURLToPath(new URL('../../scripts/serve.mjs', import.meta.url));
+  const child = spawn(process.execPath, [script, '--port', String(port)], { stdio: ['ignore', 'ignore', 'inherit'] });
+  const origin = `http://127.0.0.1:${port}`;
+  const stop = () => child.exitCode !== null || child.signalCode !== null
+    ? Promise.resolve()
+    : new Promise((resolve) => { child.once('exit', resolve); child.kill(); });
+  try {
+    await expect.poll(async () => { try { return (await fetch(`${origin}/_headers`)).ok; } catch { return false; } }).toBe(true);
+  } catch (e) {
+    await stop();
+    throw e;
+  }
+  return { origin, stop };
+}
 
 /** Collects console errors and uncaught page errors. @param {import('@playwright/test').Page} page */
 export function watchConsole(page) {
