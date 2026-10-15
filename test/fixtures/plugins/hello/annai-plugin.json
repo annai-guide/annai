@@ -1,0 +1,8 @@
+{
+  "id": "hello",
+  "name": "Hello checks",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "index.js",
+  "description": "Test plugin: /hello/*.json files in a trip need a greeting."
+}
