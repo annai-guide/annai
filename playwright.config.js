@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
-  use: { baseURL: 'http://127.0.0.1:8790', trace: 'retain-on-failure', acceptDownloads: true },
+  use: { baseURL: 'http://127.0.0.1:8790', trace: 'retain-on-failure', acceptDownloads: true, actionTimeout: 15_000 },
   webServer: {
     command: 'node scripts/serve.mjs --port 8790',
     url: 'http://127.0.0.1:8790/_headers',

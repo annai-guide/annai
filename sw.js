@@ -79,7 +79,7 @@ sw.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== sw.location.origin) return;
   if (url.pathname.startsWith('/plugins/')) {
-    event.respondWith(servePlugin(url.pathname));
+    event.respondWith(servePlugin(req, url.pathname));
     return;
   }
   if (url.pathname === '/share-target' && req.method === 'POST') {
@@ -114,37 +114,81 @@ function openExisting() {
   });
 }
 
-/** Serves /plugins/<id>/<file> from the sys:plugins scope. @param {string} pathname */
-async function servePlugin(pathname) {
+/** Plugin files a page may load: code, data, styles, plain text, raster images and fonts. Never HTML or SVG. */
+const SAFE_PLUGIN_TYPES = new Set(['text/javascript', 'application/json', 'text/css', 'text/plain', 'text/markdown', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'font/woff2']);
+
+/** @param {string} why */
+function deny(why) {
+  return new Response(why, { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' } });
+}
+
+/**
+ * Serves /plugins/<id>/<file> from the sys:plugins scope, but only for an installed plugin
+ * that is switched on, only as a safe type, and never as a page: a stored package must not
+ * become a same-origin page that runs before the user has turned the plugin on.
+ * @param {Request} req @param {string} pathname
+ */
+async function servePlugin(req, pathname) {
+  if (req.mode === 'navigate') return deny('plugin files are not pages');
   const m = /^\/plugins\/([^/]+)\/(.+)$/.exec(pathname);
-  if (!m) return new Response('not found', { status: 404 });
-  const path = `/${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`;
+  if (!m) return deny('not a plugin file');
+  let id, path;
+  try {
+    id = decodeURIComponent(m[1]);
+    path = `/${id}/${decodeURIComponent(m[2])}`;
+  } catch {
+    return deny('not a plugin file');
+  }
   /** @type {IDBDatabase | undefined} */
   let db;
   try {
     db = await openExisting();
-    const found = await new Promise((resolve, reject) => {
-      const t = /** @type {IDBDatabase} */ (db).transaction(['files', 'blobs'], 'readonly');
-      const f = t.objectStore('files').get(['sys:plugins', path]);
-      f.onsuccess = () => {
-        const entry = f.result;
-        if (!entry) {
-          resolve(null);
-          return;
-        }
-        const b = t.objectStore('blobs').get(entry.hash);
-        b.onsuccess = () => resolve(b.result ? { data: b.result.data, type: entry.type } : null);
-      };
-      t.onerror = () => reject(t.error);
-      t.onabort = () => reject(t.error);
-    });
-    if (!found) return new Response('not found', { status: 404 });
-    return new Response(found.data, { headers: { 'Content-Type': found.type, 'Cache-Control': 'no-cache' } });
+    const found = await readPluginFiles(db, ['/installed.json', path]);
+    let enabled = false;
+    const state = found.get('/installed.json');
+    if (state) {
+      try {
+        const parsed = JSON.parse(new TextDecoder().decode(state.data));
+        enabled = Object.hasOwn(parsed, id) && parsed[id]?.enabled === true;
+      } catch {
+        enabled = false;
+      }
+    }
+    if (!enabled) return deny('this plugin is not switched on');
+    const file = found.get(path);
+    if (!file) return new Response('not found', { status: 404 });
+    if (!SAFE_PLUGIN_TYPES.has(file.type)) return deny('annai does not serve this kind of plugin file');
+    return new Response(file.data, { headers: { 'Content-Type': file.type, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' } });
   } catch {
     return new Response('plugin storage is not available', { status: 503 });
   } finally {
     db?.close();
   }
+}
+
+/**
+ * Reads several sys:plugins files in one transaction.
+ * @param {IDBDatabase} db @param {string[]} paths
+ * @returns {Promise<Map<string, { data: ArrayBuffer, type: string }>>}
+ */
+function readPluginFiles(db, paths) {
+  return new Promise((resolve, reject) => {
+    /** @type {Map<string, { data: ArrayBuffer, type: string }>} */
+    const out = new Map();
+    const t = db.transaction(['files', 'blobs'], 'readonly');
+    for (const path of paths) {
+      const f = t.objectStore('files').get(['sys:plugins', path]);
+      f.onsuccess = () => {
+        const entry = f.result;
+        if (!entry) return;
+        const b = t.objectStore('blobs').get(entry.hash);
+        b.onsuccess = () => { if (b.result) out.set(path, { data: b.result.data, type: entry.type }); };
+      };
+    }
+    t.oncomplete = () => resolve(out);
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error);
+  });
 }
 
 /** Android's share sheet posts files here; they wait in a cache until the import screen opens them. @param {Request} req */
