@@ -12,13 +12,14 @@ const BAD_CHARS = /[\u0000-\u001f\u007f\\]/;
 /**
  * Normalizes a file path inside a scope: starts with "/", has no empty, "." or
  * ".." segments, no backslashes or control characters, and is at most 512
- * characters. The first segment ".annai" is reserved for archive metadata.
+ * characters, in Unicode NFC (macOS hands out decomposed names). The first
+ * segment ".annai" is reserved for archive metadata.
  * @param {string} path
  * @returns {string}
  */
 export function normPath(path) {
   if (typeof path !== 'string') throw new PathError('the path must be text');
-  let p = path.trim();
+  let p = path.trim().normalize('NFC');
   if (!p.startsWith('/')) p = '/' + p;
   if (p.length > MAX) throw new PathError(`the path is longer than ${MAX} characters`);
   if (BAD_CHARS.test(p)) throw new PathError('the path contains a control character or a backslash');

@@ -47,3 +47,7 @@ test('typeForPath and the type predicates', () => {
   assert.equal(isCompressedType('image/svg+xml'), false);
   assert.equal(isCompressedType('text/markdown'), false);
 });
+
+test('normPath keeps names in one Unicode form (NFC)', () => {
+  assert.equal(normPath('/files/ガイド.png'.normalize('NFD')), '/files/ガイド.png'.normalize('NFC'));
+});

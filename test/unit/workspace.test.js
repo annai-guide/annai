@@ -131,3 +131,13 @@ test('storage full maps to StorageFullError and writes nothing', async () => {
   await assert.rejects(ws.write('trip-1', '/a.md', 'x', { author: 'user' }), StorageFullError);
   assert.equal((await ws.list('trip-1')).length, 0);
 });
+
+test('a name in decomposed Unicode (as macOS writes it) and the same name typed are one file', async () => {
+  const { ws } = await setup();
+  const typed = '/files/ガイド.md';
+  const fromMac = typed.normalize('NFD');
+  assert.notEqual(fromMac, typed);
+  await ws.write('trip-1', fromMac, 'from a Mac', { author: 'user' });
+  assert.equal(await ws.readText('trip-1', typed), 'from a Mac');
+  assert.deepEqual((await ws.list('trip-1', '/files/')).map((f) => f.path), [typed]);
+});

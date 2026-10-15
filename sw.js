@@ -67,7 +67,8 @@ const SHELL = [
 ];
 
 sw.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  // Past the HTTP cache: a new version must never store a stale copy of one of its files.
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))));
 });
 
 sw.addEventListener('activate', (event) => {
