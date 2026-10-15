@@ -3,9 +3,11 @@ import { parseHash } from './router.js';
 import { createNotices } from './notices.js';
 import { installBanner } from './install.js';
 import { renderTrips } from './screens/trips.js';
+import { renderTrip } from './screens/trip.js';
+import { renderFile } from './screens/file.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile };
 
 /**
  * @param {HTMLElement} root
