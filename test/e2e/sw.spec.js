@@ -14,13 +14,15 @@ test('installed plugin files are served from storage', async ({ page }) => {
   await openApp(page);
   await waitForServiceWorker(page);
   const answer = await page.evaluate(async () => {
-    const { createIdbStore } = await import('/src/core/store-idb.js');
-    const { Workspace } = await import('/src/core/workspace.js');
+    // Browser URLs, not files on disk: pass them as values so the type checker doesn't resolve them.
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
     const store = await createIdbStore();
     const ws = new Workspace(store);
     await ws.write('sys:plugins', '/demo/hello.js', 'export const answer = 42;', { author: 'system' });
     store.close();
-    const mod = await import('/plugins/demo/hello.js');
+    const mod = await import(at('/plugins/demo/hello.js'));
     return mod.answer;
   });
   expect(answer).toBe(42);
