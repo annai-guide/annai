@@ -32,8 +32,16 @@ export async function syncPersonalities({ ws, presets }) {
     if (!file) {
       await ws.write(ME, path(name), text, { author: 'system' });
       changes[name] = { original: now, offered: null };
+    } else if (!s.original) {
+      // No record of the original it came from (an import without settings, say): only a copy that
+      // already is this original counts as unedited. Anything else is the user's and is never overwritten.
+      if (file.entry.hash === now) changes[name] = { original: now, offered: null };
+      else if (s.offered !== now) {
+        offer.push({ name, text });
+        changes[name] = { offered: now };
+      }
     } else if (s.original !== now) {
-      if (file.entry.hash === s.original || !s.original) {
+      if (file.entry.hash === s.original) {
         if (file.entry.hash !== now) await ws.write(ME, path(name), text, { author: 'system' });
         changes[name] = { original: now, offered: null };
       } else if (s.offered !== now) {
@@ -100,7 +108,9 @@ export async function tunePersonality({ agent, name, text, reason, callId, wake 
       },
     });
     const call = r.reply.parts.find((/** @type {any} */ p) => p.type === 'tool_call' && p.name === 'review');
-    verdict = call ? { approve: call.input?.approve === true, why: String(call.input?.why ?? '') } : { approve: /^\s*approve/i.test(r.reply.text), why: r.reply.text.trim() };
+    // Fails closed: only the review tool saying approve: true approves (a reply in words doesn't).
+    if (!call) return 'Not changed: the review gave no clear answer. Try again later.';
+    verdict = { approve: call.input?.approve === true, why: String(call.input?.why ?? '') };
   } catch (e) {
     return `Not changed: the review couldn't run (${String(/** @type {any} */ (e)?.message ?? e)}). Try again later.`;
   }

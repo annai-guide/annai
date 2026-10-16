@@ -75,3 +75,20 @@ test('a personality that is too long is turned down without a review', async () 
   assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, /too long/);
   assert.deepEqual(Object.keys((await readAppSettings(k.ws)).personalities ?? {}).sort(), ['quiet', 'shiori', 'storyteller']);
 });
+
+test('with no record of its original, an edited personality is never overwritten: it is offered the preset instead', async () => {
+  const k = await agentKit([[sleep]]);
+  await k.ws.write(ME, '/personalities/shiori.md', '# Shiori\nMy own edits.\n', { author: 'user' });
+  const offered = await syncPersonalities({ ws: k.ws, presets: k.presets });
+  assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), '# Shiori\nMy own edits.\n');
+  assert.deepEqual(offered.map((o) => o.name), ['shiori']);
+});
+
+test('the review fails closed: no clear approval from its tool, no change', async () => {
+  const k = await agentKit([[tune('# Shiori\nChanged.\n', 'change'), sleep]], { utility: [{ text: 'Approve? No, this adds facts about the user.' }] });
+  await syncPersonalities({ ws: k.ws, presets: k.presets });
+  k.agent.send('Go');
+  await k.agent.idle();
+  assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), k.presets.shiori);
+  assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, /^Not changed: the review gave no clear answer/);
+});
