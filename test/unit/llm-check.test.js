@@ -70,7 +70,7 @@ test('testLevels tries each reasoning level the model has (spec §9.3)', async (
   assert.deepEqual(r, { low: 'ok', high: 'bad-request' });
 });
 
-test('the service records what the Test button found on the model', async () => {
+test('the service records what the Test button found on the model, and a model that works rests no more', async () => {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -94,7 +94,14 @@ test('the service records what the Test button found on the model', async () => 
   await llm.ensureType('scripted');
   await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
   const [id] = Object.keys((await readConfig(ws)).models);
+  // A model that failed earlier rests; once Test reaches it with a working key, it is back at once.
+  llm.bench.bench(id, 60_000);
   await llm.test(id);
+  assert.equal(llm.bench.until(id), 0);
+  // Saving an endpoint, or its key, puts its models back too: the user may have fixed what failed.
+  llm.bench.bench(id, 60_000);
+  await llm.unbench((await readConfig(ws)).models[id].endpoint);
+  assert.equal(llm.bench.until(id), 0);
   const verified = (await readConfig(ws)).models[id].verified;
   assert.equal(verified?.access, true);
   assert.equal(verified?.key, true);

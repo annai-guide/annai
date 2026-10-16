@@ -55,6 +55,7 @@ export async function renderModel(ctx, id) {
           extraBody: extra.read(),
         };
         await saveModel(ctx.ws, { ...rec, user: diffLayer(edited, base) });
+        ctx.llm.bench.clear(rec.id);
         ctx.notices.toast('Saved');
         ctx.render();
       } catch (err) {

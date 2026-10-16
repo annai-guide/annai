@@ -50,6 +50,7 @@ export async function renderEndpoint(ctx, id) {
         const edited = { name: name.value.trim() || base.name, baseUrl: url.value.trim(), headers: headers.read(), tunables: tunables.read(), extraBody: extra.read() };
         await saveEndpoint(ctx.ws, { ...rec, user: diffLayer(edited, base) });
         if (key.value.trim()) await setKey(ctx.store, id, key.value.trim());
+        await ctx.llm.unbench(id);
         ctx.notices.toast('Saved');
         ctx.render();
       } catch (err) {
@@ -71,7 +72,7 @@ export async function renderEndpoint(ctx, id) {
         : null,
       headers.el, tunables.el, extra.el,
       h('div', { class: 'acts' }, save,
-        hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
+        hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
       status),
     from?.roles ? suggestionsPanel(ctx, id, from) : null,
     modelsSection(ctx, id, models),

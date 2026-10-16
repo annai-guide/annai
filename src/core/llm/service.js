@@ -66,8 +66,16 @@ export function createLlm({
       const { rec, type, endpoint, model, key } = await resolve(modelId);
       const result = await testModel({ type, endpoint, model, key, fetch: get, probe });
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
+      if (found.access && found.key !== false) bench.clear(modelId); // reachable with a working key: no reason to rest
       await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), ...found, at: Date.now() } });
       return result;
+    },
+    /**
+     * Puts an endpoint's models back in use after its settings or key change: the user may
+     * have fixed what made them fail. @param {string} endpointId
+     */
+    async unbench(endpointId) {
+      for (const m of Object.values((await readConfig(ws)).models)) if (m.endpoint === endpointId) bench.clear(m.id);
     },
     /** Tries each reasoning level of one model, and records which work (spec §9.3). @param {string} modelId */
     async testLevels(modelId) {
