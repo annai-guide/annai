@@ -160,7 +160,7 @@ function pasteCode(ctx, status) {
     onclick: async () => {
       go.disabled = true;
       try {
-        await connectOpenRouter(ctx, await exchange({ code: code.value, state: null }));
+        await connectOpenRouter(ctx, await exchange({ code: code.value, state: null, pasted: true }));
         ctx.notices.toast('Signed in with OpenRouter.');
         ctx.render();
       } catch (e) {

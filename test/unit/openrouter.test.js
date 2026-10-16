@@ -51,8 +51,8 @@ test('exchange: the code and the verifier buy a key; a strange state, an old sig
   assert.deepEqual(sent.body, { code: 'c', code_verifier: saved.verifier, code_challenge_method: 'S256' });
   assert.equal(storage.getItem('annai.openrouter'), null, 'the verifier is used once');
   await signInUrl({ callback: null, storage, now: 3000 });
-  await assert.rejects(exchange({ code: 'c', state: null, fetch: async () => new Response('{}'), storage, now: 3000 }), /didn't send a key/);
-  await assert.rejects(exchange({ code: 'c', state: null, fetch: async () => new Response('no', { status: 403 }), storage, now: 3000 }), /HTTP 403/);
+  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: async () => new Response('{}'), storage, now: 3000 }), /didn't send a key/);
+  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: async () => new Response('no', { status: 403 }), storage, now: 3000 }), /HTTP 403/);
 });
 
 test('finishing a sign-in: the address is cleaned, the endpoint, key and free models are set up, and the user is told', async () => {
@@ -86,4 +86,14 @@ test('finishing a sign-in: the address is cleaned, the endpoint, key and free mo
   assert.deepEqual(cfg.roles.main.models.map((id) => modelOf(cfg.models[id]).name), ['Google: Gemma 4 31B (free)']);
   assert.match(toasts[0], /Signed in with OpenRouter/);
   assert.equal(await finishSignIn(ctx, { location: /** @type {any} */ ({ search: '', pathname: '/' }) }), false);
+});
+
+test('a callback without the state is refused, and a code may be pasted only in a sign-in that asked for one (login CSRF)', async () => {
+  const storage = memoryStorage();
+  await signInUrl({ callback: 'https://annai.guide/', storage, now: 1000 });
+  const fetch = async () => new Response(JSON.stringify({ key: 'sk-or-attacker' }));
+  await assert.rejects(exchange({ code: 'attacker-code', state: null, fetch, storage, now: 2000 }), /didn't start in this browser/);
+  await assert.rejects(exchange({ code: 'attacker-code', state: null, pasted: true, fetch, storage, now: 2000 }), /didn't start in this browser/);
+  await signInUrl({ callback: null, storage, now: 3000 });
+  assert.equal(await exchange({ code: 'mine', state: null, pasted: true, fetch, storage, now: 3000 }), 'sk-or-attacker');
 });

@@ -31,7 +31,7 @@ export async function signInUrl({ callback, storage = localStorage, now = Date.n
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
   const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
   const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
-  storage.setItem(SLOT, JSON.stringify({ verifier, state, at: now }));
+  storage.setItem(SLOT, JSON.stringify({ verifier, state, at: now, mode: callback ? 'callback' : 'code' }));
   const params = new URLSearchParams({ code_challenge: challenge, code_challenge_method: 'S256' });
   if (callback) {
     params.set('callback_url', callback);
@@ -48,11 +48,13 @@ export function callbackFrom(search) {
 }
 
 /**
- * Trades the code for a key. The verifier is used once.
- * @param {{ code: string, state: string | null, fetch?: Fetch, storage?: KeyValue, now?: number }} c state: null when the user pasted the code
+ * Trades the code for a key. The verifier is used once. A code that came back in the address
+ * must carry the state this browser sent (otherwise anyone could hand annai a code for their own
+ * account: login CSRF); a pasted code is taken only in a sign-in that asked for one.
+ * @param {{ code: string, state: string | null, pasted?: boolean, fetch?: Fetch, storage?: KeyValue, now?: number }} c
  * @returns {Promise<string>} the key
  */
-export async function exchange({ code, state, fetch: get = (url, init) => fetch(url, init), storage = localStorage, now = Date.now() }) {
+export async function exchange({ code, state, pasted = false, fetch: get = (url, init) => fetch(url, init), storage = localStorage, now = Date.now() }) {
   /** @type {any} */
   let saved = null;
   try {
@@ -61,7 +63,8 @@ export async function exchange({ code, state, fetch: get = (url, init) => fetch(
     saved = null;
   }
   if (!saved || now - saved.at > MAX_AGE) throw new Error('This sign-in has expired. Start it again from Settings → Models.');
-  if (state !== null && state !== saved.state) throw new Error("This sign-in didn't start in this browser, so annai ignored it.");
+  const ours = pasted ? saved.mode === 'code' : saved.mode === 'callback' && typeof state === 'string' && state === saved.state;
+  if (!ours) throw new Error("This sign-in didn't start in this browser, so annai ignored it.");
   /** @type {Response} */
   let res;
   try {
