@@ -153,6 +153,18 @@ test('stopping a call stops the fallback too', async () => {
   await assert.rejects(call(s, { signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled');
 });
 
+test('stopping keeps what the model had said so far, in the error and in the trace (spec §6.7)', async () => {
+  const sayThenWait = { type: 'hang', name: 'Hang', pluginId: 'hang', async *run() { yield { type: 'text', text: 'Kyoto is' }; await new Promise(() => {}); } };
+  const s = setup([[]], { types: [['hang', sayThenWait]], endpointTypes: ['hang'] });
+  const stop = new AbortController();
+  await assert.rejects(call(s, { signal: stop.signal, onEvent: () => stop.abort() }),
+    (e) => e instanceof ProviderError && e.kind === 'cancelled' && e.partial === 'Kyoto is');
+  const [turn] = await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }));
+  assert.deepEqual(turn.data.stored, ['reply']);
+  const blob = await s.store.tx(['blobs'], 'readonly', (t) => t.getBlob(turn.refs[0]));
+  assert.equal(new TextDecoder().decode(blob?.data), 'Kyoto is');
+});
+
 test('a timeout benches the model and the next one answers', async () => {
   const s = setup([[{ delayMs: 500, text: 'Slow.' }], [{ text: 'B.' }]]);
   const r = await call(s, { firstOutputMs: 20 });

@@ -129,7 +129,7 @@ test('the caller can stop a call, and what it said so far is kept with a cut-off
     await new Promise(() => {});
   });
   await assert.rejects(callOnce({ type: slow, endpoint: endpoint(), model: model(), key: null, request, signal: stop.signal, onEvent: () => stop.abort() }),
-    (e) => e instanceof ProviderError && e.kind === 'cancelled');
+    (e) => e instanceof ProviderError && e.kind === 'cancelled' && e.partial === 'Kyoto is');
   const cut = runType(async function* () {
     yield { type: 'text', text: 'Kyoto is' };
     throw new ProviderError('network', 'dropped');

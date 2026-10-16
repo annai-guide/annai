@@ -112,7 +112,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   } catch (e) {
     clearTimeout(t);
     const err = asProviderError(e, linked, type, registry);
-    if (err.kind !== 'cancelled' && !err.partial) err.partial = textOf(parts);
+    if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
     await trace?.request({ ...info(), outcome: err.kind, error: err.message });
     throw err;
   }
