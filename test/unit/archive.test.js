@@ -584,3 +584,16 @@ test('a location-free Share cleans a GIF without stopping its animation, and lea
   const withPlaces = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: true } });
   assert.deepEqual(withPlaces.skipped, []);
 });
+
+test('a location-free Share leaves out raw photos and videos, whatever type they were saved as', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  const octet = 'application/octet-stream';
+  const qt = new Uint8Array([0, 0, 0, 20, ...utf8('ftypqt  '), 0, 0, 0, 0, ...utf8('qt  '), 0, 0, 0, 8, ...utf8('moov')]);
+  await a.ws.write(trip, '/files/IMG_0001.DNG', utf8('II*\0 a ProRAW photo, GPS and all'), { author: 'user', type: octet });
+  await a.ws.write(trip, '/files/IMG_0002.MOV', qt, { author: 'user', type: octet });
+  await a.ws.write(trip, '/files/clip.mp4', utf8('not even sniffable'), { author: 'user', type: 'video/mp4' });
+  const share = (/** @type {boolean} */ places) => exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places } });
+  assert.deepEqual((await share(false)).skipped.sort(), ['/files/IMG_0001.DNG', '/files/IMG_0002.MOV', '/files/clip.mp4']);
+  assert.deepEqual((await share(true)).skipped, []);
+});

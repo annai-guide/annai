@@ -22,6 +22,7 @@ export function sniffImageType(b) {
   if (b.length >= 8 && b[0] === 0x89 && ascii(b, 1, 3) === 'PNG') return 'image/png';
   if (b.length >= 12 && ascii(b, 0, 4) === 'RIFF' && ascii(b, 8, 4) === 'WEBP') return 'image/webp';
   if (b.length >= 6 && ascii(b, 0, 4) === 'GIF8') return 'image/gif';
+  if (b.length >= 4 && ((ascii(b, 0, 2) === 'II' && b[2] === 42 && b[3] === 0) || (ascii(b, 0, 2) === 'MM' && b[2] === 0 && b[3] === 42))) return 'image/tiff'; // DNG too
   if (b.length >= 16 && ascii(b, 4, 4) === 'ftyp') {
     const end = Math.min(b.length, view(b).getUint32(0), 256); // an ftyp box is small; never scan a whole file for brands
     const brands = [ascii(b, 8, 4)];
@@ -31,6 +32,18 @@ export function sniffImageType(b) {
     if (brands.includes('mif1') || brands.includes('msf1')) return 'image/heif';
   }
   return null;
+}
+
+/**
+ * Like sniffImageType, and also knows videos (MP4, QuickTime), which hold a location just as photos do.
+ * @param {Uint8Array} b @returns {string | null}
+ */
+export function sniffMediaType(b) {
+  const image = sniffImageType(b);
+  if (image || b.length < 12) return image;
+  const box = ascii(b, 4, 4);
+  if (box === 'ftyp') return ascii(b, 8, 4) === 'qt  ' ? 'video/quicktime' : 'video/mp4';
+  return ['moov', 'mdat', 'wide', 'free', 'skip'].includes(box) ? 'video/quicktime' : null;
 }
 
 /** @param {Uint8Array} bytes @returns {PhotoInfo} */

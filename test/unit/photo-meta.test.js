@@ -4,7 +4,7 @@ import { readFile, readdir, writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { sniffImageType, readPhotoMeta, displaySize, stripMetadata } from '../../src/core/photo-meta.js';
+import { sniffImageType, sniffMediaType, readPhotoMeta, displaySize, stripMetadata } from '../../src/core/photo-meta.js';
 
 /** @param {string} name */
 const fixture = async (name) => new Uint8Array(await readFile(new URL(`../fixtures/photos/${name}`, import.meta.url)));
@@ -248,4 +248,16 @@ test('stripping a GIF drops its comments and application data, and keeps its loo
   const { head, rest, loop, tagged } = taggedGif();
   assert.deepEqual(stripMetadata(tagged, 'image/gif'), cat(head, loop, rest));
   assert.equal(stripMetadata(tagged.subarray(0, 40), 'image/gif'), null); // cut off before its end
+});
+
+test('raw photos (TIFF, DNG) and videos are recognised by their first bytes', () => {
+  assert.equal(sniffImageType(cat(ascii4('II'), new Uint8Array([42, 0, 8, 0, 0, 0]))), 'image/tiff'); // DNG is TIFF too
+  assert.equal(sniffImageType(cat(ascii4('MM'), new Uint8Array([0, 42, 0, 0, 0, 8]))), 'image/tiff');
+  const ftyp = (/** @type {string} */ brand) => cat(be(20, 4), ascii4('ftyp'), ascii4(brand), be(0, 4), ascii4(brand));
+  assert.equal(sniffImageType(ftyp('qt  ')), null);
+  assert.equal(sniffMediaType(ftyp('qt  ')), 'video/quicktime');
+  assert.equal(sniffMediaType(ftyp('isom')), 'video/mp4');
+  assert.equal(sniffMediaType(cat(be(8, 4), ascii4('wide'), be(16, 4), ascii4('mdat'))), 'video/quicktime'); // an old QuickTime file
+  assert.equal(sniffMediaType(ftyp('heic')), 'image/heic');
+  assert.equal(sniffMediaType(ascii4('# notes')), null);
 });

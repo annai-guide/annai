@@ -6,7 +6,7 @@ import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
 import { isPhotoType } from './photos.js';
-import { readPhotoMeta, stripMetadata, sniffImageType } from './photo-meta.js';
+import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -179,8 +179,8 @@ export async function exportArchive(store, opts) {
           continue;
         }
         out = { ...shared, hash: shared.bytes === out.bytes ? f.hash : await sha256Hex(shared.bytes) };
-      } else if (opts.share && !opts.share.places && (sniffed !== null || f.type.startsWith('image/'))) {
-        // Other images (GIF, TIFF, SVG…) can hold a location too: cleaned without re-encoding, or left out.
+      } else if (opts.share && !opts.share.places && (sniffMediaType(bytes) !== null || /^(image|video)\//.test(f.type))) {
+        // Other images (GIF, TIFF and raw photos, SVG…) and videos can hold a location too: cleaned without re-encoding, or left out.
         const stripped = stripMetadata(bytes, sniffed ?? f.type);
         if (!stripped) {
           skipped.push(f.path);
@@ -213,7 +213,7 @@ export async function exportArchive(store, opts) {
   for (const hash of historic) {
     if (current.has(hash)) continue;
     const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-    if (!rec || (opts.share && (sniffImageType(new Uint8Array(rec.data)) !== null || rec.type.startsWith('image/')))) continue; // a Share leaves out older versions of images
+    if (!rec || (opts.share && (sniffMediaType(new Uint8Array(rec.data)) !== null || /^(image|video)\//.test(rec.type)))) continue; // a Share leaves out older versions of images and videos
     const name = `blobs/${hash}`;
     await zip.add(name, new Uint8Array(rec.data), { compress: !isCompressedType(rec.type), mtime: now });
     manifest.blobs.push({ name, hash, type: rec.type, size: rec.size });
