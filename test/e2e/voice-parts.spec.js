@@ -20,7 +20,7 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'tts-test' })).toHaveCount(0);
     await page.getByLabel('Add a model to speech-out').selectOption({ label: 'tts-test' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();
-    await page.getByRole('button', { name: 'Move tts-test up' }).click();
+    // A voice goes ahead of the browser voice, which stays last.
     await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. tts-test', '2. Browser voice (works offline)']);
     await page.getByRole('link', { name: /Stand-in voice/ }).click();
     await page.getByRole('link', { name: /^tts-test/ }).click();
@@ -73,11 +73,11 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     for (const m of ['voice-a', 'voice-b']) {
       await page.getByLabel('Add a model to speech-out').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to speech-out' }).click();
+      // The screen is drawn again: once the voice has left the picker, the next choice is safe.
+      await expect(page.getByLabel('Add a model to speech-out').locator('option', { hasText: m })).toHaveCount(0);
     }
     await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
     await page.getByRole('button', { name: 'Add to speech-in' }).click();
-    await page.getByRole('button', { name: 'Move Browser voice down' }).click();
-    await page.getByRole('button', { name: 'Move Browser voice down' }).click();
     await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. voice-a', '2. voice-b', '3. Browser voice (works offline)']);
     await page.goto('/#/settings');
     await page.getByRole('link', { name: 'Voice', exact: true }).click();

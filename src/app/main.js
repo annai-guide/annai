@@ -9,7 +9,7 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
-import { isStandalone, requestPersist, watchForUpdates } from '../ui/platform.js';
+import { isStandalone, requestPersist, watchForUpdates, platform } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
@@ -65,14 +65,15 @@ async function boot() {
   let pluginsStarted = () => {};
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
   // Speaking and hearing (spec §10): the speech lists, through this device's player and microphone.
-  const voice = new Voice({ llm, ws, registry, locale: navigator.language });
+  const voice = new Voice({ llm, ws, registry, store, locale: navigator.language, where: platform() });
+  voice.refresh().catch(() => {});
   // The first tap of each session unlocks the audio player (an iPhone rule, spec §10.1).
   const unlock = () => { voice.platform?.player.unlock(); };
   addEventListener('pointerdown', unlock, { once: true, capture: true });
   addEventListener('keydown', unlock, { once: true, capture: true });
 
   // Shiori (spec §6): one agent, talking about the trip that was open last.
-  const agent = new Agent({ store, ws, llm, registry, codec });
+  const agent = new Agent({ store, ws, llm, registry, codec, voice });
   agent.addLoopTools(selfTools(agent));
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).

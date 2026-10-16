@@ -1,5 +1,5 @@
 import { SYS_SETTINGS } from '../scopes.js';
-import { readConfig, newEndpoint, newModel, saveEndpoint, saveModel, saveRoles, setKey, modelOf, SPEECH_ROLES, SPEECH_DEFAULTS } from './config.js';
+import { readConfig, newEndpoint, newModel, saveEndpoint, saveModel, saveRoles, setKey, modelOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS } from './config.js';
 
 /**
  * Templates (spec §9.8): annai's catalog of endpoints and popular models, with their
@@ -76,6 +76,15 @@ export function withSpeech(list, add, role) {
   const fresh = add.filter((id, i) => !list.includes(id) && add.indexOf(id) === i);
   const at = role === 'speech-in' ? list.indexOf('send-audio') + 1 : list.includes('browser-voice') ? list.indexOf('browser-voice') : list.length;
   return [...list.slice(0, at), ...fresh, ...list.slice(at)];
+}
+
+/**
+ * A speech list with one entry the user added (spec §10.3): a model goes where a template would put
+ * it, so phone dictation stays last; a stand-in added back goes last.
+ * @param {readonly string[]} list @param {string} id @param {string} role @returns {string[]}
+ */
+export function speechAdd(list, id, role) {
+  return STAND_INS[id] ? [...list.filter((x) => x !== id), id] : withSpeech(list, [id], role);
 }
 
 /**

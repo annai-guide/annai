@@ -3,8 +3,8 @@ import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
 
 /**
- * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori
- * stops her while she works (§6.7); while she rests it opens typing, until voice comes (milestone 3).
+ * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
+ * her while she works or speaks (§6.7, §10.4), and starts listening while she rests with voice on; with voice off it opens typing.
  * @param {any} ctx
  */
 export function createDock(ctx) {
@@ -57,14 +57,18 @@ export function createDock(ctx) {
   const talk = h('button', {
     class: 'talk', type: 'button', 'aria-label': 'Shiori',
     onclick: () => {
-      const busy = ['thinking', 'speaking', 'away', 'waiting'].includes(ctx.agent.state.name);
-      if (busy && ctx.agent.state.name !== 'waiting') ctx.agent.interrupt();
-      else openTyping();
+      // While she speaks, a tap stops her and listens; asleep with voice on, it listens; with voice off, typing opens (spec §10.4).
+      if (ctx.agent.tap() === 'typing') openTyping();
     },
   }, avatar.el, label);
   ctx.agent.on('state', (/** @type {any} */ s) => {
     avatar.setState(s.name);
     label.textContent = s.label;
+  });
+  // The glow follows the sound (spec §16.3): her voice while she speaks, yours while she hears you.
+  ctx.voice?.onLevel((/** @type {number} */ x, /** @type {'her' | 'you'} */ who) => {
+    const s = ctx.agent.state.name;
+    if ((who === 'her' && s === 'speaking') || (who === 'you' && s === 'hearing')) avatar.setLevel(x, who);
   });
   avatar.setState(ctx.agent.state.name);
   const el = h('nav', { class: 'dock', 'aria-label': 'Shiori' },
