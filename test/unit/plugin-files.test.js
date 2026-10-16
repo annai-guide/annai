@@ -122,6 +122,23 @@ test('bookings: Shiori writes them unverified, never confirms one, and her chang
   await run('write', { path: '/trip/notes/confirmed.json', content: { status: 'confirmed' } });
 });
 
+test('bookings: deleting one the user confirmed goes ahead, and Shiori is told they had confirmed it', async () => {
+  const { ws, trip, run } = await setup();
+  const booking = { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/hotel.pdf' };
+  await ws.write(trip, '/bookings/hotel.json', booking, { author: 'user' });
+  const said = await run('delete', { path: '/trip/bookings/hotel.json' });
+  assert.match(said, /^Deleted \/trip\/bookings\/hotel\.json\. The user had confirmed this booking\./);
+  assert.match(said, /history/);
+  assert.equal(await ws.read(trip, '/bookings/hotel.json'), undefined);
+  // An unconfirmed booking, and a file that only looks like one, are just deleted.
+  await ws.write(trip, '/bookings/car.json', { ...booking, id: 'car', kind: 'car', status: 'unverified' }, { author: 'user' });
+  assert.equal(await run('delete', { path: '/trip/bookings/car.json' }), 'Deleted /trip/bookings/car.json.');
+  await ws.write(trip, '/notes/confirmed.json', { status: 'confirmed' }, { author: 'user' });
+  assert.equal(await run('delete', { path: '/trip/notes/confirmed.json' }), 'Deleted /trip/notes/confirmed.json.');
+  await ws.write(trip, '/bookings/broken.json', 'not json', { author: 'user', type: 'text/plain' });
+  assert.equal(await run('delete', { path: '/trip/bookings/broken.json' }), 'Deleted /trip/bookings/broken.json.');
+});
+
 test("bookings: Shiori can't confirm one through text the rule would read differently, or by racing the user", async () => {
   const { ws, trip, run } = await setup();
   const booking = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf' };
