@@ -9,6 +9,9 @@ import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
 import { retry } from './llm/retry.js';
+import { checkTool } from './agent/tools.js';
+import { tsv } from './tsv.js';
+import { mergePatch } from './patch.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -22,7 +25,7 @@ export const START_TIMEOUT = 10_000;
 export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
-const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry });
+const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch });
 
 export const PLUGIN_MANIFEST_SCHEMA = {
   type: 'object',
@@ -353,7 +356,8 @@ export class PluginHost {
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
       tools: Object.freeze({
         register: (/** @type {any} */ tool) => {
-          if (typeof tool?.run !== 'function') throw new PluginError(id, `the tool ${tool?.name} has no run() function`);
+          const wrong = checkTool(tool);
+          if (wrong) throw new PluginError(id, wrong);
           return registry.add(id, 'tool', { ...tool, run: registry.guard(id, `tool ${tool.name}`, tool.run.bind(tool)) });
         },
       }),
@@ -374,6 +378,13 @@ export class PluginHost {
       }),
       helpers: HELPERS,
       files: this.ws,
+      secrets: Object.freeze({
+        /** A secret of this plugin's own, such as a key; never in files or the trace (spec §9.9). */
+        get: (/** @type {string} */ name) => this.ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${id}:${name}`)),
+        /** null removes it. */
+        set: (/** @type {string} */ name, /** @type {any} */ value) => this.ws.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => (value === null || value === undefined
+          ? t.deleteSecret(`plugin:${id}:${name}`) : t.putSecret(`plugin:${id}:${name}`, value))),
+      }),
     });
   }
 

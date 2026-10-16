@@ -259,7 +259,7 @@ test('host: plugin packages are limited to 64 MB unpacked', async () => {
 test('host: a tool keeps its own "this" when annai runs it', async () => {
   const { host, registry } = await setup();
   await host.install(inline('tooly', `export function activate(annai) {
-    annai.tools.register({ name: 'greet', prefix: 'hi ', run(x) { return this.prefix + x; } });
+    annai.tools.register({ name: 'greet', description: 'Greets.', input: { type: 'object' }, prefix: 'hi ', run(x) { return this.prefix + x; } });
   }`));
   await host.start('tooly');
   assert.equal(await registry.list('tool')[0].run('there'), 'hi there');
