@@ -265,10 +265,10 @@ export class Agent {
     }
   }
 
-  /** Writes a wake into a conversation that isn't open. idle() waits for it. @param {string} scope @param {Wake} w */
+  /** Writes a wake into a conversation that isn't open. idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
   #keepFor(scope, w) {
     this.#checking++;
-    this.#logWakes([{ ...w, scope }], newId('w'), false, (ev) => record(this.store, scope, ev), scope === ME ? null : scope)
+    return this.#logWakes([{ ...w, scope }], newId('w'), false, (ev) => record(this.store, scope, ev), scope === ME ? null : scope)
       .catch(() => {})
       .finally(() => {
         this.#checking--;
@@ -334,18 +334,16 @@ export class Agent {
    * A wake that isn't the user typing: a plugin, a new file, a choice tapped later (spec §6.1).
    * Quiet hours hold one that isn't the user's; a per-hour limit can drop it (§6.6).
    * @param {Wake} w
+   * @returns {Promise<void>} settles once a wake for a conversation that isn't open is written; at once for any other
    */
   wake(w) {
     // A wake for another conversation than the one open (files added to another trip) is written
     // into it now, and answered when it opens (spec §6.1, §7.3).
-    if (w.scope && w.scope !== (this.#target ?? ME)) {
-      this.#keepFor(w.scope, w);
-      return;
-    }
+    if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
     if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file') {
       this.#push(w);
       this.#drain();
-      return;
+      return Promise.resolve();
     }
     this.#checking++;
     this.settings().then(({ budgets }) => {
@@ -367,6 +365,7 @@ export class Agent {
       this.#checking--;
       this.#settle();
     });
+    return Promise.resolve();
   }
 
   /**
