@@ -36,23 +36,59 @@ export async function knownSecrets(store) {
   return [...out].sort((a, b) => b.length - a.length);
 }
 
-/** Blanks each secret, as written and as a URL would encode it. @param {string} text @param {string[]} secrets */
+/** Every way a secret may be written: as it is, and as a URL or a form encodes it. @param {string} s */
+function forms(s) {
+  return [...new Set([s, encodeURIComponent(s), new URLSearchParams({ s }).toString().slice(2), encodeURI(s)])];
+}
+
+/** Blanks each secret in any of its forms, whatever the case of letters and of percent-escapes. @param {string} text @param {string[]} secrets */
 function scrub(text, secrets) {
   let out = String(text ?? '');
   for (const s of secrets) {
-    for (const form of new Set([s, encodeURIComponent(s)])) out = out.split(form).join(BLANK);
+    for (const f of forms(s)) out = out.replace(new RegExp(f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), BLANK);
   }
   return out;
 }
 
-/** The address as the trace keeps it. @param {string} url @param {string[]} [secrets] */
+/** Whether text, decoded, holds a secret. @param {string} text @param {string[]} secrets */
+function holds(text, secrets) {
+  let decoded = text;
+  try {
+    decoded = decodeURIComponent(text.replace(/\+/g, ' '));
+  } catch {
+    // not valid percent-encoding: the text as it is
+  }
+  const lower = [text, decoded, decodeSafe(text)].map((x) => x.toLowerCase());
+  return secrets.some((s) => lower.some((x) => x.includes(s.toLowerCase())));
+}
+
+/** @param {string} text */
+function decodeSafe(text) {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+/**
+ * The address as the trace keeps it: part by part, any part that holds a secret once decoded is
+ * blanked (the host, a path segment, a query name or value), credential-named query values are
+ * blanked, and the username, password and fragment are left out.
+ * @param {string} url @param {string[]} [secrets]
+ */
 export function traceUrl(url, secrets = []) {
   try {
     const u = new URL(url);
-    u.username = '';
-    u.password = '';
-    for (const k of [...u.searchParams.keys()]) if (CREDENTIAL.test(k)) u.searchParams.set(k, BLANK);
-    return scrub(u.href, secrets);
+    const host = holds(u.hostname, secrets) ? BLANK : u.host;
+    const path = u.pathname.split('/').map((seg) => (holds(seg, secrets) ? BLANK : seg)).join('/');
+    const query = new URLSearchParams();
+    for (const [k, v] of u.searchParams) {
+      const name = holds(k, secrets) ? BLANK : k;
+      query.append(name, CREDENTIAL.test(k) || holds(v, secrets) ? BLANK : v);
+    }
+    const search = query.toString();
+    return scrub(`${u.protocol}//${host}${path}${search ? `?${search}` : ''}`, secrets);
   } catch {
     // Not an address: keep only what comes before any query or fragment.
     return scrub(String(url).split(/[?#]/)[0], secrets);

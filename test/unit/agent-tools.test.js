@@ -105,3 +105,23 @@ test('tracedFetch: no secret annai keeps reaches the trace, whatever its paramet
   assert.doesNotMatch(JSON.stringify(evs), /WXSECRET9876|LLMSECRET42/);
   assert.match(evs[0].data.url, /q=big\+sur/);
 });
+
+test('tracedFetch: a secret is blanked however the address encodes it (encoding differences)', async () => {
+  const store = createMemoryStore();
+  const key = 'Ab+c/d e=fGh~Xy9';
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:x:key', key));
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:y:key', 'SubDomainKey77'));
+  const ok = tracedFetch(store, 'sys', { tool: 'plugin:x' }, async () => new Response('ok'));
+  const q = new URLSearchParams({ x: key }).toString().slice(2); // form encoding: the space as "+"
+  await ok(`https://a.test/?x=${q}&q=fine`);
+  await ok(`https://a.test/p/${encodeURIComponent(key).replace(/%2B/g, '%2b')}/end`); // lower-case hex
+  await ok(`https://a.test/p/${key.replace(/ /g, '%20')}`); // left to the parser to encode
+  await ok('https://SubDomainKey77.api.test/v1');
+  await ok(`https://a.test/#${encodeURIComponent(key)}`);
+  const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
+  const all = JSON.stringify(evs.map((e) => e.data.url));
+  for (const form of [key, encodeURIComponent(key), q, 'subdomainkey77', 'SubDomainKey77', 'Ab%2bc', 'Ab+c/d', 'c%2Fd']) {
+    assert.equal(all.toLowerCase().includes(form.toLowerCase()), false, `${form} in ${all}`);
+  }
+  assert.match(evs[0].data.url, /q=fine/);
+});
