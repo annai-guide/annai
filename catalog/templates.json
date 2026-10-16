@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "endpoints": [
+    {
+      "id": "openrouter", "version": 1, "type": "chat-completions", "name": "OpenRouter",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "headers": { "HTTP-Referer": "https://annai.guide", "X-Title": "annai" },
+      "tunables": { "reasoningField": "reasoning" },
+      "keyUrl": "https://openrouter.ai/settings/keys",
+      "signIn": "openrouter",
+      "note": "One key for many providers. Free models allow 50 requests a day (1,000 a day after $10 of credits).",
+      "models": [
+        { "providerId": "anthropic/claude-sonnet-5.5", "name": "Anthropic: Claude Sonnet 5.5", "contextWindow": 1000000, "maxOutput": 128000, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 2, "output": 10, "cacheRead": 0.1, "cacheWrite": 2.5, "cacheWrite1h": 4 },
+          "reasoning": { "low": { "reasoning": { "effort": "low" } }, "medium": { "reasoning": { "effort": "medium" } }, "high": { "reasoning": { "effort": "high" } } } },
+        { "providerId": "anthropic/claude-haiku-5.5", "name": "Anthropic: Claude Haiku 5.5", "contextWindow": 1000000, "maxOutput": 128000, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 0.1, "output": 0.5, "cacheRead": 0.01, "cacheWrite": 0.125, "cacheWrite1h": 0.2,
+            "tiers": [{ "above": 99999, "input": 0.5, "output": 2.5, "cacheRead": 0.05, "cacheWrite": 0.625, "cacheWrite1h": 1 }] },
+          "reasoning": { "low": { "reasoning": { "effort": "low" } }, "medium": { "reasoning": { "effort": "medium" } }, "high": { "reasoning": { "effort": "high" } } } },
+        { "providerId": "anthropic/claude-opus-5.5", "name": "Anthropic: Claude Opus 5.5", "contextWindow": 1000000, "maxOutput": 128000, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 4, "output": 20, "cacheRead": 0.2, "cacheWrite": 5, "cacheWrite1h": 8 },
+          "reasoning": { "low": { "reasoning": { "effort": "low" } }, "medium": { "reasoning": { "effort": "medium" } }, "high": { "reasoning": { "effort": "high" } } } },
+        { "providerId": "google/gemma-4-31b-it:free", "name": "Google: Gemma 4 31B (free)", "contextWindow": 262144, "maxOutput": 32768, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 0, "output": 0 } },
+        { "providerId": "google/gemma-4-26b-a4b-it:free", "name": "Google: Gemma 4 26B A4B (free)", "contextWindow": 262144, "maxOutput": 32768, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 0, "output": 0 } }
+      ],
+      "roles": {
+        "free": { "main": ["google/gemma-4-31b-it:free"], "utility": ["google/gemma-4-26b-a4b-it:free"], "decide": ["google/gemma-4-26b-a4b-it:free"] },
+        "recommended": { "main": ["anthropic/claude-sonnet-5.5"], "utility": ["anthropic/claude-haiku-5.5"], "decide": ["anthropic/claude-haiku-5.5"] }
+      }
+    },
+    {
+      "id": "anthropic", "version": 1, "type": "anthropic-messages", "name": "Anthropic",
+      "baseUrl": "https://api.anthropic.com",
+      "keyUrl": "https://platform.claude.com/settings/keys",
+      "models": [
+        { "providerId": "claude-sonnet-5-5", "name": "Claude Sonnet 5.5", "contextWindow": 1000000, "maxOutput": 128000, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 2, "output": 10, "cacheRead": 0.1, "cacheWrite": 2.5, "cacheWrite1h": 4 }, "cacheTtls": ["5m", "1h"],
+          "reasoning": { "off": { "thinking": { "type": "between_tools" } }, "low": { "output_config": { "effort": "low" } }, "medium": { "output_config": { "effort": "medium" } }, "high": { "output_config": { "effort": "high" } }, "max": { "output_config": { "effort": "max" } } } },
+        { "providerId": "claude-haiku-5-5", "name": "Claude Haiku 5.5", "contextWindow": 1000000, "maxOutput": 128000, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 0.1, "output": 0.5, "cacheRead": 0.01, "cacheWrite": 0.125, "cacheWrite1h": 0.2,
+            "tiers": [{ "above": 99999, "input": 0.5, "output": 2.5, "cacheRead": 0.05, "cacheWrite": 0.625, "cacheWrite1h": 1 }] }, "cacheTtls": ["5m", "1h"],
+          "reasoning": { "off": { "thinking": { "type": "disabled" } }, "low": { "output_config": { "effort": "low" } }, "medium": { "output_config": { "effort": "medium" } }, "high": { "output_config": { "effort": "high" } } } },
+        { "providerId": "claude-opus-5-5", "name": "Claude Opus 5.5", "contextWindow": 1000000, "maxOutput": 128000, "input": ["text", "image"], "tools": true,
+          "prices": { "input": 4, "output": 20, "cacheRead": 0.2, "cacheWrite": 5, "cacheWrite1h": 8 }, "cacheTtls": ["5m", "1h"],
+          "reasoning": { "low": { "output_config": { "effort": "low" } }, "medium": { "output_config": { "effort": "medium" } }, "high": { "output_config": { "effort": "high" } }, "max": { "output_config": { "effort": "max" } } } }
+      ],
+      "roles": { "recommended": { "main": ["claude-sonnet-5-5"], "utility": ["claude-haiku-5-5"], "decide": ["claude-haiku-5-5"] } }
+    },
+    { "id": "openai", "version": 1, "type": "chat-completions", "name": "OpenAI", "baseUrl": "https://api.openai.com/v1",
+      "tunables": { "maxTokensField": "max_completion_tokens", "systemRole": "developer" }, "keyUrl": "https://platform.openai.com/api-keys",
+      "note": "Add models with Fetch model list." },
+    { "id": "gemini", "version": 1, "type": "chat-completions", "name": "Google Gemini", "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "keyUrl": "https://aistudio.google.com/apikey", "note": "Uses Gemini's OpenAI-compatible endpoint. Add models with Fetch model list." },
+    { "id": "groq", "version": 1, "type": "chat-completions", "name": "Groq", "baseUrl": "https://api.groq.com/openai/v1", "keyUrl": "https://console.groq.com/keys" },
+    { "id": "deepseek", "version": 1, "type": "chat-completions", "name": "DeepSeek", "baseUrl": "https://api.deepseek.com",
+      "tunables": { "reasoningField": "reasoning_content" }, "keyUrl": "https://platform.deepseek.com/api_keys" },
+    { "id": "mistral", "version": 1, "type": "chat-completions", "name": "Mistral", "baseUrl": "https://api.mistral.ai/v1", "keyUrl": "https://console.mistral.ai/api-keys" },
+    { "id": "local", "version": 1, "type": "chat-completions", "name": "Local server (Ollama, LM Studio, llama.cpp)", "baseUrl": "http://localhost:11434/v1",
+      "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on." },
+    { "id": "custom-chat-completions", "version": 1, "type": "chat-completions", "name": "Other: Chat Completions", "baseUrl": "" },
+    { "id": "custom-anthropic", "version": 1, "type": "anthropic-messages", "name": "Other: Anthropic Messages", "baseUrl": "https://api.anthropic.com" },
+    { "id": "scripted", "version": 1, "type": "scripted", "name": "Scripted model (for testing)",
+      "models": [{ "providerId": "scripted", "name": "Scripted", "contextWindow": 200000, "maxOutput": 4096, "input": ["text", "image"], "tools": true, "prices": { "input": 0, "output": 0 } }] }
+  ]
+}

@@ -12,6 +12,7 @@ import { h } from '../ui/dom.js';
 import { isStandalone, requestPersist, watchForUpdates } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
+import { createLlm } from '../core/llm/service.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -44,14 +45,17 @@ async function boot() {
   syncTripTitles(ws);
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);
+  /** @type {(v?: unknown) => void} */
+  let pluginsStarted = () => {};
+  const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
 
-  const shell = startShell(root, { store, ws, registry, plugins, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, version: VERSION });
   watchErrors(store, shell);
   if (isStandalone()) requestPersist();
   registerServiceWorker(store, shell);
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
   // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
-  startPlugins(plugins, shell);
+  startPlugins(plugins, shell).finally(() => pluginsStarted());
 }
 
 /** @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, render: () => unknown }} shell */
@@ -64,6 +68,22 @@ async function startPlugins(plugins, shell) {
       : { tone: 'warn', title: `The plugin "${f.id}" didn't start`, body: `${why} You can turn it off in Settings → Plugins.` });
   }
   if (location.hash.startsWith('#/plugins')) shell.render(); // show which plugins are now running
+}
+
+/**
+ * Settles once a service worker controls this page (or after 15 s), because installed plugin
+ * files load through it (spec §5.3). On a first visit that takes a moment.
+ */
+function controllerReady(timeoutMs = 15_000) {
+  if (!('serviceWorker' in navigator) || navigator.serviceWorker.controller) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(t);
+      resolve(undefined);
+    };
+    const t = setTimeout(done, timeoutMs);
+    navigator.serviceWorker.addEventListener('controllerchange', done, { once: true });
+  });
 }
 
 /** @param {any} store @param {ReturnType<typeof startShell>} shell */
