@@ -76,6 +76,11 @@ export class Registry {
     if (this.#disabled.delete(pluginId)) this.#emit();
   }
 
+  /** A call into a plugin worked: its run of failures is over. @param {string} pluginId */
+  succeeded(pluginId) {
+    this.#failures.set(pluginId, 0);
+  }
+
   /** Counts a failure of a plugin's code that annai caught outside guard(), e.g. while reading a stream. @param {string} pluginId @param {string} name @param {unknown} e */
   fail(pluginId, name, e) {
     this.#fail(pluginId, name, e);

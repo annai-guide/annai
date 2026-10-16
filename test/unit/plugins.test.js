@@ -264,3 +264,17 @@ test('host: a tool keeps its own "this" when annai runs it', async () => {
   await host.start('tooly');
   assert.equal(await registry.list('tool')[0].run('there'), 'hi there');
 });
+
+test("host: a tool's own errors are answers Shiori sees, not crashes; a crash counts against the plugin (spec §5.5, §6.7)", async () => {
+  const { host, registry } = await setup();
+  await host.install(inline('picky', `export function activate(annai) {
+    annai.tools.register({ name: 'picky', description: 'Refuses.', input: { type: 'object' }, run() { throw new Error('No such file: /trip/x.md'); } });
+    annai.tools.register({ name: 'buggy', description: 'Crashes.', input: { type: 'object' }, run() { return undefined.x; } });
+  }`));
+  await host.start('picky');
+  const [picky, buggy] = registry.list('tool');
+  for (let i = 0; i < 5; i++) await assert.rejects(picky.run({}), /No such file/);
+  assert.equal(registry.isDisabled('picky'), false);
+  for (let i = 0; i < 3; i++) await assert.rejects(buggy.run({}), PluginError);
+  assert.equal(registry.isDisabled('picky'), true);
+});

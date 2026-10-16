@@ -25,6 +25,9 @@ export const START_TIMEOUT = 10_000;
 export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
+/** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
+const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
+
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch });
 
 export const PLUGIN_MANIFEST_SCHEMA = {
@@ -358,7 +361,23 @@ export class PluginHost {
         register: (/** @type {any} */ tool) => {
           const wrong = checkTool(tool);
           if (wrong) throw new PluginError(id, wrong);
-          return registry.add(id, 'tool', { ...tool, run: registry.guard(id, `tool ${tool.name}`, tool.run.bind(tool)) });
+          const run = tool.run.bind(tool);
+          return registry.add(id, 'tool', {
+            ...tool,
+            run: async (/** @type {any} */ input, /** @type {any} */ call) => {
+              try {
+                const out = await run(input, call);
+                registry.succeeded(id);
+                return out;
+              } catch (e) {
+                // A tool's own error is its answer: Shiori sees it and adapts (spec §6.7). Only a crash counts
+                // against the plugin, which is switched off when it keeps crashing (§5.5).
+                if (e instanceof Error && !BUGS.some((B) => e instanceof B)) throw e;
+                registry.fail(id, `tool ${tool.name}`, e);
+                throw new PluginError(id, `the tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, e);
+              }
+            },
+          });
         },
       }),
       events: Object.freeze({

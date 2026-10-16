@@ -104,7 +104,8 @@ export class Workspace {
 
   /**
    * Applies a JSON Merge Patch to a JSON file. With create, a missing file starts as {}.
-   * @param {string} scope @param {string} path @param {any} changes @param {WriteOptions & { create?: boolean }} opts
+   * With append, a key ending in "+" appends to a list (spec §18), as Shiori's patch tool asks.
+   * @param {string} scope @param {string} path @param {any} changes @param {WriteOptions & { create?: boolean, append?: boolean }} opts
    * @returns {Promise<FileEntry>}
    */
   async patch(scope, path, changes, opts) {
@@ -115,7 +116,7 @@ export class Workspace {
         if (!opts.create) throw new NotFoundError(p);
         current = {};
       }
-      return this.#write(scope, p, mergePatch(current, changes), opts);
+      return this.#write(scope, p, mergePatch(current, changes, { append: Boolean(opts.append) }), opts);
     });
   }
 
