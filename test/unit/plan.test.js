@@ -20,7 +20,7 @@ const bookings = [
   { path: '/bookings/flight.json', booking: { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass' } },
   { path: '/bookings/hotel.json', booking: { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/hotel.pdf' } },
 ];
-const rows = () => planRows(items, bookings, { fallbackTz: NY });
+const rows = () => planRows(items, bookings, { fallbackTz: NY, locale: 'en-US' });
 
 test('bookingRef: with or without /trip, only a booking record', () => {
   assert.equal(bookingRef('/trip/bookings/a.json'), '/bookings/a.json');
@@ -46,8 +46,35 @@ test('planRows: a booking in any state but confirmed needs checking, as the Book
   const item = (/** @type {string} */ id) => ({ path: `/plan/${id}.json`, item: { id, title: id, fixed: true, booking: `/bookings/${id}.json` } });
   const booking = (/** @type {string} */ id, /** @type {unknown} */ status) => ({ path: `/bookings/${id}.json`, booking: { id, kind: 'other', status, source: '/files/x.pdf' } });
   const got = planRows([item('odd'), item('none'), item('ok'), { path: '/plan/free.json', item: { id: 'free', title: 'free', fixed: false } }],
-    [booking('odd', 'pending'), booking('none', undefined), booking('ok', 'confirmed')], { fallbackTz: NY });
+    [booking('odd', 'pending'), booking('none', undefined), booking('ok', 'confirmed')], { fallbackTz: NY, locale: 'en-US' });
   assert.deepEqual(got.map((r) => [r.item.id, r.check]), [['odd', true], ['none', true], ['ok', false], ['free', false]]);
+});
+
+test('planRows: an end on a later day says how many days later, and an end in another zone names it', () => {
+  const at = (/** @type {string} */ id, /** @type {string} */ start, /** @type {string} */ tz, /** @type {string} */ end, /** @type {string} */ endTz, kind = 'event') =>
+    ({ path: `/plan/${id}.json`, item: { id, title: id, kind, fixed: true, start: { at: start, tz }, end: { at: end, tz: endTz } } });
+  const list = [
+    at('redeye', '2026-11-25T22:00:00-08:00', LA, '2026-11-26T06:30:00-05:00', NY, 'flight'), // LA to New York overnight
+    at('day', '2026-11-25T08:00:00-08:00', LA, '2026-11-25T16:30:00-05:00', NY, 'flight'), // LA to New York the same day
+    at('party', '2026-11-26T21:00:00-05:00', NY, '2026-11-27T01:00:00-05:00', NY), // past midnight, one zone
+    at('dinner', '2026-11-26T17:00:00-05:00', NY, '2026-11-26T20:00:00-05:00', NY), // one day, one zone
+    at('toronto', '2026-11-27T09:00:00-05:00', NY, '2026-11-27T10:30:00-05:00', 'America/Toronto'), // another zone, the same clock
+    at('back', '2026-11-29T00:30:00+09:00', 'Asia/Tokyo', '2026-11-28T13:00:00-10:00', 'Pacific/Honolulu', 'flight'), // across the date line: a day earlier
+    at('museum', '2026-11-27T00:00:00-05:00', NY, '2026-11-28T00:00:00-05:00', NY, 'all-day'),
+  ];
+  const by = Object.fromEntries(planRows(list, [], { fallbackTz: NY, locale: 'en-US' }).map((r) => [r.item.id, [r.time, r.end, r.endDays, r.endZone]]));
+  assert.deepEqual(by.redeye, ['22:00', '06:30', 1, 'EST']);
+  assert.deepEqual(by.day, ['08:00', '16:30', 0, 'EST']);
+  assert.deepEqual(by.party, ['21:00', '01:00', 1, '']);
+  assert.deepEqual(by.dinner, ['17:00', '20:00', 0, '']);
+  assert.deepEqual(by.toronto, ['09:00', '10:30', 0, '']);
+  assert.deepEqual(by.back, ['00:30', '13:00', -1, 'HST']);
+  assert.deepEqual(by.museum, ['', '', 0, '']);
+  // The zone is named the way the locale names it.
+  assert.equal(planRows(list, [], { fallbackTz: NY, locale: 'de-DE' })[0].endZone, 'GMT-5');
+  // No end, or one that isn't a time: nothing to say about it.
+  const plain = planRows([{ path: '/plan/x.json', item: { id: 'x', title: 'x', fixed: false, start: { at: '2026-11-26T10:00:00-05:00', tz: NY }, end: { at: 'soon', tz: LA } } }], [], { fallbackTz: NY, locale: 'en-US' })[0];
+  assert.deepEqual([plain.end, plain.endDays, plain.endZone], ['', 0, '']);
 });
 
 test('planDays: every trip day, other days with something on them, rows by time; untimed apart', () => {

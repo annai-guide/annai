@@ -43,6 +43,7 @@ const THANKSGIVING = {
     '/plan/pie.json': { id: 'pie', title: 'Pick up pies', fixed: false, priority: 1, start: { at: '2026-11-26T10:00:00-05:00', tz: NY }, place: { name: 'Bakery', lat: 40.75, lng: -74.03 } },
     '/plan/dinner.json': { id: 'dinner', title: 'Thanksgiving dinner', fixed: true, start: { at: '2026-11-26T17:00:00-05:00', tz: NY }, place: { name: "Aunt Mei's", lat: 40.745, lng: -74.028 }, booking: '/trip/bookings/gone.json' },
     '/plan/skate.json': { id: 'skate', title: 'Ice skating', fixed: false },
+    '/plan/home.json': { id: 'home', title: 'UA 456 to San Francisco', kind: 'flight', fixed: true, start: { at: '2026-11-28T21:00:00-05:00', tz: NY }, end: { at: '2026-11-29T00:30:00-08:00', tz: LA }, place: { name: 'EWR' } },
     '/bookings/flight.json': { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass', title: 'UA 123', confirmation: 'ABC123', start: { at: '2026-11-25T08:00:00-08:00', tz: LA } },
     '/bookings/hotel.json': { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/hotel.pdf', title: 'Hoboken Inn' },
   },
@@ -61,7 +62,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
   const day = page.getByRole('tabpanel');
   await expect(day.locator('.plan-row')).toHaveCount(2);
-  await expect(day.locator('.plan-row').first()).toContainText('08:00–16:30');
+  await expect(day.locator('.plan-row').first()).toContainText('08:00–16:30 EST'); // it lands in another zone
   await expect(day.locator('.plan-row').first()).toContainText('●');
   await expect(day.getByRole('link', { name: 'Check this' })).toHaveCount(1);
   await expect(day.locator('.leg')).toHaveCount(0); // SFO to Hoboken is a flight, not a leg
@@ -70,6 +71,8 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(day.locator('.leg')).toContainText('≈ 0.4 mi apart');
   await expect(day.locator('.leg').getByRole('link', { name: 'Directions' })).toHaveAttribute('href', /^https:\/\/(maps\.apple\.com|www\.google\.com\/maps)/);
   await expect(day.getByText('Booking missing')).toBeVisible();
+  await tabs.nth(3).click();
+  await expect(day.locator('.plan-row')).toContainText('21:00–00:30 +1 PST'); // it lands the next day, in another zone
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
   await expect(page.getByText("1 plan file couldn't be read")).toBeVisible();
