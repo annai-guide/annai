@@ -1,7 +1,7 @@
 import { h, field, checkbox, radios } from '../dom.js';
 import { openArchive, describeArchive, importArchive, NeedsPassphraseError } from '../../core/archive.js';
 import { PassphraseError } from '../../core/archive-crypto.js';
-import { takePendingImport, isArchiveName } from '../import-state.js';
+import { takePendingImport, setPendingImport, isArchiveName } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
 import { relTime, bytes } from '../format.js';
 import { listTrips } from '../../core/scopes.js';
@@ -22,7 +22,7 @@ export async function renderImport(ctx, route) {
   // A file picked with "Open a trip someone sent you" is an archive whatever its name; anything else is one by its name.
   const archive = (/** @type {InboxFile} */ i) => Boolean(pending?.archive) || isArchiveName(i.file.name);
   const forTrip = came.filter((i) => !archive(i));
-  if (forTrip.length) return fileInbox(ctx, forTrip, (await listTrips(ctx.store)).active);
+  if (forTrip.length) return fileInbox(ctx, forTrip, (await listTrips(ctx.store)).active, came.filter(archive));
   const body = h('div', { class: 'screen' });
   const screen = h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'Open a trip' }), body);
   /** @type {Source | null} */
@@ -167,10 +167,10 @@ async function inboxFiles() {
 /**
  * Files shared from another app (Android's share sheet) or dropped on annai: the user sees them,
  * then chooses the trip they belong to (spec §7.3, §12.3). A share can come from any site, so
- * nothing is added before that.
- * @param {any} ctx @param {InboxFile[]} items @param {any[]} trips
+ * nothing is added before that. An annai file that came with them is named, and opens on its own.
+ * @param {any} ctx @param {InboxFile[]} items @param {any[]} trips @param {InboxFile[]} archives
  */
-function fileInbox(ctx, items, trips) {
+function fileInbox(ctx, items, trips, archives) {
   const n = items.length;
   const photos = items.filter((i) => isPhotoType(i.file.type) || isPhotoType(typeForPath(i.file.name)));
   const others = items.filter((i) => !photos.includes(i));
@@ -198,6 +198,13 @@ function fileInbox(ctx, items, trips) {
       for (const b of buttons) b.disabled = false;
     }
   }
+  /** On the import screen, as if it had come alone; it leaves the share inbox as it opens. @param {InboxFile} a */
+  async function openAnnaiFile(a) {
+    if (a.key) await (await caches.open('annai-inbox')).delete(a.key);
+    for (const url of urls) URL.revokeObjectURL(url);
+    setPendingImport([a.file], { archive: true });
+    ctx.go('#/import');
+  }
   const shown = photos.slice(0, 12);
   const urls = shown.map((i) => URL.createObjectURL(i.file));
   return h('div', { class: 'screen' },
@@ -210,7 +217,10 @@ function fileInbox(ctx, items, trips) {
     trips.length
       ? h('div', { class: 'acts' }, ...buttons)
       : h('p', { class: 'empty' }, `Start a trip first, then share ${n === 1 ? 'it' : 'them'} again. `, h('a', { href: '#/trips' }, 'Go to Trips')),
-    status);
+    status,
+    ...archives.map((a) => h('div', { class: 'panel' },
+      h('p', { text: `Also here: ${a.file.name}, an annai backup or trip. It isn't added with the rest; open it on its own.` }),
+      h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => openAnnaiFile(a) }, 'Open it')))));
 }
 
 /** The words of shared text, so the user sees what they would add; nothing for other files. @param {File} file */

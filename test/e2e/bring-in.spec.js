@@ -90,3 +90,28 @@ test('a calendar without .ics in its name, sent as text/calendar, becomes plan i
   await expect(page.getByText('Added /files/invite, and 2 plan items from the calendar')).toBeVisible();
   await expect(page.getByRole('link', { name: /\/plan\/ics-dinner-example-com-[0-9a-f]{8}\.json/ })).toBeVisible();
 });
+
+test('a backup shared with a pass is named, and opens on its own', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  const pass = [...(await passBytes())];
+  await page.evaluate(async (bytes) => {
+    const form = new FormData();
+    form.append('files', new File([new Uint8Array(bytes)], 'flight.pkpass', { type: 'application/vnd.apple.pkpass' }));
+    form.append('files', new File(['not a zip'], 'trip.annai.zip', { type: 'application/zip' }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  }, pass);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add a file' })).toBeVisible();
+  await expect(page.getByText('flight.pkpass')).toBeVisible();
+  await expect(page.getByText(/Also here: trip\.annai\.zip/)).toBeVisible();
+  await page.getByRole('button', { name: 'Open it' }).click();
+  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText("isn't an annai file");
+  // Opened, it leaves the share inbox; the pass still waits there.
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add a file' })).toBeVisible();
+  await expect(page.getByText('flight.pkpass')).toBeVisible();
+  await expect(page.getByText(/trip\.annai\.zip/)).toHaveCount(0);
+});
