@@ -1,10 +1,12 @@
 import { SYS } from '../scopes.js';
 import { readConfig, getKey, endpointOf, modelOf, saveModel } from './config.js';
+import { decide as decideWith } from './decide.js';
+import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
 import { endpointTypes, ProviderError, errorFromResponse } from './contract.js';
 import { ensureType } from './official.js';
 import { loadTemplates } from './templates.js';
-import { callRole, Bench } from './fallback.js';
+import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
 
 /**
@@ -40,7 +42,7 @@ export function createLlm({
     const type = /** @type {import('./contract.js').EndpointType} */ (types().get(epRec.type));
     return { rec, type, endpoint: endpointOf(epRec, type.tunables), model: modelOf(rec), key: await getKey(store, epRec.id) };
   };
-  return {
+  const service = {
     bench,
     ready,
     types,
@@ -60,6 +62,21 @@ export function createLlm({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
         fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry,
       });
+    },
+    /**
+     * A quick decision (spec §9.7), recorded as a decide event.
+     * @param {{ prompt: string, options: { id: string, label: string }[], threshold?: number, scope?: string }} c
+     * @returns {Promise<Record<string, number>>}
+     */
+    async decide({ prompt, options, threshold, scope = SYS }) {
+      const cfg = await readConfig(ws);
+      const firstId = candidates(cfg, 'decide')[0];
+      const first = firstId && cfg.models[firstId] ? modelOf(cfg.models[firstId]) : null;
+      // The main model is asked at level off (or the nearest it has), so a quick decision stays quick.
+      const call = (/** @type {string} */ role, /** @type {any} */ request) => service.call({ role, request, scope, ...(role === 'decide' ? {} : { level: 'off' }) });
+      const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs) });
+      await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by } }).catch(() => {});
+      return r.probabilities;
     },
     /** The Test button for one model; what it found is recorded on the model (spec §9.8). @param {string} modelId */
     async test(modelId) {
@@ -112,4 +129,5 @@ export function createLlm({
       return type.readList(await res.json());
     },
   };
+  return service;
 }
