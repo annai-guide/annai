@@ -2,7 +2,7 @@
 import { storeError, StoppedError } from './errors.js';
 
 export const DB_NAME = 'annai';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 /**
  * Opens the database, creating or upgrading it. An upgrade that another connection
@@ -13,7 +13,7 @@ export const DB_VERSION = 2;
 export function openDatabase(name = DB_NAME, version = DB_VERSION) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(name, version);
-    req.onupgradeneeded = (e) => upgrade(req.result, /** @type {IDBTransaction} */ (req.transaction), e.oldVersion);
+    req.onupgradeneeded = (e) => upgrade(req.result, /** @type {IDBTransaction} */ (req.transaction), e.oldVersion, e.newVersion ?? version);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -21,9 +21,9 @@ export function openDatabase(name = DB_NAME, version = DB_VERSION) {
 
 /**
  * Ordered migrations, each in the all-or-nothing versionchange transaction (spec §4.6).
- * @param {IDBDatabase} db @param {IDBTransaction} tx @param {number} from
+ * @param {IDBDatabase} db @param {IDBTransaction} tx @param {number} from @param {number} to the version being opened: only steps up to it run
  */
-function upgrade(db, tx, from) {
+function upgrade(db, tx, from, to) {
   if (from < 1) {
     db.createObjectStore('blobs', { keyPath: 'hash' });
     db.createObjectStore('files', { keyPath: ['scope', 'path'] });
@@ -32,7 +32,15 @@ function upgrade(db, tx, from) {
     db.createObjectStore('scopes', { keyPath: 'id' });
   }
   // 2: blob sizes can be listed without reading any content (spec §4.9).
-  if (from < 2) tx.objectStore('blobs').createIndex('size', 'size');
+  if (from < 2 && to >= 2) tx.objectStore('blobs').createIndex('size', 'size');
+  // 3: what files and log entries point at is indexed, so removing a trip reads only what it used (spec §4.9).
+  if (from < 3 && to >= 3) {
+    tx.objectStore('files').createIndex('hash', 'hash');
+    const events = tx.objectStore('events');
+    events.createIndex('refs', 'refs', { multiEntry: true });
+    events.createIndex('old', 'data.old');
+    events.createIndex('new', 'data.new');
+  }
 }
 
 /** Deletes a whole database (used by "Erase everything" and by tests). @param {string} [name] */
@@ -158,6 +166,14 @@ function makeTx(t) {
     hasBlob: async (hash) => (await req(os('blobs').getKey(hash))) !== undefined,
     putBlob: async (rec) => { await req(os('blobs').put(rec)); },
     deleteBlob: async (hash) => { await req(os('blobs').delete(hash)); },
+    blobInUse: async (hash, { files = true, events = true } = {}) => {
+      const count = (/** @type {IDBIndex} */ index) => req(index.count(IDBKeyRange.only(hash)));
+      if (files && await count(os('files').index('hash'))) return true;
+      if (!events) return false;
+      const ev = os('events');
+      for (const name of ['refs', 'old', 'new']) if (await count(ev.index(name))) return true;
+      return false;
+    },
     listBlobs: () => new Promise((res, rej) => {
       /** @type {{ hash: string, size: number }[]} */
       const out = [];

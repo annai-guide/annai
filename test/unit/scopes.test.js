@@ -5,6 +5,8 @@ import { Workspace, ValidationError, StorageFullError, NotFoundError } from '../
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, recordBackup, backupState } from '../../src/core/scopes.js';
 import { logEvent, blobsOf } from '../../src/core/events.js';
+import { utf8, ownBuffer } from '../../src/core/bytes.js';
+import { sha256Hex } from '../../src/core/hash.js';
 import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS, PLAN_ITEM_SCHEMA, BOOKING_SCHEMA } from '../../src/plugins/core-schemas/schemas.js';
 import * as corePlugin from '../../src/plugins/core-schemas/index.js';
@@ -266,4 +268,22 @@ test('backupState of a trip unchanged since its Backup reads none of its history
     tx: (stores, mode, fn) => store.tx(stores, mode, (t) => fn({ ...t, listEvents: () => { throw new Error('read the history'); } })),
   };
   assert.deepEqual(await backupState(noLog, id), { at: 5000, changed: false });
+});
+
+test('removing a trip keeps content another trip names, and frees content nobody names (spec §4.9)', async () => {
+  const { store, ws } = await setup();
+  const a = await createTrip(ws, { title: 'A' });
+  const b = await createTrip(ws, { title: 'B' });
+  const shared = utf8('shared photo');
+  const sharedHash = await sha256Hex(shared);
+  const orphan = utf8('nobody');
+  const orphanHash = await sha256Hex(orphan);
+  await ws.write(a, '/files/p.webp', shared, { author: 'user', type: 'image/webp' });
+  await store.tx(['blobs', 'events'], 'readwrite', async (t) => {
+    await t.putBlob({ hash: orphanHash, type: 'text/plain', size: orphan.byteLength, data: ownBuffer(orphan) });
+    await t.appendEvent(b, { ts: 1, type: 'tool.result', actor: 'system', refs: [sharedHash] });
+  });
+  await removeTrip(store, a);
+  const left = await store.tx(['blobs'], 'readonly', async (t) => [await t.hasBlob(sharedHash), await t.hasBlob(orphanHash)]);
+  assert.deepEqual(left, [true, false]);
 });

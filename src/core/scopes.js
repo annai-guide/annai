@@ -1,5 +1,4 @@
 import { ValidationError, NotFoundError } from './workspace.js';
-import { blobsOf } from './events.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord @typedef {import('./types.js').Tx} Tx */
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -103,30 +102,16 @@ export async function removeTrip(store, id, now = Date.now()) {
     const rec = await t.getScope(id);
     if (!rec || rec.kind !== 'trip') throw new NotFoundError(`trip ${id}`);
     await t.deleteScope(id);
-    const used = await blobsInUse(t);
     let bytes = 0;
+    // Through the indexes of what files and log entries name: no log is read in full (spec §4.9).
     for (const b of await t.listBlobs()) {
-      if (used.has(b.hash)) continue;
+      if (await t.blobInUse(b.hash)) continue;
       await t.deleteBlob(b.hash);
       bytes += b.size;
     }
     await t.appendEvent(SYS, { ts: now, type: 'trip.remove', actor: 'user', data: { title: rec.title, bytes } });
     return { title: rec.title, bytes };
   });
-}
-
-/**
- * Every blob that a file or a log entry of any scope still points at (spec §4.9).
- * @param {Tx} t a transaction over scopes, files and events
- */
-export async function blobsInUse(t) {
-  /** @type {Set<string>} */
-  const used = new Set();
-  for (const s of await t.listScopes()) {
-    for (const f of await t.listFiles(s.id, '/')) used.add(f.hash);
-    for (const e of await t.listEvents(s.id)) for (const h of blobsOf(e)) used.add(h);
-  }
-  return used;
 }
 
 /** Changes to a trip's status, not to what it holds: a Backup made before them still has everything (spec §4.9). */

@@ -41,6 +41,19 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual([...list].sort((x, y) => (x.hash < y.hash ? -1 : 1)), [{ hash: 'a', size: 2 }, { hash: 'b', size: 5 }]);
   });
 
+  test('blobInUse: a file, a log entry\'s refs, or a file version in a log entry names a blob', async () => {
+    const s = await makeStore();
+    await s.tx(['files', 'events'], 'readwrite', async (t) => {
+      await t.putFile(file('trip-1', '/a.md', 'by-file'));
+      await t.appendEvent('trip-1', { ts: 1, type: 'tool.result', actor: 'system', refs: ['by-ref-1', 'by-ref-2'] });
+      await t.appendEvent('trip-2', { ts: 1, type: 'file.write', actor: 'user', data: { path: '/b.md', old: 'by-old', new: 'by-new' } });
+    });
+    const used = await s.tx(['files', 'events'], 'readonly', async (t) => Promise.all(['by-file', 'by-ref-2', 'by-old', 'by-new', 'nobody'].map((h) => t.blobInUse(h))));
+    assert.deepEqual(used, [true, true, true, true, false]);
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-ref-1', { events: false })), false);
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-file', { events: false })), true);
+  });
+
   test('files: list by prefix in path order, scoped, and delete', async () => {
     const s = await makeStore();
     await s.tx(['files'], 'readwrite', async (t) => {

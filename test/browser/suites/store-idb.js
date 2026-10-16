@@ -103,6 +103,24 @@ export default function (test, assert) {
     await eraseDatabase(name);
   });
 
+  test('idb: a version-2 database gains the indexes and finds what its old records name', async () => {
+    const name = `annai-test-v2-${Date.now()}`;
+    await eraseDatabase(name);
+    const v2 = await openDatabase(name, 2);
+    await new Promise((resolve, reject) => {
+      const tx = v2.transaction(['events', 'files'], 'readwrite');
+      tx.objectStore('events').put({ scope: 'trip-1', seq: 1, ts: 1, type: 'tool.result', actor: 'system', refs: ['old-ref'] });
+      tx.objectStore('files').put(rec);
+      tx.oncomplete = () => resolve(undefined);
+      tx.onerror = () => reject(tx.error);
+    });
+    v2.close();
+    const s = await createIdbStore(name);
+    assert.deepEqual(await s.tx(['files', 'events'], 'readonly', async (t) => [await t.blobInUse('old-ref'), await t.blobInUse('h1'), await t.blobInUse('none')]), [true, true, false]);
+    s.close();
+    await eraseDatabase(name);
+  });
+
   test('idb: a closed store never opens the database again (a tab that stopped must not write)', async () => {
     const name = `annai-test-closed-${Date.now()}`;
     /** @type {IDBDatabase[]} */

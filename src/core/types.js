@@ -20,6 +20,8 @@
  * @property {(rec: BlobRecord) => Promise<void>} putBlob
  * @property {(hash: string) => Promise<void>} deleteBlob
  * @property {() => Promise<{ hash: string, size: number }[]>} listBlobs  every blob's hash and size, without reading its content.
+ * @property {(hash: string, which?: { files?: boolean, events?: boolean }) => Promise<boolean>} blobInUse  whether a file, or a log
+ *   entry (its refs, or the file versions data.old and data.new), names the blob (spec §4.9). Needs files and events in the transaction.
  *   It reads IndexedDB's index on size, so a blob is listed (and can be freed) only when its size is a number.
  * @property {(scope: string, path: string) => Promise<FileEntry|undefined>} getFile
  * @property {(entry: FileEntry) => Promise<void>} putFile

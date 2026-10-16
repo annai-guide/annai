@@ -4,7 +4,7 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId, blobsInUse } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf } from './events.js';
@@ -600,8 +600,7 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
 async function removeUnused(store, hashes) {
   if (!hashes.length) return;
   await store.tx(['scopes', 'files', 'events', 'blobs'], 'readwrite', async (t) => {
-    const used = await blobsInUse(t);
-    for (const h of hashes) if (!used.has(h)) await t.deleteBlob(h);
+    for (const h of hashes) if (!(await t.blobInUse(h))) await t.deleteBlob(h);
   });
 }
 

@@ -1,7 +1,7 @@
 // Fails when the JavaScript and CSS annai ships grow past the budget (spec §18).
 import { readFile, stat } from 'node:fs/promises';
 
-const BUDGET = 600 * 1024; // bytes, uncompressed; raised from 400 KiB for milestone 2b and 2c (the agent, its tools, the conversation and the avatar)
+const BUDGET = 680 * 1024; // bytes, uncompressed; raised from 600 KiB for milestone 2c (photos to the model)
 const root = new URL('../', import.meta.url);
 const sw = await readFile(new URL('sw.js', root), 'utf8');
 const shell = [...(/const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '').matchAll(/'(\/[^']+\.(?:js|css))'/g)].map((m) => m[1]);
