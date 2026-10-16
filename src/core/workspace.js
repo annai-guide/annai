@@ -10,7 +10,9 @@ export { StorageFullError } from './errors.js';
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').Tx} Tx
  * @typedef {import('./types.js').FileEntry} FileEntry
- * @typedef {{ author: string, type?: string, source?: string, meta?: import('./types.js').PhotoMeta }} WriteOptions
+ * @typedef {{ author: string, type?: string, source?: string, meta?: import('./types.js').PhotoMeta, guard?: (before: any, next: any) => any }} WriteOptions
+ *   guard: for a JSON file, called inside the path's lock with what is stored (undefined if nothing, or not JSON) and the
+ *   value about to be stored, read as the format check reads it; what it returns is stored, and what it throws stops the write
  * @typedef {{ op: 'write'|'delete', scope: string, path: string, entry?: FileEntry }} Change
  * @typedef {{ hash: string, type: string, size: number, bytes?: Uint8Array }} Version
  */
@@ -204,7 +206,13 @@ export class Workspace {
   /** @param {string} scope @param {string} path @param {any} content @param {WriteOptions} opts */
   async #write(scope, path, content, opts) {
     const type = opts.type ?? typeForPath(path);
-    const bytes = contentBytes(content);
+    let bytes = contentBytes(content);
+    if (opts.guard && type === 'application/json') {
+      // Inside the path's lock (write and patch hold it), so nothing changes the file between this read and the write.
+      const next = parseJSON(path, bytes);
+      const value = opts.guard(await this.readJSON(scope, path).catch(() => undefined), next);
+      if (value !== next) bytes = contentBytes(value);
+    }
     if (type === 'application/json') this.#validateJSON(scope, path, bytes);
     const hash = await sha256Hex(bytes); // before the transaction: IndexedDB commits early if we await other work inside it
     return this.#commit(scope, path, { hash, type, size: bytes.byteLength, bytes }, opts);
@@ -223,12 +231,7 @@ export class Workspace {
 
   /** @param {string} scope @param {string} path @param {Uint8Array} bytes */
   #validateJSON(scope, path, bytes) {
-    let value;
-    try {
-      value = JSON.parse(text(bytes));
-    } catch (e) {
-      throw new ValidationError(path, [`not valid JSON (${/** @type {Error} */ (e).message})`]);
-    }
+    const value = parseJSON(path, bytes);
     const schema = this.schemaFor(scope, path);
     if (schema) {
       const errors = validate(schema, value);
@@ -263,6 +266,15 @@ export class Workspace {
 }
 
 /** @param {any} content @returns {Uint8Array} */
+/** A JSON file's value, as every reader reads it (a byte-order mark is read past). @param {string} path @param {Uint8Array} bytes */
+function parseJSON(path, bytes) {
+  try {
+    return JSON.parse(text(bytes));
+  } catch (e) {
+    throw new ValidationError(path, [`not valid JSON (${/** @type {Error} */ (e).message})`]);
+  }
+}
+
 function contentBytes(content) {
   if (typeof content === 'string') return utf8(content);
   if (content instanceof Uint8Array) return content;

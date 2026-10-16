@@ -36,9 +36,13 @@ function contentLine(line) {
 }
 
 /** A TEXT value: \\ \; \, and \n. @param {string} v */
-const unescapeText = (v) => v.replace(/\\([\;,nN])/g, (_, c) => (c === 'n' || c === 'N' ? '\n' : c));
-/** @param {string} v */
-const escapeText = (v) => v.replace(/[\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
+const unescapeText = (v) => v.replace(/\\([\\;,nN])/g, (_, c) => (c === 'n' || c === 'N' ? '\n' : c));
+/**
+ * A TEXT value on one line: backslashes, ";" and "," escaped, every line break (CRLF, CR or LF) as \n,
+ * and other control characters dropped, so nothing in a record can start a line of its own in the file.
+ * @param {string} v
+ */
+const escapeText = (v) => v.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r\n|\r|\n/g, '\\n').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '');
 
 /**
  * DTSTART or DTEND as a time in its zone: the TZID when annai knows it (directly, or through the
@@ -199,8 +203,8 @@ export function planToIcs(items, { name, tripId, now }) {
       left++;
       continue;
     }
-    lines.push('BEGIN:VEVENT', `UID:${it.id}.${tripId}@annai.guide`, `DTSTAMP:${utcStamp(now)}`);
-    if (it.kind === 'all-day') lines.push(`DTSTART;VALUE=DATE:${String(dayIn(start, it.start.tz)).replace(/-/g, '')}`);
+    lines.push('BEGIN:VEVENT', `UID:${escapeText(`${String(it.id ?? '')}.${tripId}`)}@annai.guide`, `DTSTAMP:${utcStamp(now)}`);
+    if (it.kind === 'all-day') lines.push(`DTSTART;VALUE=DATE:${String(dayIn(start, validZone(it.start.tz) ? it.start.tz : 'UTC')).replace(/-/g, '')}`);
     else {
       lines.push(`DTSTART:${utcStamp(start)}`);
       const end = Date.parse(it?.end?.at ?? '');
@@ -209,7 +213,7 @@ export function planToIcs(items, { name, tripId, now }) {
     lines.push(`SUMMARY:${escapeText(String(it.title ?? ''))}`);
     const place = it.place?.name ? [it.place.name, it.place.address].filter(Boolean).join(', ') : '';
     if (place) lines.push(`LOCATION:${escapeText(place)}`);
-    if (typeof it.place?.lat === 'number' && typeof it.place?.lng === 'number') lines.push(`GEO:${it.place.lat};${it.place.lng}`);
+    if (Number.isFinite(it.place?.lat) && Number.isFinite(it.place?.lng)) lines.push(`GEO:${it.place.lat};${it.place.lng}`);
     if (it.notes) lines.push(`DESCRIPTION:${escapeText(String(it.notes))}`);
     lines.push('END:VEVENT');
   }

@@ -204,9 +204,19 @@ function fileInbox(ctx, items, trips) {
     h('h1', { class: 'title', text: `Add ${what}` }),
     shown.length ? h('ul', { class: 'thumbs' }, ...shown.map((i, k) => h('li', {}, h('img', { src: urls[k], alt: i.file.name, decoding: 'async' })))) : null,
     photos.length > shown.length ? h('p', { class: 'sub', text: `and ${photos.length - shown.length} more photos` }) : null,
-    others.length ? h('ul', { class: 'file-names' }, ...others.map((i) => h('li', { text: `${i.file.name} · ${bytes(i.file.size)}` }))) : null,
+    others.length ? h('ul', { class: 'file-names' }, ...others.map((i) => h('li', {}, h('span', { text: `${i.file.name} · ${bytes(i.file.size)}` }), sharedText(i.file)))) : null,
+    // Any site can post to the share target (spec §12.3), so the user is asked to add only their own share.
+    items.some((i) => i.key) ? h('p', { class: 'sub', text: 'Add only what you just shared yourself.' }) : null,
     trips.length
       ? h('div', { class: 'acts' }, ...buttons)
       : h('p', { class: 'empty' }, `Start a trip first, then share ${n === 1 ? 'it' : 'them'} again. `, h('a', { href: '#/trips' }, 'Go to Trips')),
     status);
+}
+
+/** The words of shared text, so the user sees what they would add; nothing for other files. @param {File} file */
+function sharedText(file) {
+  if (!file.type.startsWith('text/') || file.size > 200_000) return null;
+  const el = h('blockquote', { class: 'shared-text' });
+  file.text().then((t) => { el.textContent = t.length > 600 ? `${t.slice(0, 600)}…` : t; }).catch(() => {});
+  return el;
 }

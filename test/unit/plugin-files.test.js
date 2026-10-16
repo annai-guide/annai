@@ -121,3 +121,17 @@ test('bookings: Shiori writes them unverified, never confirms one, and her chang
   // Other records are not bookings.
   await run('write', { path: '/trip/notes/confirmed.json', content: { status: 'confirmed' } });
 });
+
+test("bookings: Shiori can't confirm one through text the rule would read differently, or by racing the user", async () => {
+  const { ws, trip, run } = await setup();
+  const booking = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf' };
+  // A byte-order mark before the JSON: the store reads it as JSON, so the rule must too.
+  await assert.rejects(run('write', { path: '/trip/bookings/hotel.json', content: `﻿${JSON.stringify({ ...booking, status: 'confirmed' })}` }), /Only the user confirms a booking/);
+  assert.equal(await ws.read(trip, '/bookings/hotel.json'), undefined);
+  // The user takes a confirmation back while Shiori writes the confirmed booking unchanged: the user's word stands.
+  await ws.write(trip, '/bookings/hotel.json', { ...booking, status: 'confirmed' }, { author: 'user' });
+  const shiori = run('write', { path: '/trip/bookings/hotel.json', content: { ...booking, status: 'confirmed' } });
+  const user = ws.patch(trip, '/bookings/hotel.json', { status: 'unverified' }, { author: 'user' });
+  await Promise.allSettled([shiori, user]);
+  assert.equal((await ws.readJSON(trip, '/bookings/hotel.json')).status, 'unverified');
+});
