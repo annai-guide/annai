@@ -101,3 +101,19 @@ export function isCompressedType(type) {
   return type.startsWith('image/') || type.startsWith('audio/') || type.startsWith('video/') || type.startsWith('font/') ||
     type === 'application/pdf' || type === 'application/zip' || type === 'application/vnd.apple.pkpass';
 }
+
+/**
+ * A path no file in taken has: "name (2).ext", "name (3).ext"… An import never replaces another
+ * file, or a booking's source would point at the wrong one (spec §7.3).
+ * @param {string} path @param {Set<string>} taken
+ */
+export function freeName(path, taken) {
+  if (!taken.has(path)) return path;
+  const slash = path.lastIndexOf('/');
+  const dot = path.lastIndexOf('.');
+  const cut = dot > slash + 1 ? dot : path.length;
+  for (let i = 2; ; i++) {
+    const p = `${path.slice(0, cut)} (${i})${path.slice(cut)}`;
+    if (!taken.has(p)) return p;
+  }
+}

@@ -354,3 +354,49 @@ test('a photo sent with no words says "(a photo)"; one sent while Shiori waits f
   const last = k.requests[1].messages.at(-1).parts;
   assert.deepEqual(last.map((/** @type {any} */ p) => p.type), ['tool_result', 'text', 'image']);
 });
+
+test('a wake for a trip that is not open is written into its conversation, and answered when it opens (spec §7.3)', async () => {
+  const k = await agentKit([[say('Your flight pass: I put it in the plan.')]]);
+  const A = k.trip;
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  k.agent.wake({ kind: 'file', scope: B, text: 'The user added a file to the trip: /trip/files/flight.pkpass (application/vnd.apple.pkpass).' });
+  await k.agent.idle();
+  assert.equal(k.requests.length, 0);
+  assert.equal((await eventsIn(k, A, ['wake'])).length, 0);
+  assert.deepEqual((await eventsIn(k, B, ['wake'])).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.kind)), [['file']]);
+  await k.agent.open(B);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+  assert.match(userTexts(k.requests[0]), /flight\.pkpass/);
+  assert.deepEqual((await eventsIn(k, B, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your flight pass: I put it in the plan.']);
+});
+
+test('a wake for the open trip, named by its scope, runs there as before', async () => {
+  const k = await agentKit([[say('Got it.')]]);
+  k.agent.wake({ kind: 'file', scope: k.trip, text: 'The user added a file to the trip: /trip/files/a.pdf (application/pdf).' });
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+});
+
+test('a wake for a trip that is not open is written into its conversation, and answered when it opens (spec §7.3)', async () => {
+  const k = await agentKit([[say('Your flight pass: I put it in the plan.')]]);
+  const A = k.trip;
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  k.agent.wake({ kind: 'file', scope: B, text: 'The user added a file to the trip: /trip/files/flight.pkpass (application/vnd.apple.pkpass).' });
+  await k.agent.idle();
+  assert.equal(k.requests.length, 0);
+  assert.equal((await eventsIn(k, A, ['wake'])).length, 0);
+  assert.deepEqual((await eventsIn(k, B, ['wake'])).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.kind)), [['file']]);
+  await k.agent.open(B);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+  assert.match(userTexts(k.requests[0]), /flight\.pkpass/);
+  assert.deepEqual((await eventsIn(k, B, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your flight pass: I put it in the plan.']);
+});
+
+test('a wake for the open trip, named by its scope, runs there as before', async () => {
+  const k = await agentKit([[say('Got it.')]]);
+  k.agent.wake({ kind: 'file', scope: k.trip, text: 'The user added a file to the trip: /trip/files/a.pdf (application/pdf).' });
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+});

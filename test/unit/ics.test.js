@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseIcs, planItems, planToIcs, MAX_EVENTS, MAX_ICS_BYTES } from '../../src/core/ics.js';
-import { importCalendar } from '../../src/core/imports.js';
+import { importCalendar, newFilesText } from '../../src/core/imports.js';
 import { validate } from '../../src/core/schema.js';
 import { PLAN_ITEM_SCHEMA, CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
@@ -110,4 +110,15 @@ test('importCalendar writes plan items from a file in the trip, and the same fil
   assert.equal((await ws.list(trip, '/plan/')).length, 6);
   await ws.write(trip, '/files/huge.ics', new Uint8Array(MAX_ICS_BYTES + 1), { author: 'user', type: 'text/calendar' });
   await assert.rejects(importCalendar(ws, trip, '/files/huge.ics', { defaultTz: NY }), /larger than a trip's calendar/);
+});
+
+test('newFilesText: what Shiori is told when files are added', () => {
+  const text = newFilesText([{ path: '/files/flight.pkpass', type: 'application/vnd.apple.pkpass' }, { path: '/files/trip.ics', type: 'text/calendar' }], ['/plan/ics-a-1.json']);
+  assert.match(text, /^The user added 2 files to the trip: \/trip\/files\/flight\.pkpass \(application\/vnd\.apple\.pkpass\), \/trip\/files\/trip\.ics \(text\/calendar\)\./);
+  assert.match(text, /annai made 1 plan item from the calendar: \/trip\/plan\/ics-a-1\.json\./);
+  assert.match(text, /write an unverified booking in \/trip\/bookings\//);
+  assert.doesNotMatch(text, /trip photos/);
+  const photos = newFilesText(Array.from({ length: 25 }, (_, i) => ({ path: `/files/p${i}.webp`, type: 'image/webp' })), []);
+  assert.match(photos, /^The user added 25 files to the trip: .*, and 5 more\./);
+  assert.match(photos, /If these are just trip photos, they need nothing from you/);
 });

@@ -68,10 +68,10 @@ export function startShell(root, core) {
   // Spec §12.3: a file dropped anywhere on annai opens on the import screen.
   addEventListener('dragover', (e) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault(); });
   addEventListener('drop', (e) => {
-    const file = e.dataTransfer?.files[0];
-    if (!file) return;
+    const files = [...(e.dataTransfer?.files ?? [])];
+    if (!files.length) return;
     e.preventDefault();
-    setPendingImport(file);
+    setPendingImport(files);
     ctx.go('#/import');
   });
   render();

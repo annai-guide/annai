@@ -10,7 +10,7 @@ export function openFileButton(ctx, label = 'Open a trip someone sent you') {
     onchange: () => {
       const f = input.files?.[0];
       if (!f) return;
-      setPendingImport(f);
+      setPendingImport([f], { archive: true });
       input.value = '';
       if (location.hash === '#/import') ctx.render();
       else ctx.go('#/import');

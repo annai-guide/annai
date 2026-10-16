@@ -6,7 +6,7 @@ import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { relTime, bytes, dateRange, fileHref } from '../format.js';
 import { exportPanel } from '../export-panel.js';
-import { addFiles } from '../add-files.js';
+import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
 
 export { fileHref };
@@ -138,12 +138,14 @@ function newFile(ctx, id) {
     if (!files.length) return;
     error.hidden = true;
     try {
-      const { paths, notes } = await addFiles(ctx, id, files, (done, total) => {
+      const { paths, notes, problems, planned } = await bringIn(ctx, id, files, (done, total) => {
         status.textContent = total > 1 && done < total ? `Adding ${done + 1} of ${total}…` : '';
       });
       await ctx.render();
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: 'A photo was kept as it is', body: note });
-      ctx.notices.toast(paths.length === 1 ? `Added ${paths[0]}` : `Added ${paths.length} files`);
+      for (const problem of problems) ctx.notices.card({ tone: 'warn', title: "A calendar file couldn't be read", body: problem });
+      const added = paths.length === 1 ? `Added ${paths[0]}` : `Added ${paths.length} files`;
+      ctx.notices.toast(planned.length ? `${added}, and ${planned.length} plan ${planned.length === 1 ? 'item' : 'items'} from the calendar` : added);
     } catch (e) {
       status.textContent = '';
       show(e);
