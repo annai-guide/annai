@@ -94,3 +94,30 @@ test('the Plan with nothing in it, and with no trip open', async ({ page }) => {
   await expect(page.getByText('No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
 });
+
+test('Booking confirmation: what it says, beside its original; Looks right confirms it, and the plan stops asking', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Thanksgiving');
+  await records(page, trip, THANKSGIVING);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
+  await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
+  await expect(page.getByText('Check this against the original, then confirm it.')).toBeVisible();
+  await expect(page.locator('dl.facts')).toContainText('ABC123');
+  await expect(page.locator('dl.facts')).toContainText('(America/Los_Angeles)');
+  await expect(page.getByText("The original, /files/flight.pkpass, isn't in the trip.")).toBeVisible();
+  await page.getByRole('button', { name: 'Looks right' }).click();
+  await expect(page.locator('.chip.ok')).toHaveText('Confirmed');
+  await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
+  await page.getByRole('link', { name: '← Plan' }).click();
+  await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
+  await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
+});
+
+test("a booking link to something that isn't a booking opens nothing", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Thanksgiving');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/trip.json')}`);
+  await expect(page.getByRole('heading', { name: "This booking isn't in the trip" })).toBeVisible();
+});

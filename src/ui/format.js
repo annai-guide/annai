@@ -1,3 +1,4 @@
+import { validZone } from '../core/time.js';
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 /** @type {[Intl.RelativeTimeFormatUnit, number][]} */
 const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
@@ -79,3 +80,38 @@ export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?pat
 
 /** The Booking screen for a trip's booking (spec §16.2). @param {string} id @param {string} path "/bookings/…" */
 export const bookingHref = (id, path) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
+
+const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: 'Flight', lodging: 'Stay', car: 'Car', rail: 'Train', event: 'Event', restaurant: 'Restaurant', other: 'Other' });
+
+/**
+ * What a booking says, as label and value lines for the Booking screen (spec §16.2), in the order
+ * a person checks them. Times are shown in their own zone, named.
+ * @param {Record<string, any>} b @param {string} locale @returns {[string, string][]}
+ */
+export function bookingLines(b, locale) {
+  /** @param {any} t */
+  const when = (t) => {
+    const at = Date.parse(t?.at ?? '');
+    if (!Number.isFinite(at) || !validZone(t?.tz)) return null;
+    return `${new Intl.DateTimeFormat(locale, { timeZone: t.tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(at)} (${t.tz})`;
+  };
+  /** @type {[string, string][]} */
+  const lines = [['Kind', BOOKING_KINDS[b.kind] ?? String(b.kind ?? '')]];
+  const start = when(b.start);
+  if (start) lines.push(['Starts', start]);
+  const end = when(b.end);
+  if (end) lines.push(['Ends', end]);
+  if (b.place?.name) lines.push(['Place', [b.place.name, b.place.address].filter(Boolean).join(', ')]);
+  if (b.confirmation) lines.push(['Confirmation', String(b.confirmation)]);
+  if (b.cost && Number.isFinite(b.cost.amount)) {
+    try {
+      lines.push(['Cost', new Intl.NumberFormat(locale, { style: 'currency', currency: b.cost.currency }).format(b.cost.amount)]);
+    } catch {
+      lines.push(['Cost', `${b.cost.amount} ${b.cost.currency}`]);
+    }
+  }
+  if (b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields)) {
+    for (const [k, v] of Object.entries(b.fields)) lines.push([k, typeof v === 'string' ? v : JSON.stringify(v)]);
+  }
+  return lines;
+}

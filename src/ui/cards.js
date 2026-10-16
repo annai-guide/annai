@@ -1,7 +1,7 @@
 import { h } from './dom.js';
 import { renderMarkdown } from './markdown.js';
 import { platform } from './platform.js';
-import { fileHref } from './format.js';
+import { bookingHref } from './format.js';
 
 /**
  * Shiori's cards (spec §7.1 show): text, a place, links, a booking, a photo, or a choice. Every
@@ -46,7 +46,7 @@ export function renderCard(card, { ctx, onChoice }) {
   const links = (Array.isArray(card.links) ? card.links : []).map((/** @type {any} */ l) => ({ label: String(l?.label ?? l?.url ?? ''), url: httpUrl(String(l?.url ?? '')) })).filter((/** @type {any} */ l) => l.url);
   if (links.length) parts.push(h('div', { class: 'acts' }, ...links.map((/** @type {any} */ l) => h('a', { class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))));
   const booking = card.booking ? tripPath(card.booking) : null;
-  if (booking?.root === 'trip' && ctx.agent?.trip) parts.push(h('a', { class: 'btn', href: fileHref(ctx.agent.trip, booking.path) }, 'Open the booking'));
+  if (booking?.root === 'trip' && ctx.agent?.trip) parts.push(h('a', { class: 'btn', href: bookingHref(ctx.agent.trip, booking.path) }, 'Open the booking'));
   const image = card.image ? tripPath(card.image) : null;
   if (image) {
     const img = h('img', { class: 'card-image', alt: card.title ? String(card.title) : 'A photo Shiori showed' });

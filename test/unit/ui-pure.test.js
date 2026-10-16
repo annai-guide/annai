@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText } from '../../src/ui/format.js';
+import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -196,4 +196,21 @@ test('parseHash: the plan and booking screens', () => {
   const b = parseHash('#/trip/t-1/booking?path=%2Fbookings%2Fhotel.json');
   assert.deepEqual([b.name, b.parts[1], b.params.path], ['booking', 't-1', '/bookings/hotel.json']);
   assert.equal(parseHash('#/trip/t-1/toString').name, 'trip');
+});
+
+test('bookingLines: what a booking says, with times in their own zone', () => {
+  const lines = bookingLines({
+    id: 'f', kind: 'flight', status: 'unverified', source: '/files/f.pkpass',
+    start: { at: '2026-11-25T08:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-25T16:30:00-05:00', tz: 'America/New_York' },
+    place: { name: 'SFO', address: 'San Francisco, CA' }, confirmation: 'ABC123', cost: { amount: 412.5, currency: 'USD' }, fields: { seat: '21C', bags: 1 },
+  }, 'en-US');
+  assert.deepEqual(lines.map(([k]) => k), ['Kind', 'Starts', 'Ends', 'Place', 'Confirmation', 'Cost', 'seat', 'bags']);
+  assert.match(lines[1][1], /^Wed, Nov 25, 8:00\sAM \(America\/Los_Angeles\)$/);
+  assert.match(lines[2][1], /^Wed, Nov 25, 4:30\sPM \(America\/New_York\)$/);
+  assert.equal(lines[3][1], 'SFO, San Francisco, CA');
+  assert.equal(lines[5][1], '$412.50');
+  assert.deepEqual(lines.slice(6), [['seat', '21C'], ['bags', '1']]);
+  // Only what is required; a zone annai doesn't know leaves the time out rather than breaking.
+  assert.deepEqual(bookingLines({ id: 'x', kind: 'other', status: 'unverified', source: '/files/x' }, 'en-US'), [['Kind', 'Other']]);
+  assert.deepEqual(bookingLines({ kind: 'car', start: { at: '2026-11-25T08:00:00-08:00', tz: 'Nowhere' }, fields: 'not an object' }, 'en-US'), [['Kind', 'Car']]);
 });
