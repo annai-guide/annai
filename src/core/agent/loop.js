@@ -20,6 +20,7 @@ import { photoSettings } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
+import { GATE_OPTIONS, gatePrompt } from '../voice/gate.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -129,6 +130,10 @@ export class Agent {
   #quiet = null;
   /** Voice for the turn running now (spec §10.5). */
   #voiceNow = false;
+  /** Heard while she worked and judged not meant for her: written at her next step. @type {Heard[]} */
+  #chatter = [];
+  /** What she said aloud last, for the gate. */
+  #lastSaid = '';
   /** A card said she can't hear: until listening works again, it isn't said again for every speak. */
   #toldDeaf = false;
   /** The user stopped her during this step: nothing more is said until she has listened. */
@@ -820,6 +825,7 @@ export class Agent {
         break;
       }
       if (sleeping || endTurn || abort.signal.aborted) break;
+      await this.#writeChatter(wakeId);
       const more = this.#take();
       if (more.length) {
         await this.#logWakes(more, wakeId, true);
@@ -1213,6 +1219,7 @@ export class Agent {
     }
     u.end(text);
     const spoken = await u.done;
+    this.#lastSaid = spoken.heard || text;
     if (spoken.failed) {
       await this.#notice(spoken.failed === 'blocked'
         ? { tone: 'info', title: 'Tap the screen so Shiori can speak', body: 'This browser plays sound only after a tap. Her words are in the conversation.' }
@@ -1238,8 +1245,13 @@ export class Agent {
     this.#setState('speaking');
     u.end(question);
     const spoken = await u.done;
+    this.#lastSaid = question;
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', (await voice.settings()).silenceSeconds);
+    if (got.dismissed) {
+      this.#chatter.push(got.dismissed); // written in at her next step; the buttons keep waiting
+      got = {};
+    }
     if (got.heard || got.dismissed || got.text !== undefined || got.chosen !== undefined || got.stopped) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {
@@ -1398,17 +1410,40 @@ export class Agent {
     }
     const verdict = await this.#gate(h);
     if (this.state.name === 'hearing') this.#setState(this.#busy ? 'thinking' : 'listening');
+    if (verdict === 'chatter') {
+      // Chatter: recorded, and she sleeps on (spec §10.4).
+      if (this.#busy) this.#chatter.push(h);
+      else await this.#logHeard(h, { dismissed: true, gate: 'chatter' });
+      return;
+    }
     this.#push({ kind: 'heard', text: '', heard: h, ...(verdict ? { gate: verdict } : {}) });
     this.#drain();
   }
 
   /**
    * The quick-decision gate for one segment (spec §10.4). It runs only when a quick-decision model
-   * is configured; without one there is no gate, and what was heard goes to the main model.
-   * @param {Heard} _h @returns {Promise<'shiori' | 'chatter' | 'unsure' | null>} null: no gate ran
+   * is configured (falling back to the main model would double the calls): what was heard goes to
+   * the decide role, as audio or words like any speech. A gate that fails is unsure.
+   * @param {Heard} h @returns {Promise<'shiori' | 'chatter' | 'unsure' | null>} null: no gate ran
    */
-  async #gate(_h) {
-    return null;
+  async #gate(h) {
+    const cfg = await this.llm.config();
+    if (!cfg.roles?.decide?.models?.length || !this.llm.gate || !this.voice) return null;
+    try {
+      const r = await this.llm.gate({
+        prompt: gatePrompt(this.#lastSaid), options: GATE_OPTIONS, scope: this.scope, speech: this.voice.resolver(this.scope),
+        parts: [{ type: 'speech', id: h.id, ...(typeof h.text === 'string' ? { text: h.text } : {}) }],
+      });
+      if (r.by === 'unsure') return 'unsure';
+      return (r.probabilities.chatter ?? 0) > (r.probabilities.shiori ?? 0) ? 'chatter' : 'shiori';
+    } catch {
+      return 'unsure'; // the gate never loses speech: unsure goes to the main model
+    }
+  }
+
+  /** Chatter heard while she worked, written in now (spec §10.4: dismissed speech still goes into the transcript). @param {string} wakeId */
+  async #writeChatter(wakeId) {
+    for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' });
   }
 
   /** Someone started speaking: Hearing you, and no silence limit while they speak. */
@@ -1503,6 +1538,7 @@ export class Agent {
     this.#utterances.clear();
     if (this.#ear?.owner === 'turn') this.#closeEar();
     else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
+    await this.#writeChatter(wakeId);
     if (ok) await this.#writeDown(wakeId);
   }
 
