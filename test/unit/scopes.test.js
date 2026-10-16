@@ -255,3 +255,15 @@ test('recordBackup skips what is not a trip, trips that are gone, and older Back
   await recordBackup(store, new Map([[id, seq - 1]]), 9000);
   assert.deepEqual(await backupState(store, id), { at: 5000, changed: false });
 });
+
+test('backupState of a trip unchanged since its Backup reads none of its history', async () => {
+  const { store, ws } = setup();
+  const id = await createTrip(ws, { title: 'Big Sur' });
+  await recordBackup(store, new Map([[id, await lastSeq(store, id)]]), 5000);
+  /** @type {Store} */
+  const noLog = {
+    close: () => {},
+    tx: (stores, mode, fn) => store.tx(stores, mode, (t) => fn({ ...t, listEvents: () => { throw new Error('read the history'); } })),
+  };
+  assert.deepEqual(await backupState(noLog, id), { at: 5000, changed: false });
+});
