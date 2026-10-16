@@ -530,7 +530,7 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
       await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
       added.push(hash);
     }
-    await commitImport(store, { manifest, plan, overrides, secrets, now, result });
+    await commitImport(store, { manifest, plan, overrides, secrets, now, result, hashes: [...content.keys()] });
   } catch (e) {
     await removeUnused(store, added).catch(() => {});
     throw e;
@@ -542,11 +542,15 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
  * The last step of an import, in one transaction: scopes, files, history and keys appear together or not at all.
  * @param {Store} store
  * @param {{ manifest: Manifest, plan: { rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[],
- *   overrides: Map<string, { bytes: Uint8Array, hash: string }>, secrets: { id: string, value: any }[], now: number,
+ *   overrides: Map<string, { bytes: Uint8Array, hash: string }>, secrets: { id: string, value: any }[], now: number, hashes: string[],
  *   result: { trips: string[], archived: string[], me: boolean, settings: boolean, plugins: boolean, secrets: number, keptSecrets: string[] } }} job
  */
-async function commitImport(store, { manifest, plan, overrides, secrets, now, result }) {
+async function commitImport(store, { manifest, plan, overrides, secrets, now, result, hashes }) {
   await store.tx(['blobs', 'files', 'events', 'scopes', 'secrets'], 'readwrite', async (t) => {
+    // Content stored earlier, or found already here, may have gone since: a trip removed meanwhile (spec §4.9).
+    for (const h of hashes) {
+      if (!(await t.hasBlob(h))) throw new ArchiveError("Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.");
+    }
     for (const p of plan) {
       if (p.mode === 'replace') {
         const copies = (await t.listScopes()).filter((l) => l.kind === 'trip' && l.status === 'active' && l.tripId && l.tripId === p.rec.tripId);

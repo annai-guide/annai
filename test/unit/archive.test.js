@@ -4,7 +4,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, StorageFullError } from '../../src/core/workspace.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip, listTrips, ME, SYS_SETTINGS, recordBackup, backupState } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, listTrips, ME, SYS_SETTINGS, recordBackup, backupState, removeTrip } from '../../src/core/scopes.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { exportArchive, openArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
@@ -627,4 +627,35 @@ test("a trip's backup record stays on the device that made it", async () => {
   opened.manifest.scopes[0].record.backup = { at: 1, seq: 999 }; // as an older or hand-made file might say
   const [copy] = (await importArchive(b.store, opened)).trips;
   assert.deepEqual(await backupState(b.store, copy), { at: null, changed: true });
+});
+
+/**
+ * The store, except that `before` runs just ahead of an import's last transaction (the one that also writes keys).
+ * @param {import('../../src/core/types.js').Store} store @param {() => Promise<unknown>} before
+ * @returns {import('../../src/core/types.js').Store}
+ */
+function beforeCommit(store, before) {
+  let done = false;
+  return /** @type {any} */ ({
+    close: () => store.close(),
+    tx(/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) {
+      if (done || mode !== 'readwrite' || !stores.includes('secrets')) return store.tx(stores, mode, fn);
+      done = true;
+      return before().then(() => store.tx(stores, mode, fn));
+    },
+  });
+}
+
+test('an import whose content is removed before it finishes imports nothing and can be run again', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const photo = (await a.ws.read(trip, '/files/photo.jpg'))?.bytes;
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const bytes = await bytesOf(blob);
+  // Its content is already on this device, so the import stores none of it; then the trip holding it goes.
+  const racing = beforeCommit(a.store, () => removeTrip(a.store, trip));
+  await assert.rejects(importArchive(racing, await openArchive(bytes)), (e) => e instanceof ArchiveError && /Import it again/.test(e.message));
+  assert.deepEqual((await listTrips(a.store)).active, []);
+  const [copy] = (await importArchive(a.store, await openArchive(bytes))).trips;
+  assert.deepEqual((await a.ws.read(copy, '/files/photo.jpg'))?.bytes, photo);
 });
