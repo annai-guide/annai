@@ -98,3 +98,34 @@ test("photos over a model's count go as stubs, the oldest first", async () => {
   assert.deepEqual(parts.map((/** @type {any} */ p) => p.type), ['text', 'text', 'image']);
   assert.equal(parts[1].text, '[photo /trip/files/p.webp, not sent again: read it to see it]');
 });
+
+test('a refused copy another conversation still names is kept (spec §4.9)', async () => {
+  const k = await agentKit([[sleep, { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, sleep]]);
+  await photo(k);
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.ws.write(kyoto, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+  await k.agent.open(kyoto);
+  k.agent.send('In Kyoto', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  await k.agent.open(k.trip);
+  k.agent.send('Here too', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const [replace] = await k.events(['photo.replace']);
+  assert.ok(replace);
+  assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(replace.data.old)), true);
+});
+
+test("a refusal read by the utility model never shows it a key annai keeps", async () => {
+  const KEY = 'sk-ant-SECRETKEY1234567890';
+  const k = await agentKit([[{ error: 'image', status: 400, message: `Picture too chonky for key ${KEY}` }, sleep]], {
+    utility: [{ toolCalls: [{ name: 'limits', input: { maxEdge: 512 } }] }],
+  });
+  await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
+  await photo(k);
+  k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const asked = k.requests.find((r) => r.tools?.some((/** @type {any} */ t) => t.name === 'limits'));
+  assert.ok(asked);
+  assert.doesNotMatch(JSON.stringify(asked), /SECRETKEY/);
+});

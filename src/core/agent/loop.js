@@ -782,7 +782,8 @@ export class Agent {
     for (const [old, copy] of swaps) {
       await this.#log({ type: 'photo.replace', actor: 'system', data: { old, new: copy.hash, mediaType: copy.mediaType, wake: wakeId }, blobs: [copy.data ? { bytes: fromBase64(copy.data), type: copy.mediaType } : { hash: copy.hash, type: copy.mediaType }] });
       await this.store.tx(['files', 'events', 'blobs'], 'readwrite', async (t) => {
-        if (!(await t.blobInUse(old, { events: false }))) await t.deleteBlob(old); // the refused copy, unless a file is that photo
+        // The refused copy goes, unless a file is that photo or another conversation sent it too (spec §4.9).
+        if (!(await t.blobInUse(old, { exceptScope: this.scope }))) await t.deleteBlob(old);
       });
     }
     // A copy made before has no data with it: its bytes come from storage, so the request carries the photo.
@@ -801,8 +802,13 @@ export class Agent {
     return null;
   }
 
-  /** The utility model reads a refusal annai has no rule for; no clear answer, no limits (fails closed). @param {string} message */
-  async #askLimits(message) {
+  /**
+   * The utility model reads a refusal annai has no rule for; no clear answer, no limits (fails
+   * closed). It never sees a key annai keeps, even one the provider echoed (spec §9.9).
+   * @param {string} said
+   */
+  async #askLimits(said) {
+    const message = await withoutSecrets(this.store, said);
     const ask = (/** @type {boolean} */ forced) => this.llm.call({
       role: 'utility', level: 'off', scope: this.scope, record: { tag: 'refusal' },
       request: {

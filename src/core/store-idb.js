@@ -166,12 +166,20 @@ function makeTx(t) {
     hasBlob: async (hash) => (await req(os('blobs').getKey(hash))) !== undefined,
     putBlob: async (rec) => { await req(os('blobs').put(rec)); },
     deleteBlob: async (hash) => { await req(os('blobs').delete(hash)); },
-    blobInUse: async (hash, { files = true, events = true } = {}) => {
+    blobInUse: async (hash, { files = true, events = true, exceptScope } = {}) => {
       const count = (/** @type {IDBIndex} */ index) => req(index.count(IDBKeyRange.only(hash)));
       if (files && await count(os('files').index('hash'))) return true;
       if (!events) return false;
       const ev = os('events');
-      for (const name of ['refs', 'old', 'new']) if (await count(ev.index(name))) return true;
+      for (const name of ['refs', 'old', 'new']) {
+        if (exceptScope === undefined) {
+          if (await count(ev.index(name))) return true;
+          continue;
+        }
+        // Keys are [scope, seq]: only log entries of other scopes count.
+        const keys = /** @type {[string, number][]} */ (await req(ev.index(name).getAllKeys(IDBKeyRange.only(hash))));
+        if (keys.some((k) => k[0] !== exceptScope)) return true;
+      }
       return false;
     },
     listBlobs: () => new Promise((res, rej) => {

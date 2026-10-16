@@ -52,6 +52,10 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual(used, [true, true, true, true, false]);
     assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-ref-1', { events: false })), false);
     assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-file', { events: false })), true);
+    // Leaving one conversation out: only what names the blob elsewhere counts.
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-ref-1', { exceptScope: 'trip-1' })), false);
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-old', { exceptScope: 'trip-1' })), true);
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-file', { exceptScope: 'trip-1' })), true);
   });
 
   test('files: list by prefix in path order, scoped, and delete', async () => {
