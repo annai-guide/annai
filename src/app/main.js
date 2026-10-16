@@ -14,6 +14,7 @@ import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
+import { offerPluginUpdates } from '../ui/plugin-updates.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -56,7 +57,13 @@ async function boot() {
   registerServiceWorker(store, shell);
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
   // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
-  startPlugins(plugins, shell).finally(() => pluginsStarted());
+  // Plugin updates are looked for at start and once a day, and only offered (spec §5.3).
+  const lookForUpdates = () => controllerReady().then(() => offerPluginUpdates({ plugins, notices: shell.notices }));
+  startPlugins(plugins, shell).finally(() => {
+    pluginsStarted();
+    lookForUpdates();
+  });
+  setInterval(lookForUpdates, 24 * 60 * 60 * 1000);
   // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).
   finishSignIn({ llm, ws, store, notices: shell.notices }).then((was) => { if (was) shell.render(); });
 }

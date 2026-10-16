@@ -1,11 +1,14 @@
 import { h, twoStep } from '../dom.js';
 import { explainStorageFull } from '../storage-full.js';
+import { officialUpdates } from '../../core/llm/official.js';
+import { applyUpdates } from '../plugin-updates.js';
 
 const message = (/** @type {any} */ e) => String(e?.message ?? e);
 
 /** @param {any} ctx */
 export async function renderPlugins(ctx) {
   const rows = await ctx.plugins.describe();
+  const updates = await officialUpdates(ctx.plugins).catch(() => []);
   const input = h('input', {
     id: 'plugin-file', type: 'file', class: 'visually-hidden', accept: '.zip,application/zip',
     onchange: async () => {
@@ -20,7 +23,7 @@ export async function renderPlugins(ctx) {
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Plugins' }),
     h('p', { class: 'risk-note', text: 'A plugin gets full access to your trips and API keys. Only install plugins you trust.' }),
-    h('ul', { class: 'cards' }, ...rows.map((/** @type {any} */ r) => row(ctx, r))),
+    h('ul', { class: 'cards' }, ...rows.map((/** @type {any} */ r) => row(ctx, r, updates.find((u) => u.id === r.id)))),
     h('div', { class: 'acts' }, h('label', { class: 'btn pri', for: 'plugin-file' }, 'Install a plugin from a file'), input));
 }
 
@@ -64,14 +67,15 @@ function stateOf(r) {
   return r.active ? 'On' : "On, but it didn't start";
 }
 
-/** @param {any} ctx @param {any} r */
-function row(ctx, r) {
+/** @param {any} ctx @param {any} r @param {any} [update] */
+function row(ctx, r, update) {
   const on = r.enabled && !r.failing;
   return h('li', { class: 'card' },
     h('span', { class: 'name', text: `${r.name} ${r.version}` }),
     h('span', { class: 'sub', text: stateOf(r) }),
     r.description ? h('p', { class: 'sub', text: r.description }) : null,
     r.builtin ? null : h('div', { class: 'acts' },
+      update ? h('button', { class: 'btn pri', type: 'button', onclick: async () => { await applyUpdates(ctx, [update]); ctx.render(); } }, `Update to ${update.available}`) : null,
       r.restart ? h('button', { class: 'btn pri', type: 'button', onclick: () => location.reload() }, 'Restart annai') : null,
       h('button', {
         class: 'btn', type: 'button',

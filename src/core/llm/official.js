@@ -28,11 +28,11 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
 }
 
 /**
- * Downloads, checks and installs one official plugin, then starts it. Nothing is stored unless
- * every file matches the catalog.
- * @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts]
+ * Downloads one official plugin and checks every file against the catalog; nothing is returned
+ * unless all of them match.
+ * @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<Map<string, Uint8Array>>}
  */
-export async function installOfficial(host, entry, { fetch: get = defaultFetch, base = '' } = {}) {
+async function download(entry, { fetch: get = defaultFetch, base = '' } = {}) {
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
   for (const [name, hash] of Object.entries(entry.files)) {
@@ -49,8 +49,43 @@ export async function installOfficial(host, entry, { fetch: get = defaultFetch, 
     if ((await sha256Hex(bytes)) !== hash) throw new PluginError(entry.id, `wasn't installed: ${name} doesn't match annai's catalog`);
     files.set(name, bytes);
   }
-  await host.install(files, { source: 'official' });
+  return files;
+}
+
+/** Downloads, checks and installs one official plugin, then starts it. @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] */
+export async function installOfficial(host, entry, opts = {}) {
+  await host.install(await download(entry, opts), { source: 'official' });
   await host.start(entry.id);
+}
+
+/**
+ * Official plugins that annai's catalog has another version of (spec §5.3). They are offered;
+ * nothing changes until the user accepts. Plugins installed from a file aren't checked.
+ * @param {PluginHost} host @param {FetchOptions} [opts]
+ * @returns {Promise<{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin }[]>}
+ */
+export async function officialUpdates(host, opts = {}) {
+  const state = await host.installed();
+  return (await officialPlugins(opts))
+    .filter((p) => state[p.id]?.source === 'official' && state[p.id].version !== p.version)
+    .map((p) => ({ id: p.id, name: p.name, installed: state[p.id].version, available: p.version, entry: p }));
+}
+
+/**
+ * Installs the catalog's version of an official plugin the user chose to update, keeping their
+ * on/off choice. New code that replaces code already running starts with the next start of annai.
+ * @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<'started' | 'restart'>}
+ */
+export async function updateOfficial(host, entry, opts = {}) {
+  const wasOn = (await host.installed())[entry.id]?.enabled !== false;
+  await host.install(await download(entry, opts), { source: 'official' });
+  if (!wasOn) {
+    await host.setEnabled(entry.id, false);
+    return 'started';
+  }
+  if (host.needsRestart(entry.id)) return 'restart';
+  await host.start(entry.id);
+  return 'started';
 }
 
 /**
