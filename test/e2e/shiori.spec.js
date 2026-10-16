@@ -195,3 +195,54 @@ test('removing the trip Shiori is working in: she stops first, and nothing of it
     await llm.stop();
   }
 });
+
+test('milestone 2 done: a photo conversation with tool use and fallback across two providers; a refused photo is repaired by itself; the trace shows it all', async ({ page }) => {
+  const refusal = JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'messages.0.content.1.image.source.base64: image exceeds 5 MB maximum: 6000000 bytes > 4000 bytes' } });
+  const llm = await startModelServer({
+    '/a/v1/chat/completions': { status: 402, type: 'application/json', body: JSON.stringify({ error: { message: 'Insufficient credits', code: 402 } }) },
+    '/b/v1/messages': [
+      { status: 400, type: 'application/json', body: refusal },
+      sse(anthropicToolReply([{ name: 'write', input: { path: '/trip/notes/menu.md', content: 'Ambrosia burger' } }], 'Noting the dish.')),
+      sse(anthropicToolReply([{ name: 'speak', input: { text: 'That is the Ambrosia burger.' } }, { name: 'sleep', input: {} }])),
+    ],
+  });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
+    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    // Both take photos: a model that doesn't is skipped for a photo turn, and A is meant to be tried.
+    for (const [ep, m] of [['Endpoint A', 'a-model'], ['Endpoint B', 'b-model']]) {
+      await page.goto('/#/models');
+      await page.getByRole('link', { name: new RegExp(ep) }).click();
+      await page.getByRole('link', { name: new RegExp(`^${m}`) }).click();
+      await page.getByLabel('Takes photos').check();
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.getByLabel('Takes photos')).toBeChecked();
+    }
+    await page.goto('/#/models');
+    for (const m of ['a-model', 'b-model']) {
+      await page.getByLabel('Add a model to main').selectOption({ label: m });
+      await page.getByRole('button', { name: 'Add to main' }).click();
+    }
+    await page.goto('/#/trips');
+    await page.getByLabel('Trip name').fill('Big Sur');
+    await page.getByRole('button', { name: 'Start trip' }).click();
+    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await page.locator('#dock-camera').setInputFiles('test/fixtures/photos/plain.jpg');
+    await expect(page.locator('.convo .you img')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('That is the Ambrosia burger.', { timeout: 20_000 });
+    await page.getByRole('link', { name: 'Trace' }).click();
+    await page.getByLabel('Type contains').fill('photo.replace');
+    await expect(page.locator('ol.trace > li')).toHaveCount(1);
+    await page.getByLabel('Type contains').fill('');
+    await page.getByLabel('Kind').selectOption('Models');
+    await expect(page.getByText(/a-model · credit \(402\)/).first()).toBeVisible();
+    await expect(page.getByText(/b-model · image \(400\)/).first()).toBeVisible();
+    await expect(page.getByText(/b-model · ok \(200\)/).first()).toBeVisible();
+    for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
+    expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
+  } finally {
+    await llm.stop();
+  }
+});

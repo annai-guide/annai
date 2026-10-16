@@ -7,13 +7,14 @@ open-source, local-first travel agent that runs entirely in your browser:
 plan a trip before you go, get woken-up help while you travel, and keep the
 memories afterwards.
 
-> **Status:** milestones 1, 1b and 1c are built, and the first two parts of milestone 2: trips with
+> **Status:** milestones 1 and 2 are built: trips with
 > versioned files, export and import (optionally encrypted), plugins, offline use and the trace;
 > photos; removing trips; and models (endpoints from templates or Sign in with OpenRouter, roles
 > with fallback, the Test button, and every request in the trace); and Shiori herself: the dock and
 > her avatar, a conversation through her output tools, file, web and places tools that can each be
-> switched off, personalities and memory, budgets, and housekeeping for long conversations. Photos
-> to the model come in the third part of milestone 2. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> switched off, personalities and memory, budgets, and housekeeping for long conversations. Shiori sees
+> photos: request copies within each model's limits, closer looks at a part, repair when a model refuses a
+> photo, and uploads to the provider where it can store files. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Principles
