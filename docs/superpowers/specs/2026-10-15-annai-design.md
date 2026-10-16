@@ -77,7 +77,7 @@ Every write goes through one function:
 1. Compute the SHA-256 fingerprint *before* opening the transaction. IndexedDB commits a transaction early if code awaits anything else inside it.
 2. In one transaction: put the blob, point the path at it, and append `file.write {path, old, new, author}`.
 
-The result is version history and undo of any change (including Shiori's) for free. Deleting is the same: the path is removed, and the history keeps the blob.
+The result is version history and undo of any change (including Shiori's) for free. Deleting is the same: the path is removed, and the history keeps the blob. Removing a whole trip is different: it frees the space (§4.9).
 
 ### 4.3 What Shiori sees
 
@@ -112,7 +112,7 @@ The top-level folder `/.annai` is reserved inside every scope; archives keep the
 
 ### 4.5 Events
 
-Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `plugin.error`, `error`, `state` (live mode on/off, voice mode).
+Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `plugin.error`, `error`, `state` (live mode on/off, voice mode), `trip.remove` (§4.9).
 
 - **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it.
 - **A model request is logged as a reference,** not a copy: the range of events in context, the prefix fingerprint, token counts, cost. Copying every context would grow storage quadratically.
@@ -171,6 +171,17 @@ A photo is encoded at two points, each with its own settings: **ingest**, once, 
 - **Settings → Photos** holds Keep originals, plus quality, longest edge, size and format list for both ingest and request. Encoder plugins carry their own tuning.
   - Space-conscious users can give ingest the same settings as request. Each photo is then stored small and sent as it is.
   - The cost: a closer look shows no more detail, and backups hold only the small copy.
+
+### 4.9 Removing a trip
+
+Removing a trip deletes it from the device and frees its space at once. There is no recycle bin, and nothing is ever cleaned up automatically.
+
+- **Where:** a Remove button on the trip's screen, for active and archived trips.
+- **Asking first:**
+  1. Always: "This removes everything in this trip from this device: its files, photos, notes and history. Remove it?"
+  2. Only if the trip has changed since its last backup: "This trip hasn't been backed up since it last changed. Remove it anyway?"
+- **Backed up** means a Backup with everything ticked (§12.2), of the trip or of everything, was saved after the trip's last change: the share sheet finished, or the download started. A Share doesn't count, since it leaves out the conversation and the history. annai records the time on the trip, and trip cards show it (§16.2).
+- **What goes:** the trip's record, files and history, and all stored content nothing else uses. Content another trip also uses stays. The system log records `trip.remove {title, bytes}`.
 
 ## 5. Plugin system
 
@@ -829,7 +840,7 @@ Reference: mockups draft 6.
   - **Photo viewer:** tap a photo to see the stored photo at full size, with pinch zoom. "Show Shiori this part" crops what is on screen and sends it (§4.8).
   - **Plan:** day tabs, a timetable with ● fixed and ○ flexible, drive legs between stops, and "Check this" chips
   - **Booking confirmation**
-  - **Trips:** the install warning, trip cards with stamps, backup status, "Open a trip someone sent you"
+  - **Trips:** the install warning, trip cards with stamps, backup status (when each trip was last backed up), "Open a trip someone sent you"
   - **Conversation**
   - **Files**
   - **Trace:** filters plus tool switches
@@ -905,7 +916,7 @@ Eyes-free voice mode also serves users with low vision.
 
 1. **Never lose data.**
    - Writes are transactional (§4.2).
-   - "Storage full" shows a card with real options: export a backup, delete trace bodies or cached photo copies, shrink kept originals to the ingest encoding, or free up space.
+   - "Storage full" shows a card with real options: export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies, shrink kept originals to the ingest encoding, or free up space on the device.
    - The IndexedDB connection reconnects automatically.
    - Migrations are atomic, with a backup first.
 2. **Degrade, don't die.**
@@ -998,6 +1009,7 @@ Each milestone gets its own implementation plan. The plugin interface exists fro
 |---|---|---|
 | 1 | **Foundation:** app shell, service worker, install and data-loss warnings, `persist()`, storage (§4), event log, registry and plugin loading (§5), settings, archive export and import (§12.1–12.3), trace viewer | A trip can be created, edited as files, exported, wiped and imported back intact on iOS and Android. |
 | 1b | **Photos in:** ingest with the browser's encoders, photo metadata, Keep originals, the photo viewer with zoom, the Share photo options (§4.8, §12.2) | A 12 MP iPhone photo and an Android photo are each added, shown in both browsers, and exported and imported back. |
+| 1c | **Removing trips:** the Remove button and its two questions, the backup time on trips, freeing content nothing else uses, the storage-full card's options (§4.9, §17) | On both phones, removing a trip full of photos gives its space back, and the backup warning shows exactly when the trip changed after its last Backup. |
 | 2 | **Shiori core:** provider contract, the Chat Completions and Anthropic Messages plugins, catalog and templates, OpenRouter sign-in, roles and fallback (§9), agent loop and context (§6), output and built-in tools (§7), dock and avatar, conversation, personalities and memory (§14), the scripted fake model; for photos: request copies, refusal repair and learned limits, `read` with a region, "Show Shiori this part", the request-size limit and `recall` (§4.8, §6.5) | A text-and-photo conversation with tool use works with fallback across two providers, and the trace shows everything. A refused photo is repaired without the user doing anything. |
 | 3 | **Voice:** speaking, listening sessions, speech-in resolution, turn-taking and gate, voice modes (§10), speech provider plugins | A hands-free spoken back-and-forth works in a car on both phones. |
 | 4 | **Planning and bookings:** schemas, plan screen, import and confirmation flow, link catalog, `.ics` / `.pkpass` (§7.3, §8) | The real Thanksgiving trip is planned and its bookings imported. |
