@@ -64,7 +64,7 @@ One IndexedDB database:
 | Store | Key | Holds |
 |---|---|---|
 | `blobs` | SHA-256 of content | all content: text, JSON, photos, PDFs, fetched pages, model responses. Deduplicated. |
-| `files` | `[scope, path]` | current state: path → blob hash, plus metadata: type, size, author (`user` · `shiori` · `plugin:<id>`), source, created, modified |
+| `files` | `[scope, path]` | current state: path → blob hash, plus metadata: type, size, author (`user` · `shiori` · `plugin:<id>`), source, created, modified. Photos also keep when and where they were taken, and their pixel size (§4.8). |
 | `events` | `[scope, seq]` | append-only log: seq, time, type, actor, small data, blob refs |
 | `secrets` | id | API keys and tokens. Never in Shiori's view, never in the trace, excluded from exports unless the user explicitly includes them in an encrypted backup. |
 | `scopes` | id | the trip list plus `me`: kind, title, dates, status, data-format version |
@@ -86,7 +86,7 @@ The result is version history and undo of any change (including Shiori's) for fr
   trip.json            title, dates, places, time zones, travel party
   plan/*.json          plan items
   bookings/*.json      extracted records; each links to its original
-  files/…              originals: imports and photos
+  files/…              imports, and photos as ingested (§4.8)
   notes/*.md           anything Shiori decides to keep
   memory.md            trip memory
 /me/
@@ -130,6 +130,45 @@ Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`
 - **Flat homogeneous lists** (listings, search results, `nearby`, hourly weather): TSV with a header row. Cells escape tabs, newlines and `<` with the `<sep>`, `<LF>`, `<CR>`, `<lt>` tokens from the TSVZ spec.
 - **Single or nested objects:** JSON.
 - **Prose:** plain text.
+
+### 4.8 Photos
+
+A photo is encoded at two points, each with its own settings: **ingest**, once, for what annai keeps, and **request**, for what a model is sent.
+
+- **Ingest** covers photos from the camera, the file picker and the share sheet, and stores **one file per photo**. It never touches photos inside an imported archive, whose fingerprints must not change.
+  1. Read the photo's metadata (EXIF) first: when and where it was taken, and its orientation. It is kept with the file, since re-encoding drops it.
+  2. With **Keep originals** on, store the original as it is.
+  3. With it off, the default, store the **ingest encoding**. The phone's photo library still has the original. By default the encoding uses quality 0.9, no size or edge limit, and the first format of the ingest format list that this device can encode; the default list is WebP, then JPEG.
+     - The original bytes are stored anyway when their format is on the list, they are within the limits, and re-encoding wouldn't make them smaller.
+     - A format that isn't on the list, such as HEIC, is always converted, even when that makes it larger, so the photo shows in every browser.
+     - Browsers cap the size of a canvas; Safari has been reported at about 16.7 megapixels, which needs checking on real devices. Bigger photos are scaled down to fit, so a 24 or 48 MP photo keeps its full size only with Keep originals.
+  - Either way, the stored file is **the photo**: what annai shows and backs up, and what request copies and crops are made from. A kept HEIC original shows only in Safari; a Share converts it (§12.2).
+- **Request copies** are what Shiori is sent.
+  - The source is the stored photo.
+  - The limits are the stricter of two sets: the request settings (by default quality 0.9, longest edge 2000 px, 1 MiB, format list WebP then JPEG) and what the model accepts (§9.2).
+  - A source within the limits is sent as it is. Otherwise a copy is made once, stored by its fingerprint, and reused on every later turn. The bytes then stay the same, so the provider's cache stays warm.
+  - The conversation shows the copy Shiori was sent, so she sees what the user sees. She is also told both sizes ("4032×3024, sent as 2000×1500"), so she knows when a closer look would help.
+  - **A refused image is fixed and retried automatically** (§9.9). Rules recognize the usual error messages, and the utility model reads unfamiliar ones. The new copy replaces the refused one in the conversation, and the refused one is deleted. The lesson ("at most 5 MB") is saved on the model, so the same refusal doesn't happen twice.
+  - **Provider uploads.** Where an endpoint can store files (Anthropic, OpenAI and Gemini have files APIs), each request copy is uploaded once. Later requests refer to it by its id: a few bytes per turn instead of the photo.
+    - It is on by default, since the photo goes to that provider anyway; a switch on the endpoint turns it off.
+    - annai deletes its uploads when compaction drops the photo and when the trip is archived.
+    - Some providers delete uploads on their own (Gemini after 48 hours). An expired id is simply uploaded again.
+- **A closer look.**
+  - `read(path, region)` crops the source and sends the crop through the request settings (§7.2).
+  - In the photo viewer, the user can crop what is on screen and send it to Shiori (§16.2).
+  - Crops are kept in the conversation, never among the trip's files. Small request settings (1000 px, or 512 KiB for users watching their data) stay usable, because full detail is always one crop away.
+- **Encoders.**
+  - The browser's own encoders are built in: JPEG and PNG everywhere, WebP in Chrome and Firefox. annai finds them with a test encode, because a browser that can't make a format silently returns PNG.
+  - Plugins add the formats a browser lacks, for example:
+    - WebP for Safari;
+    - AVIF, which current browsers show but none can encode;
+    - JPEG XL.
+  - A plugin may load its encoder only in browsers that need it.
+  - If some browsers can't show a plugin's format, the plugin also brings a decoder, and Share exports convert such photos (§12.2).
+  - Encoders built with WebAssembly need `'wasm-unsafe-eval'` in the security policy (§15).
+- **Settings → Photos** holds Keep originals, plus quality, longest edge, size and format list for both ingest and request. Encoder plugins carry their own tuning.
+  - Space-conscious users can give ingest the same settings as request. Each photo is then stored small and sent as it is.
+  - The cost: a closer look shows no more detail, and backups hold only the small copy.
 
 ## 5. Plugin system
 
@@ -239,14 +278,28 @@ The provider adapter places cache markers where the provider needs them (Anthrop
 
 Each model declares its cache TTL options and prices (§9.2). The core tracks, per model and prefix fingerprint, when the prefix was last sent, so it knows whether the cache is **warm or cold**.
 
-- **Prefix rewrites happen only when the cache is cold:** compaction, and refreshing the memory or plan snapshot. The one exception is when the context would overflow (above 90% of the model's window).
+- **Prefix rewrites happen only when the cache is cold or about to expire:** compaction, and refreshing the memory or plan snapshot. A rewrite just before expiry costs nothing extra, since the cache would be lost anyway. The one exception is when the next request would overflow: above 90% of the model's window, or above the maximum request size (§6.5).
 - **The trace shows actual cache hits,** from the token counts each provider reports.
 - **Plugins can read TTL and warmth,** and can schedule wakes (for example, "keep warm and catch up on the world"). Nothing like that is built in.
 
 ### 6.5 Compaction ("housekeeping")
 
-- When the transcript passes a per-model threshold (default 70% of the context window, editable per model), the utility model summarizes the older part into a `compaction` event.
-- It runs during sleep when possible.
+- **Two limits trigger it,** and both work the same way. Housekeeping is due at a threshold (default 70%), and is forced when the next request would overflow (§6.4).
+  - **The context window**, per model and editable.
+  - **The maximum request size** (Settings; default 8 MiB).
+    - Every turn sends the whole context again: caching lowers the cost, not the upload. On roaming data, a photo-heavy conversation could otherwise cost more to upload than the model call.
+    - Photos count at their base64 size, a third more than the file. Photos uploaded to the provider count only as their id (§4.8).
+- **There are two modes, and the cache decides which one runs:**
+  - **Warm: Shiori compacts.**
+    - Once housekeeping is due, it waits for a pause, then runs shortly before the cache would expire.
+    - The model that holds the cache writes the summary, normally the main model. The request is the cached conversation plus a closing instruction, so it costs a cache read rather than the whole transcript at full price. Each provider caches per model, so only that model gets this price.
+    - The next turn starts a new, shorter prefix, which would have been cold by then anyway.
+  - **Cold: the utility model compacts.** The cache has already expired, for example because the app was closed or the conversation resumes after a long gap. Nothing is cheap to reuse, so the cheaper utility model writes the summary.
+- **The older part becomes a `compaction` event.** The most recent part stays word for word, photos included: by default the last third of the threshold, and never fewer than the last three exchanges.
+- **It compacts to well below the threshold,** so it happens rarely: each compaction rewrites the start of the request, which costs one cold cache.
+- **It leaves pointers:**
+  - **Each photo becomes a one-line stub** with its path, and its crop if it was one, plus what was said about it. For example: "/trip/files/2026-11-26-1904.webp: the Nepenthe menu, prices circled; read it to see it again." The stub is written from the conversation around the photo and its metadata, so the photo isn't sent again.
+  - **Each summary names the event range it covers,** and `recall` brings back the exact words (§7.2).
 - The full log is never altered.
 - During housekeeping, Shiori may move lasting facts into memory files.
 
@@ -297,13 +350,19 @@ Every tool can be switched off, except `show`, `ask`, `wait` and `sleep`. Turnin
 | Group | Tools |
 |---|---|
 | Talk | `speak`, `show`, `ask`, `wait`, `sleep` |
-| Files | `list(path)` → TSV · `read(path)` → text / JSON / image / PDF-as-document · `write(path, text \| object)` · `edit(path, old, new)` (text files) · `patch(path, mergePatch)` (JSON files) · `search(query, path?)` → TSV · `delete(path)` |
+| Files | `list(path)` → TSV · `read(path, region?)` → text / JSON / image / PDF-as-document; for a photo, `region` crops it (§4.8) · `write(path, text \| object)` · `edit(path, old, new)` (text files) · `patch(path, mergePatch)` (JSON files) · `search(query, path?)` → TSV · `delete(path)` |
 | Web | `web_search(query)` → TSV (title, url, snippet) · `fetch(url)` → readable text |
 | Places | `nearby(lat, lng, radius, kinds?)` → TSV (OpenStreetMap Overpass + Wikipedia geosearch) · `geocode(query)` · `reverse(lat, lng)` (Nominatim) · `weather(lat, lng, when)` (Open-Meteo, also returns the time zone) · `guide(place)` (Wikivoyage sections) |
 | Time | `watch.set({when, fallback, repeat?, expires?})` · `watch.list` · `watch.cancel` |
 | Go | `maps_link(destination, mode)` → Apple/Google Maps card · `search_link(kind, params)` → prefilled flight, hotel or car-rental search links |
-| Self | `tune_personality(text, reason)` · `skill(name)` · `task(prompt, tools?, reasoning?)` (a subagent on the utility model, with its own loop and a subset of tools, returning its result) |
+| Self | `tune_personality(text, reason)` · `skill(name)` · `task(prompt, tools?, reasoning?)` (a subagent on the utility model, with its own loop and a subset of tools, returning its result) · `recall(query \| range)` → earlier conversation, word for word, from before a compaction (photos as stubs) |
 
+- **Crop regions heal themselves.** A region is `[left, top, right, bottom]` as fractions of the photo (0 to 1).
+  - Reversed edges are swapped.
+  - Values outside the photo are clamped to its edges.
+  - Values above 1 are read as pixels of the source.
+  - A region too small to show anything is grown around its centre.
+  - The result states the region that was actually used, so a mistake shows instead of failing.
 - **Link formats.** `search_link` and `maps_link` build URLs from formats kept in the catalog (`annai.guide/catalog/links.json`). When a site changes its URL format, the catalog is updated without an app release.
 - **Places data** comes from free services that accept direct browser calls (verified 2026-10-14). The tools read the offline pack first (§11.5). Nominatim's rate limit (1 request per second) is enforced on our side.
 - **The fetch chain:**
@@ -358,8 +417,9 @@ Search and speech providers work the same way, as on-demand plugins with their o
 | name, type, base URL | name (unique, chosen by the user; defaults to the provider's id) |
 | API key (in `secrets`), extra headers | the provider's model id; free text or picked from the fetched list |
 | the type's tunables, e.g. `max_tokens` vs `max_completion_tokens`, `system` vs `developer`, usage in stream, image/PDF format | belongs to exactly one endpoint |
-| `extraBody` for all its models | capabilities: tools, images, PDFs, audio input |
+| `extraBody` for all its models | capabilities: tools, images (formats, longest edge, size, count per request; from the template, then corrected by refusals, §4.8), PDFs, audio input |
 | provider tools offered endpoint-wide | context window, maximum output |
+| photo uploads through the provider's files API: on by default where the type supports it (§4.8) | |
 | "fetch model list" | prices: input, output, cache read, cache write per TTL, per-call tool fees |
 | | cache TTL options |
 | | reasoning map, provider tools it supports |
@@ -446,6 +506,8 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   | rate-limited | wait as instructed, or fall back |
   | overloaded | retry, then fall back |
   | context too long | compact and retry |
+  | image refused (format, size, longest edge, count) | make a copy within the new limit, retry, and save the limit on the model (§4.8). If no installed encoder can make a format the model accepts, the utility model searches the plugin catalog and a card offers the plugin; installing it always takes the user's tap. |
+  | an uploaded photo's id expired or is unknown | upload the photo again and retry |
   | blocked by browser | explain that the endpoint doesn't allow web apps |
   | bad request | hint: check the endpoint's tunables |
   | network | retry with backoff |
@@ -641,6 +703,10 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **Contents, as tickboxes with presets:**
   - **Backup:** everything.
   - **Share:** plan, bookings, files and notes. No conversation, trace, memory or location history unless ticked.
+- **Photos:**
+  - A Backup contains each photo as it is stored, so it has the originals when Keep originals is on (§4.8).
+  - A Share contains only encoded photos. A kept original, and a photo in a format some browsers can't show, goes through the ingest encoding first.
+  - "Include where photos were taken" is a tickbox, on by default: a trip's plan names its hotels anyway.
 - **Keys** are included only in an encrypted Backup, and only when explicitly chosen.
 - **Encryption (optional):** the whole zip is encrypted with a passphrase, using PBKDF2-SHA-256 to derive the key and AES-GCM to encrypt. It is sealed in 1 MiB chunks, each bound to its position and to whether it is the last, so neither side holds the whole file in memory and a dropped, moved or cut-off chunk is refused.
 - **File names:** encrypted files end in `.annai`; plain ones end in `.annai.zip`.
@@ -726,6 +792,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - `worker-src 'self' blob:`
   - `frame-ancestors 'none'`
   - `object-src 'none'`
+  - `'wasm-unsafe-eval'` joins `script-src` when the first WebAssembly encoder plugin does (§4.8). It allows compiling WebAssembly, not running text as JavaScript.
 - **Model output never goes into `innerHTML`.** Our own small Markdown renderer builds DOM nodes and escapes everything else.
 - **API keys:** stored in `secrets`, never in context, redacted from the trace, and excluded from exports by default.
 - **The responsibility model (§2, principle 2):**
@@ -756,13 +823,14 @@ Reference: mockups draft 6.
   - **Now**, the home screen during a trip: current place, golden hour and other chips, the next items as a timetable, the latest card
   - **Driving:** route strip, "Show what she's saying", a maps card, big quick-ask buttons
   - **Camera / snap and ask**
+  - **Photo viewer:** tap a photo to see the stored photo at full size, with pinch zoom. "Show Shiori this part" crops what is on screen and sends it (§4.8).
   - **Plan:** day tabs, a timetable with ● fixed and ○ flexible, drive legs between stops, and "Check this" chips
   - **Booking confirmation**
   - **Trips:** the install warning, trip cards with stamps, backup status, "Open a trip someone sent you"
   - **Conversation**
   - **Files**
   - **Trace:** filters plus tool switches
-  - **Settings:** Models, Voice, Tools, Plugins, Storage & backup, Privacy, Developer
+  - **Settings:** Models, Voice, Photos, Tools, Plugins, Storage & backup, Privacy, Developer
   - **Onboarding:** install guide, OpenRouter sign-in, profile
   - **Import preview**
   - **Recap and Replay**
@@ -834,7 +902,7 @@ Eyes-free voice mode also serves users with low vision.
 
 1. **Never lose data.**
    - Writes are transactional (§4.2).
-   - "Storage full" shows a card with real options: export a backup, delete trace bodies or cached photos, or free up space.
+   - "Storage full" shows a card with real options: export a backup, delete trace bodies or cached photo copies, shrink kept originals to the ingest encoding, or free up space.
    - The IndexedDB connection reconnects automatically.
    - Migrations are atomic, with a backup first.
 2. **Degrade, don't die.**
@@ -926,7 +994,8 @@ Each milestone gets its own implementation plan. The plugin interface exists fro
 | # | Milestone | Done when |
 |---|---|---|
 | 1 | **Foundation:** app shell, service worker, install and data-loss warnings, `persist()`, storage (§4), event log, registry and plugin loading (§5), settings, archive export and import (§12.1–12.3), trace viewer | A trip can be created, edited as files, exported, wiped and imported back intact on iOS and Android. |
-| 2 | **Shiori core:** provider contract, the Chat Completions and Anthropic Messages plugins, catalog and templates, OpenRouter sign-in, roles and fallback (§9), agent loop and context (§6), output and built-in tools (§7), dock and avatar, conversation, personalities and memory (§14), the scripted fake model | A text-and-photo conversation with tool use works with fallback across two providers, and the trace shows everything. |
+| 1b | **Photos in:** ingest with the browser's encoders, photo metadata, Keep originals, the photo viewer with zoom, the Share photo options (§4.8, §12.2) | A 12 MP iPhone photo and an Android photo are each added, shown in both browsers, and exported and imported back. |
+| 2 | **Shiori core:** provider contract, the Chat Completions and Anthropic Messages plugins, catalog and templates, OpenRouter sign-in, roles and fallback (§9), agent loop and context (§6), output and built-in tools (§7), dock and avatar, conversation, personalities and memory (§14), the scripted fake model; for photos: request copies, refusal repair and learned limits, `read` with a region, "Show Shiori this part", the request-size limit and `recall` (§4.8, §6.5) | A text-and-photo conversation with tool use works with fallback across two providers, and the trace shows everything. A refused photo is repaired without the user doing anything. |
 | 3 | **Voice:** speaking, listening sessions, speech-in resolution, turn-taking and gate, voice modes (§10), speech provider plugins | A hands-free spoken back-and-forth works in a car on both phones. |
 | 4 | **Planning and bookings:** schemas, plan screen, import and confirmation flow, link catalog, `.ics` / `.pkpass` (§7.3, §8) | The real Thanksgiving trip is planned and its bookings imported. |
 | 5 | **Live mode:** sensors, triggers and watches, catch-up, replanning, the driving skill, offline pack (§11.1–11.5) | A simulated Big Sur drive produces the expected wakes, and a real local drive works. |
@@ -935,4 +1004,4 @@ Each milestone gets its own implementation plan. The plugin interface exists fro
 | 8 | **Extensions:** skills, MCP client, code-plugin install UX, UI slots (§5, §16.4) | A third-party skill, an MCP server and a code plugin can each be installed and used. |
 | 9 | **Backup targets:** GitHub, S3-compatible, WebDAV (§12.4) | Automatic backup and restore to GitHub works. |
 
-Remaining official plugins (OpenAI Responses, Gemini, more speech and search providers) are added during milestones 2 and 3 as needed.
+Remaining official plugins (OpenAI Responses, Gemini, more speech and search providers, and photo encoders such as WebP for Safari or AVIF) are added during milestones 2 and 3 as needed.
