@@ -95,6 +95,20 @@ test('planToIcs: CRLF, lines of at most 75 octets, escapes, UTC times and all-da
   assert.deepEqual(back[1].start, { ...items[1].start, allDay: true });
 });
 
+test('planToIcs: an all-day event of several days comes back with the same days; an end in a zone annai does not know is a date in UTC', () => {
+  const cal = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:stay', 'SUMMARY:Hoboken Inn', 'DTSTART;VALUE=DATE:20261125', 'DTEND;VALUE=DATE:20261130', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const [first] = parseIcs(cal, { defaultTz: NY });
+  const { text } = planToIcs(planItems([first]).map((x) => x.item), { name: 'Thanksgiving', tripId: 't-1', now: 0 });
+  assert.match(text, /\r\nDTSTART;VALUE=DATE:20261125\r\nDTEND;VALUE=DATE:20261130\r\n/);
+  const [back] = parseIcs(text, { defaultTz: NY });
+  assert.deepEqual(back.start, first.start);
+  assert.deepEqual(back.end, first.end);
+  // A one-day event has no end, and gets none.
+  assert.doesNotMatch(planToIcs([{ id: 'm', title: 'Museum', kind: 'all-day', start: { at: '2026-11-27T00:00:00-05:00', tz: NY } }], { name: 'T', tripId: 't-1', now: 0 }).text, /DTEND/);
+  const odd = planToIcs([{ id: 's', title: 'Stay', kind: 'all-day', start: { at: '2026-11-25T00:00:00-05:00', tz: NY }, end: { at: '2026-11-30T00:00:00-05:00', tz: 'Not/AZone' } }], { name: 'T', tripId: 't-1', now: 0 });
+  assert.match(odd.text, /\r\nDTEND;VALUE=DATE:20261130\r\n/);
+});
+
 test('importCalendar writes plan items from a file in the trip, and the same file again updates them', async () => {
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });

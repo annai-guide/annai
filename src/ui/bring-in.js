@@ -16,7 +16,10 @@ export async function bringIn(ctx, scope, files, progress) {
   const defaultTz = [trip?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
   /** @type {string[]} */ const planned = [];
   /** @type {string[]} */ const problems = [];
-  for (const path of paths.filter((p) => /\.ics$/i.test(p))) {
+  const typeOf = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
+  // A calendar by its name, or by its type: a shared invite's name may have no ".ics".
+  const calendar = (/** @type {string} */ p) => /\.ics$/i.test(p) || /^text\/calendar\s*(;|$)/i.test(typeOf.get(p) ?? '');
+  for (const path of paths.filter(calendar)) {
     try {
       planned.push(...(await importCalendar(ctx.ws, scope, path, { defaultTz })));
     } catch (e) {
@@ -25,8 +28,8 @@ export async function bringIn(ctx, scope, files, progress) {
   }
   const main = (await ctx.llm?.config().catch(() => null))?.roles?.main?.models ?? [];
   if (paths.length && main.length && ctx.agent) {
-    const typeOf = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
-    ctx.agent.wake({ kind: 'file', scope, text: newFilesText(paths.map((p) => ({ path: p, type: typeOf.get(p) ?? 'application/octet-stream' })), planned) });
+    // For a trip that isn't open, the wake is written into its conversation: wait, so it's there when the trip opens.
+    await ctx.agent.wake({ kind: 'file', scope, text: newFilesText(paths.map((p) => ({ path: p, type: typeOf.get(p) ?? 'application/octet-stream' })), planned) });
   }
   return { paths, notes, problems, planned };
 }
