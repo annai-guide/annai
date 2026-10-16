@@ -164,12 +164,14 @@ export async function exportArchive(store, opts) {
     const ms = { dir, record: scope };
     for (const f of files) {
       if (!opts.include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
-      if (!opts.include.photos && f.path.startsWith('/files/') && f.type.startsWith('image/')) continue;
       const name = dir + f.path;
+      const bytes = await readBlob(store, f.hash, f.path);
+      // An image is known by its bytes, not by the type it was saved under.
+      const sniffed = sniffImageType(bytes);
+      if (!opts.include.photos && f.path.startsWith('/files/') && (sniffed !== null || f.type.startsWith('image/'))) continue;
       /** @type {{ bytes: Uint8Array, type: string, hash: string, meta?: PhotoMeta }} */
-      let out = { bytes: await readBlob(store, f.hash, f.path), type: f.type, hash: f.hash, meta: f.meta };
-      // A photo is known by its bytes, not by the type it was saved under.
-      const image = opts.share ? sniffImageType(out.bytes) ?? (isPhotoType(f.type) ? f.type : null) : null;
+      let out = { bytes, type: f.type, hash: f.hash, meta: f.meta };
+      const image = opts.share ? photoTypeOf(sniffed, f.type) : null;
       if (opts.share && image) {
         const shared = await sharePhoto({ ...f, type: image }, out.bytes, opts.share);
         if (!shared) {
@@ -202,7 +204,7 @@ export async function exportArchive(store, opts) {
   for (const hash of historic) {
     if (current.has(hash)) continue;
     const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-    if (!rec || (opts.share && isPhotoType(rec.type))) continue; // a Share leaves out older versions of photos
+    if (!rec || (opts.share && photoTypeOf(sniffImageType(new Uint8Array(rec.data)), rec.type))) continue; // a Share leaves out older versions of photos
     const name = `blobs/${hash}`;
     await zip.add(name, new Uint8Array(rec.data), { compress: !isCompressedType(rec.type), mtime: now });
     manifest.blobs.push({ name, hash, type: rec.type, size: rec.size });
@@ -229,6 +231,16 @@ export async function exportArchive(store, opts) {
   if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
   const title = opts.kind === 'trip' ? scopes[0].title : '';
   return { blob, manifest, skipped, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
+}
+
+/**
+ * The photo type of some bytes: what they are when they say (a GIF is no photo, as at ingest),
+ * otherwise what they were saved as.
+ * @param {string | null} sniffed @param {string} declared @returns {string | null}
+ */
+function photoTypeOf(sniffed, declared) {
+  if (sniffed) return isPhotoType(sniffed) ? sniffed : null;
+  return isPhotoType(declared) ? declared : null;
 }
 
 /**

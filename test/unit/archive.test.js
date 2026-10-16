@@ -12,7 +12,7 @@ import { PassphraseError } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
 import { readFile } from 'node:fs/promises';
-import { readPhotoMeta } from '../../src/core/photo-meta.js';
+import { readPhotoMeta, sniffImageType } from '../../src/core/photo-meta.js';
 import { PiecesOnly } from './pieces.js';
 
 const FAST = 100_000;
@@ -539,4 +539,30 @@ test('a Backup always opens again, even when a photo has details that make no se
   const b = await device();
   const r = await importArchive(b.store, await openArchive(blob));
   assert.deepEqual((await b.ws.read(r.trips[0], '/files/odd.jpg'))?.entry.meta, { height: 48, taken });
+});
+
+test('a GIF is no photo: a location-free Share carries it as it is', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  const gif = new Uint8Array(Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64'));
+  await a.ws.write(trip, '/files/wave.gif', gif, { author: 'user', type: 'image/gif' });
+  const stillFrame = async () => ({ bytes: await photoFixture('plain.jpg'), type: 'image/jpeg', width: 64, height: 48 });
+  const { blob, manifest, skipped } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: false, convert: stillFrame } });
+  assert.deepEqual(skipped, []);
+  const wave = manifest.files.find((f) => f.path === '/files/wave.gif');
+  assert.equal(wave?.type, 'image/gif');
+  assert.deepEqual((await readZip(await bytesOf(blob))).get(/** @type {string} */ (wave?.name)), gif);
+});
+
+test('older versions and the Photos tickbox know a photo by its bytes too', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  const put = async (/** @type {string} */ name) => a.ws.write(trip, '/files/photo.bin', await photoFixture(name), { author: 'user', type: 'application/octet-stream' });
+  await put('upright.jpg'); // an older version, with its GPS
+  await put('upside-down.jpg');
+  const shared = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: { ...PRESETS.share, history: true }, app: '0.1.0', share: { places: false } });
+  const entries = await readZip(await bytesOf(shared.blob));
+  for (const b of shared.manifest.blobs) assert.equal(sniffImageType(/** @type {Uint8Array} */ (entries.get(b.name))), null, `${b.name} is a photo`);
+  const noPhotos = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: { ...PRESETS.share, photos: false }, app: '0.1.0' });
+  assert.equal(noPhotos.manifest.files.some((f) => f.path === '/files/photo.bin'), false);
 });
