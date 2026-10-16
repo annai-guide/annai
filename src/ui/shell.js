@@ -16,10 +16,11 @@ import { renderTalk } from './screens/talk.js';
 import { renderTools } from './screens/tools.js';
 import { renderPlan } from './screens/plan.js';
 import { renderBooking } from './screens/booking.js';
+import { renderVoice } from './screens/voice.js';
 import { createDock } from './dock.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice };
 
 /**
  * @param {HTMLElement} root
