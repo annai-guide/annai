@@ -386,9 +386,22 @@ export function stripMetadata(bytes, type) {
   return null;
 }
 
+/** Segments that decoding needs: tables, frame headers, JFIF, Adobe's colour transform, and colour profiles. */
+const JPEG_TABLES = new Set([0xc4, 0xcc, 0xdb, 0xdd]); // DHT, DAC, DQT, DRI
+/** Between scans only tables and the next scan header belong. */
+const SCAN_SEGMENTS = new Set([0xc4, 0xcc, 0xdb, 0xdd, 0xda, 0xdc]); // + SOS, DNL
+
+/** @param {Uint8Array} b @param {number} at the segment's marker @param {number} m @param {number} len */
+function keepJpegSegment(b, at, m, len) {
+  if (m === 0xe0 || m === 0xee) return true; // JFIF, Adobe
+  if (m === 0xe2) return len >= 14 && ascii(b, at + 4, 12) === 'ICC_PROFILE\0';
+  return JPEG_TABLES.has(m) || isSof(m);
+}
+
 /**
- * Drops APP1 (EXIF, XMP), APP13 (IPTC) and comment segments before the image data, and anything
- * after the image's end marker (a second image, such as an HDR gain map, can carry its own EXIF).
+ * Keeps only what decoding needs (an allow-list): everything else goes, wherever it is: EXIF and
+ * XMP, IPTC, comments, maker data, segments between scans, and anything after the image's end
+ * marker (a second image, such as an HDR gain map, can carry its own EXIF).
  * @param {Uint8Array} b
  */
 function stripJpeg(b) {
@@ -403,17 +416,22 @@ function stripJpeg(b) {
     if (m === 0xda) {
       // Scans follow: copy them, with the tables between them, up to and including the end marker.
       let q = p;
+      let run = p; // the start of the bytes not yet copied
       while (q + 2 <= b.length && b[q] === 0xff) {
         const mq = b[q + 1];
         if (mq === 0xff) { q++; continue; }
         if (mq === 0xd9) {
-          parts.push(b.subarray(p, q + 2));
+          parts.push(b.subarray(run, q + 2));
           return join(parts);
         }
         if (mq >= 0xd0 && mq <= 0xd7) { q += 2; continue; }
         if (q + 4 > b.length) return null;
         const len = v.getUint16(q + 2);
         if (len < 2) return null;
+        if (!SCAN_SEGMENTS.has(mq)) {
+          parts.push(b.subarray(run, q));
+          run = q + 2 + len;
+        }
         q += 2 + len;
         if (mq === 0xda) {
           // Entropy-coded data: 0xFF is followed by 0x00 (a stuffed byte) or a restart marker.
@@ -429,13 +447,16 @@ function stripJpeg(b) {
     }
     const len = v.getUint16(p + 2);
     if (len < 2 || p + 2 + len > b.length) return null;
-    if (m !== 0xe1 && m !== 0xed && m !== 0xfe) parts.push(b.subarray(p, p + 2 + len));
+    if (keepJpegSegment(b, p, m, len)) parts.push(b.subarray(p, p + 2 + len));
     p += 2 + len;
   }
   return null;
 }
 
-/** Drops the EXIF and XMP chunks and clears their flags in VP8X. @param {Uint8Array} b */
+/** WebP chunks that decoding needs: everything else (EXIF, XMP, unknown chunks) goes. */
+const WEBP_CHUNKS = new Set(['VP8X', 'VP8 ', 'VP8L', 'ALPH', 'ANIM', 'ANMF', 'ICCP']);
+
+/** Keeps only the image and colour chunks, and clears the EXIF and XMP flags in VP8X. @param {Uint8Array} b */
 function stripWebp(b) {
   if (b.length < 20) return null;
   const v = view(b);
@@ -449,7 +470,7 @@ function stripWebp(b) {
     const len = v.getUint32(p + 4, true);
     const next = p + 8 + len + (len & 1);
     if (p + 8 + len > end) return null;
-    if (kind !== 'EXIF' && kind !== 'XMP ') parts.push(b.slice(p, Math.min(next, end)));
+    if (WEBP_CHUNKS.has(kind)) parts.push(b.slice(p, Math.min(next, end)));
     p = next;
   }
   for (const part of parts) if (ascii(part, 0, 4) === 'VP8X') part[8] &= ~(0x08 | 0x04); // EXIF and XMP flags

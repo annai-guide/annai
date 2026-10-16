@@ -171,3 +171,42 @@ test('the brands of a HEIF file are read from its first bytes only', () => {
   const file = cat(be(4096, 4), ascii4('ftyp'), ascii4('xxxx'), be(0, 4), new Uint8Array(1000), ascii4('heic'), new Uint8Array(4096 - 1028));
   assert.equal(sniffImageType(file), null);
 });
+
+test('stripping keeps only what decoding needs, wherever else metadata hides', async () => {
+  const upright = await fixture('upright.jpg');
+  const plain = await fixture('plain.jpg');
+  const exif = upright.subarray(2, 4 + ((upright[4] << 8) | upright[5])); // the fixture's APP1 EXIF segment, GPS included
+  const as = (/** @type {number} */ marker) => { const s = exif.slice(); s[1] = marker; return s; };
+  const icc = new Uint8Array([0xff, 0xe2, 0x00, 0x10, ...new TextEncoder().encode('ICC_PROFILE\0'), 1, 1]);
+  const crafted = cat(
+    plain.subarray(0, 2),
+    as(0xe3), as(0xef), as(0xe2), // EXIF in APP3, APP15, and an APP2 that is no colour profile
+    icc,
+    plain.subarray(2, plain.length - 2),
+    exif, // EXIF after the image data, before the end marker
+    plain.subarray(plain.length - 2),
+  );
+  const s = stripMetadata(crafted, 'image/jpeg');
+  assert.ok(s);
+  assert.ok(!Buffer.from(s).toString('latin1').includes('Exif'));
+  assert.deepEqual(s, cat(plain.subarray(0, 2), icc, plain.subarray(2)));
+});
+
+test('stripping a WebP keeps only image and colour chunks', async () => {
+  const webp = await fixture('portrait.webp');
+  const exif = Buffer.from(webp).indexOf('EXIF');
+  const payload = webp.subarray(exif + 8, exif + 8 + new DataView(webp.buffer, webp.byteOffset).getUint32(exif + 4, true));
+  const chunk = (/** @type {string} */ type) => cat(ascii4(type), new Uint8Array(new Uint32Array([payload.length]).buffer), payload, payload.length % 2 ? new Uint8Array(1) : new Uint8Array(0));
+  const body = cat(webp.subarray(12), chunk('META'), chunk('exif'));
+  const crafted = cat(ascii4('RIFF'), new Uint8Array(new Uint32Array([body.length + 4]).buffer), ascii4('WEBP'), body);
+  const s = stripMetadata(crafted, 'image/webp');
+  assert.ok(s);
+  assert.ok(!Buffer.from(s).toString('latin1').includes('Exif'));
+  const kinds = [];
+  for (let p = 12; p + 8 <= s.length;) {
+    const len = new DataView(s.buffer, s.byteOffset).getUint32(p + 4, true);
+    kinds.push(Buffer.from(s.subarray(p, p + 4)).toString('latin1'));
+    p += 8 + len + (len & 1);
+  }
+  assert.deepEqual(kinds, ['VP8X', 'VP8 ']);
+});
