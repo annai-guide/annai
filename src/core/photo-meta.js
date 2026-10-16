@@ -23,7 +23,7 @@ export function sniffImageType(b) {
   if (b.length >= 12 && ascii(b, 0, 4) === 'RIFF' && ascii(b, 8, 4) === 'WEBP') return 'image/webp';
   if (b.length >= 6 && ascii(b, 0, 4) === 'GIF8') return 'image/gif';
   if (b.length >= 16 && ascii(b, 4, 4) === 'ftyp') {
-    const end = Math.min(b.length, view(b).getUint32(0));
+    const end = Math.min(b.length, view(b).getUint32(0), 256); // an ftyp box is small; never scan a whole file for brands
     const brands = [ascii(b, 8, 4)];
     for (let p = 16; p + 4 <= end; p += 4) brands.push(ascii(b, p, 4));
     if (brands.includes('avif') || brands.includes('avis')) return 'image/avif';
@@ -344,17 +344,16 @@ function itemExtent(b, iloc, want, idat) {
     read(2); // data reference index
     const base = read(baseSize);
     const extents = read(2);
-    /** @type {{ offset: number, length: number }[]} */
-    const list = [];
-    for (let j = 0; j < extents && p < iloc.end; j++) {
-      read(indexSize);
-      list.push({ offset: read(offsetSize), length: read(lengthSize) });
+    if (id !== want) {
+      p += extents * (indexSize + offsetSize + lengthSize); // skip another item's extents without walking them
+      continue;
     }
-    if (id !== want) continue;
-    if (list.length !== 1) return null;
+    if (extents !== 1) return null;
+    read(indexSize);
+    const offset = read(offsetSize);
     const origin = method === 0 ? 0 : method === 1 && idat ? idat.start : NaN;
-    const start = origin + base + list[0].offset;
-    const length = Math.min(list[0].length, 1 << 20);
+    const start = origin + base + offset;
+    const length = Math.min(read(lengthSize), 1 << 20);
     return Number.isFinite(start) && start + length <= b.length ? b.subarray(start, start + length) : null;
   }
   return null;

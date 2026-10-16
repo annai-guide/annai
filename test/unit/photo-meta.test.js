@@ -145,3 +145,29 @@ test('stripping declines what it cannot follow, and never throws', async () => {
     }
   }
 });
+
+/** ISO-BMFF boxes for crafted HEIF files. */
+const be = (/** @type {number} */ n, /** @type {number} */ size) => { const b = new Uint8Array(size); for (let i = size - 1; i >= 0; i--, n = Math.floor(n / 256)) b[i] = n % 256; return b; };
+const ascii4 = (/** @type {string} */ s) => new TextEncoder().encode(s);
+/** @param {Uint8Array[]} parts */
+const cat = (...parts) => { const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0)); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; } return out; };
+const box = (/** @type {string} */ type, /** @type {Uint8Array[]} */ ...parts) => { const body = cat(...parts); return cat(be(8 + body.length, 4), ascii4(type), body); };
+const fullBox = (/** @type {string} */ type, /** @type {number} */ version, /** @type {Uint8Array[]} */ ...parts) => box(type, be(version, 1), be(0, 3), ...parts);
+
+test('a HEIF item table built to make the reader loop is read in no time', () => {
+  // 3,000 items, each claiming 65,535 extents whose fields are zero bytes long, and the Exif item last.
+  const items = [];
+  for (let i = 0; i < 3000; i++) items.push(be(i === 2999 ? 1 : i + 2, 2), be(0, 2), be(0, 2), be(0xffff, 2));
+  const iloc = fullBox('iloc', 1, be(0, 1), be(0, 1), be(3000, 2), ...items);
+  const iinf = fullBox('iinf', 0, be(1, 2), fullBox('infe', 2, be(1, 2), be(0, 2), ascii4('Exif'), be(0, 1)));
+  const file = cat(box('ftyp', ascii4('heic'), be(0, 4), ascii4('mif1')), fullBox('meta', 0, iinf, iloc));
+  const started = performance.now();
+  assert.equal(readPhotoMeta(file).type, 'image/heic');
+  assert.ok(performance.now() - started < 250, `took ${Math.round(performance.now() - started)} ms`);
+});
+
+test('the brands of a HEIF file are read from its first bytes only', () => {
+  // An ftyp box that claims to be as long as the file, with "heic" far from the start.
+  const file = cat(be(4096, 4), ascii4('ftyp'), ascii4('xxxx'), be(0, 4), new Uint8Array(1000), ascii4('heic'), new Uint8Array(4096 - 1028));
+  assert.equal(sniffImageType(file), null);
+});
