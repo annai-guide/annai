@@ -52,3 +52,17 @@ test('dropping a file on annai opens it', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
   await expect(page.getByRole('alert')).toContainText("isn't an annai file");
 });
+
+test('Erase everything goes straight to an empty Trips, with no error on the way', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.evaluate(() => {
+    new MutationObserver(() => {
+      if (/couldn't open|Something went wrong/.test(document.body.textContent ?? '')) sessionStorage.setItem('erase-error', '1');
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
+  await page.getByLabel('Type ERASE to confirm').fill('ERASE');
+  await page.getByRole('button', { name: 'Erase now' }).click();
+  await expect(page.getByText('No trips yet.')).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem('erase-error'))).toBeNull();
+});

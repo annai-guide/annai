@@ -125,7 +125,8 @@ function eraseControls(ctx) {
       ctx.store.close();
       await eraseDatabase();
       try { await caches.delete('annai-inbox'); } catch { /* no caches */ }
-      location.hash = '#/trips';
+      // No hashchange: nothing may render against the closed store before the reload.
+      history.replaceState(null, '', '#/trips');
       location.reload();
     },
   }, 'Erase now');
