@@ -79,12 +79,19 @@ export class Transcript {
     else this.messages.push({ role, parts });
   }
 
-  /** The conversation of a scope, from its latest compaction. @param {Store} store @param {string} scope */
-  static async load(store, scope) {
-    const [latest] = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true, limit: 1 }));
-    const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, latest ? { after: latest.seq - 1 } : {}));
+  /**
+   * The conversation of a scope: the latest compaction's summary, then the events after the part
+   * it covers (spec §6.5), up to before (exclusive) when given.
+   * @param {Store} store @param {string} scope @param {{ before?: number }} [o]
+   */
+  static async load(store, scope, o = {}) {
+    const [latest] = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true, limit: 1, ...(o.before ? { before: o.before } : {}) }));
+    const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, {
+      ...(latest ? { after: latest.data.to } : {}), ...(o.before ? { before: o.before } : {}),
+    }));
     const t = new Transcript();
-    for (const e of events) t.apply(e, await resolveEvent(store, e));
+    if (latest) t.apply(latest, await resolveEvent(store, latest));
+    for (const e of events) if (e.type !== 'compaction') t.apply(e, await resolveEvent(store, e));
     return t;
   }
 }

@@ -1,0 +1,106 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { agentKit } from './agent-kit.js';
+import { compactionNeed, cutAt } from '../../src/core/agent/compaction.js';
+import { Transcript } from '../../src/core/agent/transcript.js';
+import { ME } from '../../src/core/scopes.js';
+
+const say = (/** @type {string} */ text, /** @type {any} */ extra = {}) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }], ...extra });
+
+test('when housekeeping is due, and when it is forced', () => {
+  const base = { window: 100_000, maxBytes: 8 * 2 ** 20, threshold: 0.7 };
+  assert.equal(compactionNeed({ ...base, tokens: 50_000, bytes: 1000 }), null);
+  assert.equal(compactionNeed({ ...base, tokens: 70_000, bytes: 1000 }), 'due');
+  assert.equal(compactionNeed({ ...base, tokens: 91_000, bytes: 1000 }), 'forced');
+  assert.equal(compactionNeed({ ...base, tokens: 10, bytes: 6 * 2 ** 20 }), 'due');
+  assert.equal(compactionNeed({ ...base, tokens: 10, bytes: 9 * 2 ** 20 }), 'forced');
+  assert.equal(compactionNeed({ ...base, window: null, tokens: 1e9, bytes: 10 }), null);
+});
+
+test('the cut keeps about a third of the threshold, never fewer than three exchanges, and always compacts the oldest', () => {
+  const ex = (/** @type {number} */ seq) => [{ seq, tokens: 10, exchange: true }, { seq: seq + 1, tokens: 1000, exchange: false }];
+  const items = [1, 3, 5, 7, 9, 11].flatMap(ex);
+  assert.equal(cutAt(items, { keepTokens: 500 }), 7);
+  assert.equal(cutAt(items, { keepTokens: 4000 }), 5);
+  assert.equal(cutAt(items, { keepTokens: 1e9 }), 3);
+  assert.equal(cutAt(items.slice(0, 6), { keepTokens: 0 }), null);
+  assert.equal(cutAt(items.slice(0, 6), { keepTokens: 0, minExchanges: 1 }), 5);
+});
+
+test('cold: the utility model writes the summary; the last three exchanges stay word for word', async () => {
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
+  for (let i = 0; i < 5; i++) {
+    k.agent.send(`Message ${i}`);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  const [c] = await k.events(['compaction']);
+  assert.equal(c.data.mode, 'cold');
+  const msgs = k.agent.transcript.messages;
+  assert.match(/** @type {any} */ (msgs[0].parts[0]).text, /^\[Earlier conversation, summarized \(events \d+–\d+\)\]\nThey planned dinner at Nepenthe\.$/);
+  const all = JSON.stringify(msgs);
+  // Without a model window, the part kept is large: everything but the oldest exchange, and never fewer than three.
+  assert.equal(all.includes('Message 0'), false);
+  for (const n of [2, 3, 4]) assert.equal(all.includes(`Message ${n}`), true);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /Message 0/);
+  assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, msgs);
+});
+
+test('warm: the model holding the cache summarizes from the cached conversation, and may move facts into memory first', async () => {
+  const k = await agentKit([[say('a'), say('b'), say('c'), say('d'),
+    { toolCalls: [{ name: 'edit', input: { path: '/me/memory.md', old: '# Memory', new: '# Memory\n- Vegetarian' } }, { name: 'write', input: { path: '/trip/notes/x.md', content: 'no' } }] },
+    { text: 'Four greetings; the user is vegetarian.' }]]);
+  for (let i = 0; i < 4; i++) {
+    k.agent.send(`Hi ${i}`);
+    await k.agent.idle();
+  }
+  const conversation = structuredClone(k.agent.transcript.messages);
+  const lastTurn = k.requests.at(-1);
+  assert.equal(await k.agent.compact('warm'), true);
+  const asked = k.requests[4];
+  assert.equal(asked.system, lastTurn.system);
+  assert.deepEqual(asked.tools, lastTurn.tools);
+  assert.deepEqual(asked.messages, conversation);
+  assert.match(asked.tail, /housekeeping/);
+  assert.match(await k.ws.readText(ME, '/memory.md'), /Vegetarian/);
+  assert.equal(await k.ws.read(k.trip, '/notes/x.md'), undefined);
+  assert.equal((await k.events(['compaction']))[0].data.mode, 'warm');
+});
+
+test('due at a pause: housekeeping waits until shortly before the cache expires', async () => {
+  /** @type {{ fn: () => void, ms: number }[]} */
+  const timers = [];
+  const k = await agentKit([[say('x', { usage: { input: 7500, output: 5 } })]], {
+    models: [{ contextWindow: 10000 }],
+    agent: { timers: { set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => timers.push({ fn, ms }), clear: () => {} } },
+  });
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(timers.length, 1);
+  assert.ok(timers[0].ms > 250_000 && timers[0].ms <= 255_000, String(timers[0].ms));
+});
+
+test('forced: a turn about to overflow is compacted before its next call', async () => {
+  const k = await agentKit([[say('1'), say('2'), say('3'),
+    { toolCalls: [{ name: 'list', input: { path: '/trip/' } }], usage: { input: 9500, output: 5 } },
+    { text: 'Summary of 1 to 3.' },
+    say('done')]], { models: [{ contextWindow: 10000 }] });
+  for (let i = 0; i < 4; i++) {
+    k.agent.send(`Turn ${i}`);
+    await k.agent.idle();
+  }
+  assert.equal((await k.events(['compaction'])).length, 1);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^\[Earlier conversation, summarized/);
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'done');
+});
+
+test('"request too long" from every model: compact cold first, then try again', async () => {
+  const k = await agentKit([[say('1'), say('2'), say('3'), { error: 'context', status: 400, message: 'prompt is too long' }, say('fits now')]], { utility: [{ text: 'Summary.' }] });
+  for (let i = 0; i < 4; i++) {
+    k.agent.send(`Turn ${i}`);
+    await k.agent.idle();
+  }
+  assert.equal((await k.events(['compaction']))[0].data.mode, 'cold');
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'fits now');
+  assert.equal(k.notices.length, 0);
+});

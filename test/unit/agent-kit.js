@@ -17,9 +17,10 @@ import { activate as scripted } from '../../plugins-official/scripted-model/inde
  * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any> }} [opts]
+ * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[] }} [opts]
+ *   utility: a script for one more scripted model, in the utility role
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {} } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -41,6 +42,11 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.models[`m-${i}`] = { id: `m-${i}`, endpoint: `ep-${i}`, template: null, user: { providerId: `model-${i}`, prices: { input: 1, output: 1 }, input: ['text', 'image'], ...(models[i] ?? {}) }, created: 0 };
     config.roles.main.models.push(`m-${i}`);
   });
+  if (utility) {
+    config.endpoints['ep-u'] = { id: 'ep-u', type: 'scripted', template: null, user: { name: 'EU', tunables: { script: utility } }, created: 0 };
+    config.models['m-u'] = { id: 'm-u', endpoint: 'ep-u', template: null, user: { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] }, created: 0 };
+    config.roles.utility.models = ['m-u'];
+  }
   const bench = new Bench();
   const llm = {
     bench,

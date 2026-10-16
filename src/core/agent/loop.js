@@ -1,11 +1,12 @@
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
-import { AllFailedError } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf } from '../llm/config.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { record, TALK_TAG } from './log.js';
+import { record, storedTexts, TALK_TAG } from './log.js';
+import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS } from './compaction.js';
 import { Transcript, resolveEvent, repair } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
@@ -71,6 +72,12 @@ export class Agent {
   #recentWakes = [];
   /** Wakes whose budgets are being checked: idle() waits for them. */
   #checking = 0;
+  /** Housekeeping is due (spec §6.5): it waits for a pause. */
+  #due = false;
+  /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
+  #timer = null;
+  /** The prompt the last call sent, in tokens, as the provider counted it. */
+  #lastPrompt = 0;
   /** @type {LoopTool[]} */
   #loopTools;
   /** @type {Record<string, Set<(x: any) => void>>} */
@@ -78,9 +85,11 @@ export class Agent {
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
-   *   now?: () => number, online?: () => boolean, timeZone?: () => string, fetch?: (url: string, init?: RequestInit) => Promise<Response>, secondMs?: number }} c
+   *   now?: () => number, online?: () => boolean, timeZone?: () => string, fetch?: (url: string, init?: RequestInit) => Promise<Response>, secondMs?: number,
+   *   timers?: { set: (fn: () => void, ms: number) => any, clear: (handle: any) => void } }} c
    */
-  constructor({ store, ws, llm, registry, now = Date.now, online = () => globalThis.navigator?.onLine !== false, timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, fetch: get, secondMs = 1000 }) {
+  constructor({ store, ws, llm, registry, now = Date.now, online = () => globalThis.navigator?.onLine !== false, timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, fetch: get, secondMs = 1000,
+    timers = { set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => /** @type {any} */ (setTimeout(fn, ms)), clear: (/** @type {any} */ h) => clearTimeout(h) } }) {
     this.store = store;
     this.ws = ws;
     /** @type {any} the llm service: call(), config(), decide() */
@@ -90,6 +99,8 @@ export class Agent {
     this.online = online;
     this.timeZone = timeZone;
     this.secondMs = secondMs;
+    /** How housekeeping waits for the cache (tests pass their own). */
+    this.timers = timers;
     this.get = get ?? ((/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init));
     this.#loopTools = this.#talkTools();
   }
@@ -233,6 +244,10 @@ export class Agent {
   async #drain() {
     if (this.#busy) return;
     this.#busy = true;
+    if (this.#timer !== null) {
+      this.timers.clear(this.#timer);
+      this.#timer = null;
+    }
     try {
       while (this.#queue.length) await this.#turn(this.#take());
     } catch (e) {
@@ -242,7 +257,111 @@ export class Agent {
       this.#abort = null;
       this.#setState(this.online() ? 'sleeping' : 'offline');
       if (!this.#checking) for (const fn of this.#idle.splice(0)) fn();
+      this.#schedule();
     }
+  }
+
+  /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5). */
+  #schedule() {
+    if (this.#timer !== null) this.timers.clear(this.#timer);
+    this.#timer = null;
+    if (!this.#due) return;
+    const last = this.#warmth.last;
+    const wait = last ? last.at + last.ttlMs - WARM_LEAD_MS - this.now() : 0;
+    if (wait <= 0) this.#housekeep('cold');
+    else this.#timer = this.timers.set(() => { this.#timer = null; this.#housekeep('warm'); }, wait);
+  }
+
+  /** @param {'warm' | 'cold'} mode */
+  async #housekeep(mode) {
+    if (this.#busy) return;
+    this.#busy = true;
+    try {
+      await this.compact(mode);
+    } catch (e) {
+      this.#emit('notice', { tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${String(/** @type {any} */ (e)?.message ?? e)} She will try again later.` });
+    } finally {
+      this.#busy = false;
+      this.#setState(this.online() ? 'sleeping' : 'offline');
+      if (this.#queue.length) this.#drain();
+      else for (const fn of this.#idle.splice(0)) fn();
+    }
+  }
+
+  /** The main role's first model. */
+  async #mainModel() {
+    const cfg = await this.llm.config();
+    const id = cfg.roles?.main?.models?.[0];
+    return id && cfg.models[id] ? modelOf(cfg.models[id]) : null;
+  }
+
+  /**
+   * Housekeeping (spec §6.5): the older part of the conversation becomes a compaction event; the
+   * most recent part stays word for word. Returns whether anything was compacted.
+   * @param {'warm' | 'cold'} mode @param {{ forced?: boolean }} [o]
+   */
+  async compact(mode, o = {}) {
+    const settings = await this.settings();
+    const window = (await this.#mainModel())?.contextWindow ?? null;
+    const keepTokens = window
+      ? (settings.compaction.threshold * window) / 3
+      : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3;
+    const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
+    const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, latest ? { after: latest.data.to } : {}))).filter((e) => e.type !== 'compaction');
+    const items = [];
+    for (const e of events) {
+      const texts = await storedTexts(this.store, e);
+      const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
+      items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
+    }
+    const cut = cutAt(items, { keepTokens, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
+    if (cut === null) return false;
+    const after = events.filter((e) => e.seq >= cut);
+    const first = after.find((e) => e.type === 'msg.user')?.data?.text ?? after.find((e) => e.type === 'wake')?.data?.reasons?.[0]?.text ?? '';
+    const marker = first ? `the exchange that begins "${first.slice(0, 80)}"` : `event ${cut}`;
+    this.#setState('away', 'tidying up the conversation');
+    const summary = mode === 'warm' ? await this.#warmSummary(marker, settings) : await this.#coldSummary(cut);
+    if (!summary) return false;
+    await record(this.store, this.scope, { type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
+    this.transcript = await Transcript.load(this.store, this.scope);
+    this.#snapshot = null;
+    this.#due = false;
+    return true;
+  }
+
+  /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings */
+  async #warmSummary(marker, settings) {
+    const tools = toolList({ registry: this.registry, switches: await toolSwitches(this.ws), loop: this.#loopTools });
+    if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
+    /** @type {import('../llm/contract.js').Message[]} */
+    let messages = this.transcript.messages;
+    for (let step = 0; step < 4; step++) {
+      const request = buildRequest({ snapshot: this.#snapshot, tools: definitions(tools), transcript: { messages }, tail: instruction(marker), cacheTtl: settings.cacheTtl });
+      const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' } });
+      const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
+      if (!calls.length) return r.reply.text.trim() || null;
+      /** @type {import('../llm/contract.js').Part[]} */
+      const results = [];
+      for (const c of calls) {
+        const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
+        const tool = tools.find((t) => t.name === c.name);
+        const out = memory && tool
+          ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
+          : { content: 'Not during housekeeping: only memory moves work now.', isError: true };
+        await record(this.store, this.scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
+        results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
+      }
+      messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
+    }
+    return null;
+  }
+
+  /** Cold: the utility model, from the older part as text. @param {number} cut */
+  async #coldSummary(cut) {
+    const old = await Transcript.load(this.store, this.scope, { before: cut });
+    const text = renderForSummary(old.messages);
+    const r = await this.llm.call({ role: 'utility', request: { system: COLD_SYSTEM, messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, record: { tag: 'compaction' } });
+    return r.reply.text.trim() || null;
   }
 
   /** Writes a conversation event, adds it to the transcript, and tells the screen. @param {Parameters<typeof record>[2]} ev */
@@ -284,9 +403,12 @@ export class Agent {
     const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;
     const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
     this.#snapshot = nextSnapshot(this.#snapshot, fresh, { cold });
+    // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
+    if (cold && this.#due && (await this.compact('cold'))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
     const reasons = wakes.map((w) => this.#reason(w));
     const stuck = new Stuck();
     let steps = 0;
+    let triedCompacting = false;
     let spent = await spentToday(this.store, this.now(), this.timeZone());
     for (;;) {
       if (abort.signal.aborted) break;
@@ -296,11 +418,25 @@ export class Agent {
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'budget', which: over.which, wake: wakeId, message: over.body } });
         break;
       }
+      // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
+      if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
       const tools = toolList({ registry: this.registry, switches: await toolSwitches(this.ws), loop: this.#loopTools });
       const plan = await nextPlanItems(this.ws, this.trip, this.now());
       const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: 'off', online: this.online(), reasons, plan });
       const request = buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: this.transcript, tail, cacheTtl: settings.cacheTtl });
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
+      const window = (await this.#mainModel())?.contextWindow ?? null;
+      const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
+      const need = compactionNeed({ tokens: Math.max(estimateTokens(request), this.#lastPrompt), window, bytes: requestBytes(request), maxBytes, threshold: settings.compaction.threshold });
+      if (need === 'forced') {
+        // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
+        const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
+        if (await this.compact(warm ? 'warm' : 'cold', { forced: true })) {
+          this.#lastPrompt = 0;
+          this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
+          continue;
+        }
+      }
       const prefer = this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
       this.#setState('thinking');
       /** @type {any} */
@@ -311,13 +447,24 @@ export class Agent {
           record: { tag: TALK_TAG, wake: wakeId, prefix: fingerprint.slice(0, 16), context: { from: this.transcript.from, to: this.transcript.to }, keepParts: true },
         });
       } catch (e) {
+        // "Request too long" from every model: compact first, then try once more (spec §9.6).
+        const tooLong = e instanceof AllFailedError && e.attempts.some((a) => a.outcome === 'context' || a.outcome === 'too-long');
+        if (tooLong && !triedCompacting) {
+          triedCompacting = true;
+          if (await this.compact('cold', { forced: true })) {
+            this.#lastPrompt = 0;
+            continue;
+          }
+        }
         await this.#failed(e, wakeId);
         break;
       }
       steps++;
+      this.#lastPrompt = promptTokens(result.usage);
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
+      if (compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       if (!calls.length) {
