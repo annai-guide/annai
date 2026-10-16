@@ -15,3 +15,19 @@ test('readable text from a page: no scripts, styles or comments; the main part; 
 test('a page without main or article keeps its body', () => {
   assert.equal(htmlToText('<body><div>One</div><div>Two</div></body>').text, 'One\n\nTwo');
 });
+
+test('a hostile or huge page is read in linear time: unclosed links, scripts and comments, many tags', () => {
+  const started = Date.now();
+  const nasty = [
+    '<a href="x">'.repeat(100_000),
+    '<script>'.repeat(50_000),
+    '<!--'.repeat(50_000),
+    `<a${' x'.repeat(200_000)}`,
+    `<title>${'<'.repeat(100_000)}`,
+    `<main><p>Kept</p></main>${'<p>'.repeat(200_000)}`,
+  ];
+  for (const html of nasty) htmlToText(html, 'https://x.test/');
+  assert.ok(Date.now() - started < 1500, `took ${Date.now() - started} ms`);
+  assert.equal(htmlToText('<p>a</p><script>never closed <p>b</p>').text, 'a');
+  assert.equal(htmlToText('<p>One</p><!-- never closed <p>Two</p>').text, 'One');
+});
