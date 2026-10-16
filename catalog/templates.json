@@ -78,6 +78,35 @@
       "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on." },
     { "id": "custom-chat-completions", "version": 1, "type": "chat-completions", "name": "Other: Chat Completions", "baseUrl": "" },
     { "id": "custom-anthropic", "version": 1, "type": "anthropic-messages", "name": "Other: Anthropic Messages", "baseUrl": "https://api.anthropic.com" },
+    { "id": "openai-transcription", "version": 1, "type": "openai-transcription", "name": "OpenAI: transcription", "baseUrl": "https://api.openai.com/v1",
+      "keyUrl": "https://platform.openai.com/api-keys", "note": "Turns what you say into text, for models that don't take audio.",
+      "models": [
+        { "providerId": "gpt-transcribe", "name": "OpenAI: GPT Transcribe", "prices": { "perMinute": 0.0045 } },
+        { "providerId": "gpt-4o-mini-transcribe", "name": "OpenAI: GPT-4o mini Transcribe", "prices": { "perMinute": 0.003 } },
+        { "providerId": "whisper-1", "name": "OpenAI: Whisper", "prices": { "perMinute": 0.006 } }
+      ],
+      "roles": { "recommended": { "speech-in": ["gpt-transcribe"] } } },
+    { "id": "groq-transcription", "version": 1, "type": "openai-transcription", "name": "Groq: transcription", "baseUrl": "https://api.groq.com/openai/v1",
+      "keyUrl": "https://console.groq.com/keys", "note": "Fast Whisper. Groq bills each request as at least 10 seconds.",
+      "models": [
+        { "providerId": "whisper-large-v3-turbo", "name": "Groq: Whisper large v3 turbo", "prices": { "perMinute": 0.000667, "minSeconds": 10 } },
+        { "providerId": "whisper-large-v3", "name": "Groq: Whisper large v3", "prices": { "perMinute": 0.00185, "minSeconds": 10 } }
+      ],
+      "roles": { "recommended": { "speech-in": ["whisper-large-v3-turbo"] } } },
+    { "id": "openai-speech", "version": 1, "type": "openai-speech", "name": "OpenAI: voice", "baseUrl": "https://api.openai.com/v1",
+      "keyUrl": "https://platform.openai.com/api-keys", "note": "Shiori's voice. GPT-4o mini TTS is priced by audio; its price here is OpenAI's estimate of $0.015 a minute.",
+      "models": [
+        { "providerId": "gpt-4o-mini-tts", "name": "OpenAI: GPT-4o mini TTS (Marin)", "tunables": { "voice": "marin" }, "prices": { "perMillionChars": 18 } },
+        { "providerId": "tts-1", "name": "OpenAI: TTS-1 (Nova)", "tunables": { "voice": "nova" }, "prices": { "perMillionChars": 15 } },
+        { "providerId": "tts-1-hd", "name": "OpenAI: TTS-1 HD (Nova)", "tunables": { "voice": "nova" }, "prices": { "perMillionChars": 30 } }
+      ],
+      "roles": { "recommended": { "speech-out": ["gpt-4o-mini-tts"] } } },
+    { "id": "local-transcription", "version": 1, "type": "openai-transcription", "name": "Local server: transcription (Speaches, whisper.cpp)", "baseUrl": "http://localhost:8000/v1",
+      "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on." },
+    { "id": "local-speech", "version": 1, "type": "openai-speech", "name": "Local server: voice (Kokoro, Speaches)", "baseUrl": "http://localhost:8880/v1",
+      "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on." },
+    { "id": "custom-transcription", "version": 1, "type": "openai-transcription", "name": "Other: OpenAI-compatible transcription", "baseUrl": "" },
+    { "id": "custom-speech", "version": 1, "type": "openai-speech", "name": "Other: OpenAI-compatible voice", "baseUrl": "" },
     { "id": "scripted", "version": 1, "type": "scripted", "name": "Scripted model (for testing)",
       "models": [{ "providerId": "scripted", "name": "Scripted", "contextWindow": 200000, "maxOutput": 4096, "input": ["text", "image"], "tools": true, "prices": { "input": 0, "output": 0 } }] }
   ]
