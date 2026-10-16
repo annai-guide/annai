@@ -24,20 +24,25 @@ function safeUrl(url) {
   }
 }
 
+/** Query parameters whose values are credentials whatever their length. */
+const CREDENTIAL = /key|token|secret|sig|auth|pass|session|credential|code/i;
+
 /**
  * Every form a credential in a URL may take: its password and each query value, as written and
  * decoded both ways ("+" kept, and "+" as a space), so an echo in any of those forms is blanked.
- * @param {string} url
+ * Values of credential-named parameters count from 4 characters, other values from 8, so that
+ * "page=2" doesn't blank every 2.
+ * @param {string} url @returns {[string, number][]} [value, the length from which it counts]
  */
 function urlSecrets(url) {
-  /** @type {string[]} */
+  /** @type {[string, number][]} */
   const out = [];
-  const add = (/** @type {string} */ v) => {
+  const add = (/** @type {string} */ v, /** @type {number} */ min) => {
     if (!v) return;
-    out.push(v);
+    out.push([v, min]);
     for (const decode of [(/** @type {string} */ x) => decodeURIComponent(x), (/** @type {string} */ x) => decodeURIComponent(x.replace(/\+/g, ' '))]) {
       try {
-        out.push(decode(v));
+        out.push([decode(v), min]);
       } catch {
         // not valid percent-encoding: the raw form is enough
       }
@@ -45,10 +50,10 @@ function urlSecrets(url) {
   };
   const raw = String(url);
   const info = /^[a-z][a-z0-9+.-]*:\/\/([^/?#@]*)@/i.exec(raw)?.[1];
-  if (info) add(info.includes(':') ? info.slice(info.indexOf(':') + 1) : info);
+  if (info) add(info.includes(':') ? info.slice(info.indexOf(':') + 1) : info, 4);
   for (const pair of raw.split('#')[0].split('?').slice(1).join('?').split('&')) {
     const i = pair.indexOf('=');
-    if (i >= 0) add(pair.slice(i + 1));
+    if (i >= 0) add(pair.slice(i + 1), CREDENTIAL.test(pair.slice(0, i)) ? 4 : 8);
   }
   return out;
 }
@@ -59,7 +64,8 @@ export function modelTrace(store, scope) {
   const secrets = new Set();
   const scrub = (/** @type {unknown} */ s) => {
     let out = String(s ?? '');
-    for (const k of secrets) out = out.split(k).join('«key»');
+    // Longest first, so a secret that contains another is blanked whole.
+    for (const k of [...secrets].sort((a, b) => b.length - a.length)) out = out.split(k).join('«key»');
     return out;
   };
   /**
@@ -89,9 +95,13 @@ export function modelTrace(store, scope) {
       // the trace must never break a call
     }
   };
-  /** A key the calls use, so that an echo of it can be blanked out. Short strings are ignored. @param {string} key */
-  const secret = (key) => {
-    if (typeof key === 'string' && key.length >= 8) secrets.add(key);
+  /**
+   * A key the calls use, so that an echo of it can be blanked out. Values shorter than min are
+   * ignored: blanking every "ab" would wreck the trace, and no real credential is that short.
+   * @param {string} key @param {number} [min]
+   */
+  const secret = (key, min = 4) => {
+    if (typeof key === 'string' && key.length >= min) secrets.add(key);
   };
   return {
     secret,
@@ -99,8 +109,8 @@ export function modelTrace(store, scope) {
     request(i) {
       // A credential can sit in the address too: its password and query values are treated as ones,
       // and the address is traced without them.
-      for (const v of urlSecrets(i.url)) secret(v);
-      const data = { kind: 'model', ...i, ...(i.error ? { error: scrub(i.error) } : {}), url: safeUrl(i.url) };
+      for (const [v, min] of urlSecrets(i.url)) secret(v, min);
+      const data = { kind: 'model', ...i, ...(i.error ? { error: scrub(i.error) } : {}), url: scrub(safeUrl(i.url)) };
       return append({ ts: Date.now(), type: 'net.request', actor: 'system', data }, []);
     },
     /**

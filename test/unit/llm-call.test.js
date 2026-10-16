@@ -186,3 +186,19 @@ test('an address is traced without its query or a password, however they are enc
   assert.equal(ev.data.url, 'https://llm.test/v1/chat?…');
   for (const secret of echoed.split(' ')) assert.ok(!JSON.stringify(ev).includes(secret), `${secret} reached the trace: ${JSON.stringify(ev)}`);
 });
+
+test('short keys, keys in the path, and secrets inside secrets are blanked too', async () => {
+  const store = createMemoryStore();
+  const key = 'k7Q9x2';
+  const url = `https://llm.test/bot${key}/send?api_key=z9Y8&page=2`;
+  const type = httpType([], { build: () => ({ url, headers: {}, body: {} }) });
+  await assert.rejects(callOnce({
+    type, endpoint: endpoint({ headers: { 'X-Token': 'abcd1234' } }), model: model(), key, request, trace: modelTrace(store, SYS),
+    fetch: async () => new Response(JSON.stringify({ error: { message: `no ${key}, no z9Y8, no abcd1234efgh` } }), { status: 401 }),
+  }));
+  const [ev] = await traced(store);
+  const shown = JSON.stringify(ev);
+  for (const secret of [key, 'z9Y8', 'abcd1234']) assert.ok(!shown.includes(secret), `${secret} reached the trace: ${shown}`);
+  assert.equal(ev.data.url, 'https://llm.test/bot«key»/send?…');
+  assert.ok(!shown.includes('efgh') || shown.includes('«key»efgh'), 'an outer secret is blanked whole');
+});
