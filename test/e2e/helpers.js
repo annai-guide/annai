@@ -134,6 +134,8 @@ export async function addEndpoint(page, template, { name, url, key, model }) {
   await page.getByLabel('API key').fill(key);
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
+  // Saving draws the screen again: wait for the new one (its key field says a key is saved), or what is typed next is lost.
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
   await page.getByLabel('Add a model by id').fill(model);
   await page.getByRole('button', { name: 'Add model' }).click();
   await expect(page.getByRole('link', { name: new RegExp(`^${model}`) })).toBeVisible();

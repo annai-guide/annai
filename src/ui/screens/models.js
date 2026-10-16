@@ -1,7 +1,7 @@
 import { h, field } from '../dom.js';
 import { endpointOf, modelOf, saveRoles, CHAT_ROLES, SPEECH_ROLES, STAND_INS, speechKind } from '../../core/llm/config.js';
 import { LEVELS } from '../../core/llm/reasoning.js';
-import { addFromTemplate, templateUpdates } from '../../core/llm/templates.js';
+import { addFromTemplate, templateUpdates, speechAdd } from '../../core/llm/templates.js';
 import { renderEndpoint, messageOf } from './endpoint.js';
 import { renderModel } from './model.js';
 import { talkPanel } from '../talk-panel.js';
@@ -138,7 +138,7 @@ function roleBlock(role, roles, choices, nameOf, save, { speech = false } = {}) 
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
     h('div', { class: 'row' },
       others.length ? field(`Add a model to ${role}`, pick) : null,
-      others.length ? h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => save({ ...roles, [role]: { ...r, models: [...r.models, pick.value] } }) }, `Add to ${role}`)) : null,
+      others.length ? h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => save({ ...roles, [role]: { ...r, models: speech ? speechAdd(r.models, pick.value, role) : [...r.models, pick.value] } }) }, `Add to ${role}`)) : null,
       level ? field(`Reasoning for ${role}`, level) : null,
       field(waitLabel, wait)));
 }

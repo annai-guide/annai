@@ -1,4 +1,4 @@
-import { h, field } from '../dom.js';
+import { h, field, radios, checkbox } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf } from '../../core/llm/config.js';
@@ -18,6 +18,29 @@ export async function renderVoice(ctx) {
   const s = voiceSettings(await readAppSettings(ctx.ws));
   const entries = await voice.outEntries();
   const synth = voice.platform?.synth;
+  /** Saves a voice setting and works out the voice again. @param {Record<string, any>} change @param {string} [said] */
+  const save = async (change, said = 'Saved') => {
+    await updateAppSettings(ctx.ws, { voice: change });
+    await voice.refresh();
+    ctx.notices.toast(said);
+  };
+  const modeStatus = h('p', { class: 'sub', role: 'status', text: voice.on ? 'Voice is on.' : 'Voice is off.' });
+  const mode = radios('Voice', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], s.mode, async (m) => {
+    await save({ mode: m });
+    modeStatus.textContent = voice.on ? 'Voice is on.' : 'Voice is off.';
+  });
+  const silence = h('input', { id: 'voice-silence', type: 'number', min: '2', max: '60', step: '1', value: String(s.silenceSeconds) });
+  silence.addEventListener('change', () => {
+    const n = Math.round(Number(silence.value));
+    if (n >= 2 && n <= 60) save({ silenceSeconds: n });
+  });
+  const firstWords = h('input', { id: 'voice-first-words', type: 'number', min: '5', max: '120', step: '1', value: String(s.firstWordsSeconds) });
+  firstWords.addEventListener('change', () => {
+    const n = Math.round(Number(firstWords.value));
+    if (n >= 5 && n <= 120) save({ firstWordsSeconds: n });
+  });
+  const clips = checkbox('Keep voice clips', s.keepClips);
+  clips.input.addEventListener('change', () => save({ keepClips: clips.input.checked }));
 
   const sayStatus = h('p', { class: 'sub', role: 'status' });
   const sayButton = h('button', {
@@ -116,6 +139,10 @@ export async function renderVoice(ctx) {
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Voice' }),
     h('p', { class: 'sub', text: 'How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.' }),
+    section('On or off',
+      h('p', { class: 'sub', text: 'On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. Auto works out which (in the car, with headphones) in the next version; until then it is Off.' }),
+      mode, modeStatus,
+      h('div', { class: 'row' }, field('Listen for an answer (seconds)', silence), field('Wait for her first words (seconds)', firstWords))),
     section("Shiori's voice",
       h('p', { class: 'sub', text: `Voices, tried in order: ${entries.map((/** @type {any} */ e) => e.name).join(', ') || 'none'}.` }),
       h('div', { class: 'acts' }, sayButton), sayStatus),
@@ -126,5 +153,7 @@ export async function renderVoice(ctx) {
     section('Listening',
       h('p', { class: 'sub', text: 'annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.' }),
       field('Pause that ends a sentence (ms)', pause), h('div', { class: 'acts' }, savePause),
-      meter, h('div', { class: 'acts' }, micButton), micStatus));
+      meter, h('div', { class: 'acts' }, micButton), micStatus,
+      clips.el,
+      h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' })));
 }

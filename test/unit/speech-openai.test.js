@@ -11,7 +11,7 @@ import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js'
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { ensureType } from '../../src/core/llm/official.js';
-import { addFromTemplate, withSpeech } from '../../src/core/llm/templates.js';
+import { addFromTemplate, withSpeech, speechAdd } from '../../src/core/llm/templates.js';
 import { readConfig, modelOf } from '../../src/core/llm/config.js';
 
 /** @type {Record<string, any>} */
@@ -111,4 +111,11 @@ test('a template speech model joins its list: transcription after "Send audio to
   assert.deepEqual(cfg.roles['speech-in'].models.map(name), ['send-audio', 'Groq: Whisper large v3 turbo', 'dictation']);
   assert.deepEqual(cfg.roles['speech-out'].models.map(name), ['OpenAI: GPT-4o mini TTS (Marin)', 'browser-voice']);
   assert.deepEqual(cfg.roles.main.models, [], 'a speech template suggests nothing for chat roles');
+});
+
+test('a speech model the user adds goes where a template would put it; a stand-in added back goes last', () => {
+  assert.deepEqual(speechAdd(['send-audio', 'dictation'], 'm-1', 'speech-in'), ['send-audio', 'm-1', 'dictation']);
+  assert.deepEqual(speechAdd(['browser-voice'], 'm-2', 'speech-out'), ['m-2', 'browser-voice']);
+  assert.deepEqual(speechAdd(['send-audio', 'm-1'], 'dictation', 'speech-in'), ['send-audio', 'm-1', 'dictation']);
+  assert.deepEqual(speechAdd(['m-2'], 'browser-voice', 'speech-out'), ['m-2', 'browser-voice']);
 });
