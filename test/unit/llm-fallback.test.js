@@ -190,3 +190,9 @@ test('a model whose endpoint type is missing is skipped', async () => {
   const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { endpointTypes: ['gone', 'scripted'] });
   assert.deepEqual((await call(s)).attempts.map((a) => a.outcome), ['type-missing', 'ok']);
 });
+
+test('a request that needs a provider tool skips models without one', async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { models: [{}, { providerTools: [{ id: 'f', name: 'Fetch', kind: 'fetch', patch: {} }] }] });
+  const r = await call(s, { request: { ...hello, providerTools: { kinds: ['fetch'] }, needsProviderTool: 'fetch' } });
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-provider-tool', 'ok']);
+});

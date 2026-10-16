@@ -9,7 +9,7 @@ import { modelTrace } from '../../src/core/llm/trace.js';
 import { text as textOf } from '../../src/core/bytes.js';
 
 const endpoint = (over = {}) => ({ id: 'ep-1', type: 'test', name: 'Test endpoint', baseUrl: 'https://llm.test', headers: {}, tunables: {}, extraBody: {}, ...over });
-const model = (over = {}) => ({ id: 'm-1', endpoint: 'ep-1', name: 'Test model', providerId: 'test-1', input: ['text'], tools: true, contextWindow: 100000, maxOutput: 1000, prices: { input: 1, output: 2 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, ...over });
+const model = (over = {}) => ({ id: 'm-1', endpoint: 'ep-1', name: 'Test model', providerId: 'test-1', input: ['text'], tools: true, contextWindow: 100000, maxOutput: 1000, prices: { input: 1, output: 2 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, ...over });
 /** @type {any} */
 const request = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] };
 
@@ -236,4 +236,35 @@ test("the reply keeps the first token's alternatives", async () => {
   });
   const reply = await callOnce({ type: t, endpoint: endpoint(), model: model(), key: null, request });
   assert.deepEqual(reply.logprobs, [{ token: 'A', logprob: -0.1 }]);
+});
+
+const search = { id: 'p-search', name: 'Web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search_x', name: 'web_search' }] }, pricePerCall: 0.01, usageKey: 'web_search_requests' };
+const fetchTool = { id: 'p-fetch', name: 'Web fetch', kind: 'fetch', patch: { 'tools+': [{ type: 'web_fetch_x', name: 'web_fetch' }] } };
+
+test('provider tools: the kinds the request asks for, minus the ones switched off, patch the body', async () => {
+  /** @type {any[]} */
+  const bodies = [];
+  const ok = async (/** @type {any} */ _u, /** @type {any} */ init) => { bodies.push(JSON.parse(init.body)); return new Response('', { status: 200 }); };
+  const t = httpType([{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }]);
+  const m = model({ providerTools: [search, fetchTool] });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: null, request: { ...request, providerTools: { kinds: ['search'] } }, fetch: /** @type {any} */ (ok) });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: null, request: { ...request, providerTools: { kinds: ['search', 'fetch'], off: ['p-search'] } }, fetch: /** @type {any} */ (ok) });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: null, request, fetch: /** @type {any} */ (ok) });
+  assert.deepEqual(bodies.map((b) => (b.tools ?? []).map((/** @type {any} */ x) => x.name)), [['web_search'], ['web_fetch'], []]);
+});
+
+test('a provider block is kept for the model that wrote it, citations are collected, and searches are priced per call', async () => {
+  const t = runType(async function* () {
+    yield { type: 'provider', block: { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: { query: 'nepenthe' } } };
+    yield { type: 'citation', url: 'https://nepenthe.com', title: 'Nepenthe' };
+    yield { type: 'citation', url: 'https://nepenthe.com', title: 'Nepenthe' };
+    yield { type: 'text', text: 'Open till 10.' };
+    yield { type: 'usage', usage: { input: 1000, output: 100, serverTools: { web_search_requests: 2 } } };
+    yield { type: 'stop', reason: 'end' };
+  });
+  const reply = await callOnce({ type: t, endpoint: endpoint(), model: model({ providerTools: [search] }), key: null, request });
+  assert.deepEqual(reply.parts[0], { type: 'provider', block: { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: { query: 'nepenthe' } }, model: 'test-1' });
+  assert.deepEqual(reply.citations, [{ url: 'https://nepenthe.com', title: 'Nepenthe' }]);
+  // 1000 × $1/M + 100 × $2/M + 2 searches × $0.01
+  assert.equal(Number(reply.cost?.toFixed(6)), 0.0212);
 });

@@ -69,3 +69,9 @@ test('portable: reasoning signed by another model is dropped, and tool-call ids 
   assert.equal(safeId(''), 'call');
   assert.equal(safeId('x'.repeat(100)).length, 64);
 });
+
+test('portable: a provider block goes only to the model that wrote it', () => {
+  const messages = [{ role: /** @type {const} */ ('assistant'), parts: [{ type: /** @type {const} */ ('provider'), block: { type: 'server_tool_use' }, model: 'a' }, { type: /** @type {const} */ ('text'), text: 'Hi' }] }];
+  assert.equal(portable(messages, 'a')[0].parts.length, 2);
+  assert.deepEqual(portable(messages, 'b')[0].parts, [{ type: 'text', text: 'Hi' }]);
+});

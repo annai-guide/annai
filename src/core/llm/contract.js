@@ -6,20 +6,26 @@
  * @typedef {{ type: 'text', text: string }
  *   | { type: 'image', mediaType: string, data: string }
  *   | { type: 'document', mediaType: string, data: string, name?: string }
+ *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
- *   image.data and document.data are base64 (a document is a PDF). reasoning.model is the provider model id that wrote it: a signed block
+ *   image.data and document.data are base64 (a document is a PDF). provider is a provider's own block (a server
+ *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
- *   tail?: string, toolChoice?: string, logprobs?: number }} Request
+ *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string }} Request
  *   tail: volatile text (the now block) sent last, inside the final user message, after any cache marker.
  *   toolChoice: a tool the model must call. logprobs: how many alternatives to report for the first token.
- * @typedef {{ input: number, cacheRead: number, cacheWrite: number, cacheWrite1h: number, output: number, reasoning: number, cost?: number }} Usage
+ *   providerTools: turn on the model's own tools of these kinds, except the ids switched off (spec §9.5);
+ *   needsProviderTool: only models with such a tool of this kind may answer.
+ * @typedef {{ input: number, cacheRead: number, cacheWrite: number, cacheWrite1h: number, output: number, reasoning: number, cost?: number,
+ *   serverTools?: Record<string, number> }} Usage
  *   Tokens. input leaves out cache reads and writes; output includes reasoning, which is also
- *   counted on its own. cost is in USD, when the provider reports it.
+ *   counted on its own. cost is in USD, when the provider reports it. serverTools: the provider's own tool calls it
+ *   counted, by its usage key (such as web_search_requests).
  * @typedef {'end' | 'tool' | 'length' | 'refusal' | 'pause' | 'other'} StopReason
  *   pause: the provider paused a long turn; send the reply back as it is, and it continues.
  * @typedef {{ type: 'text', text: string }
@@ -29,6 +35,8 @@
  *   | { type: 'tool_call', id: string, name: string, input: any }
  *   | { type: 'usage', usage: Partial<Usage> }
  *   | { type: 'logprobs', top: { token: string, logprob: number }[] }
+ *   | { type: 'provider', block: any }
+ *   | { type: 'citation', url: string, title?: string }
  *   | { type: 'stop', reason: StopReason }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started.
@@ -136,6 +144,7 @@ export function portable(messages, modelKey) {
   /** @type {(p: Part) => Part[]} */
   const keep = (p) => {
     if (p.type === 'reasoning') return (p.signature || p.redacted) && p.model !== modelKey ? [] : [p];
+    if (p.type === 'provider') return p.model === modelKey ? [p] : [];
     if (p.type === 'tool_call' || p.type === 'tool_result') return [{ ...p, id: safeId(p.id) }];
     return [p];
   };

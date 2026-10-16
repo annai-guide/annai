@@ -80,6 +80,7 @@ function wire(messages, providerId) {
       if (p.type === 'text') return [{ type: 'text', text: p.text }];
       if (p.type === 'image') return [{ type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } }];
       if (p.type === 'document') return [{ type: 'document', source: { type: 'base64', media_type: p.mediaType, data: p.data }, ...(p.name ? { title: p.name } : {}) }];
+      if (p.type === 'provider') return p.model === providerId ? [p.block] : [];
       if (p.type === 'tool_call') return [{ type: 'tool_use', id: p.id, name: p.name, input: p.input ?? {} }];
       if (p.type === 'tool_result') return [{ type: 'tool_result', tool_use_id: p.id, content: p.content, ...(p.isError ? { is_error: true } : {}) }];
       if (p.type === 'reasoning' && p.model === providerId) {
@@ -104,6 +105,14 @@ async function* read(res, sse, ProviderError) {
   /** @type {string | null} */
   let stop = null;
   let finished = false;
+  /** @type {Set<string>} */
+  const cited = new Set();
+  /** A source, once. @param {any} c */
+  const cite = (c) => {
+    if (!c?.url || cited.has(c.url)) return [];
+    cited.add(c.url);
+    return [{ type: 'citation', url: c.url, ...(c.title ? { title: c.title } : {}) }];
+  };
   for await (const { event, data } of sse(/** @type {ReadableStream<Uint8Array>} */ (res.body))) {
     /** @type {any} */
     let e;
@@ -122,6 +131,12 @@ async function* read(res, sse, ProviderError) {
       const b = { ...e.content_block, json: '', thinking: e.content_block?.thinking ?? '', signature: e.content_block?.signature ?? '' };
       blocks.set(e.index, b);
       if (b.type === 'text' && b.text) yield { type: 'text', text: b.text };
+      if (typeof b.type === 'string' && b.type.endsWith('_tool_result')) {
+        // A server tool's result arrives whole: kept to send back unchanged, and its sources reported (spec §9.5).
+        const block = { ...e.content_block };
+        yield { type: 'provider', block };
+        for (const r of Array.isArray(block.content) ? block.content : [block.content]) yield* cite(r);
+      }
     } else if (type === 'content_block_delta') {
       const b = blocks.get(e.index) ?? {};
       const d = e.delta ?? {};
@@ -133,13 +148,16 @@ async function* read(res, sse, ProviderError) {
       else if (d.type === 'signature_delta') b.signature = (b.signature ?? '') + d.signature;
       else if (d.type === 'input_json_delta') {
         b.json = (b.json ?? '') + d.partial_json;
-        yield { type: 'tool_input', id: b.id, name: b.name, partial: b.json };
+        if (b.type === 'tool_use') yield { type: 'tool_input', id: b.id, name: b.name, partial: b.json };
+      } else if (d.type === 'citations_delta') {
+        yield* cite(d.citation);
       }
     } else if (type === 'content_block_stop') {
       const b = blocks.get(e.index);
       if (b?.type === 'thinking') yield { type: 'reasoning', text: b.thinking, ...(b.signature ? { signature: b.signature } : {}) };
       else if (b?.type === 'redacted_thinking') yield { type: 'reasoning', text: '', redacted: b.data };
       else if (b?.type === 'tool_use') yield { type: 'tool_call', id: b.id, name: b.name, input: parseArgs(b.json) };
+      else if (b?.type === 'server_tool_use') yield { type: 'provider', block: { type: 'server_tool_use', id: b.id, name: b.name, input: parseArgs(b.json) } };
     } else if (type === 'message_delta') {
       if (e.delta?.stop_reason) stop = e.delta.stop_reason;
       if (e.usage) yield { type: 'usage', usage: usageOf(e.usage) };
@@ -163,8 +181,9 @@ function parseArgs(json) {
 
 /** Anthropic usage, normalized; only the numbers this report gives. @param {any} u */
 function usageOf(u) {
-  /** @type {Record<string, number>} */
+  /** @type {Record<string, any>} */
   const out = {};
+  if (u.server_tool_use && typeof u.server_tool_use === 'object') out.serverTools = { ...u.server_tool_use };
   if (typeof u.input_tokens === 'number') out.input = u.input_tokens;
   if (typeof u.cache_read_input_tokens === 'number') out.cacheRead = u.cache_read_input_tokens;
   if (u.cache_creation) {

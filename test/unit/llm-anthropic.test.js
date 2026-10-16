@@ -163,3 +163,22 @@ test('list: the models API', () => {
     { providerId: 'claude-x' },
   ]);
 });
+
+test('read: a server search comes back as provider blocks, citations and a counted search', async () => {
+  const events = await read(await fixture('server-search.sse'));
+  assert.deepEqual(events.filter((e) => e.type === 'provider').map((e) => e.block.type), ['server_tool_use', 'web_search_tool_result']);
+  assert.deepEqual(events.find((e) => e.type === 'provider').block, { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'nepenthe hours' } });
+  assert.deepEqual(events.filter((e) => e.type === 'citation'), [{ type: 'citation', url: 'https://www.nepenthe.com/', title: 'Nepenthe Big Sur' }]);
+  assert.equal(events.filter((e) => e.type === 'tool_input' || e.type === 'tool_call').length, 0);
+  assert.deepEqual(events.filter((e) => e.type === 'usage').at(-1), { type: 'usage', usage: { output: 30, serverTools: { web_search_requests: 1 } } });
+});
+
+test('build: provider blocks go back unchanged, in place', () => {
+  const block = { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_1', content: [{ type: 'web_search_result', url: 'https://x', title: 'X', encrypted_content: 'E' }] };
+  const s = spec({ request: { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Hours?' }] },
+    { role: 'assistant', parts: [{ type: 'provider', block, model: 'claude-haiku-5-5' }, { type: 'text', text: 'Till 10.' }] },
+    { role: 'user', parts: [{ type: 'text', text: 'Thanks' }] },
+  ] } });
+  assert.deepEqual(type.build(s).body.messages[1].content, [block, { type: 'text', text: 'Till 10.' }]);
+});

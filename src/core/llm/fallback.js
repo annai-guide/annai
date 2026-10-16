@@ -1,4 +1,4 @@
-import { callOnce } from './call.js';
+import { callOnce, enabledProviderTools } from './call.js';
 import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, CHAT_ROLES } from './config.js';
@@ -74,6 +74,7 @@ export function estimateTokens(request) {
 export function gap(model, request) {
   if (request.messages.some((m) => m.parts.some((p) => p.type === 'image')) && !model.input.includes('image')) return 'no-images';
   if (request.tools?.length && model.tools === false) return 'no-tools';
+  if (request.needsProviderTool && !enabledProviderTools(model, request).some((t) => t.kind === request.needsProviderTool)) return 'no-provider-tool';
   if (model.contextWindow && estimateTokens(request) > model.contextWindow) return 'too-long';
   return null;
 }

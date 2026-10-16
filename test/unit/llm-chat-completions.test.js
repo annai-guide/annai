@@ -171,3 +171,9 @@ test("list: OpenRouter's model list becomes models with windows, inputs, tools a
   assert.deepEqual(models[1].prices, { input: 0, output: 0 });
   assert.deepEqual(type.readList({ data: [{ id: 'gpt-x', object: 'model' }] }), [{ providerId: 'gpt-x' }]);
 });
+
+test('read: url citations and counted searches', async () => {
+  const events = await read(await fixture('citations.sse'));
+  assert.deepEqual(events.filter((e) => e.type === 'citation'), [{ type: 'citation', url: 'https://www.nepenthe.com/', title: 'Nepenthe Big Sur' }]);
+  assert.deepEqual(events.find((e) => e.type === 'usage')?.usage.serverTools, { web_search_requests: 1 });
+});

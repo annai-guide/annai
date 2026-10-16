@@ -17,7 +17,8 @@ import { NO_USAGE, mergeUsage, costOf } from './cost.js';
  * @typedef {import('./config.js').Endpoint} Endpoint
  * @typedef {import('./config.js').Model} Model
  * @typedef {ReturnType<typeof import('./trace.js').modelTrace>} ModelTrace
- * @typedef {{ parts: Part[], text: string, usage: Usage, cost: number | undefined, stop: StopReason, model: string, logprobs?: { token: string, logprob: number }[] }} Reply
+ * @typedef {{ parts: Part[], text: string, usage: Usage, cost: number | undefined, stop: StopReason, model: string, logprobs?: { token: string, logprob: number }[],
+ *   citations?: { url: string, title?: string }[] }} Reply
  * @typedef {(url: string, init: RequestInit) => Promise<Response>} Fetch
  */
 
@@ -43,11 +44,20 @@ export function withTail(request) {
  * merged in (spec §9.2–9.4; a key ending in "+" appends to an array).
  * @param {any} body @param {Endpoint} endpoint @param {Model} model @param {string} level
  */
-export function applyPatches(body, endpoint, model, level) {
+export function applyPatches(body, endpoint, model, level, extra = []) {
   let out = mergePatch(body, endpoint.extraBody ?? {}, { append: true });
   out = mergePatch(out, model.extraBody ?? {}, { append: true });
   const r = levelPatch(model.reasoning, level);
-  return r ? mergePatch(out, r, { append: true }) : out;
+  if (r) out = mergePatch(out, r, { append: true });
+  for (const p of extra) out = mergePatch(out, p, { append: true });
+  return out;
+}
+
+/** The model's provider tools this request turns on (spec §9.5). @param {Model} model @param {Request} request */
+export function enabledProviderTools(model, request) {
+  const want = request.providerTools;
+  if (!want) return [];
+  return (model.providerTools ?? []).filter((t) => want.kinds.includes(t.kind) && !(want.off ?? []).includes(t.id));
 }
 
 /**
@@ -75,6 +85,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const parts = [];
   /** @type {{ token: string, logprob: number }[] | undefined} */
   let logprobs;
+  /** @type {{ url: string, title?: string }[]} */
+  const citations = [];
   /** @type {Usage} */
   let usage = { ...NO_USAGE };
   /** @type {StopReason} */
@@ -96,6 +108,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       parts.push({ type: 'reasoning', text: ev.text, ...(ev.signature ? { signature: ev.signature } : {}), ...(ev.redacted ? { redacted: ev.redacted } : {}), model: model.providerId });
     } else if (ev.type === 'tool_call') {
       parts.push({ type: 'tool_call', id: ev.id, name: ev.name, input: ev.input });
+    } else if (ev.type === 'provider') {
+      parts.push({ type: 'provider', block: ev.block, model: model.providerId });
+    } else if (ev.type === 'citation') {
+      if (ev.url && !citations.some((c) => c.url === ev.url)) citations.push({ url: ev.url, ...(ev.title ? { title: ev.title } : {}) });
     } else if (ev.type === 'logprobs') {
       logprobs = ev.top;
     } else if (ev.type === 'usage') {
@@ -115,7 +131,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       /** @type {Response} */
       let res;
       try {
-        res = await get(built.url, { method: 'POST', headers: built.headers, body: JSON.stringify(applyPatches(built.body, endpoint, model, level)), signal: linked });
+        res = await get(built.url, { method: 'POST', headers: built.headers, body: JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request).map((t) => t.patch))), signal: linked });
       } catch (e) {
         throw cannotConnect(e, linked);
       }
@@ -137,9 +153,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     throw err;
   }
   clearTimeout(t);
-  const cost = costOf(usage, model.prices);
+  const cost = costOf(usage, model.prices, model.providerTools);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
-  return { parts, text: textOf(parts), usage, cost, stop, model: model.id, ...(logprobs ? { logprobs } : {}) };
+  return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}) };
 }
 
 /** @param {Part[]} parts */

@@ -82,7 +82,7 @@ test("a newer template is offered, and applying it keeps the user's own changes 
   const rec = cfg.endpoints[id];
   await saveEndpoint(ws, { ...rec, user: { name: 'My Anthropic' } });
   const v2 = structuredClone(tpl('anthropic'));
-  v2.version = 2;
+  v2.version = tpl('anthropic').version + 1;
   v2.baseUrl = 'https://api2.anthropic.com';
   v2.models[1].contextWindow = 2000000;
   const newer = { ...catalog, endpoints: [v2] };
@@ -138,4 +138,13 @@ test('the service: installs an endpoint type on demand, calls a role with fallba
   const kinds = (await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS))).map((e) => e.type);
   assert.ok(kinds.includes('net.request') && kinds.includes('model.turn'), kinds.join());
   assert.deepEqual((await llm.listModels(id)).map((m) => m.providerId), ['scripted']);
+});
+
+test('Anthropic and OpenRouter template models list their web tools (spec §9.5)', async () => {
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
+  for (const id of ['anthropic', 'openrouter']) {
+    for (const m of catalog.endpoints.find((/** @type {any} */ e) => e.id === id).models) {
+      assert.ok(m.providerTools?.some((/** @type {any} */ t) => t.kind === 'search'), `${id} ${m.providerId}`);
+    }
+  }
 });

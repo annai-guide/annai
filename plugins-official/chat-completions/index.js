@@ -158,6 +158,10 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
       calls.set(i, cur);
       yield { type: 'tool_input', id: cur.id, name: cur.name, partial: cur.args };
     }
+    for (const a of [...(d.annotations ?? []), ...(choice?.message?.annotations ?? [])]) {
+      const c = a?.url_citation;
+      if (a?.type === 'url_citation' && c?.url) yield { type: 'citation', url: c.url, ...(c.title ? { title: c.title } : {}) };
+    }
     if (choice?.finish_reason) finish = choice.finish_reason;
     if (chunk.usage) yield { type: 'usage', usage: usageOf(chunk.usage) };
   }
@@ -189,6 +193,7 @@ function usageOf(u) {
     output: u.completion_tokens ?? 0,
     reasoning: u.completion_tokens_details?.reasoning_tokens ?? 0,
     ...(typeof u.cost === 'number' ? { cost: u.cost } : {}),
+    ...(u.server_tool_use && typeof u.server_tool_use === 'object' ? { serverTools: { ...u.server_tool_use } } : {}),
   };
 }
 
