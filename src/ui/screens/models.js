@@ -1,5 +1,5 @@
 import { h, field } from '../dom.js';
-import { endpointOf, modelOf, saveRoles, CHAT_ROLES } from '../../core/llm/config.js';
+import { endpointOf, modelOf, saveRoles, CHAT_ROLES, SPEECH_ROLES, STAND_INS, speechKind } from '../../core/llm/config.js';
 import { LEVELS } from '../../core/llm/reasoning.js';
 import { addFromTemplate, templateUpdates } from '../../core/llm/templates.js';
 import { renderEndpoint, messageOf } from './endpoint.js';
@@ -8,7 +8,12 @@ import { talkPanel } from '../talk-panel.js';
 import { needsCode, signInUrl, exchange, connectOpenRouter } from '../openrouter.js';
 
 /** @type {Record<string, string>} */
-const ROLE_NAMES = { main: 'Main: talks with you', utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks' };
+const ROLE_NAMES = {
+  main: 'Main: talks with you', utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks',
+  'speech-in': 'Speech in: how Shiori hears you', 'speech-out': "Speech out: Shiori's voice",
+};
+/** What each stand-in entry is (spec §10.1, §10.3). @type {Record<string, string>} */
+const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: "the phone's own, where it has one", 'browser-voice': 'works offline' };
 
 /**
  * Settings → Models (spec §9.2, §9.6, §9.8): the endpoints annai calls, their models, and which
@@ -73,23 +78,32 @@ function endpointsSection(ctx, cfg, catalog) {
 
 /** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
 function rolesSection(ctx, cfg) {
+  const types = ctx.llm.types();
   const models = Object.values(cfg.models).map(modelOf);
-  const nameOf = (/** @type {string} */ id) => models.find((m) => m.id === id)?.name ?? id;
+  const kind = (/** @type {string} */ id) => speechKind(cfg, types, id);
+  const nameOf = (/** @type {string} */ id) => STAND_INS[id]?.name ?? models.find((m) => m.id === id)?.name ?? id;
   const save = async (/** @type {import('../../core/llm/config.js').Roles} */ roles) => {
     await saveRoles(ctx.ws, roles);
     ctx.render();
   };
+  /** A speech list can take its own stand-ins and the models of its direction. @param {string} role */
+  const speechChoices = (role) => [
+    ...Object.entries(STAND_INS).filter(([, s]) => s.role === role).map(([id, s]) => ({ id, name: s.name })),
+    ...models.filter((m) => kind(m.id) === (role === 'speech-in' ? 'in' : 'out')),
+  ];
   return h('section', { class: 'panel', 'aria-label': 'Roles' },
     h('h2', { class: 'section', text: 'Roles' }),
     h('p', { class: 'sub', text: 'Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list.' }),
-    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models, nameOf, save)));
+    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models.filter((m) => !kind(m.id)), nameOf, save)),
+    h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
+    ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, save, { speech: true })));
 }
 
 /**
- * @param {string} role @param {import('../../core/llm/config.js').Roles} roles @param {import('../../core/llm/config.js').Model[]} models
- * @param {(id: string) => string} nameOf @param {(roles: any) => Promise<void>} save
+ * @param {string} role @param {import('../../core/llm/config.js').Roles} roles @param {{ id: string, name: string }[]} choices what can be added
+ * @param {(id: string) => string} nameOf @param {(roles: any) => Promise<void>} save @param {{ speech?: boolean }} [o]
  */
-function roleBlock(role, roles, models, nameOf, save) {
+function roleBlock(role, roles, choices, nameOf, save, { speech = false } = {}) {
   const r = roles[role];
   /** @param {number} i @param {number} by */
   const moved = (i, by) => {
@@ -98,30 +112,35 @@ function roleBlock(role, roles, models, nameOf, save) {
     return { ...roles, [role]: { ...r, models: list } };
   };
   const items = r.models.map((id, i) => h('li', { class: 'role-item' },
-    h('span', { text: `${i + 1}. ${nameOf(id)}` }),
+    h('span', { text: `${i + 1}. ${nameOf(id)}${STAND_IN_NOTES[id] ? ` (${STAND_IN_NOTES[id]})` : ''}` }),
     h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} up`, disabled: i === 0, onclick: () => save(moved(i, -1)) }, '↑'),
     h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} down`, disabled: i === r.models.length - 1, onclick: () => save(moved(i, 1)) }, '↓'),
     h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remove ${nameOf(id)} from ${role}`, onclick: () => save({ ...roles, [role]: { ...r, models: r.models.filter((_, j) => j !== i) } }) }, '✕')));
-  const others = models.filter((m) => !r.models.includes(m.id));
+  const others = choices.filter((m) => !r.models.includes(m.id));
   const pick = h('select', { id: `role-${role}-add` }, ...others.map((m) => h('option', { value: m.id, text: m.name })));
-  const level = h('select', { id: `role-${role}-level`, onchange: () => save({ ...roles, [role]: { ...r, level: level.value } }) }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
-  level.value = r.level;
+  const level = speech ? null : h('select', { id: `role-${role}-level`, onchange: () => save({ ...roles, [role]: { ...r, level: level.value } }) }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
+  if (level) level.value = r.level;
   const wait = h('input', {
-    id: `role-${role}-wait`, inputmode: 'numeric', placeholder: '30', value: r.firstOutputSeconds ?? '',
+    id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : '30', value: r.firstOutputSeconds ?? '',
     onchange: () => {
       const n = Math.round(Number(wait.value));
       const { firstOutputSeconds: _, ...rest } = r;
       save({ ...roles, [role]: wait.value.trim() && n >= 1 && n <= 600 ? { ...rest, firstOutputSeconds: n } : rest });
     },
   });
+  const empty = role === 'main' ? 'No models yet. Add one.'
+    : role === 'speech-in' ? "Nothing here, so annai can't hear you. Add an entry."
+      : role === 'speech-out' ? "Nothing here, so Shiori can't speak aloud. Add a voice."
+        : 'Uses the main list.';
+  const waitLabel = role === 'speech-in' ? 'Wait for the words (seconds)' : role === 'speech-out' ? 'Wait for the voice (seconds)' : 'Wait for the first words (seconds)';
   return h('div', { class: 'role' },
     h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
-    items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: role === 'main' ? 'No models yet. Add one.' : 'Uses the main list.' }),
+    items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
     h('div', { class: 'row' },
       others.length ? field(`Add a model to ${role}`, pick) : null,
       others.length ? h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => save({ ...roles, [role]: { ...r, models: [...r.models, pick.value] } }) }, `Add to ${role}`)) : null,
-      field(`Reasoning for ${role}`, level),
-      field('Wait for the first words (seconds)', wait)));
+      level ? field(`Reasoning for ${role}`, level) : null,
+      field(waitLabel, wait)));
 }
 
 /** The quickest start: Sign in with OpenRouter (spec §9.8), offered until an OpenRouter endpoint exists. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
