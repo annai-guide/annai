@@ -5,6 +5,7 @@ import { addFromTemplate, templateUpdates } from '../../core/llm/templates.js';
 import { renderEndpoint, messageOf } from './endpoint.js';
 import { renderModel } from './model.js';
 import { talkPanel } from '../talk-panel.js';
+import { needsCode, signInUrl, exchange, connectOpenRouter } from '../openrouter.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = { main: 'Main: talks with you', utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks' };
@@ -23,6 +24,7 @@ export async function renderModels(ctx, route) {
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Models' }),
     h('p', { class: 'sub', text: 'Where Shiori thinks: the endpoints annai calls, their models, and which models each role tries, in order.' }),
+    signInSection(ctx, cfg),
     endpointsSection(ctx, cfg, catalog),
     rolesSection(ctx, cfg),
     talkPanel(ctx));
@@ -120,4 +122,52 @@ function roleBlock(role, roles, models, nameOf, save) {
       others.length ? h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => save({ ...roles, [role]: { ...r, models: [...r.models, pick.value] } }) }, `Add to ${role}`)) : null,
       field(`Reasoning for ${role}`, level),
       field('Wait for the first words (seconds)', wait)));
+}
+
+/** The quickest start: Sign in with OpenRouter (spec §9.8), offered until an OpenRouter endpoint exists. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
+function signInSection(ctx, cfg) {
+  if (Object.values(cfg.endpoints).some((e) => e.template?.id === 'openrouter')) return null;
+  const status = h('p', { class: 'sub', role: 'status' });
+  const codeSlot = h('div', {});
+  const btn = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async () => {
+      try {
+        if (needsCode()) {
+          window.open(await signInUrl({ callback: null }), '_blank', 'noopener');
+          codeSlot.replaceChildren(pasteCode(ctx, status));
+        } else {
+          location.assign(await signInUrl({ callback: `${location.origin}/` }));
+        }
+      } catch (e) {
+        status.textContent = messageOf(e);
+      }
+    },
+  }, 'Sign in with OpenRouter');
+  return h('section', { class: 'panel', 'aria-label': 'Sign in' },
+    h('h2', { class: 'section', text: 'The quickest start' }),
+    h('p', { text: 'Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing.' }),
+    h('div', { class: 'acts' }, btn),
+    codeSlot,
+    status);
+}
+
+/** On an iPhone Home Screen app: paste the code OpenRouter showed. @param {any} ctx @param {HTMLElement} status */
+function pasteCode(ctx, status) {
+  const code = h('input', { id: 'openrouter-code', autocomplete: 'off', autocapitalize: 'off' });
+  const go = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async () => {
+      go.disabled = true;
+      try {
+        await connectOpenRouter(ctx, await exchange({ code: code.value, state: null }));
+        ctx.notices.toast('Signed in with OpenRouter.');
+        ctx.render();
+      } catch (e) {
+        status.textContent = messageOf(e);
+        go.disabled = false;
+      }
+    },
+  }, 'Connect');
+  return h('div', { class: 'row' }, field('Paste the code OpenRouter showed you', code), h('div', { class: 'acts' }, go));
 }

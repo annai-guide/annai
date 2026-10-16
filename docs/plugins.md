@@ -56,8 +56,46 @@ export function activate(annai) {
 | `annai.tools.register(tool)` | a tool: a name, a description, an input JSON Schema and `run` (spec §5.4). Only `run` is checked today. Its errors are recorded, then reach the caller as a `PluginError`. |
 | `annai.events.append(scope, type, data)` | appends an entry to a scope's log, signed `plugin:<id>` |
 | `annai.files` | the files of every scope: `read`, `readText`, `readJSON`, `list`, `write`, `patch`, `delete`, `history`, `restore` |
+| `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Endpoint types" below |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry` |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
+
+## Endpoint types
+
+An endpoint type teaches annai one model protocol. The core contains none (spec §9.1).
+annai's own Chat Completions and Anthropic Messages types are plugins too: see `plugins-official/`.
+
+```js
+export function activate(annai) {
+  const { sse, ProviderError } = annai.helpers;
+  return annai.providers.register({
+    type: 'my-protocol',                 // lowercase letters, digits and dashes
+    name: 'My protocol',
+    tunables: { path: '/v1/chat' },      // defaults the user can change per endpoint and model
+    build({ endpoint, model, key, tunables, request }) {
+      return { url: endpoint.baseUrl + tunables.path, headers: { authorization: `Bearer ${key}` }, body: { model: model.providerId } };
+    },
+    async *read(res) {
+      for await (const { data } of sse(res.body)) {
+        // yield { type: 'text', text }, { type: 'tool_call', id, name, input }, { type: 'usage', usage }, …
+      }
+      yield { type: 'stop', reason: 'end' };
+    },
+  });
+}
+```
+
+- **What annai does around it:**
+  - It merges the endpoint's and the model's extra fields, and the reasoning level's patch, into the body `build()` returns.
+  - It sends the request and reads it until the first output arrives in time.
+  - It assembles the reply, and works out its cost.
+  - It falls back to the next model of the role when this one fails.
+  - It records every attempt in the trace, without keys.
+- **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
+- **Optional parts:**
+  - `classify(status, body)` can give a sharper kind for an error response.
+  - `listRequest()` and `readList()` make "Fetch model list" work.
 
 ## Rules
 

@@ -103,3 +103,33 @@ test('a conversation falls back from one provider to another, and the trace show
     await llm.stop();
   }
 });
+
+test('Sign in with OpenRouter: the key arrives and free models fill the roles (OpenRouter stood in for)', async ({ page, browserName }) => {
+  // WebKit doesn't let page.route stand in for requests from a page a service worker controls, so there the
+  // exchange would reach the real OpenRouter. The unit tests and the device checklist cover Safari.
+  test.skip(browserName === 'webkit', "Playwright can't stand in for OpenRouter here in WebKit");
+  let authUrl = '';
+  await page.route('https://openrouter.ai/auth**', (route) => {
+    authUrl = route.request().url();
+    return route.fulfill({ status: 200, contentType: 'text/html', body: '<p>OpenRouter</p>' });
+  });
+  await page.route('https://openrouter.ai/api/v1/auth/keys', (route) => {
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST' };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const body = route.request().postDataJSON();
+    if (body.code !== 'test-code' || body.code_challenge_method !== 'S256' || !body.code_verifier) return route.fulfill({ status: 400, headers: cors, body: '{}' });
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ key: 'sk-or-test-key-123' }) });
+  });
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  const origin = new URL(page.url()).origin;
+  await page.getByRole('button', { name: 'Sign in with OpenRouter' }).click();
+  await expect.poll(() => authUrl).toContain('code_challenge_method=S256');
+  const sent = new URL(authUrl);
+  expect(sent.searchParams.get('callback_url')).toBe(`${origin}/`);
+  await page.goto(`/?code=test-code&state=${sent.searchParams.get('state')}`);
+  await expect(page.getByText(/Signed in with OpenRouter/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('1. Google: Gemma 4 31B (free)')).toBeVisible();
+  expect(new URL(page.url()).search).toBe('');
+  expect(await page.content()).not.toContain('sk-or-test-key-123');
+});

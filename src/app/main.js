@@ -13,6 +13,7 @@ import { isStandalone, requestPersist, watchForUpdates } from '../ui/platform.js
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
+import { finishSignIn } from '../ui/openrouter.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -56,6 +57,8 @@ async function boot() {
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
   // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
   startPlugins(plugins, shell).finally(() => pluginsStarted());
+  // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).
+  finishSignIn({ llm, ws, store, notices: shell.notices }).then((was) => { if (was) shell.render(); });
 }
 
 /** @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, render: () => unknown }} shell */
