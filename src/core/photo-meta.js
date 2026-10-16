@@ -393,7 +393,8 @@ const SCAN_SEGMENTS = new Set([0xc4, 0xcc, 0xdb, 0xdd, 0xda, 0xdc]); // + SOS, D
 
 /** @param {Uint8Array} b @param {number} at the segment's marker @param {number} m @param {number} len */
 function keepJpegSegment(b, at, m, len) {
-  if (m === 0xe0 || m === 0xee) return true; // JFIF, Adobe
+  if (m === 0xe0) return len >= 7 && ascii(b, at + 4, 5) === 'JFIF\0'; // not JFXX, which can hold a whole JPEG thumbnail
+  if (m === 0xee) return len === 14 && ascii(b, at + 4, 5) === 'Adobe'; // exactly its 12 bytes, nothing riding along
   if (m === 0xe2) return len >= 14 && ascii(b, at + 4, 12) === 'ICC_PROFILE\0';
   return JPEG_TABLES.has(m) || isSof(m);
 }
@@ -454,7 +455,7 @@ function stripJpeg(b) {
 }
 
 /** WebP chunks that decoding needs: everything else (EXIF, XMP, unknown chunks) goes. */
-const WEBP_CHUNKS = new Set(['VP8X', 'VP8 ', 'VP8L', 'ALPH', 'ANIM', 'ANMF', 'ICCP']);
+const WEBP_CHUNKS = new Set(['VP8X', 'VP8 ', 'VP8L', 'ALPH', 'ICCP']);
 
 /** Keeps only the image and colour chunks, and clears the EXIF and XMP flags in VP8X. @param {Uint8Array} b */
 function stripWebp(b) {
@@ -470,6 +471,7 @@ function stripWebp(b) {
     const len = v.getUint32(p + 4, true);
     const next = p + 8 + len + (len & 1);
     if (p + 8 + len > end) return null;
+    if (kind === 'ANIM' || kind === 'ANMF') return null; // an animation's frames can hold chunks of their own
     if (WEBP_CHUNKS.has(kind)) parts.push(b.slice(p, Math.min(next, end)));
     p = next;
   }

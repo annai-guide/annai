@@ -210,3 +210,24 @@ test('stripping a WebP keeps only image and colour chunks', async () => {
   }
   assert.deepEqual(kinds, ['VP8X', 'VP8 ']);
 });
+
+test('stripping drops a JFXX thumbnail and an Adobe segment with more than its 12 bytes, both of which can carry EXIF', async () => {
+  const upright = await fixture('upright.jpg');
+  const plain = await fixture('plain.jpg');
+  const exif = upright.subarray(6, 4 + ((upright[4] << 8) | upright[5])); // the APP1 payload: "Exif\0\0" and the TIFF block
+  const segment = (/** @type {number} */ marker, /** @type {Uint8Array} */ body) => cat(new Uint8Array([0xff, marker]), be(body.length + 2, 2), body);
+  const jfxx = segment(0xe0, cat(ascii4('JFXX'), new Uint8Array([0, 0x10]), plain.subarray(0, 2), segment(0xe1, exif), plain.subarray(2)));
+  const adobe = segment(0xee, cat(ascii4('Adobe'), new Uint8Array(7), exif));
+  const s = stripMetadata(cat(plain.subarray(0, 2), jfxx, adobe, plain.subarray(2)), 'image/jpeg');
+  assert.ok(s);
+  assert.ok(!Buffer.from(s).toString('latin1').includes('Exif'));
+  assert.deepEqual(s, plain);
+});
+
+test('an animated WebP is not stripped: its frames can hold chunks of their own', async () => {
+  const webp = await fixture('portrait.webp');
+  const anim = cat(ascii4('ANIM'), new Uint8Array([6, 0, 0, 0]), new Uint8Array(6));
+  const body = cat(webp.subarray(12), anim);
+  const animated = cat(ascii4('RIFF'), new Uint8Array(new Uint32Array([body.length + 4]).buffer), ascii4('WEBP'), body);
+  assert.equal(stripMetadata(animated, 'image/webp'), null);
+});
