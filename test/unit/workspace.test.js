@@ -209,3 +209,15 @@ test('writeMany is all or nothing when storage runs out partway', async () => {
   await assert.rejects(ws.writeMany('trip-1', [{ path: '/a.md', content: 'a' }, { path: '/b.md', content: 'b' }], { author: 'user' }), StorageFullError);
   assert.deepEqual(await ws.list('trip-1'), []);
 });
+
+test('photos keep when and where they were taken, and a restored version keeps it too', async () => {
+  const { ws } = await setup();
+  const meta = { width: 48, height: 64, taken: '2026-11-26T19:04:12-08:00', place: { lat: 36.2219, lng: -121.7598 } };
+  const first = await ws.write('trip-1', '/files/a.webp', new Uint8Array([1]), { author: 'user', type: 'image/webp', meta });
+  assert.deepEqual(first.meta, meta);
+  assert.deepEqual((await ws.read('trip-1', '/files/a.webp'))?.entry.meta, meta);
+  await ws.write('trip-1', '/files/a.webp', new Uint8Array([2]), { author: 'user', type: 'image/webp', meta });
+  assert.deepEqual((await ws.restore('trip-1', '/files/a.webp', first.hash, { author: 'user' })).meta, meta);
+  const note = await ws.write('trip-1', '/notes/a.md', 'x', { author: 'user' });
+  assert.equal('meta' in note, false);
+});

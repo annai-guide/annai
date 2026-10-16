@@ -1,8 +1,11 @@
 /**
  * @typedef {'blobs'|'files'|'events'|'secrets'|'scopes'} StoreName
  * @typedef {{ hash: string, type: string, size: number, data: ArrayBuffer }} BlobRecord
+ * @typedef {{ width?: number, height?: number, taken?: string, place?: { lat: number, lng: number }, original?: boolean }} PhotoMeta
+ *   A photo's pixel size as stored, when it was taken (ISO 8601, with an offset when the photo
+ *   records one) and where. original: the bytes are the photo as taken, embedded metadata included.
  * @typedef {{ scope: string, path: string, hash: string, size: number, type: string,
- *   author: string, source?: string, created: number, modified: number }} FileEntry
+ *   author: string, source?: string, meta?: PhotoMeta, created: number, modified: number }} FileEntry
  * @typedef {{ scope: string, seq: number, ts: number, type: string, actor: string,
  *   data?: any, refs?: string[] }} EventRecord
  * @typedef {{ ts: number, type: string, actor: string, data?: any, refs?: string[] }} NewEvent

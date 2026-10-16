@@ -10,7 +10,7 @@ export { StorageFullError } from './errors.js';
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').Tx} Tx
  * @typedef {import('./types.js').FileEntry} FileEntry
- * @typedef {{ author: string, type?: string, source?: string }} WriteOptions
+ * @typedef {{ author: string, type?: string, source?: string, meta?: import('./types.js').PhotoMeta }} WriteOptions
  * @typedef {{ op: 'write'|'delete', scope: string, path: string, entry?: FileEntry }} Change
  * @typedef {{ hash: string, type: string, size: number, bytes?: Uint8Array }} Version
  */
@@ -178,14 +178,16 @@ export class Workspace {
   async restore(scope, path, hash, opts) {
     const p = normPath(path);
     return this.#locked(scope, p, async () => {
-      const { blob, events } = await this.store.tx(['blobs', 'events'], 'readonly', async (t) => ({
+      const { blob, events, current } = await this.store.tx(['blobs', 'events', 'files'], 'readonly', async (t) => ({
         blob: await t.getBlob(hash),
         events: await t.listEvents(scope, { types: ['file.write'], reverse: true }),
+        current: await t.getFile(scope, p),
       }));
       if (!blob) throw new NotFoundError(`that version of ${p}`);
       const saved = events.find((e) => e.data?.path === p && e.data?.new === hash);
       const type = typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(p);
-      return this.#commit(scope, p, { hash, type, size: blob.size }, opts);
+      // A photo's metadata describes the photo, not one version of its bytes: keep it.
+      return this.#commit(scope, p, { hash, type, size: blob.size }, { ...opts, meta: opts.meta ?? current?.meta });
     });
   }
 
@@ -290,7 +292,7 @@ async function putVersion(t, scope, path, version, opts, now) {
   /** @type {FileEntry} */
   const next = {
     scope, path, hash: version.hash, size: version.size, type: version.type, author: opts.author,
-    created: old?.created ?? now, modified: now, ...(opts.source ? { source: opts.source } : {}),
+    created: old?.created ?? now, modified: now, ...(opts.source ? { source: opts.source } : {}), ...(opts.meta ? { meta: opts.meta } : {}),
   };
   await t.putFile(next);
   await t.appendEvent(scope, {
