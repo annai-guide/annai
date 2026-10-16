@@ -93,8 +93,12 @@ test('the card offers updates, applies them on Update, and offers a restart; off
   assert.equal(offered.length, 1);
   assert.equal(cards[0].title, 'Plugin updates are ready');
   assert.match(cards[0].body, /Scripted model 0\.1\.0 → 0\.1\.1/);
+  // Updating stops the running version, so the cards say so (spec §5.3).
+  assert.match(cards[0].body, /off until annai restarts/);
   await applyUpdates(ctx, offered, env);
   assert.equal(cards[1].title, 'Restart annai to use the new versions');
+  assert.equal(cards[1].tone, 'warn');
+  assert.match(cards[1].body, /Until then, Scripted model can't be used\./);
   cards[1].actions[0].run();
   assert.equal(reloaded, true);
   assert.deepEqual(await offerPluginUpdates(ctx, { fetch: async () => { throw new TypeError('offline'); } }), []);
