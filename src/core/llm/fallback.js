@@ -123,7 +123,7 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  *   keyFor: (endpointId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
- *   record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean } }} c
+ *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean } }} c
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
@@ -147,7 +147,10 @@ export async function callRole(c) {
     text, reasoning, keepParts ? parts : undefined);
   // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable).
   const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? 30) * 1000;
-  for (const id of candidates(config, role)) {
+  const list = candidates(config, role);
+  // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
+  const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
+  for (const id of ordered) {
     const rec = config.models[id];
     const epRec = rec ? config.endpoints[rec.endpoint] : undefined;
     const type = epRec ? types.get(epRec.type) : undefined;

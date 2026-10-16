@@ -208,3 +208,11 @@ test('record: the model.turn carries the tag and wake, keeps the parts, and the 
   const blob = await s.store.tx(['blobs'], 'readonly', (t) => t.getBlob(turn.refs[1]));
   assert.deepEqual(JSON.parse(new TextDecoder().decode(blob?.data)).map((/** @type {any} */ p) => p.type), ['text', 'tool_call']);
 });
+
+test('prefer: the model whose cache is warm is tried first (spec §9.6, switching back)', async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]]);
+  const r = await call(s, { prefer: 'm-1' });
+  assert.equal(r.reply.text, 'B.');
+  assert.deepEqual(r.attempts.map((a) => a.model), ['m-1']);
+  assert.equal((await call(s, { prefer: 'm-gone' })).reply.text, 'A.');
+});
