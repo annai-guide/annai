@@ -62,6 +62,17 @@ function holds(text, secrets) {
   return secrets.some((s) => lower.some((x) => x.includes(s.toLowerCase())));
 }
 
+/**
+ * Whether any decoding of text could still show a secret: as it is, percent-decoded, with "+" as a
+ * space, ignoring case, white space, slashes and backslashes. Used to fail closed, whatever the
+ * parsers in between do. @param {string} text @param {string[]} secrets
+ */
+export function leaks(text, secrets) {
+  const squash = (/** @type {string} */ x) => x.toLowerCase().replace(/[\s/\\]+/g, '');
+  const seen = [text, decodeSafe(text), decodeSafe(text.replace(/\+/g, ' '))].map(squash);
+  return secrets.some((s) => seen.some((x) => x.includes(squash(s))));
+}
+
 /** @param {string} text */
 function decodeSafe(text) {
   try {
@@ -88,10 +99,13 @@ export function traceUrl(url, secrets = []) {
       query.append(name, CREDENTIAL.test(k) || holds(v, secrets) ? BLANK : v);
     }
     const search = query.toString();
-    return scrub(`${u.protocol}//${host}${path}${search ? `?${search}` : ''}`, secrets);
+    const out = scrub(`${u.protocol}//${host}${path}${search ? `?${search}` : ''}`, secrets);
+    // Fail closed: if any decoding could still show a secret, the path and query are not kept at all.
+    return leaks(out, secrets) ? `${u.protocol}//${leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
   } catch {
-    // Not an address: keep only what comes before any query or fragment.
-    return scrub(String(url).split(/[?#]/)[0], secrets);
+    // Not an address: keep only what comes before any query or fragment, if that holds no secret.
+    const out = scrub(String(url).split(/[?#]/)[0], secrets);
+    return leaks(out, secrets) ? BLANK : out;
   }
 }
 
@@ -110,7 +124,8 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: res.status, ms: Date.now() - started, ...(bytes ? { bytes } : {}) } }).catch(() => {});
       return res;
     } catch (e) {
-      const error = scrub(String(/** @type {any} */ (e)?.message ?? e), secrets);
+      const said = scrub(String(/** @type {any} */ (e)?.message ?? e), secrets);
+      const error = leaks(said, secrets) ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: 0, ms: Date.now() - started, error } }).catch(() => {});
       throw e;
     }

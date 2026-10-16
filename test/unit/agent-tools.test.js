@@ -125,3 +125,22 @@ test('tracedFetch: a secret is blanked however the address encodes it (encoding 
   }
   assert.match(evs[0].data.url, /q=fine/);
 });
+
+test('tracedFetch: fails closed when any decoding of the traced address could still show a secret (parser differences)', async () => {
+  const store = createMemoryStore();
+  const key = 'a b|c/d-SECRET`x';
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:x:key', key));
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:y:key', 'BACKSLASH99'));
+  const ok = tracedFetch(store, 'sys', { tool: 'plugin:x' }, async () => new Response('ok'));
+  await ok(`https://a.test/p/${key}/end?q=1`);
+  await ok('https://a.test\\p\\BACKSLASH99\\x');
+  const failing = tracedFetch(store, 'sys', { tool: 'plugin:x' }, async () => { throw new TypeError(`Failed: a%20b|c/d-SECRET%60x`); });
+  await assert.rejects(failing('https://a.test/'), TypeError);
+  const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
+  const squash = (/** @type {string} */ s) => s.toLowerCase().replace(/[\s/\\]+/g, '');
+  for (const e of evs) {
+    const seen = [e.data.url, e.data.error ?? ''].flatMap((t) => { const v = [t]; try { v.push(decodeURIComponent(t), decodeURIComponent(t.replace(/\+/g, ' '))); } catch { /* as is */ } return v; });
+    for (const s of [key, 'BACKSLASH99']) assert.equal(seen.some((t) => squash(t).includes(squash(s))), false, `${s} in ${JSON.stringify(e.data)}`);
+  }
+  assert.match(evs[0].data.url, /^https:\/\/a\.test\//);
+});
