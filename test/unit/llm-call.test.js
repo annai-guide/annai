@@ -172,3 +172,17 @@ test('credentials in extra headers or in the address never reach the trace', asy
   for (const secret of [headerSecret, urlSecret, 'auth-secret-555555']) assert.ok(!log.includes(secret), `${secret} reached the trace: ${log}`);
   assert.ok(log.includes('X-Title') === false, 'headers are never traced');
 });
+
+test('an address is traced without its query or a password, however they are encoded', async () => {
+  const store = createMemoryStore();
+  const url = 'https://user:pa%40ss-1234567@llm.test/v1/chat?token=ab%2Bcd-1234567&k=x+y-12345678#frag';
+  const type = httpType([], { build: () => ({ url, headers: {}, body: {} }) });
+  const echoed = 'pa@ss-1234567 ab+cd-1234567 ab%2Bcd-1234567 x y-12345678 x+y-12345678';
+  await assert.rejects(callOnce({
+    type, endpoint: endpoint(), model: model(), key: null, request, trace: modelTrace(store, SYS),
+    fetch: async () => new Response(JSON.stringify({ error: { message: echoed } }), { status: 401 }),
+  }));
+  const [ev] = await traced(store);
+  assert.equal(ev.data.url, 'https://llm.test/v1/chat?…');
+  for (const secret of echoed.split(' ')) assert.ok(!JSON.stringify(ev).includes(secret), `${secret} reached the trace: ${JSON.stringify(ev)}`);
+});

@@ -14,13 +14,43 @@ import { utf8, ownBuffer } from '../bytes.js';
  * @typedef {{ role: string, level: string, answeredBy: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string }} TurnInfo
  */
 
-/** The values in a URL's query, or none. @param {string} url */
-function queryValues(url) {
+/** A URL fit for the trace: no username or password, and no query values. @param {string} url */
+function safeUrl(url) {
   try {
-    return [...new URL(url).searchParams.values()];
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}${u.search ? '?…' : ''}`;
   } catch {
-    return [];
+    return String(url).split(/[?#]/)[0].replace(/\/\/[^/@]*@/, '//');
   }
+}
+
+/**
+ * Every form a credential in a URL may take: its password and each query value, as written and
+ * decoded both ways ("+" kept, and "+" as a space), so an echo in any of those forms is blanked.
+ * @param {string} url
+ */
+function urlSecrets(url) {
+  /** @type {string[]} */
+  const out = [];
+  const add = (/** @type {string} */ v) => {
+    if (!v) return;
+    out.push(v);
+    for (const decode of [(/** @type {string} */ x) => decodeURIComponent(x), (/** @type {string} */ x) => decodeURIComponent(x.replace(/\+/g, ' '))]) {
+      try {
+        out.push(decode(v));
+      } catch {
+        // not valid percent-encoding: the raw form is enough
+      }
+    }
+  };
+  const raw = String(url);
+  const info = /^[a-z][a-z0-9+.-]*:\/\/([^/?#@]*)@/i.exec(raw)?.[1];
+  if (info) add(info.includes(':') ? info.slice(info.indexOf(':') + 1) : info);
+  for (const pair of raw.split('#')[0].split('?').slice(1).join('?').split('&')) {
+    const i = pair.indexOf('=');
+    if (i >= 0) add(pair.slice(i + 1));
+  }
+  return out;
 }
 
 /** @param {Store} store @param {string} scope */
@@ -67,9 +97,10 @@ export function modelTrace(store, scope) {
     secret,
     /** @param {RequestInfo} i */
     request(i) {
-      // A credential can sit in the address too: every value in its query is treated as one.
-      for (const v of queryValues(i.url)) secret(v);
-      const data = { kind: 'model', ...i, ...(i.error ? { error: scrub(i.error) } : {}), url: scrub(i.url) };
+      // A credential can sit in the address too: its password and query values are treated as ones,
+      // and the address is traced without them.
+      for (const v of urlSecrets(i.url)) secret(v);
+      const data = { kind: 'model', ...i, ...(i.error ? { error: scrub(i.error) } : {}), url: safeUrl(i.url) };
       return append({ ts: Date.now(), type: 'net.request', actor: 'system', data }, []);
     },
     /**
