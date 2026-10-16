@@ -1,7 +1,7 @@
 import { VERSION } from '../../app/version.js';
 import { resolvePath } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
-import { ValidationError } from '../../core/workspace.js';
+import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
 import { isBookingPath, shioriBooking } from '../../core/bookings.js';
@@ -20,7 +20,7 @@ const PATH = { type: 'string', description: 'A path starting with /trip/ (the op
 /** @param {any} annai */
 export function activate(annai) {
   const ws = annai.files;
-  const { tsv, mergePatch } = annai.helpers;
+  const { tsv } = annai.helpers;
   /** @param {string} path @param {any} call */
   const where = (path, call) => resolvePath(path, call.trip);
   /** Checked on the path as resolved, so no way of writing it gets around the rule (spec §14.1). @param {string} scope @param {string} path */
@@ -30,26 +30,26 @@ export function activate(annai) {
   /** @param {unknown} e @param {string} path */
   const plain = (e, path) => {
     if (e instanceof ValidationError) return new Error(`${path} doesn't match its format: ${e.errors.join('; ')}`);
+    if (e instanceof NotFoundError) return new Error(`No file at ${path}.`);
     return e;
   };
   /**
-   * What Shiori stores at a path: a booking follows her rule (spec §4.4), anything else is stored as given.
-   * @param {string} scope @param {string} path @param {string | object} content
-   * @returns {Promise<{ content: string | object, note: string }>}
+   * Shiori's rule for bookings (spec §4.4), as a guard the workspace runs inside the file's lock, on what is
+   * stored and on the value as it will be read, so no wording of the text and no timing gets around it.
+   * note: what to tell her, once the write is done.
+   * @param {string} scope @param {string} path
    */
-  const ruled = async (scope, path, content) => {
-    if (!isBookingPath(scope, path)) return { content, note: '' };
-    let next = content;
-    if (typeof content === 'string') {
-      try {
-        next = JSON.parse(content);
-      } catch {
-        return { content, note: '' }; // not JSON: the format check refuses it
-      }
+  const rule = (scope, path) => {
+    /** @type {{ note: string, guard?: (before: any, next: any) => any }} */
+    const r = { note: '' };
+    if (isBookingPath(scope, path)) {
+      r.guard = (before, next) => {
+        const { value, note } = shioriBooking(before, next);
+        r.note = note;
+        return value;
+      };
     }
-    const before = await ws.readJSON(scope, path).catch(() => undefined);
-    const { value, note } = shioriBooking(before, next);
-    return { content: value === next ? content : value, note };
+    return r;
   };
   /** @param {string} scope @param {string} prefix @param {string} shown the root as Shiori sees it */
   const listed = async (scope, prefix, shown) => (await ws.list(scope, prefix)).map((/** @type {any} */ f) => ({ ...f, shown: `${shown}${f.path}` }));
@@ -134,8 +134,8 @@ export function activate(annai) {
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
-        const r = await ruled(scope, path, i.content);
-        const e = await ws.write(scope, path, r.content, { author: 'shiori' }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const r = rule(scope, path);
+        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Wrote ${i.path} (${e.size} bytes).${r.note}`;
       },
     },
@@ -152,8 +152,8 @@ export function activate(annai) {
         const n = i.old ? now.split(i.old).length - 1 : 0;
         if (n === 0) throw new Error(`That text isn't in ${i.path}. read it to see what is.`);
         if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}. Give more of it, so it appears once.`);
-        const r = await ruled(scope, path, now.replace(i.old, () => i.new));
-        await ws.write(scope, path, r.content, { author: 'shiori' }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const r = rule(scope, path);
+        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.${r.note}`;
       },
     },
@@ -165,15 +165,9 @@ export function activate(annai) {
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
-        if (isBookingPath(scope, path)) {
-          const before = await ws.readJSON(scope, path).catch(() => undefined);
-          if (before === undefined) throw new Error(`No file at ${i.path}.`);
-          const { value, note } = shioriBooking(before, mergePatch(before, i.changes, { append: true }));
-          await ws.write(scope, path, value, { author: 'shiori' }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
-          return `Patched ${i.path}.${note}`;
-        }
-        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
-        return `Patched ${i.path}.`;
+        const r = rule(scope, path);
+        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        return `Patched ${i.path}.${r.note}`;
       },
     },
     {

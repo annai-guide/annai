@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'ba94e306edef';
+const BUILD = '1f75139efd99';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -289,7 +289,7 @@ async function receiveShare(req) {
       }));
     }
     // Text shared from another app (an email's words, a link) becomes a file, read like any other (spec §7.3).
-    const shared = ['title', 'text', 'url'].map((k) => form.get(k)).filter((v) => typeof v === 'string' && v.trim()).join('\n\n');
+    const shared = ['title', 'text', 'url'].map((k) => form.get(k)).filter((v) => typeof v === 'string' && v.trim()).join('\n\n').slice(0, 200_000);
     if (shared) {
       await inbox.put(`/inbox/${Date.now()}-text`, new Response(shared, {
         headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Annai-Name': encodeURIComponent('shared text.txt') },

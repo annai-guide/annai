@@ -221,3 +221,20 @@ test('photos keep when and where they were taken, and a restored version keeps i
   const note = await ws.write('trip-1', '/notes/a.md', 'x', { author: 'user' });
   assert.equal('meta' in note, false);
 });
+
+test('a guard on a JSON write sees what is stored and what would be, read as the format check reads it, inside the path lock', async () => {
+  const { ws } = await setup();
+  await ws.write('trip-1', '/x.json', { a: 1 }, { author: 'user' });
+  /** @type {any[]} */
+  const seen = [];
+  const guard = (/** @type {any} */ before, /** @type {any} */ next) => { seen.push([before, next]); return { ...next, guarded: true }; };
+  // A byte-order mark, which the format check reads past, is read past here too.
+  const first = ws.write('trip-1', '/x.json', '﻿{"a":3}', { author: 'shiori', guard });
+  const second = ws.patch('trip-1', '/x.json', { b: 2 }, { author: 'shiori', guard });
+  await Promise.all([first, second]);
+  assert.deepEqual(seen, [[{ a: 1 }, { a: 3 }], [{ a: 3, guarded: true }, { a: 3, guarded: true, b: 2 }]]);
+  assert.deepEqual(await ws.readJSON('trip-1', '/x.json'), { a: 3, guarded: true, b: 2 });
+  // A guard that throws writes nothing.
+  await assert.rejects(ws.write('trip-1', '/x.json', { a: 9 }, { author: 'shiori', guard: () => { throw new Error('no'); } }), /no/);
+  assert.equal((await ws.readJSON('trip-1', '/x.json')).a, 3);
+});
