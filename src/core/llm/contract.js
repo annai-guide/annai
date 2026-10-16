@@ -19,11 +19,13 @@
  * @typedef {'end' | 'tool' | 'length' | 'refusal' | 'other'} StopReason
  * @typedef {{ type: 'text', text: string }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string }
+ *   | { type: 'reasoning_delta', text: string }
  *   | { type: 'tool_input', id: string, name: string, partial: string }
  *   | { type: 'tool_call', id: string, name: string, input: any }
  *   | { type: 'usage', usage: Partial<Usage> }
  *   | { type: 'stop', reason: StopReason }} StreamEvent
- *   reasoning is one whole block; tool_input is a tool call's arguments so far, to show progress.
+ *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
+ *   arguments so far, both to show progress: a model that is thinking is not a model that never started.
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
  *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin'} ErrorKind
  */

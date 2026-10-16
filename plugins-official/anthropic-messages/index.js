@@ -116,7 +116,10 @@ async function* read(res, sse, ProviderError) {
       const b = blocks.get(e.index) ?? {};
       const d = e.delta ?? {};
       if (d.type === 'text_delta' && d.text) yield { type: 'text', text: d.text };
-      else if (d.type === 'thinking_delta') b.thinking = (b.thinking ?? '') + d.thinking;
+      else if (d.type === 'thinking_delta') {
+        b.thinking = (b.thinking ?? '') + d.thinking;
+        if (d.thinking) yield { type: 'reasoning_delta', text: d.thinking };
+      }
       else if (d.type === 'signature_delta') b.signature = (b.signature ?? '') + d.signature;
       else if (d.type === 'input_json_delta') {
         b.json = (b.json ?? '') + d.partial_json;

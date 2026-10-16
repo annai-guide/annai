@@ -107,6 +107,21 @@ test('no first output in time is a timeout, whether the request or the stream is
     (e) => e instanceof ProviderError && e.kind === 'timeout');
 });
 
+test("reasoning as it streams keeps the first-output timer alive: it is an inactivity timer, not a thinking timer", async () => {
+  const thinker = runType(async function* () {
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+      yield { type: 'reasoning_delta', text: 'hm ' };
+    }
+    yield { type: 'reasoning', text: 'hm hm' };
+    yield { type: 'text', text: 'Hello' };
+    yield { type: 'stop', reason: 'end' };
+  });
+  const reply = await callOnce({ type: thinker, endpoint: endpoint(), model: model(), key: null, request, firstOutputMs: 60 });
+  assert.equal(reply.text, 'Hello');
+  assert.deepEqual(reply.parts.map((p) => p.type), ['reasoning', 'text']);
+});
+
 test('the caller can stop a call, and what it said so far is kept with a cut-off', async () => {
   const stop = new AbortController();
   const slow = runType(async function* () {

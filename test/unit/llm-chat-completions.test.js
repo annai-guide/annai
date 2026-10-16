@@ -59,6 +59,19 @@ test('build: annai’s request as an OpenAI-style chat completion', () => {
   ]);
 });
 
+test('build: a reply that held only reasoning is left out, since an empty assistant message is refused by some servers', () => {
+  const s = spec({
+    request: {
+      messages: [
+        { role: 'user', parts: [{ type: 'text', text: 'Hi' }] },
+        { role: 'assistant', parts: [{ type: 'reasoning', text: 'Nothing to say.' }] },
+        { role: 'user', parts: [{ type: 'text', text: 'Hello?' }] },
+      ],
+    },
+  });
+  assert.deepEqual(type.build(s).body.messages, [{ role: 'user', content: 'Hi' }, { role: 'user', content: 'Hello?' }]);
+});
+
 test('build: the tunables for OpenAI and for endpoints without usage in streams or a key', () => {
   const tunables = { ...type.tunables, maxTokensField: 'max_completion_tokens', systemRole: 'developer', usageInStream: false, imageDetail: 'high' };
   const s = spec({ key: null, tunables, request: { system: 'S', messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/jpeg', data: 'BBBB' }] }] } });
@@ -71,9 +84,11 @@ test('build: the tunables for OpenAI and for endpoints without usage in streams 
   assert.deepEqual(body.messages[1].content, [{ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,BBBB', detail: 'high' } }]);
 });
 
-test('read: text, reasoning, usage with cache reads and reported cost, and the stop reason', async () => {
+test('read: text, reasoning as it streams and as a whole, usage with cache reads and reported cost, and the stop reason', async () => {
   const events = await read(await fixture('text.sse'));
   assert.deepEqual(events, [
+    { type: 'reasoning_delta', text: 'The user greets me. ' },
+    { type: 'reasoning_delta', text: 'Reply warmly.' },
     { type: 'reasoning', text: 'The user greets me. Reply warmly.' },
     { type: 'text', text: 'こんにちは! ' },
     { type: 'text', text: 'Welcome to Kyoto.' },

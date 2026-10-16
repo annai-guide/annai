@@ -62,6 +62,7 @@ function wire(m, t) {
   if (m.role === 'assistant') {
     const text = m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text).join('');
     const calls = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
+    if (!text && !calls.length) return []; // only reasoning: an empty assistant message is refused by some servers
     /** @type {any} */
     const out = { role: 'assistant', content: text || null };
     if (calls.length) out.tool_calls = calls.map((/** @type {any} */ c) => ({ id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.input ?? {}) } }));
@@ -115,7 +116,10 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     const choice = chunk.choices?.[0];
     const d = choice?.delta ?? {};
     const r = t.reasoningField === 'auto' ? d.reasoning_content ?? d.reasoning : d[t.reasoningField];
-    if (typeof r === 'string') reasoning += r;
+    if (typeof r === 'string' && r) {
+      reasoning += r;
+      yield { type: 'reasoning_delta', text: r };
+    }
     if (typeof d.content === 'string' && d.content) {
       yield* flush();
       yield { type: 'text', text: d.content };

@@ -92,6 +92,7 @@ export function activate(annai) {
   - It assembles the reply, and works out its cost.
   - It falls back to the next model of the role when this one fails.
   - It records every attempt in the trace, without keys.
+- **Show progress:** yield `{ type: 'reasoning_delta', text }` for each piece of thinking as it arrives, and the whole block as `{ type: 'reasoning', text, signature? }` when it ends. annai gives up on a model that sends nothing for a while (spec §9.6), so a model that thinks silently looks like one that never started.
 - **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.

@@ -98,6 +98,8 @@ test('read: signed thinking, redacted thinking and a tool call streamed in piece
     { type: 'reasoning', text: 'A red square. Call the tool.', signature: 'EqQBCgIYAh==' },
     { type: 'reasoning', text: '', redacted: 'EmwKAhgBEgy3' },
   ]);
+  // Thinking is shown as it streams, so a long think never looks like a model that never started (spec §9.6).
+  assert.equal(events.filter((e) => e.type === 'reasoning_delta').map((e) => e.text).join(''), 'A red square. Call the tool.');
   assert.deepEqual(events.filter((e) => e.type === 'tool_input').map((e) => e.partial), ['', '{"color": "re', '{"color": "red"}']);
   assert.deepEqual(events.filter((e) => e.type === 'tool_call'), [{ type: 'tool_call', id: 'toolu_01A', name: 'report_color', input: { color: 'red' } }]);
   assert.deepEqual(events.at(-1), { type: 'stop', reason: 'tool' });
