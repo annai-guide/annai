@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles } from '../../src/core/scopes.js';
-import { logEvent } from '../../src/core/events.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip } from '../../src/core/scopes.js';
+import { logEvent, blobsOf } from '../../src/core/events.js';
 import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS, PLAN_ITEM_SCHEMA, BOOKING_SCHEMA } from '../../src/plugins/core-schemas/schemas.js';
 import * as corePlugin from '../../src/plugins/core-schemas/index.js';
@@ -140,4 +140,82 @@ test('creating a trip on a full device says storage is full and leaves nothing b
   await assert.rejects(setTripStatus(store, kept, 'archived'), StorageFullError);
   full = false;
   assert.deepEqual((await listTrips(store)).active.map((s) => s.id), [kept]);
+});
+
+/** @typedef {import('../../src/core/types.js').Store} Store */
+
+/** Every stored blob, hash → size. @param {Store} store */
+const storedBlobs = async (store) => new Map((await store.tx(['blobs'], 'readonly', (t) => t.listBlobs())).map((b) => [b.hash, b.size]));
+
+test('blobsOf lists the content an event points at', () => {
+  assert.deepEqual(blobsOf({ data: { path: '/a', old: 'h1', new: 'h2' }, refs: ['h3'] }), ['h1', 'h2', 'h3']);
+  assert.deepEqual(blobsOf({ data: { old: null, new: 7 } }), []);
+  assert.deepEqual(blobsOf({}), []);
+});
+
+test('removeTrip removes the trip, its files and history, and frees the content only it used', async () => {
+  const { store, ws } = setup();
+  await ensureBaseScopes(ws);
+  const before = await storedBlobs(store);
+  const id = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(id, '/files/a.webp', new Uint8Array(3000).fill(7), { author: 'user' });
+  await ws.write(id, '/notes/day1.md', 'first', { author: 'user' });
+  await ws.write(id, '/notes/day1.md', 'second', { author: 'user' }); // "first" is an older version now
+  await ws.write(id, '/files/b.webp', new Uint8Array(2000).fill(8), { author: 'user' });
+  await ws.delete(id, '/files/b.webp', { author: 'user' }); // a deleted file, kept by its history until now
+  const added = [...(await storedBlobs(store))].filter(([hash]) => !before.has(hash));
+  assert.ok(added.length >= 6);
+  const result = await removeTrip(store, id);
+  assert.deepEqual(result, { title: 'Big Sur', bytes: added.reduce((n, [, size]) => n + size, 0) });
+  assert.deepEqual([...(await storedBlobs(store)).keys()].sort(), [...before.keys()].sort());
+  const left = await store.tx(['scopes', 'files', 'events'], 'readonly', async (t) => ({
+    scope: await t.getScope(id), files: await t.listFiles(id, '/'), events: await t.listEvents(id),
+    log: await t.listEvents(SYS, { types: ['trip.remove'] }),
+  }));
+  assert.equal(left.scope, undefined);
+  assert.deepEqual(left.files, []);
+  assert.deepEqual(left.events, []);
+  assert.deepEqual(left.log.map((e) => e.data), [{ title: 'Big Sur', bytes: result.bytes }]);
+});
+
+test('removeTrip keeps content another trip uses, now or in its history', async () => {
+  const { store, ws } = setup();
+  await ensureBaseScopes(ws);
+  const photo = new Uint8Array(3000).fill(7);
+  const a = await createTrip(ws, { title: 'A' });
+  const b = await createTrip(ws, { title: 'B' });
+  await ws.write(a, '/files/p.webp', photo, { author: 'user' });
+  await ws.write(b, '/files/same.webp', photo, { author: 'user' }); // the same photo, stored once
+  await ws.write(a, '/notes/n.md', 'old', { author: 'user' });
+  await ws.write(b, '/notes/n.md', 'old', { author: 'user' });
+  await ws.write(b, '/notes/n.md', 'new', { author: 'user' }); // in B, "old" is history now
+  const [first] = await ws.history(b, '/notes/n.md');
+  await removeTrip(store, a);
+  assert.deepEqual((await ws.read(b, '/files/same.webp'))?.bytes, photo);
+  await ws.restore(b, '/notes/n.md', /** @type {string} */ (first.new), { author: 'user' });
+  assert.equal(await ws.readText(b, '/notes/n.md'), 'old');
+});
+
+test('removeTrip also frees content nothing refers to, and keeps what any log points at', async () => {
+  const { store, ws } = setup();
+  await ensureBaseScopes(ws);
+  const id = await createTrip(ws, { title: 'Big Sur' });
+  const orphan = 'a'.repeat(64); // left behind by an interrupted restore
+  const traced = 'b'.repeat(64); // a body the system log points at
+  await store.tx(['blobs'], 'readwrite', async (t) => {
+    for (const hash of [orphan, traced]) await t.putBlob({ hash, type: 'application/octet-stream', size: 4, data: new Uint8Array(4).buffer });
+  });
+  await logEvent(store, SYS, { type: 'net.request', refs: [traced] });
+  await removeTrip(store, id);
+  const left = await storedBlobs(store);
+  assert.equal(left.has(orphan), false);
+  assert.equal(left.has(traced), true);
+});
+
+test('removeTrip removes only trips', async () => {
+  const { store, ws } = setup();
+  await ensureBaseScopes(ws);
+  await assert.rejects(removeTrip(store, ME), /doesn't exist/);
+  await assert.rejects(removeTrip(store, 'trip-missing'), /doesn't exist/);
+  assert.ok(await store.tx(['scopes'], 'readonly', (t) => t.getScope(ME)));
 });

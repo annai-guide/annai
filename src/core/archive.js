@@ -7,6 +7,7 @@ import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
+import { blobsOf } from './events.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -202,10 +203,7 @@ export async function exportArchive(store, opts) {
       await zip.add(name, body, { mtime: now });
       manifest.extras.push({ name, hash: await sha256Hex(body) });
       ms.events = name;
-      for (const e of events) {
-        for (const h of [e.data?.old, e.data?.new]) if (typeof h === 'string') historic.add(h);
-        for (const r of e.refs ?? []) historic.add(r);
-      }
+      for (const e of events) for (const h of blobsOf(e)) historic.add(h);
     }
     manifest.scopes.push(ms);
   }

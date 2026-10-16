@@ -1,4 +1,5 @@
 import { ValidationError } from './workspace.js';
+import { blobsOf } from './events.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord */
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -87,6 +88,35 @@ export async function setTripStatus(store, id, status, now = Date.now()) {
     if (!rec || rec.kind !== 'trip') throw new Error(`trip ${id} doesn't exist`);
     await t.putScope({ ...rec, status, updated: now });
     await t.appendEvent(id, { ts: now, type: status === 'archived' ? 'scope.archive' : 'scope.unarchive', actor: 'user' });
+  });
+}
+
+/**
+ * Removes a trip from this device for good: its record, files and history, and every stored
+ * content nothing else uses, so its space comes back at once (spec §4.9). One transaction:
+ * all of it goes, or none of it.
+ * @param {Store} store @param {string} id @param {number} [now]
+ * @returns {Promise<{ title: string, bytes: number }>} bytes: the size of the content removed
+ */
+export async function removeTrip(store, id, now = Date.now()) {
+  return store.tx(['scopes', 'files', 'events', 'blobs'], 'readwrite', async (t) => {
+    const rec = await t.getScope(id);
+    if (!rec || rec.kind !== 'trip') throw new Error(`trip ${id} doesn't exist`);
+    await t.deleteScope(id);
+    /** @type {Set<string>} */
+    const used = new Set();
+    for (const s of await t.listScopes()) {
+      for (const f of await t.listFiles(s.id, '/')) used.add(f.hash);
+      for (const e of await t.listEvents(s.id)) for (const h of blobsOf(e)) used.add(h);
+    }
+    let bytes = 0;
+    for (const b of await t.listBlobs()) {
+      if (used.has(b.hash)) continue;
+      await t.deleteBlob(b.hash);
+      bytes += b.size;
+    }
+    await t.appendEvent(SYS, { ts: now, type: 'trip.remove', actor: 'user', data: { title: rec.title, bytes } });
+    return { title: rec.title, bytes };
   });
 }
 
