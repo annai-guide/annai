@@ -158,7 +158,7 @@ export async function callRole(c) {
     const epRec = rec ? config.endpoints[rec.endpoint] : undefined;
     const type = epRec ? types.get(epRec.type) : undefined;
     const model = rec ? modelOf(rec) : null;
-    const skip = !rec || !epRec || !model ? 'removed' : !type ? 'type-missing' : bench.until(id) > now() ? 'benched' : gap(model, request);
+    const skip = !rec || !epRec || !model ? 'removed' : !type ? 'type-missing' : type.speech ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
     if (skip || !model || !type || !epRec) {
       attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0 });
       continue;

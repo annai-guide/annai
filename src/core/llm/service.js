@@ -9,6 +9,7 @@ import { loadTemplates } from './templates.js';
 import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
+import { speechCall } from './speech.js';
 
 /**
  * Everything the UI needs to talk to models (spec §9): settings, endpoint types installed on
@@ -44,6 +45,16 @@ export function createLlm({
     await ensure(epRec.type);
     const type = /** @type {import('./contract.js').EndpointType} */ (types().get(epRec.type));
     return { rec, type, endpoint: endpointOf(epRec, type.tunables), model: modelOf(rec), key: await getKey(store, epRec.id) };
+  };
+  /**
+   * A speech model with what calling it needs, and its role's time limit (spec §9.6: configurable).
+   * @param {string} modelId @param {'in' | 'out'} dir
+   */
+  const speechOf = async (modelId, dir) => {
+    const { type, endpoint, model, key } = await resolve(modelId);
+    if (type.speech !== dir) throw new ProviderError('bad-request', dir === 'in' ? `${model.name} isn't a transcription model.` : `${model.name} isn't a voice.`);
+    const role = (await readConfig(ws)).roles[dir === 'in' ? 'speech-in' : 'speech-out'];
+    return { type, endpoint, model, key, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
   };
   const service = {
     bench,
@@ -82,6 +93,20 @@ export function createLlm({
       const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs) });
       await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by } }).catch(() => {});
       return r.probabilities;
+    },
+    /**
+     * Speech to text with one transcription model (spec §10.2), traced in scope.
+     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string }} c
+     */
+    async transcribe({ modelId, audio, scope = SYS, signal, wake }) {
+      return speechCall({ ...(await speechOf(modelId, 'in')), audio, fetch: get, signal, trace: modelTrace(store, scope), registry: plugins.registry, wake });
+    },
+    /**
+     * A voice clip of one text from one voice (spec §10.1), traced in scope.
+     * @param {{ modelId: string, text: string, scope?: string, signal?: AbortSignal, wake?: string }} c
+     */
+    async synthesize({ modelId, text, scope = SYS, signal, wake }) {
+      return speechCall({ ...(await speechOf(modelId, 'out')), text, fetch: get, signal, trace: modelTrace(store, scope), registry: plugins.registry, wake });
     },
     /** Whether photos go to this model's provider by upload, so a request carries only their ids (spec §4.8, §6.5). @param {string} modelId */
     async uploading(modelId) {
