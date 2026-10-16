@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
-import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
+import { Workspace, ValidationError, StorageFullError, NotFoundError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, recordBackup, backupState } from '../../src/core/scopes.js';
 import { logEvent, blobsOf } from '../../src/core/events.js';
@@ -215,8 +215,8 @@ test('removeTrip also frees content nothing refers to, and keeps what any log po
 test('removeTrip removes only trips', async () => {
   const { store, ws } = setup();
   await ensureBaseScopes(ws);
-  await assert.rejects(removeTrip(store, ME), /doesn't exist/);
-  await assert.rejects(removeTrip(store, 'trip-missing'), /doesn't exist/);
+  await assert.rejects(removeTrip(store, ME), NotFoundError);
+  await assert.rejects(removeTrip(store, 'trip-missing'), NotFoundError);
   assert.ok(await store.tx(['scopes'], 'readonly', (t) => t.getScope(ME)));
 });
 

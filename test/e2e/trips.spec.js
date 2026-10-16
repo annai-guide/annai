@@ -193,3 +193,35 @@ test('an archived trip can be removed too', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
   await expect(page.getByText(/Archived trips/)).toHaveCount(0);
 });
+
+test('Remove trip runs once at a time', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const button = page.locator('button', { hasText: 'Remove trip' });
+  await button.click();
+  await expect(page.getByRole('dialog', { name: 'Big Sur' })).toBeVisible();
+  await expect(button).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(button).toBeEnabled();
+});
+
+test('removing a trip that is already gone says so', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  await page.evaluate((scope) => new Promise((resolve, reject) => {
+    const r = indexedDB.open('annai');
+    r.onsuccess = () => {
+      const tx = r.result.transaction('scopes', 'readwrite');
+      tx.objectStore('scopes').delete(scope);
+      tx.oncomplete = () => { r.result.close(); resolve(undefined); };
+      tx.onerror = () => reject(tx.error);
+    };
+    r.onerror = () => reject(r.error);
+  }), id);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByText('That trip was already removed.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+});

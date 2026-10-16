@@ -2,7 +2,7 @@ import { h, field, twoStep } from '../dom.js';
 import { setTripStatus, removeTrip, backupState } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
-import { ValidationError } from '../../core/workspace.js';
+import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { relTime, bytes, dateRange } from '../format.js';
 import { exportPanel } from '../export-panel.js';
@@ -31,7 +31,7 @@ export async function renderTrip(ctx, route) {
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); ctx.render(); } }, 'Unarchive')
         : twoStep('Archive trip', 'Tap again to archive', async () => { await setTripStatus(ctx.store, id, 'archived'); ctx.go('#/trips'); }),
-      h('button', { class: 'btn danger', type: 'button', onclick: () => removeFlow(ctx, id, scope) }, 'Remove trip')),
+      h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, 'Remove trip')),
     extra,
     fileList(id, files),
     newFile(ctx, id));
@@ -47,10 +47,20 @@ function tripActions(ctx, id, scope, slot) {
 
 /**
  * Remove trip (spec §4.9): asks once, and again only when the trip changed after its last Backup.
- * Then the trip is gone from this device and its space is free.
- * @param {any} ctx @param {string} id @param {any} scope
+ * Then the trip is gone from this device and its space is free. The button stays off while it runs.
+ * @param {any} ctx @param {string} id @param {any} scope @param {HTMLButtonElement} button
  */
-async function removeFlow(ctx, id, scope) {
+async function removeFlow(ctx, id, scope, button) {
+  button.disabled = true;
+  try {
+    await askAndRemove(ctx, id, scope);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/** @param {any} ctx @param {string} id @param {any} scope */
+async function askAndRemove(ctx, id, scope) {
   const sure = await ask({ title: scope.title, body: 'This removes everything in this trip from this device: its files, photos, notes and history. Remove it?', yes: 'Remove' });
   if (!sure) return;
   if ((await backupState(ctx.store, id)).changed) {
@@ -62,7 +72,13 @@ async function removeFlow(ctx, id, scope) {
     ctx.notices.toast(`Removed ${scope.title}. ${bytes(freed)} freed.`);
     ctx.go('#/trips');
   } catch (e) {
-    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: "That trip wasn't removed", body: `${/** @type {any} */ (e)?.message ?? e} Nothing was removed; try again.` });
+    if (e instanceof NotFoundError) {
+      ctx.notices.toast('That trip was already removed.');
+      ctx.go('#/trips');
+    } else if (!explainStorageFull(ctx, e)) {
+      const why = String(/** @type {any} */ (e)?.message ?? e).replace(/[.!?]?$/, '.');
+      ctx.notices.card({ tone: 'warn', title: "That trip wasn't removed", body: `${why} Nothing was removed. Try again.` });
+    }
   }
 }
 

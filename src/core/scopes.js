@@ -1,4 +1,4 @@
-import { ValidationError } from './workspace.js';
+import { ValidationError, NotFoundError } from './workspace.js';
 import { blobsOf } from './events.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord @typedef {import('./types.js').Tx} Tx */
@@ -101,7 +101,7 @@ export async function setTripStatus(store, id, status, now = Date.now()) {
 export async function removeTrip(store, id, now = Date.now()) {
   return store.tx(['scopes', 'files', 'events', 'blobs'], 'readwrite', async (t) => {
     const rec = await t.getScope(id);
-    if (!rec || rec.kind !== 'trip') throw new Error(`trip ${id} doesn't exist`);
+    if (!rec || rec.kind !== 'trip') throw new NotFoundError(`trip ${id}`);
     await t.deleteScope(id);
     const used = await blobsInUse(t);
     let bytes = 0;
