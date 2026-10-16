@@ -42,16 +42,17 @@ test('takenText shows the time as the clock showed it where the photo was taken'
   assert.equal(takenText('sometime', 'en-GB'), 'sometime');
 });
 
-test('a full device gets advice that frees space: deleting inside annai keeps the old versions (spec §4.2)', () => {
+test('a full device gets advice that frees space: removing a trip does, deleting inside one does not (spec §4.9)', () => {
   /** @type {any[]} */
   const cards = [];
   assert.equal(explainStorageFull({ notices: { card: (/** @type {any} */ c) => cards.push(c) }, go: () => {} }, new StorageFullError()), true);
   assert.equal(cards.length, 1);
   for (const advice of [cards[0].body, new StorageFullError().message]) {
+    assert.match(advice, /remove a trip you no longer need/i);
     assert.match(advice, /free up space on this device/);
-    assert.doesNotMatch(advice, /delete photos|old trips|make room/i);
+    assert.doesNotMatch(advice, /delet/i);
   }
-  assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => a.label), ['Export a backup']);
+  assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => a.label), ['Export a backup', 'Go to Trips']);
 });
 
 test('backupText: never, up to date, and changed since (spec §4.9)', () => {
