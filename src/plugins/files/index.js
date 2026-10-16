@@ -210,8 +210,10 @@ export function activate(annai) {
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
+        // She may delete a booking the user confirmed, but she hears that they had, so she can say so if it was a mistake.
+        const confirmed = isBookingPath(scope, path) && (await ws.readJSON(scope, path).catch(() => undefined))?.status === 'confirmed';
         await ws.delete(scope, path, { author: 'shiori' });
-        return `Deleted ${i.path}.`;
+        return `Deleted ${i.path}.${confirmed ? ' The user had confirmed this booking. If deleting it was a mistake, tell them: its history keeps it, so they can restore it.' : ''}`;
       },
     },
   ];
