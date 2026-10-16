@@ -47,7 +47,7 @@ const THANKSGIVING = {
     '/bookings/flight.json': { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass', title: 'UA 123', confirmation: 'ABC123', start: { at: '2026-11-25T08:00:00-08:00', tz: LA } },
     '/bookings/hotel.json': { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/hotel.pdf', title: 'Hoboken Inn' },
   },
-  text: { '/plan/broken.json': 'not json' },
+  text: { '/plan/broken.json': 'not json', '/bookings/broken.json': 'not json either' },
 };
 
 test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Check this, and what it could not read', async ({ page }) => {
@@ -75,7 +75,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(day.locator('.plan-row')).toContainText('21:00–00:30 +1 PST'); // it lands the next day, in another zone
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
-  await expect(page.getByText("1 plan file couldn't be read")).toBeVisible();
+  await expect(page.getByText("1 plan file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
   await expect(page.getByRole('region', { name: 'Bookings' })).toContainText('UA 123');
   // The calendar file: every timed item, in UTC.
   const downloading = page.waitForEvent('download');

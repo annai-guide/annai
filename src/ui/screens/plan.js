@@ -54,13 +54,16 @@ export async function renderPlan(ctx, route) {
     },
   }, 'Add to calendar');
   const broken = plan.broken + bookings.broken;
+  // "1 plan file and 2 booking files": each counted as what it is.
+  const unread = /** @type {[number, string][]} */ ([[plan.broken, 'plan file'], [bookings.broken, 'booking file']])
+    .filter(([n]) => n).map(([n, what]) => `${n} ${what}${n === 1 ? '' : 's'}`).join(' and ');
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: `#/trip/${encodeURIComponent(id)}` }, `← ${scope.title}`)),
     h('h1', { class: 'title', text: 'Plan' }),
     h('p', { class: 'sub', text: [scope.title, trip.start ? dateRange(trip.start, trip.end) : null].filter(Boolean).join(' · ') }),
     rows.length ? [h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Days' }, ...buttons), panel]
       : h('p', { class: 'empty', text: 'No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.' }),
-    broken ? h('p', { class: 'sub warn', text: `${broken} plan ${broken === 1 ? "file couldn't" : "files couldn't"} be read. Open the trip's files to fix ${broken === 1 ? 'it' : 'them'}.` }) : null,
+    broken ? h('p', { class: 'sub warn', text: `${unread} couldn't be read. Open the trip's files to fix ${broken === 1 ? 'it' : 'them'}.` }) : null,
     bookings.list.length ? h('section', { 'aria-label': 'Bookings' },
       h('h2', { class: 'section', text: 'Bookings' }),
       h('ul', { class: 'cards' }, ...bookings.list.map((b) => h('li', {}, h('a', { class: 'card', href: bookingHref(id, b.path) },
