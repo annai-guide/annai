@@ -41,6 +41,13 @@ test('mapsLinks: Apple and Google directions; a mode only one has gives one link
   assert.throws(() => mapsLinks(c, { destination: 'x', mode: 'teleport' }), /No maps app here gives teleport directions/);
 });
 
+test("mapsLinks: a mode that names something every object has isn't a mode", async () => {
+  const c = await shipped();
+  for (const mode of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    assert.throws(() => mapsLinks(c, { destination: 'x', mode }), new RegExp(`No maps app here gives ${mode} directions`));
+  }
+});
+
 test('searchLinks: prefilled searches; dates are checked, and what is missing is said', async () => {
   const c = await shipped();
   const flights = searchLinks(c, 'flight', { from: 'SFO', to: 'EWR', depart: '2026-11-25', return: '2026-11-29', adults: 2 });
