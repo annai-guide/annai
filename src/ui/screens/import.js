@@ -4,12 +4,20 @@ import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
 import { relTime, bytes } from '../format.js';
+import { listTrips } from '../../core/scopes.js';
+import { isPhotoType } from '../../core/photos.js';
+import { typeForPath } from '../../core/paths.js';
+import { addFiles } from '../add-files.js';
 import { explainStorageFull } from '../storage-full.js';
 
 /** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob }} Source */
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderImport(ctx, route) {
+  if (route.params.inbox) {
+    const photos = await inboxPhotos();
+    if (photos.length) return photoInbox(ctx, photos, (await listTrips(ctx.store)).active);
+  }
   const body = h('div', { class: 'screen' });
   const screen = h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'Open a trip' }), body);
   /** @type {Source | null} */
@@ -140,4 +148,53 @@ function keptKeys(ids) {
   return ids.length === 1
     ? `Kept your own API key for ${ids[0]}; the one in the file wasn't used.`
     : `Kept your own API keys for ${ids.join(', ')}; the ones in the file weren't used.`;
+}
+
+/** @typedef {{ key: Request, file: File }} InboxPhoto */
+
+/** Photos waiting in the share inbox. They stay there until they are added to a trip. @returns {Promise<InboxPhoto[]>} */
+async function inboxPhotos() {
+  const inbox = await caches.open('annai-inbox');
+  /** @type {InboxPhoto[]} */
+  const out = [];
+  for (const key of await inbox.keys()) {
+    const res = await inbox.match(key);
+    if (!res) continue;
+    const name = decodeURIComponent(res.headers.get('X-Annai-Name') ?? 'photo');
+    const type = res.headers.get('Content-Type') || typeForPath(name);
+    if (isPhotoType(type) || isPhotoType(typeForPath(name))) out.push({ key, file: new File([await res.blob()], name, { type }) });
+  }
+  return out;
+}
+
+/** Photos shared from another app (Android's share sheet): choose the trip they belong to. @param {any} ctx @param {InboxPhoto[]} items @param {any[]} trips */
+function photoInbox(ctx, items, trips) {
+  const what = `${items.length} ${items.length === 1 ? 'photo' : 'photos'}`;
+  const status = h('p', { class: 'sub', role: 'status' });
+  /** @type {HTMLButtonElement[]} */
+  const buttons = trips.map((t) => h('button', { class: 'btn pri', type: 'button', onclick: () => add(t) }, `Add to ${t.title}`));
+  /** @param {any} trip */
+  async function add(trip) {
+    for (const b of buttons) b.disabled = true;
+    try {
+      const { notes } = await addFiles(ctx, trip.id, items.map((i) => i.file), (done, total) => {
+        status.textContent = `Adding ${Math.min(done + 1, total)} of ${total}…`;
+      });
+      const inbox = await caches.open('annai-inbox');
+      for (const i of items) await inbox.delete(i.key);
+      ctx.go(`#/trip/${encodeURIComponent(trip.id)}`);
+      for (const note of notes) ctx.notices.card({ tone: 'warn', title: 'A photo was kept as it is', body: note });
+      ctx.notices.toast(`Added ${what}`);
+    } catch (e) {
+      explainStorageFull(ctx, e);
+      status.textContent = String(/** @type {any} */ (e)?.message ?? e);
+      for (const b of buttons) b.disabled = false;
+    }
+  }
+  return h('div', { class: 'screen' },
+    h('h1', { class: 'title', text: `Add ${what}` }),
+    trips.length
+      ? h('div', { class: 'acts' }, ...buttons)
+      : h('p', { class: 'empty' }, 'Start a trip first, then share the photos again. ', h('a', { href: '#/trips' }, 'Go to Trips')),
+    status);
 }

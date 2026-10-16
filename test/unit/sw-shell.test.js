@@ -39,6 +39,7 @@ test('the manifest is installable and offers the share target', async () => {
   assert.equal(m.start_url, '/');
   assert.ok(m.icons.some((/** @type {any} */ i) => i.sizes === '512x512' && i.purpose === 'maskable'));
   assert.equal(m.share_target.action, '/share-target');
+  assert.ok(m.share_target.params.files[0].accept.includes('image/*'), 'photos can be shared to annai');
 });
 
 test('installing fetches the shell past the HTTP cache, so an update never stores stale files', async () => {

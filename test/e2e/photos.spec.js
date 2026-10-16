@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave } from './helpers.js';
+import { openApp, waitForServiceWorker, buildAndSave } from './helpers.js';
 import { readZip } from '../../src/core/zip.js';
 import { readPhotoMeta } from '../../src/core/photo-meta.js';
 import { text } from '../../src/core/bytes.js';
@@ -165,4 +165,22 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   expect(shot.meta.taken).toBe('2026-11-26T19:04:12-08:00');
   expect(shot.meta.place).toBeUndefined();
   expect(readPhotoMeta(/** @type {Uint8Array} */ (entries.get(shot.name))).place).toBeUndefined();
+});
+
+test('photos shared from another app go to the trip you choose', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Big Sur');
+  const shared = [await photo('portrait.jpg'), await photo('screenshot.png')].map((p) => ({ name: p.name, type: p.mimeType, bytes: [...p.buffer] }));
+  await page.evaluate(async (files) => {
+    const form = new FormData();
+    for (const f of files) form.append('files', new File([new Uint8Array(f.bytes)], f.name, { type: f.type }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  }, shared);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add 2 photos' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add to Big Sur' }).click();
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /\/files\/screenshot/ })).toBeVisible();
 });
