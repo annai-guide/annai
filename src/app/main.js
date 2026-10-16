@@ -18,6 +18,7 @@ import { offerPluginUpdates } from '../ui/plugin-updates.js';
 import { Agent } from '../core/agent/loop.js';
 import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
+import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
 
@@ -57,6 +58,7 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/files/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/web/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/places/index.js', import.meta.url).href);
+  await plugins.addBuiltin(new URL('../plugins/go/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
   let pluginsStarted = () => {};
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
@@ -91,6 +93,8 @@ async function boot() {
   startPlugins(plugins, shell).finally(() => {
     pluginsStarted();
     lookForUpdates();
+    // The link catalog is kept for offline use: fetched now, so it is there before the first offline moment (spec §7.2).
+    loadLinks({ ws }).catch(() => {});
   });
   setInterval(lookForUpdates, 24 * 60 * 60 * 1000);
   // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).

@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "maps": [
+    { "id": "apple", "name": "Apple Maps", "directions": "https://maps.apple.com/?daddr={destination}&dirflg={mode}[&saddr={origin}]", "modes": { "drive": "d", "walk": "w", "transit": "r" } },
+    { "id": "google", "name": "Google Maps", "directions": "https://www.google.com/maps/dir/?api=1&destination={destination}&travelmode={mode}[&origin={origin}]", "modes": { "drive": "driving", "walk": "walking", "transit": "transit", "bike": "bicycling" } }
+  ],
+  "search": {
+    "flight": [
+      { "id": "google-flights", "name": "Google Flights", "url": "https://www.google.com/travel/flights?q=Flights%20to%20{to}%20from%20{from}%20on%20{depart}[%20returning%20{return}]", "needs": ["from", "to", "depart"] },
+      { "id": "kayak", "name": "KAYAK", "url": "https://www.kayak.com/flights/{from}-{to}/{depart}[/{return}][/{adults}adults]", "needs": ["from", "to", "depart"] }
+    ],
+    "hotel": [
+      { "id": "booking", "name": "Booking.com", "url": "https://www.booking.com/searchresults.html?ss={place}&checkin={checkin}&checkout={checkout}[&group_adults={adults}][&no_rooms={rooms}]", "needs": ["place", "checkin", "checkout"] },
+      { "id": "kayak", "name": "KAYAK", "url": "https://www.kayak.com/hotels/{place}/{checkin}/{checkout}[/{adults}adults]", "needs": ["place", "checkin", "checkout"] }
+    ],
+    "car": [
+      { "id": "kayak", "name": "KAYAK", "url": "https://www.kayak.com/cars/{place}/{pickup}/{dropoff}", "needs": ["place", "pickup", "dropoff"] }
+    ]
+  }
+}
