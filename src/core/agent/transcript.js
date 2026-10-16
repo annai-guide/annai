@@ -108,7 +108,7 @@ export async function resolveEvent(store, e) {
   const images = [];
   for (const im of e.type === 'tool.result' ? e.data?.images ?? [] : []) {
     const bytes = await blobBytes(store, im.hash);
-    if (bytes) images.push({ type: 'image', mediaType: im.mediaType, data: toBase64(bytes) });
+    if (bytes) images.push({ type: 'image', mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash, ...(im.path ? { path: im.path } : {}), ...(im.region ? { region: im.region } : {}) });
   }
   const doc = e.type === 'tool.result' ? e.data?.document : null;
   if (doc) {

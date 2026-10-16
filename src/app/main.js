@@ -16,6 +16,7 @@ import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
 import { offerPluginUpdates } from '../ui/plugin-updates.js';
 import { Agent } from '../core/agent/loop.js';
+import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
@@ -59,7 +60,7 @@ async function boot() {
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
 
   // Shiori (spec §6): one agent, talking about the trip that was open last.
-  const agent = new Agent({ store, ws, llm, registry });
+  const agent = new Agent({ store, ws, llm, registry, codec });
   agent.addLoopTools(selfTools(agent));
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).

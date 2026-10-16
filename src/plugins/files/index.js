@@ -2,6 +2,7 @@ import { VERSION } from '../../app/version.js';
 import { resolvePath } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
 import { ValidationError } from '../../core/workspace.js';
+import { sizeLine } from '../../core/request-photos.js';
 
 export const manifest = {
   id: 'files',
@@ -60,9 +61,14 @@ export function activate(annai) {
         if (entry.type.startsWith('image/')) {
           if (!input.includes('image')) return `${i.path} is a photo, and this model can't see photos.`;
           const m = entry.meta ?? {};
-          const size = m.width && m.height ? `, ${m.width}×${m.height}` : '';
+          const source = { hash: entry.hash, type: entry.type, width: m.width ?? null, height: m.height ?? null, size: entry.size };
+          // What Shiori is sent: a request copy within the limits, made once (spec §4.8).
+          const sent = call.photos ? await call.photos.copy(source) : { hash: entry.hash, mediaType: entry.type, width: m.width ?? null, height: m.height ?? null, made: false };
           const taken = m.taken ? `, taken ${m.taken}` : '';
-          return { content: `The photo ${i.path}${size}${taken}.`, images: [{ mediaType: entry.type, hash: entry.hash, path: i.path }] };
+          return {
+            content: `The photo ${i.path}, ${sizeLine(source, sent)}${taken}.`,
+            images: [{ mediaType: sent.mediaType, hash: sent.hash, ...(sent.data ? { data: sent.data } : {}), path: i.path }],
+          };
         }
         if (entry.type === 'application/pdf') {
           if (!input.includes('pdf')) return `${i.path} is a PDF, and this model can't read PDFs. Ask the user for a screenshot of the page you need.`;

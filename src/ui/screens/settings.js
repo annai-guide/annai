@@ -58,7 +58,8 @@ export async function renderSettings(ctx) {
 }
 
 /**
- * Settings → Photos (spec §4.8): Keep originals, and how photos are encoded when they come in.
+ * Settings → Photos (spec §4.8): Keep originals, how photos are encoded when they come in, and how
+ * large the copies Shiori is sent may be.
  * @param {any} ctx @param {Record<string, any>} app
  */
 async function photoControls(ctx, app) {
@@ -72,6 +73,10 @@ async function photoControls(ctx, app) {
   const quality = h('input', { id: 'photo-quality', type: 'number', min: '0.5', max: '1', step: '0.05', value: String(s.ingest.quality) });
   const edge = h('input', { id: 'photo-edge', type: 'number', min: '256', step: '1', placeholder: 'No limit', value: s.ingest.maxEdge === null ? '' : String(s.ingest.maxEdge) });
   const size = h('input', { id: 'photo-size', type: 'number', min: '0.1', step: '0.1', placeholder: 'No limit', value: s.ingest.maxBytes === null ? '' : String(s.ingest.maxBytes / 1_000_000) });
+  const asMB = (/** @type {number | null} */ b) => (b === null ? '' : String(Math.round(b / 10_000) / 100));
+  const sentEdge = h('input', { id: 'photo-sent-edge', type: 'number', min: '256', step: '1', placeholder: 'No limit', value: s.request.maxEdge === null ? '' : String(s.request.maxEdge) });
+  const sentSize = h('input', { id: 'photo-sent-size', type: 'number', min: '0.1', step: '0.01', placeholder: 'No limit', value: asMB(s.request.maxBytes) });
+  const sentQuality = h('input', { id: 'photo-sent-quality', type: 'number', min: '0.5', max: '1', step: '0.05', value: String(s.request.quality) });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   const save = h('button', {
     class: 'btn pri', type: 'button',
@@ -84,11 +89,22 @@ async function photoControls(ctx, app) {
         error.hidden = false;
         return;
       }
+      const sq = Number(sentQuality.value);
+      const se = sentEdge.value.trim() === '' ? null : Number(sentEdge.value);
+      const smb = sentSize.value.trim() === '' ? null : Number(sentSize.value);
+      if (!(sq >= 0.5 && sq <= 1) || (se !== null && !(Number.isInteger(se) && se >= 256)) || (smb !== null && !(smb >= 0.1))) {
+        error.textContent = 'For photos sent to Shiori, quality goes from 0.5 to 1, the longest side is at least 256 pixels, and the largest photo at least 0.1 MB. Leave a limit empty for none.';
+        error.hidden = false;
+        return;
+      }
       error.hidden = true;
+      // A size shown rounded and left as it was keeps its exact value (1 MiB shows as 1.05).
+      const sentBytes = sentSize.value.trim() === asMB(s.request.maxBytes) ? s.request.maxBytes : smb === null ? null : Math.round(smb * 1_000_000);
       await updateAppSettings(ctx.ws, {
         photos: {
           keepOriginals: keep.input.checked,
           ingest: { formats: format.value === 'jpeg' ? ['image/jpeg'] : ['image/webp', 'image/jpeg'], quality: q, maxEdge: e, maxBytes: mb === null ? null : Math.round(mb * 1_000_000) },
+          request: { formats: [...s.request.formats], quality: sq, maxEdge: se, maxBytes: sentBytes },
         },
       });
       ctx.notices.toast('Photo settings saved');
@@ -99,6 +115,10 @@ async function photoControls(ctx, app) {
     keep.el,
     h('div', { class: 'row' }, field('Save photos as', format), field('Quality (0.5 to 1)', quality)),
     h('div', { class: 'row' }, field('Longest side, pixels', edge), field('Largest file, MB', size)),
+    h('h3', { text: 'Photos for Shiori' }),
+    h('p', { class: 'sub', text: 'The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.' }),
+    h('div', { class: 'row' }, field('Longest side sent, pixels', sentEdge), field('Largest photo sent, MB', sentSize)),
+    h('div', { class: 'row' }, field('Quality sent (0.5 to 1)', sentQuality)),
     error,
     h('div', { class: 'acts' }, save),
   ];

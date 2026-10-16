@@ -298,3 +298,19 @@ test('a request cut off because the page is being left is not a failed turn: the
   await next.idle();
   assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Yes, still here.']);
 });
+
+test('read sends a request copy, named by the turn that sends it, with both sizes; a later read reuses it', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/big.webp' } }] }, { toolCalls: [{ name: 'read', input: { path: '/trip/files/big.webp' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+  k.agent.send('Look');
+  await k.agent.idle();
+  const [first, second] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
+  assert.match(first.data.content, /4032×3024, sent as 2000×1500/);
+  assert.equal(first.data.images[0].path, '/trip/files/big.webp');
+  assert.equal(first.refs.at(-1), first.data.images[0].hash);
+  assert.equal(second.data.images[0].hash, first.data.images[0].hash);
+  assert.equal(k.codec.calls.length, 1);
+  const sent = k.requests[1].messages.at(-1).parts.find((/** @type {any} */ p) => p.type === 'image');
+  assert.equal(sent.hash, first.data.images[0].hash);
+  assert.equal(sent.path, '/trip/files/big.webp');
+});

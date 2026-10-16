@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { requestLimits, fits, PhotoCopies, sizeLine, healRegion } from '../../src/core/request-photos.js';
 import { photoSettings } from '../../src/core/photos.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { fakeCodec } from './agent-kit.js';
 
 const request = photoSettings({}).request;
 
@@ -26,22 +27,6 @@ test('fits: format, longest edge and size', () => {
   assert.equal(fits({ type: 'image/jpeg', size: 3 * 2 ** 20 }, l), false);
 });
 
-/** A codec that "decodes" a source written as "WxH" and reports what it was asked. */
-function fakeCodec() {
-  const calls = [];
-  return {
-    calls,
-    async encode(/** @type {Blob} */ blob, /** @type {any} */ o) {
-      calls.push(o);
-      const [w, h] = (await blob.text()).split('x').map(Number);
-      const box = o.crop ?? { width: w, height: h };
-      const s = Math.min(1, (o.maxEdge ?? Infinity) / Math.max(box.width, box.height));
-      const width = Math.floor(box.width * s);
-      const height = Math.floor(box.height * s);
-      return { bytes: utf8(`${width}x${height}:${JSON.stringify(o.crop ?? null)}`), type: o.formats[0], width, height };
-    },
-  };
-}
 
 test('a photo within the limits goes as it is; one over them is copied once, and the copy reused', async () => {
   const codec = fakeCodec();

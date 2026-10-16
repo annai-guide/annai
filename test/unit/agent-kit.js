@@ -14,6 +14,25 @@ import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { readFile } from 'node:fs/promises';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
+import { utf8 } from '../../src/core/bytes.js';
+
+/** A codec that "decodes" a source written as "WxH" and reports what it was asked. */
+export function fakeCodec() {
+  /** @type {any[]} */
+  const calls = [];
+  return {
+    calls,
+    async encode(/** @type {Blob} */ blob, /** @type {any} */ o) {
+      calls.push(o);
+      const [w, h] = (await blob.text()).split('x').map(Number);
+      const box = o.crop ?? { width: w, height: h };
+      const s = Math.min(1, (o.maxEdge ?? Infinity) / Math.max(box.width, box.height));
+      const width = Math.floor(box.width * s);
+      const height = Math.floor(box.height * s);
+      return { bytes: utf8(`${width}x${height}:${JSON.stringify(o.crop ?? null)}`), type: o.formats[0], width, height };
+    },
+  };
+}
 
 /**
  * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
@@ -61,7 +80,8 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   };
   /** @type {any[]} */
   const notices = [];
-  const agent = new Agent({ store, ws, llm, registry, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
+  const codec = fakeCodec();
+  const agent = new Agent({ store, ws, llm, registry, codec, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
   agent.addLoopTools(selfTools(agent));
   agent.on('notice', (n) => notices.push(n));
   /** @type {Record<string, string>} annai's own personalities, as shipped */
@@ -70,5 +90,5 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */
   const events = (types) => store.tx(['events'], 'readonly', (t) => t.listEvents(trip, types ? { types } : {}));
-  return { store, ws, trip, registry, host, agent, llm, config, requests, events, notices, presets };
+  return { store, ws, trip, registry, host, agent, llm, config, requests, events, notices, presets, codec };
 }

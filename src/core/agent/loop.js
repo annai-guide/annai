@@ -5,7 +5,7 @@ import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf } from '../llm/config.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { record, storedTexts, TALK_TAG } from './log.js';
+import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches } from './tools.js';
@@ -14,6 +14,8 @@ import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
 import { tracedFetch, withoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
+import { PhotoCopies, requestLimits } from '../request-photos.js';
+import { photoSettings } from '../photos.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -93,15 +95,18 @@ export class Agent {
   #free = [];
   /** The page is being left. */
   #leaving = false;
+  /** @type {PhotoCopies | null} */
+  #photos = null;
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set() };
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
    *   now?: () => number, online?: () => boolean, timeZone?: () => string, fetch?: (url: string, init?: RequestInit) => Promise<Response>, secondMs?: number,
+   *   codec?: ConstructorParameters<typeof PhotoCopies>[0]['codec'],
    *   timers?: { set: (fn: () => void, ms: number) => any, clear: (handle: any) => void } }} c
    */
-  constructor({ store, ws, llm, registry, now = Date.now, online = () => globalThis.navigator?.onLine !== false, timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, fetch: get, secondMs = 1000,
+  constructor({ store, ws, llm, registry, codec, now = Date.now, online = () => globalThis.navigator?.onLine !== false, timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, fetch: get, secondMs = 1000,
     timers = { set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => /** @type {any} */ (setTimeout(fn, ms)), clear: (/** @type {any} */ h) => clearTimeout(h) } }) {
     this.store = store;
     this.ws = ws;
@@ -115,7 +120,21 @@ export class Agent {
     /** How housekeeping waits for the cache (tests pass their own). */
     this.timers = timers;
     this.get = get ?? ((/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init));
+    /** The browser's photo codec: request copies and crops (spec §4.8). Without one, photos go as they are. */
+    this.codec = codec ?? null;
+    this.#photos = codec ? new PhotoCopies({ codec, read: (hash) => blobBytes(this.store, hash) }) : null;
     this.#loopTools = this.#talkTools();
+  }
+
+  /** What photos sent now must fit: the stricter of the request settings and the main model's limits (spec §4.8, §9.2). */
+  async #limits() {
+    return requestLimits(photoSettings(await readAppSettings(this.ws)).request, (await this.#mainModel())?.images);
+  }
+
+  /** A request copy of a stored photo, or a crop of it (spec §4.8). @param {import('../request-photos.js').Source} source @param {import('../request-photos.js').Crop} [crop] */
+  async #copy(source, crop) {
+    if (!this.#photos) return { hash: source.hash, mediaType: source.type, width: source.width ?? null, height: source.height ?? null, made: false };
+    return this.#photos.copy(source, await this.#limits(), crop);
   }
 
   /** @param {'state' | 'event' | 'notice'} kind @param {(x: any) => void} fn */
@@ -715,20 +734,23 @@ export class Agent {
       const call = {
         id: c.id, scope: this.scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
         sleeping: o.sleeping, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
       };
       ({ output, ms } = await runTool(tool, input, call));
     }
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
     const media = async (/** @type {any} */ m) => {
-      if (m.hash) {
-        blobs.push({ hash: m.hash, type: m.mediaType });
-        return { hash: m.hash, mediaType: m.mediaType, ...(m.path ? { path: m.path } : {}), ...(m.name ? { name: m.name } : {}) };
+      const where = { ...(m.path ? { path: m.path } : {}), ...(m.region ? { region: m.region } : {}), ...(m.name ? { name: m.name } : {}) };
+      if (m.data) {
+        // New bytes (a request copy made now, a crop, an image a page had): stored with this event, by the hash of what is stored.
+        const bytes = fromBase64(m.data);
+        const hash = await sha256Hex(bytes);
+        blobs.push({ hash, bytes, type: m.mediaType });
+        return { hash, mediaType: m.mediaType, ...where };
       }
-      const bytes = fromBase64(m.data);
-      const hash = await sha256Hex(bytes);
-      blobs.push({ hash, bytes, type: m.mediaType });
-      return { hash, mediaType: m.mediaType, ...(m.name ? { name: m.name } : {}) };
+      blobs.push({ hash: m.hash, type: m.mediaType });
+      return { hash: m.hash, mediaType: m.mediaType, ...where };
     };
     const images = [];
     for (const m of output.images ?? []) images.push(await media(m));
