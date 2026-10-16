@@ -4,7 +4,7 @@
 export class StorageFullError extends Error {
   /** @param {unknown} [cause] */
   constructor(cause) {
-    super("annai's storage on this device is full. Export a backup, then delete photos or old trips to make room.", cause === undefined ? undefined : { cause });
+    super("annai's storage on this device is full. Export a backup, then free up space on this device.", cause === undefined ? undefined : { cause });
     this.name = 'StorageFullError';
   }
 }

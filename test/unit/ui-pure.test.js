@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { relTime, bytes, dateRange, takenText } from '../../src/ui/format.js';
+import { explainStorageFull } from '../../src/ui/storage-full.js';
+import { StorageFullError } from '../../src/core/errors.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -38,4 +40,16 @@ test('takenText shows the time as the clock showed it where the photo was taken'
   assert.equal(takenText('2026-11-26T19:04:12-08:00', 'en-GB'), '26 Nov 2026, 19:04');
   assert.equal(takenText('2026-11-27T08:15:00', 'en-GB'), '27 Nov 2026, 08:15');
   assert.equal(takenText('sometime', 'en-GB'), 'sometime');
+});
+
+test('a full device gets advice that frees space: deleting inside annai keeps the old versions (spec §4.2)', () => {
+  /** @type {any[]} */
+  const cards = [];
+  assert.equal(explainStorageFull({ notices: { card: (/** @type {any} */ c) => cards.push(c) }, go: () => {} }, new StorageFullError()), true);
+  assert.equal(cards.length, 1);
+  for (const advice of [cards[0].body, new StorageFullError().message]) {
+    assert.match(advice, /free up space on this device/);
+    assert.doesNotMatch(advice, /delete photos|old trips|make room/i);
+  }
+  assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => a.label), ['Export a backup']);
 });

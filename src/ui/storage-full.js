@@ -9,11 +9,9 @@ export function explainStorageFull(ctx, e) {
   if (!(e instanceof StorageFullError)) return false;
   ctx.notices.card({
     tone: 'warn', title: "annai's storage is full",
-    body: 'Nothing was half-saved. Export a backup to keep a copy, then delete photos or old trips to make room.',
-    actions: [
-      { label: 'Export a backup', primary: true, run: () => ctx.go('#/settings') },
-      { label: 'Go to Trips', run: () => ctx.go('#/trips') },
-    ],
+    // Deleting inside annai frees nothing yet: history keeps every version (spec §4.2).
+    body: "Nothing was half-saved. Export a backup to keep a copy, then free up space on this device and try again. Deleting things in annai doesn't free space yet.",
+    actions: [{ label: 'Export a backup', primary: true, run: () => ctx.go('#/settings') }],
   });
   return true;
 }
