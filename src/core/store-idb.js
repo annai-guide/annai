@@ -1,5 +1,5 @@
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').Tx} Tx */
-import { storeError } from './errors.js';
+import { storeError, StoppedError } from './errors.js';
 
 export const DB_NAME = 'annai';
 export const DB_VERSION = 2;
@@ -69,8 +69,10 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
     return d;
   };
   await connect();
+  let closed = false;
   return {
     async tx(stores, mode, fn) {
+      if (closed) throw new StoppedError(); // never reopen: another tab owns the data now
       for (let attempt = 0; ; attempt++) {
         const d = db ?? (await connect());
         try {
@@ -85,6 +87,7 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
       }
     },
     close() {
+      closed = true;
       db?.close();
       db = null;
     },

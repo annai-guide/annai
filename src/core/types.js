@@ -44,6 +44,6 @@
 |'readwrite', fn: (tx: Tx) => Promise<T>) => Promise<T>} tx
  *   Runs fn in one transaction. A read-write transaction commits only if fn resolves.
  *   Inside fn, await only Tx calls: awaiting anything else lets IndexedDB commit early.
- * @property {() => void} close
+ * @property {() => void} close  stops the store for good: every later tx rejects with StoppedError (errors.js)
  */
 export {};

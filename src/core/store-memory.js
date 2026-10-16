@@ -1,5 +1,5 @@
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').Tx} Tx */
-import { storeError } from './errors.js';
+import { storeError, StoppedError } from './errors.js';
 
 /**
  * An in-memory Store with the same contract as the IndexedDB store, for unit
@@ -12,8 +12,10 @@ export function createMemoryStore() {
   let data = emptyData();
   /** @type {Promise<unknown>} */
   let queue = Promise.resolve();
+  let closed = false;
   return {
     tx(stores, mode, fn) {
+      if (closed) return Promise.reject(new StoppedError());
       const run = async () => {
         const work = mode === 'readwrite' ? copy(data) : data;
         const result = await fn(makeTx(work, mode, new Set(stores)));
@@ -24,7 +26,7 @@ export function createMemoryStore() {
       queue = p.catch(() => {});
       return p.catch((e) => { throw storeError(e); });
     },
-    close() {},
+    close() { closed = true; },
   };
 }
 

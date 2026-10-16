@@ -102,4 +102,15 @@ export default function (test, assert) {
     s.close();
     await eraseDatabase(name);
   });
+
+  test('idb: a closed store never opens the database again (a tab that stopped must not write)', async () => {
+    const name = `annai-test-closed-${Date.now()}`;
+    /** @type {IDBDatabase[]} */
+    const connections = [];
+    const s = await createIdbStore(name, { onOpen: (db) => connections.push(db) });
+    s.close();
+    await assert.rejects(s.tx(['files'], 'readwrite', (t) => t.putFile(rec)));
+    assert.equal(connections.length, 1);
+    await eraseDatabase(name);
+  });
 }

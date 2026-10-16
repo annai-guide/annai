@@ -1,4 +1,4 @@
-import { StorageFullError } from '../../src/core/errors.js';
+import { StorageFullError, StoppedError } from '../../src/core/errors.js';
 
 /**
  * Behaviour every Store must have. Runs under node:test against the memory
@@ -151,5 +151,13 @@ export function storeContract(test, assert, makeStore) {
       throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
     }), StorageFullError);
     assert.deepEqual(await s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), []);
+  });
+
+  test('tx: a closed store refuses every transaction from then on', async () => {
+    const s = await makeStore();
+    await s.tx(['files'], 'readwrite', (t) => t.putFile(file('trip-1', '/a.md')));
+    s.close();
+    await assert.rejects(s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), StoppedError);
+    await assert.rejects(s.tx(['files'], 'readwrite', (t) => t.putFile(file('trip-1', '/b.md'))), StoppedError);
   });
 }
