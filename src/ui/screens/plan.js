@@ -25,10 +25,10 @@ export async function renderPlan(ctx, route) {
   const fallbackTz = [trip.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
   const plan = await records(ctx, id, '/plan/', PLAN_FILE);
   const bookings = await records(ctx, id, '/bookings/', BOOKING_FILE);
-  const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz });
+  const locale = navigator.language || 'en-US';
+  const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz, locale });
   const { days, untimed } = planDays(rows, trip);
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
-  const locale = navigator.language || 'en-US';
 
   const tabs = [...days.map((d) => ({ key: d.key, label: dayLabel(d.key, locale), rows: d.rows })), ...(untimed.length ? [{ key: '', label: `No time yet (${untimed.length})`, rows: untimed }] : [])];
   const today = dayIn(Date.now(), deviceZone());
@@ -107,7 +107,9 @@ function timetable(id, rows, links, locale) {
 /** @param {string} id @param {import('../../core/plan.js').PlanRow} r */
 function row(id, r) {
   const it = r.item;
-  const when = it.kind === 'all-day' ? 'All day' : r.end ? `${r.time}–${r.end}` : r.time;
+  // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so.
+  const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
+  const when = it.kind === 'all-day' ? 'All day' : r.end ? [`${r.time}–${r.end}`, later, r.endZone].filter(Boolean).join(' ') : r.time;
   return h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: when }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),

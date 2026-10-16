@@ -1,4 +1,4 @@
-import { dayIn, timeIn, validZone } from './time.js';
+import { dayIn, timeIn, validZone, offsetMinutes } from './time.js';
 
 /**
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the
@@ -6,8 +6,11 @@ import { dayIn, timeIn, validZone } from './time.js';
  * @typedef {{ path: string, item: Record<string, any> }} PlanFile
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
  * @typedef {{ path: string, item: Record<string, any>, at: number | null, day: string | null, time: string, end: string,
- *   bookingPath: string | null, booking: Record<string, any> | null, check: boolean, missing: boolean, note: string }} PlanRow
- *   time and end: "HH:MM" in the item's own zones ('' when there is none, and for an all-day item); check: its booking isn't
+ *   endDays: number, endZone: string, bookingPath: string | null, booking: Record<string, any> | null, check: boolean,
+ *   missing: boolean, note: string }} PlanRow
+ *   time and end: "HH:MM" in the item's own zones ('' when there is none, and for an all-day item); endDays: how many days
+ *   after the row's day the end falls, on the end's own clock (a red-eye's 1); endZone: the end's zone, short ("EST"), when
+ *   its clock reads differently from the start's ('' when it doesn't, and when there is no end); check: its booking isn't
  *   confirmed (whatever else it says, the user checks it); missing: it names a booking the trip doesn't have; note: what
  *   was wrong with its time
  */
@@ -27,10 +30,11 @@ export function bookingRef(ref) {
 
 /**
  * @param {PlanFile[]} items @param {BookingFile[]} bookings
- * @param {{ fallbackTz: string }} o the zone for a time whose own zone annai doesn't know
+ * @param {{ fallbackTz: string, locale: string }} o the zone for a time whose own zone annai doesn't know, and the
+ *   locale that names an end's zone
  * @returns {PlanRow[]}
  */
-export function planRows(items, bookings, { fallbackTz }) {
+export function planRows(items, bookings, { fallbackTz, locale }) {
   const byPath = new Map(bookings.map((b) => [b.path, b.booking]));
   return items.filter((x) => x.item && typeof x.item === 'object' && !Array.isArray(x.item)).map(({ path, item }) => {
     const at = Date.parse(item.start?.at ?? '');
@@ -39,14 +43,20 @@ export function planRows(items, bookings, { fallbackTz }) {
     const tz = validZone(own) ? own : fallbackTz;
     const endTz = validZone(item.end?.tz) ? item.end.tz : tz;
     const allDay = item.kind === 'all-day';
+    const endAt = Date.parse(item.end?.at ?? '');
+    const ends = timed && !allDay && Number.isFinite(endAt);
+    const day = timed ? dayIn(at, tz) : null;
     const ref = bookingRef(item.booking);
     const booking = ref ? byPath.get(ref) ?? null : null;
     return {
       path, item,
       at: timed ? at : null,
-      day: timed ? dayIn(at, tz) : null,
+      day,
       time: timed && !allDay ? timeIn(at, tz) ?? '' : '',
-      end: timed && !allDay && item.end?.at ? timeIn(item.end.at, endTz) ?? '' : '',
+      end: ends ? timeIn(endAt, endTz) ?? '' : '',
+      endDays: ends && day ? daysApart(day, dayIn(endAt, endTz) ?? day) : 0,
+      // Another zone with the same clock (New York and Toronto) needs no name.
+      endZone: ends && offsetMinutes(endAt, endTz) !== offsetMinutes(endAt, tz) ? zoneName(endAt, endTz, locale) : '',
       bookingPath: ref,
       booking,
       check: booking !== null && booking.status !== 'confirmed',
@@ -54,6 +64,17 @@ export function planRows(items, bookings, { fallbackTz }) {
       note: timed && !validZone(own) ? `Its time zone "${String(own ?? '')}" isn't one annai knows; shown in ${fallbackTz}.` : '',
     };
   });
+}
+
+/** Days from one "YYYY-MM-DD" to another. @param {string} from @param {string} to */
+function daysApart(from, to) {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
+/** A zone as the locale names it short at an instant: "EST" in en-US, "GMT-5" in de-DE. @param {number} at @param {string} tz @param {string} locale */
+function zoneName(at, tz, locale) {
+  const parts = new Intl.DateTimeFormat(safe(locale), { timeZone: tz, timeZoneName: 'short' }).formatToParts(at);
+  return parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
 }
 
 /** Every date from start to end, at most 60; just start when there is no good end. @param {unknown} start @param {unknown} end */
