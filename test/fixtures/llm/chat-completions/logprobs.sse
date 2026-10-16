@@ -1,0 +1,6 @@
+data: {"id":"gen-2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":"B"},"logprobs":{"content":[{"token":"B","logprob":-0.05,"top_logprobs":[{"token":"B","logprob":-0.05},{"token":"A","logprob":-3.2}]}]},"finish_reason":null}]}
+
+data: {"id":"gen-2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"."},"logprobs":{"content":[{"token":".","logprob":-0.01,"top_logprobs":[{"token":".","logprob":-0.01}]}]},"finish_reason":"stop"}]}
+
+data: [DONE]
+

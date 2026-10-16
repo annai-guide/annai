@@ -82,6 +82,32 @@ test('build: a 5-minute cache, a beta header, no key, and the request’s own ma
   assert.equal(type.build(spec({ request: { messages: [] } })).body.system, undefined);
 });
 
+test('build: the tail goes last, after the cache marker; documents and a forced tool', () => {
+  const s = spec({
+    request: {
+      system: 'Be brief.',
+      cacheTtl: '5m',
+      toolChoice: 'decide',
+      tools: [{ name: 'decide', description: 'Pick one.', input: { type: 'object' } }],
+      messages: [{ role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBE', name: 'menu.pdf' }, { type: 'text', text: 'Hi' }] }],
+      tail: '<now>16:12</now>',
+    },
+  });
+  const { body } = type.build(s);
+  assert.deepEqual(body.messages, [{ role: 'user', content: [
+    { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBE' }, title: 'menu.pdf' },
+    { type: 'text', text: 'Hi', cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: '<now>16:12</now>' },
+  ] }]);
+  assert.deepEqual(body.tool_choice, { type: 'tool', name: 'decide' });
+  assert.equal(type.tail, true);
+});
+
+test('read: a paused turn stops with "pause", to be sent back and continued', async () => {
+  const events = await read(await fixture('pause.sse'));
+  assert.deepEqual(events.at(-1), { type: 'stop', reason: 'pause' });
+});
+
 test('read: text with cache reads and writes of both lifetimes, and the stop reason', async () => {
   assert.deepEqual(await read(await fixture('text.sse')), [
     { type: 'usage', usage: { input: 50, cacheRead: 8000, cacheWrite: 1500, cacheWrite1h: 500, output: 1 } },

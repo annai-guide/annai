@@ -16,15 +16,19 @@ const root = new URL('../../', import.meta.url);
 
 /**
  * A fetch serving this repository's catalog and plugin files; with `bump`, the scripted model's
- * manifest and catalog entry say 0.1.1, as if annai had shipped a new version.
+ * manifest and catalog entry carry the next patch version, as if annai had shipped a new version.
  */
+/** The scripted model's shipped version, and the next patch version. */
+const NOW = JSON.parse(await readFile(new URL('plugins-official/scripted-model/annai-plugin.json', root), 'utf8')).version;
+const NEXT = NOW.replace(/\d+$/, (/** @type {string} */ n) => String(Number(n) + 1));
+
 async function repo({ bump = false } = {}) {
   const manifest = JSON.parse(await readFile(new URL('plugins-official/scripted-model/annai-plugin.json', root), 'utf8'));
-  const bumped = utf8(JSON.stringify({ ...manifest, version: '0.1.1' }, null, 2) + '\n');
+  const bumped = utf8(JSON.stringify({ ...manifest, version: NEXT }, null, 2) + '\n');
   const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
   if (bump) {
     const entry = catalog.plugins.find((/** @type {any} */ p) => p.id === 'scripted-model');
-    entry.version = '0.1.1';
+    entry.version = NEXT;
     entry.files['annai-plugin.json'] = await sha256Hex(bumped);
   }
   return async (/** @type {any} */ url) => {
@@ -58,7 +62,7 @@ test("official plugins whose catalog version differs are offered; others aren't 
   await ensureType(host, 'scripted', { fetch: await repo() });
   assert.deepEqual(await officialUpdates(host, { fetch: await repo() }), []);
   const updates = await officialUpdates(host, { fetch: await repo({ bump: true }) });
-  assert.deepEqual(updates.map((u) => [u.id, u.installed, u.available]), [['scripted-model', '0.1.0', '0.1.1']]);
+  assert.deepEqual(updates.map((u) => [u.id, u.installed, u.available]), [['scripted-model', NOW, NEXT]]);
 });
 
 test('updating: old code that already ran needs a restart; code that never ran starts now; the on/off choice is kept', async () => {
@@ -66,7 +70,7 @@ test('updating: old code that already ran needs a restart; code that never ran s
   await ensureType(host, 'scripted', { fetch: await repo() });
   const [u] = await officialUpdates(host, { fetch: await repo({ bump: true }) });
   assert.equal(await updateOfficial(host, u.entry, { fetch: await repo({ bump: true }) }), 'restart');
-  assert.equal((await host.installed())['scripted-model'].version, '0.1.1');
+  assert.equal((await host.installed())['scripted-model'].version, NEXT);
   assert.deepEqual(await officialUpdates(host, { fetch: await repo({ bump: true }) }), []);
 
   const fresh = await setup();
@@ -92,7 +96,7 @@ test('the card offers updates, applies them on Update, and offers a restart; off
   const offered = await offerPluginUpdates(ctx, env);
   assert.equal(offered.length, 1);
   assert.equal(cards[0].title, 'Plugin updates are ready');
-  assert.match(cards[0].body, /Scripted model 0\.1\.0 → 0\.1\.1/);
+  assert.ok(cards[0].body.includes(`Scripted model ${NOW} → ${NEXT}`), cards[0].body);
   // Updating stops the running version, so the cards say so (spec §5.3).
   assert.match(cards[0].body, /off until annai restarts/);
   await applyUpdates(ctx, offered, env);

@@ -93,6 +93,12 @@ export function activate(annai) {
   - It falls back to the next model of the role when this one fails.
   - It records every attempt in the trace, without keys.
 - **Show progress:** yield `{ type: 'reasoning_delta', text }` for each piece of thinking as it arrives, and the whole block as `{ type: 'reasoning', text, signature? }` when it ends. annai gives up on a model that sends nothing for a while (spec §9.6), so a model that thinks silently looks like one that never started.
+- **The request** may carry:
+  - `tail`: the now block. Put it last, inside the final user message, after any cache marker, and declare `tail: true`. Without `tail: true`, annai adds it as the last text itself.
+  - `toolChoice`: the name of a tool the model must call.
+  - `logprobs`: how many alternatives to report for the first token, as `{ type: 'logprobs', top: [{ token, logprob }] }`.
+  - `document` parts: PDFs, base64.
+- **A paused turn** (the provider stopped early and wants the reply back) stops with `pause`.
 - **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.

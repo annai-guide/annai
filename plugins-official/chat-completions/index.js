@@ -21,6 +21,7 @@ export function activate(annai) {
     type: 'chat-completions',
     name: 'Chat Completions',
     tunables: TUNABLES,
+    tail: true,
     /** @param {any} c */
     build: (c) => build(c),
     /** @param {Response} res @param {any} c */
@@ -54,7 +55,21 @@ function build({ endpoint, model, key, tunables: t, request }) {
   if (request.tools?.length) {
     body.tools = request.tools.map((/** @type {any} */ x) => ({ type: 'function', function: { name: x.name, description: x.description, parameters: x.input } }));
   }
+  if (request.toolChoice) body.tool_choice = { type: 'function', function: { name: request.toolChoice } };
+  if (request.logprobs) {
+    body.logprobs = true;
+    body.top_logprobs = request.logprobs;
+  }
+  if (request.tail) addTail(messages, request.tail);
   return { url: join(endpoint.baseUrl, t.path), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body };
+}
+
+/** The now block, last: on the final user message, or as its own after tool results (spec §6.3). @param {any[]} messages @param {string} tail */
+function addTail(messages, tail) {
+  const last = messages.at(-1);
+  if (last?.role !== 'user') messages.push({ role: 'user', content: tail });
+  else if (typeof last.content === 'string') last.content = `${last.content}\n\n${tail}`;
+  else last.content.push({ type: 'text', text: tail });
 }
 
 /** One of annai's messages as chat messages: tool results become "tool" messages ahead of the rest. @param {any} m @param {any} t */
@@ -69,13 +84,15 @@ function wire(m, t) {
     return [out];
   }
   const results = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => ({ role: 'tool', tool_call_id: p.id, content: p.content }));
-  const rest = m.parts.filter((/** @type {any} */ p) => p.type === 'text' || p.type === 'image');
+  const rest = m.parts.filter((/** @type {any} */ p) => p.type === 'text' || p.type === 'image' || p.type === 'document');
   if (!rest.length) return results;
   const content = rest.every((/** @type {any} */ p) => p.type === 'text')
     ? rest.map((/** @type {any} */ p) => p.text).join('\n')
-    : rest.map((/** @type {any} */ p) => (p.type === 'text'
-      ? { type: 'text', text: p.text }
-      : { type: 'image_url', image_url: { url: `data:${p.mediaType};base64,${p.data}`, ...(t.imageDetail ? { detail: t.imageDetail } : {}) } }));
+    : rest.map((/** @type {any} */ p) => {
+      if (p.type === 'text') return { type: 'text', text: p.text };
+      if (p.type === 'document') return { type: 'file', file: { filename: p.name ?? 'document.pdf', file_data: `data:${p.mediaType};base64,${p.data}` } };
+      return { type: 'image_url', image_url: { url: `data:${p.mediaType};base64,${p.data}`, ...(t.imageDetail ? { detail: t.imageDetail } : {}) } };
+    });
   return [...results, { role: 'user', content }];
 }
 
@@ -91,6 +108,7 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
   /** @type {string | null} */
   let finish = null;
   let done = false;
+  let sentLogprobs = false;
   const flush = () => {
     const r = reasoning;
     reasoning = '';
@@ -115,6 +133,12 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     }
     const choice = chunk.choices?.[0];
     const d = choice?.delta ?? {};
+    const lp = choice?.logprobs?.content?.[0];
+    if (lp && !sentLogprobs) {
+      sentLogprobs = true;
+      const top = Array.isArray(lp.top_logprobs) && lp.top_logprobs.length ? lp.top_logprobs : [lp];
+      yield { type: 'logprobs', top: top.map((/** @type {any} */ x) => ({ token: String(x.token), logprob: Number(x.logprob) })) };
+    }
     const r = t.reasoningField === 'auto' ? d.reasoning_content ?? d.reasoning : d[t.reasoningField];
     if (typeof r === 'string' && r) {
       reasoning += r;

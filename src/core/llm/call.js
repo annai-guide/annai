@@ -17,11 +17,26 @@ import { NO_USAGE, mergeUsage, costOf } from './cost.js';
  * @typedef {import('./config.js').Endpoint} Endpoint
  * @typedef {import('./config.js').Model} Model
  * @typedef {ReturnType<typeof import('./trace.js').modelTrace>} ModelTrace
- * @typedef {{ parts: Part[], text: string, usage: Usage, cost: number | undefined, stop: StopReason, model: string }} Reply
+ * @typedef {{ parts: Part[], text: string, usage: Usage, cost: number | undefined, stop: StopReason, model: string, logprobs?: { token: string, logprob: number }[] }} Reply
  * @typedef {(url: string, init: RequestInit) => Promise<Response>} Fetch
  */
 
 const defaultFetch = /** @type {Fetch} */ ((url, init) => fetch(url, init));
+
+/**
+ * The request with its tail as the last text of the final user message (or a user message of its
+ * own), for endpoint types that don't place it themselves.
+ * @param {Request} request @returns {Request}
+ */
+export function withTail(request) {
+  if (!request.tail) return request;
+  const { tail, ...rest } = request;
+  const messages = request.messages.slice();
+  const last = messages.at(-1);
+  if (last?.role === 'user') messages[messages.length - 1] = { role: 'user', parts: [...last.parts, { type: 'text', text: tail }] };
+  else messages.push({ role: 'user', parts: [{ type: 'text', text: tail }] });
+  return { ...rest, messages };
+}
 
 /**
  * The body with the endpoint's extra fields, then the model's, then the reasoning level's patch
@@ -48,8 +63,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
     if (/auth|key|token|secret|cookie|session|password/i.test(name)) trace?.secret(String(value).replace(/^(Bearer|Basic)\s+/i, ''));
   }
+  const req = type.tail ? request : withTail(request);
   /** @type {CallSpec} */
-  const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...request, messages: portable(request.messages, model.providerId) } };
+  const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
   const started = now();
   const timer = new AbortController();
   const late = () => timer.abort(new DOMException('No output in time.', 'TimeoutError'));
@@ -57,6 +73,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const linked = signal ? AbortSignal.any([signal, timer.signal]) : timer.signal;
   /** @type {Part[]} */
   const parts = [];
+  /** @type {{ token: string, logprob: number }[] | undefined} */
+  let logprobs;
   /** @type {Usage} */
   let usage = { ...NO_USAGE };
   /** @type {StopReason} */
@@ -78,6 +96,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       parts.push({ type: 'reasoning', text: ev.text, ...(ev.signature ? { signature: ev.signature } : {}), ...(ev.redacted ? { redacted: ev.redacted } : {}), model: model.providerId });
     } else if (ev.type === 'tool_call') {
       parts.push({ type: 'tool_call', id: ev.id, name: ev.name, input: ev.input });
+    } else if (ev.type === 'logprobs') {
+      logprobs = ev.top;
     } else if (ev.type === 'usage') {
       usage = mergeUsage(usage, ev.usage);
     } else if (ev.type === 'stop') {
@@ -119,7 +139,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   clearTimeout(t);
   const cost = costOf(usage, model.prices);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
-  return { parts, text: textOf(parts), usage, cost, stop, model: model.id };
+  return { parts, text: textOf(parts), usage, cost, stop, model: model.id, ...(logprobs ? { logprobs } : {}) };
 }
 
 /** @param {Part[]} parts */

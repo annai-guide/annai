@@ -4,7 +4,7 @@
  * are sent back unchanged to the model that wrote them (annai's core drops them for any other).
  */
 const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192 });
-const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'other' });
+const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'pause' });
 const TYPES = /** @type {Record<string, string>} */ ({
   authentication_error: 'auth', permission_error: 'auth', billing_error: 'credit', rate_limit_error: 'rate', overloaded_error: 'overloaded',
   request_too_large: 'context', not_found_error: 'not-found', api_error: 'server', timeout_error: 'server',
@@ -17,6 +17,7 @@ export function activate(annai) {
     type: 'anthropic-messages',
     name: 'Anthropic Messages',
     tunables: TUNABLES,
+    tail: true,
     /** @param {any} c */
     build: (c) => build(c),
     /** @param {Response} res */
@@ -51,9 +52,17 @@ function build({ endpoint, model, key, tunables: t, request }) {
   const body = { model: model.providerId, max_tokens: request.maxOutput ?? model.maxOutput ?? t.defaultMaxTokens, messages: wire(request.messages, model.providerId), stream: true };
   if (request.system) body.system = [{ type: 'text', text: request.system, ...(request.cacheTtl ? { cache_control: cacheControl(request.cacheTtl) } : {}) }];
   if (request.tools?.length) body.tools = request.tools.map((/** @type {any} */ x) => ({ name: x.name, description: x.description, input_schema: x.input }));
-  if (request.cacheTtl && body.messages.length) {
-    const last = body.messages.at(-1).content;
-    last[last.length - 1] = { ...last[last.length - 1], cache_control: cacheControl(request.cacheTtl) };
+  if (request.toolChoice) body.tool_choice = { type: 'tool', name: request.toolChoice };
+  const last = body.messages.at(-1);
+  if (request.cacheTtl && last) {
+    const blocks = last.content;
+    blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: cacheControl(request.cacheTtl) };
+  }
+  // The now block comes after the marker, so the cached prefix of this request is a prefix of the next one (spec §6.3).
+  // A request that ends with Shiori's own message is a paused turn being continued, so it gets no tail.
+  if (request.tail) {
+    if (last?.role === 'user') last.content.push({ type: 'text', text: request.tail });
+    else if (!last) body.messages.push({ role: 'user', content: [{ type: 'text', text: request.tail }] });
   }
   return { url: join(endpoint.baseUrl, t.path), headers: headersFor(endpoint, key, t), body };
 }
@@ -70,6 +79,7 @@ function wire(messages, providerId) {
     const blocks = m.parts.flatMap((/** @type {any} */ p) => {
       if (p.type === 'text') return [{ type: 'text', text: p.text }];
       if (p.type === 'image') return [{ type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } }];
+      if (p.type === 'document') return [{ type: 'document', source: { type: 'base64', media_type: p.mediaType, data: p.data }, ...(p.name ? { title: p.name } : {}) }];
       if (p.type === 'tool_call') return [{ type: 'tool_use', id: p.id, name: p.name, input: p.input ?? {} }];
       if (p.type === 'tool_result') return [{ type: 'tool_result', tool_use_id: p.id, content: p.content, ...(p.isError ? { is_error: true } : {}) }];
       if (p.type === 'reasoning' && p.model === providerId) {

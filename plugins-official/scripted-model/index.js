@@ -5,6 +5,8 @@
  *   { text, reasoning, toolCalls: [{ name, input }], usage, delayMs }   a reply
  *   { error: kind, message, status, retryAfter }                        a failure (spec §9.9 kinds)
  *   { text, cut: true }                                                 says text, then the connection drops
+ *   logprobs: [{ token, logprob }] reports the first token's alternatives; stop: the stop reason (default "tool" or "end").
+ * It reads no messages, so it takes the request as built, tail included (tail: true).
  * @param {any} annai
  */
 export function activate(annai) {
@@ -15,6 +17,7 @@ export function activate(annai) {
     type: 'scripted',
     name: 'Scripted model (for testing)',
     tunables: { script: [{ text: 'Hello from the scripted model.' }] },
+    tail: true,
     /** @param {{ endpoint: any, signal?: AbortSignal }} c */
     async *run({ endpoint, signal }) {
       const script = Array.isArray(endpoint.tunables?.script) && endpoint.tunables.script.length ? endpoint.tunables.script : [{ text: '' }];
@@ -24,12 +27,13 @@ export function activate(annai) {
       if (step.delayMs) await sleep(step.delayMs, signal);
       if (step.error) throw new ProviderError(step.error, step.message ?? `Scripted ${step.error}.`, { status: step.status, retryAfter: step.retryAfter });
       if (step.reasoning) yield { type: 'reasoning', text: step.reasoning };
+      if (Array.isArray(step.logprobs)) yield { type: 'logprobs', top: step.logprobs };
       for (const piece of pieces(step.text ?? '')) yield { type: 'text', text: piece };
       if (step.cut) throw new ProviderError('network', 'The scripted connection dropped.');
       const toolCalls = Array.isArray(step.toolCalls) ? step.toolCalls : [];
       for (const [i, c] of toolCalls.entries()) yield { type: 'tool_call', id: `scripted_${n}_${i}`, name: c.name, input: c.input ?? {} };
       yield { type: 'usage', usage: step.usage ?? { input: 12, output: 6 } };
-      yield { type: 'stop', reason: toolCalls.length ? 'tool' : 'end' };
+      yield { type: 'stop', reason: step.stop ?? (toolCalls.length ? 'tool' : 'end') };
     },
     async list() {
       return [{ providerId: 'scripted', name: 'Scripted', contextWindow: 200000, maxOutput: 4096, input: ['text', 'image'], tools: true }];

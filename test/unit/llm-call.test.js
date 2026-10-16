@@ -4,7 +4,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
-import { callOnce, applyPatches } from '../../src/core/llm/call.js';
+import { callOnce, applyPatches, withTail } from '../../src/core/llm/call.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { text as textOf } from '../../src/core/bytes.js';
 
@@ -216,4 +216,24 @@ test('short keys, keys in the path, and secrets inside secrets are blanked too',
   for (const secret of [key, 'z9Y8', 'abcd1234']) assert.ok(!shown.includes(secret), `${secret} reached the trace: ${shown}`);
   assert.equal(ev.data.url, 'https://llm.test/bot«key»/send?…');
   assert.ok(!shown.includes('efgh') || shown.includes('«key»efgh'), 'an outer secret is blanked whole');
+});
+
+test('a type that does not place the tail itself gets it folded into the last user message', async () => {
+  /** @type {any} */
+  let seen = null;
+  const t = runType(async function* (/** @type {any} */ c) { seen = c.request; yield { type: 'text', text: 'ok' }; yield { type: 'stop', reason: 'end' }; });
+  await callOnce({ type: t, endpoint: endpoint(), model: model(), key: null, request: { ...request, tail: 'NOW' } });
+  assert.equal(seen.tail, undefined);
+  assert.deepEqual(seen.messages.at(-1).parts.at(-1), { type: 'text', text: 'NOW' });
+  assert.deepEqual(withTail({ messages: [{ role: 'assistant', parts: [{ type: 'text', text: 'Hi' }] }], tail: 'NOW' }).messages.at(-1), { role: 'user', parts: [{ type: 'text', text: 'NOW' }] });
+});
+
+test("the reply keeps the first token's alternatives", async () => {
+  const t = runType(async function* () {
+    yield { type: 'logprobs', top: [{ token: 'A', logprob: -0.1 }] };
+    yield { type: 'text', text: 'A' };
+    yield { type: 'stop', reason: 'end' };
+  });
+  const reply = await callOnce({ type: t, endpoint: endpoint(), model: model(), key: null, request });
+  assert.deepEqual(reply.logprobs, [{ token: 'A', logprob: -0.1 }]);
 });

@@ -5,24 +5,30 @@
  *
  * @typedef {{ type: 'text', text: string }
  *   | { type: 'image', mediaType: string, data: string }
+ *   | { type: 'document', mediaType: string, data: string, name?: string }
  *   | { type: 'tool_call', id: string, name: string, input: any }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
- *   image.data is base64. reasoning.model is the provider model id that wrote it: a signed block
+ *   image.data and document.data are base64 (a document is a PDF). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
- * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h' }} Request
+ * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
+ *   tail?: string, toolChoice?: string, logprobs?: number }} Request
+ *   tail: volatile text (the now block) sent last, inside the final user message, after any cache marker.
+ *   toolChoice: a tool the model must call. logprobs: how many alternatives to report for the first token.
  * @typedef {{ input: number, cacheRead: number, cacheWrite: number, cacheWrite1h: number, output: number, reasoning: number, cost?: number }} Usage
  *   Tokens. input leaves out cache reads and writes; output includes reasoning, which is also
  *   counted on its own. cost is in USD, when the provider reports it.
- * @typedef {'end' | 'tool' | 'length' | 'refusal' | 'other'} StopReason
+ * @typedef {'end' | 'tool' | 'length' | 'refusal' | 'pause' | 'other'} StopReason
+ *   pause: the provider paused a long turn; send the reply back as it is, and it continues.
  * @typedef {{ type: 'text', text: string }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string }
  *   | { type: 'reasoning_delta', text: string }
  *   | { type: 'tool_input', id: string, name: string, partial: string }
  *   | { type: 'tool_call', id: string, name: string, input: any }
  *   | { type: 'usage', usage: Partial<Usage> }
+ *   | { type: 'logprobs', top: { token: string, logprob: number }[] }
  *   | { type: 'stop', reason: StopReason }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started.
@@ -156,6 +162,7 @@ export function safeId(id) {
  * @property {string} name  shown in Settings
  * @property {string} pluginId  set by annai
  * @property {Record<string, any>} [tunables]  defaults for the type's tunables (spec §9.2)
+ * @property {boolean} [tail]  true when build() places request.tail itself; otherwise annai adds it as the last text
  * @property {(c: CallSpec) => { url: string, headers: Record<string, string>, body: any }} [build]  the HTTP request for annai's request
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
  * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network

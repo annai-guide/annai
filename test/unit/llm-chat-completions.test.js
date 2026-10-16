@@ -72,6 +72,40 @@ test('build: a reply that held only reasoning is left out, since an empty assist
   assert.deepEqual(type.build(s).body.messages, [{ role: 'user', content: 'Hi' }, { role: 'user', content: 'Hello?' }]);
 });
 
+test('build: the tail joins the last user message, or follows tool results; documents, a forced tool, logprobs', () => {
+  const s = spec({
+    request: {
+      toolChoice: 'decide',
+      logprobs: 5,
+      tools: [{ name: 'decide', description: 'Pick one.', input: { type: 'object' } }],
+      messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }, { type: 'document', mediaType: 'application/pdf', data: 'JVBE', name: 'menu.pdf' }] }],
+      tail: '<now>16:12</now>',
+    },
+  });
+  const { body } = type.build(s);
+  assert.deepEqual(body.messages.at(-1), { role: 'user', content: [
+    { type: 'text', text: 'Hi' },
+    { type: 'file', file: { filename: 'menu.pdf', file_data: 'data:application/pdf;base64,JVBE' } },
+    { type: 'text', text: '<now>16:12</now>' },
+  ] });
+  assert.deepEqual(body.tool_choice, { type: 'function', function: { name: 'decide' } });
+  assert.equal(body.logprobs, true);
+  assert.equal(body.top_logprobs, 5);
+  const plain = type.build(spec({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }], tail: 'NOW' } })).body;
+  assert.deepEqual(plain.messages.at(-1), { role: 'user', content: 'Hi\n\nNOW' });
+  const afterTools = type.build(spec({ request: { messages: [
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'c1', name: 'look', input: {} }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'seen' }] },
+  ], tail: 'NOW' } })).body;
+  assert.deepEqual(afterTools.messages.slice(-2), [{ role: 'tool', tool_call_id: 'c1', content: 'seen' }, { role: 'user', content: 'NOW' }]);
+  assert.equal(type.tail, true);
+});
+
+test('read: the first token’s alternatives, once', async () => {
+  const events = await read(await fixture('logprobs.sse'));
+  assert.deepEqual(events.filter((e) => e.type === 'logprobs'), [{ type: 'logprobs', top: [{ token: 'B', logprob: -0.05 }, { token: 'A', logprob: -3.2 }] }]);
+});
+
 test('build: the tunables for OpenAI and for endpoints without usage in streams or a key', () => {
   const tunables = { ...type.tunables, maxTokensField: 'max_completion_tokens', systemRole: 'developer', usageInStream: false, imageDetail: 'high' };
   const s = spec({ key: null, tunables, request: { system: 'S', messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/jpeg', data: 'BBBB' }] }] } });
