@@ -2,7 +2,7 @@
 import { storeError } from './errors.js';
 
 export const DB_NAME = 'annai';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /**
  * Opens the database, creating or upgrading it. An upgrade that another connection
@@ -13,14 +13,17 @@ export const DB_VERSION = 1;
 export function openDatabase(name = DB_NAME, version = DB_VERSION) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(name, version);
-    req.onupgradeneeded = (e) => upgrade(req.result, e.oldVersion);
+    req.onupgradeneeded = (e) => upgrade(req.result, /** @type {IDBTransaction} */ (req.transaction), e.oldVersion);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-/** Ordered migrations, each in the all-or-nothing versionchange transaction (spec §4.6). @param {IDBDatabase} db @param {number} from */
-function upgrade(db, from) {
+/**
+ * Ordered migrations, each in the all-or-nothing versionchange transaction (spec §4.6).
+ * @param {IDBDatabase} db @param {IDBTransaction} tx @param {number} from
+ */
+function upgrade(db, tx, from) {
   if (from < 1) {
     db.createObjectStore('blobs', { keyPath: 'hash' });
     db.createObjectStore('files', { keyPath: ['scope', 'path'] });
@@ -28,6 +31,8 @@ function upgrade(db, from) {
     db.createObjectStore('secrets', { keyPath: 'id' });
     db.createObjectStore('scopes', { keyPath: 'id' });
   }
+  // 2: blob sizes can be listed without reading any content (spec §4.9).
+  if (from < 2) tx.objectStore('blobs').createIndex('size', 'size');
 }
 
 /** Deletes a whole database (used by "Erase everything" and by tests). @param {string} [name] */
@@ -150,6 +155,21 @@ function makeTx(t) {
     hasBlob: async (hash) => (await req(os('blobs').getKey(hash))) !== undefined,
     putBlob: async (rec) => { await req(os('blobs').put(rec)); },
     deleteBlob: async (hash) => { await req(os('blobs').delete(hash)); },
+    listBlobs: () => new Promise((res, rej) => {
+      /** @type {{ hash: string, size: number }[]} */
+      const out = [];
+      const r = os('blobs').index('size').openKeyCursor();
+      r.onsuccess = () => {
+        const c = r.result;
+        if (!c) {
+          res(out);
+          return;
+        }
+        out.push({ hash: /** @type {string} */ (c.primaryKey), size: /** @type {number} */ (c.key) });
+        c.continue();
+      };
+      r.onerror = () => rej(r.error);
+    }),
     getFile: (scope, path) => req(os('files').get([scope, path])),
     putFile: async (entry) => { await req(os('files').put(entry)); },
     deleteFile: async (scope, path) => { await req(os('files').delete([scope, path])); },

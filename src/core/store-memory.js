@@ -63,6 +63,7 @@ function makeTx(d, mode, allowed) {
     async hasBlob(hash) { return use('blobs').has(hash); },
     async putBlob(rec) { use('blobs', true).set(rec.hash, structuredClone(rec)); },
     async deleteBlob(hash) { use('blobs', true).delete(hash); },
+    async listBlobs() { return [...use('blobs').values()].map((b) => ({ hash: b.hash, size: b.size })); },
     async getFile(scope, path) { return out(use('files').get(fkey(scope, path))); },
     async putFile(entry) { use('files', true).set(fkey(entry.scope, entry.path), structuredClone(entry)); },
     async deleteFile(scope, path) { use('files', true).delete(fkey(scope, path)); },

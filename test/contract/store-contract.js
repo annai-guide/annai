@@ -31,6 +31,16 @@ export function storeContract(test, assert, makeStore) {
     assert.equal(await s.tx(['blobs'], 'readonly', (t) => t.getBlob('abc')), undefined);
   });
 
+  test('blobs: listBlobs gives every hash and size, not the content', async () => {
+    const s = await makeStore();
+    await s.tx(['blobs'], 'readwrite', async (t) => {
+      await t.putBlob({ hash: 'b', type: 'image/webp', size: 5, data: buf('hello') });
+      await t.putBlob({ hash: 'a', type: 'text/plain', size: 2, data: buf('hi') });
+    });
+    const list = await s.tx(['blobs'], 'readonly', (t) => t.listBlobs());
+    assert.deepEqual([...list].sort((x, y) => (x.hash < y.hash ? -1 : 1)), [{ hash: 'a', size: 2 }, { hash: 'b', size: 5 }]);
+  });
+
   test('files: list by prefix in path order, scoped, and delete', async () => {
     const s = await makeStore();
     await s.tx(['files'], 'readwrite', async (t) => {

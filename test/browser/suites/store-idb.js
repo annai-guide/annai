@@ -1,5 +1,5 @@
 import { storeContract } from '../../contract/store-contract.js';
-import { createIdbStore, eraseDatabase, openDatabase } from '../../../src/core/store-idb.js';
+import { createIdbStore, eraseDatabase, openDatabase, DB_VERSION } from '../../../src/core/store-idb.js';
 
 /** @param {any} test @param {any} assert */
 export default function (test, assert) {
@@ -70,9 +70,36 @@ export default function (test, assert) {
     const old = await openDatabase(name);
     // An old connection with no versionchange handler, like a service worker mid-read.
     setTimeout(() => old.close(), 100);
-    const upgraded = await openDatabase(name, 2);
-    assert.equal(upgraded.version, 2);
+    const upgraded = await openDatabase(name, DB_VERSION + 1);
+    assert.equal(upgraded.version, DB_VERSION + 1);
     upgraded.close();
+    await eraseDatabase(name);
+  });
+
+  test('idb: a version-1 database gains the blob-size index and keeps its blobs', async () => {
+    const name = `annai-test-v1-${Date.now()}`;
+    await eraseDatabase(name);
+    // Version 1 exactly as milestone 1 shipped it, holding one photo.
+    const v1 = await /** @type {Promise<IDBDatabase>} */ (new Promise((resolve, reject) => {
+      const r = indexedDB.open(name, 1);
+      r.onupgradeneeded = () => {
+        /** @type {[string, string | string[]][]} */
+        const stores = [['blobs', 'hash'], ['files', ['scope', 'path']], ['events', ['scope', 'seq']], ['secrets', 'id'], ['scopes', 'id']];
+        for (const [store, keyPath] of stores) r.result.createObjectStore(store, { keyPath });
+      };
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    }));
+    await new Promise((resolve, reject) => {
+      const tx = v1.transaction('blobs', 'readwrite');
+      tx.objectStore('blobs').put({ hash: 'abc', type: 'image/webp', size: 3, data: new Uint8Array([1, 2, 3]).buffer });
+      tx.oncomplete = () => resolve(undefined);
+      tx.onerror = () => reject(tx.error);
+    });
+    v1.close();
+    const s = await createIdbStore(name);
+    assert.deepEqual(await s.tx(['blobs'], 'readonly', (t) => t.listBlobs()), [{ hash: 'abc', size: 3 }]);
+    s.close();
     await eraseDatabase(name);
   });
 }
