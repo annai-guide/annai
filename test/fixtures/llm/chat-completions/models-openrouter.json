@@ -1,0 +1,26 @@
+{
+  "data": [
+    {
+      "id": "anthropic/claude-haiku-5.5",
+      "name": "Anthropic: Claude Haiku 5.5",
+      "context_length": 1000000,
+      "architecture": { "modality": "text+image+file->text", "input_modalities": ["text", "image", "file"], "output_modalities": ["text"] },
+      "pricing": {
+        "prompt": "0.0000001", "completion": "0.0000005", "web_search": "0.01",
+        "input_cache_read": "0.00000001", "input_cache_write": "0.000000125", "input_cache_write_1h": "0.0000002",
+        "overrides": [{ "min_prompt_tokens": 100000, "prompt": "0.0000005", "completion": "0.0000025", "input_cache_read": "0.00000005", "input_cache_write": "0.000000625", "input_cache_write_1h": "0.000001" }]
+      },
+      "top_provider": { "context_length": 1000000, "max_completion_tokens": 128000, "is_moderated": true },
+      "supported_parameters": ["include_reasoning", "max_completion_tokens", "max_tokens", "reasoning", "reasoning_effort", "response_format", "stop", "structured_outputs", "tool_choice", "tools", "verbosity"]
+    },
+    {
+      "id": "google/gemma-4-31b-it:free",
+      "name": "Google: Gemma 4 31B (free)",
+      "context_length": 262144,
+      "architecture": { "input_modalities": ["image", "text", "video"], "output_modalities": ["text"] },
+      "pricing": { "prompt": "0", "completion": "0" },
+      "top_provider": { "context_length": 262144, "max_completion_tokens": 32768 },
+      "supported_parameters": ["max_tokens", "reasoning", "tools"]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+: OPENROUTER PROCESSING
+
+data: {"id":"gen-1","object":"chat.completion.chunk","model":"anthropic/claude-haiku-5.5","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"reasoning":"The user greets me. "},"finish_reason":null}]}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"reasoning":"Reply warmly."},"finish_reason":null}]}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"こんにちは! "},"finish_reason":null}]}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Welcome to Kyoto."},"finish_reason":"stop"}]}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","choices":[],"usage":{"prompt_tokens":1200,"completion_tokens":40,"total_tokens":1240,"prompt_tokens_details":{"cached_tokens":1000},"completion_tokens_details":{"reasoning_tokens":12},"cost":0.000125}}
+
+data: [DONE]
+

@@ -2,6 +2,20 @@
   "format": 1,
   "plugins": [
     {
+      "id": "chat-completions",
+      "name": "Chat Completions",
+      "version": "0.1.0",
+      "provides": {
+        "endpoint-type": [
+          "chat-completions"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "e6e9f8727f22c9d3d4728500b5a121f091f2da397a09eb5ae9b0b071ad631306",
+        "index.js": "96cc2423fa274f6907c942c8efa652e5fdc30c7fcd58bc4064b39e44579b706d"
+      }
+    },
+    {
       "id": "scripted-model",
       "name": "Scripted model",
       "version": "0.1.0",
