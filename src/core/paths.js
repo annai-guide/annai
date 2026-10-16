@@ -79,7 +79,7 @@ const TYPES = {
   js: 'text/javascript', mjs: 'text/javascript', svg: 'image/svg+xml',
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
   heic: 'image/heic', heif: 'image/heif', avif: 'image/avif', pdf: 'application/pdf',
-  ics: 'text/calendar', pkpass: 'application/vnd.apple.pkpass', zip: 'application/zip',
+  ics: 'text/calendar', eml: 'message/rfc822', pkpass: 'application/vnd.apple.pkpass', zip: 'application/zip',
   mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', webm: 'audio/webm', ogg: 'audio/ogg',
   woff2: 'font/woff2',
 };
@@ -92,7 +92,7 @@ export function typeForPath(path) {
 
 /** @param {string} type */
 export function isTextType(type) {
-  return type.startsWith('text/') || type === 'application/json' || type === 'application/x-ndjson' || type === 'image/svg+xml';
+  return type.startsWith('text/') || type === 'application/json' || type === 'application/x-ndjson' || type === 'image/svg+xml' || type === 'message/rfc822';
 }
 
 /** Types that are already compressed, so zip should store them as-is. @param {string} type */
