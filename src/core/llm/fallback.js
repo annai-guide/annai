@@ -73,6 +73,7 @@ export function estimateTokens(request) {
 /** Why a model can't take this request, or null (spec §9.6: the list also handles capability gaps). @param {Model} model @param {Request} request */
 export function gap(model, request) {
   if (request.messages.some((m) => m.parts.some((p) => p.type === 'image')) && !model.input.includes('image')) return 'no-images';
+  if (request.messages.some((m) => m.parts.some((p) => p.type === 'audio')) && !model.input.includes('audio')) return 'no-audio';
   if (request.tools?.length && model.tools === false) return 'no-tools';
   if (request.needsProviderTool && !enabledProviderTools(model, request).some((t) => t.kind === request.needsProviderTool)) return 'no-provider-tool';
   if (model.contextWindow && estimateTokens(request) > model.contextWindow) return 'too-long';
@@ -124,10 +125,12 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
- *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads }} c
+ *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
+ *   speech?: (model: Model, request: Request) => Promise<Request> }} c
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
+ *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -153,6 +156,7 @@ export async function callRole(c) {
   const list = candidates(config, role);
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
+  let began = false;
   for (const id of ordered) {
     const rec = config.models[id];
     const epRec = rec ? config.endpoints[rec.endpoint] : undefined;
@@ -168,10 +172,22 @@ export async function callRole(c) {
     let repairs = 0;
     let uploadRetries = 0;
     for (let retry = 0; ; retry++) {
+      // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
+      let sendable = request;
+      if (c.speech) {
+        try {
+          sendable = await c.speech(model, request);
+        } catch (e) {
+          attempts.push({ model: id, name: model.name, outcome: 'no-speech', ms: 0, error: String(/** @type {any} */ (e)?.message ?? e) });
+          break;
+        }
+      }
+      if (began) c.onEvent?.({ type: 'restart' });
+      began = true;
       const started = now();
       try {
         const reply = await callOnce({
-          type, endpoint, model, key, request, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
+          type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
           trace: c.trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads,
         });
         usage = addUsage(usage, reply.usage);
