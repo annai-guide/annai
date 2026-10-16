@@ -3,7 +3,7 @@
  * "anthropic-dangerous-direct-browser-access" header. Thinking comes back as signed blocks, which
  * are sent back unchanged to the model that wrote them (annai's core drops them for any other).
  */
-const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192 });
+const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192, uploads: true });
 const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'pause' });
 const TYPES = /** @type {Record<string, string>} */ ({
   authentication_error: 'auth', permission_error: 'auth', billing_error: 'credit', rate_limit_error: 'rate', overloaded_error: 'overloaded',
@@ -23,6 +23,17 @@ export function activate(annai) {
     /** @param {Response} res */
     read: (res) => read(res, sse, ProviderError),
     classify,
+    /** A photo to the files API, expiring as asked (spec §4.8). @param {any} c */
+    uploadRequest: ({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds }) => {
+      const headers = headersFor(endpoint, key, { ...TUNABLES, ...tunables });
+      delete headers['content-type']; // FormData sets its own, with the boundary
+      const body = new FormData();
+      body.set('file', new Blob([bytes], { type: mediaType }), name);
+      body.set('expires_in_seconds', String(expiresInSeconds));
+      return { url: join(endpoint.baseUrl, '/v1/files'), headers, body };
+    },
+    /** @param {any} j */
+    readUpload: (j) => ({ id: String(j.id), ...(j.expires_at ? { expiresAt: Date.parse(j.expires_at) } : {}) }),
     /** @param {{ endpoint: any, key: string | null }} c */
     listRequest: ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, '/v1/models'), headers: headersFor(endpoint, key, { ...TUNABLES, ...endpoint.tunables }) }),
     readList,
@@ -80,7 +91,7 @@ function wire(messages, providerId) {
   for (const m of messages) {
     const blocks = m.parts.flatMap((/** @type {any} */ p) => {
       if (p.type === 'text') return [{ type: 'text', text: p.text }];
-      if (p.type === 'image') return [{ type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } }];
+      if (p.type === 'image') return [p.fileId ? { type: 'image', source: { type: 'file', file_id: p.fileId } } : { type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } }];
       if (p.type === 'document') return [{ type: 'document', source: { type: 'base64', media_type: p.mediaType, data: p.data }, ...(p.name ? { title: p.name } : {}) }];
       if (p.type === 'provider') return p.model === providerId ? [p.block] : [];
       // A call whose arguments were cut short kept them as text; the API takes only an object, so it gets an empty one.
@@ -209,6 +220,8 @@ function classify(_status, body) {
     return null;
   }
   if (!e?.type) return null;
+  // An uploaded photo that expired or is unknown: upload it again (spec §9.9).
+  if (/\bfile\b[^.]*\b(not found|expired)/i.test(String(e.message ?? ''))) return 'upload';
   if (TYPES[e.type]) return TYPES[e.type];
   if (e.type !== 'invalid_request_error') return null;
   const m = String(e.message ?? '');

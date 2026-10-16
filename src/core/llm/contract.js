@@ -180,6 +180,9 @@ export function safeId(id) {
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => { url: string, headers: Record<string, string> }} [listRequest]
  * @property {(json: any) => ListedModel[]} [readList]
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]
+ *   a photo upload to the provider's files API (spec §4.8)
+ * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
  */
 

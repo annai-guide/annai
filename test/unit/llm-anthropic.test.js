@@ -192,3 +192,18 @@ test('build: a tool call whose arguments were cut short is sent with an empty in
   const use = type.build(s).body.messages.flatMap((/** @type {any} */ m) => m.content).find((/** @type {any} */ b) => b.type === 'tool_use');
   assert.deepEqual(use.input, {});
 });
+
+test('uploads: a multipart request to the files API that expires in 48 hours; files go in messages by id', async () => {
+  const s = spec();
+  const r = type.uploadRequest({ ...s, bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/webp', name: 'annai-abc.webp', expiresInSeconds: 172800 });
+  assert.equal(r.url, 'https://api.anthropic.com/v1/files');
+  assert.equal(r.headers['x-api-key'], s.key);
+  assert.equal(r.headers['anthropic-dangerous-direct-browser-access'], 'true');
+  assert.equal(r.headers['content-type'], undefined);
+  assert.equal(r.body.get('expires_in_seconds'), '172800');
+  assert.equal(/** @type {File} */ (r.body.get('file')).name, 'annai-abc.webp');
+  assert.deepEqual(type.readUpload({ id: 'file_1', expires_at: '2026-11-28T10:00:00Z' }), { id: 'file_1', expiresAt: Date.parse('2026-11-28T10:00:00Z') });
+  const body = type.build(spec({ request: { messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', fileId: 'file_1' }] }] } })).body;
+  assert.deepEqual(body.messages[0].content[0], { type: 'image', source: { type: 'file', file_id: 'file_1' } });
+  assert.equal(type.classify(404, JSON.stringify({ type: 'error', error: { type: 'not_found_error', message: 'File `file_1` not found.' } })), 'upload');
+});

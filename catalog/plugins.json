@@ -4,15 +4,15 @@
     {
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
-      "version": "0.2.2",
+      "version": "0.3.0",
       "provides": {
         "endpoint-type": [
           "anthropic-messages"
         ]
       },
       "files": {
-        "annai-plugin.json": "8cfbdde25af538c74f7840a56a586628f235595fbf7454fdf7d60aed6e94a547",
-        "index.js": "91e0d796c52dd7c77f25c43e8cc66cf102e92d534f1140b6a5b4f1acb2f3c467"
+        "annai-plugin.json": "60b6e645b769967c7b97dfd7102f2c1bb4e4f2f2b0d48fae895dd7bafb29994f",
+        "index.js": "5f04053758ea694cab858bd4bc9ea40f0c40a246ffcb30c264de5c29afe9549f"
       }
     },
     {
