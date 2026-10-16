@@ -42,6 +42,21 @@
         "annai-plugin.json": "83304c1d6944f272af8fd031b719febbcf386a412b0e9defc8e4c43ebf18b750",
         "index.js": "e7d42ecd78a2e08f0b6364318b2d706997a670de6cf4418efabd71e52b39547a"
       }
+    },
+    {
+      "id": "speech-openai",
+      "name": "OpenAI-compatible speech",
+      "version": "0.1.0",
+      "provides": {
+        "endpoint-type": [
+          "openai-transcription",
+          "openai-speech"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "dbca4582d9573c785ee087c508bc49def4db52d9e970c93b089a2b0762656e31",
+        "index.js": "782c91d77097a925391ef962c6f214aff9402c7a1128ea14a5b223c1d2f4e548"
+      }
     }
   ]
 }

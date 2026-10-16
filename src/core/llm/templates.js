@@ -1,5 +1,5 @@
 import { SYS_SETTINGS } from '../scopes.js';
-import { readConfig, newEndpoint, newModel, saveEndpoint, saveModel, saveRoles, setKey, modelOf } from './config.js';
+import { readConfig, newEndpoint, newModel, saveEndpoint, saveModel, saveRoles, setKey, modelOf, SPEECH_ROLES, SPEECH_DEFAULTS } from './config.js';
 
 /**
  * Templates (spec §9.8): annai's catalog of endpoints and popular models, with their
@@ -68,16 +68,33 @@ function uniqueName(name, taken) {
 }
 
 /**
- * Roles with a template's suggestion filled in. With onlyEmpty, roles the user has set are kept.
+ * A speech list with models added (spec §10.3): a transcription model goes after "Send audio to
+ * the model" (or first), a voice ahead of the browser voice (or last). Models already in it stay where they are.
+ * @param {readonly string[]} list @param {string[]} add @param {string} role @returns {string[]}
+ */
+export function withSpeech(list, add, role) {
+  const fresh = add.filter((id, i) => !list.includes(id) && add.indexOf(id) === i);
+  const at = role === 'speech-in' ? list.indexOf('send-audio') + 1 : list.includes('browser-voice') ? list.indexOf('browser-voice') : list.length;
+  return [...list.slice(0, at), ...fresh, ...list.slice(at)];
+}
+
+/**
+ * Roles with a template's suggestion filled in. With onlyEmpty, chat roles the user has set are
+ * kept. A speech list keeps its stand-ins and the user's order: the suggested models join it.
  * @param {Roles} roles @param {Map<string, string>} byProvider provider model id → model id
  * @param {Record<string, string[]> | undefined} suggestion @param {boolean} onlyEmpty
  */
 function suggested(roles, byProvider, suggestion, onlyEmpty) {
   const next = structuredClone(roles);
   for (const [role, providers] of Object.entries(suggestion ?? {})) {
-    if (onlyEmpty && next[role]?.models.length) continue;
     const models = providers.map((p) => byProvider.get(p)).filter((x) => typeof x === 'string');
-    if (models.length) next[role] = { models, level: next[role]?.level ?? 'off' };
+    if (!models.length) continue;
+    if (SPEECH_ROLES.includes(role)) {
+      next[role] = { ...next[role], level: next[role]?.level ?? 'off', models: withSpeech(next[role]?.models ?? SPEECH_DEFAULTS[role] ?? [], models, role) };
+      continue;
+    }
+    if (onlyEmpty && next[role]?.models.length) continue;
+    next[role] = { models, level: next[role]?.level ?? 'off' };
   }
   return next;
 }
