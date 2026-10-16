@@ -65,7 +65,7 @@ test('a conversation falls back from one provider to another, and the trace show
     }
     await expect(page.getByText('2. b-model')).toBeVisible();
     await page.getByLabel('Message', { exact: true }).fill('Hello');
-    await page.getByRole('button', { name: 'Send' }).click();
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.locator('.talk-text').last()).toHaveText('Hello from B.');
     await expect(page.getByText(/^b-model · .* after 1 failed attempt \(a-model: out of credit\)$/)).toBeVisible();
     await page.getByRole('link', { name: 'Trace' }).click();
