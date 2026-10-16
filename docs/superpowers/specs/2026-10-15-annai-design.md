@@ -149,10 +149,12 @@ A photo is encoded at two points, each with its own settings: **ingest**, once, 
   - A source within the limits is sent as it is. Otherwise a copy is made once, stored by its fingerprint, and reused on every later turn. The bytes then stay the same, so the provider's cache stays warm.
   - The conversation shows the copy Shiori was sent, so she sees what the user sees. She is also told both sizes ("4032×3024, sent as 2000×1500"), so she knows when a closer look would help.
   - **A refused image is fixed and retried automatically** (§9.9). Rules recognize the usual error messages, and the utility model reads unfamiliar ones. The new copy replaces the refused one in the conversation, and the refused one is deleted. The lesson ("at most 5 MB") is saved on the model, so the same refusal doesn't happen twice.
-  - **Provider uploads.** Where an endpoint can store files (Anthropic, OpenAI and Gemini have files APIs), each request copy is uploaded once. Later requests refer to it by its id: a few bytes per turn instead of the photo.
+  - **Provider uploads.** Where an endpoint can store files (Anthropic, OpenAI, Gemini and OpenRouter have files APIs), each request copy is uploaded once. Later requests refer to it by its id: a few bytes per turn instead of the photo.
     - It is on by default, since the photo goes to that provider anyway; a switch on the endpoint turns it off.
-    - annai deletes its uploads when compaction drops the photo and when the trip is archived.
-    - Some providers delete uploads on their own (Gemini after 48 hours). An expired id is simply uploaded again.
+    - **Every upload expires after 48 hours.** Anthropic and OpenAI let annai set that, and Gemini always does it. So nothing annai uploads outlives its use for long, even when annai's own data is lost. An expired id is simply uploaded again.
+    - **Where a provider can't expire uploads** (OpenRouter today), annai deletes its own, which it names `annai-…`. It deletes one when compaction drops the photo. At each start, it also deletes any of its uploads there that is more than 48 hours old, found by name and age, so this works even after annai's data is lost.
+    - OpenRouter's documentation suggests uploading may need a management key, so uploads there are used only once the endpoint's Test shows they work (§9.8).
+    - Storing uploads costs nothing at Anthropic and Gemini; OpenAI lists no price for it (checked 2026-10-15).
 - **A closer look.**
   - `read(path, region)` crops the source and sends the crop through the request settings (§7.2).
   - In the photo viewer, the user can crop what is on screen and send it to Shiori (§16.2).
@@ -493,6 +495,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   - Templates cover Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral and local servers. The local-server template notes that a phone needs an HTTPS address, such as a tunnel.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
+  - Where the endpoint has a files API, it also uploads that small image, so annai knows whether photo uploads work with this key (§4.8).
   - It explains failures in plain words: "this endpoint blocks web apps" is a different message from "key rejected".
 
 ### 9.9 Usage, cost, errors, keys
