@@ -87,3 +87,21 @@ test('tracedFetch: every request is in the trace, with credentials in the addres
   assert.equal(evs[1].data.error, 'Failed to fetch');
   assert.doesNotMatch(JSON.stringify(evs), /SECRET123|pw@/);
 });
+
+test('tracedFetch: no secret annai keeps reaches the trace, whatever its parameter is called or wherever it sits', async () => {
+  const store = createMemoryStore();
+  await store.tx(['secrets'], 'readwrite', async (t) => {
+    await t.putSecret('plugin:weather:key', 'WXSECRET9876');
+    await t.putSecret('llm:ep-1', 'sk-ant-LLMSECRET42');
+  });
+  const ok = tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => new Response('ok'));
+  await ok('https://api.weather.test/v1/WXSECRET9876/forecast?appid=WXSECRET9876&q=big+sur');
+  await ok('https://x.test/?note=sk-ant-LLMSECRET42');
+  await ok('not an address ?appid=WXSECRET9876');
+  const failing = tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => { throw new TypeError('Failed to fetch https://a.test/?k=WXSECRET9876'); });
+  await assert.rejects(failing('https://a.test/?k=WXSECRET9876'), TypeError);
+  const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
+  assert.equal(evs.length, 4);
+  assert.doesNotMatch(JSON.stringify(evs), /WXSECRET9876|LLMSECRET42/);
+  assert.match(evs[0].data.url, /q=big\+sur/);
+});
