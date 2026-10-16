@@ -121,3 +121,26 @@ test("a photo this browser can't show says so, with what is known about it", asy
   await expect(page.getByText("This browser can't show this photo.")).toBeVisible();
   await expect(page.locator('figcaption')).toContainText('Stored as taken');
 });
+
+test('Keep originals stores photos as taken, and JPEG can be chosen over WebP', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const trip = page.url();
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByLabel('Keep originals: store photos exactly as taken').check();
+  await page.getByRole('button', { name: 'Save photo settings' }).click();
+  await expect(page.getByText('Photo settings saved')).toBeVisible();
+  await page.goto(trip);
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await page.getByRole('link', { name: /\/files\/2026-11-26-1904\.jpg/ }).click();
+  await expect(page.locator('figcaption')).toContainText('Stored as taken');
+
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByLabel('Keep originals: store photos exactly as taken').uncheck();
+  await page.getByLabel('Save photos as').selectOption('jpeg');
+  await page.getByRole('button', { name: 'Save photo settings' }).click();
+  await expect(page.getByText('Photo settings saved').last()).toBeVisible();
+  await page.goto(trip);
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('screenshot.png'));
+  await expect(page.getByRole('link', { name: /\/files\/screenshot\.jpg/ })).toBeVisible();
+});

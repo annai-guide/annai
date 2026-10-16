@@ -1,5 +1,7 @@
-import { h, field } from '../dom.js';
-import { readAppSettings } from '../../core/settings.js';
+import { h, field, checkbox } from '../dom.js';
+import { readAppSettings, updateAppSettings } from '../../core/settings.js';
+import { photoSettings } from '../../core/photos.js';
+import { canEncode } from '../photo-codec.js';
 import { eraseDatabase } from '../../core/store-idb.js';
 import { SYS } from '../../core/scopes.js';
 import { relTime, bytes } from '../format.js';
@@ -35,6 +37,7 @@ export async function renderSettings(ctx) {
         onclick: () => exportSlot.replaceChildren(exportPanel(ctx, { kind: 'everything', title: 'everything' })),
       }, 'Export everything')),
       exportSlot),
+    section('Photos', ...(await photoControls(ctx, app))),
     section('Open an annai file', openFileButton(ctx, 'Open an annai file')),
     section('Plugins', h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/plugins' }, 'Manage plugins'))),
     section('App',
@@ -46,6 +49,53 @@ export async function renderSettings(ctx) {
       h('p', { class: 'sub', text: 'A report of recent errors and system events, without your files or keys, to paste into a bug report.' }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => copyDiagnostics(ctx) }, 'Copy diagnostics'))),
     section('Erase', eraseControls(ctx)));
+}
+
+/**
+ * Settings → Photos (spec §4.8): Keep originals, and how photos are encoded when they come in.
+ * @param {any} ctx @param {Record<string, any>} app
+ */
+async function photoControls(ctx, app) {
+  const s = photoSettings(app);
+  const webp = await canEncode('image/webp');
+  const keep = checkbox('Keep originals: store photos exactly as taken', s.keepOriginals);
+  const format = h('select', { id: 'photo-format' },
+    h('option', { value: 'webp' }, "WebP, or JPEG where this browser can't write WebP"),
+    h('option', { value: 'jpeg' }, 'JPEG'));
+  format.value = s.ingest.formats[0] === 'image/jpeg' ? 'jpeg' : 'webp';
+  const quality = h('input', { id: 'photo-quality', type: 'number', min: '0.5', max: '1', step: '0.05', value: String(s.ingest.quality) });
+  const edge = h('input', { id: 'photo-edge', type: 'number', min: '256', step: '1', placeholder: 'No limit', value: s.ingest.maxEdge === null ? '' : String(s.ingest.maxEdge) });
+  const size = h('input', { id: 'photo-size', type: 'number', min: '0.1', step: '0.1', placeholder: 'No limit', value: s.ingest.maxBytes === null ? '' : String(s.ingest.maxBytes / 1_000_000) });
+  const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  const save = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async () => {
+      const q = Number(quality.value);
+      const e = edge.value.trim() === '' ? null : Number(edge.value);
+      const mb = size.value.trim() === '' ? null : Number(size.value);
+      if (!(q >= 0.5 && q <= 1) || (e !== null && !(Number.isInteger(e) && e >= 256)) || (mb !== null && !(mb >= 0.1))) {
+        error.textContent = 'Quality goes from 0.5 to 1, the longest side is at least 256 pixels, and the largest file at least 0.1 MB. Leave a limit empty for none.';
+        error.hidden = false;
+        return;
+      }
+      error.hidden = true;
+      await updateAppSettings(ctx.ws, {
+        photos: {
+          keepOriginals: keep.input.checked,
+          ingest: { formats: format.value === 'jpeg' ? ['image/jpeg'] : ['image/webp', 'image/jpeg'], quality: q, maxEdge: e, maxBytes: mb === null ? null : Math.round(mb * 1_000_000) },
+        },
+      });
+      ctx.notices.toast('Photo settings saved');
+    },
+  }, 'Save photo settings');
+  return [
+    h('p', { class: 'sub', text: `Each photo you add is stored once. ${webp ? 'This browser writes WebP.' : "This browser can't write WebP, so photos are saved as JPEG."} The originals stay in your phone's photo library.` }),
+    keep.el,
+    h('div', { class: 'row' }, field('Save photos as', format), field('Quality (0.5 to 1)', quality)),
+    h('div', { class: 'row' }, field('Longest side, pixels', edge), field('Largest file, MB', size)),
+    error,
+    h('div', { class: 'acts' }, save),
+  ];
 }
 
 /** Spec §17 rule 4: a redacted report the user chooses to share. @param {any} ctx */
