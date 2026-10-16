@@ -82,3 +82,11 @@ test('a pass dropped on annai goes to a trip, not to the archive reader', async 
   await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
   await expect(page.getByRole('link', { name: /\/files\/flight\.pkpass/ })).toBeVisible();
 });
+
+test('a calendar without .ics in its name, sent as text/calendar, becomes plan items', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Thanksgiving');
+  await page.getByLabel('Add photos or files').setInputFiles({ name: 'invite', mimeType: 'text/calendar', buffer: Buffer.from(ICS) });
+  await expect(page.getByText('Added /files/invite, and 2 plan items from the calendar')).toBeVisible();
+  await expect(page.getByRole('link', { name: /\/plan\/ics-dinner-example-com-[0-9a-f]{8}\.json/ })).toBeVisible();
+});
