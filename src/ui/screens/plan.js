@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { planRows, planDays, legKm, distanceText, dayLabel } from '../../core/plan.js';
+import { planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
@@ -23,8 +23,8 @@ export async function renderPlan(ctx, route) {
   }
   const trip = (await ctx.ws.readJSON(id, '/trip.json').catch(() => null)) ?? {};
   const fallbackTz = [trip.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
-  const plan = await records(ctx, id, '/plan/');
-  const bookings = await records(ctx, id, '/bookings/');
+  const plan = await records(ctx, id, '/plan/', PLAN_FILE);
+  const bookings = await records(ctx, id, '/bookings/', BOOKING_FILE);
   const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz });
   const { days, untimed } = planDays(rows, trip);
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
@@ -70,13 +70,17 @@ export async function renderPlan(ctx, route) {
     h('div', { class: 'acts' }, save));
 }
 
-/** The JSON records under a folder, and how many couldn't be read. @param {any} ctx @param {string} id @param {string} prefix */
-async function records(ctx, id, prefix) {
+/**
+ * The records in a folder, and how many couldn't be read. Only files directly in it count: those are what the
+ * format check and the booking rule cover, so nothing in a subfolder shows as a plan item or a confirmed booking.
+ * @param {any} ctx @param {string} id @param {string} prefix @param {RegExp} shape
+ */
+async function records(ctx, id, prefix, shape) {
   /** @type {{ path: string, value: Record<string, any> }[]} */
   const list = [];
   let broken = 0;
   for (const f of await ctx.ws.list(id, prefix)) {
-    if (!f.path.endsWith('.json')) continue;
+    if (!shape.test(f.path)) continue;
     try {
       const value = await ctx.ws.readJSON(id, f.path);
       if (value && typeof value === 'object' && !Array.isArray(value)) list.push({ path: f.path, value });

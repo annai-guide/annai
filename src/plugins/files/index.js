@@ -1,6 +1,7 @@
 import { VERSION } from '../../app/version.js';
 import { resolvePath } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
+import { kindOf } from '../../core/scopes.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
@@ -26,6 +27,15 @@ export function activate(annai) {
   /** Checked on the path as resolved, so no way of writing it gets around the rule (spec §14.1). @param {string} scope @param {string} path */
   const writable = (scope, path) => {
     if (scope === 'me' && (path === '/personalities' || path.startsWith('/personalities/'))) throw new Error('Personalities change only through tune_personality.');
+  };
+  /**
+   * Plan items and bookings sit directly in their folders, where the format check and the booking rule cover them (spec §4.4).
+   * @param {string} scope @param {string} path
+   */
+  const recordPlace = (scope, path) => {
+    if (kindOf(scope) === 'trip' && /^\/(plan|bookings)\/.+\/[^/]+\.json$/i.test(path)) {
+      throw new Error('Plan items and bookings go directly in /trip/plan/ and /trip/bookings/, one file each: no subfolders.');
+    }
   };
   /** @param {unknown} e @param {string} path */
   const plain = (e, path) => {
@@ -134,6 +144,7 @@ export function activate(annai) {
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
+        recordPlace(scope, path);
         const r = rule(scope, path);
         const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Wrote ${i.path} (${e.size} bytes).${r.note}`;
@@ -147,6 +158,7 @@ export function activate(annai) {
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
+        recordPlace(scope, path);
         const now = await ws.readText(scope, path);
         if (now === undefined) throw new Error(`No file at ${i.path}.`);
         const n = i.old ? now.split(i.old).length - 1 : 0;
@@ -165,6 +177,7 @@ export function activate(annai) {
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
+        recordPlace(scope, path);
         const r = rule(scope, path);
         await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.${r.note}`;

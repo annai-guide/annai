@@ -23,6 +23,8 @@ export class Transcript {
   compaction = 0;
   /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet: after a reload mid-call. */
   unanswered = false;
+  /** What is waiting when unanswered: 'user' (a message) or 'wake' (something else, such as files added while it was closed). @type {'' | 'user' | 'wake'} */
+  waiting = '';
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -44,12 +46,14 @@ export class Transcript {
       if (others.length) {
         this.#add('user', others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${w.text}` })));
         this.unanswered = true;
+        this.waiting = 'wake';
       }
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !d.answer) {
         this.#add('user', [{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }, ...r.images]);
         this.unanswered = true;
+        this.waiting = 'user';
       }
     } else if (e.type === 'model.turn' && d.tag === TALK_TAG && texts.parts) {
       /** @type {Part[]} */

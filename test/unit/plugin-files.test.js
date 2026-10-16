@@ -135,3 +135,12 @@ test("bookings: Shiori can't confirm one through text the rule would read differ
   await Promise.allSettled([shiori, user]);
   assert.equal((await ws.readJSON(trip, '/bookings/hotel.json')).status, 'unverified');
 });
+
+test('plan items and bookings go directly in their folders: Shiori writing one in a subfolder is refused', async () => {
+  const { ws, trip, run } = await setup();
+  await assert.rejects(run('write', { path: '/trip/bookings/2026/hotel.json', content: { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/x.pdf' } }), /directly in \/trip\/plan\/ and \/trip\/bookings\//);
+  await assert.rejects(run('write', { path: '/trip/plan/day1/dinner.json', content: { id: 'd', title: 'Dinner', fixed: true } }), /no subfolders/);
+  assert.deepEqual(await ws.list(trip, '/bookings/'), []);
+  // Other files may sit in subfolders.
+  await run('write', { path: '/trip/bookings/scans/note.md', content: 'scanned' });
+});

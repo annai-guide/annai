@@ -13,11 +13,15 @@ import { dayIn, timeIn, validZone } from './time.js';
 
 export const LEG_MAX_KM = 1000; // farther than a day's drive: a flight, not a leg
 
+/** Where plan items and bookings live: directly in their folder, which is what the format check and the booking rule cover (§4.4). */
+export const PLAN_FILE = /^\/plan\/[^/]+\.json$/;
+export const BOOKING_FILE = /^\/bookings\/[^/]+\.json$/;
+
 /** "/trip/bookings/x.json" and "/bookings/x.json" both name the trip's /bookings/x.json. @param {unknown} ref */
 export function bookingRef(ref) {
   if (typeof ref !== 'string') return null;
   const p = ref.replace(/^\/trip(?=\/)/, '');
-  return /^\/bookings\/[^/]+\.json$/.test(p) ? p : null;
+  return BOOKING_FILE.test(p) ? p : null;
 }
 
 /**

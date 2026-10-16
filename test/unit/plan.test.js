@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingRef, planRows, planDays, legKm, distanceText, dayLabel } from '../../src/core/plan.js';
+import { bookingRef, planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE } from '../../src/core/plan.js';
 
 const LA = 'America/Los_Angeles';
 const NY = 'America/New_York';
@@ -70,4 +70,12 @@ test('distanceText and dayLabel speak the locale', () => {
   assert.equal(distanceText(10, 'en-GB'), '≈ 6.2 mi');
   assert.equal(distanceText(10, 'not a locale!'), '≈ 6.2 mi');
   assert.equal(dayLabel('2026-11-25', 'en-US'), 'Wed, Nov 25');
+});
+
+test('PLAN_FILE and BOOKING_FILE: records sit directly in their folder, as the format check and the booking rule see them', () => {
+  assert.equal(PLAN_FILE.test('/plan/dinner.json'), true);
+  assert.equal(PLAN_FILE.test('/plan/day1/dinner.json'), false);
+  assert.equal(BOOKING_FILE.test('/bookings/hotel.json'), true);
+  assert.equal(BOOKING_FILE.test('/bookings/2026/hotel.json'), false);
+  assert.equal(BOOKING_FILE.test('/bookings/hotel.pdf'), false);
 });
