@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "plugins": [
+    {
+      "id": "scripted-model",
+      "name": "Scripted model",
+      "version": "0.1.0",
+      "provides": {
+        "endpoint-type": [
+          "scripted"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "52b01a9326b6cb514e65aafcb9d3db8ffc7b9f02bf9b0f69e31e6c4713e33e31",
+        "index.js": "e8afef6f5902fd4ac84214c900e1594c13f5565be0dfc35e1db6d4837c2a08c9"
+      }
+    }
+  ]
+}

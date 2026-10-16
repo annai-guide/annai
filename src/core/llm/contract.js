@@ -138,3 +138,38 @@ export function portable(messages, modelKey) {
 export function safeId(id) {
   return String(id).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64) || 'call';
 }
+
+/**
+ * @typedef {object} CallSpec  what an endpoint type is given for one call
+ * @property {import('./config.js').Endpoint} endpoint
+ * @property {import('./config.js').Model} model
+ * @property {string | null} key
+ * @property {Record<string, any>} tunables  the endpoint's tunables with the model's over them
+ * @property {Request} request
+ * @property {AbortSignal} [signal]
+ * @typedef {{ providerId: string, name?: string, contextWindow?: number, maxOutput?: number, input?: string[], tools?: boolean,
+ *   prices?: import('./cost.js').Prices }} ListedModel
+ * @typedef {object} EndpointType  what an endpoint-type plugin registers (spec §9.1)
+ * @property {string} type  its id, e.g. "chat-completions"
+ * @property {string} name  shown in Settings
+ * @property {string} pluginId  set by annai
+ * @property {Record<string, any>} [tunables]  defaults for the type's tunables (spec §9.2)
+ * @property {(c: CallSpec) => { url: string, headers: Record<string, string>, body: any }} [build]  the HTTP request for annai's request
+ * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
+ * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
+ * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => { url: string, headers: Record<string, string> }} [listRequest]
+ * @property {(json: any) => ListedModel[]} [readList]
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
+ */
+
+/**
+ * The endpoint types running plugins provide, by type id; the first plugin to provide a type wins.
+ * @param {import('../registry.js').Registry} registry @returns {Map<string, EndpointType>}
+ */
+export function endpointTypes(registry) {
+  /** @type {Map<string, EndpointType>} */
+  const out = new Map();
+  for (const t of registry.list('endpoint-type')) if (!out.has(t.type)) out.set(t.type, t);
+  return out;
+}

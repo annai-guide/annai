@@ -5,6 +5,10 @@ import { SYS_PLUGINS } from './scopes.js';
 import { logEvent } from './events.js';
 import { readZip } from './zip.js';
 import { PluginError } from './registry.js';
+import { ProviderError, errorFromResponse } from './llm/contract.js';
+import { sse } from './llm/sse.js';
+import { parsePartialJSON } from './llm/partial-json.js';
+import { retry } from './llm/retry.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -17,6 +21,8 @@ export const START_TIMEOUT = 10_000;
 /** Launches in a row a plugin may fail to start on before annai turns it off. */
 export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
+/** Shared helpers every plugin gets (spec §5.4, §9.1). */
+const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry });
 
 export const PLUGIN_MANIFEST_SCHEMA = {
   type: 'object',
@@ -343,6 +349,19 @@ export class PluginHost {
       events: Object.freeze({
         append: (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data) => logEvent(this.ws.store, scope, { type, actor: `plugin:${id}`, data }),
       }),
+      providers: Object.freeze({
+        /** An endpoint type (spec §9.1): build() and read(), or run() for types that need no network. */
+        register: (/** @type {any} */ type) => {
+          if (typeof type?.type !== 'string' || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(type.type)) {
+            throw new PluginError(id, 'an endpoint type needs a "type" id of lowercase letters, digits and dashes');
+          }
+          if (typeof type.run !== 'function' && (typeof type.build !== 'function' || typeof type.read !== 'function')) {
+            throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run()`);
+          }
+          return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
+        },
+      }),
+      helpers: HELPERS,
       files: this.ws,
     });
   }

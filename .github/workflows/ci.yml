@@ -16,6 +16,7 @@ jobs:
       - run: npm test
       - run: npm run size
       - run: node scripts/stamp.mjs --check
+      - run: node scripts/catalog.mjs --check
       - run: npx playwright install --with-deps chromium webkit
       - run: npx playwright test
         env:

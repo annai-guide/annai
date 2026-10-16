@@ -12,5 +12,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["src/**/*.js", "scripts/**/*.mjs", "playwright.config.js"]
+  "include": ["src/**/*.js", "plugins-official/**/*.js", "scripts/**/*.mjs", "playwright.config.js"]
 }

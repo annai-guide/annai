@@ -71,6 +71,11 @@ export class Registry {
     if (this.#disabled.delete(pluginId)) this.#emit();
   }
 
+  /** Counts a failure of a plugin's code that annai caught outside guard(), e.g. while reading a stream. @param {string} pluginId @param {string} name @param {unknown} e */
+  fail(pluginId, name, e) {
+    this.#fail(pluginId, name, e);
+  }
+
   /**
    * @template {(...args: any[]) => any} F
    * @param {string} pluginId @param {string} name what the function is, for messages
