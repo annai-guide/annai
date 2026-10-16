@@ -1,10 +1,11 @@
 import { h, field, twoStep } from '../dom.js';
 import { setTripStatus } from '../../core/scopes.js';
-import { normPath, typeForPath } from '../../core/paths.js';
+import { normPath } from '../../core/paths.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { relTime, bytes, dateRange } from '../format.js';
 import { exportPanel } from '../export-panel.js';
+import { addFiles } from '../add-files.js';
 
 /** @param {string} id @param {string} path */
 export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;
@@ -80,21 +81,29 @@ function newFile(ctx, id) {
     error.textContent = e instanceof ValidationError ? `That file doesn't match its format: ${e.errors.join('; ')}` : String(e?.message ?? e);
     error.hidden = false;
   };
-  const upload = h('input', {
-    id: 'upload-file', type: 'file', class: 'visually-hidden',
-    onchange: async () => {
-      const f = upload.files?.[0];
-      if (!f) return;
-      try {
-        const target = normPath(`/files/${f.name}`);
-        await ctx.ws.write(id, target, new Uint8Array(await f.arrayBuffer()), { author: 'user', type: f.type || typeForPath(target) });
-        await ctx.render();
-        ctx.notices.toast(`Added ${target}`);
-      } catch (e) {
-        show(e);
-      }
-    },
-  });
+  const status = h('p', { class: 'sub', role: 'status' });
+  /** Adds what was picked, photos through ingest (spec §4.8). @param {HTMLInputElement} input */
+  const adder = (input) => async () => {
+    const files = [...(input.files ?? [])];
+    input.value = '';
+    if (!files.length) return;
+    error.hidden = true;
+    try {
+      const { paths, notes } = await addFiles(ctx, id, files, (done, total) => {
+        status.textContent = total > 1 && done < total ? `Adding ${done + 1} of ${total}…` : '';
+      });
+      await ctx.render();
+      for (const note of notes) ctx.notices.card({ tone: 'warn', title: 'A photo was kept as it is', body: note });
+      ctx.notices.toast(paths.length === 1 ? `Added ${paths[0]}` : `Added ${paths.length} files`);
+    } catch (e) {
+      status.textContent = '';
+      show(e);
+    }
+  };
+  const upload = h('input', { id: 'upload-file', type: 'file', multiple: true, class: 'visually-hidden' });
+  upload.addEventListener('change', adder(upload));
+  const camera = h('input', { id: 'take-photo', type: 'file', accept: 'image/*', capture: 'environment', class: 'visually-hidden' });
+  camera.addEventListener('change', adder(camera));
   return h('form', {
     class: 'panel',
     onsubmit: async (/** @type {Event} */ e) => {
@@ -113,5 +122,9 @@ function newFile(ctx, id) {
   h('h2', { class: 'section', text: 'Add a file' }),
   field('File path', path),
   error,
-  h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, 'Create'), h('label', { class: 'btn', for: 'upload-file' }, 'Upload a file'), upload));
+  h('div', { class: 'acts' },
+    h('button', { class: 'btn pri', type: 'submit' }, 'Create'),
+    h('label', { class: 'btn', for: 'upload-file' }, 'Add photos or files'), upload,
+    h('label', { class: 'btn', for: 'take-photo' }, 'Take a photo'), camera),
+  status);
 }

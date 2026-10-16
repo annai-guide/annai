@@ -46,9 +46,9 @@ test('records are checked against their format before saving', async ({ page }) 
 test('upload a photo and see it', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
-  await page.getByLabel('Upload a file').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
-  await page.getByRole('link', { name: /\/files\/gate\.png/ }).click();
-  await expect(page.getByRole('img', { name: '/files/gate.png' })).toBeVisible();
+  await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
+  await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 });
 
 test('archive a trip, then bring it back', async ({ page }) => {

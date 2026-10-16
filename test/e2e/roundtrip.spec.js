@@ -44,8 +44,8 @@ test('everything survives export, erase and import', async ({ page }) => {
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
   await page.getByRole('link', { name: '← Back to trip' }).click();
-  await page.getByLabel('Upload a file').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
-  await expect(page.getByRole('link', { name: /\/files\/gate\.png/ })).toBeVisible();
+  await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
   await page.getByRole('link', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'Export everything' }).click();
@@ -65,8 +65,8 @@ test('everything survives export, erase and import', async ({ page }) => {
   await expect(page.getByLabel('Content')).toHaveValue('千本鳥居 at dawn, before the crowds');
   await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
   await page.getByRole('link', { name: '← Back to trip' }).click();
-  await page.getByRole('link', { name: /\/files\/gate\.png/ }).click();
-  await expect(page.getByRole('img', { name: '/files/gate.png' })).toBeVisible();
+  await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
+  await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 });
 
 test('an encrypted trip opens only with its passphrase, and can replace the copy you have', async ({ page }) => {
