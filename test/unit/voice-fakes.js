@@ -2,17 +2,22 @@
  * A fake device and fake voices for the voice tests (the core never touches the DOM, spec §3).
  * Clips are their text as bytes; playing one takes playMs, and a stop is heard halfway through.
  */
+import { Bench } from '../../src/core/llm/fallback.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
+
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-/** @param {{ playMs?: number, blocked?: boolean }} [o] */
-export function fakePlatform({ playMs = 20, blocked = false } = {}) {
+/** @param {{ playMs?: number, blocked?: boolean, dictation?: boolean }} [o] */
+export function fakePlatform({ playMs = 20, blocked = false, dictation = false } = {}) {
   /** @type {string[]} */
   const log = [];
   /** @type {string[]} */
   const sessions = [];
   /** @type {((pcm: Float32Array, rate: number) => void) | null} */
   let frames = null;
+  /** @type {any} */
+  let heard = null;
   let opens = 0;
   const platform = {
     log,
@@ -58,7 +63,19 @@ export function fakePlatform({ playMs = 20, blocked = false } = {}) {
         for (let i = 0; i < pcm.length && frames; i += 2048) frames(pcm.subarray(i, i + 2048), rate);
       },
     },
-    dictation: { available: () => false, open() { return { close() {} }; } },
+    dictation: {
+      available: () => dictation,
+      /** @param {{ onSegment: (text: string) => void, onSpeech?: () => void, onError: (e: Error) => void }} o */
+      open(o) {
+        log.push('dictation open');
+        heard = o;
+        return { close() { log.push('dictation close'); heard = null; } };
+      },
+      /** Dictation hears someone say this. @param {string} text */
+      say(text) { heard?.onSpeech?.(); heard?.onSegment(text); },
+      /** Dictation fails, as the browser's recognition does. @param {string} code */
+      fail(code) { heard?.onError(Object.assign(new Error(`Phone dictation stopped (${code}).`), { code })); },
+    },
   };
   return platform;
 }
@@ -90,6 +107,49 @@ export function fakeVoices(ids, { failing = {}, fetchMs = 2, browser = false } =
         }, fetchMs);
         signal.addEventListener('abort', () => { clearTimeout(t); log.push(`aborted ${entry.id} ${text}`); reject(new DOMException('Stopped.', 'AbortError')); }, { once: true });
       });
+    },
+  };
+}
+
+/**
+ * A fake llm service for the Voice: chat models in the main role (with their inputs), a voice (v1),
+ * transcription models, and the two speech lists. calls records what was asked.
+ * @param {{ main?: { id: string, input: string[] }[], asr?: string[], speechIn?: string[], speechOut?: string[], hears?: string[], failing?: string[], reply?: string }} [o]
+ *   hears: what transcription answers, in turn (the last repeats); failing: transcription models that fail; reply: what a chat call answers
+ */
+export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], speechIn = ['send-audio', 't1', 'dictation'], speechOut = ['v1', 'browser-voice'], hears = ['what was said'], failing = [], reply = 'the words' } = {}) {
+  const bench = new Bench();
+  /** @type {string[]} */
+  const calls = [];
+  /** @type {any} */
+  const cfg = {
+    endpoints: { ec: { id: 'ec', type: 'chat' }, eo: { id: 'eo', type: 'say' }, ei: { id: 'ei', type: 'hear' } },
+    models: { v1: { id: 'v1', endpoint: 'eo', template: null, user: { providerId: 'tts' }, created: 0 } },
+    roles: { main: { models: main.map((m) => m.id), level: 'off' }, 'speech-in': { models: speechIn, level: 'off' }, 'speech-out': { models: speechOut, level: 'off' } },
+  };
+  for (const m of main) cfg.models[m.id] = { id: m.id, endpoint: 'ec', template: null, user: { providerId: m.id, input: m.input }, created: 0 };
+  for (const id of asr) cfg.models[id] = { id, endpoint: 'ei', template: null, user: { providerId: id }, created: 0 };
+  let heard = 0;
+  return {
+    bench,
+    calls,
+    types: () => new Map([['chat', {}], ['say', { speech: 'out' }], ['hear', { speech: 'in' }]]),
+    config: async () => cfg,
+    /** @param {{ modelId: string, text: string }} c */
+    async synthesize({ modelId, text }) {
+      calls.push(`say ${modelId} ${text}`);
+      return { clip: { data: enc.encode(`${modelId}:${text}`), mediaType: 'audio/mpeg' } };
+    },
+    /** @param {{ modelId: string, audio: any, scope?: string, wake?: string }} c */
+    async transcribe({ modelId, audio, scope, wake }) {
+      calls.push(['hear', modelId, audio.mediaType, scope, wake].filter(Boolean).join(' '));
+      if (failing.includes(modelId)) throw new ProviderError('server', `${modelId} is down`);
+      return { text: hears[Math.min(heard++, hears.length - 1)] };
+    },
+    /** @param {any} c */
+    async call(c) {
+      calls.push(`call ${c.role} ${c.prefer ?? ''} ${c.record?.tag ?? ''} ${c.request.messages[0].parts.map((/** @type {any} */ p) => p.type).join(',')}`);
+      return { reply: { text: reply, parts: [{ type: 'text', text: reply }] }, modelId: c.prefer ?? main[0].id };
     },
   };
 }
