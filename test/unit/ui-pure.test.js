@@ -4,6 +4,7 @@ import { parseHash } from '../../src/ui/router.js';
 import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
+import { nextBlinkMs } from '../../src/ui/avatar.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -75,4 +76,10 @@ test('outcomeText: what happened to a model, in a few words', () => {
   assert.equal(outcomeText('benched'), 'resting after an error');
   assert.equal(outcomeText('no-images'), "doesn't take photos");
   assert.equal(outcomeText('something-new'), 'something-new');
+});
+
+test('blinks come at random moments, 2.6 to 7.8 seconds apart', () => {
+  assert.equal(nextBlinkMs(0), 2600);
+  assert.equal(nextBlinkMs(1), 7800);
+  assert.equal(nextBlinkMs(0.5), 5200);
 });

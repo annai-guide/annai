@@ -1,0 +1,68 @@
+/* Shiori, the character (spec §16.3). Ported from the UI mockups, draft 6. */
+.av { display: inline-block; position: relative; }
+.avsvg { width: 100%; height: 100%; overflow: visible; display: block; }
+.avsvg .eye, .avsvg .nose { fill: var(--eye); }
+.avsvg .closed { stroke: var(--eye); }
+.avsvg .twig { stroke: var(--twig); }
+.avsvg .fox, .avsvg .face, .avsvg .eyes, .avsvg .ear-l, .avsvg .ear-r, .avsvg .marker, .avsvg .tails {
+  transform-box: view-box; transition: transform .6s cubic-bezier(.3, .7, .2, 1), opacity .5s ease, filter .5s ease; }
+.avsvg .fox { transform-origin: 32px 56px; }
+.avsvg .ear-l { transform-origin: 21px 20px; }
+.avsvg .ear-r { transform-origin: 43px 20px; }
+.avsvg .fox .tails { transform-origin: 9px 9px; }
+.avsvg .marker .tails { transform-origin: 33px 27px; }
+.avsvg .eyes { transition-duration: .3s; }
+.avsvg .lid { transform-box: fill-box; transform-origin: center; transition: transform .1s ease; }
+.avsvg .closed { opacity: 0; transition: opacity .25s; }
+.avsvg .marker { opacity: 0; transform: translateY(12px); }
+.av.blink .lid { transform: scaleY(.1); }
+
+/* asleep: eyes closed, head lowered, ears relaxed, slow breathing (the only loop) */
+.av[data-state="sleeping"] .lid { transform: scaleY(0); }
+.av[data-state="sleeping"] .closed { opacity: 1; }
+.av[data-state="sleeping"] .fox { transform: translateY(3px); animation: breathe 5s ease-in-out infinite; }
+.av[data-state="sleeping"] .ear-l { transform: rotate(-14deg); }
+.av[data-state="sleeping"] .ear-r { transform: rotate(14deg); }
+/* ready for you: facing you, ears up */
+.av[data-state="listening"] .ear-l { transform: rotate(5deg) scale(1.05); }
+.av[data-state="listening"] .ear-r { transform: rotate(-5deg) scale(1.05); }
+.av[data-state="hearing"] .ear-l { transform: rotate(9deg) scale(1.1); }
+.av[data-state="hearing"] .ear-r { transform: rotate(-9deg) scale(1.1); }
+.av[data-state="waiting"] .fox { transform: rotate(-7deg); }
+.av[data-state="waiting"] .ear-l { transform: rotate(6deg) scale(1.06); }
+.av[data-state="waiting"] .ear-r { transform: rotate(-3deg) scale(1.03); }
+/* working out a reply: looks up and away */
+.av[data-state="thinking"] .face { transform: translate(-3.5px, -1px); }
+.av[data-state="thinking"] .eyes { transform: translate(-1.5px, -2.4px); }
+.av[data-state="thinking"] .ear-l { transform: rotate(-7deg); }
+.av[data-state="thinking"] .ear-r { transform: rotate(-3deg); }
+/* talking: the tape on her hairpin moves with her voice */
+.av[data-state="speaking"] .fox .tails { transform: rotate(calc(var(--amp, 0) * -18deg)); transition-duration: .12s; }
+/* working in the background: she steps out and leaves her marker */
+.av[data-state="away"] .fox { transform: translateY(64px); opacity: 0; }
+.av[data-state="away"] .marker { opacity: 1; transform: none; }
+.av[data-state="away"] .marker .tails { animation: drift 3.4s ease-in-out infinite; }
+/* offline: still here, muted */
+.av[data-state="offline"] .fox { filter: grayscale(1); opacity: .6; }
+.av[data-state="offline"] .ear-l { transform: rotate(-12deg); }
+.av[data-state="offline"] .ear-r { transform: rotate(12deg); }
+
+@keyframes breathe { 0%, 100% { transform: translateY(3px) scale(1); } 50% { transform: translateY(3px) scale(1.02); } }
+@keyframes drift { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-9deg); } }
+
+/* her seat: the glow follows sound, her voice (accent) or yours (grey) */
+.seat { border-radius: 50%; display: inline-grid; place-items: center; background: var(--ai-wash); overflow: hidden; flex: none;
+  box-shadow: 0 0 0 calc(var(--amp, 0) * 8px) color-mix(in srgb, var(--ai) 38%, transparent); transition: box-shadow .12s linear; }
+.seat[data-glow="you"] { box-shadow: 0 0 0 calc(var(--amp, 0) * 8px) color-mix(in srgb, var(--ink-2) 32%, transparent); }
+.seat.sm { width: 40px; height: 40px; }
+.seat.sm .av { width: 36px; height: 36px; }
+.seat.md { width: 86px; height: 86px; }
+.seat.md .av { width: 72px; height: 72px; }
+.seat.dock { width: 64px; height: 64px; }
+.seat.dock .av { width: 52px; height: 52px; }
+.seat.big { width: 176px; height: 176px; }
+.seat.big .av { width: 150px; height: 150px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .avsvg *, .seat { transition: none !important; animation: none !important; }
+}
