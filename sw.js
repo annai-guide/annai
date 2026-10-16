@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'db5c077f1807';
+const BUILD = 'a9bab3d89f71';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -76,6 +76,7 @@ const SHELL = [
   '/src/core/pkpass.js',
   '/src/core/photos.js',
   '/src/core/paths.js',
+  '/src/core/plan.js',
   '/src/core/plugins.js',
   '/src/core/registry.js',
   '/src/core/request-photos.js',
@@ -123,6 +124,7 @@ const SHELL = [
   '/src/ui/screens/import.js',
   '/src/ui/screens/model.js',
   '/src/ui/screens/models.js',
+  '/src/ui/screens/plan.js',
   '/src/ui/screens/plugins.js',
   '/src/ui/screens/settings.js',
   '/src/ui/screens/shiori.js',
