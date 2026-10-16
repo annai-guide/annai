@@ -75,6 +75,28 @@ test('ensureType starts an installed plugin instead of downloading it again, and
   await assert.rejects(ensureType(relaunched, 'no-such-type', { fetch: repoFetch().get }), /isn't an endpoint type annai knows/);
 });
 
+test('two calls for the same type at once share one install, and the type is there once', async () => {
+  const { host, registry } = await setup();
+  const real = repoFetch();
+  let n = 0;
+  // The second caller's downloads finish later, as when Test and "Fetch model list" are tapped together.
+  const slowSecond = async (/** @type {any} */ url) => {
+    if (String(url).includes('/plugins-official/') && n++ % 2) await new Promise((r) => setTimeout(r, 40));
+    return real.get(url);
+  };
+  await Promise.all([ensureType(host, 'scripted', { fetch: slowSecond }), ensureType(host, 'scripted', { fetch: slowSecond })]);
+  assert.equal(host.needsRestart('scripted-model'), false);
+  assert.equal(registry.list('endpoint-type').length, 1);
+});
+
+test('starting a plugin twice at once starts it once', async () => {
+  const { host, ws, importModule } = await setup();
+  await ensureType(host, 'scripted', { fetch: repoFetch().get });
+  const relaunched = new PluginHost({ registry: new Registry(), workspace: ws, importModule });
+  await Promise.all([relaunched.start('scripted-model'), relaunched.start('scripted-model')]);
+  assert.equal(relaunched.registry.list('endpoint-type').length, 1);
+});
+
 test('an endpoint type needs build() and read(), or run()', async () => {
   const { host } = await setup();
   const files = new Map([

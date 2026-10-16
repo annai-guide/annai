@@ -93,8 +93,23 @@ export async function updateOfficial(host, entry, opts = {}) {
  * starts the installed official plugin that provides it, or installs the catalog's version.
  * @param {PluginHost} host @param {string} type @param {FetchOptions} [opts]
  */
-export async function ensureType(host, type, opts = {}) {
-  if (endpointTypes(host.registry).has(type)) return;
+export function ensureType(host, type, opts = {}) {
+  if (endpointTypes(host.registry).has(type)) return Promise.resolve();
+  // Two callers at once share one install: a second install would stop the plugin the first one started.
+  const running = inFlight.get(host) ?? new Map();
+  inFlight.set(host, running);
+  const had = running.get(type);
+  if (had) return had;
+  const work = ensureNow(host, type, opts).finally(() => running.delete(type));
+  running.set(type, work);
+  return work;
+}
+
+/** Installs or starts what provides a type, once per host and type at a time. @type {WeakMap<PluginHost, Map<string, Promise<void>>>} */
+const inFlight = new WeakMap();
+
+/** @param {PluginHost} host @param {string} type @param {FetchOptions} opts */
+async function ensureNow(host, type, opts) {
   const entry = (await officialPlugins(opts)).find((p) => p.provides?.['endpoint-type']?.includes(type));
   if (!entry) throw new PluginError(type, "isn't an endpoint type annai knows. Install a plugin that provides it.");
   const state = (await host.installed())[entry.id];

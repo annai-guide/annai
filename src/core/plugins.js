@@ -90,6 +90,8 @@ export class PluginHost {
   #loaded = new Set();
   /** Plugins installed or removed after their code was imported: only a restart runs the new code. */
   #stale = new Set();
+  /** @type {Map<string, Promise<void>>} plugins starting now, so a second start waits instead of activating twice */
+  #starting = new Map();
 
   /**
    * @param {{ registry: Registry, workspace: Workspace, importModule?: (url: string) => Promise<any>,
@@ -204,8 +206,17 @@ export class PluginHost {
     return failures;
   }
 
+  /** Starts an installed plugin; a second call while it is starting waits for the first. @param {string} id */
+  start(id) {
+    const had = this.#starting.get(id);
+    if (had) return had;
+    const work = this.#startNow(id).finally(() => this.#starting.delete(id));
+    this.#starting.set(id, work);
+    return work;
+  }
+
   /** @param {string} id */
-  async start(id) {
+  async #startNow(id) {
     if (this.active.has(id)) return;
     if (this.#stale.has(id)) throw new PluginError(id, 'was updated. Restart annai to run the new version.');
     const manifest = await this.#stored(id);
