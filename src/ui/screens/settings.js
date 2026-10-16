@@ -43,6 +43,8 @@ export async function renderSettings(ctx) {
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/models' }, 'Models'))),
     section('Shiori', h('p', { class: 'sub', text: 'Her personality, budgets and housekeeping.' }),
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/shiori' }, 'Shiori'))),
+    section('Tools', h('p', { class: 'sub', text: 'Switches for every tool Shiori has, web search and fetch, and the Jina key.' }),
+      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/tools' }, 'Tools'))),
     section('Plugins', h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/plugins' }, 'Manage plugins'))),
     section('App',
       h('p', { text: `annai ${ctx.version}` }),

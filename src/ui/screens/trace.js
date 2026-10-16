@@ -1,5 +1,18 @@
 import { h, field } from '../dom.js';
 import { formatCost } from '../format.js';
+import { costs } from '../../core/agent/budgets.js';
+import { toolSwitchList } from './tools.js';
+
+/** What each kind of entry is, for the Kind filter. */
+const KINDS = /** @type {Record<string, string[] | null>} */ ({
+  Everything: null,
+  Conversation: ['wake', 'msg.user', 'out.speak', 'out.show', 'out.ask'],
+  Tools: ['tool.call', 'tool.result'],
+  Web: ['net.request'],
+  Models: ['model.turn', 'net.request', 'decide'],
+  Housekeeping: ['compaction'],
+  Errors: ['error', 'plugin.error', 'plugin.disabled'],
+});
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderTrace(ctx, route) {
@@ -8,6 +21,8 @@ export async function renderTrace(ctx, route) {
   const select = h('select', { id: 'trace-scope' }, h('option', { value: '', text: 'Everything' }),
     ...scopes.map((/** @type {any} */ s) => h('option', { value: s.id, text: titles.get(s.id) })));
   select.value = route.params.scope ?? '';
+  const kind = h('select', { id: 'trace-kind' }, ...Object.keys(KINDS).map((k) => h('option', { value: k, text: k })));
+  kind.value = route.params.kind && KINDS[route.params.kind] !== undefined ? route.params.kind : 'Everything';
   const filter = h('input', { id: 'trace-type', autocomplete: 'off', placeholder: 'file.write', value: route.params.type ?? '' });
   const list = h('ol', { class: 'trace' });
   let pending = 0;
@@ -17,37 +32,67 @@ export async function renderTrace(ctx, route) {
     const all = (await Promise.all(ids.map((/** @type {string} */ id) => ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { reverse: true, limit: 300 }))))).flat();
     if (my !== pending) return;
     const f = filter.value.trim();
-    const rows = all.filter((e) => !f || e.type.includes(f)).sort((a, b) => b.ts - a.ts || b.seq - a.seq).slice(0, 300);
-    list.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles)) : [h('li', { class: 'empty', text: 'Nothing here yet.' })]));
+    const types = KINDS[kind.value];
+    /** @type {Map<string, number> | undefined} */
+    const perWake = select.value ? (await costs(ctx.store, select.value)).byWake : undefined;
+    if (my !== pending) return;
+    const rows = all.filter((e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))).sort((a, b) => b.ts - a.ts || b.seq - a.seq).slice(0, 300);
+    list.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake)) : [h('li', { class: 'empty', text: 'Nothing here yet.' })]));
   };
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   select.addEventListener('change', load);
+  kind.addEventListener('change', load);
   filter.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 150); });
   await load();
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Trace' }),
     h('p', { class: 'sub', text: 'Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.' }),
-    h('div', { class: 'row' }, field('Show', select), field('Type contains', filter)),
-    list);
+    h('div', { class: 'row' }, field('Show', select), field('Kind', kind), field('Type contains', filter)),
+    list,
+    ctx.agent ? h('section', { class: 'panel', 'aria-label': 'Tool switches' }, h('h2', { class: 'section', text: 'Tool switches' }), await toolSwitchList(ctx)) : null);
 }
 
-/** @param {any} ctx @param {any} e @param {Map<string, string>} titles */
-function row(ctx, e, titles) {
+/** @param {any} ctx @param {any} e @param {Map<string, string>} titles @param {Map<string, number>} [perWake] */
+function row(ctx, e, titles, perWake) {
   return h('li', {}, h('details', {},
     h('summary', {},
       h('span', { class: 'tm', text: new Date(e.ts).toLocaleString() }),
       h('span', { class: 'k', text: e.type }),
       h('span', { class: 'sub', text: `${titles.get(e.scope) ?? e.scope} · ${e.actor}` }),
-      h('span', { class: 'd', text: summaryOf(e) })),
+      h('span', { class: 'd', text: traceSummary(e, { costs: perWake }) })),
     h('pre', { text: JSON.stringify(e, null, 2) }),
     e.refs?.length ? storedText(ctx, e) : null));
 }
 
-/** One line about an event. @param {any} e */
-function summaryOf(e) {
+/**
+ * One line about an event: what Shiori did, sent and read (spec §15). costs: the cost of each wake.
+ * @param {any} e @param {{ costs?: Map<string, number> }} [o]
+ */
+export function traceSummary(e, { costs: perWake } = {}) {
   const d = e.data ?? {};
+  const cut = (/** @type {unknown} */ s, n = 100) => {
+    const t = String(s ?? '');
+    return t.length > n ? `${t.slice(0, n)}…` : t;
+  };
   if (e.type.startsWith('file.')) return d.path ?? '';
+  if (e.type === 'wake') {
+    const why = (d.reasons ?? []).map((/** @type {any} */ r) => (r.kind === 'user' ? 'the user wrote' : r.kind === 'choice' ? 'the user tapped a choice' : r.text)).join('; ');
+    const c = perWake?.get(d.id);
+    return c !== undefined ? `${why} · ${formatCost(c)}` : why;
+  }
+  if (e.type === 'msg.user' || e.type === 'out.speak') return cut(d.text);
+  if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
+  if (e.type === 'out.ask') return cut(d.question);
+  if (e.type === 'tool.call') return `${d.name} ${cut(JSON.stringify(d.input ?? {}), 120)}`;
+  if (e.type === 'tool.result') return `${d.name} · ${d.ok ? 'ok' : 'error'} · ${d.ms ?? 0} ms${d.content ? ` · ${cut(d.content)}` : ''}`;
+  if (e.type === 'net.request' && d.kind === 'web') return `${d.tool} · ${d.method ?? 'GET'} ${d.url}${d.status ? ` · ${d.status}` : ''}${d.error ? ` · ${d.error}` : ''} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
+  if (e.type === 'decide') {
+    const [best, p] = Object.entries(d.result ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]))[0] ?? ['?', 0];
+    return `${best} (${Math.round(Number(p) * 100)}%) · by ${d.by}`;
+  }
+  if (e.type === 'error') return `${d.kind ?? 'error'}: ${cut(d.message)}`;
   if (e.type === 'model.turn') {
     const n = (d.attempts ?? []).length;
     return `${d.role}: ${d.answeredBy ?? 'no answer'} · ${n} attempt${n === 1 ? '' : 's'}${d.cost !== undefined ? ` · ${formatCost(d.cost)}` : ''}`;

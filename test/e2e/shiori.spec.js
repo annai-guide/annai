@@ -76,3 +76,27 @@ test('hostile model output in a card stays text: no HTML, no javascript: links',
     await llm.stop();
   }
 });
+
+test('a tool switched off is not offered to Shiori; the Jina key is saved and never shown', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await setUp(page, llm.origin);
+    await page.goto('/#/tools');
+    await page.getByRole('checkbox', { name: 'fetch', exact: true }).uncheck();
+    await page.getByLabel('Jina key').fill('jina_e2e_secret_key');
+    await page.getByRole('button', { name: 'Save key' }).click();
+    await expect(page.getByText('A key is set. It stays on this device')).toBeVisible();
+    expect(await page.content()).not.toContain('jina_e2e_secret_key');
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Hi');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0);
+    const names = llm.bodies('/b/v1/messages')[0].tools.map((/** @type {any} */ t) => t.name);
+    expect(names).toContain('speak');
+    expect(names).not.toContain('fetch');
+    expect(JSON.stringify(llm.bodies('/b/v1/messages'))).not.toContain('jina_e2e_secret_key');
+  } finally {
+    await llm.stop();
+  }
+});
