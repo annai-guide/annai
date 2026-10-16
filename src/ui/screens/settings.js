@@ -39,6 +39,8 @@ export async function renderSettings(ctx) {
       exportSlot),
     section('Photos', ...(await photoControls(ctx, app))),
     section('Open an annai file', openFileButton(ctx, 'Open an annai file')),
+    section('Models', h('p', { class: 'sub', text: 'The endpoints and models Shiori uses, and the order each role tries them in.' }),
+      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/models' }, 'Models'))),
     section('Plugins', h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/plugins' }, 'Manage plugins'))),
     section('App',
       h('p', { text: `annai ${ctx.version}` }),

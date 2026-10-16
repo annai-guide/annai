@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '4caacfa51b87';
+const BUILD = 'b7c03a75f74c';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -77,8 +77,11 @@ const SHELL = [
   '/src/ui/platform.js',
   '/src/ui/router.js',
   '/src/ui/save.js',
+  '/src/ui/screens/endpoint.js',
   '/src/ui/screens/file.js',
   '/src/ui/screens/import.js',
+  '/src/ui/screens/model.js',
+  '/src/ui/screens/models.js',
   '/src/ui/screens/plugins.js',
   '/src/ui/screens/settings.js',
   '/src/ui/screens/trace.js',

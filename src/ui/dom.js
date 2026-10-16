@@ -84,3 +84,24 @@ export function twoStep(label, confirmLabel, action) {
   }, label);
   return btn;
 }
+
+/**
+ * A labelled JSON editor for a settings object. read() parses it, or throws in plain words.
+ * @param {string} label @param {string} id @param {any} value
+ */
+export function jsonField(label, id, value) {
+  const area = h('textarea', { id, rows: 4, spellcheck: 'false', autocapitalize: 'off', class: 'mono' });
+  area.value = JSON.stringify(value ?? {}, null, 2);
+  return {
+    el: field(label, area),
+    read() {
+      const text = area.value.trim();
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`${label} isn't valid JSON.`);
+      }
+    },
+  };
+}

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange, takenText, backupText } from '../../src/ui/format.js';
+import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 
@@ -60,4 +60,19 @@ test('backupText: never, up to date, and changed since (spec §4.9)', () => {
   assert.equal(backupText({ at: null, changed: true }, now), 'not backed up');
   assert.match(backupText({ at: now - 2 * 86400_000, changed: false }, now), /^backed up 2 days ago$/);
   assert.match(backupText({ at: now - 2 * 86400_000, changed: true }, now), /^backed up 2 days ago, changed since$/);
+});
+
+test('formatCost: free, small, ordinary and unknown costs', () => {
+  assert.equal(formatCost(0), 'free');
+  assert.equal(formatCost(0.000125), '$0.0001');
+  assert.equal(formatCost(0.0042), '$0.0042');
+  assert.equal(formatCost(1.234), '$1.23');
+  assert.equal(formatCost(undefined), 'cost unknown');
+});
+
+test('outcomeText: what happened to a model, in a few words', () => {
+  assert.equal(outcomeText('credit'), 'out of credit');
+  assert.equal(outcomeText('benched'), 'resting after an error');
+  assert.equal(outcomeText('no-images'), "doesn't take photos");
+  assert.equal(outcomeText('something-new'), 'something-new');
 });

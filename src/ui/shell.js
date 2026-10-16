@@ -10,9 +10,10 @@ import { renderSettings } from './screens/settings.js';
 import { renderImport } from './screens/import.js';
 import { renderTrace } from './screens/trace.js';
 import { renderPlugins } from './screens/plugins.js';
+import { renderModels } from './screens/models.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels };
 
 /**
  * @param {HTMLElement} root

@@ -1,0 +1,121 @@
+import { h, field } from '../dom.js';
+import { endpointOf, modelOf, saveRoles, CHAT_ROLES } from '../../core/llm/config.js';
+import { LEVELS } from '../../core/llm/reasoning.js';
+import { addFromTemplate, templateUpdates } from '../../core/llm/templates.js';
+import { renderEndpoint, messageOf } from './endpoint.js';
+import { renderModel } from './model.js';
+
+/** @type {Record<string, string>} */
+const ROLE_NAMES = { main: 'Main: talks with you', utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks' };
+
+/**
+ * Settings → Models (spec §9.2, §9.6, §9.8): the endpoints annai calls, their models, and which
+ * models each role tries, in order.
+ * @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
+ */
+export async function renderModels(ctx, route) {
+  if (route.parts[1] === 'endpoint') return renderEndpoint(ctx, route.params.id ?? '');
+  if (route.parts[1] === 'model') return renderModel(ctx, route.params.id ?? '');
+  await ctx.llm.ready;
+  const [cfg, catalog] = await Promise.all([ctx.llm.config(), ctx.llm.templates()]);
+  return h('div', { class: 'screen' },
+    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('h1', { class: 'title', text: 'Models' }),
+    h('p', { class: 'sub', text: 'Where Shiori thinks: the endpoints annai calls, their models, and which models each role tries, in order.' }),
+    endpointsSection(ctx, cfg, catalog),
+    rolesSection(ctx, cfg));
+}
+
+/** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg @param {import('../../core/llm/templates.js').TemplateCatalog} catalog */
+function endpointsSection(ctx, cfg, catalog) {
+  const types = ctx.llm.types();
+  const updates = new Set(templateUpdates(cfg, catalog).map((u) => u.endpoint));
+  const rows = Object.values(cfg.endpoints).sort((a, b) => a.created - b.created).map((rec) => {
+    const e = endpointOf(rec, types.get(rec.type)?.tunables);
+    const n = Object.values(cfg.models).filter((m) => m.endpoint === rec.id).length;
+    const sub = [types.get(rec.type)?.name ?? rec.type, `${n} model${n === 1 ? '' : 's'}`, updates.has(rec.id) ? 'template update available' : null];
+    return h('li', {}, h('a', { class: 'card', href: `#/models/endpoint?id=${encodeURIComponent(rec.id)}` },
+      h('span', { class: 'name', text: e.name }),
+      h('span', { class: 'sub', text: sub.filter(Boolean).join(' · ') })));
+  });
+  const status = h('p', { class: 'sub', role: 'status' });
+  const pick = h('select', { id: 'endpoint-template' }, ...catalog.endpoints.map((t) => h('option', { value: t.id, text: t.name })));
+  const add = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async () => {
+      const tpl = catalog.endpoints.find((t) => t.id === pick.value);
+      if (!tpl) return;
+      add.disabled = true;
+      try {
+        if (!types.has(tpl.type)) status.textContent = 'Installing the plugin for this endpoint…';
+        await ctx.llm.ensureType(tpl.type);
+        const id = await addFromTemplate(ctx, tpl, { roles: 'recommended' });
+        ctx.go(`#/models/endpoint?id=${encodeURIComponent(id)}`);
+      } catch (e) {
+        status.textContent = messageOf(e);
+      } finally {
+        add.disabled = false;
+      }
+    },
+  }, 'Add');
+  return h('section', { class: 'panel', 'aria-label': 'Endpoints' },
+    h('h2', { class: 'section', text: 'Endpoints' }),
+    rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: 'No endpoints yet. Add one below.' }),
+    catalog.endpoints.length
+      ? h('div', { class: 'row' }, field('Add an endpoint', pick), h('div', { class: 'acts' }, add))
+      : h('p', { class: 'sub', text: "annai's list of endpoints hasn't been loaded yet. Connect to the internet and open this screen again." }),
+    status);
+}
+
+/** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
+function rolesSection(ctx, cfg) {
+  const models = Object.values(cfg.models).map(modelOf);
+  const nameOf = (/** @type {string} */ id) => models.find((m) => m.id === id)?.name ?? id;
+  const save = async (/** @type {import('../../core/llm/config.js').Roles} */ roles) => {
+    await saveRoles(ctx.ws, roles);
+    ctx.render();
+  };
+  return h('section', { class: 'panel', 'aria-label': 'Roles' },
+    h('h2', { class: 'section', text: 'Roles' }),
+    h('p', { class: 'sub', text: 'Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list.' }),
+    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models, nameOf, save)));
+}
+
+/**
+ * @param {string} role @param {import('../../core/llm/config.js').Roles} roles @param {import('../../core/llm/config.js').Model[]} models
+ * @param {(id: string) => string} nameOf @param {(roles: any) => Promise<void>} save
+ */
+function roleBlock(role, roles, models, nameOf, save) {
+  const r = roles[role];
+  /** @param {number} i @param {number} by */
+  const moved = (i, by) => {
+    const list = r.models.slice();
+    [list[i], list[i + by]] = [list[i + by], list[i]];
+    return { ...roles, [role]: { ...r, models: list } };
+  };
+  const items = r.models.map((id, i) => h('li', { class: 'role-item' },
+    h('span', { text: `${i + 1}. ${nameOf(id)}` }),
+    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} up`, disabled: i === 0, onclick: () => save(moved(i, -1)) }, '↑'),
+    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} down`, disabled: i === r.models.length - 1, onclick: () => save(moved(i, 1)) }, '↓'),
+    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remove ${nameOf(id)} from ${role}`, onclick: () => save({ ...roles, [role]: { ...r, models: r.models.filter((_, j) => j !== i) } }) }, '✕')));
+  const others = models.filter((m) => !r.models.includes(m.id));
+  const pick = h('select', { id: `role-${role}-add` }, ...others.map((m) => h('option', { value: m.id, text: m.name })));
+  const level = h('select', { id: `role-${role}-level`, onchange: () => save({ ...roles, [role]: { ...r, level: level.value } }) }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
+  level.value = r.level;
+  const wait = h('input', {
+    id: `role-${role}-wait`, inputmode: 'numeric', placeholder: '30', value: r.firstOutputSeconds ?? '',
+    onchange: () => {
+      const n = Math.round(Number(wait.value));
+      const { firstOutputSeconds: _, ...rest } = r;
+      save({ ...roles, [role]: wait.value.trim() && n >= 1 && n <= 600 ? { ...rest, firstOutputSeconds: n } : rest });
+    },
+  });
+  return h('div', { class: 'role' },
+    h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
+    items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: role === 'main' ? 'No models yet. Add one.' : 'Uses the main list.' }),
+    h('div', { class: 'row' },
+      others.length ? field(`Add a model to ${role}`, pick) : null,
+      others.length ? h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => save({ ...roles, [role]: { ...r, models: [...r.models, pick.value] } }) }, `Add to ${role}`)) : null,
+      field(`Reasoning for ${role}`, level),
+      field('Wait for the first words (seconds)', wait)));
+}

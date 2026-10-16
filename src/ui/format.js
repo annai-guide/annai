@@ -51,3 +51,25 @@ export function backupText({ at, changed }, now = Date.now()) {
   if (at === null) return 'not backed up';
   return `backed up ${relTime(at, now)}${changed ? ', changed since' : ''}`;
 }
+
+/** A cost in USD for people: "free", "$0.0042", "$1.23", or "cost unknown". @param {number | undefined} usd */
+export function formatCost(usd) {
+  if (usd === undefined || !Number.isFinite(usd)) return 'cost unknown';
+  if (usd === 0) return 'free';
+  return usd < 0.01 ? `$${usd.toFixed(4)}` : `$${usd.toFixed(2)}`;
+}
+
+/** @type {Record<string, string>} */
+const OUTCOMES = {
+  ok: 'answered', auth: 'key rejected', credit: 'out of credit', rate: 'too many requests', overloaded: 'overloaded',
+  context: 'too long for it', image: "didn't take the photo", upload: 'photo upload expired', blocked: "doesn't allow web apps",
+  unreachable: "couldn't connect", 'bad-request': 'refused the request', 'not-found': 'unknown model or address', server: 'provider error',
+  network: 'connection dropped', timeout: 'too slow to start', cancelled: 'stopped', plugin: 'plugin failed', removed: 'removed',
+  'type-missing': 'its plugin is missing', benched: 'resting after an error', 'no-images': "doesn't take photos", 'no-tools': "can't use tools",
+  'too-long': 'conversation too long for it',
+};
+
+/** What happened to one model in a role call, in a few words (spec §9.6). @param {string} outcome */
+export function outcomeText(outcome) {
+  return OUTCOMES[outcome] ?? outcome;
+}
