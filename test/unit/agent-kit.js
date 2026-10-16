@@ -31,6 +31,7 @@ export function fakeCodec(formats) {
     },
     async encode(/** @type {Blob} */ blob, /** @type {any} */ o) {
       calls.push(o);
+      if ((await blob.text()) === 'unreadable') throw new Error("This browser can't read that photo.");
       const [w, h] = ((await blob.text()).match(/(\d+)x(\d+)/) ?? ['', '0', '0']).slice(1).map(Number);
       const box = o.crop ?? { width: w, height: h };
       const s = Math.min(1, (o.maxEdge ?? Infinity) / Math.max(box.width, box.height));
@@ -45,10 +46,11 @@ export function fakeCodec(formats) {
  * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[] }} [opts]
+ * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean }} [opts]
+ *   uploading: whether the main model's endpoint takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -82,6 +84,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   const llm = {
     bench,
     config: () => readConfig(ws),
+    uploading: async () => uploading,
     /** @param {any} c */
     call: async (c) => callRole({
       role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types: new Map([['scripted', watched]]), keyFor: async () => null, bench,

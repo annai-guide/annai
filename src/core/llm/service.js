@@ -83,6 +83,16 @@ export function createLlm({
       await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by } }).catch(() => {});
       return r.probabilities;
     },
+    /** Whether photos go to this model's provider by upload, so a request carries only their ids (spec §4.8, §6.5). @param {string} modelId */
+    async uploading(modelId) {
+      await ready;
+      const cfg = await readConfig(ws);
+      const rec = cfg.models[modelId];
+      const epRec = rec ? cfg.endpoints[rec.endpoint] : null;
+      const type = epRec ? types().get(epRec.type) : null;
+      if (!rec || !epRec || !type?.uploadRequest || !type.readUpload || !modelOf(rec).input.includes('image')) return false;
+      return endpointOf(epRec, type.tunables).tunables?.uploads !== false && !uploads.isOff(epRec.id);
+    },
     /** The Test button for one model; what it found is recorded on the model (spec §9.8). @param {string} modelId */
     async test(modelId) {
       const { rec, type, endpoint, model, key } = await resolve(modelId);

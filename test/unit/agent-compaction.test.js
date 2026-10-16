@@ -134,3 +134,24 @@ test('summaries see photos as stubs with their path and part', async () => {
   const text = renderForSummary([{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'x', path: '/trip/files/menu.webp', region: [0, 0, 0.5, 0.5] }] }]);
   assert.equal(text, 'User: [photo /trip/files/menu.webp, part [0, 0, 0.5, 0.5]]');
 });
+
+test('requestBytes: photos uploaded to the provider count as their id (spec §6.5)', async () => {
+  const { requestBytes } = await import('../../src/core/agent/compaction.js');
+  const request = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }, { type: 'image', mediaType: 'image/webp', data: 'A'.repeat(100_000), hash: 'h' }] }] };
+  assert.ok(requestBytes(request) > 100_000);
+  assert.ok(requestBytes(request, { uploaded: true }) < 1000);
+});
+
+test('with uploads, a big photo makes no housekeeping due (spec §6.5, review I7)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  for (const uploading of [false, true]) {
+    /** @type {any[]} */
+    const timers = [];
+    const k = await agentKit([[say('ok')]], { uploading, agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
+    await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
+    await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('x'.repeat(700_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+    k.agent.send('Look', { photos: [{ path: '/trip/files/big.webp' }] });
+    await k.agent.idle();
+    assert.equal(timers.some(Boolean), !uploading, uploading ? 'uploaded: counted as its id' : 'sent as bytes: due');
+  }
+});

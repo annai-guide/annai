@@ -35,6 +35,8 @@ export async function renderModel(ctx, id) {
   const reasoning = jsonField('Reasoning levels (JSON)', 'model-reasoning', m.reasoning);
   const tunables = jsonField('Tunables (JSON)', 'model-tunables', m.tunables);
   const extra = jsonField('Extra request fields (JSON)', 'model-extra', m.extraBody);
+  // What it takes in photos (spec §9.2): formats, maxEdge (pixels), maxBytes, maxCount. A refusal can teach these.
+  const photoLimits = jsonField('Photo limits (JSON)', 'model-images', m.images ?? {});
   const save = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
@@ -53,6 +55,7 @@ export async function renderModel(ctx, id) {
           reasoning: reasoning.read(),
           tunables: tunables.read(),
           extraBody: extra.read(),
+          images: photoLimits.read(),
         };
         await saveModel(ctx.ws, { ...rec, user: diffLayer(edited, base) });
         ctx.llm.bench.clear(rec.id);
@@ -70,7 +73,7 @@ export async function renderModel(ctx, id) {
       field('Name', name), field('Provider model id', providerId),
       h('div', { class: 'checks' }, images.el, tools.el),
       h('div', { class: 'row' }, field('Context window (tokens)', window), field('Maximum output (tokens)', max)),
-      prices.el, field('Cache lifetimes (5m, 1h)', ttls), reasoning.el, tunables.el, extra.el,
+      prices.el, field('Cache lifetimes (5m, 1h)', ttls), photoLimits.el, reasoning.el, tunables.el, extra.el,
       h('div', { class: 'acts' }, save), status),
     testPanel(ctx, id, rec.verified),
     h('div', { class: 'acts' }, twoStep('Remove model', 'Tap again to remove it', async () => {

@@ -125,3 +125,18 @@ test('an endpoint that stores files has a switch for photo uploads, kept when sa
   await page.reload();
   await expect(page.getByLabel('Upload photos to this provider (each expires after 48 hours)')).not.toBeChecked();
 });
+
+test('a model keeps its photo limits on its page, to see and change (spec §9.2)', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model' });
+  await page.getByRole('link', { name: /Stand-in/ }).click();
+  await page.getByRole('link', { name: /^b-model/ }).click();
+  const limits = page.getByLabel('Photo limits (JSON)');
+  await expect(limits).toHaveValue('{}');
+  await limits.fill('{ "maxEdge": 1568, "maxBytes": 3000000 }');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/\n  "maxEdge": 1568/); // shown again, formatted, once saved
+  await page.reload();
+  await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/"maxBytes": 3000000/);
+});

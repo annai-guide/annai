@@ -58,15 +58,16 @@ export class Transcript {
       if (parts.length) this.#add('assistant', parts);
       this.unanswered = false;
     } else if (e.type === 'photo.replace') {
-      // A refused photo's new copy (spec §4.8): every place it was sent now sends the copy.
+      // A refused photo's new copy (spec §4.8): every place it was sent now sends the copy. When that
+      // copy was itself replaced later (its bytes gone), the swap still happens, so the next one finds it.
       const copy = r.images[0];
-      if (!copy) return;
       this.messages = this.messages.map((m) => ({
         role: m.role,
         parts: m.parts.map((p) => {
           if (p.type !== 'image' || p.hash !== d.old) return p;
           const { missing, ...rest } = p;
-          return { ...rest, hash: d.new, mediaType: d.mediaType, data: copy.type === 'image' ? copy.data : '' };
+          const data = copy?.type === 'image' ? copy.data : '';
+          return { ...rest, hash: d.new, mediaType: d.mediaType, data, ...(data ? {} : { missing: true }) };
         }),
       }));
       return;
@@ -126,7 +127,7 @@ export async function resolveEvent(store, e) {
   }
   if (e.type === 'photo.replace') {
     const bytes = await blobBytes(store, e.data?.new);
-    if (bytes) images.push({ type: 'image', mediaType: e.data.mediaType, data: toBase64(bytes), hash: e.data.new });
+    images.push({ type: 'image', mediaType: e.data?.mediaType, data: bytes ? toBase64(bytes) : '', hash: e.data?.new, ...(bytes ? {} : { missing: true }) });
   }
   const doc = e.type === 'tool.result' ? e.data?.document : null;
   if (doc) {

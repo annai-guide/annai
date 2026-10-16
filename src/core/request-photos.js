@@ -57,7 +57,9 @@ export class PhotoCopies {
     if (!crop && fits(source, limits)) return { hash: source.hash, mediaType: source.type, width: source.width ?? null, height: source.height ?? null, made: false };
     const key = JSON.stringify([source.hash, limits.formats, limits.quality, limits.maxEdge, limits.maxBytes, crop ?? null]);
     const had = this.#made.get(key);
-    if (had) return { ...had, data: undefined };
+    // A copy made before is reused only while its bytes are stored: a repair or a removed trip may have freed them.
+    if (had && (await this.read(had.hash))) return { ...had, data: undefined };
+    this.#made.delete(key);
     const bytes = await this.read(source.hash);
     if (!bytes) throw new Error('That photo is no longer stored.');
     const out = await this.codec.encode(new Blob([/** @type {BlobPart} */ (bytes)], { type: source.type }), {

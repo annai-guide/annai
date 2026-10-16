@@ -229,9 +229,22 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
     await page.getByLabel('Trip name').fill('Big Sur');
     await page.getByRole('button', { name: 'Start trip' }).click();
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
-    await page.locator('#dock-camera').setInputFiles('test/fixtures/photos/plain.jpg');
+    // A photo over the request limits (2000 px), so Shiori is sent a copy, which the refusal then replaces.
+    const big = await page.evaluate(async () => {
+      const c = new OffscreenCanvas(3000, 2000);
+      const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+      g.fillStyle = '#0a7';
+      g.fillRect(0, 0, 3000, 2000);
+      return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.9 })).arrayBuffer())];
+    });
+    await page.locator('#dock-camera').setInputFiles({ name: 'IMG_0002.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(big) });
     await expect(page.locator('.convo .you img')).toBeVisible({ timeout: 20_000 });
     await expect(page.locator('.convo .shiori p').last()).toHaveText('That is the Ambrosia burger.', { timeout: 20_000 });
+    // After a reload your bubble still shows the photo: the copy Shiori was sent in the end (spec §4.8).
+    await page.reload();
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .you img')).toBeVisible();
+    expect(await page.locator('.convo .you img').evaluate((/** @type {HTMLImageElement} */ i) => i.decode().then(() => i.naturalWidth))).toBeGreaterThan(0);
     await page.getByRole('link', { name: 'Trace' }).click();
     await page.getByLabel('Type contains').fill('photo.replace');
     await expect(page.locator('ol.trace > li')).toHaveCount(1);

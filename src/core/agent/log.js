@@ -56,6 +56,8 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
     for (const k of keep) {
       if (!(await t.hasBlob(k.hash))) await t.putBlob({ hash: k.hash, type: k.type, size: k.bytes.byteLength, data: ownBuffer(k.bytes) });
     }
+    // Content named by its hash alone must be stored: a log entry never names bytes that aren't there (spec §4.9).
+    for (const b of blobs) if (!b.bytes && b.hash && !(await t.hasBlob(b.hash))) throw new Error(`The content ${b.hash.slice(0, 12)}… is not stored.`);
     return t.appendEvent(scope, ev);
   });
 }

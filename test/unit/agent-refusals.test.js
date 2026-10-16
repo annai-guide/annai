@@ -129,3 +129,102 @@ test("a refusal read by the utility model never shows it a key annai keeps", asy
   assert.ok(asked);
   assert.doesNotMatch(JSON.stringify(asked), /SECRETKEY/);
 });
+
+const turnImages = (/** @type {any} */ t) => t.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => [p.hash, Boolean(p.missing)]);
+
+test('a photo repaired twice is the same after a reload: the chain of replacements is followed (review C1)', async () => {
+  const k = await agentKit([[
+    { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' },
+    { error: 'image', status: 400, message: 'At least one of the image dimensions exceed max allowed size: 512 pixels' },
+    sleep,
+  ]]);
+  await photo(k);
+  k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal((await k.events(['photo.replace'])).length, 2);
+  const live = turnImages(k.agent.transcript);
+  assert.equal(live.length, 1);
+  assert.equal(live[0][1], false);
+  assert.deepEqual(turnImages(await Transcript.load(k.store, k.trip)), live);
+  assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages);
+});
+
+test('a copy whose bytes are gone is made again, never sent as nothing (review C2)', async () => {
+  const { createTrip, removeTrip } = await import('../../src/core/scopes.js');
+  const k = await agentKit([[sleep]]);
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
+  for (const t of [k.trip, kyoto]) await k.ws.write(t, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+  k.agent.send('Here', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  await k.agent.open(kyoto);
+  await removeTrip(k.store, k.trip); // its copy goes with it
+  k.agent.send('And here', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const [msg] = await k.store.tx(['events'], 'readonly', (t) => t.listEvents(kyoto, { types: ['msg.user'] }));
+  assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(msg.data.images[0].hash)), true);
+  assert.deepEqual(k.requests.at(-1).messages.at(-1).parts.map((/** @type {any} */ p) => p.type), ['text', 'image']);
+});
+
+test('record refuses a log entry that names content that is not stored (review C2)', async () => {
+  const { record } = await import('../../src/core/agent/log.js');
+  const k = await agentKit([[sleep]]);
+  await assert.rejects(record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'x']], blobs: [{ hash: 'f'.repeat(64), type: 'image/webp' }] }), /not stored/);
+});
+
+test('photos are made within every main model that takes them, so a fallback model that learned a limit takes them (review I1)', async () => {
+  const k = await agentKit([
+    [{ error: 'credit', status: 402 }],
+    [{ error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, sleep, sleep],
+  ]);
+  await photo(k);
+  await k.ws.write(k.trip, '/files/q.webp', new TextEncoder().encode('3000x2000'), { author: 'user', type: 'image/webp', meta: { width: 3000, height: 2000 } });
+  k.agent.send('One', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  k.agent.send('Two', { photos: [{ path: '/trip/files/q.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.notices.length, 0);
+  assert.equal(k.codec.calls.at(-1).maxBytes, 300);
+});
+
+test('a refusal of too many photos sends the oldest as stubs, and no photo is made again (review I2)', async () => {
+  const k = await agentKit([[{ error: 'image', status: 400, message: 'Too many images in request. Max is 1.' }, sleep]]);
+  await photo(k);
+  k.agent.send('Two', { photos: [{ path: '/trip/files/p.webp' }, { path: '/trip/files/p.webp', region: [0, 0, 0.5, 0.5] }] });
+  await k.agent.idle();
+  assert.equal(k.notices.length, 0);
+  assert.equal((await k.events(['photo.replace'])).length, 0);
+  assert.equal(k.codec.calls.length, 2);
+  assert.deepEqual(k.requests.at(-1).messages.at(-1).parts.map((/** @type {any} */ p) => p.type), ['text', 'text', 'image']);
+});
+
+test('a refusal that states the limit annai already keeps: a quarter less, once; then a card in plain words (review I3)', async () => {
+  const said = 'messages.0.content.1.image.source.base64: image exceeds 5 MB maximum: 6123456 bytes > 5242880 bytes';
+  const k = await agentKit([[{ error: 'image', status: 400, message: said }]], { models: [{ images: { maxBytes: 5242880 } }] });
+  await photo(k);
+  k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal(modelOf((await k.llm.config()).models['m-0']).images.maxBytes, Math.floor((5242880 * 3) / 4));
+  assert.equal(k.notices.length, 1);
+  assert.equal(k.notices[0].title, "Shiori couldn't send the photo");
+  assert.doesNotMatch(k.notices[0].body, /messages\.0\.content/);
+  assert.match(k.notices[0].body, /Settings → Photos/);
+});
+
+test("a limit the utility model gives that can't be right is not saved (review I5)", async () => {
+  const k = await agentKit([[{ error: 'image', status: 400, message: 'Picture too chonky for this model' }]], { utility: [{ toolCalls: [{ name: 'limits', input: { maxEdge: 16, maxBytes: 1 } }] }] });
+  await photo(k);
+  k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.deepEqual(modelOf((await k.llm.config()).models['m-0']).images, {});
+  assert.equal(k.notices[0].title, "Shiori couldn't send the photo");
+});
+
+test("a photo this browser can't read is not dropped quietly: a card says so (review I6)", async () => {
+  const k = await agentKit([[sleep]]);
+  await k.ws.write(k.trip, '/files/bad.webp', new TextEncoder().encode('unreadable'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  k.agent.send('Look', { photos: [{ path: '/trip/files/bad.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.notices.length, 1);
+  assert.match(k.notices[0].title, /photo/);
+  assert.match(k.notices[0].body, /\/trip\/files\/bad\.webp/);
+});

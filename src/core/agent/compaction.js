@@ -16,8 +16,10 @@ export function promptTokens(u) {
 }
 
 /** A request's size as sent; photos count at their base64 size. @param {any} request */
-export function requestBytes(request) {
-  return JSON.stringify(request).length;
+export function requestBytes(request, { uploaded = false } = {}) {
+  if (!uploaded) return JSON.stringify(request).length;
+  // Photos uploaded to the provider count only as their id (spec §6.5).
+  return JSON.stringify(request, (_k, v) => (v && typeof v === 'object' && v.type === 'image' && typeof v.data === 'string' ? { ...v, data: 'file_0123456789abcdefghijklmn' } : v)).length;
 }
 
 /**

@@ -9,6 +9,16 @@ import { formatCost } from '../format.js';
 const SHOWN = ['msg.user', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error'];
 
 /**
+ * The copy a photo ended up as, following its replacements (each refused copy names the next).
+ * @param {string} hash @param {Map<string, { new: string }>} replaced
+ */
+export function latestCopy(hash, replaced) {
+  let h = hash;
+  for (let i = 0; i < 10 && replaced.has(h); i++) h = /** @type {{ new: string }} */ (replaced.get(h)).new;
+  return h;
+}
+
+/**
  * Shows a conversation's events in order, missing none: it listens before it reads, so an event
  * that comes while the log is read (or while those are shown) is shown once, after them. While the
  * screen is being built events are still shown; once it has left the page, it stops listening.
@@ -57,11 +67,14 @@ export async function renderTalk(ctx) {
   };
   /** @type {Map<string, HTMLElement>} asks still open, by call id */
   const asks = new Map();
+  // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
+  const replaced = new Map((await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['photo.replace'] })))
+    .map((/** @type {any} */ e) => [e.data?.old, e.data]));
   /** The photos the user sent, as Shiori was sent them; a tap opens one full size. @param {any} images */
   const sentPhotos = async (images) => {
     const out = [];
     for (const im of Array.isArray(images) ? images : []) {
-      const bytes = await blobBytes(ctx.store, String(im?.hash ?? ''));
+      const bytes = await blobBytes(ctx.store, latestCopy(String(im?.hash ?? ''), replaced));
       if (!bytes) continue;
       const url = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (bytes)], { type: String(im.mediaType ?? 'image/webp') }));
       const label = String(im.path ?? 'A photo you sent');
