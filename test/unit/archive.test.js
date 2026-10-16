@@ -529,3 +529,14 @@ test('a Share without locations knows a photo by its bytes, whatever type it was
   assert.ok(photo);
   assert.equal(readPhotoMeta(/** @type {Uint8Array} */ (entries.get(photo.name))).place, undefined);
 });
+
+test('a Backup always opens again, even when a photo has details that make no sense', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  const taken = '2026-11-26T12:30:00-08:00';
+  await a.ws.write(trip, '/files/odd.jpg', await photoFixture('plain.jpg'), { author: 'user', type: 'image/jpeg', meta: { width: 0, height: 48, taken } });
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const b = await device();
+  const r = await importArchive(b.store, await openArchive(blob));
+  assert.deepEqual((await b.ws.read(r.trips[0], '/files/odd.jpg'))?.entry.meta, { height: 48, taken });
+});

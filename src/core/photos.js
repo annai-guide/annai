@@ -28,6 +28,8 @@ const EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'web
 
 /** @param {string} type */
 export const isPhotoType = (type) => PHOTO_TYPES.includes(type);
+/** @param {unknown} n */
+const isSize = (n) => Number.isInteger(n) && /** @type {number} */ (n) >= 1;
 
 /**
  * The photo settings inside the app settings, with defaults for anything missing or out of range.
@@ -125,7 +127,7 @@ export async function ingestPhoto(ws, scope, file, { settings, codec, author = '
   }
   const path = await freePath(ws, scope, photoName(info.taken, name, out.type));
   const meta = {
-    ...(out.width !== undefined && out.height !== undefined ? { width: out.width, height: out.height } : {}),
+    ...(isSize(out.width) && isSize(out.height) ? { width: out.width, height: out.height } : {}), // a header may say 0
     ...(info.taken ? { taken: info.taken } : {}),
     ...(info.place ? { place: info.place } : {}),
     ...(out.original ? { original: true } : {}),

@@ -181,7 +181,7 @@ export async function exportArchive(store, opts) {
       await zip.add(name, out.bytes, { compress: !isCompressedType(out.type), mtime: f.modified });
       manifest.files.push({
         name, scope: scope.id, path: f.path, hash: out.hash, size: out.bytes.byteLength, type: out.type, author: f.author,
-        created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}), ...(out.meta ? { meta: out.meta } : {}),
+        created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}), ...validMeta(out.meta),
       });
       current.add(out.hash);
     }
@@ -222,10 +222,29 @@ export async function exportArchive(store, opts) {
   }
 
   await zip.add(MANIFEST_NAME, utf8(JSON.stringify(manifest, null, 2)), { mtime: now });
+  // Never write a file that can't be opened again: fail here, where the user can still act.
+  const problems = validate(MANIFEST_SCHEMA, manifest);
+  if (problems.length) throw new ArchiveError(`annai couldn't build a file it could open again: ${problems.join('; ')}`);
   let blob = zip.finish();
   if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
   const title = opts.kind === 'trip' ? scopes[0].title : '';
   return { blob, manifest, skipped, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
+}
+
+/**
+ * A photo's details as an archive carries them: only those that pass the manifest's schema, so a
+ * damaged detail (a size of 0 from an odd header) can never make the whole archive unreadable.
+ * @param {PhotoMeta | undefined} meta @returns {{ meta?: PhotoMeta }}
+ */
+function validMeta(meta) {
+  if (!meta) return {};
+  /** @type {Record<string, any>} */
+  const kept = {};
+  for (const [key, value] of Object.entries(meta)) {
+    const one = { [key]: value };
+    if (validate(PHOTO_META, one).length === 0) kept[key] = value;
+  }
+  return Object.keys(kept).length ? { meta: kept } : {};
 }
 
 /**

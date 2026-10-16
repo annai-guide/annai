@@ -147,3 +147,14 @@ test('two photos taken in the same minute each get their own file', async () => 
   const b = await ingestPhoto(ws, 'trip-1', await picked('upright.jpg'), { settings, codec: fakeCodec({ size: 100_000 }) });
   assert.deepEqual([a.entry.path, b.entry.path], ['/files/2026-11-26-1230.jpg', '/files/2026-11-26-1230-2.jpg']);
 });
+
+test('a photo whose header gives no real size is stored without one, never with 0', async () => {
+  const ws = await trip();
+  const b = (await fixture('plain.jpg')).slice();
+  const sof = Buffer.from(b).indexOf(Buffer.from([0xff, 0xc0])); // the frame header
+  new DataView(b.buffer).setUint16(sof + 5, 0); // its height: a JPEG may leave it to a later DNL segment
+  const file = Object.assign(new Blob([/** @type {BlobPart} */ (b)]), { name: 'odd.jpg' });
+  const { entry } = await ingestPhoto(ws, 'trip-1', file, { settings: photoSettings({ photos: { keepOriginals: true } }), codec: fakeCodec() });
+  assert.equal(entry.meta?.width, undefined);
+  assert.equal(entry.meta?.height, undefined);
+});
