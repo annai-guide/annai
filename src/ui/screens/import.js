@@ -182,6 +182,7 @@ function photoInbox(ctx, items, trips) {
       });
       const inbox = await caches.open('annai-inbox');
       for (const i of items) await inbox.delete(i.key);
+      for (const url of urls) URL.revokeObjectURL(url);
       ctx.go(`#/trip/${encodeURIComponent(trip.id)}`);
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: 'A photo was kept as it is', body: note });
       ctx.notices.toast(`Added ${what}`);
@@ -191,8 +192,13 @@ function photoInbox(ctx, items, trips) {
       for (const b of buttons) b.disabled = false;
     }
   }
+  // Show what is about to be added: a share can come from any site, so the user should see it first.
+  const shown = items.slice(0, 12);
+  const urls = shown.map((i) => URL.createObjectURL(i.file));
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: `Add ${what}` }),
+    h('ul', { class: 'thumbs' }, ...shown.map((i, n) => h('li', {}, h('img', { src: urls[n], alt: i.file.name, decoding: 'async' })))),
+    items.length > shown.length ? h('p', { class: 'sub', text: `and ${items.length - shown.length} more` }) : null,
     trips.length
       ? h('div', { class: 'acts' }, ...buttons)
       : h('p', { class: 'empty' }, 'Start a trip first, then share the photos again. ', h('a', { href: '#/trips' }, 'Go to Trips')),

@@ -184,3 +184,36 @@ test('photos shared from another app go to the trip you choose', async ({ page }
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /\/files\/screenshot/ })).toBeVisible();
 });
+
+test('Back closes the full-size photo and stays on its page', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
+  await page.getByRole('button', { name: 'Open the photo full size' }).click();
+  const viewer = page.getByRole('dialog', { name: /^Photo / });
+  await expect(viewer).toBeVisible();
+  await page.goBack();
+  await expect(viewer).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open the photo full size' })).toBeVisible();
+});
+
+test('only the latest share waits, and its photos are shown before they are added', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Big Sur');
+  /** Posts to the share target, as Android's share sheet (or any other site) can. @param {string[]} names */
+  const share = async (names) => {
+    const files = await Promise.all(names.map(async (n) => { const p = await photo(n); return { name: p.name, type: p.mimeType, bytes: [...p.buffer] }; }));
+    await page.evaluate(async (files) => {
+      const form = new FormData();
+      for (const f of files) form.append('files', new File([new Uint8Array(f.bytes)], f.name, { type: f.type }));
+      await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+    }, files);
+  };
+  await share(['portrait.jpg']); // left waiting, or planted by another site
+  await share(['screenshot.png']);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add 1 photo' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'screenshot.png' })).toBeVisible();
+});

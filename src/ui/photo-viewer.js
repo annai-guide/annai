@@ -4,7 +4,8 @@ const MAX_ZOOM = 8;
 
 /**
  * Shows a photo over everything at full size (spec §16.2): pinch or scroll to zoom, drag to move,
- * double-tap to zoom in or back out, Close or Escape to leave. Focus returns where it was.
+ * double-tap to zoom in or back out, Close, Escape or Back to leave. Focus returns where it was.
+ * Opening it adds a history entry, so Back on a phone closes the photo instead of leaving its page.
  * @param {string} src @param {string} label
  * @returns {() => void} closes it
  */
@@ -97,17 +98,30 @@ export function openPhotoViewer(src, label) {
     zoomTo(scale * Math.exp(-e.deltaY * 0.002), px, py);
   }, { passive: false });
 
-  const onKey = (/** @type {KeyboardEvent} */ e) => {
-    if (e.key === 'Escape') done();
+  /** Close and Escape take back the history entry opening added; popstate then closes the viewer. */
+  const leave = () => {
+    if (history.state?.annaiViewer) history.back();
+    else done();
   };
+  const onKey = (/** @type {KeyboardEvent} */ e) => {
+    if (e.key === 'Escape') leave();
+  };
+  let open = true;
   function done() {
+    if (!open) return;
+    open = false;
     root.remove();
     removeEventListener('keydown', onKey);
+    removeEventListener('popstate', done);
+    removeEventListener('hashchange', done);
     if (opener instanceof HTMLElement) opener.focus();
   }
-  close.addEventListener('click', done);
+  close.addEventListener('click', leave);
   addEventListener('keydown', onKey);
+  history.pushState({ annaiViewer: true }, '');
+  addEventListener('popstate', done);
+  addEventListener('hashchange', done); // any navigation closes it too
   document.body.append(root);
   close.focus();
-  return done;
+  return leave;
 }

@@ -109,3 +109,5 @@ input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; min-hei
 .viewer-stage { flex: 1; overflow: hidden; touch-action: none; }
 .viewer-img { display: block; width: 100%; height: 100%; object-fit: contain; transform-origin: center; user-select: none; -webkit-user-select: none; }
 .viewer-close { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
+.thumbs { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.thumbs img { display: block; height: 88px; width: auto; max-width: 100%; border-radius: 8px; border: 1px solid var(--line); }

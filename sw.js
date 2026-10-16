@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '15c4043fe76c';
+const BUILD = '88fec8fbd374';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -218,6 +218,9 @@ async function receiveShare(req) {
   try {
     const form = await req.formData();
     const inbox = await caches.open(INBOX);
+    // A new share replaces anything still waiting, so nothing lingers, and nothing another site
+    // posted here earlier (any site can post to a share target) mixes into a real share.
+    for (const key of await inbox.keys()) await inbox.delete(key);
     for (const f of form.getAll('files')) {
       if (!(f instanceof File)) continue;
       await inbox.put(`/inbox/${Date.now()}-${encodeURIComponent(f.name)}`, new Response(f, {
