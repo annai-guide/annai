@@ -74,6 +74,8 @@ export function browserPlatform() {
         envelope(clip).then((l) => { levels = l; }, () => {});
         /** @type {ReturnType<typeof setInterval> | undefined} */
         let ticker;
+        /** @type {() => void} */
+        let stop = () => {};
         try {
           a.src = url;
           await a.play(); // a NotAllowedError: the page may not play sound yet
@@ -85,13 +87,16 @@ export function browserPlatform() {
           return await new Promise((resolve, reject) => {
             a.onended = () => resolve({ ended: true, fraction: 1 });
             a.onerror = () => reject(new Error("The voice's audio couldn't be played."));
-            signal.addEventListener('abort', () => {
+            stop = () => {
               const fraction = a.duration > 0 ? a.currentTime / a.duration : 0;
               a.pause();
               resolve({ ended: false, fraction });
-            }, { once: true });
+            };
+            signal.addEventListener('abort', stop, { once: true });
           });
         } finally {
+          // A stop that comes later must not pause the next clip on this one player.
+          signal.removeEventListener('abort', stop);
           clearInterval(ticker);
           a.onended = null;
           a.onerror = null;
@@ -117,10 +122,15 @@ export function browserPlatform() {
           const pulse = setInterval(() => { level = Math.max(0.3, level * 0.7); onLevel(level); }, 60);
           // Some voices never say they finished: a generous limit ends the wait.
           const limit = setTimeout(() => finish({ ended: true, charIndex: text.length }), 4000 + text.length * 150);
+          const stop = () => {
+            speechSynthesis.cancel();
+            finish({ ended: false, charIndex });
+          };
           /** @param {{ ended: boolean, charIndex: number } | null} r @param {Error} [err] */
           const finish = (r, err) => {
             if (settled) return;
             settled = true;
+            signal.removeEventListener('abort', stop); // a later stop must not cancel the next sentence
             clearInterval(pulse);
             clearTimeout(limit);
             onLevel(0);
@@ -135,10 +145,7 @@ export function browserPlatform() {
           };
           u.onend = () => finish(signal.aborted ? { ended: false, charIndex } : { ended: true, charIndex: text.length });
           u.onerror = (e) => (e.error === 'interrupted' || e.error === 'canceled' ? finish({ ended: false, charIndex }) : finish(null, new Error(`The browser voice couldn't speak (${e.error}).`)));
-          signal.addEventListener('abort', () => {
-            speechSynthesis.cancel();
-            finish({ ended: false, charIndex });
-          }, { once: true });
+          signal.addEventListener('abort', stop, { once: true });
           speechSynthesis.speak(u);
         });
       },

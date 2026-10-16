@@ -1,0 +1,19 @@
+/**
+ * The words speak, wait and ask return about listening (spec §7.1). What the user said follows them
+ * as heard speech, resolved for each model, so these say only what happened.
+ * @typedef {{ heard?: import('../voice/resolve.js').Heard, dismissed?: import('../voice/resolve.js').Heard, text?: string, chosen?: string,
+ *   stopped?: boolean, deaf?: string, gate?: string }} Got
+ *   what a listen got: speech for her (heard) or not (dismissed), typing, a tap on an option, a stop, why annai couldn't listen,
+ *   or nothing (a silence); gate: what the quick-decision gate made of it
+ */
+
+/** How speak's result begins: what she said, and whether the user stopped her (spec §7.1). @param {import('../voice/speaker.js').Spoken} spoken */
+export function spokenText(spoken) {
+  if (!spoken.cut) return 'Said aloud.';
+  return spoken.heard ? `The user stopped you after: "${spoken.heard}".` : 'The user stopped you before you said anything.';
+}
+
+/** A reply that couldn't be said aloud, for speak's result. @param {'no-voice' | 'blocked'} why */
+export function unspoken(why) {
+  return `Not said aloud: ${why === 'blocked' ? "the browser didn't let annai play sound yet" : 'no voice in the speech-out list could speak'}. It was shown on screen instead; the user may type.`;
+}

@@ -8,8 +8,8 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-/** @param {{ playMs?: number, blocked?: boolean, dictation?: boolean }} [o] */
-export function fakePlatform({ playMs = 20, blocked = false, dictation = false } = {}) {
+/** @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string }} [o] */
+export function fakePlatform({ playMs = 20, blocked = false, dictation = false, micFails = '' } = {}) {
   /** @type {string[]} */
   const log = [];
   /** @type {string[]} */
@@ -33,8 +33,9 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false }
         if (blocked) return Promise.reject(Object.assign(new Error('The page may not play sound yet.'), { name: 'NotAllowedError' }));
         onLevel?.(0.5);
         return new Promise((resolve) => {
-          const t = setTimeout(() => resolve({ ended: true, fraction: 1 }), playMs);
-          signal.addEventListener('abort', () => { clearTimeout(t); log.push(`stop ${name}`); resolve({ ended: false, fraction: 0.5 }); }, { once: true });
+          const stop = () => { clearTimeout(t); log.push(`stop ${name}`); resolve({ ended: false, fraction: 0.5 }); };
+          const t = setTimeout(() => { signal.removeEventListener('abort', stop); resolve({ ended: true, fraction: 1 }); }, playMs);
+          signal.addEventListener('abort', stop, { once: true });
         });
       },
     },
@@ -53,6 +54,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false }
     mic: {
       /** @param {{ onFrames: (pcm: Float32Array, rate: number) => void, onError: (e: Error) => void }} o */
       async open({ onFrames }) {
+        if (micFails) throw Object.assign(new Error('Permission denied'), { name: micFails });
         opens++;
         log.push('mic open');
         frames = onFrames;

@@ -6,11 +6,12 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then every running plugin's, in the
  * order they registered; switches come from the app settings, so they cover any plugin's tool.
  * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, region?: number[], name?: string }} Media
- * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean }} ToolOutput
+ * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean, heard?: string[], endTurn?: boolean }} ToolOutput
+ *   heard: segments the user said in answer, which follow the result (spec §10.3); endTurn: the turn ends after this step (chatter heard, §10.4)
  * @typedef {{ id: string, scope: string, trip: string | null, signal: AbortSignal, model: import('../llm/config.js').Model | null, wake: string,
- *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[],
+ *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[], voice?: boolean, sleeping?: boolean,
  *   photos?: { copy(source: import('../request-photos.js').Source, crop?: import('../request-photos.js').Crop): Promise<import('../request-photos.js').Copy> } }} ToolCall
- *   photos: request copies and crops of stored photos (spec §4.8)
+ *   photos: request copies and crops of stored photos (spec §4.8); voice: voice is on for this turn (§10.5); sleeping: sleep came in the same reply
  *   providerOff: the provider tools switched off, for a tool that asks a model to use its own (spec §9.5)
  * @typedef {{ name: string, description: string, input: Record<string, any>, run: (input: any, call: ToolCall) => any, group?: string }} Tool
  */
@@ -59,7 +60,7 @@ export function definitions(tools) {
 /** @param {any} out @returns {ToolOutput} */
 function normalize(out) {
   if (typeof out === 'string') return { content: out };
-  if (out && typeof out === 'object' && typeof out.content === 'string' && (out.images || out.document || out.isError !== undefined || Object.keys(out).length === 1)) {
+  if (out && typeof out === 'object' && typeof out.content === 'string' && (out.images || out.document || out.heard || out.endTurn || out.isError !== undefined || Object.keys(out).length === 1)) {
     return /** @type {ToolOutput} */ (out);
   }
   if (out === undefined || out === null) return { content: 'done' };
