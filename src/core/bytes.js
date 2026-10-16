@@ -53,3 +53,18 @@ export function concat(parts) {
   }
   return out;
 }
+
+/** Base64 of bytes, in pieces so a large photo doesn't overflow the call stack. @param {Uint8Array} b */
+export function toBase64(b) {
+  let s = '';
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+/** @param {string} s */
+export function fromBase64(s) {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}

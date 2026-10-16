@@ -122,8 +122,10 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  * @param {{ role: string, request: Request, level?: string, config: ModelConfig, types: Map<string, EndpointType>,
  *   keyFor: (endpointId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
- *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number }} c
- * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string }>}
+ *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
+ *   record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean } }} c
+ *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
+ * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
   const { role, config, types, bench, now = Date.now, sleep = defaultSleep } = c;
@@ -135,8 +137,14 @@ export async function callRole(c) {
   let usage = { ...NO_USAGE };
   /** @type {number | undefined} */
   let cost;
-  /** @param {string | null} answeredBy @param {string} text @param {string} [stop] @param {string} [reasoning] */
-  const record = (answeredBy, text, stop, reasoning) => c.trace?.turn({ role, level, answeredBy, attempts, usage, cost, ...(stop ? { stop } : {}) }, text, reasoning);
+  const { keepParts, ...meta } = c.record ?? {};
+  /**
+   * @param {string | null} answeredBy @param {string} text @param {string} [stop] @param {string} [reasoning]
+   * @param {import('./contract.js').Part[]} [parts] @param {{ url: string, title?: string }[]} [citations]
+   */
+  const record = (answeredBy, text, stop, reasoning, parts, citations) => c.trace?.turn(
+    { role, level, answeredBy, attempts, usage, cost, ...meta, ...(stop ? { stop } : {}), ...(citations?.length ? { citations } : {}) },
+    text, reasoning, keepParts ? parts : undefined);
   // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable).
   const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? 30) * 1000;
   for (const id of candidates(config, role)) {
@@ -163,8 +171,8 @@ export async function callRole(c) {
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
         const full = said ? prefixed(reply, said) : reply;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
-        await record(model.name, full.text, reply.stop, reasoning);
-        return { reply: full, attempts, usage, cost, answeredBy: model.name };
+        await record(model.name, full.text, reply.stop, reasoning, full.parts, reply.citations);
+        return { reply: full, attempts, usage, cost, answeredBy: model.name, modelId: id };
       } catch (e) {
         const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
         attempts.push({ model: id, name: model.name, outcome: err.kind, ms: now() - started, error: err.message });

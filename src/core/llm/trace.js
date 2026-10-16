@@ -11,7 +11,10 @@ import { utf8, ownBuffer } from '../bytes.js';
  * @typedef {{ endpoint: string, model: string, providerModel: string, url: string, status: number, ms: number, firstMs: number | null,
  *   outcome: string, error?: string, usage: any, cost?: number }} RequestInfo
  * @typedef {{ model: string, name: string, outcome: string, ms: number, cost?: number, error?: string }} Attempt
- * @typedef {{ role: string, level: string, answeredBy: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string }} TurnInfo
+ * @typedef {{ role: string, level: string, answeredBy: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string,
+ *   tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, citations?: { url: string, title?: string }[] }} TurnInfo
+ *   tag: whose call it was ("conversation" for Shiori's own turns); wake: the wake it served; prefix: the cached prefix's
+ *   fingerprint; context: the events in context (spec §4.5)
  */
 
 /** A URL fit for the trace: no username or password, and no query values. @param {string} url */
@@ -116,10 +119,14 @@ export function modelTrace(store, scope) {
     /**
      * @param {TurnInfo} i @param {string} text the reply's text
      * @param {string} [reasoning] the reply's reasoning: never shown in the conversation, visible here (spec §9.3)
+     * @param {import('./contract.js').Part[]} [parts] the reply's parts, kept when the conversation is rebuilt from the log
      */
-    turn(i, text, reasoning = '') {
+    turn(i, text, reasoning = '', parts) {
       const data = { ...i, attempts: i.attempts.map((a) => (a.error ? { ...a, error: scrub(a.error) } : a)) };
-      return append({ ts: Date.now(), type: 'model.turn', actor: 'system', data }, [['reply', scrub(text)], ['reasoning', scrub(reasoning)]]);
+      /** @type {[string, string][]} */
+      const texts = [['reply', scrub(text)], ['reasoning', scrub(reasoning)]];
+      if (parts) texts.push(['parts', scrub(JSON.stringify(parts))]);
+      return append({ ts: Date.now(), type: 'model.turn', actor: 'system', data }, texts);
     },
   };
 }

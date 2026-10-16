@@ -54,13 +54,13 @@ export function createLlm({
     /**
      * A role call with fallback, traced in scope (spec §9.6).
      * @param {{ role?: string, request: import('./contract.js').Request, level?: string, onEvent?: (e: import('./contract.js').StreamEvent) => void,
-     *   signal?: AbortSignal, scope?: string }} c
+     *   signal?: AbortSignal, scope?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean } }} c
      */
-    async call({ role = 'main', request, level, onEvent, signal, scope = SYS }) {
+    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record }) {
       await ready;
       return callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record,
       });
     },
     /**
@@ -73,7 +73,7 @@ export function createLlm({
       const firstId = candidates(cfg, 'decide')[0];
       const first = firstId && cfg.models[firstId] ? modelOf(cfg.models[firstId]) : null;
       // The main model is asked at level off (or the nearest it has), so a quick decision stays quick.
-      const call = (/** @type {string} */ role, /** @type {any} */ request) => service.call({ role, request, scope, ...(role === 'decide' ? {} : { level: 'off' }) });
+      const call = (/** @type {string} */ role, /** @type {any} */ request) => service.call({ role, request, scope, ...(role === 'decide' ? {} : { level: 'off' }), record: { tag: 'decide' } });
       const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs) });
       await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by } }).catch(() => {});
       return r.probabilities;

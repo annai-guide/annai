@@ -196,3 +196,15 @@ test('a request that needs a provider tool skips models without one', async () =
   const r = await call(s, { request: { ...hello, providerTools: { kinds: ['fetch'] }, needsProviderTool: 'fetch' } });
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-provider-tool', 'ok']);
 });
+
+test('record: the model.turn carries the tag and wake, keeps the parts, and the result names the model', async () => {
+  const s = setup([[{ text: 'Hi.', toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  const r = await call(s, { record: { tag: 'conversation', wake: 'w-1', keepParts: true } });
+  assert.equal(r.modelId, 'm-0');
+  const [turn] = await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }));
+  assert.equal(turn.data.tag, 'conversation');
+  assert.equal(turn.data.wake, 'w-1');
+  assert.deepEqual(turn.data.stored, ['reply', 'parts']);
+  const blob = await s.store.tx(['blobs'], 'readonly', (t) => t.getBlob(turn.refs[1]));
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(blob?.data)).map((/** @type {any} */ p) => p.type), ['text', 'tool_call']);
+});
