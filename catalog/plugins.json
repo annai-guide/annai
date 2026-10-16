@@ -2,6 +2,20 @@
   "format": 1,
   "plugins": [
     {
+      "id": "anthropic-messages",
+      "name": "Anthropic Messages",
+      "version": "0.1.0",
+      "provides": {
+        "endpoint-type": [
+          "anthropic-messages"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "7cb14438b6bdf7b1b64f314f22da321af4323379f0320403c575095865fbfecb",
+        "index.js": "b5afdbc2bcde578b391478a34a32d1d482a111367a7a4586d817bd9a93e73d2c"
+      }
+    },
+    {
       "id": "chat-completions",
       "name": "Chat Completions",
       "version": "0.1.0",

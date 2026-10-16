@@ -1,0 +1,9 @@
+{
+  "id": "anthropic-messages",
+  "name": "Anthropic Messages",
+  "version": "0.1.0",
+  "api": 1,
+  "entry": "index.js",
+  "description": "Talks to Anthropic's Messages API and to endpoints that speak it.",
+  "provides": { "endpoint-type": ["anthropic-messages"] }
+}

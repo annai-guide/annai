@@ -1,0 +1,137 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { activate } from '../../plugins-official/anthropic-messages/index.js';
+import { sse } from '../../src/core/llm/sse.js';
+import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
+import { retry } from '../../src/core/llm/retry.js';
+import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
+
+/** @returns {any} */
+function load() {
+  /** @type {any} */
+  let type = null;
+  activate({ providers: { register: (/** @type {any} */ t) => { type = t; return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
+  return type;
+}
+const type = load();
+const fixture = (/** @type {string} */ name) => readFile(new URL(`../fixtures/llm/anthropic/${name}`, import.meta.url), 'utf8');
+/** @param {any} [over] */
+function spec(over = {}) {
+  const endpoint = { id: 'ep-2', type: 'anthropic-messages', name: 'Anthropic', baseUrl: 'https://api.anthropic.com', headers: {}, tunables: { ...type.tunables }, extraBody: {} };
+  const model = { id: 'm-2', endpoint: 'ep-2', name: 'Haiku', providerId: 'claude-haiku-5-5', input: ['text', 'image'], tools: true, contextWindow: 1000000, maxOutput: null, prices: null, cacheTtls: ['5m', '1h'], reasoning: {}, tunables: {}, extraBody: {} };
+  return { endpoint, model, key: 'sk-ant-test', tunables: { ...type.tunables }, request: { messages: [] }, ...over };
+}
+/** @param {string} text */
+async function read(text) {
+  const out = [];
+  for await (const e of type.read(new Response(text), spec())) out.push(e);
+  return out;
+}
+
+test('build: annai’s request as a Messages API request, with browser access and cache markers', () => {
+  const s = spec({
+    request: {
+      system: 'Be brief.',
+      cacheTtl: '1h',
+      tools: [{ name: 'report_color', description: 'Report a color.', input: { type: 'object' } }],
+      messages: [
+        { role: 'user', parts: [{ type: 'text', text: 'What color?' }, { type: 'image', mediaType: 'image/png', data: 'AAAA' }] },
+        { role: 'assistant', parts: [
+          { type: 'reasoning', text: 'A red square.', signature: 'sig', model: 'claude-haiku-5-5' },
+          { type: 'reasoning', text: '', redacted: 'opaque', model: 'claude-haiku-5-5' },
+          { type: 'reasoning', text: 'not signed', model: 'claude-haiku-5-5' },
+          { type: 'tool_call', id: 'toolu_1', name: 'report_color', input: { color: 'red' } },
+        ] },
+        { role: 'user', parts: [{ type: 'text', text: 'And?' }, { type: 'tool_result', id: 'toolu_1', content: 'noted', isError: false }] },
+        { role: 'user', parts: [{ type: 'text', text: 'Hello?' }] },
+      ],
+    },
+  });
+  const { url, headers, body } = type.build(s);
+  assert.equal(url, 'https://api.anthropic.com/v1/messages');
+  assert.deepEqual(headers, { 'content-type': 'application/json', 'anthropic-version': '2023-06-01', 'x-api-key': 'sk-ant-test', 'anthropic-dangerous-direct-browser-access': 'true' });
+  assert.equal(body.model, 'claude-haiku-5-5');
+  assert.equal(body.max_tokens, 8192);
+  assert.equal(body.stream, true);
+  assert.deepEqual(body.system, [{ type: 'text', text: 'Be brief.', cache_control: { type: 'ephemeral', ttl: '1h' } }]);
+  assert.deepEqual(body.tools, [{ name: 'report_color', description: 'Report a color.', input_schema: { type: 'object' } }]);
+  assert.deepEqual(body.messages, [
+    { role: 'user', content: [{ type: 'text', text: 'What color?' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } }] },
+    { role: 'assistant', content: [
+      { type: 'thinking', thinking: 'A red square.', signature: 'sig' },
+      { type: 'redacted_thinking', data: 'opaque' },
+      { type: 'tool_use', id: 'toolu_1', name: 'report_color', input: { color: 'red' } },
+    ] },
+    { role: 'user', content: [
+      { type: 'tool_result', tool_use_id: 'toolu_1', content: 'noted' },
+      { type: 'text', text: 'And?' },
+      { type: 'text', text: 'Hello?', cache_control: { type: 'ephemeral', ttl: '1h' } },
+    ] },
+  ]);
+});
+
+test('build: a 5-minute cache, a beta header, no key, and the request’s own maximum', () => {
+  const s = spec({ key: null, tunables: { ...type.tunables, browserAccess: false, beta: 'files-api-2025-04-14' }, request: { system: 'S', cacheTtl: '5m', maxOutput: 100, messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } });
+  const { headers, body } = type.build(s);
+  assert.equal(headers['x-api-key'], undefined);
+  assert.equal(headers['anthropic-dangerous-direct-browser-access'], undefined);
+  assert.equal(headers['anthropic-beta'], 'files-api-2025-04-14');
+  assert.equal(body.max_tokens, 100);
+  assert.deepEqual(body.system[0].cache_control, { type: 'ephemeral' });
+  assert.equal(type.build(spec({ request: { messages: [] } })).body.system, undefined);
+});
+
+test('read: text with cache reads and writes of both lifetimes, and the stop reason', async () => {
+  assert.deepEqual(await read(await fixture('text.sse')), [
+    { type: 'usage', usage: { input: 50, cacheRead: 8000, cacheWrite: 1500, cacheWrite1h: 500, output: 1 } },
+    { type: 'text', text: 'Hello from ' },
+    { type: 'text', text: 'B.' },
+    { type: 'usage', usage: { output: 7 } },
+    { type: 'stop', reason: 'end' },
+  ]);
+});
+
+test('read: signed thinking, redacted thinking and a tool call streamed in pieces', async () => {
+  const events = await read(await fixture('thinking-tools.sse'));
+  assert.deepEqual(events.filter((e) => e.type === 'reasoning'), [
+    { type: 'reasoning', text: 'A red square. Call the tool.', signature: 'EqQBCgIYAh==' },
+    { type: 'reasoning', text: '', redacted: 'EmwKAhgBEgy3' },
+  ]);
+  assert.deepEqual(events.filter((e) => e.type === 'tool_input').map((e) => e.partial), ['', '{"color": "re', '{"color": "red"}']);
+  assert.deepEqual(events.filter((e) => e.type === 'tool_call'), [{ type: 'tool_call', id: 'toolu_01A', name: 'report_color', input: { color: 'red' } }]);
+  assert.deepEqual(events.at(-1), { type: 'stop', reason: 'tool' });
+});
+
+test('read: an error event and a stream that stops early', async () => {
+  await assert.rejects(read(await fixture('error.sse')), (e) => e instanceof ProviderError && e.kind === 'overloaded' && e.message === 'Overloaded');
+  await assert.rejects(read(await fixture('cut.sse')), (e) => e instanceof ProviderError && e.kind === 'network');
+});
+
+test('classify: Anthropic error types', () => {
+  const body = (/** @type {string} */ t, msg = 'x') => JSON.stringify({ type: 'error', error: { type: t, message: msg } });
+  assert.equal(type.classify(401, body('authentication_error')), 'auth');
+  assert.equal(type.classify(403, body('permission_error')), 'auth');
+  assert.equal(type.classify(402, body('billing_error')), 'credit');
+  assert.equal(type.classify(429, body('rate_limit_error')), 'rate');
+  assert.equal(type.classify(529, body('overloaded_error')), 'overloaded');
+  assert.equal(type.classify(413, body('request_too_large')), 'context');
+  assert.equal(type.classify(404, body('not_found_error')), 'not-found');
+  assert.equal(type.classify(500, body('api_error')), 'server');
+  assert.equal(type.classify(504, body('timeout_error')), 'server');
+  assert.equal(type.classify(400, body('invalid_request_error', 'prompt is too long: 1048577 tokens > 1000000 maximum')), 'context');
+  assert.equal(type.classify(400, body('invalid_request_error', 'Your credit balance is too low to access the Anthropic API.')), 'credit');
+  assert.equal(type.classify(400, body('invalid_request_error', 'messages.0.content.1.image.source.base64: image exceeds 5 MB maximum')), 'image');
+  assert.equal(type.classify(400, body('invalid_request_error', 'max_tokens: must be positive')), 'bad-request');
+  assert.equal(type.classify(500, 'not json'), null);
+});
+
+test('list: the models API', () => {
+  const { url, headers } = type.listRequest({ endpoint: spec().endpoint, key: 'sk-ant-test' });
+  assert.equal(url, 'https://api.anthropic.com/v1/models');
+  assert.equal(headers['x-api-key'], 'sk-ant-test');
+  assert.deepEqual(type.readList({ data: [{ id: 'claude-haiku-5-5', display_name: 'Claude Haiku 5.5', max_input_tokens: 1000000, max_tokens: 128000 }, { id: 'claude-x' }] }), [
+    { providerId: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', contextWindow: 1000000, maxOutput: 128000 },
+    { providerId: 'claude-x' },
+  ]);
+});
