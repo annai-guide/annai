@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergePatch } from '../../src/core/patch.js';
+import { mergePatch, diffPatch } from '../../src/core/patch.js';
 
 // RFC 7396, Appendix A.
 const RFC = [
@@ -59,4 +59,13 @@ test('a "__proto__" key is plain data: it neither changes the prototype nor poll
   assert.equal(/** @type {any} */ ({}).polluted, undefined);
   const nested = mergePatch({ a: {} }, JSON.parse('{"a": {"__proto__": {"x": 1}}}'));
   assert.equal(Object.getPrototypeOf(nested.a), Object.prototype);
+});
+
+test('diffPatch: the merge patch that turns one value into another, deletions included', () => {
+  const base = { name: 'A', headers: { a: '1', b: '2' }, levels: { low: { x: 1 }, max: { x: 9 } }, list: [1, 2], same: { k: 1 } };
+  const edited = { name: 'A', headers: { a: '1' }, levels: { low: { x: 2 } }, list: [1], same: { k: 1 }, extra: true };
+  const patch = diffPatch(base, edited);
+  assert.deepEqual(patch, { headers: { b: null }, levels: { low: { x: 2 }, max: null }, list: [1], extra: true });
+  assert.deepEqual(mergePatch(base, patch), edited);
+  assert.deepEqual(diffPatch(base, structuredClone(base)), {});
 });

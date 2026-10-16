@@ -56,6 +56,20 @@ test('diffLayer keeps only what the user changed', () => {
   assert.deepEqual(diffLayer({ ...base, name: 'Mine', tunables: { a: 2 } }, base), { name: 'Mine', tunables: { a: 2 } });
 });
 
+test("deleting a header or a reasoning level that came from a template sticks", async () => {
+  const { ws } = await setup();
+  const ep = newEndpoint('chat-completions', { template: { id: 'openrouter', version: 1, values: { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', headers: { 'HTTP-Referer': 'https://annai.guide', 'X-Title': 'annai' } } } });
+  const base = endpointBase(ep);
+  const edited = { ...base, headers: { 'HTTP-Referer': 'https://annai.guide' } };
+  await saveEndpoint(ws, { ...ep, user: diffLayer(edited, base) });
+  const saved = (await readConfig(ws)).endpoints[ep.id];
+  assert.deepEqual(endpointOf(saved).headers, { 'HTTP-Referer': 'https://annai.guide' });
+  const m = newModel(ep.id, { template: { id: 'anthropic/opus', version: 1, values: { providerId: 'opus', reasoning: { low: { effort: 'low' }, max: { effort: 'max' } } } } });
+  const mBase = modelBase(m);
+  const mEdited = { ...mBase, reasoning: { low: { effort: 'low' } } };
+  assert.deepEqual(modelOf({ ...m, user: diffLayer(mEdited, mBase) }).reasoning, { low: { effort: 'low' } });
+});
+
 test('model names are unique, whatever their case', async () => {
   const { ws } = await setup();
   const ep = openrouter();

@@ -30,6 +30,25 @@ export function mergePatch(target, patch, opts = {}) {
   return out;
 }
 
+/**
+ * The merge patch that turns base into edited: changed values, and null for keys edited no
+ * longer has, recursing into objects both have, so mergePatch(base, diffPatch(base, edited))
+ * equals edited. Arrays and other values are replaced whole. A null value in edited can't be
+ * kept, since null deletes in a merge patch.
+ * @param {Record<string, any>} base @param {Record<string, any>} edited @returns {Record<string, any>}
+ */
+export function diffPatch(base, edited) {
+  /** @type {Record<string, any>} */
+  const out = {};
+  for (const k of Object.keys(base)) if (!Object.hasOwn(edited, k)) define(out, k, null);
+  for (const [k, v] of Object.entries(edited)) {
+    const was = own(base, k);
+    if (JSON.stringify(v) === JSON.stringify(was)) continue;
+    define(out, k, isObject(v) && isObject(was) ? diffPatch(was, v) : clone(v));
+  }
+  return out;
+}
+
 // Keys are always own data properties, so "__proto__" in a patch is plain data
 // and never changes an object's prototype (no pollution from untrusted patches).
 /** @param {Record<string, any>} o @param {string} k */

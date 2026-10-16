@@ -1,5 +1,5 @@
 import { validate } from '../schema.js';
-import { mergePatch } from '../patch.js';
+import { mergePatch, diffPatch } from '../patch.js';
 import { ValidationError } from '../workspace.js';
 import { SYS_SETTINGS, newId } from '../scopes.js';
 import { LEVELS, ROLE_LEVELS } from './reasoning.js';
@@ -49,7 +49,7 @@ const VALUES = {
     name: { type: 'string', maxLength: 120 },
     baseUrl: { type: 'string', maxLength: 2000 },
     providerId: { type: 'string', maxLength: 300 },
-    headers: { type: 'object', additionalProperties: { type: 'string' } },
+    headers: { type: 'object', additionalProperties: { type: ['string', 'null'] } }, // null: a template's header the user removed
     tunables: OBJECT,
     extraBody: OBJECT,
     reasoning: OBJECT,
@@ -120,12 +120,13 @@ export function modelOf(rec) {
   return { id: rec.id, endpoint: rec.endpoint, ...v, name: v.name || v.providerId };
 }
 
-/** The user layer that turns base into edited: only the values that differ. @param {Record<string, any>} edited @param {Record<string, any>} base */
+/**
+ * The user layer that turns base into edited: only what differs, as a merge patch, so a header,
+ * tunable or reasoning level the user deleted from a template's values stays deleted.
+ * @param {Record<string, any>} edited @param {Record<string, any>} base
+ */
 export function diffLayer(edited, base) {
-  /** @type {Record<string, any>} */
-  const out = {};
-  for (const [k, v] of Object.entries(edited)) if (JSON.stringify(v) !== JSON.stringify(base[k])) out[k] = v;
-  return out;
+  return diffPatch(base, edited);
 }
 
 /** Every endpoint, model and role. Records that aren't valid are skipped. @param {Workspace} ws @returns {Promise<ModelConfig>} */
