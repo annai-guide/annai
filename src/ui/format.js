@@ -42,3 +42,12 @@ export function takenText(taken, locale) {
   const at = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])));
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(at);
 }
+
+/**
+ * A trip's backup status for its card (spec §4.9, §16.2).
+ * @param {{ at: number | null, changed: boolean }} state @param {number} [now]
+ */
+export function backupText({ at, changed }, now = Date.now()) {
+  if (at === null) return 'not backed up';
+  return `backed up ${relTime(at, now)}${changed ? ', changed since' : ''}`;
+}

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, buildAndSave } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -92,4 +92,41 @@ test('a full device says what to do, and nothing is half-saved', async ({ page }
 test("a trip link can't open your profile or annai's own files", async ({ page }) => {
   await openApp(page, '#/trip/me/file?path=%2Fprofile.md');
   await expect(page.getByRole('heading', { name: "This trip isn't on this device" })).toBeVisible();
+});
+
+test('a trip card says when the trip was last backed up, and when it changed since', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const card = page.getByRole('link', { name: /Big Sur/ });
+  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await expect(card).toContainText('not backed up');
+  await card.click();
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  await buildAndSave(page);
+  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await expect(card).toContainText('backed up just now');
+  await expect(card).not.toContainText('changed since');
+  await card.click();
+  await page.getByLabel('File path').fill('/notes/day1.md');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
+  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await expect(card).toContainText('changed since');
+});
+
+test('a Backup saved while storage is full still says it was saved', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  await page.getByRole('button', { name: 'Build file' }).click();
+  const save = page.getByRole('button', { name: 'Save file' });
+  await expect(save).toBeVisible();
+  await page.evaluate(() => {
+    IDBObjectStore.prototype.put = function () { throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); };
+  });
+  const downloading = page.waitForEvent('download');
+  await save.click();
+  await downloading;
+  await expect(page.getByText('Saved to your downloads.')).toBeVisible();
+  await expect(page.getByText("annai's storage is full", { exact: true })).toBeVisible();
 });

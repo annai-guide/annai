@@ -1,9 +1,9 @@
 import { h, field } from '../dom.js';
-import { listTrips, createTrip } from '../../core/scopes.js';
+import { listTrips, createTrip, backupState } from '../../core/scopes.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, dateRange } from '../format.js';
+import { relTime, dateRange, backupText } from '../format.js';
 import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
 
@@ -11,7 +11,8 @@ import { openFileButton } from '../open-file.js';
 export async function renderTrips(ctx) {
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
-  const cards = await Promise.all(active.map(async (s) => tripCard(s, await ctx.ws.readJSON(s.id, '/trip.json').catch(() => null))));
+  const cards = await Promise.all(active.map(async (s) => tripCard(s, await ctx.ws.readJSON(s.id, '/trip.json').catch(() => null), await backupState(ctx.store, s.id))));
+  const archivedCards = await Promise.all(archived.map(async (s) => tripCard(s, null, await backupState(ctx.store, s.id))));
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Trips' }),
     active.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: 'No trips yet. Start one below, or open a trip someone sent you.' }),
@@ -19,16 +20,16 @@ export async function renderTrips(ctx) {
     openFileButton(ctx),
     h('p', { class: 'sub', text: settings.lastExportAt ? `Last export ${relTime(settings.lastExportAt)}.` : 'No backup yet. You can export everything from Settings.' }),
     archived.length
-      ? h('details', { class: 'archived' }, h('summary', { text: `Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archived.map((s) => tripCard(s, null))))
+      ? h('details', { class: 'archived' }, h('summary', { text: `Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
       : null);
 }
 
-/** @param {any} s @param {any} trip */
-function tripCard(s, trip) {
+/** @param {any} s @param {any} trip @param {{ at: number | null, changed: boolean }} backup */
+function tripCard(s, trip, backup) {
   const when = trip?.start ? dateRange(trip.start, trip.end) : null;
   return h('li', {}, h('a', { class: 'card', href: `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'name', text: s.title }),
-    h('span', { class: 'sub', text: [when, `updated ${relTime(s.updated)}`].filter(Boolean).join(' · ') })));
+    h('span', { class: 'sub', text: [when, `updated ${relTime(s.updated)}`, backupText(backup)].filter(Boolean).join(' · ') })));
 }
 
 /** @param {any} ctx */

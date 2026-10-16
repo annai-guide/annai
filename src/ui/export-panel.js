@@ -1,5 +1,7 @@
 import { h, field, checkbox, radios } from './dom.js';
-import { exportArchive, PRESETS } from '../core/archive.js';
+import { exportArchive, PRESETS, isFullBackup } from '../core/archive.js';
+import { recordBackup } from '../core/scopes.js';
+import { explainStorageFull } from './storage-full.js';
 import { updateAppSettings, readAppSettings } from '../core/settings.js';
 import { photoSettings, MAX_CANVAS_PIXELS } from '../core/photos.js';
 import { codec } from './photo-codec.js';
@@ -36,7 +38,7 @@ export function exportPanel(ctx, what) {
   const pass1 = h('input', { id: `export-pass-${k}`, type: 'password', autocomplete: 'new-password' });
   const pass2 = h('input', { id: `export-pass2-${k}`, type: 'password', autocomplete: 'new-password' });
   const status = h('p', { class: 'sub', role: 'status' });
-  /** @type {{ blob: Blob, filename: string } | null} */
+  /** @type {{ blob: Blob, filename: string, seqs: Map<string, number>, full: boolean } | null} */
   let built = null;
   const saveBtn = h('button', {
     class: 'btn pri', type: 'button', hidden: true,
@@ -44,8 +46,14 @@ export function exportPanel(ctx, what) {
       if (!built) return;
       const how = await saveFile(built.blob, built.filename);
       if (how === 'cancelled') return;
-      await updateAppSettings(ctx.ws, { lastExportAt: Date.now() });
       status.textContent = how === 'shared' ? 'Shared.' : 'Saved to your downloads.';
+      try {
+        if (built.full) await recordBackup(ctx.store, built.seqs, Date.now());
+        await updateAppSettings(ctx.ws, { lastExportAt: Date.now() });
+      } catch (e) {
+        // The file is saved either way; only annai's note of it failed (spec §17).
+        if (!explainStorageFull(ctx, e)) throw e;
+      }
     },
   }, 'Save file');
   const build = h('button', {
@@ -58,12 +66,12 @@ export function exportPanel(ctx, what) {
       status.textContent = pass1.value ? 'Building and encrypting. This takes a few seconds…' : 'Building…';
       try {
         const share = mode === 'share' ? { places: places.input.checked, convert: await photoConverter(ctx) } : undefined;
+        const include = { history: history.input.checked, memory: memory.input.checked, photos: photos.input.checked };
         const result = await exportArchive(ctx.store, {
-          kind: what.kind, scopes: what.scopes,
-          include: { history: history.input.checked, memory: memory.input.checked, photos: photos.input.checked },
+          kind: what.kind, scopes: what.scopes, include,
           secrets: keys?.input.checked ?? false, passphrase: pass1.value || undefined, app: ctx.version, share,
         });
-        built = result;
+        built = { ...result, full: isFullBackup(include, Boolean(share)) };
         const left = result.skipped.length
           ? ` Left out, because this browser can't remove where they were taken: ${result.skipped.join(', ')}.`
           : '';

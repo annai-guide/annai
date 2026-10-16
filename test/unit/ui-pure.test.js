@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange, takenText } from '../../src/ui/format.js';
+import { relTime, bytes, dateRange, takenText, backupText } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 
@@ -52,4 +52,11 @@ test('a full device gets advice that frees space: deleting inside annai keeps th
     assert.doesNotMatch(advice, /delete photos|old trips|make room/i);
   }
   assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => a.label), ['Export a backup']);
+});
+
+test('backupText: never, up to date, and changed since (spec §4.9)', () => {
+  const now = Date.UTC(2026, 10, 25);
+  assert.equal(backupText({ at: null, changed: true }, now), 'not backed up');
+  assert.match(backupText({ at: now - 2 * 86400_000, changed: false }, now), /^backed up 2 days ago$/);
+  assert.match(backupText({ at: now - 2 * 86400_000, changed: true }, now), /^backed up 2 days ago, changed since$/);
 });
