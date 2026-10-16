@@ -81,7 +81,9 @@ export function expandLink(format, values) {
  */
 export function mapsLinks(catalog, { destination, origin, mode = 'drive' }) {
   if (!String(destination ?? '').trim()) throw new Error('maps_link needs a destination: a name, an address, or "lat,lng".');
-  const out = catalog.maps.filter((m) => m.modes[mode]).map((m) => ({ label: m.name, url: expandLink(m.directions, { destination, origin, mode: m.modes[mode] }) }));
+  // Own keys only: the mode comes from the model, and "toString" isn't a mode.
+  const value = (/** @type {MapsFormat} */ m) => (Object.hasOwn(m.modes, mode) ? m.modes[mode] : null);
+  const out = catalog.maps.filter((m) => value(m)).map((m) => ({ label: m.name, url: expandLink(m.directions, { destination, origin, mode: value(m) }) }));
   if (!out.length) throw new Error(`No maps app here gives ${mode} directions. Try drive, walk or transit.`);
   return out;
 }
