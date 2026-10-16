@@ -14,10 +14,11 @@ import { renderModels } from './screens/models.js';
 import { renderShiori } from './screens/shiori.js';
 import { renderTalk } from './screens/talk.js';
 import { renderTools } from './screens/tools.js';
+import { renderPlan } from './screens/plan.js';
 import { createDock } from './dock.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan };
 
 /**
  * @param {HTMLElement} root
@@ -26,7 +27,7 @@ const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settin
 export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
-  const links = [['#/trips', 'Trips'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
+  const links = [['#/trips', 'Trips'], ['#/plan', 'Plan'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
   const header = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
     h('nav', { class: 'topnav', 'aria-label': 'Main' }, ...links));
@@ -45,9 +46,9 @@ export function startShell(root, core) {
   async function render() {
     const my = ++seq;
     const route = parseHash(location.hash);
+    const section = route.name === 'plan' ? 'plan' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
     for (const a of links) {
-      const on = a.getAttribute('href') === `#/${route.parts[0]}` || (route.parts[0] === 'trip' && a.getAttribute('href') === '#/trips');
-      if (on) a.setAttribute('aria-current', 'page');
+      if (a.getAttribute('href') === `#/${section}`) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     }
     const screen = SCREENS[route.name] ?? SCREENS.trips;

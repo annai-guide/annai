@@ -189,3 +189,11 @@ test('isArchiveName: annai archives and zips, not Wallet passes', () => {
   for (const n of ['Trip.annai.zip', 'trip.annai', 'backup.ZIP']) assert.equal(isArchiveName(n), true, n);
   for (const n of ['flight.pkpass', 'trip.ics', 'confirmation.pdf', 'annai']) assert.equal(isArchiveName(n), false, n);
 });
+
+test('parseHash: the plan and booking screens', () => {
+  assert.equal(parseHash('#/plan').name, 'plan');
+  assert.deepEqual(parseHash('#/trip/t-1/plan'), { name: 'plan', parts: ['trip', 't-1', 'plan'], params: {} });
+  const b = parseHash('#/trip/t-1/booking?path=%2Fbookings%2Fhotel.json');
+  assert.deepEqual([b.name, b.parts[1], b.params.path], ['booking', 't-1', '/bookings/hotel.json']);
+  assert.equal(parseHash('#/trip/t-1/toString').name, 'trip');
+});

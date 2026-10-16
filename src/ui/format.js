@@ -76,3 +76,6 @@ export function outcomeText(outcome) {
 
 /** The address of a file in a trip. @param {string} id @param {string} path */
 export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;
+
+/** The Booking screen for a trip's booking (spec §16.2). @param {string} id @param {string} path "/bookings/…" */
+export const bookingHref = (id, path) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
