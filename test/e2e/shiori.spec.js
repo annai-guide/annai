@@ -137,6 +137,8 @@ test('done: a conversation with tool use, with fallback across two providers, su
     await page.getByLabel('Message to Shiori').fill('Are you there?');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    // The dock says Thinking before the request is sent: reload once the stand-in has it.
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(3);
     await page.reload();
     await page.goto('/#/talk');
     await expect(page.locator('.convo .you').last()).toHaveText('Are you there?');
@@ -159,6 +161,36 @@ test('done: a conversation with tool use, with fallback across two providers, su
     await expect(page.getByText(/the user wrote · (free|\$)/).first()).toBeVisible(); // the stand-in model has no prices
     for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
     expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('removing the trip Shiori is working in: she stops first, and nothing of it is left behind (spec §4.9)', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [{ ...sse(anthropicToolReply([{ name: 'speak', input: { text: 'Too late.' } }, { name: 'sleep', input: {} }])), delayMs: 3000 }] });
+  try {
+    await setUp(page, llm.origin);
+    const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Where should we eat?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}`; }, id);
+    await page.getByRole('button', { name: 'Remove trip' }).click();
+    await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
+    await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+    await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+    await page.waitForTimeout(500);
+    const left = await page.evaluate((scope) => new Promise((resolve, reject) => {
+      const r = indexedDB.open('annai');
+      r.onsuccess = () => {
+        const all = r.result.transaction('events').objectStore('events').getAll();
+        all.onsuccess = () => { r.result.close(); resolve(all.result.filter((/** @type {any} */ e) => e.scope === scope).map((/** @type {any} */ e) => e.type)); };
+        all.onerror = () => reject(all.error);
+      };
+      r.onerror = () => reject(r.error);
+    }), id);
+    expect(left).toEqual([]);
   } finally {
     await llm.stop();
   }

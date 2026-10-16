@@ -6,12 +6,12 @@ import { modelOf } from '../llm/config.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
-import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS } from './compaction.js';
+import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
 import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
-import { tracedFetch } from './net.js';
+import { tracedFetch, withoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
 
@@ -21,7 +21,7 @@ import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
  * sleeps, calls no tool, or something stops her. She reaches the user only through output tools
  * (§7.1); everything else she writes stays in the trace.
  * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality'} WakeKind
- * @typedef {{ kind: WakeKind, text: string, plugin?: string }} Wake
+ * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string }} Wake scope: the conversation it was meant for, set when it is queued
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {{ name: StateName, label: string, detail?: string }} State
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[] }} Notice
@@ -83,6 +83,16 @@ export class Agent {
   #lastPrompt = 0;
   /** @type {LoopTool[]} */
   #loopTools;
+  /** The trip of the conversation being opened, or open: what the user is looking at. @type {string | null} */
+  #target = null;
+  /** Opens asked for and not finished: no turn starts meanwhile. */
+  #opens = 0;
+  /** Counts opens: only the latest one does anything. */
+  #generation = 0;
+  /** @type {(() => void)[]} waiting for the running turn or housekeeping to end */
+  #free = [];
+  /** The page is being left. */
+  #leaving = false;
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set() };
 
@@ -112,6 +122,11 @@ export class Agent {
   on(kind, fn) {
     this.#on[kind].add(fn);
     return () => this.#on[kind].delete(fn);
+  }
+
+  /** A system card, with any key annai keeps blanked from what it says (spec §9.9). @param {Notice} n */
+  async #notice(n) {
+    this.#emit('notice', { ...n, title: await withoutSecrets(this.store, n.title), body: await withoutSecrets(this.store, n.body) });
   }
 
   /** @param {'state' | 'event' | 'notice'} kind @param {any} x */
@@ -146,30 +161,91 @@ export class Agent {
     };
   }
 
+  /** The trip of the conversation being opened, or open (trip and scope change only once it is read). */
+  get target() {
+    return this.#target;
+  }
+
   /**
    * Opens the conversation of a trip (or of "me" when none is open). A turn in progress is stopped
-   * first. Tool calls left open by a crash get results, and a catch-up wake runs (spec §6.7).
+   * at once. Opens run one after another and only the latest counts; until it is done no turn
+   * starts, so what the user types meanwhile goes to the conversation being opened. Tool calls
+   * left open by a crash get results, and a catch-up wake runs (spec §6.7).
    * @param {string | null} trip
    */
   open(trip) {
-    this.opening = this.#open(trip);
+    this.#target = trip;
+    this.#opens++;
+    const generation = ++this.#generation;
+    if (this.#busy) this.interrupt();
+    this.#clearTimer();
+    this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).finally(() => {
+      this.#opens--;
+      if (!this.#opens) this.#drain();
+    });
     return this.opening;
   }
 
-  /** @param {string | null} trip */
-  async #open(trip) {
-    if (this.#busy) {
-      this.interrupt();
-      await this.idle();
-    }
+  /** @param {string | null} trip @param {number} generation */
+  async #open(trip, generation) {
+    if (generation !== this.#generation) return;
+    await this.#whenFree();
+    const scope = trip ?? ME;
+    const transcript = await Transcript.load(this.store, scope);
+    if (generation !== this.#generation) return;
+    const repaired = await repair(this.store, scope, transcript);
+    if (generation !== this.#generation) return;
+    await this.#keepElsewhere(scope);
+    if (generation !== this.#generation) return;
     this.trip = trip;
-    this.scope = trip ?? ME;
+    this.scope = scope;
+    this.transcript = transcript;
     this.#snapshot = null;
-    this.transcript = await Transcript.load(this.store, this.scope);
-    const repaired = await repair(this.store, this.scope, this.transcript);
-    if (repaired || this.transcript.unanswered) {
-      this.wake({ kind: 'restart', text: repaired ? 'annai restarted while you were working, so your unfinished tool calls were stopped.' : 'annai restarted before you answered.' });
+    // The last conversation's housekeeping stays with it: it is checked again at its next turn.
+    this.#due = false;
+    this.#lastPrompt = 0;
+    this.#clearTimer();
+    if (repaired || transcript.unanswered) {
+      const text = repaired ? 'annai restarted while you were working, so your unfinished tool calls were stopped.' : 'The conversation closed before you answered (annai restarted, or another one was opened).';
+      this.#queue.push({ kind: 'restart', text, scope }); // it runs once the open is done
     }
+  }
+
+  /**
+   * Wakes still queued for another conversation than the one opening (typed there before the user
+   * left it) are written into it, so nothing is lost: it catches up when it is opened again.
+   * @param {string} scope
+   */
+  async #keepElsewhere(scope) {
+    const elsewhere = this.#queue.filter((w) => w.scope !== scope);
+    if (!elsewhere.length) return;
+    this.#queue = this.#queue.filter((w) => w.scope === scope);
+    for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
+      await this.#logWakes(elsewhere.filter((w) => w.scope === s), newId('w'), false, (ev) => record(this.store, s, ev));
+    }
+  }
+
+  /** Settles when no turn or housekeeping is running (queued wakes may wait). */
+  #whenFree() {
+    if (!this.#busy) return Promise.resolve();
+    return new Promise((resolve) => { this.#free.push(() => resolve(undefined)); });
+  }
+
+  /** After a turn or housekeeping: tells whoever waits for it to end, and for everything to be done. */
+  #settle() {
+    if (this.#busy) return;
+    for (const fn of this.#free.splice(0)) fn();
+    if (!this.#queue.length && !this.#checking) for (const fn of this.#idle.splice(0)) fn();
+  }
+
+  #clearTimer() {
+    if (this.#timer !== null) this.timers.clear(this.#timer);
+    this.#timer = null;
+  }
+
+  /** @param {Wake} w */
+  #push(w) {
+    this.#queue.push({ ...w, scope: this.#target ?? ME });
   }
 
   /** The user typed. It answers a pending ask or wait; otherwise it wakes Shiori, or reaches her next call. @param {string} text */
@@ -182,7 +258,7 @@ export class Agent {
       p.resolve({ text: t });
       return;
     }
-    this.#queue.push({ kind: 'user', text: t });
+    this.#push({ kind: 'user', text: t });
     this.#drain();
   }
 
@@ -204,7 +280,7 @@ export class Agent {
    */
   wake(w) {
     if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file') {
-      this.#queue.push(w);
+      this.#push(w);
       this.#drain();
       return;
     }
@@ -218,16 +294,25 @@ export class Agent {
       }
       this.#recentWakes = this.#recentWakes.filter((t) => t > now - 3_600_000);
       if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
-        this.#emit('notice', { tone: 'info', title: 'Shiori skipped a wake', body: `${w.plugin ? `The plugin ${w.plugin}` : 'Something'} woke her more than the ${budgets.wakesPerHour} times an hour you allow: ${w.text}` });
+        this.#notice({ tone: 'info', title: 'Shiori skipped a wake', body: `${w.plugin ? `The plugin ${w.plugin}` : 'Something'} woke her more than the ${budgets.wakesPerHour} times an hour you allow: ${w.text}` });
         return;
       }
       this.#recentWakes.push(now);
-      this.#queue.push(w);
+      this.#push(w);
       this.#drain();
     }).finally(() => {
       this.#checking--;
-      if (!this.#busy && !this.#queue.length && !this.#checking) for (const fn of this.#idle.splice(0)) fn();
+      this.#settle();
     });
+  }
+
+  /**
+   * The page is being left (pagehide): a request cut off now (WebKit cancels it while the page can
+   * still write) is not a failed turn, so nothing is logged and the next start answers (spec §6.7).
+   * @param {boolean} [yes] false when the page comes back from the back-forward cache
+   */
+  leaving(yes = true) {
+    this.#leaving = yes;
   }
 
   /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7). */
@@ -244,37 +329,34 @@ export class Agent {
     return new Promise((resolve) => { this.#idle.push(() => resolve(undefined)); });
   }
 
-  /** The queued wakes, the user's first. */
+  /** The queued wakes for the open conversation, the user's first. */
   #take() {
-    const all = this.#queue.splice(0);
+    const all = this.#queue.filter((w) => w.scope === this.scope);
+    this.#queue = this.#queue.filter((w) => w.scope !== this.scope);
     return [...all.filter((w) => w.kind === 'user' || w.kind === 'choice'), ...all.filter((w) => w.kind !== 'user' && w.kind !== 'choice')];
   }
 
   async #drain() {
-    if (this.#busy) return;
+    if (this.#busy || this.#opens) return;
     this.#busy = true;
-    if (this.#timer !== null) {
-      this.timers.clear(this.#timer);
-      this.#timer = null;
-    }
+    this.#clearTimer();
     try {
-      while (this.#queue.length) await this.#turn(this.#take());
+      while (!this.#opens && this.#queue.some((w) => w.scope === this.scope)) await this.#turn(this.#take());
     } catch (e) {
-      this.#emit('notice', { tone: 'warn', title: 'Shiori stopped', body: `Something went wrong: ${String(/** @type {any} */ (e)?.message ?? e)}` });
+      await this.#notice({ tone: 'warn', title: 'Shiori stopped', body: `Something went wrong: ${String(/** @type {any} */ (e)?.message ?? e)}` });
     } finally {
       this.#busy = false;
       this.#abort = null;
       this.#setState(this.online() ? 'sleeping' : 'offline');
-      if (!this.#checking) for (const fn of this.#idle.splice(0)) fn();
+      this.#settle();
       this.#schedule();
     }
   }
 
   /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5). */
   #schedule() {
-    if (this.#timer !== null) this.timers.clear(this.#timer);
-    this.#timer = null;
-    if (!this.#due) return;
+    this.#clearTimer();
+    if (!this.#due || this.#opens) return;
     const last = this.#warmth.last;
     const wait = last ? last.at + last.ttlMs - WARM_LEAD_MS - this.now() : 0;
     if (wait <= 0) this.#housekeep('cold');
@@ -283,17 +365,17 @@ export class Agent {
 
   /** @param {'warm' | 'cold'} mode */
   async #housekeep(mode) {
-    if (this.#busy) return;
+    if (this.#busy || this.#opens) return;
     this.#busy = true;
     try {
       await this.compact(mode);
     } catch (e) {
-      this.#emit('notice', { tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${String(/** @type {any} */ (e)?.message ?? e)} She will try again later.` });
+      await this.#notice({ tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${this.#explain(e, mode === 'cold' ? 'utility' : 'main')} She will try again later.` });
     } finally {
       this.#busy = false;
       this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.#settle();
       if (this.#queue.length) this.#drain();
-      else for (const fn of this.#idle.splice(0)) fn();
     }
   }
 
@@ -312,9 +394,14 @@ export class Agent {
   }
 
   /** The main role's first model. */
-  async #mainModel() {
+  #mainModel() {
+    return this.#roleModel('main');
+  }
+
+  /** A role's first model (the main role's when it has none). @param {string} role */
+  async #roleModel(role) {
     const cfg = await this.llm.config();
-    const id = cfg.roles?.main?.models?.[0];
+    const id = cfg.roles?.[role]?.models?.[0] ?? cfg.roles?.main?.models?.[0];
     return id && cfg.models[id] ? modelOf(cfg.models[id]) : null;
   }
 
@@ -382,7 +469,9 @@ export class Agent {
   /** Cold: the utility model, from the older part as text. @param {number} cut */
   async #coldSummary(cut) {
     const old = await Transcript.load(this.store, this.scope, { before: cut });
-    const text = renderForSummary(old.messages);
+    // Half the utility model's window, in characters, leaves room for the instructions and the summary.
+    const window = (await this.#roleModel('utility'))?.contextWindow;
+    const text = renderForSummary(old.messages, window ? Math.floor(window * 3.5 * 0.5) : SUMMARY_MAX_CHARS);
     const r = await this.llm.call({ role: 'utility', request: { system: COLD_SYSTEM, messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, record: { tag: 'compaction' } });
     return r.reply.text.trim() || null;
   }
@@ -412,7 +501,7 @@ export class Agent {
 
   /** A system card (spec §16.1). @param {Notice} n */
   notify(n) {
-    this.#emit('notice', n);
+    return this.#notice(n);
   }
 
   /** Writes a conversation event, adds it to the transcript, and tells the screen. @param {Parameters<typeof record>[2]} ev */
@@ -431,15 +520,19 @@ export class Agent {
     return w.text;
   }
 
-  /** Logs wakes: a user's text as msg.user, anything else as a wake reason. @param {Wake[]} wakes @param {string} wakeId @param {boolean} meanwhile */
-  async #logWakes(wakes, wakeId, meanwhile) {
-    if (!meanwhile) await this.#log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map((w) => ({ kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}) })) } });
+  /**
+   * Logs wakes: a user's text as msg.user, anything else as a wake reason. Into the open conversation,
+   * or with log, into another one. @param {Wake[]} wakes @param {string} wakeId @param {boolean} meanwhile
+   * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log]
+   */
+  async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev)) {
+    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map((w) => ({ kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}) })) } });
     else {
       const others = wakes.filter((w) => w.kind !== 'user' && w.kind !== 'choice');
-      if (others.length) await this.#log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map((w) => ({ kind: w.kind, text: w.text })) } });
+      if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map((w) => ({ kind: w.kind, text: w.text })) } });
     }
     for (const w of wakes) {
-      if (w.kind === 'user' || w.kind === 'choice') await this.#log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}) }, texts: [['text', w.text]] });
+      if (w.kind === 'user' || w.kind === 'choice') await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}) }, texts: [['text', w.text]] });
     }
   }
 
@@ -455,7 +548,7 @@ export class Agent {
     const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
     this.#snapshot = nextSnapshot(this.#snapshot, fresh, { cold });
     // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
-    if (cold && this.#due && (await this.compact('cold'))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
+    if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
     const reasons = wakes.map((w) => this.#reason(w));
     const stuck = new Stuck();
     let steps = 0;
@@ -465,7 +558,7 @@ export class Agent {
       if (abort.signal.aborted) break;
       const over = budgetStop({ budgets: settings.budgets, steps, spent });
       if (over) {
-        this.#emit('notice', { tone: 'warn', title: over.title, body: over.body });
+        await this.#notice({ tone: 'warn', title: over.title, body: over.body });
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'budget', which: over.which, wake: wakeId, message: over.body } });
         break;
       }
@@ -482,7 +575,9 @@ export class Agent {
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
-        if (await this.compact(warm ? 'warm' : 'cold', { forced: true })) {
+        const done = await this.#tidyUp(warm ? 'warm' : 'cold', { forced: true }, wakeId);
+        if (done === null) break;
+        if (done) {
           this.#lastPrompt = 0;
           this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
           continue;
@@ -502,7 +597,9 @@ export class Agent {
         const tooLong = e instanceof AllFailedError && e.attempts.some((a) => a.outcome === 'context' || a.outcome === 'too-long');
         if (tooLong && !triedCompacting) {
           triedCompacting = true;
-          if (await this.compact('cold', { forced: true })) {
+          const done = await this.#tidyUp('cold', { forced: true }, wakeId);
+          if (done === null) break;
+          if (done) {
             this.#lastPrompt = 0;
             continue;
           }
@@ -530,7 +627,7 @@ export class Agent {
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
       if (stop) {
-        this.#emit('notice', { tone: 'warn', title: 'Shiori stopped repeating herself', body: 'She called the same tool three times with the same result, so this turn ended. Ask again in other words.' });
+        await this.#notice({ tone: 'warn', title: 'Shiori stopped repeating herself', body: 'She called the same tool three times with the same result, so this turn ended. Ask again in other words.' });
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'stuck', wake: wakeId, message: 'Three identical tool calls in a row with identical results.' } });
         break;
       }
@@ -543,13 +640,41 @@ export class Agent {
     }
   }
 
+  /**
+   * Housekeeping within a turn. When it fails a card says why; when the turn can't go on without it
+   * (the next request would overflow), an error event ends the turn.
+   * @param {'warm' | 'cold'} mode @param {{ forced?: boolean }} o @param {string} wakeId
+   * @returns {Promise<boolean | null>} whether anything was compacted; null: it failed and the turn ends
+   */
+  async #tidyUp(mode, o, wakeId) {
+    try {
+      return await this.compact(mode, o);
+    } catch (e) {
+      if (this.#leaving) return null;
+      const why = await withoutSecrets(this.store, this.#explain(e, mode === 'cold' ? 'utility' : 'main'));
+      if (!o.forced) {
+        await this.#notice({ tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${why} She will try again later.` });
+        return false;
+      }
+      const body = `${why} Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`;
+      await this.#notice({ tone: 'warn', title: "Shiori couldn't tidy up the conversation", body });
+      await this.#log({ type: 'error', actor: 'system', data: { kind: 'compaction', wake: wakeId, message: body } });
+      return null;
+    }
+  }
+
+  /** What went wrong with a model call, in words for a card. @param {unknown} e @param {string} [role] */
+  #explain(e, role = 'main') {
+    return e instanceof AllFailedError
+      ? (e.attempts.length ? e.attempts.map((a) => `${a.name}: ${a.error ?? a.outcome}`).join('; ') : `No model is set for the ${role} role. Add one in Settings → Models.`)
+      : e instanceof ProviderError ? explain(e) : String(/** @type {any} */ (e)?.message ?? e);
+  }
+
   /** @param {unknown} e @param {string} wakeId */
   async #failed(e, wakeId) {
-    if (e instanceof ProviderError && e.kind === 'cancelled') return;
-    const body = e instanceof AllFailedError
-      ? (e.attempts.length ? e.attempts.map((a) => `${a.name}: ${a.error ?? a.outcome}`).join('; ') : 'No model is set for the main role. Add one in Settings → Models.')
-      : e instanceof ProviderError ? explain(e) : String(/** @type {any} */ (e)?.message ?? e);
-    this.#emit('notice', { tone: 'warn', title: "Shiori can't reach her model", body });
+    if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return;
+    const body = await withoutSecrets(this.store, this.#explain(e));
+    await this.#notice({ tone: 'warn', title: "Shiori can't reach her model", body });
     await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, message: body } });
   }
 
@@ -645,6 +770,12 @@ export class Agent {
         description: 'Ask the user a question with buttons and wait for the answer: a tap, or what they type.',
         input: { type: 'object', properties: { question: { type: 'string', minLength: 1 }, options: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 6 } }, required: ['question', 'options'] },
         run: async (/** @type {{ question: string, options: string[] }} */ i, /** @type {any} */ call) => {
+          // Checked here, since a model may send anything: the screen shows these as buttons.
+          const options = Array.isArray(i.options) ? i.options : [];
+          if (!options.length || options.length > 6 || options.some((o) => typeof o !== 'string' || !o.trim())) {
+            return { content: 'Error: ask needs options: a list of 1 to 6 short texts, one per button.', isError: true };
+          }
+          if (typeof i.question !== 'string' || !i.question.trim()) return { content: 'Error: ask needs a question.', isError: true };
           await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: i.question, options: i.options } });
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
@@ -684,7 +815,7 @@ export class Agent {
    * @returns {Promise<{ text?: string, chosen?: string, stopped?: boolean }>}
    */
   #waitFor(id, kind, ms) {
-    const queued = this.#queue.findIndex((w) => w.kind === 'user');
+    const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (queued >= 0) return Promise.resolve({ text: this.#queue.splice(queued, 1)[0].text });
     this.#setState('waiting');
     if (kind === 'wait') this.state = { name: 'waiting', label: 'Your turn' };

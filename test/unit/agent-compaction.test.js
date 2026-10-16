@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
-import { compactionNeed, cutAt } from '../../src/core/agent/compaction.js';
+import { compactionNeed, cutAt, renderForSummary, COLD_SYSTEM } from '../../src/core/agent/compaction.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
 
@@ -103,4 +103,27 @@ test('"request too long" from every model: compact cold first, then try again', 
   assert.equal((await k.events(['compaction']))[0].data.mode, 'cold');
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'fits now');
   assert.equal(k.notices.length, 0);
+});
+
+test('renderForSummary: within a size, the start and the end kept and the middle said to be left out', () => {
+  const messages = Array.from({ length: 40 }, (_, i) => ({ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: `Message ${i} ${'x'.repeat(200)}` }] }));
+  const text = renderForSummary(messages, 2000);
+  assert.ok(text.length <= 2000, `${text.length}`);
+  assert.match(text, /^User: Message 0 /);
+  assert.match(text, /Message 39 x+$/);
+  assert.match(text, /\[… \d+ characters left out …\]/);
+  assert.equal(renderForSummary(messages.slice(0, 2), 2000), renderForSummary(messages.slice(0, 2)));
+});
+
+test("cold: what the utility model is sent fits its window, so a huge exchange can't keep it from summarizing", async () => {
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  k.config.models['m-u'].user.contextWindow = 2000;
+  for (let i = 0; i < 5; i++) {
+    k.agent.send(`Message ${i} ${'y'.repeat(6000)}`);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  const sent = k.requests.at(-1);
+  assert.equal(sent.system, COLD_SYSTEM);
+  assert.ok(sent.messages[0].parts[0].text.length <= 2000 * 3.5 * 0.5, `${sent.messages[0].parts[0].text.length}`);
 });

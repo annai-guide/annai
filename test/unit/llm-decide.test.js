@@ -49,3 +49,17 @@ test('below the threshold, or with no readable answer, the main model decides', 
   const mumble = fake({ decide: [{ text: 'Hmm.' }], main: [{ text: 'C' }] });
   assert.equal((await decide({ prompt: 'p', options, call: mumble.call })).by, 'main');
 });
+
+test('a decide model that refuses the forced tool (it thinks): the main model decides by letter', async () => {
+  /** @type {{ role: string, request: any }[]} */
+  const seen = [];
+  const call = async (/** @type {string} */ role, /** @type {any} */ request) => {
+    seen.push({ role, request });
+    if (request.toolChoice) throw new Error('tool_choice that forces tool use is not supported with thinking.');
+    return { reply: { parts: [{ type: /** @type {const} */ ('text'), text: 'B' }], text: 'B' } };
+  };
+  const r = await decide({ prompt: 'Sunset is in 10 minutes.', options, call });
+  assert.equal(r.by, 'main');
+  assert.equal(r.probabilities.go, 1);
+  assert.deepEqual(seen.map((s) => s.role), ['decide', 'main']);
+});

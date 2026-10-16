@@ -182,3 +182,13 @@ test('build: provider blocks go back unchanged, in place', () => {
   ] } });
   assert.deepEqual(type.build(s).body.messages[1].content, [block, { type: 'text', text: 'Till 10.' }]);
 });
+
+test('build: a tool call whose arguments were cut short is sent with an empty input, which the API accepts', () => {
+  const s = spec({ request: { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Note this' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'toolu_1', name: 'write', input: '{"path":"/trip/notes/a.md","content":"a very long no' }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'toolu_1', content: "Error: the input for write wasn't valid JSON.", isError: true }] },
+  ] } });
+  const use = type.build(s).body.messages.flatMap((/** @type {any} */ m) => m.content).find((/** @type {any} */ b) => b.type === 'tool_use');
+  assert.deepEqual(use.input, {});
+});

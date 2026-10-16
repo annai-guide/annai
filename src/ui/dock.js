@@ -41,12 +41,12 @@ export function createDock(ctx) {
     const files = [...(camera.files ?? [])];
     camera.value = '';
     if (!files.length) return;
-    if (!ctx.agent.trip) {
+    if (!ctx.agent.target) {
       ctx.notices.card({ tone: 'warn', title: 'Open a trip first', body: 'Photos are kept in a trip. Open one from Trips, then take the photo again.' });
       return;
     }
     try {
-      const { paths } = await addFiles(ctx, ctx.agent.trip, files);
+      const { paths } = await addFiles(ctx, ctx.agent.target, files);
       for (const p of paths) ctx.agent.wake({ kind: 'file', text: `The user took a photo: /trip${p}` });
       ctx.go('#/talk');
     } catch (e) {

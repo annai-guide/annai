@@ -7,6 +7,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
+import { follow } from '../../src/ui/screens/talk.js';
 import { traceSummary } from '../../src/ui/screens/trace.js';
 
 test('parseHash: screens, parts and params', () => {
@@ -129,4 +130,36 @@ test("the trace's one-line summaries say what Shiori did, sent and read", () => 
   assert.equal(traceSummary(e('compaction', { from: 1, to: 80, mode: 'warm' })), 'events 1–80 summarized (warm)');
   assert.equal(traceSummary(e('decide', { result: { stay: 0.2, go: 0.8 }, by: 'decide' })), 'go (80%) · by decide');
   assert.equal(traceSummary(e('error', { kind: 'budget', message: 'Steps used up.' })), 'budget: Steps used up.');
+});
+
+test('follow: it listens before it reads, so what happens meanwhile is shown once, after what was read, in order; it stops once the screen is gone', async () => {
+  /** @type {Set<(e: any) => void>} */
+  const fns = new Set();
+  const agent = { on: (/** @type {string} */ _kind, /** @type {(e: any) => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };
+  const emit = (/** @type {any} */ e) => { for (const fn of [...fns]) fn(e); };
+  const ev = (/** @type {number} */ seq, scope = 'trip-1') => ({ seq, scope, type: 'out.speak' });
+  /** @type {number[]} */
+  const shown = [];
+  /** @type {'building' | 'shown' | 'gone'} */
+  let state = 'building';
+  await follow(agent, 'trip-1', {
+    read: async () => {
+      emit(ev(2)); // written before the read, emitted while it runs
+      emit(ev(3)); // written after the read
+      return [ev(1), ev(2)];
+    },
+    show: async (e) => {
+      shown.push(e.seq);
+      if (e.seq === 3) emit(ev(4)); // comes while the early ones are shown
+    },
+    state: () => state,
+  });
+  emit(ev(5)); // the screen isn't on the page yet: still shown
+  emit(ev(6, 'trip-2')); // another conversation's
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(shown, [1, 2, 3, 4, 5]);
+  state = 'gone';
+  emit(ev(7));
+  assert.equal(fns.size, 0);
+  assert.deepEqual(shown, [1, 2, 3, 4, 5]);
 });

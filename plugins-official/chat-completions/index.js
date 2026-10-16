@@ -35,6 +35,8 @@ export function activate(annai) {
 
 /** @param {string} base @param {string} path */
 const join = (base, path) => String(base).replace(/\/+$/, '') + path;
+/** @param {unknown} x @returns {x is Record<string, unknown>} */
+const isObject = (x) => typeof x === 'object' && x !== null && !Array.isArray(x);
 
 /** @param {any} endpoint @param {string | null} key @returns {Record<string, string>} */
 function auth(endpoint, key) {
@@ -80,7 +82,7 @@ function wire(m, t) {
     if (!text && !calls.length) return []; // only reasoning: an empty assistant message is refused by some servers
     /** @type {any} */
     const out = { role: 'assistant', content: text || null };
-    if (calls.length) out.tool_calls = calls.map((/** @type {any} */ c) => ({ id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.input ?? {}) } }));
+    if (calls.length) out.tool_calls = calls.map((/** @type {any} */ c) => ({ id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(isObject(c.input) ? c.input : {}) } }));
     return [out];
   }
   const results = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => ({ role: 'tool', tool_call_id: p.id, content: p.content }));

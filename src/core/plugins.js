@@ -397,7 +397,9 @@ export class PluginHost {
               } catch (e) {
                 // A tool's own error is its answer: Shiori sees it and adapts (spec §6.7). Only a crash counts
                 // against the plugin, which is switched off when it keeps crashing (§5.5).
-                if (e instanceof Error && !BUGS.some((B) => e instanceof B)) throw e;
+                // A fetch the browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer too (§17).
+                const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
+                if (e instanceof Error && (offline || !BUGS.some((B) => e instanceof B))) throw e;
                 registry.fail(id, `tool ${tool.name}`, e);
                 throw new PluginError(id, `the tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, e);
               }

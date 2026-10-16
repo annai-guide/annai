@@ -79,7 +79,8 @@ test('tracedFetch: every request is in the trace, with credentials in the addres
   const res = await get('https://user:pw@api.example.com/search?q=big+sur&api_key=SECRET123');
   assert.equal(await res.text(), 'hello');
   const failing = tracedFetch(store, 'trip-1', { tool: 'fetch', wake: 'w-1' }, async () => { throw new TypeError('Failed to fetch'); });
-  await assert.rejects(failing('https://blocked.example.com/'), TypeError);
+  // A network failure reaches the tool as a plain error naming the host, so no plugin is switched off for it (spec §17).
+  await assert.rejects(failing('https://blocked.example.com/'), (/** @type {any} */ e) => !(e instanceof TypeError) && /blocked\.example\.com/.test(e.message) && /offline/i.test(e.message));
   const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('trip-1', { types: ['net.request'] }));
   assert.equal(evs[0].data.url, 'https://api.example.com/search?q=big+sur&api_key=%C2%ABkey%C2%BB');
   assert.equal(evs[0].data.status, 200);
@@ -99,7 +100,8 @@ test('tracedFetch: no secret annai keeps reaches the trace, whatever its paramet
   await ok('https://x.test/?note=sk-ant-LLMSECRET42');
   await ok('not an address ?appid=WXSECRET9876');
   const failing = tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => { throw new TypeError('Failed to fetch https://a.test/?k=WXSECRET9876'); });
-  await assert.rejects(failing('https://a.test/?k=WXSECRET9876'), TypeError);
+  // The error the tool sees (and Shiori reads) holds no secret either.
+  await assert.rejects(failing('https://a.test/?k=WXSECRET9876'), (/** @type {any} */ e) => /a\.test/.test(e.message) && !/WXSECRET9876/.test(e.message));
   const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
   assert.equal(evs.length, 4);
   assert.doesNotMatch(JSON.stringify(evs), /WXSECRET9876|LLMSECRET42/);
@@ -135,7 +137,7 @@ test('tracedFetch: fails closed when any decoding of the traced address could st
   await ok(`https://a.test/p/${key}/end?q=1`);
   await ok('https://a.test\\p\\BACKSLASH99\\x');
   const failing = tracedFetch(store, 'sys', { tool: 'plugin:x' }, async () => { throw new TypeError(`Failed: a%20b|c/d-SECRET%60x`); });
-  await assert.rejects(failing('https://a.test/'), TypeError);
+  await assert.rejects(failing('https://a.test/'), (/** @type {any} */ e) => e.message === "annai couldn't reach a.test. Is the device offline?");
   const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
   const squash = (/** @type {string} */ s) => s.toLowerCase().replace(/[\s/\\]+/g, '');
   for (const e of evs) {

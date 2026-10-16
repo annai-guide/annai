@@ -50,6 +50,16 @@ function scrub(text, secrets) {
   return out;
 }
 
+/**
+ * Text for the user's eyes (a card, an error in the log) with every secret annai keeps blanked; when
+ * one might still show, a plain note instead (spec §9.9). @param {Store} store @param {string} text
+ */
+export async function withoutSecrets(store, text) {
+  const secrets = await knownSecrets(store);
+  const out = scrub(text, secrets);
+  return leaks(out, secrets) ? 'The message held a key, so it is not shown.' : out;
+}
+
 /** Whether text, decoded, holds a secret. @param {string} text @param {string[]} secrets */
 function holds(text, secrets) {
   let decoded = text;
@@ -71,6 +81,15 @@ export function leaks(text, secrets) {
   const squash = (/** @type {string} */ x) => x.toLowerCase().replace(/[\s/\\]+/g, '');
   const seen = [text, decodeSafe(text), decodeSafe(text.replace(/\+/g, ' '))].map(squash);
   return secrets.some((s) => seen.some((x) => x.includes(squash(s))));
+}
+
+/** The host of an address as the trace keeps it. @param {string} url */
+function hostOf(url) {
+  try {
+    return new URL(url).host || 'the address';
+  } catch {
+    return 'the address';
+  }
 }
 
 /** @param {string} text */
@@ -125,9 +144,12 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       return res;
     } catch (e) {
       const said = scrub(String(/** @type {any} */ (e)?.message ?? e), secrets);
-      const error = leaks(said, secrets) ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
+      const held = leaks(said, secrets);
+      const error = held ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: 0, ms: Date.now() - started, error } }).catch(() => {});
-      throw e;
+      if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+      // No answer at all (offline, blocked, no such host): the tool's answer, not a crash in its code (spec §17).
+      throw new Error(`annai couldn't reach ${hostOf(base.url)}${held ? '' : ` (${said})`}. Is the device offline?`);
     }
   };
 }

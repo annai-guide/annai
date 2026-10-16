@@ -4,29 +4,29 @@
     {
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "provides": {
         "endpoint-type": [
           "anthropic-messages"
         ]
       },
       "files": {
-        "annai-plugin.json": "23fa9d5e46882f02c871d79bbac3672f94c0c1248be808452f11fc85ba17eaa0",
-        "index.js": "d21a3918e1af4d580d1ad99b31be5a910e0bfe917f494805cd7ce2b64e229f6e"
+        "annai-plugin.json": "8cfbdde25af538c74f7840a56a586628f235595fbf7454fdf7d60aed6e94a547",
+        "index.js": "91e0d796c52dd7c77f25c43e8cc66cf102e92d534f1140b6a5b4f1acb2f3c467"
       }
     },
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "provides": {
         "endpoint-type": [
           "chat-completions"
         ]
       },
       "files": {
-        "annai-plugin.json": "6c1089993dc1c1cb7fcf8c41083f083b777407a6d36733e587c087b888003ac4",
-        "index.js": "a6dd799d676e697f903763fff9efd4dc04a59f9c9857c95ca9c367cce1084e5d"
+        "annai-plugin.json": "36e04dc150077772feec40cf958e1199caf5d0e235744fa43909d5431f53990e",
+        "index.js": "ea43f33c6b6852a10dab54ddec60cb864e3eb63c732dab78604668650a4918ad"
       }
     },
     {

@@ -19,7 +19,7 @@ export async function renderTrip(ctx, route) {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
   }
   // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
-  if (ctx.agent && ctx.agent.trip !== id) {
+  if (ctx.agent && ctx.agent.target !== id) {
     updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
     ctx.agent.open(id).catch(() => {});
   }
@@ -73,11 +73,12 @@ async function askAndRemove(ctx, id, scope) {
     if (!anyway) return;
   }
   try {
-    const { bytes: freed } = await removeTrip(ctx.store, id);
-    if (ctx.agent?.trip === id) {
+    // Shiori leaves the trip first, so nothing more is written into it once it is gone (spec §4.9).
+    if (ctx.agent && (ctx.agent.trip === id || ctx.agent.target === id)) {
       await updateAppSettings(ctx.ws, { activeTrip: null });
       await ctx.agent.open(null);
     }
+    const { bytes: freed } = await removeTrip(ctx.store, id);
     ctx.notices.toast(`Removed ${scope.title}. ${bytes(freed)} freed.`);
     ctx.go('#/trips');
   } catch (e) {

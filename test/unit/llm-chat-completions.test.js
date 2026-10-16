@@ -177,3 +177,13 @@ test('read: url citations and counted searches', async () => {
   assert.deepEqual(events.filter((e) => e.type === 'citation'), [{ type: 'citation', url: 'https://www.nepenthe.com/', title: 'Nepenthe Big Sur' }]);
   assert.deepEqual(events.find((e) => e.type === 'usage')?.usage.serverTools, { web_search_requests: 1 });
 });
+
+test('build: a tool call whose arguments were cut short is sent with empty arguments, which every server parses', () => {
+  const s = spec({ request: { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Note this' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'call_1', name: 'write', input: '{"path":"/trip/notes/a.md","content":"a very long no' }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'call_1', content: "Error: the input for write wasn't valid JSON.", isError: true }] },
+  ] } });
+  const call = type.build(s).body.messages.find((/** @type {any} */ m) => m.tool_calls).tool_calls[0];
+  assert.equal(call.function.arguments, '{}');
+});

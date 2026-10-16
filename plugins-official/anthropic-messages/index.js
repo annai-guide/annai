@@ -31,6 +31,8 @@ export function activate(annai) {
 
 /** @param {string} base @param {string} path */
 const join = (base, path) => String(base).replace(/\/+$/, '') + path;
+/** @param {unknown} x @returns {x is Record<string, unknown>} */
+const isObject = (x) => typeof x === 'object' && x !== null && !Array.isArray(x);
 /** @param {string} ttl */
 const cacheControl = (ttl) => (ttl === '1h' ? { type: 'ephemeral', ttl: '1h' } : { type: 'ephemeral' });
 
@@ -81,7 +83,8 @@ function wire(messages, providerId) {
       if (p.type === 'image') return [{ type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } }];
       if (p.type === 'document') return [{ type: 'document', source: { type: 'base64', media_type: p.mediaType, data: p.data }, ...(p.name ? { title: p.name } : {}) }];
       if (p.type === 'provider') return p.model === providerId ? [p.block] : [];
-      if (p.type === 'tool_call') return [{ type: 'tool_use', id: p.id, name: p.name, input: p.input ?? {} }];
+      // A call whose arguments were cut short kept them as text; the API takes only an object, so it gets an empty one.
+      if (p.type === 'tool_call') return [{ type: 'tool_use', id: p.id, name: p.name, input: isObject(p.input) ? p.input : {} }];
       if (p.type === 'tool_result') return [{ type: 'tool_result', tool_use_id: p.id, content: p.content, ...(p.isError ? { is_error: true } : {}) }];
       if (p.type === 'reasoning' && p.model === providerId) {
         if (p.redacted) return [{ type: 'redacted_thinking', data: p.redacted }];

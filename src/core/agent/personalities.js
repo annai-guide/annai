@@ -99,14 +99,22 @@ export async function tunePersonality({ agent, name, text, reason, callId, wake 
   /** @type {{ approve: boolean, why: string }} */
   let verdict;
   try {
-    const r = await agent.llm.call({
+    const ask = (/** @type {boolean} */ forced) => agent.llm.call({
       role: 'utility', level: 'off', scope: agent.scope, record: { tag: 'review' },
       request: {
-        system: REVIEW, toolChoice: 'review', maxOutput: 300,
+        system: REVIEW, ...(forced ? { toolChoice: 'review' } : {}), maxOutput: 300,
         tools: [{ name: 'review', description: 'Approve or turn down the change.', input: { type: 'object', properties: { approve: { type: 'boolean' }, why: { type: 'string' } }, required: ['approve', 'why'] } }],
         messages: [{ role: 'user', parts: [{ type: 'text', text: `Current personality "${name}":\n${old || '(new)'}\n\nProposed:\n${text}\n\nShiori's reason: ${reason}` }] }],
       },
     });
+    /** @type {any} */
+    let r;
+    try {
+      r = await ask(true);
+    } catch {
+      // A model that thinks refuses a forced tool (Opus and Sonnet 5.5): asked again, the tool offered but not forced.
+      r = await ask(false);
+    }
     const call = r.reply.parts.find((/** @type {any} */ p) => p.type === 'tool_call' && p.name === 'review');
     // Fails closed: only the review tool saying approve: true approves (a reply in words doesn't).
     if (!call) return 'Not changed: the review gave no clear answer. Try again later.';

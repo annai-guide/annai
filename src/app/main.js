@@ -69,6 +69,14 @@ async function boot() {
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, presets, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
+  // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.
+  // A beforeunload that leads nowhere (the page stays) is forgotten after a few seconds.
+  addEventListener('beforeunload', () => {
+    agent.leaving();
+    setTimeout(() => agent.leaving(false), 3000);
+  });
+  addEventListener('pagehide', () => agent.leaving());
+  addEventListener('pageshow', (e) => { if (e.persisted) agent.leaving(false); });
   offerPersonalityUpdates({ ws, agent, presets, notices: shell.notices });
   watchErrors(store, shell);
   if (isStandalone()) requestPersist();

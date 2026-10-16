@@ -278,3 +278,18 @@ test("host: a tool's own errors are answers Shiori sees, not crashes; a crash co
   for (let i = 0; i < 3; i++) await assert.rejects(buggy.run({}), PluginError);
   assert.equal(registry.isDisabled('picky'), true);
 });
+
+test("host: a fetch that fails because the device is offline is the tool's answer, not a crash (spec §17)", async () => {
+  const { host, registry } = await setup();
+  await host.install(inline('online', `export function activate(annai) {
+    annai.tools.register({ name: 'online', description: 'Needs the network.', input: { type: 'object' }, run() { throw new TypeError('Failed to fetch'); } });
+    annai.tools.register({ name: 'safari', description: 'Needs the network.', input: { type: 'object' }, run() { throw new TypeError('Load failed'); } });
+  }`));
+  await host.start('online');
+  const [chrome, safari] = registry.list('tool');
+  for (let i = 0; i < 3; i++) {
+    await assert.rejects(chrome.run({}), /Failed to fetch/);
+    await assert.rejects(safari.run({}), /Load failed/);
+  }
+  assert.equal(registry.isDisabled('online'), false);
+});

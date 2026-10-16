@@ -4,6 +4,9 @@ import { agentKit } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
+import { createTrip } from '../../src/core/scopes.js';
+import { Agent } from '../../src/core/agent/loop.js';
+import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 
@@ -144,4 +147,154 @@ test("with the model's own search, Shiori's request has no web_search of annai's
   assert.equal(names.includes('web_search'), false);
   assert.equal(names.includes('fetch'), true);
   assert.deepEqual(k.requests[0].providerTools, { kinds: ['search'], off: [] });
+});
+
+/** @param {any} k @param {string} scope @param {string[]} types */
+const eventsIn = (k, scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types }));
+/** The user texts a request sends. @param {any} request */
+const userTexts = (request) => JSON.stringify(request.messages);
+
+test('opening two conversations in a row: the last one opens, and nothing of the first is written into it', async () => {
+  const k = await agentKit([[say('About the temple.')]], { open: false });
+  const A = k.trip;
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  await record(k.store, A, { type: 'msg.user', actor: 'user', data: { text: 'A: where to eat?', wake: 'wA' } });
+  await modelTrace(k.store, A).turn({ role: 'main', level: 'medium', answeredBy: 'M', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'wA' }, '', '',
+    [{ type: 'tool_call', id: 'A-1', name: 'fetch', input: { url: 'https://a.example/' } }]);
+  await record(k.store, B, { type: 'msg.user', actor: 'user', data: { text: 'B: when is the temple open?', wake: 'wB' } });
+  // main.js opens the last active trip; a link to another trip opens that one in the same moment.
+  await Promise.all([k.agent.open(A), k.agent.open(B)]);
+  await k.agent.idle();
+  assert.equal(k.agent.scope, B);
+  assert.equal(k.agent.trip, B);
+  assert.equal((await eventsIn(k, B, ['tool.result'])).some((/** @type {any} */ e) => e.data.id === 'A-1'), false);
+  assert.equal((await eventsIn(k, B, ['wake'])).length, 1);
+  assert.equal(k.requests.length, 1);
+  assert.match(userTexts(k.requests[0]), /B: when is the temple open/);
+  assert.doesNotMatch(userTexts(k.requests[0]), /A: where to eat/);
+  assert.doesNotMatch(JSON.stringify(k.agent.transcript.messages), /A: where to eat/);
+});
+
+test('a message typed while a conversation opens waits for it, and reaches the model there', async () => {
+  const k = await agentKit([[say('Hello.')]], { open: false });
+  const A = k.trip;
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.agent.open(A);
+  const opening = k.agent.open(B);
+  k.agent.send('typed right away');
+  await opening;
+  await k.agent.idle();
+  assert.deepEqual((await eventsIn(k, B, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['typed right away']);
+  assert.deepEqual((await eventsIn(k, A, ['msg.user'])).length, 0);
+  assert.match(userTexts(k.requests[0]), /typed right away/);
+  assert.match(JSON.stringify(k.agent.transcript.messages), /typed right away/);
+});
+
+test('opening another conversation while Shiori works: she stops, and a message still waiting is kept where it was typed', async () => {
+  const k = await agentKit([[{ delayMs: 60, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back in Big Sur.')]]);
+  const A = k.trip;
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  k.agent.send('first');
+  await new Promise((r) => setTimeout(r, 15));
+  k.agent.send('second, typed while she thought');
+  await k.agent.open(B);
+  await k.agent.idle();
+  assert.deepEqual((await eventsIn(k, A, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['first', 'second, typed while she thought']);
+  assert.equal((await eventsIn(k, B, ['msg.user'])).length, 0);
+  assert.equal(k.requests.length, 1);
+  await k.agent.open(A);
+  await k.agent.idle();
+  assert.deepEqual((await eventsIn(k, A, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Back in Big Sur.']);
+  assert.match(userTexts(k.requests[1]), /second, typed while she thought/);
+});
+
+test("opening a conversation leaves the last one's housekeeping behind: no compaction of the new one for the old one's size", async () => {
+  const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
+  /** @type {any[]} */
+  const timers = [];
+  const k = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }, small('b3'), small('b4')]], {
+    models: [{ contextWindow: 10_000 }], utility: [{ text: 'Summary.' }],
+    agent: { timers: { set: (/** @type {any} */ fn, /** @type {number} */ ms) => { timers.push({ fn, ms }); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } },
+  });
+  const A = k.trip;
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.agent.open(B);
+  for (const m of ['B: one', 'B: two']) { k.agent.send(m); await k.agent.idle(); }
+  await k.agent.open(A);
+  k.agent.send('A: long');
+  await k.agent.idle();
+  assert.ok(timers.some(Boolean), "A's turn made housekeeping due");
+  await k.agent.open(B);
+  assert.equal(timers.filter(Boolean).length, 0, "A's housekeeping timer is gone");
+  k.agent.send('B: three');
+  await k.agent.idle();
+  assert.equal((await eventsIn(k, B, ['compaction'])).length, 0);
+  assert.equal(timers.filter(Boolean).length, 0, 'nothing is due in B');
+});
+
+test('an error card and error event never show a key, even when the provider echoes it', async () => {
+  const KEY = 'sk-ant-SECRETKEY1234567890';
+  const k = await agentKit([[{ error: 'auth', status: 401, message: `Incorrect API key provided: ${KEY}` }]]);
+  await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.equal(k.notices.length, 1);
+  assert.match(k.notices[0].body, /«key»/);
+  assert.doesNotMatch(JSON.stringify(k.notices), /SECRETKEY/);
+  assert.doesNotMatch(JSON.stringify(await k.events(['error'])), /SECRETKEY/);
+});
+
+test("housekeeping that fails inside a turn ends it with a card and an error event that say so", async () => {
+  const k = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]],
+    { utility: [{ error: 'auth', status: 401, message: 'bad utility key' }] });
+  for (const m of ['first', 'second', 'third']) { k.agent.send(m); await k.agent.idle(); }
+  assert.deepEqual((await k.events(['error'])).map((e) => e.data.kind), ['compaction']);
+  const card = k.notices.at(-1);
+  assert.equal(card.title, "Shiori couldn't tidy up the conversation");
+  assert.match(card.body, /bad utility key/);
+  assert.equal(k.agent.transcript.unanswered, false);
+});
+
+test('a turn that failed is over: later starts do not wake Shiori again for it', async () => {
+  const k = await agentKit([[{ error: 'auth', status: 401 }]]);
+  k.agent.send('Hello?');
+  await k.agent.idle();
+  for (let i = 0; i < 3; i++) {
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+  }
+  assert.equal((await k.events(['wake'])).length, 1);
+  assert.equal((await k.events(['error'])).length, 1);
+  assert.equal(k.notices.length, 1);
+  assert.doesNotMatch(JSON.stringify(k.agent.transcript.messages), /\[annai\]/);
+});
+
+test('ask with options that are not a list of one to six strings is an error Shiori sees, and nothing is shown', async () => {
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'ask', input: { question: 'Go?', options: 'yes' } }] },
+    { toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['1', '2', '3', '4', '5', '6', '7'] } }] },
+    { toolCalls: [{ name: 'sleep', input: {} }] },
+  ]]);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.equal((await k.events(['out.ask'])).length, 0);
+  const asks = (await k.events(['tool.result'])).filter((e) => e.data.name === 'ask');
+  assert.deepEqual(asks.map((e) => e.data.ok), [false, false]);
+  for (const a of asks) assert.match(a.data.content, /options: a list of 1 to 6/);
+});
+
+test('a request cut off because the page is being left is not a failed turn: the next start answers the message', async () => {
+  // Every try of the first request fails (the call retries a network failure), then the model answers.
+  const cut = { delayMs: 30, error: 'network', message: 'Load failed' };
+  const k = await agentKit([[...Array(1 + NETWORK_RETRIES.length).fill(cut), say('Yes, still here.')]]);
+  k.agent.send('Are you there?');
+  await new Promise((r) => setTimeout(r, 10));
+  k.agent.leaving(); // pagehide: WebKit then cancels the request while the page can still write
+  await k.agent.idle();
+  assert.equal((await k.events(['error'])).length, 0);
+  k.llm.bench.clear('m-0'); // a new page starts with no model benched
+  const next = new Agent({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, timeZone: () => 'UTC', secondMs: 10 });
+  await next.open(k.trip);
+  await next.idle();
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Yes, still here.']);
 });

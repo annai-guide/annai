@@ -22,10 +22,16 @@ export async function decide({ prompt, options, threshold = DECIDE_THRESHOLD, ca
   const text = `${prompt}\n\n${options.map((o, i) => `${letters[i]}. ${o.label}`).join('\n')}`;
   const messages = [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text }] }];
   const tool = { name: 'decide', description: 'Choose one option by its letter.', input: { type: 'object', properties: { option: { enum: letters } }, required: ['option'] } };
-  const first = await call('decide', logprobs
-    ? { system: SYSTEM, messages, maxOutput: 1, logprobs: 10 }
-    : { system: SYSTEM, messages, tools: [tool], toolChoice: 'decide', maxOutput: 64 });
-  const spread = read(first.reply, letters);
+  /** @type {Awaited<ReturnType<Call>> | null} */
+  let first = null;
+  try {
+    first = await call('decide', logprobs
+      ? { system: SYSTEM, messages, maxOutput: 1, logprobs: 10 }
+      : { system: SYSTEM, messages, tools: [tool], toolChoice: 'decide', maxOutput: 64 });
+  } catch {
+    // A decide model that thinks refuses a forced tool (Opus and Sonnet 5.5): the main model decides, by letter.
+  }
+  const spread = first ? read(first.reply, letters) : null;
   if (spread && Math.max(...spread) >= threshold) return { probabilities: byId(options, spread), by: 'decide' };
   // Not sure enough, or no readable answer: the main model decides, by letter (it may be thinking, which forced tools don't allow).
   const second = await call('main', { system: SYSTEM, messages, maxOutput: 64 });

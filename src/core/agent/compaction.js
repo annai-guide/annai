@@ -70,8 +70,26 @@ export const COLD_SYSTEM = 'You summarize a conversation between a traveler and 
   + 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
   + 'For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in the user\'s language.';
 
-/** A conversation as plain text for the utility model. @param {Message[]} messages */
-export function renderForSummary(messages) {
+/** The most text a cold summary is written from when the utility model's window isn't known, in characters (about 100,000 tokens). */
+export const SUMMARY_MAX_CHARS = 350_000;
+
+/**
+ * A conversation as plain text for the utility model, at most max characters: when longer, its start
+ * and its end are kept and the middle is said to be left out, so one huge exchange can't keep the
+ * conversation from ever being summarized. @param {Message[]} messages @param {number} [max]
+ */
+export function renderForSummary(messages, max = Infinity) {
+  const full = asText(messages);
+  if (full.length <= max) return full;
+  const marker = (/** @type {number} */ n) => `\n\n[… ${n} characters left out …]\n\n`;
+  const room = Math.max(0, max - marker(full.length).length);
+  const head = Math.floor(room / 2);
+  const tail = room - head;
+  return full.slice(0, head) + marker(full.length - head - tail) + full.slice(full.length - tail);
+}
+
+/** @param {Message[]} messages */
+function asText(messages) {
   const cut = (/** @type {string} */ s, /** @type {number} */ n) => (s.length > n ? `${s.slice(0, n)}…` : s);
   return messages.map((m) => m.parts.map((p) => {
     if (p.type === 'text') return `${m.role === 'user' ? 'User' : 'Shiori (notes)'}: ${p.text}`;

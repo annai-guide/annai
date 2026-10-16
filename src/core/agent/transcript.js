@@ -57,6 +57,11 @@ export class Transcript {
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
       if (parts.length) this.#add('assistant', parts);
       this.unanswered = false;
+    } else if (e.type === 'error' && d.wake) {
+      // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
+      // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
+      this.unanswered = false;
+      return;
     } else if (e.type === 'tool.result' && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images]);

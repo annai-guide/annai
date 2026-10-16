@@ -92,3 +92,14 @@ test('the review fails closed: no clear approval from its tool, no change', asyn
   assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), k.presets.shiori);
   assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, /^Not changed: the review gave no clear answer/);
 });
+
+test('a review model that refuses the forced tool (it thinks) is asked again without forcing it', async () => {
+  const k = await agentKit([[tune('# Shiori\nMore stories.\n', 'more stories'), sleep]],
+    { utility: [{ error: 'bad-request', status: 400, message: 'tool_choice that forces tool use is not supported with thinking.' }, review(true, 'Fine.')] });
+  await syncPersonalities({ ws: k.ws, presets: k.presets });
+  k.agent.send('Tell more stories');
+  await k.agent.idle();
+  assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, 'Approved. It applies at your next wake.');
+  const reviews = k.requests.filter((r) => r.tools?.some((/** @type {any} */ t) => t.name === 'review'));
+  assert.deepEqual(reviews.map((r) => r.toolChoice), ['review', undefined]);
+});
