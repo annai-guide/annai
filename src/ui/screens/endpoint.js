@@ -1,4 +1,4 @@
-import { h, field, twoStep, jsonField } from '../dom.js';
+import { h, field, twoStep, jsonField, checkbox } from '../dom.js';
 import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer } from '../../core/llm/config.js';
 import { templateUpdates, applyTemplate, addListedModel, useSuggestion } from '../../core/llm/templates.js';
 import { testPanel } from '../model-check.js';
@@ -43,11 +43,16 @@ export async function renderEndpoint(ctx, id) {
   const headers = jsonField('Extra headers (JSON)', 'endpoint-headers', e.headers);
   const tunables = jsonField('Tunables (JSON)', 'endpoint-tunables', e.tunables);
   const extra = jsonField('Extra request fields (JSON)', 'endpoint-extra', e.extraBody);
+  // Where the endpoint type stores files, photos go there once, then by id (spec §4.8).
+  const uploads = type?.uploadRequest ? checkbox('Upload photos to this provider (each expires after 48 hours)', e.tunables?.uploads !== false) : null;
   const save = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
       try {
-        const edited = { name: name.value.trim() || base.name, baseUrl: url.value.trim(), headers: headers.read(), tunables: tunables.read(), extraBody: extra.read() };
+        const edited = {
+          name: name.value.trim() || base.name, baseUrl: url.value.trim(), headers: headers.read(),
+          tunables: { ...tunables.read(), ...(uploads ? { uploads: uploads.input.checked } : {}) }, extraBody: extra.read(),
+        };
         await saveEndpoint(ctx.ws, { ...rec, user: diffLayer(edited, base) });
         if (key.value.trim()) await setKey(ctx.store, id, key.value.trim());
         await ctx.llm.unbench(id);
@@ -70,7 +75,7 @@ export async function renderEndpoint(ctx, id) {
       from?.note || from?.keyUrl
         ? h('p', { class: 'sub' }, from.note ?? '', from.note && from.keyUrl ? ' ' : '', from.keyUrl ? h('a', { href: from.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
-      headers.el, tunables.el, extra.el,
+      uploads?.el ?? null, headers.el, tunables.el, extra.el,
       h('div', { class: 'acts' }, save,
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
       status),

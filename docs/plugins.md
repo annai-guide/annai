@@ -141,6 +141,7 @@ export function activate(annai) {
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.
   - `listRequest()` and `readList()` make "Fetch model list" work.
+  - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the endpoint's page (the `uploads` tunable).
 
 ## Rules
 

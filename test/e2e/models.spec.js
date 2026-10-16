@@ -111,3 +111,17 @@ test('Sign in with OpenRouter: the key arrives and free models fill the roles (O
   expect(new URL(page.url()).search).toBe('');
   expect(await page.content()).not.toContain('sk-or-test-key-123');
 });
+
+test('an endpoint that stores files has a switch for photo uploads, kept when saved (spec §4.8)', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model' });
+  await page.getByRole('link', { name: /Stand-in/ }).click();
+  const uploads = page.getByLabel('Upload photos to this provider (each expires after 48 hours)');
+  await expect(uploads).toBeChecked();
+  await uploads.uncheck();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('#endpoint-tunables')).toHaveValue(/"uploads": false/); // shown once it is saved
+  await page.reload();
+  await expect(page.getByLabel('Upload photos to this provider (each expires after 48 hours)')).not.toBeChecked();
+});

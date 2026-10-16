@@ -8,6 +8,7 @@ import { ensureType } from './official.js';
 import { loadTemplates } from './templates.js';
 import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
+import { Uploads } from './uploads.js';
 
 /**
  * Everything the UI needs to talk to models (spec §9): settings, endpoint types installed on
@@ -24,6 +25,8 @@ export function createLlm({
   probe = (/** @type {string} */ url) => get(url, { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false),
 }) {
   const bench = new Bench();
+  /** Photos uploaded to providers, by endpoint (spec §4.8). */
+  const uploads = new Uploads(ws);
   const types = () => endpointTypes(plugins.registry);
   /** @param {string} type */
   const ensure = async (type) => {
@@ -62,7 +65,7 @@ export function createLlm({
       await ready;
       return callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads,
       });
     },
     /**

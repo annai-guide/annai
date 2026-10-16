@@ -116,6 +116,11 @@ export function modelTrace(store, scope) {
       const data = { kind: 'model', ...i, ...(i.error ? { error: scrub(i.error) } : {}), url: scrub(safeUrl(i.url)) };
       return append({ ts: Date.now(), type: 'net.request', actor: 'system', data }, []);
     },
+    /** A photo uploaded to a provider's files API (spec §4.8). @param {{ endpoint: string, url: string, status: number, ms: number, error?: string }} i */
+    upload(i) {
+      for (const [v, min] of urlSecrets(i.url)) secret(v, min);
+      return append({ ts: Date.now(), type: 'net.request', actor: 'system', data: { kind: 'upload', ...i, url: scrub(safeUrl(i.url)), ...(i.error ? { error: scrub(i.error) } : {}) } }, []);
+    },
     /**
      * @param {TurnInfo} i @param {string} text the reply's text
      * @param {string} [reasoning] the reply's reasoning: never shown in the conversation, visible here (spec §9.3)

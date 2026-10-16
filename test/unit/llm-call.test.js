@@ -268,3 +268,45 @@ test('a provider block is kept for the model that wrote it, citations are collec
   // 1000 × $1/M + 100 × $2/M + 2 searches × $0.01
   assert.equal(Number(reply.cost?.toFixed(6)), 0.0212);
 });
+
+test('uploads: each photo is uploaded once and sent by id; a failed upload sends the bytes and stops uploading', async () => {
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { Uploads } = await import('../../src/core/llm/uploads.js');
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const uploads = new Uploads(ws);
+  /** @type {string[]} */
+  const posted = [];
+  /** @type {any[]} */
+  const bodies = [];
+  let fail = false;
+  const get = async (/** @type {string} */ url, /** @type {any} */ init) => {
+    posted.push(url);
+    if (url.endsWith('/v1/files')) return fail ? new Response('no', { status: 500 }) : new Response(JSON.stringify({ id: `file_${posted.length}`, expires_at: new Date(Date.now() + 172_800_000).toISOString() }));
+    bodies.push(JSON.parse(init.body));
+    return new Response('');
+  };
+  const t = httpType([{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }], {
+    uploadRequest: (/** @type {any} */ c) => { const f = new FormData(); f.set('file', new Blob([c.bytes], { type: c.mediaType }), c.name); return { url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: f }; },
+    readUpload: (/** @type {any} */ j) => ({ id: j.id, expiresAt: Date.parse(j.expires_at) }),
+    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+  });
+  const withPhoto = { messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1' }] }] };
+  const m = model({ input: ['text', 'image'] });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (get), uploads });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (get), uploads });
+  assert.equal(posted.filter((u) => u.endsWith('/v1/files')).length, 1);
+  assert.deepEqual(bodies.map((b) => b.images[0]), ['file_1', 'file_1']);
+  fail = true;
+  await uploads.forget('ep-1');
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (get), uploads });
+  assert.equal(bodies.at(-1).images[0], 'bytes');
+  assert.equal(uploads.isOff('ep-1'), true);
+  // Switched off on the endpoint: nothing is uploaded.
+  const off = new Uploads(ws);
+  await callOnce({ type: t, endpoint: endpoint({ id: 'ep-2', tunables: { uploads: false } }), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (get), uploads: off });
+  assert.equal(posted.filter((u) => u.endsWith('/v1/files')).length, 2);
+  assert.equal(bodies.at(-1).images[0], 'bytes');
+});

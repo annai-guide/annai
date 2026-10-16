@@ -216,3 +216,13 @@ test('prefer: the model whose cache is warm is tried first (spec §9.6, switchin
   assert.deepEqual(r.attempts.map((a) => a.model), ['m-1']);
   assert.equal((await call(s, { prefer: 'm-gone' })).reply.text, 'A.');
 });
+
+test('an upload the provider no longer knows: the endpoint forgets its uploads, and the same model is tried once more (spec §9.9)', async () => {
+  const s = setup([[{ error: 'upload', status: 404, message: 'File `file_1` not found.' }, { text: 'Seen.' }], [{ text: 'B.' }]]);
+  let forgot = 0;
+  const uploads = /** @type {any} */ ({ forget: async () => { forgot++; }, isOff: () => false, get: async () => null, set: async () => {}, off: () => {} });
+  const r = await call(s, { uploads });
+  assert.equal(r.reply.text, 'Seen.');
+  assert.deepEqual(r.attempts.map((a) => [a.model, a.outcome]), [['m-0', 'upload'], ['m-0', 'ok']]);
+  assert.equal(forgot, 1);
+});

@@ -9,7 +9,7 @@ import { relTime, outcomeText } from './format.js';
 export function testPanel(ctx, modelId, verified, title = 'Test') {
   const out = h('ul', { class: 'checks-result' });
   const last = verified?.at
-    ? `Last tested ${relTime(verified.at)}: ${['key', 'tools', 'images'].filter((k) => k in verified).map((k) => `${k} ${verified[k] ? '✓' : '✗'}`).join(', ')}.`
+    ? `Last tested ${relTime(verified.at)}: ${['key', 'tools', 'images', 'upload'].filter((k) => k in verified).map((k) => `${k} ${verified[k] ? '✓' : '✗'}`).join(', ')}.`
     : 'Not tested yet.';
   const status = h('p', { class: 'sub', role: 'status', text: last });
   /** @param {{ ok: boolean, text: string }[]} lines */
@@ -21,7 +21,7 @@ export function testPanel(ctx, modelId, verified, title = 'Test') {
       status.textContent = 'Testing: a tiny request, then one with a tool and a small picture…';
       try {
         const r = await ctx.llm.test(modelId);
-        status.textContent = r.ok ? 'Everything works.' : 'Something needs attention:';
+        status.textContent = !r.ok ? 'Something needs attention:' : r.steps.every((/** @type {any} */ s) => s.ok) ? 'Everything works.' : 'It works, with one note:';
         show(r.steps.map((/** @type {any} */ s) => ({ ok: s.ok, text: s.detail })));
       } catch (e) {
         status.textContent = String(/** @type {any} */ (e)?.message ?? e);

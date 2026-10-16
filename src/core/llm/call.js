@@ -2,6 +2,8 @@ import { ProviderError, errorFromResponse, portable } from './contract.js';
 import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
+import { fromBase64 } from '../bytes.js';
+import { UPLOAD_TTL_S } from './uploads.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -63,17 +65,18 @@ export function enabledProviderTools(model, request) {
 /**
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
- *   registry?: import('../registry.js').Registry, now?: () => number }} c
+ *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads }} c
  *   firstOutputMs: how long to wait for the first output, and then between pieces of output
+ *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now }) {
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads }) {
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
     if (/auth|key|token|secret|cookie|session|password/i.test(name)) trace?.secret(String(value).replace(/^(Bearer|Basic)\s+/i, ''));
   }
-  const req = type.tail ? request : withTail(request);
+  const req = await withUploads(type.tail ? request : withTail(request), { type, endpoint, model, key, uploads, get, trace, signal, now });
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
   const started = now();
@@ -207,4 +210,48 @@ function asProviderError(e, signal, type, registry) {
   if (name === 'AbortError' || signal.aborted) return new ProviderError('cancelled', 'Stopped.', { cause: e });
   registry?.fail(type.pluginId, `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
+}
+
+const EXT = /** @type {Record<string, string>} */ ({ 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif' });
+
+/**
+ * Photos go by id to an endpoint that stores files (spec §4.8): each is uploaded once, named
+ * annai-…, expiring after 48 hours. A failed upload sends the bytes, and stops uploading there
+ * until annai restarts.
+ * @param {Request} request
+ * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number }} c
+ * @returns {Promise<Request>}
+ */
+async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now }) {
+  if (!uploads || !type.uploadRequest || !type.readUpload || endpoint.tunables?.uploads === false || uploads.isOff(endpoint.id) || !model.input.includes('image')) return request;
+  /** @type {Map<string, string>} */
+  const ids = new Map();
+  for (const m of request.messages) {
+    for (const p of m.parts) {
+      if (p.type !== 'image' || !p.hash || !p.data || ids.has(p.hash) || uploads.isOff(endpoint.id)) continue;
+      const known = await uploads.get(endpoint.id, p.hash, now());
+      if (known) {
+        ids.set(p.hash, known);
+        continue;
+      }
+      const r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: `annai-${p.hash.slice(0, 16)}.${EXT[p.mediaType] ?? 'bin'}`, expiresInSeconds: UPLOAD_TTL_S });
+      const started = now();
+      let traced = false;
+      try {
+        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal });
+        traced = true;
+        await trace?.upload({ endpoint: endpoint.name, url: r.url, status: res.status, ms: now() - started, ...(res.ok ? {} : { error: (await res.text().catch(() => '')).slice(0, 300) }) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const up = type.readUpload(await res.json());
+        await uploads.set(endpoint.id, p.hash, up.id, up.expiresAt ?? now() + UPLOAD_TTL_S * 1000, now());
+        ids.set(p.hash, up.id);
+      } catch (e) {
+        if (signal?.aborted) throw e;
+        if (!traced) await trace?.upload({ endpoint: endpoint.name, url: r.url, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
+        uploads.off(endpoint.id); // photos go as bytes here until annai restarts
+      }
+    }
+  }
+  if (!ids.size) return request;
+  return { ...request, messages: request.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' && p.hash && ids.has(p.hash) ? { ...p, fileId: ids.get(p.hash) } : p)) })) };
 }

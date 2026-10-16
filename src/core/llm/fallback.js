@@ -124,9 +124,10 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
- *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null> }} c
+ *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads }} c
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
+ *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -165,12 +166,13 @@ export async function callRole(c) {
     const endpoint = endpointOf(epRec, type.tunables);
     const key = await c.keyFor(endpoint.id);
     let repairs = 0;
+    let uploadRetries = 0;
     for (let retry = 0; ; retry++) {
       const started = now();
       try {
         const reply = await callOnce({
           type, endpoint, model, key, request, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace: c.trace, registry: c.registry, now, firstOutputMs,
+          trace: c.trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads,
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
@@ -191,6 +193,12 @@ export async function callRole(c) {
           said += err.partial;
           request = continueAfter(c.request, said);
           break;
+        }
+        if (err.kind === 'upload' && c.uploads && uploadRetries < 1) {
+          // An expired or unknown upload (spec §9.9): upload again, once.
+          await c.uploads.forget(epRec.id);
+          uploadRetries++;
+          continue;
         }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
           const fixed = await c.repairImages(err, id, request).catch((/** @type {unknown} */ x) => { console.warn('the photo repair failed', x); return null; });

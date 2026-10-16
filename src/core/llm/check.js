@@ -1,6 +1,7 @@
 import { callOnce } from './call.js';
 import { ProviderError, explain } from './contract.js';
 import { LEVELS } from './reasoning.js';
+import { fromBase64 } from '../bytes.js';
 
 /** A 16×16 red PNG: the small image the Test button sends (spec §9.8). */
 export const TEST_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mO4IydHEmIY1TCqYfhqAACaMxgQdrf9VwAAAABJRU5ErkJggg==';
@@ -13,7 +14,8 @@ const REPORT = {
 const SAY_OK = { system: 'This is a connection test.', messages: [{ role: 'user', parts: [{ type: 'text', text: 'Reply with the word OK.' }] }], maxOutput: 256 };
 
 /**
- * @typedef {{ step: 'access' | 'key' | 'tools' | 'images', ok: boolean, detail: string }} TestStep
+ * @typedef {{ step: 'access' | 'key' | 'tools' | 'images' | 'upload', ok: boolean, detail: string }} TestStep
+ *   upload is advice: when it fails, photos still go in each request, so the model still passes
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number }} TestCase
  */
@@ -66,7 +68,23 @@ export async function testModel(c) {
       steps.push({ step: err.kind === 'image' || !useTools ? 'images' : 'tools', ok: false, detail: explain(err) });
     }
   }
-  return { ok: steps.every((s) => s.ok), steps };
+  if (useImage && type.uploadRequest && type.readUpload && endpoint.tunables?.uploads !== false) steps.push(await testUpload(c));
+  return { ok: steps.every((s) => s.ok || s.step === 'upload'), steps };
+}
+
+/** Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). @param {TestCase} c @returns {Promise<TestStep>} */
+async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init) }) {
+  try {
+    const r = /** @type {NonNullable<typeof type.uploadRequest>} */ (type.uploadRequest)({
+      endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: 'annai-test.png', expiresInSeconds: 3600,
+    });
+    const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
+    return { step: 'upload', ok: true, detail: 'Photo uploads work: each photo is uploaded once, and expires after 48 hours.' };
+  } catch {
+    return { step: 'upload', ok: false, detail: "Uploading photos didn't work with this key. annai will send photos in each request instead." };
+  }
 }
 
 /**

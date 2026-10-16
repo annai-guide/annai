@@ -133,3 +133,18 @@ test('the service passes on the model to prefer and the photo repair (spec §9.6
   assert.equal(repaired, 1);
   assert.equal((await llm.call({ role: 'main', request, prefer: 'm-second' })).modelId, 'm-second');
 });
+
+test('the Test button checks photo uploads where the endpoint stores files (spec §9.8)', async () => {
+  const withUploads = (/** @type {any} */ c) => ({
+    ...c, type: { ...c.type, uploadRequest: () => ({ url: 'https://files.test/v1/files', headers: {}, body: new FormData() }), readUpload: (/** @type {any} */ j) => ({ id: j.id }) },
+  });
+  const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  const ok = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response(JSON.stringify({ id: 'file_1' })) });
+  assert.deepEqual(ok.steps.map((s) => [s.step, s.ok]).at(-1), ['upload', true]);
+  assert.equal(ok.ok, true);
+  const refused = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response('no', { status: 403 }) });
+  const last = /** @type {any} */ (refused.steps.at(-1));
+  assert.deepEqual([last.step, last.ok], ['upload', false]);
+  assert.equal(last.detail, "Uploading photos didn't work with this key. annai will send photos in each request instead.");
+  assert.equal(refused.ok, true, 'photos still work, sent in each request');
+});

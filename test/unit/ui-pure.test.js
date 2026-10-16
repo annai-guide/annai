@@ -173,3 +173,13 @@ test('the viewer knows which part of the photo is on screen', () => {
   // Zoomed 2× and moved so the left edge shows.
   assert.deepEqual(visibleRegion({ stageW: 400, stageH: 300, natW: 4000, natH: 3000, scale: 2, x: 200, y: 0 }), [0, 0.25, 0.5, 0.75]);
 });
+
+test('traceSummary: a photo upload and a refused photo replaced', () => {
+  const ev = (/** @type {string} */ type, /** @type {any} */ data) => ({ seq: 1, ts: 0, type, actor: 'system', data });
+  assert.equal(traceSummary(ev('net.request', { kind: 'upload', endpoint: 'Anthropic', url: 'https://api.anthropic.com/v1/files', status: 200, ms: 120 })),
+    'upload · Anthropic · https://api.anthropic.com/v1/files · 200 · 120 ms');
+  assert.equal(traceSummary(ev('net.request', { kind: 'upload', endpoint: 'Anthropic', url: 'https://api.anthropic.com/v1/files', status: 0, ms: 5, error: 'Failed to fetch' })),
+    'upload · Anthropic · https://api.anthropic.com/v1/files · Failed to fetch · 5 ms');
+  assert.equal(traceSummary(ev('photo.replace', { old: 'aaaaaaaaaaaaaaaa', new: 'bbbbbbbbbbbbbbbb', mediaType: 'image/jpeg' })),
+    'a refused photo sent again as a new copy (image/jpeg)');
+});

@@ -88,6 +88,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'tool.call') return `${d.name} ${cut(JSON.stringify(d.input ?? {}), 120)}`;
   if (e.type === 'tool.result') return `${d.name} · ${d.ok ? 'ok' : 'error'} · ${d.ms ?? 0} ms${d.content ? ` · ${cut(d.content)}` : ''}`;
   if (e.type === 'net.request' && d.kind === 'web') return `${d.tool} · ${d.method ?? 'GET'} ${d.url}${d.status ? ` · ${d.status}` : ''}${d.error ? ` · ${d.error}` : ''} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'net.request' && d.kind === 'upload') return `upload · ${d.endpoint} · ${d.url} · ${d.error ?? d.status} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
   if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
   if (e.type === 'decide') {
     const [best, p] = Object.entries(d.result ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]))[0] ?? ['?', 0];
