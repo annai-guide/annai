@@ -4,10 +4,10 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, StorageFullError } from '../../src/core/workspace.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip, listTrips, ME, SYS_SETTINGS } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, listTrips, ME, SYS_SETTINGS, recordBackup, backupState } from '../../src/core/scopes.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, describeArchive, importArchive, archiveName, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
+import { exportArchive, openArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
 import { PassphraseError } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
@@ -596,4 +596,35 @@ test('a location-free Share leaves out raw photos and videos, whatever type they
   const share = (/** @type {boolean} */ places) => exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places } });
   assert.deepEqual((await share(false)).skipped.sort(), ['/files/IMG_0001.DNG', '/files/IMG_0002.MOV', '/files/clip.mp4']);
   assert.deepEqual((await share(true)).skipped, []);
+});
+
+test('an export reports the last history entry it holds for each scope, and only with history', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const last = await a.store.tx(['events'], 'readonly', (t) => t.lastSeq(trip));
+  const full = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  assert.equal(full.seqs.get(trip), last);
+  const bare = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: { ...PRESETS.backup, history: false }, app: '0.1.0' });
+  assert.equal(bare.seqs.size, 0);
+});
+
+test('only a Backup with everything ticked counts as one (spec §4.9)', () => {
+  assert.equal(isFullBackup(PRESETS.backup, false), true);
+  assert.equal(isFullBackup(PRESETS.backup, true), false);
+  assert.equal(isFullBackup(PRESETS.share, false), false);
+  for (const k of ['history', 'memory', 'photos']) assert.equal(isFullBackup({ ...PRESETS.backup, [k]: false }, false), false);
+});
+
+test("a trip's backup record stays on the device that made it", async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const first = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  await recordBackup(a.store, first.seqs, 5000);
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  assert.equal('backup' in manifest.scopes[0].record, false);
+  const b = await device();
+  const opened = await openArchive(await bytesOf(blob));
+  opened.manifest.scopes[0].record.backup = { at: 1, seq: 999 }; // as an older or hand-made file might say
+  const [copy] = (await importArchive(b.store, opened)).trips;
+  assert.deepEqual(await backupState(b.store, copy), { at: null, changed: true });
 });

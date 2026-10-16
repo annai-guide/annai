@@ -38,6 +38,15 @@ export const PRESETS = Object.freeze({
   share: Object.freeze({ history: false, memory: false, photos: true }),
 });
 
+/**
+ * Whether an export counts as backing its trips up: a Backup with everything ticked (spec §4.9).
+ * A Share leaves out the conversation and the history.
+ * @param {Include} include @param {boolean} share
+ */
+export function isFullBackup(include, share) {
+  return !share && include.history && include.memory && include.photos;
+}
+
 export class ArchiveError extends Error {
   /** @param {string} message */
   constructor(message) {
@@ -131,8 +140,9 @@ const EVENT_SCHEMA = {
  *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
  *   share: this is a Share (§12.2). Photos go only as encoded copies, older versions of photos are
  *   left out, and unless places is true, nothing says where a photo was taken.
- * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[] }>}
- *   skipped: photos left out of a Share because their location couldn't be removed
+ * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
+ *   skipped: photos left out of a Share because their location couldn't be removed;
+ *   seqs: scope id → the last history entry the archive holds (empty without history)
  */
 export async function exportArchive(store, opts) {
   const now = opts.now ?? Date.now();
@@ -154,6 +164,7 @@ export async function exportArchive(store, opts) {
   /** @type {Set<string>} */ const current = new Set();
   /** @type {Set<string>} */ const historic = new Set();
   /** @type {string[]} */ const skipped = [];
+  /** @type {Map<string, number>} */ const seqs = new Map();
 
   for (const scope of scopes) {
     const dir = dirFor(scope.id);
@@ -161,8 +172,9 @@ export async function exportArchive(store, opts) {
       files: await t.listFiles(scope.id, '/'),
       events: opts.include.history ? await t.listEvents(scope.id) : [],
     }));
+    const { backup: _, ...record } = scope; // a backup note belongs to the device that made it
     /** @type {ManifestScope} */
-    const ms = { dir, record: scope };
+    const ms = { dir, record };
     for (const f of files) {
       if (!opts.include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
       const name = dir + f.path;
@@ -198,6 +210,7 @@ export async function exportArchive(store, opts) {
       current.add(out.hash);
     }
     if (events.length) {
+      seqs.set(scope.id, events[events.length - 1].seq);
       const name = `${dir}/.annai/events.jsonl`;
       const body = utf8(events.map((e) => JSON.stringify(e)).join('\n') + '\n');
       await zip.add(name, body, { mtime: now });
@@ -237,7 +250,7 @@ export async function exportArchive(store, opts) {
   let blob = zip.finish();
   if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
   const title = opts.kind === 'trip' ? scopes[0].title : '';
-  return { blob, manifest, skipped, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
+  return { blob, manifest, skipped, seqs, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
 }
 
 /**
@@ -546,7 +559,8 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
       if (p.mode === 'system') await t.deleteScope(p.target);
       // The target decides the kind: a record that calls "me" a trip must not make it one.
       const kind = p.target === ME ? 'me' : p.mode === 'system' ? 'sys' : 'trip';
-      await t.putScope({ ...p.rec, id: p.target, kind, status: 'active', updated: now });
+      const { backup: _b, ...rec } = p.rec; // this device hasn't backed it up
+      await t.putScope({ ...rec, id: p.target, kind, status: 'active', updated: now });
       for (const f of p.files) {
         const o = overrides.get(f.name);
         const hash = o?.hash ?? f.hash;

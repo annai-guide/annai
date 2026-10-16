@@ -120,6 +120,39 @@ export async function removeTrip(store, id, now = Date.now()) {
   });
 }
 
+/** Changes to a trip's status, not to what it holds: a Backup made before them still has everything (spec §4.9). */
+const STATUS_ONLY = new Set(['scope.archive', 'scope.unarchive']);
+
+/**
+ * Notes a saved Backup on each trip it held (spec §4.9). A scope that isn't a trip, a trip
+ * that is gone, and a Backup older than the one already noted are left alone.
+ * @param {Store} store @param {Map<string, number>} seqs scope id → the last history entry the Backup holds
+ * @param {number} at when it was saved
+ */
+export async function recordBackup(store, seqs, at) {
+  await store.tx(['scopes'], 'readwrite', async (t) => {
+    for (const [id, seq] of seqs) {
+      const rec = await t.getScope(id);
+      if (rec?.kind !== 'trip' || (rec.backup && rec.backup.seq > seq)) continue;
+      await t.putScope({ ...rec, backup: { at, seq } });
+    }
+  });
+}
+
+/**
+ * When the trip was last backed up, and whether it changed after that (spec §4.9).
+ * @param {Store} store @param {string} id
+ * @returns {Promise<{ at: number | null, changed: boolean }>} at is null when it never was
+ */
+export async function backupState(store, id) {
+  return store.tx(['scopes', 'events'], 'readonly', async (t) => {
+    const backup = (await t.getScope(id))?.backup;
+    if (!backup) return { at: null, changed: true };
+    const later = await t.listEvents(id, { after: backup.seq });
+    return { at: backup.at, changed: later.some((e) => !STATUS_ONLY.has(e.type)) };
+  });
+}
+
 /** Keeps each trip scope's title equal to the title in its trip.json. @param {Workspace} ws */
 export function syncTripTitles(ws) {
   return ws.onChange(async ({ op, scope, path }) => {

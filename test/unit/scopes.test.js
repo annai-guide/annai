@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip } from '../../src/core/scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, recordBackup, backupState } from '../../src/core/scopes.js';
 import { logEvent, blobsOf } from '../../src/core/events.js';
 import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS, PLAN_ITEM_SCHEMA, BOOKING_SCHEMA } from '../../src/plugins/core-schemas/schemas.js';
@@ -218,4 +218,40 @@ test('removeTrip removes only trips', async () => {
   await assert.rejects(removeTrip(store, ME), /doesn't exist/);
   await assert.rejects(removeTrip(store, 'trip-missing'), /doesn't exist/);
   assert.ok(await store.tx(['scopes'], 'readonly', (t) => t.getScope(ME)));
+});
+
+/** The last history entry of a scope. @param {Store} store @param {string} id */
+const lastSeq = (store, id) => store.tx(['events'], 'readonly', (t) => t.lastSeq(id));
+
+test('a trip counts as backed up from a recorded Backup until it changes (spec §4.9)', async () => {
+  const { store, ws } = setup();
+  const id = await createTrip(ws, { title: 'Big Sur' });
+  assert.deepEqual(await backupState(store, id), { at: null, changed: true });
+  await recordBackup(store, new Map([[id, await lastSeq(store, id)]]), 5000);
+  assert.deepEqual(await backupState(store, id), { at: 5000, changed: false });
+  await setTripStatus(store, id, 'archived');
+  await setTripStatus(store, id, 'active');
+  assert.deepEqual(await backupState(store, id), { at: 5000, changed: false }, 'archiving changes nothing the Backup holds');
+  await ws.write(id, '/notes/day1.md', 'Bixby Bridge', { author: 'user' });
+  assert.deepEqual(await backupState(store, id), { at: 5000, changed: true });
+});
+
+test('a Backup built before a change and saved after it does not cover the change', async () => {
+  const { store, ws } = setup();
+  const id = await createTrip(ws, { title: 'Big Sur' });
+  const built = await lastSeq(store, id);
+  await ws.write(id, '/notes/day1.md', 'written while the file was being built', { author: 'user' });
+  await recordBackup(store, new Map([[id, built]]), 5000);
+  assert.equal((await backupState(store, id)).changed, true);
+});
+
+test('recordBackup skips what is not a trip, trips that are gone, and older Backups', async () => {
+  const { store, ws } = setup();
+  await ensureBaseScopes(ws);
+  const id = await createTrip(ws, { title: 'Big Sur' });
+  const seq = await lastSeq(store, id);
+  await recordBackup(store, new Map([[ME, 1], ['trip-gone', 1], [id, seq]]), 5000);
+  assert.equal((await store.tx(['scopes'], 'readonly', (t) => t.getScope(ME)))?.backup, undefined);
+  await recordBackup(store, new Map([[id, seq - 1]]), 9000);
+  assert.deepEqual(await backupState(store, id), { at: 5000, changed: false });
 });
