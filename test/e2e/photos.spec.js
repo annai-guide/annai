@@ -34,3 +34,90 @@ test("a HEIC photo this browser can't read is kept as it is, with a note", async
   await expect(page.getByText('A photo was kept as it is')).toBeVisible();
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904\.heic/ })).toBeVisible();
 });
+
+/** The extension photos get in this browser: webp where it can write WebP, otherwise jpg. @param {import('@playwright/test').Page} page */
+function savedAs(page) {
+  return page.evaluate(async () => {
+    const c = new OffscreenCanvas(1, 1);
+    c.getContext('2d')?.fillRect(0, 0, 1, 1);
+    return (await c.convertToBlob({ type: 'image/webp' })).type === 'image/webp' ? 'webp' : 'jpg';
+  });
+}
+
+/** The colours at the top and the bottom of a shown photo: R, B or ?. @param {import('@playwright/test').Locator} img */
+function topAndBottom(img) {
+  return img.evaluate(async (/** @type {HTMLImageElement} */ el) => {
+    await el.decode();
+    const c = new OffscreenCanvas(el.naturalWidth, el.naturalHeight);
+    const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+    g.drawImage(el, 0, 0);
+    const at = (/** @type {number} */ y) => { const [r, , b] = g.getImageData(el.naturalWidth / 2, y, 1, 1).data; return r > 128 ? 'R' : b > 128 ? 'B' : '?'; };
+    return [at(3), at(el.naturalHeight - 4)];
+  });
+}
+
+test('a sideways photo is added upright and named by when it was taken, with when and where', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const ext = await savedAs(page);
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await page.getByRole('link', { name: new RegExp(`/files/2026-11-26-1904\\.${ext}`) }).click();
+  const img = page.getByRole('img', { name: `/files/2026-11-26-1904.${ext}` });
+  await expect(img).toBeVisible();
+  expect(await topAndBottom(img)).toEqual(['R', 'B']);
+  await expect(page.locator('figcaption')).toContainText('48 × 64');
+  await expect(page.locator('figcaption')).toContainText(/Taken .*2026/);
+  await expect(page.getByRole('link', { name: 'Where it was taken' })).toHaveAttribute('href', /mlat=36\.2219&mlon=-121\.7598/);
+});
+
+test('a 12-megapixel photo keeps its full size', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const bytes = await page.evaluate(async () => {
+    const c = new OffscreenCanvas(4032, 3024);
+    const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+    const sky = g.createLinearGradient(0, 0, 4032, 3024);
+    sky.addColorStop(0, '#0a7');
+    sky.addColorStop(1, '#a50');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, 4032, 3024);
+    return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.92 })).arrayBuffer())];
+  });
+  await page.getByLabel('Add photos or files').setInputFiles({ name: 'IMG_0001.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(bytes) });
+  await page.getByRole('link', { name: /\/files\/IMG_0001\.(webp|jpg)/ }).click();
+  await expect(page.locator('figcaption')).toContainText('4032 × 3024');
+});
+
+test('a photo opens full size, zooms, and closes', async ({ page, browserName }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
+  const open = page.getByRole('button', { name: 'Open the photo full size' });
+  await open.click();
+  const viewer = page.getByRole('dialog', { name: /^Photo / });
+  await expect(viewer).toHaveAttribute('data-zoom', '1');
+  const box = /** @type {{ x: number, y: number, width: number, height: number }} */ (await viewer.boundingBox());
+  const [cx, cy] = [box.x + box.width / 2, box.y + box.height / 2];
+  await page.mouse.dblclick(cx, cy); // double-tap zooms in
+  await expect(viewer).toHaveAttribute('data-zoom', '2.5');
+  await page.mouse.dblclick(cx, cy); // and back out
+  await expect(viewer).toHaveAttribute('data-zoom', '1');
+  if (browserName === 'chromium') { // Playwright's mobile WebKit has no mouse wheel
+    await page.mouse.move(cx, cy);
+    await page.mouse.wheel(0, -600);
+    await expect.poll(async () => Number(await viewer.getAttribute('data-zoom'))).toBeGreaterThan(1.2);
+  }
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveCount(0);
+  await expect(open).toBeFocused();
+});
+
+test("a photo this browser can't show says so, with what is known about it", async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.heic'));
+  await page.getByRole('link', { name: /\/files\/2026-11-26-1904\.heic/ }).click();
+  await expect(page.getByText("This browser can't show this photo.")).toBeVisible();
+  await expect(page.locator('figcaption')).toContainText('Stored as taken');
+});

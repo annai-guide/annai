@@ -31,3 +31,14 @@ export function dateRange(start, end) {
   const b = new Date(`${end}T00:00:00Z`);
   return typeof day.formatRange === 'function' ? day.formatRange(a, b) : `${day.format(a)} – ${day.format(b)}`;
 }
+
+/**
+ * "26 Nov 2026, 19:04": when a photo was taken, as the clock showed where it was taken.
+ * @param {string} taken ISO 8601, with or without an offset @param {string} [locale]
+ */
+export function takenText(taken, locale) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(taken);
+  if (!m) return taken;
+  const at = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])));
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(at);
+}

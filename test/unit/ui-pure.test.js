@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange } from '../../src/ui/format.js';
+import { relTime, bytes, dateRange, takenText } from '../../src/ui/format.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -32,4 +32,10 @@ test('parseHash: a mangled link opens Trips instead of failing', () => {
   assert.deepEqual(parseHash('#/trip/%E6'), trips);
   assert.deepEqual(parseHash('#/trip/trip-1/file?path=%E6%A1'), { name: 'file', parts: ['trip', 'trip-1', 'file'], params: { path: '�' } });
   assert.deepEqual(parseHash('#import=%ZZ'), trips);
+});
+
+test('takenText shows the time as the clock showed it where the photo was taken', () => {
+  assert.equal(takenText('2026-11-26T19:04:12-08:00', 'en-GB'), '26 Nov 2026, 19:04');
+  assert.equal(takenText('2026-11-27T08:15:00', 'en-GB'), '27 Nov 2026, 08:15');
+  assert.equal(takenText('sometime', 'en-GB'), 'sometime');
 });

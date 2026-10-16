@@ -101,3 +101,11 @@ input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; min-hei
 .notice-ok { border-color: var(--ok); }
 .toast { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .blocking { max-width: 560px; margin: 15vh auto 0; padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Photos (§4.8, §16.2) */
+.preview { display: flex; flex-direction: column; gap: 6px; }
+.preview .photo { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.viewer { position: fixed; inset: 0; z-index: 50; display: flex; background: #0b0c0e; }
+.viewer-stage { flex: 1; overflow: hidden; touch-action: none; }
+.viewer-img { display: block; width: 100%; height: 100%; object-fit: contain; transform-origin: center; user-select: none; -webkit-user-select: none; }
+.viewer-close { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }

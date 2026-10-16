@@ -3,7 +3,8 @@ import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, bytes } from '../format.js';
+import { relTime, bytes, takenText } from '../format.js';
+import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 
 /** @type {string | null} */
@@ -57,13 +58,34 @@ function editor(ctx, id, entry, content) {
   }
   if (entry.type.startsWith('image/')) {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type }));
-    return h('figure', { class: 'preview' }, h('img', { src: objectUrl, alt: entry.path }));
+    const url = (objectUrl = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type })));
+    const img = h('img', { src: url, alt: entry.path });
+    const figure = h('figure', { class: 'preview' },
+      h('button', { class: 'photo', type: 'button', 'aria-label': 'Open the photo full size', onclick: () => openPhotoViewer(url, entry.path) }, img),
+      photoFacts(entry));
+    img.addEventListener('error', () => figure.replaceChildren(
+      h('p', { class: 'sub', text: "This browser can't show this photo. It shows in Safari, and a Share export converts it where it can." }),
+      photoFacts(entry)));
+    return figure;
   }
   return h('div', { class: 'acts' }, h('button', {
     class: 'btn', type: 'button',
     onclick: () => saveFile(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type }), entry.path.split('/').pop() ?? 'file'),
   }, 'Download'));
+}
+
+/** Size, when and where a photo was taken, and whether it is stored as taken. @param {any} entry */
+function photoFacts(entry) {
+  const m = entry.meta ?? {};
+  const facts = [
+    m.width && m.height ? `${m.width} × ${m.height}` : null,
+    m.taken ? `Taken ${takenText(m.taken)}` : null,
+    m.original ? 'Stored as taken' : null,
+  ].filter(Boolean).join(' · ');
+  const map = m.place
+    ? h('a', { href: `https://www.openstreetmap.org/?mlat=${m.place.lat}&mlon=${m.place.lng}#map=16/${m.place.lat}/${m.place.lng}`, target: '_blank', rel: 'noopener noreferrer' }, 'Where it was taken')
+    : null;
+  return h('figcaption', { class: 'sub' }, facts, facts && map ? ' · ' : null, map);
 }
 
 /** @param {any} ctx @param {string} id @param {string} path @param {any[]} history @param {string | null} current */
