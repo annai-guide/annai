@@ -17,6 +17,10 @@
     "action": "/share-target",
     "method": "POST",
     "enctype": "multipart/form-data",
-    "params": { "files": [{ "name": "files", "accept": [".zip", ".annai", "application/zip", "application/octet-stream", "image/*", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".avif"] }] }
+    "params": {
+      "title": "title", "text": "text", "url": "url",
+      "files": [{ "name": "files", "accept": [".zip", ".annai", "application/zip", "application/octet-stream", "image/*", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".avif",
+        ".pdf", "application/pdf", ".pkpass", "application/vnd.apple.pkpass", ".ics", "text/calendar", ".eml", "message/rfc822", ".txt", "text/plain"] }]
+    }
   }
 }

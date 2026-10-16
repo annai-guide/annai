@@ -263,6 +263,17 @@ export class Agent {
     }
   }
 
+  /** Writes a wake into a conversation that isn't open. idle() waits for it. @param {string} scope @param {Wake} w */
+  #keepFor(scope, w) {
+    this.#checking++;
+    this.#logWakes([{ ...w, scope }], newId('w'), false, (ev) => record(this.store, scope, ev), scope === ME ? null : scope)
+      .catch(() => {})
+      .finally(() => {
+        this.#checking--;
+        this.#settle();
+      });
+  }
+
   /** Settles when no turn or housekeeping is running (queued wakes may wait). */
   #whenFree() {
     if (!this.#busy) return Promise.resolve();
@@ -323,6 +334,12 @@ export class Agent {
    * @param {Wake} w
    */
   wake(w) {
+    // A wake for another conversation than the one open (files added to another trip) is written
+    // into it now, and answered when it opens (spec §6.1, §7.3).
+    if (w.scope && w.scope !== (this.#target ?? ME)) {
+      this.#keepFor(w.scope, w);
+      return;
+    }
     if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file') {
       this.#push(w);
       this.#drain();

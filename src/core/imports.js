@@ -14,3 +14,19 @@ export async function importCalendar(ws, scope, path, { defaultTz }) {
   for (const { path: p, item } of items) await ws.write(scope, p, item, { author: 'user', source: path });
   return items.map((x) => x.path);
 }
+
+/**
+ * What Shiori is told when the user adds files to a trip (spec §7.3: "Shiori is woken with 'new file'").
+ * @param {{ path: string, type: string }[]} files @param {string[]} planned plan items annai made from calendar files
+ */
+export function newFilesText(files, planned) {
+  const shown = files.slice(0, 20).map((f) => `/trip${f.path} (${f.type})`);
+  const more = files.length > shown.length ? `, and ${files.length - shown.length} more` : '';
+  const allPhotos = files.every((f) => f.type.startsWith('image/'));
+  return [
+    `The user added ${files.length === 1 ? 'a file' : `${files.length} files`} to the trip: ${shown.join(', ')}${more}.`,
+    planned.length ? `annai made ${planned.length} plan ${planned.length === 1 ? 'item' : 'items'} from the calendar: ${planned.slice(0, 20).map((p) => `/trip${p}`).join(', ')}.` : '',
+    "If one is a booking (a confirmation, ticket, Wallet pass or reservation), read it, write an unverified booking in /trip/bookings/ with source set to its path, add the fixed plan items it implies with booking set to the booking's path, and ask only about what you are unsure of.",
+    allPhotos ? "If these are just trip photos, they need nothing from you: don't open them all." : '',
+  ].filter(Boolean).join(' ');
+}

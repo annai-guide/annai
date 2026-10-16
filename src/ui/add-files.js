@@ -1,7 +1,7 @@
 import { ingestPhoto, isPhotoType, photoSettings } from '../core/photos.js';
 import { sniffImageType } from '../core/photo-meta.js';
 import { readAppSettings } from '../core/settings.js';
-import { normPath, typeForPath } from '../core/paths.js';
+import { normPath, typeForPath, freeName } from '../core/paths.js';
 import { codec } from './photo-codec.js';
 
 /**
@@ -25,7 +25,9 @@ export async function addFiles(ctx, scope, files, progress = () => {}) {
       paths.push(entry.path);
       if (note) notes.push(note);
     } else {
-      const path = normPath(`/files/${name}`);
+      // An added file never replaces another, or a booking's source would point at the wrong one (spec §7.3).
+      const taken = new Set((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => f.path));
+      const path = freeName(normPath(`/files/${name}`), taken);
       await ctx.ws.write(scope, path, new Uint8Array(await file.arrayBuffer()), { author: 'user', type });
       paths.push(path);
     }

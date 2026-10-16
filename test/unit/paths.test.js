@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normPath, normPrefix, matchPath, typeForPath, isTextType, isCompressedType, PathError } from '../../src/core/paths.js';
+import { normPath, normPrefix, matchPath, typeForPath, isTextType, isCompressedType, PathError, freeName } from '../../src/core/paths.js';
 
 test('normPath adds the leading slash and keeps valid paths', () => {
   assert.equal(normPath('notes/day1.md'), '/notes/day1.md');
@@ -55,4 +55,13 @@ test('normPath keeps names in one Unicode form (NFC)', () => {
 test('emails are text', () => {
   assert.equal(typeForPath('/files/booking.eml'), 'message/rfc822');
   assert.equal(isTextType('message/rfc822'), true);
+});
+
+test('freeName: an added file never replaces another', () => {
+  const taken = new Set(['/files/confirmation.pdf', '/files/confirmation (2).pdf', '/files/notes', '/files/.hidden']);
+  assert.equal(freeName('/files/ticket.pdf', taken), '/files/ticket.pdf');
+  assert.equal(freeName('/files/confirmation.pdf', taken), '/files/confirmation (3).pdf');
+  assert.equal(freeName('/files/notes', taken), '/files/notes (2)');
+  assert.equal(freeName('/files/.hidden', taken), '/files/.hidden (2)');
+  assert.equal(freeName('/files/a.b.pdf', new Set(['/files/a.b.pdf'])), '/files/a.b (2).pdf');
 });

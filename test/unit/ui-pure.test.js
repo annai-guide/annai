@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { isArchiveName } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText } from '../../src/ui/format.js';
@@ -182,4 +183,9 @@ test('traceSummary: a photo upload and a refused photo replaced', () => {
     'upload · Anthropic · https://api.anthropic.com/v1/files · Failed to fetch · 5 ms');
   assert.equal(traceSummary(ev('photo.replace', { old: 'aaaaaaaaaaaaaaaa', new: 'bbbbbbbbbbbbbbbb', mediaType: 'image/jpeg' })),
     'a refused photo sent again as a new copy (image/jpeg)');
+});
+
+test('isArchiveName: annai archives and zips, not Wallet passes', () => {
+  for (const n of ['Trip.annai.zip', 'trip.annai', 'backup.ZIP']) assert.equal(isArchiveName(n), true, n);
+  for (const n of ['flight.pkpass', 'trip.ics', 'confirmation.pdf', 'annai']) assert.equal(isArchiveName(n), false, n);
 });
