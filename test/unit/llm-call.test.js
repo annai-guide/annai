@@ -157,3 +157,18 @@ test('model.turn keeps the reply and its reasoning as blobs it names, in one tra
   await trace.turn({ role: 'main', level: 'off', answeredBy: null, attempts: [], usage: null, cost: undefined }, '');
   assert.equal((await traced(store))[1].refs, undefined, 'nothing to keep, nothing named');
 });
+
+test('credentials in extra headers or in the address never reach the trace', async () => {
+  const store = createMemoryStore();
+  const headerSecret = 'hdr-secret-123456';
+  const urlSecret = 'url-secret-987654';
+  const ep = endpoint({ baseUrl: `https://llm.test/v1?token=${urlSecret}`, headers: { 'X-Api-Key': headerSecret, Authorization: 'Bearer auth-secret-555555', 'X-Title': 'annai' } });
+  const type = httpType([], { build: (/** @type {any} */ c) => ({ url: c.endpoint.baseUrl, headers: c.endpoint.headers, body: {} }) });
+  await assert.rejects(callOnce({
+    type, endpoint: ep, model: model(), key: null, request, trace: modelTrace(store, SYS),
+    fetch: async () => new Response(JSON.stringify({ error: { message: `bad ${headerSecret} or auth-secret-555555 for ${urlSecret}` } }), { status: 401 }),
+  }));
+  const log = JSON.stringify(await traced(store));
+  for (const secret of [headerSecret, urlSecret, 'auth-secret-555555']) assert.ok(!log.includes(secret), `${secret} reached the trace: ${log}`);
+  assert.ok(log.includes('X-Title') === false, 'headers are never traced');
+});

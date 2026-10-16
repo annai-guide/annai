@@ -44,6 +44,10 @@ export function applyPatches(body, endpoint, model, level) {
  */
 export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now }) {
   if (key) trace?.secret(key);
+  // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
+  for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
+    if (/auth|key|token|secret|cookie|session|password/i.test(name)) trace?.secret(String(value).replace(/^(Bearer|Basic)\s+/i, ''));
+  }
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...request, messages: portable(request.messages, model.providerId) } };
   const started = now();

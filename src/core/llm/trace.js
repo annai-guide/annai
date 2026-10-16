@@ -14,6 +14,15 @@ import { utf8, ownBuffer } from '../bytes.js';
  * @typedef {{ role: string, level: string, answeredBy: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string }} TurnInfo
  */
 
+/** The values in a URL's query, or none. @param {string} url */
+function queryValues(url) {
+  try {
+    return [...new URL(url).searchParams.values()];
+  } catch {
+    return [];
+  }
+}
+
 /** @param {Store} store @param {string} scope */
 export function modelTrace(store, scope) {
   /** @type {Set<string>} */
@@ -50,13 +59,16 @@ export function modelTrace(store, scope) {
       // the trace must never break a call
     }
   };
+  /** A key the calls use, so that an echo of it can be blanked out. Short strings are ignored. @param {string} key */
+  const secret = (key) => {
+    if (typeof key === 'string' && key.length >= 8) secrets.add(key);
+  };
   return {
-    /** A key the calls use, so that an echo of it can be blanked out. Short strings are ignored. @param {string} key */
-    secret(key) {
-      if (typeof key === 'string' && key.length >= 8) secrets.add(key);
-    },
+    secret,
     /** @param {RequestInfo} i */
     request(i) {
+      // A credential can sit in the address too: every value in its query is treated as one.
+      for (const v of queryValues(i.url)) secret(v);
       const data = { kind: 'model', ...i, ...(i.error ? { error: scrub(i.error) } : {}), url: scrub(i.url) };
       return append({ ts: Date.now(), type: 'net.request', actor: 'system', data }, []);
     },
