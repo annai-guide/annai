@@ -41,6 +41,8 @@ export async function renderSettings(ctx) {
     section('Open an annai file', openFileButton(ctx, 'Open an annai file')),
     section('Models', h('p', { class: 'sub', text: 'The endpoints and models Shiori uses, and the order each role tries them in.' }),
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/models' }, 'Models'))),
+    section('Voice', h('p', { class: 'sub', text: 'How Shiori speaks and hears you, with a test for each.' }),
+      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/voice' }, 'Voice'))),
     section('Shiori', h('p', { class: 'sub', text: 'Her personality, budgets and housekeeping.' }),
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/shiori' }, 'Shiori'))),
     section('Tools', h('p', { class: 'sub', text: 'Switches for every tool Shiori has, web search and fetch, and the Jina key.' }),

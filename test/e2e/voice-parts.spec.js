@@ -56,3 +56,46 @@ test("a transcription model's Test: you say something and it writes it down (spe
     await asr.stop();
   }
 });
+
+test('Settings → Voice: a voice that fails gives its sentence to the next one; the microphone test writes down what it heard', async ({ page }) => {
+  const server = await startModelServer({
+    '/bad/audio/speech': { status: 500, type: 'application/json', body: JSON.stringify({ error: { message: 'Voice server down' } }) },
+    '/good/audio/speech': wav,
+    '/ears/audio/transcriptions': { status: 200, type: 'application/json', body: JSON.stringify({ text: 'Is there a gas station nearby?' }) },
+  });
+  try {
+    await fakeMicrophone(page, [clipPath('gas-station')]);
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Voice A', url: `${server.origin}/bad`, key: 'sk-a-test', model: 'voice-a' });
+    await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Voice B', url: `${server.origin}/good`, key: 'sk-b-test', model: 'voice-b' });
+    await addEndpoint(page, 'Other: OpenAI-compatible transcription', { name: 'Ears', url: `${server.origin}/ears`, key: 'sk-e-test', model: 'ears' });
+    for (const m of ['voice-a', 'voice-b']) {
+      await page.getByLabel('Add a model to speech-out').selectOption({ label: m });
+      await page.getByRole('button', { name: 'Add to speech-out' }).click();
+    }
+    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
+    await page.getByRole('button', { name: 'Add to speech-in' }).click();
+    await page.getByRole('button', { name: 'Move Browser voice down' }).click();
+    await page.getByRole('button', { name: 'Move Browser voice down' }).click();
+    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. voice-a', '2. voice-b', '3. Browser voice (works offline)']);
+    await page.goto('/#/settings');
+    await page.getByRole('link', { name: 'Voice', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Voice', exact: true })).toBeVisible();
+    await expect(page.getByText('Voices, tried in order: voice-a, voice-b, Browser voice.')).toBeVisible();
+    await page.getByRole('button', { name: 'Test the voice' }).click();
+    await expect(page.getByText('Spoken by voice-b.')).toBeVisible({ timeout: 20_000 });
+    expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
+    expect(server.bodies('/good/audio/speech')).toHaveLength(2);
+    await page.getByLabel('Pause that ends a sentence (ms)').fill('900');
+    await page.getByRole('button', { name: 'Save the pause' }).click();
+    await page.getByRole('button', { name: 'Test the microphone' }).click();
+    await expect(page.getByText(/ears heard: "Is there a gas station nearby\?"/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/^Heard \d\.\d seconds of speech\./)).toBeVisible();
+    await page.goto('/#/trace');
+    await page.getByLabel('Kind').selectOption('Web');
+    await expect(page.locator('.trace li').filter({ hasText: 'voice-a' }).first()).toBeVisible();
+  } finally {
+    await server.stop();
+  }
+});
