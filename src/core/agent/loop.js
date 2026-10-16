@@ -384,6 +384,24 @@ export class Agent {
     return this.#log(ev);
   }
 
+  /** Shiori steps out of her seat to work on something, or comes back (spec §16.3). @param {string | null} detail */
+  working(detail) {
+    this.#setState(detail ? 'away' : 'thinking', detail ?? undefined);
+  }
+
+  /** The prefix cache of the model she used last (spec §6.4: plugins can read TTL and warmth). */
+  cacheState() {
+    const l = this.#warmth.last;
+    if (!l) return null;
+    const expiresAt = l.at + l.ttlMs;
+    return { modelId: l.modelId, ttlMs: l.ttlMs, expiresAt, warm: this.now() < expiresAt };
+  }
+
+  /** The loop's own tools: talk, then Self (for Settings → Tools). */
+  loopTools() {
+    return this.#loopTools;
+  }
+
   /** A system card (spec §16.1). @param {Notice} n */
   notify(n) {
     this.#emit('notice', n);

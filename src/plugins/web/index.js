@@ -135,7 +135,8 @@ export function activate(annai) {
     async run(i, call) {
       /** @type {string[]} */
       const why = [];
-      for (const p of annai.searchProviders ? annai.searchProviders() : [jina]) {
+      const listed = annai.searchProvidersAsync ? await annai.searchProvidersAsync() : [];
+      for (const p of listed.length ? listed : [jina]) {
         const k = p.id === 'jina' ? await key() : null;
         if (p.needsKey && !k) {
           why.push(`${p.name} needs a key (Settings → Tools)`);

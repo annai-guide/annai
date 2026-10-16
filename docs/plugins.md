@@ -54,11 +54,21 @@ export function activate(annai) {
 | `annai.register(kind, item)` | adds something to the registry; returns a function that removes it |
 | `annai.schemas.register({ scope, pattern, schema })` | a JSON Schema that files at matching paths must pass. An invalid write is refused, and the refusal says why. |
 | `annai.tools.register(tool)` | a tool: a name (letters, digits, `_` and `-`, up to 64), a description, an input JSON Schema and `run(input, call)` (spec §5.4). `call` has `trip` (the open trip's scope, or null), `signal` (stop when it aborts), `model` (the model that called it) and `fetch` (traced). Errors become results Shiori sees. Every tool can be switched off in Settings → Tools. |
-| `annai.events.append(scope, type, data)` | appends an entry to a scope's log, signed `plugin:<id>` |
+| `annai.events.append(scope, type, data, keep?)` | appends an entry to a scope's log, signed `plugin:<id>`. `keep = { texts: [[name, text]], blobs: [{ bytes, type }] }` stores content and names it in the entry's refs; long texts are kept that way, short ones go in `data`. Returns the entry. |
 | `annai.files` | the files of every scope: `read`, `readText`, `readJSON`, `list`, `write`, `patch`, `delete`, `history`, `restore` |
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Endpoint types" below |
 | `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch` |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key. Never put them in files or log entries. |
+| `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
+| `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
+| `annai.wake(reason)` | wakes Shiori, with the reason she sees. Quiet hours and the per-hour limit apply (spec §6.6). |
+| `annai.net.fetch(url, init?)` | a web request, recorded in the trace without any secret annai keeps |
+| `annai.ui.card({ title, body, tone?, actions? })`, `annai.ui.toast(text)` | a system card or a toast. These are never in Shiori's voice. |
+| `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
+| `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change) |
+| `annai.searchProviders()` | the search providers, in the order the user set |
+| `annai.register('skill', { name, description, text })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool |
+| `annai.register('search', { id, name, needsKey?, search(query, { key, fetch, signal }) })` | a search provider for `web_search`: returns `[{ title, url, snippet }]` |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
 
@@ -110,6 +120,6 @@ export function activate(annai) {
 - **Keep content as files.** annai stores each piece of content once and points files and log entries at it. Removing *any* trip deletes every stored piece that no file and no log entry points at, wherever it came from (spec §4.9).
   - Content a plugin writes with `annai.files` is always safe.
   - Content put into storage any other way, for example through the database directly, disappears the next time someone removes a trip.
-  - `annai.events.append` doesn't take references to stored content yet. Until it does (spec §5.4), keep anything worth keeping in a file.
+  - Content a plugin keeps in a log entry goes through `annai.events.append(scope, type, data, { texts, blobs })`, which stores it and names it in the entry's refs.
 - **Use only what `annai` gives you.** Anything else annai has is internal and changes without notice.
 - **Never put API keys or other secrets in files or log entries.** Files and logs end up in exports and backups.

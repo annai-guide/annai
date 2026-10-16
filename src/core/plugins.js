@@ -1,7 +1,10 @@
 import { validate } from './schema.js';
 import { text } from './bytes.js';
 import { normPath, typeForPath } from './paths.js';
-import { SYS_PLUGINS } from './scopes.js';
+import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
+import { tracedFetch } from './agent/net.js';
+import { record } from './agent/log.js';
+import { readAppSettings } from './settings.js';
 import { logEvent } from './events.js';
 import { readZip } from './zip.js';
 import { PluginError } from './registry.js';
@@ -96,6 +99,8 @@ export class PluginHost {
   #loaded = new Set();
   /** Plugins installed or removed after their code was imported: only a restart runs the new code. */
   #stale = new Set();
+  /** @type {{ llm?: any, agent?: any, notices?: any, fetch?: any }} what plugins reach through annai once the app has it */
+  #services = {};
   /** @type {Map<string, Promise<void>>} plugins starting now, so a second start waits instead of activating twice */
   #starting = new Map();
 
@@ -350,9 +355,29 @@ export class PluginHost {
     return Promise.race([work, late]).finally(() => clearTimeout(timer));
   }
 
+  /** The services plugins reach through annai once the app has them (spec §5.4). @param {{ llm?: any, agent?: any, notices?: any, fetch?: any }} services */
+  connect(services) {
+    this.#services = { ...this.#services, ...services };
+  }
+
   /** The object a plugin's activate() receives (milestone 1 subset of spec §5.4). @param {string} id */
   #api(id) {
     const registry = this.registry;
+    const need = (/** @type {'llm' | 'agent' | 'notices'} */ what) => {
+      const svc = this.#services[what];
+      if (!svc) throw new PluginError(id, `${what} isn't ready yet; use it after annai has started`);
+      return svc;
+    };
+    /** @type {string[]} */
+    let searchOrder = [];
+    const ordered = () => {
+      const all = registry.list('search');
+      return [...searchOrder.map((sid) => all.find((p) => p.id === sid)).filter(Boolean), ...all.filter((p) => !searchOrder.includes(p.id))];
+    };
+    const llm = Object.assign(
+      async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
+      { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS }) },
+    );
     return Object.freeze({
       id,
       register: (/** @type {string} */ kind, /** @type {any} */ item) => registry.add(id, kind, item),
@@ -381,8 +406,30 @@ export class PluginHost {
         },
       }),
       events: Object.freeze({
-        append: (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data) => logEvent(this.ws.store, scope, { type, actor: `plugin:${id}`, data }),
+        /** An entry in a scope's log, signed plugin:<id>; content it keeps is stored and named in its refs (spec §5.4). */
+        append: (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data, /** @type {any} */ keep = {}) =>
+          record(this.ws.store, scope, { type, actor: `plugin:${id}`, data: data ?? {}, texts: keep.texts ?? [], blobs: keep.blobs ?? [] }),
       }),
+      llm,
+      wake: (/** @type {string} */ reason) => need('agent').wake({ kind: 'plugin', plugin: id, text: String(reason) }),
+      net: Object.freeze({
+        /** A web request, in the trace as plugin:<id> (spec §5.4). */
+        fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => tracedFetch(this.ws.store, SYS, { tool: `plugin:${id}` }, this.#services.fetch)(url, init),
+      }),
+      ui: Object.freeze({
+        card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body, tone: c?.tone, actions: c?.actions }),
+        toast: (/** @type {string} */ text) => need('notices').toast(String(text)),
+      }),
+      cache: Object.freeze({ state: () => need('agent').cacheState() }),
+      settings: Object.freeze({
+        get: async () => (await this.ws.readJSON(SYS_SETTINGS, `/plugin-settings/${id}.json`)) ?? {},
+        set: (/** @type {Record<string, any>} */ changes) => this.ws.patch(SYS_SETTINGS, `/plugin-settings/${id}.json`, changes, { author: `plugin:${id}`, create: true }),
+      }),
+      searchProviders: ordered,
+      searchProvidersAsync: async () => {
+        searchOrder = (await readAppSettings(this.ws)).web?.search ?? [];
+        return ordered();
+      },
       providers: Object.freeze({
         /** An endpoint type (spec §9.1): build() and read(), or run() for types that need no network. */
         register: (/** @type {any} */ type) => {
