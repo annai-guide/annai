@@ -15,6 +15,10 @@ import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
 import { offerPluginUpdates } from '../ui/plugin-updates.js';
+import { Agent } from '../core/agent/loop.js';
+import { selfTools } from '../core/agent/self-tools.js';
+import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
+import { readAppSettings } from '../core/settings.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -54,7 +58,17 @@ async function boot() {
   let pluginsStarted = () => {};
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
 
-  const shell = startShell(root, { store, ws, registry, plugins, llm, version: VERSION });
+  // Shiori (spec §6): one agent, talking about the trip that was open last.
+  const agent = new Agent({ store, ws, llm, registry });
+  agent.addLoopTools(selfTools(agent));
+  const presets = await loadPresets();
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, presets, version: VERSION });
+  plugins.connect({ llm, agent, notices: shell.notices });
+  agent.on('notice', (n) => shell.notices.card(n));
+  const active = (await readAppSettings(ws)).activeTrip;
+  const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
+  agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
+  offerPersonalityUpdates({ ws, agent, presets, notices: shell.notices });
   watchErrors(store, shell);
   if (isStandalone()) requestPersist();
   registerServiceWorker(store, shell);
@@ -69,6 +83,40 @@ async function boot() {
   setInterval(lookForUpdates, 24 * 60 * 60 * 1000);
   // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).
   finishSignIn({ llm, ws, store, notices: shell.notices }).then((was) => { if (was) shell.render(); });
+}
+
+/** annai's own personalities as shipped, for installing and "reset to original" (spec §14.1). @returns {Promise<Record<string, string>>} */
+async function loadPresets() {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const n of PRESETS) {
+    try {
+      const res = await fetch(`/assets/personalities/${n}.md`);
+      if (res.ok) out[n] = await res.text();
+    } catch {
+      // offline before the first install: the personalities come on a later start
+    }
+  }
+  return out;
+}
+
+/**
+ * Installs missing personalities, updates unedited ones silently, and offers a new original to an
+ * edited copy (spec §14.1).
+ * @param {{ ws: Workspace, agent: Agent, presets: Record<string, string>, notices: any }} c
+ */
+async function offerPersonalityUpdates({ ws, agent, presets, notices }) {
+  for (const o of await syncPersonalities({ ws, presets }).catch(() => [])) {
+    notices.card({
+      title: `A new version of the ${o.name} personality`,
+      body: 'Yours has your own edits, so it was kept as it is.',
+      actions: [
+        { label: 'Compare', run: () => { location.hash = `#/shiori?compare=${o.name}`; } },
+        { label: 'Keep mine', run: () => { keepMine(ws, o.name, o.text); } },
+        { label: 'Let Shiori merge', primary: true, run: () => agent.wake({ kind: 'personality', text: `A new version of annai's "${o.name}" personality is out. Merge it into the current one with tune_personality, keeping the user's edits. The new original:\n\n${o.text}` }) },
+      ],
+    });
+  }
 }
 
 /** @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, render: () => unknown }} shell */

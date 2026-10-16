@@ -4,12 +4,12 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, bytes, dateRange } from '../format.js';
+import { relTime, bytes, dateRange, fileHref } from '../format.js';
 import { exportPanel } from '../export-panel.js';
 import { addFiles } from '../add-files.js';
+import { updateAppSettings } from '../../core/settings.js';
 
-/** @param {string} id @param {string} path */
-export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;
+export { fileHref };
 
 /** @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderTrip(ctx, route) {
@@ -17,6 +17,11 @@ export async function renderTrip(ctx, route) {
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
   if (!scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
+  }
+  // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
+  if (ctx.agent && ctx.agent.trip !== id) {
+    updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
+    ctx.agent.open(id).catch(() => {});
   }
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
   const files = await ctx.ws.list(id, '/');
@@ -69,6 +74,10 @@ async function askAndRemove(ctx, id, scope) {
   }
   try {
     const { bytes: freed } = await removeTrip(ctx.store, id);
+    if (ctx.agent?.trip === id) {
+      await updateAppSettings(ctx.ws, { activeTrip: null });
+      await ctx.agent.open(null);
+    }
     ctx.notices.toast(`Removed ${scope.title}. ${bytes(freed)} freed.`);
     ctx.go('#/trips');
   } catch (e) {

@@ -1,28 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer } from './helpers.js';
-
-/**
- * From the Models screen: adds an endpoint from a template (installing its plugin), names it,
- * sets its base URL and key, adds one model by id, and comes back.
- * @param {import('@playwright/test').Page} page @param {string} template
- * @param {{ name: string, url: string, key: string, model: string }} o
- */
-export async function addEndpoint(page, template, { name, url, key, model }) {
-  await expect(page.getByRole('heading', { name: 'Models', exact: true })).toBeVisible();
-  await page.getByLabel('Add an endpoint').selectOption({ label: template });
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByRole('heading', { name: template })).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByLabel('Base URL').fill(url);
-  await page.getByLabel('API key').fill(key);
-  await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('heading', { name })).toBeVisible();
-  await page.getByLabel('Add a model by id').fill(model);
-  await page.getByRole('button', { name: 'Add model' }).click();
-  await expect(page.getByRole('link', { name: new RegExp(`^${model}`) })).toBeVisible();
-  await page.getByRole('link', { name: '← Models' }).click();
-}
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint } from './helpers.js';
 
 test('endpoints, models and roles are set in Settings → Models, survive a reload, and the key is never shown', async ({ page }) => {
   await openApp(page, '#/models');

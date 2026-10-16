@@ -58,28 +58,101 @@ export async function buildAndSave(page) {
 }
 
 /**
- * A stand-in model server on a port of its own, answering each path with a fixed response and
- * allowing browser access (CORS), as a real endpoint must. Requests from a page a service worker
- * controls can't be intercepted with page.route in WebKit, so model calls go to a real server.
- * @param {Record<string, { status: number, type: string, body: string }>} routes by path
+ * A stand-in model server on its own port, for tests that need real CORS (WebKit can't route
+ * requests from a page a service worker controls). A route is a reply, or a list of replies served
+ * in turn (the last repeats); a reply may wait delayMs. bodies(path) gives the JSON bodies posted.
+ * @param {Record<string, { status: number, type: string, body: string, delayMs?: number } | { status: number, type: string, body: string, delayMs?: number }[]>} routes
  */
 export async function startModelServer(routes) {
+  /** @type {Map<any, number>} */
+  const served = new Map();
+  /** @type {Map<string, any[]>} */
+  const received = new Map();
   const server = http.createServer((req, res) => {
     const cors = {
       'access-control-allow-origin': '*',
       'access-control-allow-methods': 'GET, POST, OPTIONS',
       'access-control-allow-headers': String(req.headers['access-control-request-headers'] ?? 'content-type'),
     };
-    req.resume();
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204, cors).end();
-      return;
-    }
-    const r = routes[new URL(req.url ?? '/', 'http://localhost').pathname];
-    if (!r) res.writeHead(404, cors).end('not found');
-    else res.writeHead(r.status, { ...cors, 'content-type': r.type }).end(r.body);
+    /** @type {Buffer[]} */
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, cors).end();
+        return;
+      }
+      const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+      if (req.method === 'POST') {
+        try {
+          received.set(path, [...(received.get(path) ?? []), JSON.parse(Buffer.concat(chunks).toString('utf8') || 'null')]);
+        } catch {
+          // not JSON
+        }
+      }
+      const route = routes[path];
+      const n = served.get(route) ?? 0;
+      served.set(route, n + 1);
+      const r = Array.isArray(route) ? route[Math.min(n, route.length - 1)] : route;
+      if (!r) {
+        res.writeHead(404, cors).end('not found');
+        return;
+      }
+      setTimeout(() => {
+        if (!res.destroyed) res.writeHead(r.status, { ...cors, 'content-type': r.type }).end(r.body);
+      }, r.delayMs ?? 0);
+    });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
   const { port } = /** @type {import('node:net').AddressInfo} */ (server.address());
-  return { origin: `http://127.0.0.1:${port}`, stop: () => new Promise((resolve) => server.close(() => resolve(undefined))) };
+  return {
+    origin: `http://127.0.0.1:${port}`,
+    /** @param {string} path */
+    bodies: (path) => received.get(path) ?? [],
+    stop: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve(undefined)); }),
+  };
+}
+
+/**
+ * From the Models screen: adds an endpoint from a template (installing its plugin), names it,
+ * sets its base URL and key, adds one model by id, and comes back.
+ * @param {import('@playwright/test').Page} page @param {string} template
+ * @param {{ name: string, url: string, key: string, model: string }} o
+ */
+export async function addEndpoint(page, template, { name, url, key, model }) {
+  await expect(page.getByRole('heading', { name: 'Models', exact: true })).toBeVisible();
+  await page.getByLabel('Add an endpoint').selectOption({ label: template });
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { name: template })).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByLabel('Base URL').fill(url);
+  await page.getByLabel('API key').fill(key);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name })).toBeVisible();
+  await page.getByLabel('Add a model by id').fill(model);
+  await page.getByRole('button', { name: 'Add model' }).click();
+  await expect(page.getByRole('link', { name: new RegExp(`^${model}`) })).toBeVisible();
+  await page.getByRole('link', { name: '← Models' }).click();
+}
+
+/**
+ * An Anthropic Messages SSE reply that calls tools, with optional text first.
+ * @param {{ name: string, input: any }[]} calls @param {string} [text]
+ */
+export function anthropicToolReply(calls, text = '') {
+  const ev = (/** @type {string} */ type, /** @type {any} */ data) => `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
+  let out = ev('message_start', { message: { id: 'msg_e2e', type: 'message', role: 'assistant', usage: { input_tokens: 400, output_tokens: 1 } } });
+  let i = 0;
+  if (text) {
+    out += ev('content_block_start', { index: i, content_block: { type: 'text', text: '' } });
+    out += ev('content_block_delta', { index: i, delta: { type: 'text_delta', text } });
+    out += ev('content_block_stop', { index: i++ });
+  }
+  for (const [n, c] of calls.entries()) {
+    out += ev('content_block_start', { index: i, content_block: { type: 'tool_use', id: `toolu_e2e_${n}_${Math.random().toString(36).slice(2, 8)}`, name: c.name, input: {} } });
+    out += ev('content_block_delta', { index: i, delta: { type: 'input_json_delta', partial_json: JSON.stringify(c.input) } });
+    out += ev('content_block_stop', { index: i++ });
+  }
+  out += ev('message_delta', { delta: { stop_reason: calls.length ? 'tool_use' : 'end_turn' }, usage: { output_tokens: 20 } });
+  return out + ev('message_stop', {});
 }

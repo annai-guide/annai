@@ -132,3 +132,8 @@ test('records that are not valid are refused on save and skipped on read', async
   await saveEndpoint(ws, ep);
   assert.deepEqual(Object.keys((await readConfig(ws)).endpoints), [ep.id]);
 });
+
+test("diffLayer covers only the fields a screen edits: one it doesn't show is never removed", () => {
+  const base = { name: 'Haiku', providerTools: [{ id: 'p', name: 'S', kind: 'search', patch: {} }], logprobs: false };
+  assert.deepEqual(diffLayer({ name: 'Mine' }, base), { name: 'Mine' });
+});

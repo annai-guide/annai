@@ -129,11 +129,16 @@ export function modelOf(rec) {
 
 /**
  * The user layer that turns base into edited: only what differs, as a merge patch, so a header,
- * tunable or reasoning level the user deleted from a template's values stays deleted.
+ * tunable or reasoning level the user deleted from a template's values stays deleted. Fields edited
+ * doesn't have are left as they are.
  * @param {Record<string, any>} edited @param {Record<string, any>} base
  */
 export function diffLayer(edited, base) {
-  return diffPatch(base, edited);
+  // Only the fields the screen edits: one it doesn't show is never removed.
+  /** @type {Record<string, any>} */
+  const shown = {};
+  for (const k of Object.keys(edited)) if (base[k] !== undefined) shown[k] = base[k];
+  return diffPatch(shown, edited);
 }
 
 /** Every endpoint, model and role. Records that aren't valid are skipped. @param {Workspace} ws @returns {Promise<ModelConfig>} */

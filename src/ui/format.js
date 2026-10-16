@@ -73,3 +73,6 @@ const OUTCOMES = {
 export function outcomeText(outcome) {
   return OUTCOMES[outcome] ?? outcome;
 }
+
+/** The address of a file in a trip. @param {string} id @param {string} path */
+export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;

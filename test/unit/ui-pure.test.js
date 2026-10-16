@@ -5,6 +5,8 @@ import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeTe
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
+import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
+import { mapsUrl, tripPath } from '../../src/ui/cards.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -82,4 +84,33 @@ test('blinks come at random moments, 2.6 to 7.8 seconds apart', () => {
   assert.equal(nextBlinkMs(0), 2600);
   assert.equal(nextBlinkMs(1), 7800);
   assert.equal(nextBlinkMs(0.5), 5200);
+});
+
+test('markdown: paragraphs, lists, headings, code; inline bold, italic, code and http(s) links only', () => {
+  assert.deepEqual(parseMarkdown('Hi **there**\n\n- one\n- *two*\n\n1. a\n2. b\n\n## Head\n\n```\nx <b>\n```'), [
+    { t: 'p', c: [{ t: 'text', v: 'Hi ' }, { t: 'b', c: [{ t: 'text', v: 'there' }] }] },
+    { t: 'ul', items: [[{ t: 'text', v: 'one' }], [{ t: 'i', c: [{ t: 'text', v: 'two' }] }]] },
+    { t: 'ol', items: [[{ t: 'text', v: 'a' }], [{ t: 'text', v: 'b' }]] },
+    { t: 'h', c: [{ t: 'text', v: 'Head' }] },
+    { t: 'pre', v: 'x <b>' },
+  ]);
+  assert.deepEqual(parseInline('See [the menu](https://nepenthe.com/menu) or `code`'), [
+    { t: 'text', v: 'See ' }, { t: 'a', href: 'https://nepenthe.com/menu', c: [{ t: 'text', v: 'the menu' }] }, { t: 'text', v: ' or ' }, { t: 'code', c: 'code' },
+  ]);
+});
+
+test('markdown: hostile output stays text', () => {
+  assert.deepEqual(parseInline('<img src=x onerror=alert(1)>'), [{ t: 'text', v: '<img src=x onerror=alert(1)>' }]);
+  assert.deepEqual(parseInline('[x](javascript:alert(1))'), [{ t: 'text', v: '[x](javascript:alert(1))' }]);
+  assert.deepEqual(parseInline('go to https://a.test/x.'), [{ t: 'text', v: 'go to ' }, { t: 'a', href: 'https://a.test/x', c: [{ t: 'text', v: 'https://a.test/x' }] }, { t: 'text', v: '.' }]);
+  const long = parseMarkdown('x'.repeat(MD_MAX + 5));
+  assert.equal(/** @type {any} */ (long[0]).c[0].v.length, MD_MAX + 1);
+});
+
+test('cards: a maps link per platform, and the paths Shiori uses', () => {
+  assert.equal(mapsUrl({ name: 'Nepenthe', lat: 36.2203, lng: -121.7612 }, 'ios'), 'https://maps.apple.com/?q=Nepenthe&ll=36.2203,-121.7612');
+  assert.equal(mapsUrl({ name: 'Nepenthe', address: 'Highway 1, Big Sur' }, 'android'), 'https://www.google.com/maps/search/?api=1&query=Highway%201%2C%20Big%20Sur');
+  assert.deepEqual(tripPath('/trip/bookings/hotel.json'), { root: 'trip', path: '/bookings/hotel.json' });
+  assert.deepEqual(tripPath('/me/memory.md'), { root: 'me', path: '/memory.md' });
+  assert.equal(tripPath('https://x'), null);
 });

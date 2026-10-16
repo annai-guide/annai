@@ -12,22 +12,23 @@ import { renderTrace } from './screens/trace.js';
 import { renderPlugins } from './screens/plugins.js';
 import { renderModels } from './screens/models.js';
 import { renderShiori } from './screens/shiori.js';
+import { renderTalk } from './screens/talk.js';
+import { createDock } from './dock.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk };
 
 /**
  * @param {HTMLElement} root
- * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, version: string }} core
+ * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, presets?: Record<string, string>, version: string }} core
  */
 export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
-  const links = [['#/trips', 'Trips'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
+  const links = [['#/trips', 'Trips'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
   const header = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
     h('nav', { class: 'topnav', 'aria-label': 'Main' }, ...links));
-  root.replaceChildren(header, installBanner(), main, notices.el);
 
   const update = { ready: false, apply: () => {} };
   const ctx = {
@@ -35,6 +36,10 @@ export function startShell(root, core) {
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },
     render: () => render(),
   };
+  // The dock sits at the bottom of every screen (spec §16.2).
+  const dock = core.agent ? createDock(ctx) : null;
+  /** @type {any} */ (ctx).dock = dock;
+  root.replaceChildren(header, installBanner(), main, notices.el, ...(dock ? [dock.el] : []));
   let seq = 0;
   async function render() {
     const my = ++seq;
