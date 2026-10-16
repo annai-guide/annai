@@ -16,8 +16,8 @@ import { explainStorageFull } from '../storage-full.js';
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderImport(ctx, route) {
-  /** @type {InboxFile[]} */
   const pending = route.params.inbox ? null : takePendingImport();
+  /** @type {InboxFile[]} */
   const came = route.params.inbox ? await inboxFiles() : (pending?.files ?? []).map((file) => ({ key: null, file }));
   // A file picked with "Open a trip someone sent you" is an archive whatever its name; anything else is one by its name.
   const archive = (/** @type {InboxFile} */ i) => Boolean(pending?.archive) || isArchiveName(i.file.name);
