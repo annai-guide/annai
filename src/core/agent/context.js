@@ -79,7 +79,7 @@ function localTime(now, timeZone) {
   return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}, ${timeZone} (${parts.timeZoneName})`;
 }
 
-const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on', auto: 'auto' });
+const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)', auto: 'auto' });
 
 /**
  * The now block (spec §6.3, item 4): sent last, never cached.
