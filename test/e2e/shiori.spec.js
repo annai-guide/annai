@@ -100,3 +100,66 @@ test('a tool switched off is not offered to Shiori; the Jina key is saved and ne
     await llm.stop();
   }
 });
+
+test('done: a conversation with tool use, with fallback across two providers, survives a reload mid-turn, and the trace shows every request and everything read', async ({ page }) => {
+  const llm = await startModelServer({
+    '/a/v1/chat/completions': { status: 402, type: 'application/json', body: JSON.stringify({ error: { message: 'Insufficient credits', code: 402 } }) },
+    '/b/v1/messages': [
+      sse(anthropicToolReply([{ name: 'write', input: { path: '/trip/notes/dinner.md', content: '# Dinner\nNepenthe at 6:30\n' } }], 'Let me note that.')),
+      sse(anthropicToolReply([{ name: 'speak', input: { text: 'Noted: dinner at Nepenthe at 6:30.' } }, { name: 'sleep', input: {} }])),
+      { ...sse(anthropicToolReply([{ name: 'speak', input: { text: 'Too late.' } }, { name: 'sleep', input: {} }])), delayMs: 4000 },
+      sse(anthropicToolReply([{ name: 'speak', input: { text: 'Yes, still here.' } }, { name: 'sleep', input: {} }])),
+    ],
+  });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
+    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    for (const m of ['a-model', 'b-model']) {
+      await page.getByLabel('Add a model to main').selectOption({ label: m });
+      await page.getByRole('button', { name: 'Add to main' }).click();
+    }
+    await page.goto('/#/trips');
+    await page.getByLabel('Trip name').fill('Big Sur');
+    await page.getByRole('button', { name: 'Start trip' }).click();
+    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+
+    // A turn with tool use: A is out of credit, B answers, writes a note, then speaks.
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Note dinner at Nepenthe at 6:30');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('Noted: dinner at Nepenthe at 6:30.');
+    await expect(page.locator('.convo')).not.toContainText('Let me note that.'); // her own text stays in the trace (spec §7.1)
+
+    // A reload while she is thinking: after it, she answers the message anyway.
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Are you there?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await page.reload();
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .you').last()).toHaveText('Are you there?');
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('Yes, still here.', { timeout: 15_000 });
+
+    // The note is a file in the trip.
+    await page.getByRole('link', { name: 'Trips' }).click();
+    await page.getByRole('link', { name: /Big Sur/ }).click();
+    await expect(page.getByText('/notes/dinner.md')).toBeVisible();
+
+    // The trace: every model request, every tool call with what it sent, and what it read.
+    await page.getByRole('link', { name: 'Trace' }).click();
+    await page.getByLabel('Kind').selectOption('Models');
+    await expect(page.getByText(/a-model · credit \(402\)/).first()).toBeVisible();
+    await expect(page.getByText(/b-model · ok \(200\)/).first()).toBeVisible();
+    await page.getByLabel('Kind').selectOption('Tools');
+    await expect(page.getByText(/^write \{"path":"\/trip\/notes\/dinner\.md"/)).toBeVisible();
+    await expect(page.getByText(/^write · ok · \d+ ms · Wrote \/trip\/notes\/dinner\.md/)).toBeVisible();
+    await page.getByLabel('Kind').selectOption('Conversation');
+    await expect(page.getByText(/the user wrote · (free|\$)/).first()).toBeVisible(); // the stand-in model has no prices
+    for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
+    expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
+  } finally {
+    await llm.stop();
+  }
+});

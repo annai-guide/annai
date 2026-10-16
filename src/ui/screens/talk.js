@@ -14,6 +14,7 @@ const SHOWN = ['msg.user', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'w
  */
 export async function renderTalk(ctx) {
   const agent = ctx.agent;
+  await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
   const scope = agent.scope;
   const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(agent.trip)))?.title ?? 'Trip' : 'No trip open';
   const list = h('ol', { class: 'convo', 'aria-live': 'polite' });
@@ -65,7 +66,7 @@ export async function renderTalk(ctx) {
       off();
       return;
     }
-    if (!SHOWN.includes(e.type)) return;
+    if (!SHOWN.includes(e.type) || e.scope !== scope) return; // another conversation's, after a trip change
     const near = window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
     const node = await item(e);
     if (node) {

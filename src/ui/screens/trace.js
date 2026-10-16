@@ -33,8 +33,9 @@ export async function renderTrace(ctx, route) {
     if (my !== pending) return;
     const f = filter.value.trim();
     const types = KINDS[kind.value];
-    /** @type {Map<string, number> | undefined} */
-    const perWake = select.value ? (await costs(ctx.store, select.value)).byWake : undefined;
+    /** @type {Map<string, number>} the cost of each wake shown (spec §6.6: cost is always visible) */
+    const perWake = new Map();
+    for (const id of ids) for (const [w, c] of (await costs(ctx.store, id)).byWake) perWake.set(w, c);
     if (my !== pending) return;
     const rows = all.filter((e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))).sort((a, b) => b.ts - a.ts || b.seq - a.seq).slice(0, 300);
     list.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake)) : [h('li', { class: 'empty', text: 'Nothing here yet.' })]));

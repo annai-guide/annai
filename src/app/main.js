@@ -62,12 +62,13 @@ async function boot() {
   const agent = new Agent({ store, ws, llm, registry });
   agent.addLoopTools(selfTools(agent));
   const presets = await loadPresets();
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, presets, version: VERSION });
-  plugins.connect({ llm, agent, notices: shell.notices });
-  agent.on('notice', (n) => shell.notices.card(n));
+  // The conversation starts opening before the first screen, which waits for it (agent.opening).
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, presets, version: VERSION });
+  plugins.connect({ llm, agent, notices: shell.notices });
+  agent.on('notice', (n) => shell.notices.card(n));
   offerPersonalityUpdates({ ws, agent, presets, notices: shell.notices });
   watchErrors(store, shell);
   if (isStandalone()) requestPersist();

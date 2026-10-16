@@ -72,6 +72,33 @@ export function activate(annai) {
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
 
+## Tools Shiori uses
+
+A tool is something Shiori can call: a name, a description she reads, an input JSON Schema, and `run(input, call)`.
+
+```js
+export function activate(annai) {
+  const { tsv } = annai.helpers;
+  return annai.tools.register({
+    name: 'tides',
+    description: 'Low and high tides near a point today, as TSV: time, kind, height_m.',
+    input: { type: 'object', properties: { lat: { type: 'number' }, lng: { type: 'number' } }, required: ['lat', 'lng'] },
+    async run({ lat, lng }, call) {
+      const res = await call.fetch(`https://tides.example/api?lat=${lat}&lng=${lng}`, { signal: call.signal });
+      if (!res.ok) throw new Error(`The tide service answered ${res.status}. Try again later.`);
+      const { tides } = await res.json();
+      return tsv(['time', 'kind', 'height_m'], tides.map((t) => [t.time, t.kind, t.height]));
+    },
+  });
+}
+```
+
+- **What `call` holds:** `trip` (the open trip's scope, or null), `signal` (stop when it aborts: the user tapped Shiori), `model` (the model that called the tool, with what it takes, such as `input: ['text', 'image']`), and `fetch` (traced).
+- **What to return:** text, or an object (sent as JSON), or `{ content, images?, document? }`. Lists are best as TSV with `annai.helpers.tsv` (spec §4.7).
+- **Errors are answers.** Throw an `Error` with plain words and what to do; Shiori sees it and adapts. Only a crash (a `TypeError` and the like) counts against your plugin, which annai switches off when it keeps crashing.
+- **Keep results short.** A result over 40 000 characters is cut. Return a page of results, and take a `from` or `page` input for more.
+- **Every tool can be switched off** in Settings → Tools, and every call, its input and its result are in the trace.
+
 ## Endpoint types
 
 An endpoint type teaches annai one model protocol. The core contains none (spec §9.1).

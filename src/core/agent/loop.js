@@ -57,6 +57,8 @@ export class Agent {
   /** @type {State} */
   state = { name: 'sleeping', label: LABELS.sleeping };
   transcript = new Transcript();
+  /** The conversation being opened, if any: screens wait for it before they read it. @type {Promise<void>} */
+  opening = Promise.resolve();
   /** @type {import('./context.js').Snapshot | null} */
   #snapshot = null;
   #warmth = new Warmth();
@@ -149,7 +151,13 @@ export class Agent {
    * first. Tool calls left open by a crash get results, and a catch-up wake runs (spec §6.7).
    * @param {string | null} trip
    */
-  async open(trip) {
+  open(trip) {
+    this.opening = this.#open(trip);
+    return this.opening;
+  }
+
+  /** @param {string | null} trip */
+  async #open(trip) {
     if (this.#busy) {
       this.interrupt();
       await this.idle();
