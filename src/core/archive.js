@@ -4,7 +4,7 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId, blobsInUse } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf } from './events.js';
@@ -594,15 +594,13 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
 }
 
 /**
- * Deletes blobs an import stored before it failed, unless a file now uses them.
+ * Deletes blobs an import stored before it failed, unless a file or a log entry now uses them.
  * @param {Store} store @param {string[]} hashes
  */
 async function removeUnused(store, hashes) {
   if (!hashes.length) return;
-  await store.tx(['scopes', 'files', 'blobs'], 'readwrite', async (t) => {
-    /** @type {Set<string>} */
-    const used = new Set();
-    for (const s of await t.listScopes()) for (const f of await t.listFiles(s.id, '/')) used.add(f.hash);
+  await store.tx(['scopes', 'files', 'events', 'blobs'], 'readwrite', async (t) => {
+    const used = await blobsInUse(t);
     for (const h of hashes) if (!used.has(h)) await t.deleteBlob(h);
   });
 }

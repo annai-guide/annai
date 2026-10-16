@@ -659,3 +659,22 @@ test('an import whose content is removed before it finishes imports nothing and 
   const [copy] = (await importArchive(a.store, await openArchive(bytes))).trips;
   assert.deepEqual((await a.ws.read(copy, '/files/photo.jpg'))?.bytes, photo);
 });
+
+test('a failed import keeps content that history came to point at while it ran', async () => {
+  const a = await device();
+  const src = await sampleTrip(a.ws);
+  const photo = /** @type {Uint8Array} */ ((await a.ws.read(src, '/files/photo.jpg'))?.bytes);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [src], include: PRESETS.backup, app: '0.1.0' });
+  const b = await device();
+  const trip = await createTrip(b.ws, { title: 'Here' });
+  const failing = beforeCommit(b.store, async () => {
+    // While the import runs, the same photo is written here and then replaced: only history points at it.
+    await b.ws.write(trip, '/files/p.jpg', photo, { author: 'user' });
+    await b.ws.write(trip, '/files/p.jpg', new Uint8Array([1]), { author: 'user' });
+    throw new Error('the phone went to sleep');
+  });
+  await assert.rejects(importArchive(failing, await openArchive(await bytesOf(blob))), /went to sleep/);
+  const [first] = await b.ws.history(trip, '/files/p.jpg');
+  await b.ws.restore(trip, '/files/p.jpg', /** @type {string} */ (first.new), { author: 'user' });
+  assert.deepEqual((await b.ws.read(trip, '/files/p.jpg'))?.bytes, photo);
+});
