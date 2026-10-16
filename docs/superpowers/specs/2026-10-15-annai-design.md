@@ -182,6 +182,7 @@ Removing a trip deletes it from the device and frees its space at once. There is
   2. Only if the trip has changed since its last backup: "This trip hasn't been backed up since it last changed. Remove it anyway?"
 - **Backed up** means a Backup with everything ticked (§12.2), of the trip or of everything, was saved after the trip's last change: the share sheet finished, or the download started. A Share doesn't count, since it leaves out the conversation and the history. annai records the time on the trip, and trip cards show it (§16.2).
 - **What goes:** the trip's record, files and history, and all stored content nothing else uses. Content another trip also uses stays. The system log records `trip.remove {title, bytes}`.
+- **Inside a trip, deleting keeps the history.** A deleted photo or file can be brought back from its history (§4.2), and its space comes back when the trip is removed.
 
 ## 5. Plugin system
 
@@ -916,7 +917,7 @@ Eyes-free voice mode also serves users with low vision.
 
 1. **Never lose data.**
    - Writes are transactional (§4.2).
-   - "Storage full" shows a card with real options: export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies, shrink kept originals to the ingest encoding, or free up space on the device.
+   - "Storage full" shows a card with real options: export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies, or free up space on the device.
    - The IndexedDB connection reconnects automatically.
    - Migrations are atomic, with a backup first.
 2. **Degrade, don't die.**
