@@ -359,3 +359,103 @@ function itemExtent(b, iloc, want, idat) {
   }
   return null;
 }
+
+/** @param {Uint8Array[]} parts */
+function join(parts) {
+  const out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
+  let p = 0;
+  for (const x of parts) {
+    out.set(x, p);
+    p += x.length;
+  }
+  return out;
+}
+
+/**
+ * The same photo without its embedded metadata (EXIF, XMP, IPTC, comments), every other byte
+ * unchanged, so a photo stored as it is carries no hidden location (§4.8, §12.2). Colour profiles
+ * stay. JPEG and WebP only; null for anything else or anything it can't follow.
+ * @param {Uint8Array} bytes @param {string} type @returns {Uint8Array | null}
+ */
+export function stripMetadata(bytes, type) {
+  try {
+    if (type === 'image/jpeg') return stripJpeg(bytes);
+    if (type === 'image/webp') return stripWebp(bytes);
+  } catch {
+    // damaged
+  }
+  return null;
+}
+
+/**
+ * Drops APP1 (EXIF, XMP), APP13 (IPTC) and comment segments before the image data, and anything
+ * after the image's end marker (a second image, such as an HDR gain map, can carry its own EXIF).
+ * @param {Uint8Array} b
+ */
+function stripJpeg(b) {
+  const v = view(b);
+  const parts = [b.subarray(0, 2)];
+  let p = 2;
+  while (p + 4 <= b.length) {
+    if (b[p] !== 0xff) return null;
+    const m = b[p + 1];
+    if (m === 0xff) { p++; continue; }
+    if (m === 0xd9) return null; // ended before any image data
+    if (m === 0xda) {
+      // Scans follow: copy them, with the tables between them, up to and including the end marker.
+      let q = p;
+      while (q + 2 <= b.length && b[q] === 0xff) {
+        const mq = b[q + 1];
+        if (mq === 0xff) { q++; continue; }
+        if (mq === 0xd9) {
+          parts.push(b.subarray(p, q + 2));
+          return join(parts);
+        }
+        if (mq >= 0xd0 && mq <= 0xd7) { q += 2; continue; }
+        if (q + 4 > b.length) return null;
+        const len = v.getUint16(q + 2);
+        if (len < 2) return null;
+        q += 2 + len;
+        if (mq === 0xda) {
+          // Entropy-coded data: 0xFF is followed by 0x00 (a stuffed byte) or a restart marker.
+          while (q + 1 < b.length && !(b[q] === 0xff && b[q + 1] !== 0 && !(b[q + 1] >= 0xd0 && b[q + 1] <= 0xd7))) q++;
+        }
+      }
+      return null;
+    }
+    if (m === 0x01 || (m >= 0xd0 && m <= 0xd8)) {
+      parts.push(b.subarray(p, p + 2));
+      p += 2;
+      continue;
+    }
+    const len = v.getUint16(p + 2);
+    if (len < 2 || p + 2 + len > b.length) return null;
+    if (m !== 0xe1 && m !== 0xed && m !== 0xfe) parts.push(b.subarray(p, p + 2 + len));
+    p += 2 + len;
+  }
+  return null;
+}
+
+/** Drops the EXIF and XMP chunks and clears their flags in VP8X. @param {Uint8Array} b */
+function stripWebp(b) {
+  if (b.length < 20) return null;
+  const v = view(b);
+  const end = 8 + v.getUint32(4, true);
+  if (end > b.length) return null;
+  /** @type {Uint8Array[]} */
+  const parts = [];
+  let p = 12;
+  while (p + 8 <= end) {
+    const kind = ascii(b, p, 4);
+    const len = v.getUint32(p + 4, true);
+    const next = p + 8 + len + (len & 1);
+    if (p + 8 + len > end) return null;
+    if (kind !== 'EXIF' && kind !== 'XMP ') parts.push(b.slice(p, Math.min(next, end)));
+    p = next;
+  }
+  for (const part of parts) if (ascii(part, 0, 4) === 'VP8X') part[8] &= ~(0x08 | 0x04); // EXIF and XMP flags
+  const body = join(parts);
+  const head = b.slice(0, 12);
+  view(head).setUint32(4, body.length + 4, true);
+  return join([head, body]);
+}

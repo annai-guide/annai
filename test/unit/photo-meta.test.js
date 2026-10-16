@@ -1,11 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
-import { sniffImageType, readPhotoMeta, displaySize } from '../../src/core/photo-meta.js';
+import { readFile, readdir, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { sniffImageType, readPhotoMeta, displaySize, stripMetadata } from '../../src/core/photo-meta.js';
 
 /** @param {string} name */
 const fixture = async (name) => new Uint8Array(await readFile(new URL(`../fixtures/photos/${name}`, import.meta.url)));
 const bigSur = { lat: 36.2219, lng: -121.7598 };
+const hasMagick = (() => { try { execFileSync('magick', ['-version'], { stdio: 'ignore' }); return true; } catch { return false; } })();
 
 /** A deterministic stream of numbers in [0, 1), so a failure can be replayed. */
 function randomFrom(seed = 7) {
@@ -84,6 +88,60 @@ test('damaged or hostile photos never throw and never hang', async () => {
       const c = b.slice();
       for (let j = 0; j < 4; j++) c[Math.floor(random() * c.length)] = Math.floor(random() * 256);
       readPhotoMeta(c);
+    }
+  }
+});
+
+test('stripping a JPEG removes its EXIF and leaves every other byte alone', async () => {
+  const s = stripMetadata(await fixture('upright.jpg'), 'image/jpeg');
+  assert.ok(s);
+  assert.deepEqual(s, await fixture('plain.jpg')); // the fixture is plain.jpg with an EXIF segment added
+});
+
+test('stripping keeps colour profiles and drops a second image after the first one ends', async () => {
+  const jpg = await fixture('upright.jpg');
+  const icc = new Uint8Array([0xff, 0xe2, 0x00, 0x10, ...new TextEncoder().encode('ICC_PROFILE\0'), 1, 1]);
+  const gainMap = await fixture('portrait.jpg'); // a second JPEG with its own EXIF and GPS, as an HDR gain map can be
+  const s = stripMetadata(new Uint8Array([...jpg.subarray(0, 2), ...icc, ...jpg.subarray(2), ...gainMap]), 'image/jpeg');
+  assert.ok(s);
+  const text = Buffer.from(s).toString('latin1');
+  assert.ok(text.includes('ICC_PROFILE'));
+  assert.ok(!text.includes('Exif'));
+  assert.equal(s.length, (await fixture('plain.jpg')).length + icc.length);
+});
+
+test('stripping a WebP removes its EXIF chunk and clears its flag', async () => {
+  const s = stripMetadata(await fixture('portrait.webp'), 'image/webp');
+  assert.ok(s);
+  assert.deepEqual(readPhotoMeta(s), { type: 'image/webp', width: 64, height: 48 });
+  assert.equal(new DataView(s.buffer, s.byteOffset).getUint32(4, true), s.length - 8); // the RIFF size
+  assert.equal(s[20] & 0x0c, 0); // VP8X flags: no EXIF, no XMP
+});
+
+test('stripped photos still decode', { skip: hasMagick ? false : 'ImageMagick is not installed' }, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-strip-'));
+  try {
+    for (const [name, type] of [['upright.jpg', 'image/jpeg'], ['portrait.webp', 'image/webp']]) {
+      const file = join(dir, name);
+      await writeFile(file, /** @type {Uint8Array} */ (stripMetadata(await fixture(name), type)));
+      assert.equal(execFileSync('magick', ['identify', '-format', '%wx%h', file]).toString(), '64x48');
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('stripping declines what it cannot follow, and never throws', async () => {
+  assert.equal(stripMetadata(await fixture('screenshot.png'), 'image/png'), null);
+  assert.equal(stripMetadata(await fixture('portrait.heic'), 'image/heic'), null);
+  const random = randomFrom(11);
+  for (const [name, type] of [['upright.jpg', 'image/jpeg'], ['portrait.webp', 'image/webp']]) {
+    const b = await fixture(name);
+    for (let n = 0; n < b.length; n++) stripMetadata(b.subarray(0, n), type);
+    for (let k = 0; k < 500; k++) {
+      const c = b.slice();
+      for (let j = 0; j < 4; j++) c[Math.floor(random() * c.length)] = Math.floor(random() * 256);
+      stripMetadata(c, type);
     }
   }
 });
