@@ -63,7 +63,7 @@ One IndexedDB database:
 
 | Store | Key | Holds |
 |---|---|---|
-| `blobs` | SHA-256 of content | all content: text, JSON, photos, PDFs, fetched pages, model responses. Deduplicated. |
+| `blobs` | SHA-256 of content | all content: text, JSON, photos, PDFs, fetched pages, model responses. Deduplicated. Every blob is named by a file or a log entry (§4.9). |
 | `files` | `[scope, path]` | current state: path → blob hash, plus metadata: type, size, author (`user` · `shiori` · `plugin:<id>`), source, created, modified. Photos also keep when and where they were taken, and their pixel size (§4.8). |
 | `events` | `[scope, seq]` | append-only log: seq, time, type, actor, small data, blob refs |
 | `secrets` | id | API keys and tokens. Never in Shiori's view, never in the trace, excluded from exports unless the user explicitly includes them in an encrypted backup. |
@@ -114,7 +114,7 @@ The top-level folder `/.annai` is reserved inside every scope; archives keep the
 
 Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `plugin.error`, `error`, `state` (live mode on/off, voice mode), `trip.remove` (§4.9).
 
-- **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it.
+- **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it, by listing its fingerprint in `refs` (§4.9).
 - **A model request is logged as a reference,** not a copy: the range of events in context, the prefix fingerprint, token counts, cost. Copying every context would grow storage quadratically.
 - **Location points are thinned.** A point is kept only after moving about 20 m (or the GPS accuracy, if worse), or after 1 minute while moving.
 
@@ -146,7 +146,7 @@ A photo is encoded at two points, each with its own settings: **ingest**, once, 
 - **Request copies** are what Shiori is sent.
   - The source is the stored photo.
   - The limits are the stricter of two sets: the request settings (by default quality 0.9, longest edge 2000 px, 1 MiB, format list WebP then JPEG) and what the model accepts (§9.2).
-  - A source within the limits is sent as it is. Otherwise a copy is made once, stored by its fingerprint, and reused on every later turn. The bytes then stay the same, so the provider's cache stays warm.
+  - A source within the limits is sent as it is. Otherwise a copy is made once, stored by its fingerprint, and reused on every later turn. The log entry of the turn that sends it names it in `refs` (§4.9). The bytes then stay the same, so the provider's cache stays warm.
   - The conversation shows the copy Shiori was sent, so she sees what the user sees. She is also told both sizes ("4032×3024, sent as 2000×1500"), so she knows when a closer look would help.
   - **A refused image is fixed and retried automatically** (§9.9). Rules recognize the usual error messages, and the utility model reads unfamiliar ones. The new copy replaces the refused one in the conversation, and the refused one is deleted. The lesson ("at most 5 MB") is saved on the model, so the same refusal doesn't happen twice.
   - **Provider uploads.** Where an endpoint can store files (Anthropic, OpenAI, Gemini and OpenRouter have files APIs), each request copy is uploaded once. Later requests refer to it by its id: a few bytes per turn instead of the photo.
@@ -182,6 +182,7 @@ Removing a trip deletes it from the device and frees its space at once. There is
   2. Only if the trip has changed since its last backup: "This trip hasn't been backed up since it last changed. Remove it anyway?"
 - **Backed up** means a Backup with everything ticked (§12.2), of the trip or of everything, was saved after the trip's last change: the share sheet finished, or the download started. A Share doesn't count, since it leaves out the conversation and the history. annai records the time on the trip, and trip cards show it (§16.2).
 - **What goes:** the trip's record, files and history, and all stored content nothing else uses. Content another trip also uses stays. The system log records `trip.remove {title, bytes}`.
+- **So everything stored must be named.** Removing any trip deletes all stored content that no file and no log entry names, wherever it came from. Whatever annai or a plugin keeps (request copies, trace bodies, audio clips) is a file, or is listed in the `refs` of the log entry that made it.
 - **Inside a trip, deleting keeps the history.** A deleted photo or file can be brought back from its history (§4.2), and its space comes back when the trip is removed.
 - **Finding what nothing else uses reads every file and log entry on the device.** That is quick while logs are small. Before milestone 2 makes them large (trace bodies, request copies), log entries get an index of the content they point at, so removing a trip reads only what that trip used.
 
@@ -229,13 +230,14 @@ A module exports `activate(annai)`, which returns a cleanup function.
   - `hooks` (subscribe to log appends; read-only in v1)
   - `storage` (backup targets)
 - **What plugins can use:**
-  - `files`, `events`
+  - `files`, `events` (an entry lists the stored content it keeps in `refs`)
   - `net.fetch` (traced)
   - `llm(role, request)`
   - their own `settings` and `secrets`
   - `wake(reason)`
   - `ui.card`, `ui.toast`
   - shared helpers: the streamed-response reader, the half-finished-JSON reader, retry with backoff, TSV, merge patch
+- **Content a plugin keeps is a file, or is named in a log entry's `refs`.** Anything stored another way is deleted the next time a trip is removed (§4.9). The plugin guide (`docs/plugins.md`) says so too.
 - **Built-ins are plugins.** The core is storage, registry, scheduler, loop and context builder; everything else is a built-in plugin in the same format.
 - **Switches and trace come from the registry,** so they cover third-party tools automatically.
 

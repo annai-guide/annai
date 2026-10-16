@@ -64,4 +64,6 @@ ImageMagick 7 with HEIC and WebP support. They're committed; rebuild them only t
 changes. CI fails when the stamp is stale; the Cloudflare Pages build command should be
 `node scripts/stamp.mjs`, so the deployed `sw.js` is always current.
 
-`docs/testing/device-checklist-m1.md` lists what to verify by hand on real phones.
+`docs/testing/device-checklist-m1.md`, `-m1b.md` and `-m1c.md` list what to verify by hand on real phones.
+
+**Plugins.** [docs/plugins.md](docs/plugins.md) is the guide to writing one.
