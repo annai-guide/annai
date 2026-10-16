@@ -87,7 +87,7 @@ test('the transcript starts at the latest compaction, with its summary; non-user
   const t = await Transcript.load(store, SCOPE);
   assert.equal(t.messages.length, 1);
   assert.deepEqual(t.messages[0].parts.map((p) => /** @type {any} */ (p).text), [
-    `[Earlier conversation, summarized (events 1–${last})]\nThey asked where to eat; Shiori looked it up.`,
+    `[Earlier conversation, summarized (events 1–${last}); recall brings back the exact words]\nThey asked where to eat; Shiori looked it up.`,
     '[annai] A new file: /trip/files/booking.pdf',
     '[meanwhile, the user wrote] Also, rain?',
   ]);

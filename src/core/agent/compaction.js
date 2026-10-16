@@ -88,6 +88,9 @@ export function renderForSummary(messages, max = Infinity) {
   return full.slice(0, head) + marker(full.length - head - tail) + full.slice(full.length - tail);
 }
 
+/** A photo in words: where it came from, and which part (spec §6.5 stubs). @param {{ path?: string, region?: number[] }} p */
+export const photoStub = (p) => `[photo${p.path ? ` ${p.path}` : ''}${p.region ? `, part [${p.region.join(', ')}]` : ''}]`;
+
 /** @param {Message[]} messages */
 function asText(messages) {
   const cut = (/** @type {string} */ s, /** @type {number} */ n) => (s.length > n ? `${s.slice(0, n)}…` : s);
@@ -95,7 +98,7 @@ function asText(messages) {
     if (p.type === 'text') return `${m.role === 'user' ? 'User' : 'Shiori (notes)'}: ${p.text}`;
     if (p.type === 'tool_call') return `Shiori → ${p.name}(${cut(JSON.stringify(p.input ?? {}), 300)})`;
     if (p.type === 'tool_result') return `← ${cut(String(p.content), 1500)}`;
-    if (p.type === 'image') return '[a photo]';
+    if (p.type === 'image') return m.role === 'user' ? `User: ${photoStub(p)}` : photoStub(p);
     if (p.type === 'document') return '[a PDF]';
     return '';
   }).filter(Boolean).join('\n')).join('\n\n');

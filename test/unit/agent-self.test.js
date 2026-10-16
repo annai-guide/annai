@@ -39,3 +39,20 @@ test('skill: a registered skill by name, or the ones there are', async () => {
   const results = (await k.events(['tool.result'])).filter((e) => e.data.name === 'skill').map((e) => e.data.content);
   assert.deepEqual(results, ['Keep it short while driving.', 'There is no skill called "hiking". Skills: driving.']);
 });
+
+test('recall brings back the exact words from before a compaction, with photos as stubs', async () => {
+  const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
+  const k = await agentKit([[say('Nepenthe opens at 11:30.'), say('ok'), say('ok'), say('ok'), { toolCalls: [{ name: 'recall', input: { query: 'nepenthe' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { utility: [{ text: 'Summary.' }] });
+  await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  for (const [m, photos] of /** @type {[string, any[]][]} */ ([['When does Nepenthe open?', [{ path: '/trip/files/menu.webp', region: [0, 0, 0.5, 0.5] }]], ['One', []], ['Two', []], ['Three', []]])) {
+    k.agent.send(m, { photos });
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  k.agent.send('What did you say about Nepenthe?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'recall');
+  const text = r.data.content ?? '';
+  assert.match(text, /user: When does Nepenthe open\? \[photo \/trip\/files\/menu\.webp, part \[0, 0, 0\.5, 0\.5\]\]/);
+  assert.match(text, /Shiori said: Nepenthe opens at 11:30\./);
+});

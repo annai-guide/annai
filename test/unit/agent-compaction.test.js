@@ -38,7 +38,7 @@ test('cold: the utility model writes the summary; the last three exchanges stay 
   const [c] = await k.events(['compaction']);
   assert.equal(c.data.mode, 'cold');
   const msgs = k.agent.transcript.messages;
-  assert.match(/** @type {any} */ (msgs[0].parts[0]).text, /^\[Earlier conversation, summarized \(events \d+–\d+\)\]\nThey planned dinner at Nepenthe\.$/);
+  assert.match(/** @type {any} */ (msgs[0].parts[0]).text, /^\[Earlier conversation, summarized \(events \d+–\d+\); recall brings back the exact words\]\nThey planned dinner at Nepenthe\.$/);
   const all = JSON.stringify(msgs);
   // Without a model window, the part kept is large: everything but the oldest exchange, and never fewer than three.
   assert.equal(all.includes('Message 0'), false);
@@ -128,4 +128,9 @@ test("cold: what the utility model is sent fits its window, so a huge exchange c
   const sent = k.requests.at(-1);
   assert.equal(sent.system, COLD_SYSTEM);
   assert.ok(sent.messages[0].parts[0].text.length <= 2000 * 3.5 * 0.5, `${sent.messages[0].parts[0].text.length}`);
+});
+
+test('summaries see photos as stubs with their path and part', async () => {
+  const text = renderForSummary([{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'x', path: '/trip/files/menu.webp', region: [0, 0, 0.5, 0.5] }] }]);
+  assert.equal(text, 'User: [photo /trip/files/menu.webp, part [0, 0, 0.5, 0.5]]');
 });

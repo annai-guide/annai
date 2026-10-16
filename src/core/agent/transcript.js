@@ -38,7 +38,7 @@ export class Transcript {
       this.#answered.clear();
       this.compaction = e.seq;
       this.from = e.seq;
-      this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to})]\n${texts.summary ?? ''}` }]);
+      this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user' && w.text);
       if (others.length) {
