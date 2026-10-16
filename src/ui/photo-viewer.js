@@ -3,18 +3,37 @@ import { h } from './dom.js';
 const MAX_ZOOM = 8;
 
 /**
+ * The part of the photo on screen, as [left, top, right, bottom] fractions. The photo is
+ * contained in the stage, then scaled around the stage's centre and moved by (x, y).
+ * @param {{ stageW: number, stageH: number, natW: number, natH: number, scale: number, x: number, y: number }} v
+ */
+export function visibleRegion({ stageW, stageH, natW, natH, scale, x, y }) {
+  const fit = Math.min(stageW / natW, stageH / natH) * scale;
+  const w = natW * fit;
+  const h = natH * fit;
+  const left = stageW / 2 + x - w / 2;
+  const top = stageH / 2 + y - h / 2;
+  const f = (/** @type {number} */ n) => Math.round(Math.min(1, Math.max(0, n)) * 1000) / 1000;
+  return [f(-left / w), f(-top / h), f((stageW - left) / w), f((stageH - top) / h)];
+}
+
+/**
  * Shows a photo over everything at full size (spec §16.2): pinch or scroll to zoom, drag to move,
  * double-tap to zoom in or back out, Close, Escape or Back to leave. Focus returns where it was.
  * Opening it adds a history entry, so Back on a phone closes the photo instead of leaving its page.
- * @param {string} src @param {string} label
+ * With onShowPart, "Show Shiori this part" passes the part on screen, once the viewer has closed.
+ * @param {string} src @param {string} label @param {{ onShowPart?: (region: number[]) => void }} [opts]
  * @returns {() => void} closes it
  */
-export function openPhotoViewer(src, label) {
+export function openPhotoViewer(src, label, opts = {}) {
   const opener = document.activeElement;
   const img = h('img', { class: 'viewer-img', src, alt: label, draggable: 'false' });
   const stage = h('div', { class: 'viewer-stage' }, img);
   const close = h('button', { class: 'btn viewer-close', type: 'button' }, 'Close');
-  const root = h('div', { class: 'viewer', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Photo ${label}`, dataset: { zoom: '1' } }, stage, close);
+  const part = opts.onShowPart ? h('button', { class: 'btn pri viewer-part', type: 'button' }, 'Show Shiori this part') : null;
+  const root = h('div', { class: 'viewer', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Photo ${label}`, dataset: { zoom: '1' } }, stage, close, part);
+  /** @type {(() => void) | null} what runs once the viewer has closed */
+  let after = null;
   let scale = 1;
   let x = 0;
   let y = 0;
@@ -115,8 +134,14 @@ export function openPhotoViewer(src, label) {
     removeEventListener('popstate', done);
     removeEventListener('hashchange', done);
     if (opener instanceof HTMLElement) opener.focus();
+    after?.();
   }
   close.addEventListener('click', leave);
+  part?.addEventListener('click', () => {
+    const region = visibleRegion({ stageW: stage.clientWidth, stageH: stage.clientHeight, natW: img.naturalWidth, natH: img.naturalHeight, scale, x, y });
+    after = () => opts.onShowPart?.(region);
+    leave();
+  });
   addEventListener('keydown', onKey);
   history.pushState({ annaiViewer: true }, '');
   addEventListener('popstate', done);

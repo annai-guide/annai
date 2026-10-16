@@ -48,7 +48,7 @@ export class Transcript {
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !d.answer) {
-        this.#add('user', [{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }]);
+        this.#add('user', [{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }, ...r.images]);
         this.unanswered = true;
       }
     } else if (e.type === 'model.turn' && d.tag === TALK_TAG && texts.parts) {
@@ -106,7 +106,7 @@ export async function resolveEvent(store, e) {
   const texts = await storedTexts(store, e);
   /** @type {Part[]} */
   const images = [];
-  for (const im of e.type === 'tool.result' ? e.data?.images ?? [] : []) {
+  for (const im of e.type === 'tool.result' || e.type === 'msg.user' ? e.data?.images ?? [] : []) {
     const bytes = await blobBytes(store, im.hash);
     if (bytes) images.push({ type: 'image', mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash, ...(im.path ? { path: im.path } : {}), ...(im.region ? { region: im.region } : {}) });
   }

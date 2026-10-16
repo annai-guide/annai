@@ -327,3 +327,30 @@ test('read with a region sends a crop, kept in the conversation, and says which 
   assert.deepEqual(k.codec.calls[0].crop, { x: 1000, y: 300, width: 2000, height: 1500 });
   assert.equal((await k.ws.list(k.trip, '/files/')).length, 1);
 });
+
+test('a photo the user sends goes in their message as a request copy, and comes back the same after a reload', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+  k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }, { path: '/trip/files/p.webp', region: [0, 0, 0.5, 0.5] }] });
+  await k.agent.idle();
+  const [msg] = await k.events(['msg.user']);
+  assert.deepEqual(msg.data.images.map((/** @type {any} */ i) => [i.path, i.region ?? null]), [['/trip/files/p.webp', null], ['/trip/files/p.webp', [0, 0, 0.5, 0.5]]]);
+  assert.deepEqual(msg.refs.slice(-2), msg.data.images.map((/** @type {any} */ i) => i.hash));
+  const user = k.requests[0].messages.at(-1);
+  assert.deepEqual(user.parts.map((/** @type {any} */ p) => p.type), ['text', 'image', 'image']);
+  assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages);
+});
+
+test('a photo sent with no words says "(a photo)"; one sent while Shiori waits for an answer reaches her right after it', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.send('Hi');
+  await new Promise((r) => setTimeout(r, 20));
+  k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const msgs = await k.events(['msg.user']);
+  assert.deepEqual(msgs.map((e) => e.data.text), ['Hi', '(a photo)', '(a photo)']);
+  assert.equal(msgs[2].data.images.length, 1);
+  const last = k.requests[1].messages.at(-1).parts;
+  assert.deepEqual(last.map((/** @type {any} */ p) => p.type), ['tool_result', 'text', 'image']);
+});

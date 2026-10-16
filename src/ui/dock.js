@@ -47,7 +47,8 @@ export function createDock(ctx) {
     }
     try {
       const { paths } = await addFiles(ctx, ctx.agent.target, files);
-      for (const p of paths) ctx.agent.wake({ kind: 'file', text: `The user took a photo: /trip${p}` });
+      // Snap and ask: the photo goes to Shiori, who guesses why it was taken (spec §16.2).
+      ctx.agent.send('', { photos: paths.map((/** @type {string} */ p) => ({ path: `/trip${p}` })) });
       ctx.go('#/talk');
     } catch (e) {
       ctx.notices.card({ tone: 'warn', title: "The photo wasn't added", body: String(/** @type {any} */ (e)?.message ?? e) });

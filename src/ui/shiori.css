@@ -84,6 +84,8 @@ body { padding-bottom: 120px; }
 .convo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .convo .you { align-self: flex-end; max-width: 85%; background: var(--ai-wash); border-radius: 16px 16px 4px 16px; padding: 8px 12px; }
 .convo .shiori { align-self: flex-start; max-width: 92%; background: var(--sheet); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.convo .you .photo { display: block; padding: 0; border: 0; background: none; margin-top: 6px; }
+.convo .you img { max-width: 100%; border-radius: 10px; display: block; }
 .convo .you p, .convo .shiori p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 .who { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--ai); }
 .system-line { align-self: center; font-size: 12px; color: var(--ink-2); }

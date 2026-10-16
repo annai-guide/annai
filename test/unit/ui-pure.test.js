@@ -8,6 +8,7 @@ import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
 import { follow } from '../../src/ui/screens/talk.js';
+import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary } from '../../src/ui/screens/trace.js';
 
 test('parseHash: screens, parts and params', () => {
@@ -162,4 +163,13 @@ test('follow: it listens before it reads, so what happens meanwhile is shown onc
   emit(ev(7));
   assert.equal(fns.size, 0);
   assert.deepEqual(shown, [1, 2, 3, 4, 5]);
+});
+
+test('the viewer knows which part of the photo is on screen', () => {
+  // A 4000×3000 photo in a 400×300 stage: it fills the stage at scale 1.
+  assert.deepEqual(visibleRegion({ stageW: 400, stageH: 300, natW: 4000, natH: 3000, scale: 1, x: 0, y: 0 }), [0, 0, 1, 1]);
+  // Zoomed in 2× on the centre: the middle half.
+  assert.deepEqual(visibleRegion({ stageW: 400, stageH: 300, natW: 4000, natH: 3000, scale: 2, x: 0, y: 0 }), [0.25, 0.25, 0.75, 0.75]);
+  // Zoomed 2× and moved so the left edge shows.
+  assert.deepEqual(visibleRegion({ stageW: 400, stageH: 300, natW: 4000, natH: 3000, scale: 2, x: 200, y: 0 }), [0, 0.25, 0.5, 0.75]);
 });

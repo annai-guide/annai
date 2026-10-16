@@ -233,3 +233,20 @@ test('Photos for Shiori: how large the photos she is sent may be, kept after a r
   await page.getByRole('button', { name: 'Save photo settings' }).click();
   await expect(page.getByRole('alert')).toContainText('photos sent to Shiori');
 });
+
+test('Show Shiori this part: zoomed in, the part on screen goes to her in your message (spec §16.2)', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
+  await page.getByRole('button', { name: 'Open the photo full size' }).click();
+  const viewer = page.getByRole('dialog', { name: /^Photo / });
+  const box = /** @type {{ x: number, y: number, width: number, height: number }} */ (await viewer.boundingBox());
+  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(viewer).toHaveAttribute('data-zoom', '2.5');
+  await viewer.getByRole('button', { name: 'Show Shiori this part' }).click();
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(page.locator('.convo .you p').last()).toHaveText(/^Look at this part of \/trip\/files\/2026-11-26-1904\.\w+\.$/);
+  await expect(page.locator('.convo .you img').last()).toBeVisible();
+  await expect(viewer).toHaveCount(0);
+});

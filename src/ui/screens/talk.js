@@ -1,7 +1,8 @@
 import { h } from '../dom.js';
 import { renderCard } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
-import { storedTexts } from '../../core/agent/log.js';
+import { storedTexts, blobBytes } from '../../core/agent/log.js';
+import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
 
@@ -56,11 +57,24 @@ export async function renderTalk(ctx) {
   };
   /** @type {Map<string, HTMLElement>} asks still open, by call id */
   const asks = new Map();
+  /** The photos the user sent, as Shiori was sent them; a tap opens one full size. @param {any} images */
+  const sentPhotos = async (images) => {
+    const out = [];
+    for (const im of Array.isArray(images) ? images : []) {
+      const bytes = await blobBytes(ctx.store, String(im?.hash ?? ''));
+      if (!bytes) continue;
+      const url = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (bytes)], { type: String(im.mediaType ?? 'image/webp') }));
+      const label = String(im.path ?? 'A photo you sent');
+      out.push(h('button', { class: 'photo', type: 'button', 'aria-label': 'Open the photo full size', onclick: () => openPhotoViewer(url, label) },
+        h('img', { src: url, alt: 'A photo you sent', title: label })));
+    }
+    return out;
+  };
   /** @param {any} e */
   const item = async (e) => {
     const d = e.data ?? {};
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
-    if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }));
+    if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }), ...(await sentPhotos(d.images)));
     if (e.type === 'out.speak') return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
     if (e.type === 'out.show') {
       const card = renderCard(d.card ?? {}, { ctx, onChoice: (o) => agent.send(o) });

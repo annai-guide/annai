@@ -61,7 +61,16 @@ function editor(ctx, id, entry, content) {
     const url = (objectUrl = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type })));
     const img = h('img', { src: url, alt: entry.path });
     const figure = h('figure', { class: 'preview' },
-      h('button', { class: 'photo', type: 'button', 'aria-label': 'Open the photo full size', onclick: () => openPhotoViewer(url, entry.path) }, img),
+      h('button', {
+        class: 'photo', type: 'button', 'aria-label': 'Open the photo full size',
+        // In the trip Shiori is in, the viewer can show her the part on screen (spec §16.2).
+        onclick: () => openPhotoViewer(url, entry.path, ctx.agent?.target === id ? {
+          onShowPart: (/** @type {number[]} */ region) => {
+            ctx.agent.send(`Look at this part of /trip${entry.path}.`, { photos: [{ path: `/trip${entry.path}`, region }] });
+            ctx.go('#/talk');
+          },
+        } : {}),
+      }, img),
       photoFacts(entry));
     img.addEventListener('error', () => figure.replaceChildren(
       h('p', { class: 'sub', text: "This browser can't show this photo. It shows in Safari, and a Share export converts it where it can." }),

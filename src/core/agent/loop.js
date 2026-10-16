@@ -8,13 +8,13 @@ import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair } from './transcript.js';
-import { toolList, definitions, runTool, Stuck, toolSwitches } from './tools.js';
+import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
 import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
 import { tracedFetch, withoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
-import { PhotoCopies, requestLimits } from '../request-photos.js';
+import { PhotoCopies, requestLimits, healRegion } from '../request-photos.js';
 import { photoSettings } from '../photos.js';
 
 /**
@@ -23,7 +23,8 @@ import { photoSettings } from '../photos.js';
  * sleeps, calls no tool, or something stops her. She reaches the user only through output tools
  * (§7.1); everything else she writes stays in the trace.
  * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality'} WakeKind
- * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string }} Wake scope: the conversation it was meant for, set when it is queued
+ * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
+ * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[] }} Wake scope: the conversation it was meant for, set when it is queued
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {{ name: StateName, label: string, detail?: string }} State
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[] }} Notice
@@ -240,7 +241,7 @@ export class Agent {
     if (!elsewhere.length) return;
     this.#queue = this.#queue.filter((w) => w.scope === scope);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
-      await this.#logWakes(elsewhere.filter((w) => w.scope === s), newId('w'), false, (ev) => record(this.store, s, ev));
+      await this.#logWakes(elsewhere.filter((w) => w.scope === s), newId('w'), false, (ev) => record(this.store, s, ev), s === ME ? null : s);
     }
   }
 
@@ -267,17 +268,23 @@ export class Agent {
     this.#queue.push({ ...w, scope: this.#target ?? ME });
   }
 
-  /** The user typed. It answers a pending ask or wait; otherwise it wakes Shiori, or reaches her next call. @param {string} text */
-  send(text) {
-    const t = String(text ?? '').trim();
+  /**
+   * The user wrote, or sent photos (spec §4.8, §16.2). It answers a pending ask or wait; otherwise
+   * it wakes Shiori, or reaches her next call. Photos sent with an answer reach her right after it.
+   * @param {string} text @param {{ photos?: SentPhoto[] }} [o]
+   */
+  send(text, o = {}) {
+    const photos = (o.photos ?? []).filter((x) => x && typeof x.path === 'string');
+    const t = String(text ?? '').trim() || (photos.length ? '(a photo)' : '');
     if (!t) return;
     const p = this.#pending;
     if (p) {
       this.#pending = null;
       p.resolve({ text: t });
+      if (photos.length) this.#push({ kind: 'user', text: '(a photo)', photos });
       return;
     }
-    this.#push({ kind: 'user', text: t });
+    this.#push({ kind: 'user', text: t, ...(photos.length ? { photos } : {}) });
     this.#drain();
   }
 
@@ -542,17 +549,47 @@ export class Agent {
   /**
    * Logs wakes: a user's text as msg.user, anything else as a wake reason. Into the open conversation,
    * or with log, into another one. @param {Wake[]} wakes @param {string} wakeId @param {boolean} meanwhile
-   * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log]
+   * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log] @param {string | null} [trip] the trip paths in photos refer to
    */
-  async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev)) {
+  async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev), trip = this.trip) {
     if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map((w) => ({ kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}) })) } });
     else {
       const others = wakes.filter((w) => w.kind !== 'user' && w.kind !== 'choice');
       if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map((w) => ({ kind: w.kind, text: w.text })) } });
     }
     for (const w of wakes) {
-      if (w.kind === 'user' || w.kind === 'choice') await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}) }, texts: [['text', w.text]] });
+      if (w.kind !== 'user' && w.kind !== 'choice') continue;
+      const { images, blobs } = w.photos?.length ? await this.#userPhotos(w.photos, trip) : { images: [], blobs: [] };
+      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}) }, texts: [['text', w.text]], blobs });
     }
+  }
+
+  /**
+   * The request copies of the photos a user sent (a crop when they chose a part), and the bytes to
+   * keep with their message (spec §4.8, §4.9). A path that isn't a stored photo is left out.
+   * @param {SentPhoto[]} photos @param {string | null} trip
+   */
+  async #userPhotos(photos, trip) {
+    /** @type {{ hash: string, mediaType: string, path: string, region?: number[] }[]} */
+    const images = [];
+    /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
+    const blobs = [];
+    for (const p of photos) {
+      try {
+        const { scope, path } = resolvePath(p.path, trip);
+        const got = await this.ws.read(scope, path);
+        if (!got || !got.entry.type.startsWith('image/')) continue;
+        const m = got.entry.meta ?? {};
+        const source = { hash: got.entry.hash, type: got.entry.type, width: m.width ?? null, height: m.height ?? null, size: got.entry.size };
+        const healed = p.region && m.width && m.height ? healRegion(p.region, m.width, m.height) : null;
+        const sent = await this.#copy(source, healed?.crop);
+        images.push({ hash: sent.hash, mediaType: sent.mediaType, path: p.path, ...(healed ? { region: healed.used } : {}) });
+        blobs.push(sent.data ? { bytes: fromBase64(sent.data), type: sent.mediaType } : { hash: sent.hash, type: sent.mediaType });
+      } catch (e) {
+        console.warn('a photo the user sent was left out', e);
+      }
+    }
+    return { images, blobs };
   }
 
   /** @param {Wake[]} wakes */
