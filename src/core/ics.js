@@ -190,7 +190,8 @@ const utcStamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace
 
 /**
  * The plan as a calendar file, for the share sheet or a download (spec §8). Times are in UTC,
- * which every calendar shows in the phone's zone; an all-day item is a date in its own zone.
+ * which every calendar shows in the phone's zone; an all-day item is a date in its own zone, and
+ * one of several days ends on the day after its last, as calendars write it.
  * Items without a start are left out, and counted.
  * @param {Record<string, any>[]} items @param {{ name: string, tripId: string, now: number }} o
  */
@@ -204,8 +205,11 @@ export function planToIcs(items, { name, tripId, now }) {
       continue;
     }
     lines.push('BEGIN:VEVENT', `UID:${escapeText(`${String(it.id ?? '')}.${tripId}`)}@annai.guide`, `DTSTAMP:${utcStamp(now)}`);
-    if (it.kind === 'all-day') lines.push(`DTSTART;VALUE=DATE:${String(dayIn(start, validZone(it.start.tz) ? it.start.tz : 'UTC')).replace(/-/g, '')}`);
-    else {
+    if (it.kind === 'all-day') {
+      const day = (/** @type {any} */ t) => String(dayIn(t.at, validZone(t.tz) ? t.tz : 'UTC')).replace(/-/g, '');
+      lines.push(`DTSTART;VALUE=DATE:${day(it.start)}`);
+      if (Number.isFinite(Date.parse(it?.end?.at ?? '')) && day(it.end) > day(it.start)) lines.push(`DTEND;VALUE=DATE:${day(it.end)}`);
+    } else {
       lines.push(`DTSTART:${utcStamp(start)}`);
       const end = Date.parse(it?.end?.at ?? '');
       if (Number.isFinite(end) && end >= start) lines.push(`DTEND:${utcStamp(end)}`);
