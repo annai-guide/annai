@@ -134,3 +134,14 @@ test('a reload mid-turn: open tool calls get "interrupted by app restart", then 
   assert.equal(wakes[0].data.reasons[0].kind, 'restart');
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Back again.');
 });
+
+test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { models: [{ providerTools: [{ id: 'p-search', name: 'S', kind: 'search', patch: {} }] }] });
+  k.host && await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const names = k.requests[0].tools.map((/** @type {any} */ t) => t.name);
+  assert.equal(names.includes('web_search'), false);
+  assert.equal(names.includes('fetch'), true);
+  assert.deepEqual(k.requests[0].providerTools, { kinds: ['search'], off: [] });
+});

@@ -12,6 +12,7 @@ import { toolList, definitions, runTool, Stuck, toolSwitches } from './tools.js'
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
 import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
 import { tracedFetch } from './net.js';
+import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
 
 /**
@@ -288,6 +289,20 @@ export class Agent {
     }
   }
 
+  /**
+   * The tools Shiori has now, and the provider's own tools a request turns on: annai's and the
+   * provider's never compete (spec §9.5). Turns and warm housekeeping use the same list, so the
+   * cached prefix matches.
+   */
+  async #toolsNow() {
+    const switches = await toolSwitches(this.ws);
+    const web = (await readAppSettings(this.ws)).web ?? {};
+    const via = webVia({ web, model: await this.#mainModel(), switches });
+    const tools = toolList({ registry: this.registry, switches, loop: this.#loopTools }).filter((t) => !via.hide.includes(t.name));
+    const providerTools = via.kinds.length ? { providerTools: { kinds: via.kinds, off: via.off } } : {};
+    return { tools, via, providerTools };
+  }
+
   /** The main role's first model. */
   async #mainModel() {
     const cfg = await this.llm.config();
@@ -331,12 +346,12 @@ export class Agent {
 
   /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings */
   async #warmSummary(marker, settings) {
-    const tools = toolList({ registry: this.registry, switches: await toolSwitches(this.ws), loop: this.#loopTools });
+    const { tools, providerTools } = await this.#toolsNow();
     if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = this.transcript.messages;
     for (let step = 0; step < 4; step++) {
-      const request = buildRequest({ snapshot: this.#snapshot, tools: definitions(tools), transcript: { messages }, tail: instruction(marker), cacheTtl: settings.cacheTtl });
+      const request = { ...buildRequest({ snapshot: this.#snapshot, tools: definitions(tools), transcript: { messages }, tail: instruction(marker), cacheTtl: settings.cacheTtl }), ...providerTools };
       const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' } });
       const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       if (!calls.length) return r.reply.text.trim() || null;
@@ -420,10 +435,10 @@ export class Agent {
       }
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
-      const tools = toolList({ registry: this.registry, switches: await toolSwitches(this.ws), loop: this.#loopTools });
+      const { tools, via, providerTools } = await this.#toolsNow();
       const plan = await nextPlanItems(this.ws, this.trip, this.now());
       const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: 'off', online: this.online(), reasons, plan });
-      const request = buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: this.transcript, tail, cacheTtl: settings.cacheTtl });
+      const request = { ...buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: this.transcript, tail, cacheTtl: settings.cacheTtl }), ...providerTools };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
@@ -475,7 +490,7 @@ export class Agent {
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       for (const c of ordered) {
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping });
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off });
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
       if (stop) {
@@ -522,7 +537,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[] }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -538,7 +553,7 @@ export class Agent {
     else {
       const call = {
         id: c.id, scope: this.scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
       };
       ({ output, ms } = await runTool(tool, input, call));
     }

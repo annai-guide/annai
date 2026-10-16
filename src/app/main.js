@@ -48,6 +48,7 @@ async function boot() {
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/files/index.js', import.meta.url).href);
+  await plugins.addBuiltin(new URL('../plugins/web/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/places/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
   let pluginsStarted = () => {};

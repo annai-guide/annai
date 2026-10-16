@@ -8,7 +8,8 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
  * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, name?: string }} Media
  * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean }} ToolOutput
  * @typedef {{ id: string, scope: string, trip: string | null, signal: AbortSignal, model: import('../llm/config.js').Model | null, wake: string,
- *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori' }} ToolCall
+ *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[] }} ToolCall
+ *   providerOff: the provider tools switched off, for a tool that asks a model to use its own (spec §9.5)
  * @typedef {{ name: string, description: string, input: Record<string, any>, run: (input: any, call: ToolCall) => any, group?: string }} Tool
  */
 
