@@ -1,4 +1,5 @@
 import { kindOf } from './scopes.js';
+import { BOOKING_FILE } from './plan.js';
 
 /**
  * Shiori's writes to bookings (spec §4.4: "New records must be unverified"; §7.3: the plan shows
@@ -8,7 +9,7 @@ import { kindOf } from './scopes.js';
 
 /** A trip's booking record. @param {string} scope @param {string} path */
 export function isBookingPath(scope, path) {
-  return kindOf(scope) === 'trip' && /^\/bookings\/[^/]+\.json$/.test(path);
+  return kindOf(scope) === 'trip' && BOOKING_FILE.test(path);
 }
 
 /** JSON with sorted keys, so records compare by what they hold. @param {any} v @returns {string} */

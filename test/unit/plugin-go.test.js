@@ -40,3 +40,12 @@ test('without the catalog, the tools say so plainly', async () => {
   const { run } = await setup();
   await assert.rejects(run('maps_link', { destination: 'Nepenthe' }, false), /hasn't downloaded its link formats yet/);
 });
+
+test('the Go tools and the planning skill teach a show call that works: show({ card: { links } })', async () => {
+  const { registry, tools } = await setup();
+  for (const t of [tools.maps_link, tools.search_link]) {
+    assert.match(t.description, /show\(\{ card: \{ links \} \}\)/);
+    assert.doesNotMatch(t.description, /show\(\{ links \}\)/);
+  }
+  assert.match(registry.list('skill').find((s) => s.name === 'plan-a-trip').text, /show\(\{ card: \{ title, text, links \} \}\)/);
+});

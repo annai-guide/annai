@@ -244,7 +244,9 @@ export class Agent {
     this.#lastPrompt = 0;
     this.#clearTimer();
     if (repaired || transcript.unanswered) {
-      const text = repaired ? 'annai restarted while you were working, so your unfinished tool calls were stopped.' : 'The conversation closed before you answered (annai restarted, or another one was opened).';
+      const text = repaired ? 'annai restarted while you were working, so your unfinished tool calls were stopped.'
+        : transcript.waiting === 'wake' ? "You haven't answered this yet: it came while this conversation was closed, or before annai restarted."
+          : 'The conversation closed before you answered (annai restarted, or another one was opened).';
       this.#queue.push({ kind: 'restart', text, scope }); // it runs once the open is done
     }
   }

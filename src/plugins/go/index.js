@@ -13,7 +13,7 @@ export const manifest = {
 const PLANNING = `# Planning a trip with the user
 
 Plan in the brief's order: getting there, getting around, where to stay, then the rest.
-Research with web_search, fetch, geocode, nearby, weather and guide. Never book anything: hand over search_link and maps_link links with show, and the user books. They add the confirmations to the trip, and you make them into bookings.
+Research with web_search, fetch, geocode, nearby, weather and guide. Never book anything: hand over search_link and maps_link links in a card, show({ card: { title, text, links } }), and the user books. They add the confirmations to the trip, and you make them into bookings.
 
 ## Plan items: /trip/plan/<short-name>.json, one file each
 
@@ -43,7 +43,7 @@ export function activate(annai) {
   const tools = [
     {
       name: 'maps_link', group: 'Go',
-      description: 'Directions in Apple Maps and Google Maps. Hand the links to the user with show({ links }). destination and origin are a name, an address, or "lat,lng"; without an origin, the maps app starts where the user is.',
+      description: 'Directions in Apple Maps and Google Maps. Hand them to the user in a card: show({ card: { links } }). destination and origin are a name, an address, or "lat,lng"; without an origin, the maps app starts where the user is.',
       input: {
         type: 'object', required: ['destination'],
         properties: { destination: { type: 'string' }, origin: { type: 'string' }, mode: { enum: ['drive', 'walk', 'transit', 'bike'], default: 'drive' } },
@@ -53,7 +53,7 @@ export function activate(annai) {
     },
     {
       name: 'search_link', group: 'Go',
-      description: 'Prefilled searches on booking sites, for the user to book (annai never books). Hand the links over with show({ links }). kind and params: flight { from, to, depart, return?, adults? } with airport codes such as SFO; hotel { place, checkin, checkout, adults?, rooms? }; car { place, pickup, dropoff }. Dates are YYYY-MM-DD.',
+      description: 'Prefilled searches on booking sites, for the user to book (annai never books). Hand them over in a card: show({ card: { links } }). kind and params: flight { from, to, depart, return?, adults? } with airport codes such as SFO; hotel { place, checkin, checkout, adults?, rooms? }; car { place, pickup, dropoff }. Dates are YYYY-MM-DD.',
       input: {
         type: 'object', required: ['kind', 'params'],
         properties: { kind: { enum: ['flight', 'hotel', 'car'] }, params: { type: 'object', additionalProperties: { type: ['string', 'number'] } } },
