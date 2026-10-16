@@ -21,6 +21,8 @@ export class Transcript {
   to = 0;
   /** The compaction event this transcript starts from, 0 for none. */
   compaction = 0;
+  /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet: after a reload mid-call. */
+  unanswered = false;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -39,14 +41,22 @@ export class Transcript {
       this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to})]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user' && w.text);
-      if (others.length) this.#add('user', others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${w.text}` })));
+      if (others.length) {
+        this.#add('user', others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${w.text}` })));
+        this.unanswered = true;
+      }
     } else if (e.type === 'msg.user') {
-      if (texts.text) this.#add('user', [{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }]);
+      // A message that answered an ask or a wait is already in that tool's result.
+      if (texts.text && !d.answer) {
+        this.#add('user', [{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }]);
+        this.unanswered = true;
+      }
     } else if (e.type === 'model.turn' && d.tag === TALK_TAG && texts.parts) {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
       if (parts.length) this.#add('assistant', parts);
+      this.unanswered = false;
     } else if (e.type === 'tool.result' && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images]);

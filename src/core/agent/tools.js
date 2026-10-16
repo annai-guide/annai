@@ -7,7 +7,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
  * order they registered; switches come from the app settings, so they cover any plugin's tool.
  * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, name?: string }} Media
  * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean }} ToolOutput
- * @typedef {{ scope: string, trip: string | null, signal: AbortSignal, model: import('../llm/config.js').Model | null, wake: string,
+ * @typedef {{ id: string, scope: string, trip: string | null, signal: AbortSignal, model: import('../llm/config.js').Model | null, wake: string,
  *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori' }} ToolCall
  * @typedef {{ name: string, description: string, input: Record<string, any>, run: (input: any, call: ToolCall) => any, group?: string }} Tool
  */
