@@ -17,9 +17,9 @@ import { activate as scripted } from '../../plugins-official/scripted-model/inde
  * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {any[][]} scripts @param {{ models?: any[], open?: boolean }} [opts]
+ * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any> }} [opts]
  */
-export async function agentKit(scripts, { models = [], open = true } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {} } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -53,7 +53,7 @@ export async function agentKit(scripts, { models = [], open = true } = {}) {
   };
   /** @type {any[]} */
   const notices = [];
-  const agent = new Agent({ store, ws, llm, registry, timeZone: () => 'UTC', secondMs: 10 });
+  const agent = new Agent({ store, ws, llm, registry, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
   agent.on('notice', (n) => notices.push(n));
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */

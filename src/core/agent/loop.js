@@ -11,6 +11,7 @@ import { toolList, definitions, runTool, Stuck, toolSwitches } from './tools.js'
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
 import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
 import { tracedFetch } from './net.js';
+import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -66,6 +67,10 @@ export class Agent {
   #pending = null;
   /** @type {(() => void)[]} */
   #idle = [];
+  /** @type {number[]} times of the wakes in the last hour that weren't the user's (spec §6.6) */
+  #recentWakes = [];
+  /** Wakes whose budgets are being checked: idle() waits for them. */
+  #checking = 0;
   /** @type {LoopTool[]} */
   #loopTools;
   /** @type {Record<string, Set<(x: any) => void>>} */
@@ -172,10 +177,37 @@ export class Agent {
     }
   }
 
-  /** A wake that isn't the user typing: a plugin, a new file, a choice tapped later (spec §6.1). @param {Wake} w */
+  /**
+   * A wake that isn't the user typing: a plugin, a new file, a choice tapped later (spec §6.1).
+   * Quiet hours hold one that isn't the user's; a per-hour limit can drop it (§6.6).
+   * @param {Wake} w
+   */
   wake(w) {
-    this.#queue.push(w);
-    this.#drain();
+    if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file') {
+      this.#queue.push(w);
+      this.#drain();
+      return;
+    }
+    this.#checking++;
+    this.settings().then(({ budgets }) => {
+      const now = this.now();
+      if (budgets.quietHours && inQuiet(now, budgets.quietHours, this.timeZone())) {
+        const held = setTimeout(() => this.wake(w), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
+        /** @type {any} */ (held).unref?.(); // in Node (tests), a held wake must not keep the process alive
+        return;
+      }
+      this.#recentWakes = this.#recentWakes.filter((t) => t > now - 3_600_000);
+      if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
+        this.#emit('notice', { tone: 'info', title: 'Shiori skipped a wake', body: `${w.plugin ? `The plugin ${w.plugin}` : 'Something'} woke her more than the ${budgets.wakesPerHour} times an hour you allow: ${w.text}` });
+        return;
+      }
+      this.#recentWakes.push(now);
+      this.#queue.push(w);
+      this.#drain();
+    }).finally(() => {
+      this.#checking--;
+      if (!this.#busy && !this.#queue.length && !this.#checking) for (const fn of this.#idle.splice(0)) fn();
+    });
   }
 
   /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7). */
@@ -188,7 +220,7 @@ export class Agent {
 
   /** Settles when no turn is running and nothing is queued. */
   idle() {
-    if (!this.#busy && !this.#queue.length) return Promise.resolve();
+    if (!this.#busy && !this.#queue.length && !this.#checking) return Promise.resolve();
     return new Promise((resolve) => { this.#idle.push(() => resolve(undefined)); });
   }
 
@@ -209,7 +241,7 @@ export class Agent {
       this.#busy = false;
       this.#abort = null;
       this.#setState(this.online() ? 'sleeping' : 'offline');
-      for (const fn of this.#idle.splice(0)) fn();
+      if (!this.#checking) for (const fn of this.#idle.splice(0)) fn();
     }
   }
 
@@ -254,8 +286,16 @@ export class Agent {
     this.#snapshot = nextSnapshot(this.#snapshot, fresh, { cold });
     const reasons = wakes.map((w) => this.#reason(w));
     const stuck = new Stuck();
+    let steps = 0;
+    let spent = await spentToday(this.store, this.now(), this.timeZone());
     for (;;) {
       if (abort.signal.aborted) break;
+      const over = budgetStop({ budgets: settings.budgets, steps, spent });
+      if (over) {
+        this.#emit('notice', { tone: 'warn', title: over.title, body: over.body });
+        await this.#log({ type: 'error', actor: 'system', data: { kind: 'budget', which: over.which, wake: wakeId, message: over.body } });
+        break;
+      }
       const tools = toolList({ registry: this.registry, switches: await toolSwitches(this.ws), loop: this.#loopTools });
       const plan = await nextPlanItems(this.ws, this.trip, this.now());
       const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: 'off', online: this.online(), reasons, plan });
@@ -274,6 +314,8 @@ export class Agent {
         await this.#failed(e, wakeId);
         break;
       }
+      steps++;
+      spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
       await this.#applyTurn(result.reply.parts, wakeId);
