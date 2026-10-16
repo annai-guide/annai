@@ -229,6 +229,13 @@ test('Photos for Shiori: how large the photos she is sent may be, kept after a r
   await expect(page.getByText('Photo settings saved')).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Longest side sent, pixels')).toHaveValue('1200');
+  // The format list for photos sent (spec §4.8: a format list for both ingest and request).
+  await expect(page.getByLabel('Send photos as')).toHaveValue('webp');
+  await page.getByLabel('Send photos as').selectOption('jpeg');
+  await page.getByRole('button', { name: 'Save photo settings' }).click();
+  await expect(page.getByText('Photo settings saved').last()).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Send photos as')).toHaveValue('jpeg');
   await page.getByLabel('Largest photo sent, MB').fill('0.01');
   await page.getByRole('button', { name: 'Save photo settings' }).click();
   await expect(page.getByRole('alert')).toContainText('photos sent to Shiori');
