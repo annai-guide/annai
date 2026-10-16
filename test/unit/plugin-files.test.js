@@ -75,3 +75,12 @@ test('read: long text in pieces; a photo as an image when the model takes images
   const doc = await run('read', { path: '/trip/files/menu.pdf' }, { input: ['text', 'pdf'] });
   assert.equal(doc.document.mediaType, 'application/pdf');
 });
+
+test('personalities are refused however the path is written (the check is on the path as resolved)', async () => {
+  const { run } = await setup();
+  for (const path of ['/me//personalities/shiori.md', '/me/personalities//shiori.md', '/me//personalities']) {
+    await assert.rejects(run('write', { path, content: 'x' }), /tune_personality/, path);
+  }
+  await assert.rejects(run('patch', { path: '/me//personalities/x.json', changes: { a: 1 } }), /tune_personality/);
+  await assert.rejects(run('delete', { path: '/me//personalities/shiori.md' }), /tune_personality/);
+});

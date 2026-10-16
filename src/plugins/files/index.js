@@ -20,9 +20,9 @@ export function activate(annai) {
   const { tsv } = annai.helpers;
   /** @param {string} path @param {any} call */
   const where = (path, call) => resolvePath(path, call.trip);
-  /** @param {string} path */
-  const writable = (path) => {
-    if (/^\/me\/personalities(\/|$)/.test(path)) throw new Error('Personalities change only through tune_personality.');
+  /** Checked on the path as resolved, so no way of writing it gets around the rule (spec §14.1). @param {string} scope @param {string} path */
+  const writable = (scope, path) => {
+    if (scope === 'me' && (path === '/personalities' || path.startsWith('/personalities/'))) throw new Error('Personalities change only through tune_personality.');
   };
   /** @param {unknown} e @param {string} path */
   const plain = (e, path) => {
@@ -83,7 +83,7 @@ export function activate(annai) {
       /** @param {{ path: string, content: string | object }} i @param {any} call */
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
-        writable(i.path);
+        writable(scope, path);
         const e = await ws.write(scope, path, i.content, { author: 'shiori' }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Wrote ${i.path} (${e.size} bytes).`;
       },
@@ -95,7 +95,7 @@ export function activate(annai) {
       /** @param {{ path: string, old: string, new: string }} i @param {any} call */
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
-        writable(i.path);
+        writable(scope, path);
         const now = await ws.readText(scope, path);
         if (now === undefined) throw new Error(`No file at ${i.path}.`);
         const n = i.old ? now.split(i.old).length - 1 : 0;
@@ -112,7 +112,7 @@ export function activate(annai) {
       /** @param {{ path: string, changes: object }} i @param {any} call */
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
-        writable(i.path);
+        writable(scope, path);
         await ws.patch(scope, path, i.changes, { author: 'shiori', append: true }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.`;
       },
@@ -143,7 +143,7 @@ export function activate(annai) {
       /** @param {{ path: string }} i @param {any} call */
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
-        writable(i.path);
+        writable(scope, path);
         await ws.delete(scope, path, { author: 'shiori' });
         return `Deleted ${i.path}.`;
       },
