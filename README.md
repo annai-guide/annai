@@ -7,15 +7,23 @@ open-source, local-first travel agent that runs entirely in your browser:
 plan a trip before you go, get woken-up help while you travel, and keep the
 memories afterwards.
 
-> **Status:** milestones 1 and 2 are built: trips with
+> **Status:** milestones 1, 2 and 4 are built: trips with
 > versioned files, export and import (optionally encrypted), plugins, offline use and the trace;
 > photos; removing trips; and models (endpoints from templates or Sign in with OpenRouter, roles
 > with fallback, the Test button, and every request in the trace); and Shiori herself: the dock and
 > her avatar, a conversation through her output tools, file, web and places tools that can each be
 > switched off, personalities and memory, budgets, and housekeeping for long conversations. Shiori sees
 > photos: request copies within each model's limits, closer looks at a part, repair when a model refuses a
-> photo, and uploads to the provider where it can store files. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> photo, and uploads to the provider where it can store files. And planning: bookings brought in from
+> confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
+> search and directions links. Voice (milestone 3) is next. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
+
+## Plan and bookings
+
+- Add confirmations to a trip: PDFs, Apple Wallet passes, screenshots, calendar files, or text shared from another app (Android). annai keeps the files; Shiori reads them and writes each booking as unverified.
+- The Plan shows the trip day by day: ● fixed, ○ flexible, the distance between stops with directions, and "Check this" on every booking you haven't confirmed. "Add to calendar" saves the plan as an .ics file.
+- Shiori researches and hands you search links for flights, hotels and cars. You book; annai never books for you.
 
 ## Principles
 

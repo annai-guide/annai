@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply } from './helpers.js';
+import { ZipWriter } from '../../src/core/zip.js';
+import { utf8 } from '../../src/core/bytes.js';
 
 /** @param {import('@playwright/test').Page} page @param {string} title */
 async function startTrip(page, title) {
@@ -120,4 +122,88 @@ test("a booking link to something that isn't a booking opens nothing", async ({ 
   const trip = await startTrip(page, 'Thanksgiving');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/trip.json')}`);
   await expect(page.getByRole('heading', { name: "This booking isn't in the trip" })).toBeVisible();
+});
+
+const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
+
+test('milestone 4 done: a pass and a calendar are added, Shiori writes the booking and its plan item, the user confirms it, and the plan goes to the calendar', async ({ page }) => {
+  const booking = {
+    id: 'ua123', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass', title: 'UA 123 SFO → EWR', confirmation: 'ABC123',
+    start: { at: '2026-11-25T08:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-25T16:30:00-05:00', tz: 'America/New_York' },
+  };
+  const item = { id: 'ua123', title: 'UA 123 to Newark', kind: 'flight', fixed: true, start: booking.start, end: booking.end, booking: '/trip/bookings/ua123.json' };
+  const llm = await startModelServer({
+    '/b/v1/messages': [
+      sse(anthropicToolReply([{ name: 'read', input: { path: '/trip/files/flight.pkpass' } }], 'A boarding pass. Reading it.')),
+      sse(anthropicToolReply([
+        { name: 'write', input: { path: '/trip/bookings/ua123.json', content: booking } },
+        { name: 'write', input: { path: '/trip/plan/ua123.json', content: item } },
+        { name: 'patch', input: { path: '/trip/bookings/ua123.json', changes: { status: 'confirmed' } } },
+      ])),
+      sse(anthropicToolReply([
+        { name: 'show', input: { card: { title: 'UA 123 SFO → EWR', text: 'Wed Nov 25, 8:00 from SFO. Check it on the plan.', booking: '/trip/bookings/ua123.json' } } },
+        { name: 'sleep', input: {} },
+      ])),
+    ],
+  });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await page.goto('/#/trips');
+    const trip = await startTrip(page, 'Thanksgiving');
+    await records(page, trip, { patch: { '/trip.json': { start: '2026-11-25', end: '2026-11-29', timezones: ['America/New_York'] } } });
+
+    // One batch: a Wallet pass and a calendar file.
+    const z = new ZipWriter();
+    await z.add('pass.json', utf8(JSON.stringify({ organizationName: 'Example Air', description: 'Boarding pass', boardingPass: { transitType: 'PKTransitTypeAir', primaryFields: [{ key: 'origin', label: 'SFO', value: 'San Francisco' }, { key: 'destination', label: 'EWR', value: 'Newark' }], backFields: [{ key: 'conf', label: 'Confirmation', value: 'ABC123' }] } })));
+    const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:dinner@example.com', 'SUMMARY:Thanksgiving dinner', 'DTSTART;TZID=America/New_York:20261126T170000', 'DURATION:PT3H', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    await page.getByLabel('Add photos or files').setInputFiles([
+      { name: 'flight.pkpass', mimeType: 'application/vnd.apple.pkpass', buffer: Buffer.from(await z.finish().arrayBuffer()) },
+      { name: 'thanksgiving.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) },
+    ]);
+    await expect(page.getByText('Added 2 files, and 1 plan item from the calendar')).toBeVisible();
+
+    // Shiori is woken once, reads the pass, writes the booking and its plan item, can't confirm it, and shows it.
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .card-title').last()).toHaveText('UA 123 SFO → EWR', { timeout: 20_000 });
+    const first = JSON.stringify(llm.bodies('/b/v1/messages')[0]);
+    expect(first).toContain('The user added 2 files to the trip');
+    expect(first).toContain('annai made 1 plan item from the calendar');
+    expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('Example Air');
+    expect(JSON.stringify(llm.bodies('/b/v1/messages')[2])).toContain('Only the user confirms a booking');
+    expect(llm.bodies('/b/v1/messages').length).toBe(3);
+
+    // The card opens the booking; the user checks it and confirms it.
+    await page.locator('.convo').getByRole('link', { name: 'Open the booking' }).last().click();
+    await expect(page.getByRole('heading', { name: 'UA 123 SFO → EWR' })).toBeVisible();
+    await expect(page.getByText('From /files/flight.pkpass')).toBeVisible();
+    await page.getByRole('button', { name: 'Looks right' }).click();
+    await expect(page.locator('.chip.ok')).toHaveText('Confirmed');
+
+    // The plan: the flight and the calendar's dinner, nothing left to check; and it goes to the calendar.
+    await page.getByRole('link', { name: '← Plan' }).click();
+    await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
+    await expect(page.getByRole('tabpanel')).toContainText('UA 123 to Newark');
+    await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Thu, Nov 26' }).click();
+    await expect(page.getByRole('tabpanel')).toContainText('Thanksgiving dinner');
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Add to calendar' }).click();
+    const saved = await readFile(/** @type {string} */ (await (await downloading).path()), 'utf8');
+    expect(saved).toContain('SUMMARY:UA 123 to Newark');
+    expect(saved).toContain('SUMMARY:Thanksgiving dinner');
+
+    // The trace has the read of the pass and the refused confirmation, and no key.
+    await page.getByRole('link', { name: 'Trace' }).click();
+    await page.getByLabel('Kind').selectOption('Tools');
+    await expect(page.getByText(/^read \{"path":"\/trip\/files\/flight\.pkpass"/)).toBeVisible();
+    await expect(page.getByText(/^patch · error · .*Only the user confirms a booking/)).toBeVisible();
+    for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
+    expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
+  } finally {
+    await llm.stop();
+  }
 });
