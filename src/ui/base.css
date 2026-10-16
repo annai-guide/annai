@@ -52,6 +52,9 @@ a { color: var(--ai); }
 .card { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); color: var(--ink); text-decoration: none; }
 .card .name { font-family: var(--f-display); font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
 .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
+dialog.ask { width: min(100% - 32px, 420px); padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); color: var(--ink); }
+dialog.ask::backdrop { background: rgb(0 0 0 / 0.45); }
+dialog.ask .acts { justify-content: flex-end; }
 details.archived summary { cursor: pointer; color: var(--ink-2); padding: 6px 0; }
 
 /* forms */

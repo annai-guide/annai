@@ -1,5 +1,6 @@
 import { h, field, twoStep } from '../dom.js';
-import { setTripStatus } from '../../core/scopes.js';
+import { setTripStatus, removeTrip, backupState } from '../../core/scopes.js';
+import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
@@ -29,7 +30,8 @@ export async function renderTrip(ctx, route) {
       ...tripActions(ctx, id, scope, extra),
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); ctx.render(); } }, 'Unarchive')
-        : twoStep('Archive trip', 'Tap again to archive', async () => { await setTripStatus(ctx.store, id, 'archived'); ctx.go('#/trips'); })),
+        : twoStep('Archive trip', 'Tap again to archive', async () => { await setTripStatus(ctx.store, id, 'archived'); ctx.go('#/trips'); }),
+      h('button', { class: 'btn danger', type: 'button', onclick: () => removeFlow(ctx, id, scope) }, 'Remove trip')),
     extra,
     fileList(id, files),
     newFile(ctx, id));
@@ -41,6 +43,27 @@ function tripActions(ctx, id, scope, slot) {
     class: 'btn', type: 'button',
     onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scope.title })])),
   }, 'Export trip')];
+}
+
+/**
+ * Remove trip (spec §4.9): asks once, and again only when the trip changed after its last Backup.
+ * Then the trip is gone from this device and its space is free.
+ * @param {any} ctx @param {string} id @param {any} scope
+ */
+async function removeFlow(ctx, id, scope) {
+  const sure = await ask({ title: scope.title, body: 'This removes everything in this trip from this device: its files, photos, notes and history. Remove it?', yes: 'Remove' });
+  if (!sure) return;
+  if ((await backupState(ctx.store, id)).changed) {
+    const anyway = await ask({ title: 'Not backed up', body: "This trip hasn't been backed up since it last changed. Remove it anyway?", yes: 'Remove anyway' });
+    if (!anyway) return;
+  }
+  try {
+    const { bytes: freed } = await removeTrip(ctx.store, id);
+    ctx.notices.toast(`Removed ${scope.title}. ${bytes(freed)} freed.`);
+    ctx.go('#/trips');
+  } catch (e) {
+    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: "That trip wasn't removed", body: `${/** @type {any} */ (e)?.message ?? e} Nothing was removed; try again.` });
+  }
 }
 
 /** @param {string} id @param {any[]} files */

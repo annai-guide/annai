@@ -130,3 +130,66 @@ test('a Backup saved while storage is full still says it was saved', async ({ pa
   await expect(page.getByText('Saved to your downloads.')).toBeVisible();
   await expect(page.getByText("annai's storage is full", { exact: true })).toBeVisible();
 });
+
+/** How many images annai has stored. @param {import('@playwright/test').Page} page @returns {Promise<number>} */
+function storedImages(page) {
+  return /** @type {Promise<number>} */ (page.evaluate(() => new Promise((resolve, reject) => {
+    const r = indexedDB.open('annai');
+    r.onsuccess = () => {
+      const db = r.result;
+      const all = db.transaction('blobs').objectStore('blobs').getAll();
+      all.onsuccess = () => {
+        db.close();
+        resolve(all.result.filter((b) => String(b.type).startsWith('image/')).length);
+      };
+      all.onerror = () => reject(all.error);
+    };
+    r.onerror = () => reject(r.error);
+  })));
+}
+
+test('remove a trip: asks once, and again only when it changed after its last Backup', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
+  expect(await storedImages(page)).toBe(1);
+
+  // Escape is a no.
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(page.getByRole('dialog', { name: 'Big Sur' })).toContainText('This removes everything in this trip from this device');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Never backed up: a second question, and Cancel keeps the trip.
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
+  const warning = page.getByRole('dialog', { name: 'Not backed up' });
+  await expect(warning).toContainText("This trip hasn't been backed up since it last changed. Remove it anyway?");
+  await warning.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+
+  // Backed up and unchanged: one question, then the trip and its photo are gone.
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  await buildAndSave(page);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect(page.getByText(/^Removed Big Sur\. .+ freed\.$/)).toBeVisible();
+  await expect(page.getByRole('link', { name: /Big Sur/ })).toHaveCount(0);
+  expect(await storedImages(page)).toBe(0);
+});
+
+test('an archived trip can be removed too', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Old trip');
+  await page.getByRole('button', { name: 'Archive trip' }).click();
+  await page.getByRole('button', { name: 'Tap again to archive' }).click();
+  await page.getByText('Archived trips (1)').click();
+  await page.getByRole('link', { name: /Old trip/ }).click();
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Old trip' }).getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect(page.getByText(/Archived trips/)).toHaveCount(0);
+});
