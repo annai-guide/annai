@@ -5,6 +5,8 @@ import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
+import { isPhotoType } from './photos.js';
+import { readPhotoMeta, stripMetadata } from './photo-meta.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -12,8 +14,12 @@ import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
  * @typedef {import('./types.js').EventRecord} EventRecord
  * @typedef {{ history: boolean, memory: boolean, photos: boolean }} Include
  * @typedef {{ dir: string, record: ScopeRecord, events?: string }} ManifestScope
+ * @typedef {import('./types.js').PhotoMeta} PhotoMeta
  * @typedef {{ name: string, scope: string, path: string, hash: string, size: number, type: string,
- *   author: string, source?: string, created: number, modified: number }} ManifestFile
+ *   author: string, source?: string, meta?: PhotoMeta, created: number, modified: number }} ManifestFile
+ * @typedef {(file: { path: string, type: string, meta?: PhotoMeta }, bytes: Uint8Array) =>
+ *   Promise<{ bytes: Uint8Array, type: string, width?: number, height?: number } | null>} PhotoConvert
+ *   Encodes a photo for a Share (in browsers, with the ingest settings); null when it can't.
  * @typedef {{ format: number, app: string, kind: 'trip'|'everything', created: number, include: Include,
  *   encrypted: boolean, scopes: ManifestScope[], files: ManifestFile[],
  *   blobs: { name: string, hash: string, type: string, size: number }[],
@@ -54,6 +60,17 @@ const HASH = { type: 'string', pattern: '^[0-9a-f]{64}$' };
 const SIZE = { type: 'integer', minimum: 0 };
 const TIME = { type: 'number' };
 const TEXT = { type: 'string' };
+const PHOTO_META = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    width: { type: 'integer', minimum: 1 }, height: { type: 'integer', minimum: 1 }, taken: { type: 'string', maxLength: 40 },
+    place: { type: 'object', required: ['lat', 'lng'], additionalProperties: false, properties: { lat: { type: 'number', minimum: -90, maximum: 90 }, lng: { type: 'number', minimum: -180, maximum: 180 } } },
+    original: { type: 'boolean' },
+  },
+};
+/** Formats every current browser shows. A Share converts the others (§12.2). */
+const PORTABLE = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 
 /** Everything an archive says about itself is checked, not just the bytes it carries. */
 const MANIFEST_SCHEMA = {
@@ -91,7 +108,7 @@ const MANIFEST_SCHEMA = {
       items: {
         type: 'object',
         required: ['name', 'scope', 'path', 'hash', 'size', 'type', 'author', 'created', 'modified'],
-        properties: { name: TEXT, scope: TEXT, path: TEXT, hash: HASH, size: SIZE, type: TEXT, author: TEXT, created: TIME, modified: TIME, source: TEXT },
+        properties: { name: TEXT, scope: TEXT, path: TEXT, hash: HASH, size: SIZE, type: TEXT, author: TEXT, created: TIME, modified: TIME, source: TEXT, meta: PHOTO_META },
       },
     },
     blobs: { type: 'array', items: { type: 'object', required: ['name', 'hash', 'type', 'size'], properties: { name: TEXT, hash: HASH, type: TEXT, size: SIZE } } },
@@ -110,8 +127,11 @@ const EVENT_SCHEMA = {
  * Builds an archive of one trip or of everything (spec §12.1–12.2).
  * @param {Store} store
  * @param {{ kind: 'trip'|'everything', scopes?: string[], include: Include, secrets?: boolean,
- *   passphrase?: string, iterations?: number, app: string, now?: number }} opts
- * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest }>}
+ *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
+ *   share: this is a Share (§12.2). Photos go only as encoded copies, older versions of photos are
+ *   left out, and unless places is true, nothing says where a photo was taken.
+ * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[] }>}
+ *   skipped: photos left out of a Share because their location couldn't be removed
  */
 export async function exportArchive(store, opts) {
   const now = opts.now ?? Date.now();
@@ -132,6 +152,7 @@ export async function exportArchive(store, opts) {
   const zip = new ZipWriter();
   /** @type {Set<string>} */ const current = new Set();
   /** @type {Set<string>} */ const historic = new Set();
+  /** @type {string[]} */ const skipped = [];
 
   for (const scope of scopes) {
     const dir = dirFor(scope.id);
@@ -145,12 +166,22 @@ export async function exportArchive(store, opts) {
       if (!opts.include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
       if (!opts.include.photos && f.path.startsWith('/files/') && f.type.startsWith('image/')) continue;
       const name = dir + f.path;
-      await zip.add(name, await readBlob(store, f.hash, f.path), { compress: !isCompressedType(f.type), mtime: f.modified });
+      /** @type {{ bytes: Uint8Array, type: string, hash: string, meta?: PhotoMeta }} */
+      let out = { bytes: await readBlob(store, f.hash, f.path), type: f.type, hash: f.hash, meta: f.meta };
+      if (opts.share && isPhotoType(f.type)) {
+        const shared = await sharePhoto(f, out.bytes, opts.share);
+        if (!shared) {
+          skipped.push(f.path);
+          continue;
+        }
+        out = { ...shared, hash: shared.bytes === out.bytes ? f.hash : await sha256Hex(shared.bytes) };
+      }
+      await zip.add(name, out.bytes, { compress: !isCompressedType(out.type), mtime: f.modified });
       manifest.files.push({
-        name, scope: scope.id, path: f.path, hash: f.hash, size: f.size, type: f.type, author: f.author,
-        created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}),
+        name, scope: scope.id, path: f.path, hash: out.hash, size: out.bytes.byteLength, type: out.type, author: f.author,
+        created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}), ...(out.meta ? { meta: out.meta } : {}),
       });
-      current.add(f.hash);
+      current.add(out.hash);
     }
     if (events.length) {
       const name = `${dir}/.annai/events.jsonl`;
@@ -169,7 +200,7 @@ export async function exportArchive(store, opts) {
   for (const hash of historic) {
     if (current.has(hash)) continue;
     const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-    if (!rec) continue;
+    if (!rec || (opts.share && isPhotoType(rec.type))) continue; // a Share leaves out older versions of photos
     const name = `blobs/${hash}`;
     await zip.add(name, new Uint8Array(rec.data), { compress: !isCompressedType(rec.type), mtime: now });
     manifest.blobs.push({ name, hash, type: rec.type, size: rec.size });
@@ -192,7 +223,40 @@ export async function exportArchive(store, opts) {
   let blob = zip.finish();
   if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
   const title = opts.kind === 'trip' ? scopes[0].title : '';
-  return { blob, manifest, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
+  return { blob, manifest, skipped, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
+}
+
+/**
+ * A photo as a Share carries it (§12.2). Encoded first: a kept original, a format some browsers
+ * can't show, and a photo of unknown origin (no metadata, so not added through ingest). Without
+ * places, its metadata and its bytes say nothing about where it was taken, and bytes that nobody
+ * cleaned (encoded or stripped) stay home: the reader only knows EXIF, so finding no location in
+ * them proves nothing. null when the photo has to stay home, for example a HEIC original in a
+ * browser that can't read HEIC.
+ * @param {{ path: string, type: string, meta?: PhotoMeta }} f @param {Uint8Array} bytes
+ * @param {{ places: boolean, convert?: PhotoConvert }} share
+ * @returns {Promise<{ bytes: Uint8Array, type: string, meta?: PhotoMeta } | null>}
+ */
+async function sharePhoto(f, bytes, share) {
+  /** @type {{ bytes: Uint8Array, type: string, meta?: PhotoMeta }} */
+  let out = { bytes, type: f.type, meta: f.meta ? { ...f.meta } : undefined };
+  let clean = Boolean(f.meta && !f.meta.original); // ingest made it: a canvas encoding, or bytes it stripped
+  if (!clean || !PORTABLE.has(f.type)) {
+    const encoded = share.convert ? await share.convert(f, bytes).catch(() => null) : null;
+    if (encoded) {
+      const { original: _, ...rest } = out.meta ?? {};
+      out = { bytes: encoded.bytes, type: encoded.type, meta: { ...rest, ...(encoded.width && encoded.height ? { width: encoded.width, height: encoded.height } : {}) } };
+      clean = true;
+    }
+  }
+  if (share.places) return out;
+  if (out.meta) delete out.meta.place;
+  const stripped = stripMetadata(out.bytes, out.type);
+  if (stripped) {
+    out.bytes = stripped;
+    clean = true;
+  }
+  return clean && !readPhotoMeta(out.bytes).place ? out : null;
 }
 
 /** @param {Store} store @param {string} hash @param {string} path */
@@ -446,7 +510,7 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
         const size = o?.bytes.byteLength ?? f.size;
         await t.putFile({
           scope: p.target, path: f.path, hash, size, type: f.type, author: f.author,
-          created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}),
+          created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}), ...(f.meta ? { meta: f.meta } : {}),
         });
       }
       for (const e of p.events) await t.putEvent({ ...e, scope: p.target });

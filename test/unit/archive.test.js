@@ -11,6 +11,8 @@ import { exportArchive, openArchive, describeArchive, importArchive, archiveName
 import { PassphraseError } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
+import { readFile } from 'node:fs/promises';
+import { readPhotoMeta } from '../../src/core/photo-meta.js';
 import { PiecesOnly } from './pieces.js';
 
 const FAST = 100_000;
@@ -403,4 +405,96 @@ test('opening a file that says it unpacks to gigabytes is refused before anythin
   v.setUint32(cd + 24, 1000 * 1024 * 1024, true); // and the index's
   const file = new PiecesOnly([b]);
   await assert.rejects(openArchive(file), (e) => e instanceof ArchiveError && /zip bomb/.test(e.message));
+});
+
+/** @param {string} name */
+const photoFixture = async (name) => new Uint8Array(await readFile(new URL(`../fixtures/photos/${name}`, import.meta.url)));
+const nepenthe = { lat: 36.2219, lng: -121.7598 };
+
+test('photos keep their metadata through a backup', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'Big Sur' });
+  const meta = { width: 48, height: 64, taken: '2026-11-26T19:04:12-08:00', place: nepenthe };
+  await a.ws.write(trip, '/files/2026-11-26-1904.webp', await photoFixture('portrait.webp'), { author: 'user', type: 'image/webp', meta });
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const b = await device();
+  const r = await importArchive(b.store, await openArchive(blob));
+  assert.deepEqual((await b.ws.read(r.trips[0], '/files/2026-11-26-1904.webp'))?.entry.meta, meta);
+});
+
+/**
+ * A trip with four kinds of photo: a kept original JPEG, an ingest encoding, an old upload with
+ * no metadata (and an older version that still has EXIF), and a kept HEIC original.
+ */
+async function photoTrip() {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'Big Sur' });
+  const taken = '2026-11-26T12:30:00-08:00';
+  const put = (/** @type {string} */ path, /** @type {Uint8Array} */ bytes, /** @type {string} */ type, /** @type {any} */ meta) =>
+    a.ws.write(trip, path, bytes, { author: 'user', type, ...(meta ? { meta } : {}) });
+  await put('/files/kept.jpg', await photoFixture('upright.jpg'), 'image/jpeg', { width: 64, height: 48, taken, place: nepenthe, original: true });
+  await put('/files/encoded.jpg', await photoFixture('plain.jpg'), 'image/jpeg', { width: 64, height: 48, taken, place: nepenthe });
+  await put('/files/old.jpg', await photoFixture('upright.jpg'), 'image/jpeg', null);
+  await put('/files/old.jpg', await photoFixture('upside-down.jpg'), 'image/jpeg', null);
+  await put('/files/kept.heic', await photoFixture('portrait.heic'), 'image/heic', { width: 48, height: 64, taken, place: nepenthe, original: true });
+  return { a, trip };
+}
+
+/** Encodes JPEG originals (to plain.jpg's bytes); can't read HEIC, like Chrome. */
+const shareConvert = async (/** @type {{ type: string }} */ file) =>
+  (file.type === 'image/jpeg' ? { bytes: await photoFixture('plain.jpg'), type: 'image/jpeg', width: 64, height: 48 } : null);
+
+test('a Share without locations carries none: not in metadata, not in the photos, not in older versions', async () => {
+  const { a, trip } = await photoTrip();
+  const { blob, manifest, skipped } = await exportArchive(a.store, {
+    kind: 'trip', scopes: [trip], include: { ...PRESETS.share, history: true }, app: '0.1.0',
+    share: { places: false, convert: shareConvert },
+  });
+  assert.deepEqual(skipped, ['/files/kept.heic']); // can't be converted or stripped here, and it says where it was taken
+  const entries = await readZip(await bytesOf(blob));
+  const photos = manifest.files.filter((f) => f.type.startsWith('image/'));
+  assert.deepEqual(photos.map((f) => f.path).sort(), ['/files/encoded.jpg', '/files/kept.jpg', '/files/old.jpg']);
+  for (const f of photos) {
+    assert.equal(f.meta?.place, undefined, f.path);
+    assert.equal(f.meta?.original, undefined, f.path);
+    assert.equal(readPhotoMeta(/** @type {Uint8Array} */ (entries.get(f.name))).place, undefined, f.path);
+  }
+  assert.ok(manifest.blobs.every((b) => !b.type.startsWith('image/')), 'older versions of photos are left out');
+  const b = await device();
+  assert.equal((await importArchive(b.store, await openArchive(blob))).trips.length, 1);
+});
+
+test('with locations included, a Share still encodes kept originals and keeps their place beside them', async () => {
+  const { a, trip } = await photoTrip();
+  const { blob, manifest, skipped } = await exportArchive(a.store, {
+    kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: true, convert: shareConvert },
+  });
+  assert.deepEqual(skipped, []);
+  const kept = manifest.files.find((f) => f.path === '/files/kept.jpg');
+  assert.deepEqual(kept?.meta, { width: 64, height: 48, taken: '2026-11-26T12:30:00-08:00', place: nepenthe });
+  const entries = await readZip(await bytesOf(blob));
+  assert.deepEqual(entries.get(/** @type {string} */ (kept?.name)), await photoFixture('plain.jpg'));
+  assert.equal(manifest.files.find((f) => f.path === '/files/kept.heic')?.meta?.original, true); // couldn't be encoded here, so it goes as taken
+});
+
+test('an archive with malformed photo metadata is refused', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  await a.ws.write(trip, '/files/p.webp', await photoFixture('portrait.webp'), { author: 'user', type: 'image/webp', meta: { width: 64, height: 48, place: nepenthe } });
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  for (const edit of [(/** @type {any} */ m) => { m.files.find((/** @type {any} */ f) => f.meta).meta.place.lat = 200; }, (/** @type {any} */ m) => { m.files.find((/** @type {any} */ f) => f.meta).meta.script = 'x'; }]) {
+    await assert.rejects(openArchive(await rewrite(blob, edit)), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  }
+});
+
+test('a Share without locations leaves out a photo it can neither encode nor strip, even when no location shows', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  // An upload from before photos had metadata: a PNG, which can't be stripped, and this browser can't encode it.
+  await a.ws.write(trip, '/files/old.png', await photoFixture('screenshot.png'), { author: 'user', type: 'image/png' });
+  const { manifest, skipped } = await exportArchive(a.store, {
+    kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: false, convert: async () => null },
+  });
+  assert.deepEqual(skipped, ['/files/old.png']);
+  assert.equal(manifest.files.some((f) => f.path === '/files/old.png'), false);
 });
