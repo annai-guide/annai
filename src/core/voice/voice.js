@@ -2,11 +2,16 @@ import { readAppSettings } from '../settings.js';
 import { SYS } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
 import { COOLDOWN_MS } from '../llm/fallback.js';
-import { speechKind } from '../llm/config.js';
+import { speechKind, modelOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries } from './speaker.js';
 import { voicePlatform } from './platform.js';
 import { voiceSettings } from './settings.js';
 import { record } from './recorder.js';
+import { HeardMemory, listenKind, resolveSpeech, textVersion } from './resolve.js';
+import { listen } from './listening.js';
+import { micProblem } from './mic.js';
+import { blobBytes } from '../agent/log.js';
+import { toBase64 } from '../bytes.js';
 
 /**
  * Voice (spec §10): annai's speaking and hearing, for the screens, and in milestone 3b for
@@ -22,15 +27,29 @@ export function restFor(e) {
   return e instanceof ProviderError && e.retryAfter !== undefined ? e.retryAfter : COOLDOWN_MS;
 }
 
+/** What the model that heard a segment as audio is asked, to write it down (spec §10.3). */
+export const WRITE_DOWN = 'Write down exactly what is said in this audio, in the language it is spoken. Reply with the words only, nothing else. If nothing clear is said, reply with nothing.';
+
 export class Voice {
   /** The conversation speech requests are traced in. */
   scope = SYS;
+  /** Heard segments, until the turn that used them succeeds (spec §10.3). */
+  memory = new HeardMemory();
+  /** Phone dictation failed in this session: listening records instead (spec §10.3). */
+  dictationFailed = false;
+  /** Whether voice is on now (spec §10.5); refresh() works it out again. */
+  on = false;
   /** @type {Set<LevelListener>} */
   #levels = new Set();
 
-  /** @param {{ llm: any, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, now?: () => number, locale?: string }} c */
-  constructor({ llm, ws, registry, now = Date.now, locale }) {
+  /**
+   * @param {{ llm: any, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, store?: import('../types.js').Store,
+   *   now?: () => number, locale?: string, where?: 'ios' | 'android' | 'desktop' }} c  store: for kept voice clips; where: which phone, for the steps of a microphone problem
+   */
+  constructor({ llm, ws, registry, store, now = Date.now, locale, where = 'desktop' }) {
     this.llm = llm;
+    this.store = store ?? null;
+    this.where = where;
     this.ws = ws;
     this.registry = registry;
     this.now = now;
@@ -135,5 +154,112 @@ export class Voice {
   /** What a transcription model hears in a segment. @param {Segment} segment @param {string} modelId */
   async transcribe(segment, modelId) {
     return (await this.llm.transcribe({ modelId, audio: segment.audio, scope: this.scope })).text;
+  }
+
+  /** Settings → Voice. */
+  async settings() {
+    return voiceSettings(await readAppSettings(this.ws));
+  }
+
+  /** Whether voice is on (spec §10.5): On is, Off isn't; Auto works out the situation in milestone 3c, and is off until then. */
+  async refresh() {
+    this.on = (await this.settings()).mode === 'on';
+    return this.on;
+  }
+
+  /** How to listen now (spec §10.3), against the first main model that isn't resting: it is expected to hear. */
+  async howToListen() {
+    const cfg = await this.llm.config();
+    const types = this.llm.types();
+    const now = this.now();
+    const free = (/** @type {string} */ id) => this.llm.bench.until(id) <= now;
+    const mainId = (cfg.roles.main?.models ?? []).find((/** @type {string} */ id) => cfg.models[id] && free(id));
+    return listenKind({
+      list: cfg.roles['speech-in']?.models ?? [],
+      model: mainId ? modelOf(cfg.models[mainId]) : null,
+      asr: (id) => speechKind(cfg, types, id) === 'in' && free(id),
+      dictation: Boolean(this.platform?.dictation.available()) && !this.dictationFailed,
+    });
+  }
+
+  /**
+   * Opens a listening session (spec §10.2): what it hears is kept in memory and handed on; the
+   * audio session is play-and-record while it listens (§10.1).
+   * @param {{ kind: 'record' | 'dictation', onSegment: (h: import('./resolve.js').Heard) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error) => void }} o
+   */
+  async open({ kind, onSegment, onSpeech, onQuiet, onError }) {
+    const platform = this.platform;
+    if (!platform) throw new Error("This browser can't use the microphone here.");
+    const { pauseMs } = await this.settings();
+    platform.session('play-and-record');
+    return listen({
+      platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError,
+      onLevel: (x) => this.#level(x, 'you'),
+      onSegment: (h) => {
+        this.memory.keep(h);
+        onSegment(h);
+      },
+      onSwitch: () => { this.dictationFailed = true; },
+    });
+  }
+
+  /**
+   * The speech hook for llm.call (spec §10.3): heard speech resolved for each model attempt.
+   * Transcriptions are traced in scope, for the wake.
+   * @param {string} scope @param {string} [wake]
+   * @returns {(model: { name: string, input: string[] }, request: import('../llm/contract.js').Request) => Promise<import('../llm/contract.js').Request>}
+   */
+  resolver(scope, wake) {
+    return async (model, request) => resolveSpeech(request, model, await this.#resolve(scope, wake));
+  }
+
+  /** @param {string} scope @param {string} [wake] @returns {Promise<import('./resolve.js').Resolve>} */
+  async #resolve(scope, wake) {
+    const cfg = await this.llm.config();
+    const types = this.llm.types();
+    return {
+      list: cfg.roles['speech-in']?.models ?? [],
+      memory: this.memory,
+      asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now(),
+      transcribe: async (id, kept) => String((await this.llm.transcribe({ modelId: id, audio: kept.audio, scope, wake })).text ?? ''),
+      clip: (hash) => (this.store ? blobBytes(this.store, hash) : Promise.resolve(null)),
+      onFail: (id, e) => this.llm.bench.bench(id, restFor(e), this.now()),
+    };
+  }
+
+  /**
+   * A segment's words, for the log (spec §10.3): a transcript made already, dictation's, or the
+   * first entry that can write it down; for "Send audio to the model", the model that heard it
+   * (hearer) is asked. null when nothing could, or the segment isn't in memory.
+   * @param {string} id @param {{ scope: string, wake?: string, hearer?: string }} o
+   * @returns {Promise<{ text: string, by: string } | null>} by: who wrote it down, by name
+   */
+  async writeDown(id, { scope, wake, hearer }) {
+    const kept = this.memory.get(id);
+    if (!kept) return null;
+    let who = hearer ?? '';
+    const r = await textVersion(kept, {
+      ...(await this.#resolve(scope, wake)),
+      ...(hearer ? {
+        hearer: async (/** @type {import('./resolve.js').Kept} */ k) => {
+          const audio = /** @type {NonNullable<typeof k.audio>} */ (k.audio);
+          const out = await this.llm.call({
+            role: 'main', prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) },
+            request: { system: WRITE_DOWN, messages: [{ role: 'user', parts: [{ type: 'audio', mediaType: audio.mediaType, data: toBase64(audio.data) }] }], maxOutput: 400 },
+          });
+          who = out.modelId ?? hearer;
+          return String(out.reply.text ?? '').trim();
+        },
+      } : {}),
+    });
+    if (!r) return null;
+    const by = r.by === 'send-audio' ? who : r.by;
+    const cfg = await this.llm.config();
+    return { text: r.text, by: STAND_INS[by]?.name ?? (cfg.models[by] ? modelOf(cfg.models[by]).name : by) };
+  }
+
+  /** What went wrong with the microphone, with this phone's steps (spec §17 rule 3). @param {unknown} e */
+  problem(e) {
+    return micProblem(e, this.where);
   }
 }
