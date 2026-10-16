@@ -214,6 +214,7 @@ A plugin is a folder, zip or URL containing `annai-plugin.json`:
 - **Files are copied into storage.** They work offline, and they change only when the user accepts an update.
 - **The service worker serves installed plugin files** from storage at `/plugins/<id>/…` on our own origin. Multi-file plugins can use relative imports, and the security policy stays `script-src 'self'`.
 - **Official on-demand plugins** have a SHA-256 for every file in the catalog, and downloads are checked against it.
+- **Updates are checked for, and offered.** At each start, and once a day while annai is open, annai compares the official plugins it has installed with its catalog. A newer version is offered on a card and in Settings → Plugins; nothing changes until the user taps Update, and the new code runs from the next start. Plugins installed from a file have nowhere to check; those installed from a URL get the same check when that arrives (milestone 8).
 - **Choosing an unavailable type installs its plugin.** When a user picks an endpoint type, search provider or speech provider whose plugin isn't installed, it installs automatically.
 - **Plugins can add new types,** which become selectable once the plugin is installed.
 

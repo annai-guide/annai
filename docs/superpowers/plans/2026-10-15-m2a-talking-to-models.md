@@ -122,7 +122,7 @@ These items sit next to this work and land later, so none is dropped silently.
 - **Later:**
   - The speech roles (milestone 3) and the search role (part 2).
   - The OpenAI Responses and Gemini endpoint types (§9.1), "added during milestones 2 and 3 as needed" (§20). Gemini works now through its OpenAI-compatible endpoint (a template).
-  - Updating an installed official plugin happens when the user installs it again: Install, or adding an endpoint of its type, installs the catalog's version. A general "update available" for plugins comes with milestone 8.
+  - Checking plugins installed from a URL for updates (milestone 8). Official plugins are checked here: Task 14, added at the user's request.
 
 ## File structure
 
@@ -6334,4 +6334,331 @@ If WebKit or Chromium doesn't hand the cross-origin preflight (`OPTIONS`) of the
 ```bash
 git add src/ui/openrouter.js src/ui/screens/models.js src/ui/screens/endpoint.js src/app/main.js sw.js test/unit/openrouter.test.js test/live/providers.test.js test/e2e/models.spec.js package.json docs/plugins.md README.md docs/testing/device-checklist-m2a.md
 git commit -m "Sign in with OpenRouter (code to paste on an iPhone Home Screen app), live suite, docs"
+```
+
+---
+
+### Task 14: Checking for plugin updates (added at the user's request)
+
+The user asked during execution for annai to check for plugin updates automatically. The spec now says (§5.3): "At each start, and once a day while annai is open, annai compares the official plugins it has installed with its catalog. A newer version is offered on a card and in Settings → Plugins; nothing changes until the user taps Update, and the new code runs from the next start."
+
+**Files:**
+- Modify: `src/core/llm/official.js` (add `officialUpdates` and `updateOfficial`; `installOfficial` shares the download)
+- Create: `src/ui/plugin-updates.js`
+- Modify: `src/app/main.js` (check at start and daily), `src/ui/screens/plugins.js` (an Update button)
+- Modify: `sw.js` (`SHELL`)
+- Test: `test/unit/plugin-updates.test.js`
+
+**Interfaces:**
+- Consumes: `officialPlugins` (Task 5), and the plugin host's `installed()`, `install()`, `start()`, `needsRestart()` and `setEnabled()`.
+- Produces:
+  - **From `official.js`:**
+    - `officialUpdates(host, opts?)` returns `Promise<{ id, name, installed, available, entry }[]>`. It lists only plugins installed from the catalog (`source: 'official'`) whose version differs from the catalog's.
+    - `updateOfficial(host, entry, opts?)` returns `Promise<'started' | 'restart'>`. It keeps the user's on/off choice.
+  - **From `plugin-updates.js`:**
+    - `offerPluginUpdates({ plugins, notices }, env?)` shows one card, or nothing; it is quiet offline.
+    - `applyUpdates(ctx, updates, env?)` installs them, then offers a restart when old code is running.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `test/unit/plugin-updates.test.js`:
+
+```js
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createMemoryStore } from '../../src/core/store-memory.js';
+import { Workspace } from '../../src/core/workspace.js';
+import { makeSchemaFor } from '../../src/core/schema.js';
+import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js';
+import { Registry } from '../../src/core/registry.js';
+import { PluginHost } from '../../src/core/plugins.js';
+import { sha256Hex } from '../../src/core/hash.js';
+import { utf8 } from '../../src/core/bytes.js';
+import { ensureType, officialUpdates, updateOfficial } from '../../src/core/llm/official.js';
+import { offerPluginUpdates, applyUpdates } from '../../src/ui/plugin-updates.js';
+
+const root = new URL('../../', import.meta.url);
+
+/**
+ * A fetch serving this repository's catalog and plugin files; with `bump`, the scripted model's
+ * manifest and catalog entry say 0.1.1, as if annai had shipped a new version.
+ */
+async function repo({ bump = false } = {}) {
+  const manifest = JSON.parse(await readFile(new URL('plugins-official/scripted-model/annai-plugin.json', root), 'utf8'));
+  const bumped = utf8(JSON.stringify({ ...manifest, version: '0.1.1' }, null, 2) + '\n');
+  const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
+  if (bump) {
+    const entry = catalog.plugins.find((/** @type {any} */ p) => p.id === 'scripted-model');
+    entry.version = '0.1.1';
+    entry.files['annai-plugin.json'] = await sha256Hex(bumped);
+  }
+  return async (/** @type {any} */ url) => {
+    const path = new URL(String(url), 'http://annai.test').pathname;
+    if (path === '/catalog/plugins.json') return new Response(JSON.stringify(catalog));
+    if (bump && path === '/plugins-official/scripted-model/annai-plugin.json') return new Response(/** @type {any} */ (bumped));
+    try {
+      return new Response(/** @type {any} */ (new Uint8Array(await readFile(new URL(`.${path}`, root)))));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+}
+
+async function setup() {
+  const registry = new Registry();
+  const store = createMemoryStore();
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  const importModule = async (/** @type {string} */ url) => {
+    const m = /^\/plugins\/([^/]+)\/(.+)$/.exec(url);
+    if (!m) return import(url);
+    const code = await ws.readText(SYS_PLUGINS, `/${decodeURIComponent(m[1])}/${m[2]}`);
+    return import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
+  };
+  return { ws, registry, importModule, host: new PluginHost({ registry, workspace: ws, importModule }) };
+}
+
+test("official plugins whose catalog version differs are offered; others aren't (spec §5.3)", async () => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  assert.deepEqual(await officialUpdates(host, { fetch: await repo() }), []);
+  const updates = await officialUpdates(host, { fetch: await repo({ bump: true }) });
+  assert.deepEqual(updates.map((u) => [u.id, u.installed, u.available]), [['scripted-model', '0.1.0', '0.1.1']]);
+});
+
+test('updating: old code that already ran needs a restart; code that never ran starts now; the on/off choice is kept', async () => {
+  const { host, ws, importModule } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  const [u] = await officialUpdates(host, { fetch: await repo({ bump: true }) });
+  assert.equal(await updateOfficial(host, u.entry, { fetch: await repo({ bump: true }) }), 'restart');
+  assert.equal((await host.installed())['scripted-model'].version, '0.1.1');
+  assert.deepEqual(await officialUpdates(host, { fetch: await repo({ bump: true }) }), []);
+
+  const fresh = await setup();
+  await ensureType(fresh.host, 'scripted', { fetch: await repo() });
+  await fresh.host.setEnabled('scripted-model', false);
+  const later = new PluginHost({ registry: new Registry(), workspace: fresh.ws, importModule: fresh.importModule });
+  const [v] = await officialUpdates(later, { fetch: await repo({ bump: true }) });
+  assert.equal(await updateOfficial(later, v.entry, { fetch: await repo({ bump: true }) }), 'started');
+  assert.equal((await later.installed())['scripted-model'].enabled, false, 'a plugin the user turned off stays off');
+  void ws; void importModule;
+});
+
+test('the card offers updates, applies them on Update, and offers a restart; offline it stays quiet', async () => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  /** @type {any[]} */
+  const cards = [];
+  /** @type {string[]} */
+  const toasts = [];
+  let reloaded = false;
+  const ctx = { plugins: host, notices: { card: (/** @type {any} */ c) => { cards.push(c); return () => {}; }, toast: (/** @type {string} */ t) => toasts.push(t) } };
+  const env = { fetch: await repo({ bump: true }), reload: () => { reloaded = true; } };
+  const offered = await offerPluginUpdates(ctx, env);
+  assert.equal(offered.length, 1);
+  assert.equal(cards[0].title, 'Plugin updates are ready');
+  assert.match(cards[0].body, /Scripted model 0\.1\.0 → 0\.1\.1/);
+  await applyUpdates(ctx, offered, env);
+  assert.equal(cards[1].title, 'Restart annai to use the new versions');
+  cards[1].actions[0].run();
+  assert.equal(reloaded, true);
+  assert.deepEqual(await offerPluginUpdates(ctx, { fetch: async () => { throw new TypeError('offline'); } }), []);
+  assert.equal(cards.length, 2);
+});
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `node --test test/unit/plugin-updates.test.js`
+Expected: FAIL. `official.js` provides no export named `officialUpdates` (or `plugin-updates.js` can't be found).
+
+- [ ] **Step 3: Write the update functions**
+
+In `src/core/llm/official.js`, replace `installOfficial` with a shared download step and the update functions:
+
+```js
+/**
+ * Downloads one official plugin and checks every file against the catalog; nothing is returned
+ * unless all of them match.
+ * @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<Map<string, Uint8Array>>}
+ */
+async function download(entry, { fetch: get = defaultFetch, base = '' } = {}) {
+  /** @type {Map<string, Uint8Array>} */
+  const files = new Map();
+  for (const [name, hash] of Object.entries(entry.files)) {
+    const url = `${base}/plugins-official/${encodeURIComponent(entry.id)}/${name.split('/').map(encodeURIComponent).join('/')}`;
+    /** @type {Response} */
+    let res;
+    try {
+      res = await get(url, { cache: 'no-cache' });
+    } catch {
+      throw new PluginError(entry.id, "couldn't be downloaded. Check the connection and try again.");
+    }
+    if (!res.ok) throw new PluginError(entry.id, `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if ((await sha256Hex(bytes)) !== hash) throw new PluginError(entry.id, `wasn't installed: ${name} doesn't match annai's catalog`);
+    files.set(name, bytes);
+  }
+  return files;
+}
+
+/** Downloads, checks and installs one official plugin, then starts it. @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] */
+export async function installOfficial(host, entry, opts = {}) {
+  await host.install(await download(entry, opts), { source: 'official' });
+  await host.start(entry.id);
+}
+
+/**
+ * Official plugins that annai's catalog has another version of (spec §5.3). They are offered;
+ * nothing changes until the user accepts. Plugins installed from a file aren't checked.
+ * @param {PluginHost} host @param {FetchOptions} [opts]
+ * @returns {Promise<{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin }[]>}
+ */
+export async function officialUpdates(host, opts = {}) {
+  const state = await host.installed();
+  return (await officialPlugins(opts))
+    .filter((p) => state[p.id]?.source === 'official' && state[p.id].version !== p.version)
+    .map((p) => ({ id: p.id, name: p.name, installed: state[p.id].version, available: p.version, entry: p }));
+}
+
+/**
+ * Installs the catalog's version of an official plugin the user chose to update, keeping their
+ * on/off choice. New code that replaces code already running starts with the next start of annai.
+ * @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<'started' | 'restart'>}
+ */
+export async function updateOfficial(host, entry, opts = {}) {
+  const wasOn = (await host.installed())[entry.id]?.enabled !== false;
+  await host.install(await download(entry, opts), { source: 'official' });
+  if (!wasOn) {
+    await host.setEnabled(entry.id, false);
+    return 'started';
+  }
+  if (host.needsRestart(entry.id)) return 'restart';
+  await host.start(entry.id);
+  return 'started';
+}
+```
+
+Create `src/ui/plugin-updates.js`:
+
+```js
+import { officialUpdates, updateOfficial } from '../core/llm/official.js';
+
+/**
+ * Looks for newer versions of the official plugins installed, and offers them on one card (spec
+ * §5.3). Quiet when offline or when there is nothing new.
+ * @param {{ plugins: any, notices: any }} ctx
+ * @param {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, reload?: () => void }} [env]
+ */
+export async function offerPluginUpdates(ctx, env = {}) {
+  /** @type {Awaited<ReturnType<typeof officialUpdates>>} */
+  let updates;
+  try {
+    updates = await officialUpdates(ctx.plugins, env);
+  } catch {
+    return [];
+  }
+  if (!updates.length) return updates;
+  ctx.notices.card({
+    title: 'Plugin updates are ready',
+    body: `New versions: ${updates.map((u) => `${u.name} ${u.installed} → ${u.available}`).join(', ')}. Nothing changes until you update.`,
+    actions: [{ label: 'Update', primary: true, run: () => { applyUpdates(ctx, updates, env); } }],
+  });
+  return updates;
+}
+
+/**
+ * Installs the updates the user accepted, and says what happened: done, done after a restart, or
+ * which ones failed and why.
+ * @param {{ plugins: any, notices: any }} ctx @param {Awaited<ReturnType<typeof officialUpdates>>} updates
+ * @param {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, reload?: () => void }} [env]
+ */
+export async function applyUpdates(ctx, updates, env = {}) {
+  let restart = false;
+  /** @type {string[]} */
+  const failed = [];
+  for (const u of updates) {
+    try {
+      if ((await updateOfficial(ctx.plugins, u.entry, env)) === 'restart') restart = true;
+    } catch (e) {
+      failed.push(`${u.name}: ${/** @type {any} */ (e)?.message ?? e}`);
+    }
+  }
+  if (failed.length) ctx.notices.card({ tone: 'warn', title: "Some plugins weren't updated", body: failed.join(' ') });
+  if (restart) {
+    ctx.notices.card({
+      title: 'Restart annai to use the new versions',
+      body: 'The update is installed. It runs the next time annai starts.',
+      actions: [{ label: 'Restart now', primary: true, run: env.reload ?? (() => location.reload()) }],
+    });
+  } else if (!failed.length) {
+    ctx.notices.toast('Plugins updated.');
+  }
+}
+```
+
+In `sw.js`, add `'/src/ui/plugin-updates.js',` to `SHELL`, after `'/src/ui/platform.js',`.
+
+- [ ] **Step 4: Check at start, every day, and in Settings → Plugins**
+
+In `src/app/main.js`, add the import:
+
+```js
+import { offerPluginUpdates } from '../ui/plugin-updates.js';
+```
+
+Replace `  startPlugins(plugins, shell).finally(() => pluginsStarted());` with:
+
+```js
+  // Plugin updates are looked for at start and once a day, and only offered (spec §5.3).
+  const lookForUpdates = () => controllerReady().then(() => offerPluginUpdates({ plugins, notices: shell.notices }));
+  startPlugins(plugins, shell).finally(() => {
+    pluginsStarted();
+    lookForUpdates();
+  });
+  setInterval(lookForUpdates, 24 * 60 * 60 * 1000);
+```
+
+In `src/ui/screens/plugins.js`, import the helpers:
+
+```js
+import { officialUpdates } from '../../core/llm/official.js';
+import { applyUpdates } from '../plugin-updates.js';
+```
+
+In `renderPlugins`, read the updates (quietly offline), and pass them to `row`:
+
+```js
+  const updates = await officialUpdates(ctx.plugins).catch(() => []);
+```
+
+```js
+    h('ul', { class: 'cards' }, ...rows.map((/** @type {any} */ r) => row(ctx, r, updates.find((u) => u.id === r.id)))),
+```
+
+In `row(ctx, r)`, take the third argument `update`, and add this as the first child of its `acts` row:
+
+```js
+      update ? h('button', { class: 'btn pri', type: 'button', onclick: async () => { await applyUpdates(ctx, [update]); ctx.render(); } }, `Update to ${update.available}`) : null,
+```
+
+and change its JSDoc to `/** @param {any} ctx @param {any} r @param {any} [update] */`.
+
+- [ ] **Step 5: Run the tests to verify they pass**
+
+Run: `node --test test/unit/plugin-updates.test.js test/unit/llm-plugins.test.js`
+Expected: PASS.
+
+Run: `npm run stamp && npm run check`
+Expected: all green.
+
+Run: `docker run --rm --ipc=host -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v1.63.0-noble npx playwright test test/e2e/plugins.spec.js`
+Expected: PASS in both engines.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/core/llm/official.js src/ui/plugin-updates.js src/app/main.js src/ui/screens/plugins.js sw.js test/unit/plugin-updates.test.js
+git commit -m "Plugin updates: looked for at start and daily, offered, applied only on the user's tap"
 ```
