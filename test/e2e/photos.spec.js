@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp } from './helpers.js';
+import { openApp, buildAndSave } from './helpers.js';
+import { readZip } from '../../src/core/zip.js';
+import { readPhotoMeta } from '../../src/core/photo-meta.js';
+import { text } from '../../src/core/bytes.js';
 
 /** A fixture photo, ready for setInputFiles. @param {string} name */
 async function photo(name) {
@@ -143,4 +146,23 @@ test('Keep originals stores photos as taken, and JPEG can be chosen over WebP', 
   await page.goto(trip);
   await page.getByLabel('Add photos or files').setInputFiles(await photo('screenshot.png'));
   await expect(page.getByRole('link', { name: /\/files\/screenshot\.jpg/ })).toBeVisible();
+});
+
+test('a Share can leave out where photos were taken', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  const places = page.getByLabel('Include where photos were taken');
+  await expect(places).toBeHidden(); // a Backup keeps everything
+  await page.getByLabel('Share: plan, bookings, files and notes').check();
+  await expect(places).toBeChecked();
+  await places.uncheck();
+  const entries = await readZip(new Uint8Array(await readFile(await buildAndSave(page))));
+  const manifest = JSON.parse(text(/** @type {Uint8Array} */ (entries.get('annai-archive.json'))));
+  const shot = manifest.files.find((/** @type {any} */ f) => f.path.startsWith('/files/2026-11-26-1904'));
+  expect(shot.meta.taken).toBe('2026-11-26T19:04:12-08:00');
+  expect(shot.meta.place).toBeUndefined();
+  expect(readPhotoMeta(/** @type {Uint8Array} */ (entries.get(shot.name))).place).toBeUndefined();
 });

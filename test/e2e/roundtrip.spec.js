@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp } from './helpers.js';
+import { openApp, buildAndSave } from './helpers.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
@@ -24,17 +24,6 @@ async function writeNote(page, path, content) {
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
 }
 
-/** Builds the file, then saves it with a separate tap (the iOS share sheet needs a fresh tap). @param {import('@playwright/test').Page} page */
-async function buildAndSave(page) {
-  const save = page.getByRole('button', { name: 'Save file' });
-  await expect(save).toBeHidden();
-  await page.getByRole('button', { name: 'Build file' }).click();
-  await expect(save).toBeVisible({ timeout: 60_000 });
-  const downloading = page.waitForEvent('download');
-  await save.click();
-  const download = await downloading;
-  return /** @type {string} */ (await download.path());
-}
 
 test('everything survives export, erase and import', async ({ page }) => {
   await openApp(page);

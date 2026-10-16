@@ -43,3 +43,15 @@ export async function openApp(page, hash = '') {
 export async function waitForServiceWorker(page) {
   await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 30_000 });
 }
+
+/** Builds the file, then saves it with a separate tap (the iOS share sheet needs a fresh tap). @param {import('@playwright/test').Page} page */
+export async function buildAndSave(page) {
+  const save = page.getByRole('button', { name: 'Save file' });
+  await expect(save).toBeHidden();
+  await page.getByRole('button', { name: 'Build file' }).click();
+  await expect(save).toBeVisible({ timeout: 60_000 });
+  const downloading = page.waitForEvent('download');
+  await save.click();
+  const download = await downloading;
+  return /** @type {string} */ (await download.path());
+}
