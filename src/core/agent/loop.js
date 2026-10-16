@@ -19,6 +19,7 @@ import { readRefusal, stricter, tighter, limitImages } from './refusals.js';
 import { photoSettings } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
+import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -128,6 +129,8 @@ export class Agent {
   #quiet = null;
   /** Voice for the turn running now (spec §10.5). */
   #voiceNow = false;
+  /** A card said she can't hear: until listening works again, it isn't said again for every speak. */
+  #toldDeaf = false;
   /** The user stopped her during this step: nothing more is said until she has listened. */
   #cut = false;
   /** The model that answered last in this turn: it heard any audio sent (spec §10.3). @type {string | null} */
@@ -694,14 +697,18 @@ export class Agent {
     this.#abort = abort;
     this.#voiceNow = await this.#voiceOn();
     this.#heardBy = null;
+    let ok = false;
     try {
-      await this.#steps(wakes, wakeId, abort);
+      ok = await this.#steps(wakes, wakeId, abort);
     } finally {
-      await this.#afterTurn().catch((e) => console.warn('the end of a turn failed', e));
+      await this.#afterTurn(ok, wakeId).catch((e) => console.warn('the end of a turn failed', e));
     }
   }
 
-  /** A turn's steps (spec §6.2). @param {Wake[]} wakes @param {string} wakeId @param {AbortController} abort */
+  /**
+   * A turn's steps (spec §6.2). @param {Wake[]} wakes @param {string} wakeId @param {AbortController} abort
+   * @returns {Promise<boolean>} whether it worked: a model answered, and none failed
+   */
   async #steps(wakes, wakeId, abort) {
     await this.#logWakes(wakes, wakeId, false);
     const settings = await this.settings();
@@ -716,6 +723,8 @@ export class Agent {
     let steps = 0;
     let triedCompacting = false;
     let spent = await spentToday(this.store, this.now(), this.timeZone());
+    let answered = false;
+    let failed = false;
     for (;;) {
       if (abort.signal.aborted) break;
       const over = budgetStop({ budgets: settings.budgets, steps, spent });
@@ -739,7 +748,10 @@ export class Agent {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
         const done = await this.#tidyUp(warm ? 'warm' : 'cold', { forced: true }, wakeId);
-        if (done === null) break;
+        if (done === null) {
+          failed = true;
+          break;
+        }
         if (done) {
           this.#lastPrompt = 0;
           this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
@@ -766,17 +778,22 @@ export class Agent {
         if (tooLong && !triedCompacting) {
           triedCompacting = true;
           const done = await this.#tidyUp('cold', { forced: true }, wakeId);
-          if (done === null) break;
+          if (done === null) {
+            failed = true;
+            break;
+          }
           if (done) {
             this.#lastPrompt = 0;
             continue;
           }
         }
         await this.#failed(e, wakeId);
+        failed = true;
         break;
       }
       steps++;
       this.#heardBy = result.modelId;
+      answered = true;
       this.#lastPrompt = promptTokens(result.usage);
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
@@ -809,6 +826,7 @@ export class Agent {
         reasons.push(...more.map((w) => this.#reason(w)));
       }
     }
+    return answered && !failed;
   }
 
   /**
@@ -1305,7 +1323,12 @@ export class Agent {
     if (!voice) return "voice isn't available here.";
     if (this.#ear) return null; // a tap's window stays the tap's until the first thing said: that needs no gate (choice 3)
     const how = await voice.howToListen();
-    if ('why' in how) return how.why;
+    if ('why' in how) {
+      // The mic button explains what to add (spec §10.3): on every tap, and once for her own listening.
+      if (owner === 'tap' || !this.#toldDeaf) await this.#notice({ tone: 'warn', title: "Shiori can't hear you yet", body: how.why });
+      this.#toldDeaf = true;
+      return how.why;
+    }
     /** @type {{ owner: 'tap' | 'turn', session: { stop(): void } | null }} */
     const ear = { owner, session: null };
     this.#ear = ear;
@@ -1317,12 +1340,18 @@ export class Agent {
         onQuiet: () => this.#speechStopped(),
         onError: (e) => this.#earFailed(e),
       });
-      if (this.#ear === ear) ear.session = session;
-      else session.stop(); // closed while it opened
+      if (this.#ear === ear) {
+        ear.session = session;
+        this.#toldDeaf = false;
+      } else {
+        session.stop(); // closed while it opened
+      }
       return null;
     } catch (e) {
       if (this.#ear === ear) this.#ear = null;
-      return `${voice.problem(e).title}.`;
+      const problem = voice.problem(e); // denied: steps for this phone (spec §17 rule 3)
+      await this.#notice({ tone: 'warn', title: problem.title, body: problem.body });
+      return `${problem.title}.`;
     }
   }
 
@@ -1443,10 +1472,7 @@ export class Agent {
   /** The user tapped to talk (spec §10.4): the microphone opens; a silence closes it again. */
   #tapListen() {
     this.#openEar('tap').then(async (deaf) => {
-      if (deaf) {
-        await this.#notice({ tone: 'warn', title: "Shiori can't hear you yet", body: deaf });
-        return;
-      }
+      if (deaf) return; // the card said why
       const p = this.#pending;
       if (p?.kind === 'ask') p.listening = true; // an ask's answer may be spoken
       if (this.#busy) return; // she is speaking or working: the window serves her turn
@@ -1467,12 +1493,33 @@ export class Agent {
     }, seconds * this.secondMs);
   }
 
-  /** The end of a turn: speech streamed but never said stops; the microphone closes unless the user tapped to talk (spec §6.2, §10.4). */
-  async #afterTurn() {
+  /**
+   * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, what was heard is written down.
+   * @param {boolean} ok @param {string} wakeId
+   */
+  async #afterTurn(ok, wakeId) {
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
     if (this.#ear?.owner === 'turn') this.#closeEar();
     else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
+    if (ok) await this.#writeDown(wakeId);
+  }
+
+  /**
+   * The words of what was heard are written down, and the sound is let go (spec §10.3: each
+   * segment stays in memory until the turn that used it succeeds; text versions are made then, the
+   * last time the sound is at hand). @param {string} wakeId
+   */
+  async #writeDown(wakeId) {
+    const voice = this.voice;
+    if (!voice) return;
+    for (const id of this.transcript.unwritten()) {
+      if (!voice.memory.get(id)) continue;
+      const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(this.#heardBy ? { hearer: this.#heardBy } : {}) }).catch(() => null);
+      await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null } });
+      voice.memory.drop(id);
+    }
   }
 
   /**
@@ -1481,12 +1528,17 @@ export class Agent {
    * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log]
    */
   async #logHeard(h, o, log = (ev) => this.#log(ev)) {
+    // The sound is kept only with "keep voice clips" (spec §10.2), as a blob the event names (§4.9).
+    const keep = h.audio && this.voice ? (await this.voice.settings()).keepClips : false;
+    const clip = keep && h.audio ? await sha256Hex(h.audio.data) : undefined;
     await log({
       type: 'heard', actor: 'user',
       data: {
         id: h.id, ...(o.wake ? { wake: o.wake } : {}), ms: h.ms, source: h.source, ...(typeof h.text === 'string' ? { text: h.text } : {}),
         ...(o.meanwhile ? { meanwhile: true } : {}), ...(o.answer ? { answer: o.answer } : {}), ...(o.dismissed ? { dismissed: true } : {}), ...(o.gate ? { gate: o.gate } : {}),
+        ...(clip ? { clip } : {}),
       },
+      blobs: clip && h.audio ? [{ hash: clip, bytes: h.audio.data, type: 'audio/wav' }] : [],
     });
   }
 }
