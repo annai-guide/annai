@@ -49,3 +49,12 @@ test('the Go tools and the planning skill teach a show call that works: show({ c
   }
   assert.match(registry.list('skill').find((s) => s.name === 'plan-a-trip').text, /show\(\{ card: \{ title, text, links \} \}\)/);
 });
+
+test('the planning skill says how to write a whole-day item: kind "all-day", starting at 00:00 where it is', async () => {
+  const { registry } = await setup();
+  const text = registry.list('skill').find((s) => s.name === 'plan-a-trip').text;
+  assert.match(text, /"kind": "all-day"/);
+  assert.match(text, /00:00/);
+  assert.match(text, /"All day"/);
+  assert.match(text, /calendar/);
+});

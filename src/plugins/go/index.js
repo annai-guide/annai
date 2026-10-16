@@ -26,6 +26,7 @@ Research with web_search, fetch, geocode, nearby, weather and guide. Never book 
 - fixed is true for what is booked or can't move (flights, reservations, check-ins, last ferries), false for what can.
 - priority: 0 nice to have, 1 would like, 2 important, 3 must.
 - Times are ISO 8601 with the offset in force at that place on that date, plus its IANA zone. A flight starts in the departure airport's zone and ends in the arrival's.
+- Something that takes the whole day (a day at a theme park, a wedding) has "kind": "all-day" and starts at 00:00 that day where it is, such as "2026-11-27T00:00:00-05:00" with "tz": "America/New_York". The plan shows it as "All day", and the calendar file gets just its date.
 - Give place.lat and place.lng when you know them (geocode): the plan shows how far apart the stops are.
 
 ## Bookings: /trip/bookings/<short-name>.json
