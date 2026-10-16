@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { requestLimits, fits, PhotoCopies, sizeLine } from '../../src/core/request-photos.js';
+import { requestLimits, fits, PhotoCopies, sizeLine, healRegion } from '../../src/core/request-photos.js';
 import { photoSettings } from '../../src/core/photos.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -69,4 +69,22 @@ test('a crop is always a copy, made from the stored photo', async () => {
   assert.equal(crop.made, true);
   assert.deepEqual(codec.calls[0].crop, { x: 0, y: 0, width: 1000, height: 800 });
   assert.equal(crop.width, 1000);
+});
+
+test('crop regions heal themselves (spec §7.2)', () => {
+  assert.deepEqual(healRegion([0.25, 0.1, 0.75, 0.6], 4000, 3000), { crop: { x: 1000, y: 300, width: 2000, height: 1500 }, used: [0.25, 0.1, 0.75, 0.6], notes: [] });
+  const swapped = healRegion([0.75, 0.6, 0.25, 0.1], 4000, 3000);
+  assert.deepEqual(swapped.used, [0.25, 0.1, 0.75, 0.6]);
+  assert.match(swapped.notes.join(' '), /swapped/);
+  // (A value above 1 would be read as pixels, so this region goes past the left edge only.)
+  const clamped = healRegion([-0.2, 0.5, 1, 0.9], 4000, 3000);
+  assert.deepEqual(clamped.used, [0, 0.5, 1, 0.9]);
+  const pixels = healRegion([1000, 300, 3000, 1800], 4000, 3000);
+  assert.deepEqual(pixels.used, [0.25, 0.1, 0.75, 0.6]);
+  assert.match(pixels.notes.join(' '), /pixels/);
+  const tiny = healRegion([0.5, 0.5, 0.501, 0.501], 4000, 3000);
+  assert.equal(tiny.crop.width, 32);
+  assert.equal(tiny.crop.height, 32);
+  assert.match(tiny.notes.join(' '), /grown/);
+  assert.equal(healRegion([0.995, 0.995, 1, 1], 4000, 3000).crop.x + 32 <= 4000, true);
 });
