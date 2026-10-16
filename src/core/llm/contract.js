@@ -6,6 +6,8 @@
  * @typedef {{ type: 'text', text: string }
  *   | { type: 'image', mediaType: string, data: string, hash?: string, path?: string, region?: number[], fileId?: string, missing?: boolean }
  *   | { type: 'document', mediaType: string, data: string, name?: string, missing?: boolean }
+ *   | { type: 'audio', mediaType: string, data: string }
+ *   | { type: 'speech', id: string, text?: string, clip?: string }
  *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
@@ -14,7 +16,8 @@
  *   region where it came from (for stubs), fileId a provider upload (spec §4.8); endpoint types use mediaType and data,
  *   or fileId when they upload. missing marks one whose bytes are gone: annai never sends it. provider is a provider's own block (a server
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
- *   (signature or redacted) is only ever sent back to that model.
+ *   (signature or redacted) is only ever sent back to that model. audio.data is base64, sent only to a model that takes audio. speech is a heard
+ *   segment (spec §10.3): annai resolves it for each model attempt into audio or words; text is its words once written down, clip a kept voice clip's hash.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
@@ -39,9 +42,11 @@
  *   | { type: 'logprobs', top: { token: string, logprob: number }[] }
  *   | { type: 'provider', block: any }
  *   | { type: 'citation', url: string, title?: string }
- *   | { type: 'stop', reason: StopReason }} StreamEvent
+ *   | { type: 'stop', reason: StopReason }
+ *   | { type: 'restart' }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
- *   arguments so far, both to show progress: a model that is thinking is not a model that never started.
+ *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
+ *   model or the same one; what streamed before is void (only callRole sends it).
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
  *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin'} ErrorKind
  */
@@ -145,6 +150,7 @@ function retryAfterOf(headers) {
 export function portable(messages, modelKey) {
   /** @type {(p: Part) => Part[]} */
   const keep = (p) => {
+    if (p.type === 'speech') return [{ type: 'text', text: p.text || '[audio, not transcribed]' }]; // resolved before sending; never sent as it is
     if (p.type === 'reasoning') return (p.signature || p.redacted) && p.model !== modelKey ? [] : [p];
     if (p.type === 'provider') return p.model === modelKey ? [p] : [];
     if (p.type === 'tool_call' || p.type === 'tool_result') return [{ ...p, id: safeId(p.id) }];

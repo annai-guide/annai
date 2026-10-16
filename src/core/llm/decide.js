@@ -13,14 +13,16 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const SYSTEM = 'You make one quick decision. Answer with the letter of the best option and nothing else.';
 
 /**
- * @param {{ prompt: string, options: Option[], threshold?: number, call: Call, logprobs?: boolean }} c
- * @returns {Promise<{ probabilities: Record<string, number>, by: 'decide' | 'main' }>}
+ * @param {{ prompt: string, options: Option[], threshold?: number, call: Call, logprobs?: boolean, parts?: import('./contract.js').Part[], fallback?: boolean }} c
+ *   parts: more of the question, such as heard speech (spec §10.4); fallback false: below the threshold, or with no readable answer, the
+ *   result is 'unsure' and the main model isn't asked
+ * @returns {Promise<{ probabilities: Record<string, number>, by: 'decide' | 'main' | 'unsure' }>}
  */
-export async function decide({ prompt, options, threshold = DECIDE_THRESHOLD, call, logprobs = false }) {
+export async function decide({ prompt, options, threshold = DECIDE_THRESHOLD, call, logprobs = false, parts = [], fallback = true }) {
   if (options.length < 2 || options.length > LETTERS.length) throw new Error('A decision needs 2 to 26 options.');
   const letters = LETTERS.slice(0, options.length).split('');
   const text = `${prompt}\n\n${options.map((o, i) => `${letters[i]}. ${o.label}`).join('\n')}`;
-  const messages = [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text }] }];
+  const messages = [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text }, ...parts] }];
   const tool = { name: 'decide', description: 'Choose one option by its letter.', input: { type: 'object', properties: { option: { enum: letters } }, required: ['option'] } };
   /** @type {Awaited<ReturnType<Call>> | null} */
   let first = null;
@@ -33,6 +35,7 @@ export async function decide({ prompt, options, threshold = DECIDE_THRESHOLD, ca
   }
   const spread = first ? read(first.reply, letters) : null;
   if (spread && Math.max(...spread) >= threshold) return { probabilities: byId(options, spread), by: 'decide' };
+  if (!fallback) return { probabilities: spread ? byId(options, spread) : {}, by: 'unsure' };
   // Not sure enough, or no readable answer: the main model decides, by letter (it may be thinking, which forced tools don't allow).
   const second = await call('main', { system: SYSTEM, messages, maxOutput: 64 });
   const chosen = read({ ...second.reply, logprobs: undefined }, letters) ?? letters.map((_, i) => (i === 0 ? 1 : 0));
