@@ -9,7 +9,7 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
-import { isStandalone, requestPersist } from '../ui/platform.js';
+import { isStandalone, requestPersist, watchForUpdates } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 
@@ -75,17 +75,10 @@ async function registerServiceWorker(store, shell) {
   });
   try {
     const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    const announce = () => shell.setUpdateReady(() => {
+    watchForUpdates(navigator.serviceWorker, reg, () => shell.setUpdateReady(() => {
       restartRequested = true;
       reg.waiting?.postMessage('skip-waiting');
-    });
-    if (reg.waiting && navigator.serviceWorker.controller) announce();
-    reg.addEventListener('updatefound', () => {
-      const w = reg.installing;
-      w?.addEventListener('statechange', () => {
-        if (w.state === 'installed' && navigator.serviceWorker.controller) announce();
-      });
-    });
+    }));
   } catch (e) {
     logEvent(store, SYS, { type: 'error', data: { message: `The offline service didn't start: ${/** @type {any} */ (e)?.message ?? e}` } }).catch(() => {});
   }

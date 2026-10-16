@@ -25,3 +25,19 @@ export async function requestPersist() {
     return false;
   }
 }
+
+/**
+ * Calls announce when a new version has installed and waits behind the one serving this page (spec §17 rule 5).
+ * The first install is no update. WebKit can hand the page to it before saying it installed, so "a controller
+ * exists" isn't enough: the controller has to be a different worker.
+ * @param {ServiceWorkerContainer} container @param {ServiceWorkerRegistration} reg @param {() => void} announce
+ */
+export function watchForUpdates(container, reg, announce) {
+  if (reg.waiting && container.controller) announce();
+  reg.addEventListener('updatefound', () => {
+    const w = reg.installing;
+    w?.addEventListener('statechange', () => {
+      if (w.state === 'installed' && container.controller && container.controller !== w) announce();
+    });
+  });
+}
