@@ -42,6 +42,14 @@ test('planRows: each item in its own zone, with its booking, and what is wrong w
   assert.deepEqual([by.skate.at, by.skate.day, by.skate.time], [null, null, '']);
 });
 
+test('planRows: a booking in any state but confirmed needs checking, as the Bookings list says', () => {
+  const item = (/** @type {string} */ id) => ({ path: `/plan/${id}.json`, item: { id, title: id, fixed: true, booking: `/bookings/${id}.json` } });
+  const booking = (/** @type {string} */ id, /** @type {unknown} */ status) => ({ path: `/bookings/${id}.json`, booking: { id, kind: 'other', status, source: '/files/x.pdf' } });
+  const got = planRows([item('odd'), item('none'), item('ok'), { path: '/plan/free.json', item: { id: 'free', title: 'free', fixed: false } }],
+    [booking('odd', 'pending'), booking('none', undefined), booking('ok', 'confirmed')], { fallbackTz: NY });
+  assert.deepEqual(got.map((r) => [r.item.id, r.check]), [['odd', true], ['none', true], ['ok', false], ['free', false]]);
+});
+
 test('planDays: every trip day, other days with something on them, rows by time; untimed apart', () => {
   const { days, untimed } = planDays(rows(), { start: '2026-11-25', end: '2026-11-29' });
   assert.deepEqual(days.map((d) => d.key), ['2026-11-20', '2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28', '2026-11-29']);

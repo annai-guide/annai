@@ -7,8 +7,9 @@ import { dayIn, timeIn, validZone } from './time.js';
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
  * @typedef {{ path: string, item: Record<string, any>, at: number | null, day: string | null, time: string, end: string,
  *   bookingPath: string | null, booking: Record<string, any> | null, check: boolean, missing: boolean, note: string }} PlanRow
- *   time and end: "HH:MM" in the item's own zones ('' when there is none, and for an all-day item); check: its booking is
- *   unverified; missing: it names a booking the trip doesn't have; note: what was wrong with its time
+ *   time and end: "HH:MM" in the item's own zones ('' when there is none, and for an all-day item); check: its booking isn't
+ *   confirmed (whatever else it says, the user checks it); missing: it names a booking the trip doesn't have; note: what
+ *   was wrong with its time
  */
 
 export const LEG_MAX_KM = 1000; // farther than a day's drive: a flight, not a leg
@@ -48,7 +49,7 @@ export function planRows(items, bookings, { fallbackTz }) {
       end: timed && !allDay && item.end?.at ? timeIn(item.end.at, endTz) ?? '' : '',
       bookingPath: ref,
       booking,
-      check: booking?.status === 'unverified',
+      check: booking !== null && booking.status !== 'confirmed',
       missing: item.booking !== undefined && item.booking !== '' && !booking,
       note: timed && !validZone(own) ? `Its time zone "${String(own ?? '')}" isn't one annai knows; shown in ${fallbackTz}.` : '',
     };
