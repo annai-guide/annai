@@ -6,7 +6,7 @@ import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
 import { isPhotoType } from './photos.js';
-import { readPhotoMeta, stripMetadata } from './photo-meta.js';
+import { readPhotoMeta, stripMetadata, sniffImageType } from './photo-meta.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -168,8 +168,10 @@ export async function exportArchive(store, opts) {
       const name = dir + f.path;
       /** @type {{ bytes: Uint8Array, type: string, hash: string, meta?: PhotoMeta }} */
       let out = { bytes: await readBlob(store, f.hash, f.path), type: f.type, hash: f.hash, meta: f.meta };
-      if (opts.share && isPhotoType(f.type)) {
-        const shared = await sharePhoto(f, out.bytes, opts.share);
+      // A photo is known by its bytes, not by the type it was saved under.
+      const image = opts.share ? sniffImageType(out.bytes) ?? (isPhotoType(f.type) ? f.type : null) : null;
+      if (opts.share && image) {
+        const shared = await sharePhoto({ ...f, type: image }, out.bytes, opts.share);
         if (!shared) {
           skipped.push(f.path);
           continue;
@@ -229,10 +231,11 @@ export async function exportArchive(store, opts) {
 /**
  * A photo as a Share carries it (§12.2). Encoded first: a kept original, a format some browsers
  * can't show, and a photo of unknown origin (no metadata, so not added through ingest). Without
- * places, its metadata and its bytes say nothing about where it was taken, and bytes that nobody
- * cleaned (encoded or stripped) stay home: the reader only knows EXIF, so finding no location in
- * them proves nothing. null when the photo has to stay home, for example a HEIC original in a
- * browser that can't read HEIC.
+ * places, its metadata and its bytes say nothing about where it was taken: every photo is either
+ * stripped or encoded here, or stays home. Nothing it was given is trusted for that (its metadata
+ * may come from someone else's archive), and the reader only knows EXIF, so finding no location
+ * proves nothing. null when the photo has to stay home, for example a HEIC original in a browser
+ * that can't read HEIC.
  * @param {{ path: string, type: string, meta?: PhotoMeta }} f @param {Uint8Array} bytes
  * @param {{ places: boolean, convert?: PhotoConvert }} share
  * @returns {Promise<{ bytes: Uint8Array, type: string, meta?: PhotoMeta } | null>}
@@ -240,22 +243,24 @@ export async function exportArchive(store, opts) {
 async function sharePhoto(f, bytes, share) {
   /** @type {{ bytes: Uint8Array, type: string, meta?: PhotoMeta }} */
   let out = { bytes, type: f.type, meta: f.meta ? { ...f.meta } : undefined };
-  let clean = Boolean(f.meta && !f.meta.original); // ingest made it: a canvas encoding, or bytes it stripped
-  if (!clean || !PORTABLE.has(f.type)) {
+  let clean = false; // encoded or stripped here
+  let tried = false;
+  const encode = async () => {
+    tried = true;
     const encoded = share.convert ? await share.convert(f, bytes).catch(() => null) : null;
-    if (encoded) {
-      const { original: _, ...rest } = out.meta ?? {};
-      out = { bytes: encoded.bytes, type: encoded.type, meta: { ...rest, ...(encoded.width && encoded.height ? { width: encoded.width, height: encoded.height } : {}) } };
-      clean = true;
-    }
-  }
+    if (!encoded) return;
+    const { original: _, ...rest } = out.meta ?? {};
+    out = { bytes: encoded.bytes, type: encoded.type, meta: { ...rest, ...(encoded.width && encoded.height ? { width: encoded.width, height: encoded.height } : {}) } };
+    clean = true;
+  };
+  if (f.meta?.original || !PORTABLE.has(f.type) || (!f.meta && isPhotoType(f.type))) await encode();
   if (share.places) return out;
   if (out.meta) delete out.meta.place;
-  const stripped = stripMetadata(out.bytes, out.type);
+  const stripped = clean ? null : stripMetadata(out.bytes, out.type);
   if (stripped) {
     out.bytes = stripped;
     clean = true;
-  }
+  } else if (!clean && !tried) await encode(); // for example a PNG: encoding is the only way to be sure
   return clean && !readPhotoMeta(out.bytes).place ? out : null;
 }
 

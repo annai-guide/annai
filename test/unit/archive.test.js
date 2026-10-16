@@ -498,3 +498,34 @@ test('a Share without locations leaves out a photo it can neither encode nor str
   assert.deepEqual(skipped, ['/files/old.png']);
   assert.equal(manifest.files.some((f) => f.path === '/files/old.png'), false);
 });
+
+test('a Share without locations trusts no metadata it was given: a photo is cleaned or left out', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  // A PNG with its location in XMP, which the reader doesn't know, and metadata (say, from someone's archive) that says nothing about being an original.
+  const png = await photoFixture('screenshot.png');
+  const xmp = utf8('XML:com.adobe.xmp\0\0\0\0\0<x:xmpmeta><exif:GPSLatitude>36,13.31N</exif:GPSLatitude></x:xmpmeta>');
+  const chunk = new Uint8Array(12 + xmp.length);
+  new DataView(chunk.buffer).setUint32(0, xmp.length);
+  chunk.set(utf8('iTXt'), 4);
+  chunk.set(xmp, 8);
+  const tagged = new Uint8Array([...png.subarray(0, 33), ...chunk, ...png.subarray(33)]); // after IHDR (8 + 25 bytes)
+  await a.ws.write(trip, '/files/map.png', tagged, { author: 'user', type: 'image/png', meta: { width: 64, height: 48 } });
+  const encodeAll = async () => ({ bytes: await photoFixture('plain.jpg'), type: 'image/jpeg', width: 64, height: 48 });
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: false, convert: encodeAll } });
+  const entries = await readZip(await bytesOf(blob));
+  const map = manifest.files.find((f) => f.path === '/files/map.png');
+  assert.ok(map);
+  assert.ok(!Buffer.from(/** @type {Uint8Array} */ (entries.get(map.name))).toString('latin1').includes('GPSLatitude'));
+});
+
+test('a Share without locations knows a photo by its bytes, whatever type it was saved as', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  await a.ws.write(trip, '/files/photo.bin', await photoFixture('upright.jpg'), { author: 'user', type: 'application/octet-stream' });
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: false } });
+  const entries = await readZip(await bytesOf(blob));
+  const photo = manifest.files.find((f) => f.path === '/files/photo.bin');
+  assert.ok(photo);
+  assert.equal(readPhotoMeta(/** @type {Uint8Array} */ (entries.get(photo.name))).place, undefined);
+});
