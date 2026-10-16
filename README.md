@@ -55,6 +55,9 @@ On Linux without WebKit's system libraries, run the browser tests in Playwright'
 docker run --rm --ipc=host -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v1.63.0-noble npx playwright test
 ```
 
+The photos in `test/fixtures/photos/` are built by `node scripts/make-photo-fixtures.mjs`, which needs
+ImageMagick 7 with HEIC and WebP support. They're committed; rebuild them only to change them.
+
 **Deploying.** `sw.js` names its offline cache after a hash of every file it ships
 (`BUILD`, written by `npm run stamp`), so installed copies update whenever anything
 changes. CI fails when the stamp is stale; the Cloudflare Pages build command should be
