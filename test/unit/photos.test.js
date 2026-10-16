@@ -37,10 +37,10 @@ function fakeCodec(result = {}) {
 }
 
 test('settings: defaults, and anything missing or out of range falls back to them', () => {
-  assert.deepEqual(photoSettings({}), { keepOriginals: false, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: null, maxBytes: null } });
+  assert.deepEqual(photoSettings({}), { keepOriginals: false, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: null, maxBytes: null }, request: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 1024 * 1024 } });
   assert.deepEqual(DEFAULT_PHOTO_SETTINGS.ingest.formats, ['image/webp', 'image/jpeg']);
   const s = photoSettings({ photos: { keepOriginals: true, ingest: { formats: [], quality: 7, maxEdge: 2000, maxBytes: 'big' } } });
-  assert.deepEqual(s, { keepOriginals: true, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: null } });
+  assert.deepEqual(s, { keepOriginals: true, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: null }, request: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 1024 * 1024 } });
   assert.deepEqual(photoSettings({ photos: { ingest: { formats: ['image/jpeg'], quality: 0.8, maxBytes: 2_000_000 } } }).ingest,
     { formats: ['image/jpeg'], quality: 0.8, maxEdge: null, maxBytes: 2_000_000 });
 });

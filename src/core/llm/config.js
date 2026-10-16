@@ -15,7 +15,9 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  * @typedef {{ name?: string, baseUrl?: string, headers?: Record<string, string>, tunables?: Record<string, any>, extraBody?: Record<string, any> }} EndpointValues
  * @typedef {{ name?: string, providerId?: string, input?: string[], tools?: boolean, contextWindow?: number | null, maxOutput?: number | null,
  *   prices?: Prices | null, cacheTtls?: string[], reasoning?: Record<string, any>, tunables?: Record<string, any>, extraBody?: Record<string, any>,
- *   providerTools?: ProviderTool[], logprobs?: boolean }} ModelValues
+ *   providerTools?: ProviderTool[], logprobs?: boolean, images?: ImageLimits }} ModelValues
+ * @typedef {{ formats?: string[], maxEdge?: number, maxBytes?: number, maxCount?: number }} ImageLimits
+ *   what photos the model accepts (spec §9.2): from the template, then corrected by refusals (§4.8)
  * @typedef {{ id: string, name: string, kind: 'search' | 'fetch' | 'other', patch: Record<string, any>, pricePerCall?: number, usageKey?: string }} ProviderTool
  *   a tool the provider runs itself (spec §9.5): the patch enables it; pricePerCall (USD) × the usage count named by usageKey is its cost
  * @typedef {{ id: string, type: string, template: { id: string, version: number, values: EndpointValues } | null, user: EndpointValues,
@@ -25,7 +27,7 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  * @typedef {{ id: string, type: string, name: string, baseUrl: string, headers: Record<string, string>, tunables: Record<string, any>, extraBody: Record<string, any> }} Endpoint
  * @typedef {{ id: string, endpoint: string, name: string, providerId: string, input: string[], tools: boolean, contextWindow: number | null,
  *   maxOutput: number | null, prices: Prices | null, cacheTtls: string[], reasoning: Record<string, any>, tunables: Record<string, any>,
- *   extraBody: Record<string, any>, providerTools: ProviderTool[], logprobs: boolean }} Model
+ *   extraBody: Record<string, any>, providerTools: ProviderTool[], logprobs: boolean, images: ImageLimits }} Model
  * @typedef {Record<string, { models: string[], level: string, firstOutputSeconds?: number }>} Roles
  *   firstOutputSeconds: how long to wait for a model's first words before trying the next (spec §9.6)
  * @typedef {{ endpoints: Record<string, EndpointRecord>, models: Record<string, ModelRecord>, roles: Roles }} ModelConfig
@@ -42,7 +44,7 @@ const secretId = (/** @type {string} */ endpointId) => `llm:${endpointId}`;
 const ENDPOINT_DEFAULTS = Object.freeze({ name: '', baseUrl: '', headers: {}, tunables: {}, extraBody: {} });
 const MODEL_DEFAULTS = Object.freeze({
   name: '', providerId: '', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: null,
-  cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false,
+  cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {},
 });
 
 const OBJECT = { type: 'object' };
@@ -65,6 +67,7 @@ const VALUES = {
       properties: { id: { type: 'string', minLength: 1 }, name: { type: 'string' }, kind: { enum: ['search', 'fetch', 'other'] }, patch: OBJECT,
         pricePerCall: { type: 'number', minimum: 0 }, usageKey: { type: 'string' } } } },
     logprobs: { type: 'boolean' },
+    images: { type: 'object', properties: { formats: { type: 'array', items: { type: 'string' } }, maxEdge: { type: 'integer', minimum: 16 }, maxBytes: { type: 'integer', minimum: 1 }, maxCount: { type: 'integer', minimum: 1 } } },
     cacheTtls: { type: 'array', items: { enum: ['5m', '1h'] } },
   },
 };

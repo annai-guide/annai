@@ -8,7 +8,7 @@ import { normPath, typeForPath } from './paths.js';
 
 /** @typedef {import('./workspace.js').Workspace} Workspace */
 /** @typedef {{ formats: string[], quality: number, maxEdge: number | null, maxBytes: number | null }} EncodeSettings */
-/** @typedef {{ keepOriginals: boolean, ingest: EncodeSettings }} PhotoSettings */
+/** @typedef {{ keepOriginals: boolean, ingest: EncodeSettings, request: EncodeSettings }} PhotoSettings */
 /**
  * What turns a photo into another format: in browsers, src/ui/photo-codec.js.
  * @typedef {{ encode(source: Blob, opts: EncodeSettings & { maxPixels: number }): Promise<{ bytes: Uint8Array, type: string, width: number, height: number }> }} Codec
@@ -22,6 +22,8 @@ export const MAX_CANVAS_PIXELS = 4096 * 4096;
 export const DEFAULT_PHOTO_SETTINGS = Object.freeze({
   keepOriginals: false,
   ingest: Object.freeze({ formats: Object.freeze(['image/webp', 'image/jpeg']), quality: 0.9, maxEdge: null, maxBytes: null }),
+  // What Shiori is sent (spec §4.8): within these and what the model accepts.
+  request: Object.freeze({ formats: Object.freeze(['image/webp', 'image/jpeg']), quality: 0.9, maxEdge: 2000, maxBytes: 1024 * 1024 }),
 });
 /** @type {Record<string, string>} */
 const EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'image/avif': 'avif' };
@@ -37,14 +39,19 @@ const isSize = (n) => Number.isInteger(n) && /** @type {number} */ (n) >= 1;
  */
 export function photoSettings(app) {
   const p = app?.photos ?? {};
-  const i = p.ingest ?? {};
   /** @param {unknown} x @param {number} lo @param {number} hi */
   const num = (x, lo, hi) => (typeof x === 'number' && Number.isFinite(x) && x >= lo && x <= hi ? x : null);
-  const formats = Array.isArray(i.formats) && i.formats.length > 0 && i.formats.every((f) => typeof f === 'string' && f.startsWith('image/'))
-    ? [...i.formats] : [...DEFAULT_PHOTO_SETTINGS.ingest.formats];
+  /** One set of encode settings, with its defaults for anything missing or out of range. @param {any} i @param {{ formats: readonly string[], quality: number, maxEdge: number | null, maxBytes: number | null }} d @returns {EncodeSettings} */
+  const read = (i = {}, d) => ({
+    formats: Array.isArray(i.formats) && i.formats.length > 0 && i.formats.every((/** @type {unknown} */ f) => typeof f === 'string' && f.startsWith('image/')) ? [...i.formats] : [...d.formats],
+    quality: num(i.quality, 0.1, 1) ?? d.quality,
+    maxEdge: i.maxEdge === null ? null : num(i.maxEdge, 16, 65535) ?? d.maxEdge,
+    maxBytes: i.maxBytes === null ? null : num(i.maxBytes, 1024, 2 ** 40) ?? d.maxBytes,
+  });
   return {
     keepOriginals: p.keepOriginals === true,
-    ingest: { formats, quality: num(i.quality, 0.1, 1) ?? 0.9, maxEdge: num(i.maxEdge, 16, 65535), maxBytes: num(i.maxBytes, 1024, 2 ** 40) },
+    ingest: read(p.ingest, DEFAULT_PHOTO_SETTINGS.ingest),
+    request: read(p.request, DEFAULT_PHOTO_SETTINGS.request),
   };
 }
 

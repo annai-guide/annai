@@ -48,7 +48,8 @@ export function canEncode(type) {
  * and maxPixels in all, never enlarged. Over maxBytes, it lowers the quality to 0.5, then the
  * size, until the photo fits. Rejects when the browser can't read the photo.
  * @param {Blob} source
- * @param {{ formats: string[], quality: number, maxEdge: number | null, maxBytes: number | null, maxPixels: number | null }} opts
+ * With crop, only that part of the photo (in its pixels, upright) is drawn (spec §4.8: a closer look).
+ * @param {{ formats: string[], quality: number, maxEdge: number | null, maxBytes: number | null, maxPixels: number | null, crop?: { x: number, y: number, width: number, height: number } | null }} opts
  * @returns {Promise<{ bytes: Uint8Array, type: string, width: number, height: number }>}
  */
 export async function encodePhoto(source, opts) {
@@ -61,7 +62,8 @@ export async function encodePhoto(source, opts) {
         break;
       }
     }
-    let { width, height } = fitSize(bitmap.width, bitmap.height, opts.maxEdge, opts.maxPixels);
+    const box = opts.crop ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+    let { width, height } = fitSize(box.width, box.height, opts.maxEdge, opts.maxPixels);
     let quality = opts.quality;
     for (;;) {
       const c = canvas(width, height);
@@ -72,7 +74,7 @@ export async function encodePhoto(source, opts) {
         g.fillRect(0, 0, width, height);
       }
       g.imageSmoothingQuality = 'high';
-      g.drawImage(bitmap, 0, 0, width, height);
+      g.drawImage(bitmap, box.x, box.y, box.width, box.height, 0, 0, width, height);
       const blob = await toBlob(c, type, quality);
       if (!blob || blob.type !== type) throw new Error(`this browser could not write ${type}`);
       if (opts.maxBytes === null || blob.size <= opts.maxBytes || Math.max(width, height) <= 64) {

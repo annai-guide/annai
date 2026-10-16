@@ -9,7 +9,7 @@ import { modelTrace } from '../../src/core/llm/trace.js';
 import { text as textOf } from '../../src/core/bytes.js';
 
 const endpoint = (over = {}) => ({ id: 'ep-1', type: 'test', name: 'Test endpoint', baseUrl: 'https://llm.test', headers: {}, tunables: {}, extraBody: {}, ...over });
-const model = (over = {}) => ({ id: 'm-1', endpoint: 'ep-1', name: 'Test model', providerId: 'test-1', input: ['text'], tools: true, contextWindow: 100000, maxOutput: 1000, prices: { input: 1, output: 2 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, ...over });
+const model = (over = {}) => ({ id: 'm-1', endpoint: 'ep-1', name: 'Test model', providerId: 'test-1', input: ['text'], tools: true, contextWindow: 100000, maxOutput: 1000, prices: { input: 1, output: 2 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over });
 /** @type {any} */
 const request = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] };
 

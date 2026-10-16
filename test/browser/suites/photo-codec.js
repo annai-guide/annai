@@ -80,4 +80,17 @@ export default function (test, assert) {
   test("a photo the browser can't read is refused, never drawn blank", async () => {
     await assert.rejects(encodePhoto(new Blob(['not a photo'], { type: 'image/jpeg' }), base));
   });
+
+  test('encodePhoto: a crop draws only that part of the photo', async () => {
+    const c = new OffscreenCanvas(200, 100);
+    const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+    g.fillStyle = '#f00';
+    g.fillRect(0, 0, 100, 100);
+    g.fillStyle = '#00f';
+    g.fillRect(100, 0, 100, 100);
+    const r = await encodePhoto(await c.convertToBlob({ type: 'image/png' }), { ...base, formats: ['image/png'], crop: { x: 100, y: 0, width: 100, height: 100 } });
+    assert.equal(r.width, 100);
+    assert.equal(r.height, 100);
+    assert.equal(await colour(r, 10, 50), 'B');
+  });
 }

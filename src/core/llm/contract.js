@@ -4,13 +4,15 @@
  * translate between this and one wire protocol; the core contains no protocol.
  *
  * @typedef {{ type: 'text', text: string }
- *   | { type: 'image', mediaType: string, data: string }
+ *   | { type: 'image', mediaType: string, data: string, hash?: string, path?: string, region?: number[], fileId?: string }
  *   | { type: 'document', mediaType: string, data: string, name?: string }
  *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
- *   image.data and document.data are base64 (a document is a PDF). provider is a provider's own block (a server
+ *   image.data and document.data are base64 (a document is a PDF). An image's hash is its bytes' fingerprint, path and
+ *   region where it came from (for stubs), fileId a provider upload (spec §4.8); endpoint types use mediaType and data,
+ *   or fileId when they upload. provider is a provider's own block (a server
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
