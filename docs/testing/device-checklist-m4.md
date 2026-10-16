@@ -1,6 +1,6 @@
 # Device checklist: milestone 4 (planning and bookings)
 
-The done criterion is the real Thanksgiving trip (Nov 25–29, 2026), planned and with its bookings imported, on an iPhone and an Android phone, in the app installed to the Home Screen. Open annai over HTTPS (on this machine: `https://ksxx.west-dojo.ts.net:8792/`, tailnet only).
+The done criterion is the real Thanksgiving trip (Nov 25–29, 2026), planned and with its bookings imported, on an iPhone and an Android phone, in the app installed to the Home Screen. Open annai over HTTPS: annai.guide once it is deployed, or during development your machine's tailnet address from `tailscale serve`. Each address keeps its own data, so use the one you will travel with.
 
 ## Bringing bookings in
 
