@@ -2,9 +2,12 @@
 
 Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), with annai installed to the Home Screen, against a deployed preview or the dev server tunnelled over HTTPS.
 
+## Updating a phone that already has photos
+- [ ] On a phone that already holds trips with photos from milestone 1b, load the update and open annai. Note how long the first start takes: annai indexes every stored item once. It starts, Settings shows the same "Using X", and every photo still opens.
+
 ## The questions
 - [ ] Start a trip and add 30 photos. On Trips, its card says "not backed up".
-- [ ] Open the trip and tap Remove trip. The first question names the trip. Cancel keeps it. Swipe or press Escape to dismiss it: the trip stays.
+- [ ] Open the trip and tap Remove trip. The first question names the trip. Cancel keeps it. On Android, Back also keeps it.
 - [ ] Remove trip → Remove: "Not backed up" appears. Cancel keeps the trip.
 - [ ] Export trip → Backup → Build file → Save file (Save to Files on the iPhone). On Trips, the card says "backed up just now".
 - [ ] A Share export doesn't count: Export trip → Share → Save. The card still says when the last Backup was.

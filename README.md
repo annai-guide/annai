@@ -7,9 +7,10 @@ open-source, local-first travel agent that runs entirely in your browser:
 plan a trip before you go, get woken-up help while you travel, and keep the
 memories afterwards.
 
-> **Status:** milestone 1 (foundation) is built: trips with versioned files, export and import
-> (optionally encrypted), plugins, offline use and the trace. Shiori, the guide herself, comes in
-> milestone 2. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> **Status:** milestones 1, 1b and 1c are built: trips with versioned files, export and import
+> (optionally encrypted), plugins, offline use and the trace; photos from the camera, the library
+> and the share sheet; and removing trips to free space, with each trip's backup status. Shiori,
+> the guide herself, comes in milestone 2. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Principles

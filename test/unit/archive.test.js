@@ -4,7 +4,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, StorageFullError } from '../../src/core/workspace.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip, listTrips, ME, SYS_SETTINGS, recordBackup, backupState, removeTrip } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, ME, SYS_SETTINGS, recordBackup, backupState, removeTrip } from '../../src/core/scopes.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { exportArchive, openArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
@@ -677,4 +677,15 @@ test('a failed import keeps content that history came to point at while it ran',
   const [first] = await b.ws.history(trip, '/files/p.jpg');
   await b.ws.restore(trip, '/files/p.jpg', /** @type {string} */ (first.new), { author: 'user' });
   assert.deepEqual((await b.ws.read(trip, '/files/p.jpg'))?.bytes, photo);
+});
+
+test('a Backup of everything records every trip it holds, archived ones too', async () => {
+  const a = await device();
+  const kept = await sampleTrip(a.ws);
+  const old = await createTrip(a.ws, { title: 'Old trip' });
+  await setTripStatus(a.store, old, 'archived');
+  const { seqs } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  await recordBackup(a.store, seqs, 5000);
+  assert.deepEqual(await backupState(a.store, kept), { at: 5000, changed: false });
+  assert.deepEqual(await backupState(a.store, old), { at: 5000, changed: false });
 });

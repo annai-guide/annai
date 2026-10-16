@@ -19,7 +19,8 @@
  * @property {(hash: string) => Promise<boolean>} hasBlob
  * @property {(rec: BlobRecord) => Promise<void>} putBlob
  * @property {(hash: string) => Promise<void>} deleteBlob
- * @property {() => Promise<{ hash: string, size: number }[]>} listBlobs  every blob's hash and size, without reading its content
+ * @property {() => Promise<{ hash: string, size: number }[]>} listBlobs  every blob's hash and size, without reading its content.
+ *   It reads IndexedDB's index on size, so a blob is listed (and can be freed) only when its size is a number.
  * @property {(scope: string, path: string) => Promise<FileEntry|undefined>} getFile
  * @property {(entry: FileEntry) => Promise<void>} putFile
  * @property {(scope: string, path: string) => Promise<void>} deleteFile
