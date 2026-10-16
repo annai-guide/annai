@@ -11,6 +11,8 @@ import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { Agent } from '../../src/core/agent/loop.js';
+import { selfTools } from '../../src/core/agent/self-tools.js';
+import { readFile } from 'node:fs/promises';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /**
@@ -60,9 +62,13 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   /** @type {any[]} */
   const notices = [];
   const agent = new Agent({ store, ws, llm, registry, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
+  agent.addLoopTools(selfTools(agent));
   agent.on('notice', (n) => notices.push(n));
+  /** @type {Record<string, string>} annai's own personalities, as shipped */
+  const presets = {};
+  for (const n of ['shiori', 'storyteller', 'quiet']) presets[n] = await readFile(new URL(`../../assets/personalities/${n}.md`, import.meta.url), 'utf8');
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */
   const events = (types) => store.tx(['events'], 'readonly', (t) => t.listEvents(trip, types ? { types } : {}));
-  return { store, ws, trip, registry, host, agent, llm, config, requests, events, notices };
+  return { store, ws, trip, registry, host, agent, llm, config, requests, events, notices, presets };
 }

@@ -24,7 +24,7 @@ import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string }} Wake
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {{ name: StateName, label: string, detail?: string }} State
- * @typedef {{ tone: 'warn' | 'info', title: string, body: string }} Notice
+ * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[] }} Notice
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
  * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
  * @typedef {import('./tools.js').Tool & { pluginId: string }} LoopTool
@@ -377,6 +377,16 @@ export class Agent {
     const text = renderForSummary(old.messages);
     const r = await this.llm.call({ role: 'utility', request: { system: COLD_SYSTEM, messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, record: { tag: 'compaction' } });
     return r.reply.text.trim() || null;
+  }
+
+  /** Writes a conversation event in the open conversation (for Self tools). @param {Parameters<typeof record>[2]} ev */
+  log(ev) {
+    return this.#log(ev);
+  }
+
+  /** A system card (spec §16.1). @param {Notice} n */
+  notify(n) {
+    this.#emit('notice', n);
   }
 
   /** Writes a conversation event, adds it to the transcript, and tells the screen. @param {Parameters<typeof record>[2]} ev */
