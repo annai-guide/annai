@@ -4,6 +4,7 @@ import { LEVELS } from '../../core/llm/reasoning.js';
 import { addFromTemplate, templateUpdates } from '../../core/llm/templates.js';
 import { renderEndpoint, messageOf } from './endpoint.js';
 import { renderModel } from './model.js';
+import { talkPanel } from '../talk-panel.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = { main: 'Main: talks with you', utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks' };
@@ -23,7 +24,8 @@ export async function renderModels(ctx, route) {
     h('h1', { class: 'title', text: 'Models' }),
     h('p', { class: 'sub', text: 'Where Shiori thinks: the endpoints annai calls, their models, and which models each role tries, in order.' }),
     endpointsSection(ctx, cfg, catalog),
-    rolesSection(ctx, cfg));
+    rolesSection(ctx, cfg),
+    talkPanel(ctx));
 }
 
 /** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg @param {import('../../core/llm/templates.js').TemplateCatalog} catalog */

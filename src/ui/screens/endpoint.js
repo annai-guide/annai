@@ -1,6 +1,7 @@
 import { h, field, twoStep, jsonField } from '../dom.js';
 import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer } from '../../core/llm/config.js';
 import { templateUpdates, applyTemplate, addListedModel } from '../../core/llm/templates.js';
+import { testPanel } from '../model-check.js';
 
 /** An error in plain words; for a ValidationError, its own words without the field path. @param {any} e */
 export function messageOf(e) {
@@ -73,6 +74,7 @@ export async function renderEndpoint(ctx, id) {
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
       status),
     modelsSection(ctx, id, models),
+    models[0] ? testPanel(ctx, models[0].id, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
     h('div', { class: 'acts' }, twoStep('Remove endpoint', 'Tap again to remove it', async () => {
       await removeEndpoint(ctx.ws, ctx.store, id);
       ctx.go('#/models');

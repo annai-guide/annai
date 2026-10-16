@@ -124,3 +124,11 @@ input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; min-hei
 textarea.mono { font-family: var(--f-mono); font-size: 13px; }
 .listed { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
 .listed li { justify-content: space-between; }
+
+/* Talk to your models, and test results */
+.talk { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.talk-you { align-self: flex-end; max-width: 85%; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius); white-space: pre-wrap; overflow-wrap: anywhere; }
+.talk-model { display: flex; flex-direction: column; gap: 4px; }
+.talk-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.checks-result { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.checks-result .bad { color: var(--risk); }

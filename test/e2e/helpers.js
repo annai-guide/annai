@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import http from 'node:http';
 
 /**
  * Starts a dev server of the test's own, so a test can take the network away for real by stopping it.
@@ -54,4 +55,31 @@ export async function buildAndSave(page) {
   await save.click();
   const download = await downloading;
   return /** @type {string} */ (await download.path());
+}
+
+/**
+ * A stand-in model server on a port of its own, answering each path with a fixed response and
+ * allowing browser access (CORS), as a real endpoint must. Requests from a page a service worker
+ * controls can't be intercepted with page.route in WebKit, so model calls go to a real server.
+ * @param {Record<string, { status: number, type: string, body: string }>} routes by path
+ */
+export async function startModelServer(routes) {
+  const server = http.createServer((req, res) => {
+    const cors = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, POST, OPTIONS',
+      'access-control-allow-headers': String(req.headers['access-control-request-headers'] ?? 'content-type'),
+    };
+    req.resume();
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, cors).end();
+      return;
+    }
+    const r = routes[new URL(req.url ?? '/', 'http://localhost').pathname];
+    if (!r) res.writeHead(404, cors).end('not found');
+    else res.writeHead(r.status, { ...cors, 'content-type': r.type }).end(r.body);
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
+  const { port } = /** @type {import('node:net').AddressInfo} */ (server.address());
+  return { origin: `http://127.0.0.1:${port}`, stop: () => new Promise((resolve) => server.close(() => resolve(undefined))) };
 }

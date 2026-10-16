@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker } from './helpers.js';
+import { readFile } from 'node:fs/promises';
+import { openApp, waitForServiceWorker, startModelServer } from './helpers.js';
 
 /**
  * From the Models screen: adds an endpoint from a template (installing its plugin), names it,
@@ -54,4 +55,51 @@ test('a model is edited on its own page', async ({ page }) => {
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('link', { name: '← Endpoint A' }).click();
   await expect(page.getByRole('link', { name: /^Fast one/ })).toContainText('32K context');
+});
+
+test('the Test button checks access, the key, tool calls and photos', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await page.getByLabel('Add an endpoint').selectOption({ label: 'Scripted model (for testing)' });
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Scripted model (for testing)' })).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel('Tunables (JSON)').fill(JSON.stringify({ script: [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }] }));
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(page.getByText('Everything works.')).toBeVisible();
+  await expect(page.getByText('✓ Photos work: it saw the red square.')).toBeVisible();
+});
+
+test('a conversation falls back from one provider to another, and the trace shows every request (milestone 2, part 1)', async ({ page }) => {
+  const reply = await readFile(new URL('../fixtures/llm/anthropic/text.sse', import.meta.url), 'utf8');
+  const llm = await startModelServer({
+    '/a/v1/chat/completions': { status: 402, type: 'application/json', body: JSON.stringify({ error: { message: 'Insufficient credits', code: 402 } }) },
+    '/b/v1/messages': { status: 200, type: 'text/event-stream', body: reply },
+  });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
+    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    for (const m of ['a-model', 'b-model']) {
+      await page.getByLabel('Add a model to main').selectOption({ label: m });
+      await page.getByRole('button', { name: 'Add to main' }).click();
+    }
+    await expect(page.getByText('2. b-model')).toBeVisible();
+    await page.getByLabel('Message', { exact: true }).fill('Hello');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.talk-text').last()).toHaveText('Hello from B.');
+    await expect(page.getByText(/^b-model · .* after 1 failed attempt \(a-model: out of credit\)$/)).toBeVisible();
+    await page.getByRole('link', { name: 'Trace' }).click();
+    await page.getByLabel('Type contains').fill('model.turn');
+    await expect(page.getByText(/main: b-model · 2 attempts/)).toBeVisible();
+    await page.getByLabel('Type contains').fill('net.request');
+    await expect(page.locator('ol.trace > li')).toHaveCount(2);
+    await expect(page.getByText(/a-model · credit \(402\)/)).toBeVisible();
+    await expect(page.getByText(/b-model · ok \(200\)/)).toBeVisible();
+    for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
+    expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
+  } finally {
+    await llm.stop();
+  }
 });

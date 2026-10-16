@@ -1,6 +1,7 @@
 import { h, field, checkbox, twoStep, jsonField } from '../dom.js';
 import { modelOf, modelBase, endpointOf, saveModel, removeModel, diffLayer } from '../../core/llm/config.js';
 import { messageOf } from './endpoint.js';
+import { testPanel } from '../model-check.js';
 
 /** A positive whole number from an input, or null when it's empty. @param {string} v */
 function num(v) {
@@ -70,6 +71,7 @@ export async function renderModel(ctx, id) {
       h('div', { class: 'row' }, field('Context window (tokens)', window), field('Maximum output (tokens)', max)),
       prices.el, field('Cache lifetimes (5m, 1h)', ttls), reasoning.el, tunables.el, extra.el,
       h('div', { class: 'acts' }, save), status),
+    testPanel(ctx, id, rec.verified),
     h('div', { class: 'acts' }, twoStep('Remove model', 'Tap again to remove it', async () => {
       await removeModel(ctx.ws, id);
       ctx.go(back);
