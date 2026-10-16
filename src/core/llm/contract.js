@@ -168,6 +168,8 @@ export function safeId(id) {
  * @property {AbortSignal} [signal]
  * @typedef {{ providerId: string, name?: string, contextWindow?: number, maxOutput?: number, input?: string[], tools?: boolean,
  *   prices?: import('./cost.js').Prices }} ListedModel
+ * @typedef {{ endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null, tunables: Record<string, any> }} SpeechSpec
+ *   what a speech endpoint type is given for one call; a request's body is sent as given (a string or a FormData)
  * @typedef {object} EndpointType  what an endpoint-type plugin registers (spec §9.1)
  * @property {string} type  its id, e.g. "chat-completions"
  * @property {string} name  shown in Settings
@@ -184,6 +186,11 @@ export function safeId(id) {
  *   a photo upload to the provider's files API (spec §4.8)
  * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
+ * @property {'in' | 'out'} [speech]  a speech type (spec §9.1, §10): 'in' transcribes speech, 'out' is a voice
+ * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string } }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]
+ * @property {(res: Response, c: SpeechSpec) => Promise<{ text: string }>} [readTranscript]
+ * @property {(c: SpeechSpec & { text: string }) => { url: string, headers: Record<string, string>, body: any }} [speechRequest]
+ * @property {(res: Response, c: SpeechSpec) => Promise<{ data: Uint8Array, mediaType: string }>} [readSpeech]
  */
 
 /**

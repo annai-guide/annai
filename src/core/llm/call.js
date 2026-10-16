@@ -191,7 +191,7 @@ async function* untilAborted(iterable, signal) {
 }
 
 /** A failed fetch: an abort stays an abort; anything else means annai couldn't reach the endpoint. @param {unknown} e @param {AbortSignal} signal */
-function cannotConnect(e, signal) {
+export function cannotConnect(e, signal) {
   const name = /** @type {any} */ (e)?.name;
   if (signal.aborted || name === 'AbortError' || name === 'TimeoutError') return e;
   return new ProviderError('unreachable', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
@@ -203,7 +203,7 @@ function cannotConnect(e, signal) {
  * counts against the plugin (spec §5.5).
  * @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
  */
-function asProviderError(e, signal, type, registry) {
+export function asProviderError(e, signal, type, registry) {
   if (e instanceof ProviderError) return e;
   const name = /** @type {any} */ (e)?.name;
   if (name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') return new ProviderError('timeout', 'No output started in time.', { cause: e });
