@@ -12,7 +12,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { testModel, testLevels, TEST_IMAGE } from '../../src/core/llm/check.js';
-import { readConfig, modelOf } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, saveEndpoint, saveModel, saveRoles } from '../../src/core/llm/config.js';
 import { addFromTemplate } from '../../src/core/llm/templates.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
@@ -70,7 +70,8 @@ test('testLevels tries each reasoning level the model has (spec §9.3)', async (
   assert.deepEqual(r, { low: 'ok', high: 'bad-request' });
 });
 
-test('the service records what the Test button found on the model, and a model that works rests no more', async () => {
+/** The real llm service over a memory store, with official plugins read from the repo. */
+async function realLlm() {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -90,7 +91,12 @@ test('the service records what the Test button found on the model, and a model t
     return import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
   };
   const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws, importModule }), fetch: repoFetch });
-  const catalog = JSON.parse(await readFile(new URL('catalog/templates.json', root), 'utf8'));
+  return { llm, ws, store };
+}
+
+test('the service records what the Test button found on the model, and a model that works rests no more', async () => {
+  const { llm, ws, store } = await realLlm();
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
   await llm.ensureType('scripted');
   await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
   const [id] = Object.keys((await readConfig(ws)).models);
@@ -107,4 +113,23 @@ test('the service records what the Test button found on the model, and a model t
   assert.equal(verified?.key, true);
   assert.equal(typeof verified?.at, 'number');
   assert.equal(modelOf((await readConfig(ws)).models[id]).name, 'Scripted');
+});
+
+test('the service passes on the model to prefer and the photo repair (spec §9.6, §9.9)', async () => {
+  const { llm, ws, store } = await realLlm();
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
+  await llm.ensureType('scripted');
+  await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
+  const cfg = await readConfig(ws);
+  const [first] = Object.keys(cfg.models);
+  const ep = cfg.endpoints[cfg.models[first].endpoint];
+  await saveEndpoint(ws, { ...ep, user: { ...ep.user, tunables: { script: [{ error: 'image', status: 400, message: 'too big' }, { text: 'Fixed.' }, { text: 'Second.' }] } } });
+  await saveModel(ws, { ...cfg.models[first], id: 'm-second', user: { ...cfg.models[first].user, providerId: 'scripted-2', name: 'Second' } });
+  await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: [first, 'm-second'], level: 'medium' } });
+  const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Hi' }] }] };
+  let repaired = 0;
+  const r = await llm.call({ role: 'main', request, repairImages: async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => { repaired++; return req; } });
+  assert.equal(r.reply.text, 'Fixed.');
+  assert.equal(repaired, 1);
+  assert.equal((await llm.call({ role: 'main', request, prefer: 'm-second' })).modelId, 'm-second');
 });

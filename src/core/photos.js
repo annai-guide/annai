@@ -11,7 +11,8 @@ import { normPath, typeForPath } from './paths.js';
 /** @typedef {{ keepOriginals: boolean, ingest: EncodeSettings, request: EncodeSettings }} PhotoSettings */
 /**
  * What turns a photo into another format: in browsers, src/ui/photo-codec.js.
- * @typedef {{ encode(source: Blob, opts: EncodeSettings & { maxPixels: number }): Promise<{ bytes: Uint8Array, type: string, width: number, height: number }> }} Codec
+ * @typedef {{ encode(source: Blob, opts: EncodeSettings & { maxPixels: number }): Promise<{ bytes: Uint8Array, type: string, width: number, height: number }>, canMake?: (type: string) => Promise<boolean> }} Codec
+ *   canMake: whether this browser can write a format (a refusal that wants another one ends with a card)
  */
 
 /** Formats annai treats as photos. Others, such as GIF and SVG, are stored as ordinary files. */

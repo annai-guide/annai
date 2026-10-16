@@ -89,4 +89,4 @@ export async function encodePhoto(source, opts) {
 }
 
 /** The codec ingest uses (src/core/photos.js). */
-export const codec = { encode: encodePhoto };
+export const codec = { encode: encodePhoto, canMake: canEncode };

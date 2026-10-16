@@ -10,26 +10,33 @@ import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
+import { readConfig, saveEndpoint, saveRoles } from '../../src/core/llm/config.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { readFile } from 'node:fs/promises';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 import { utf8 } from '../../src/core/bytes.js';
 
-/** A codec that "decodes" a source written as "WxH" and reports what it was asked. */
-export function fakeCodec() {
+/**
+ * A codec that "decodes" a source written as "WxH" and reports what it was asked.
+ * @param {string[]} [formats] the formats it can make (all when not given)
+ */
+export function fakeCodec(formats) {
   /** @type {any[]} */
   const calls = [];
   return {
     calls,
+    async canMake(/** @type {string} */ type) {
+      return !formats || formats.includes(type);
+    },
     async encode(/** @type {Blob} */ blob, /** @type {any} */ o) {
       calls.push(o);
-      const [w, h] = (await blob.text()).split('x').map(Number);
+      const [w, h] = ((await blob.text()).match(/(\d+)x(\d+)/) ?? ['', '0', '0']).slice(1).map(Number);
       const box = o.crop ?? { width: w, height: h };
       const s = Math.min(1, (o.maxEdge ?? Infinity) / Math.max(box.width, box.height));
       const width = Math.floor(box.width * s);
       const height = Math.floor(box.height * s);
-      return { bytes: utf8(`${width}x${height}:${JSON.stringify(o.crop ?? null)}`), type: o.formats[0], width, height };
+      return { bytes: utf8(`${width}x${height}:${JSON.stringify(o.crop ?? null)}:${o.maxBytes ?? ""}`), type: o.formats[0], width, height };
     },
   };
 }
@@ -38,10 +45,10 @@ export function fakeCodec() {
  * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[] }} [opts]
+ * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[] }} [opts]
  *   utility: a script for one more scripted model, in the utility role
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -68,19 +75,22 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.models['m-u'] = { id: 'm-u', endpoint: 'ep-u', template: null, user: { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] }, created: 0 };
     config.roles.utility.models = ['m-u'];
   }
+  // Kept in the workspace like the app's, so what the Agent saves on a model (a photo limit) is what the next call reads.
+  for (const id of Object.keys(config.endpoints)) await saveEndpoint(ws, config.endpoints[id], Object.values(config.models).filter((/** @type {any} */ m) => m.endpoint === id));
+  await saveRoles(ws, config.roles);
   const bench = new Bench();
   const llm = {
     bench,
-    config: async () => config,
+    config: () => readConfig(ws),
     /** @param {any} c */
-    call: (c) => callRole({
-      role: c.role ?? 'main', request: c.request, level: c.level, config, types: new Map([['scripted', watched]]), keyFor: async () => null, bench,
-      signal: c.signal, onEvent: c.onEvent, prefer: c.prefer, record: c.record, sleep: async () => {}, trace: modelTrace(store, c.scope ?? SYS),
+    call: async (c) => callRole({
+      role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types: new Map([['scripted', watched]]), keyFor: async () => null, bench,
+      signal: c.signal, onEvent: c.onEvent, prefer: c.prefer, record: c.record, repairImages: c.repairImages, sleep: async () => {}, trace: modelTrace(store, c.scope ?? SYS),
     }),
   };
   /** @type {any[]} */
   const notices = [];
-  const codec = fakeCodec();
+  const codec = fakeCodec(codecFormats);
   const agent = new Agent({ store, ws, llm, registry, codec, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
   agent.addLoopTools(selfTools(agent));
   agent.on('notice', (n) => notices.push(n));
@@ -90,5 +100,5 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */
   const events = (types) => store.tx(['events'], 'readonly', (t) => t.listEvents(trip, types ? { types } : {}));
-  return { store, ws, trip, registry, host, agent, llm, config, requests, events, notices, presets, codec };
+  return { store, ws, trip, registry, host, agent, llm, requests, events, notices, presets, codec };
 }

@@ -54,13 +54,15 @@ export function createLlm({
     /**
      * A role call with fallback, traced in scope (spec §9.6).
      * @param {{ role?: string, request: import('./contract.js').Request, level?: string, onEvent?: (e: import('./contract.js').StreamEvent) => void,
-     *   signal?: AbortSignal, scope?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean } }} c
+     *   signal?: AbortSignal, scope?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
+     *   prefer?: string, repairImages?: Parameters<typeof callRole>[0]['repairImages'] }} c
+     *   prefer: the model whose cache is warm, tried first; repairImages: fixes a refused photo (spec §9.6, §9.9)
      */
-    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record }) {
+    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, repairImages }) {
       await ready;
       return callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages,
       });
     },
     /**

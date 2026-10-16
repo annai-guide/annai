@@ -4,6 +4,7 @@ import { agentKit } from './agent-kit.js';
 import { compactionNeed, cutAt, renderForSummary, COLD_SYSTEM } from '../../src/core/agent/compaction.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
+import { saveModel } from '../../src/core/llm/config.js';
 
 const say = (/** @type {string} */ text, /** @type {any} */ extra = {}) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }], ...extra });
 
@@ -117,7 +118,8 @@ test('renderForSummary: within a size, the start and the end kept and the middle
 
 test("cold: what the utility model is sent fits its window, so a huge exchange can't keep it from summarizing", async () => {
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
-  k.config.models['m-u'].user.contextWindow = 2000;
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, contextWindow: 2000 } });
   for (let i = 0; i < 5; i++) {
     k.agent.send(`Message ${i} ${'y'.repeat(6000)}`);
     await k.agent.idle();

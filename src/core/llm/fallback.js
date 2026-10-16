@@ -123,8 +123,10 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  *   keyFor: (endpointId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
- *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean } }} c
+ *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
+ *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null> }} c
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
+ *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -162,6 +164,7 @@ export async function callRole(c) {
     }
     const endpoint = endpointOf(epRec, type.tunables);
     const key = await c.keyFor(endpoint.id);
+    let repairs = 0;
     for (let retry = 0; ; retry++) {
       const started = now();
       try {
@@ -188,6 +191,14 @@ export async function callRole(c) {
           said += err.partial;
           request = continueAfter(c.request, said);
           break;
+        }
+        if (err.kind === 'image' && c.repairImages && repairs < 2) {
+          const fixed = await c.repairImages(err, id, request).catch((/** @type {unknown} */ x) => { console.warn('the photo repair failed', x); return null; });
+          if (fixed) {
+            repairs++;
+            request = fixed;
+            continue; // the same model again (spec §9.9)
+          }
         }
         const step = nextStep(err, retry);
         if (step.wait !== undefined) {

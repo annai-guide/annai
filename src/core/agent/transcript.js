@@ -57,6 +57,19 @@ export class Transcript {
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
       if (parts.length) this.#add('assistant', parts);
       this.unanswered = false;
+    } else if (e.type === 'photo.replace') {
+      // A refused photo's new copy (spec §4.8): every place it was sent now sends the copy.
+      const copy = r.images[0];
+      if (!copy) return;
+      this.messages = this.messages.map((m) => ({
+        role: m.role,
+        parts: m.parts.map((p) => {
+          if (p.type !== 'image' || p.hash !== d.old) return p;
+          const { missing, ...rest } = p;
+          return { ...rest, hash: d.new, mediaType: d.mediaType, data: copy.type === 'image' ? copy.data : '' };
+        }),
+      }));
+      return;
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
@@ -108,12 +121,17 @@ export async function resolveEvent(store, e) {
   const images = [];
   for (const im of e.type === 'tool.result' || e.type === 'msg.user' ? e.data?.images ?? [] : []) {
     const bytes = await blobBytes(store, im.hash);
-    if (bytes) images.push({ type: 'image', mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash, ...(im.path ? { path: im.path } : {}), ...(im.region ? { region: im.region } : {}) });
+    // Bytes that are gone (a refused copy, deleted) stay in the transcript as missing, so a replacement can find them.
+    images.push({ type: 'image', mediaType: im.mediaType, data: bytes ? toBase64(bytes) : '', hash: im.hash, ...(im.path ? { path: im.path } : {}), ...(im.region ? { region: im.region } : {}), ...(bytes ? {} : { missing: true }) });
+  }
+  if (e.type === 'photo.replace') {
+    const bytes = await blobBytes(store, e.data?.new);
+    if (bytes) images.push({ type: 'image', mediaType: e.data.mediaType, data: toBase64(bytes), hash: e.data.new });
   }
   const doc = e.type === 'tool.result' ? e.data?.document : null;
   if (doc) {
     const bytes = await blobBytes(store, doc.hash);
-    if (bytes) images.push({ type: 'document', mediaType: doc.mediaType, data: toBase64(bytes), ...(doc.name ? { name: doc.name } : {}) });
+    images.push({ type: 'document', mediaType: doc.mediaType, data: bytes ? toBase64(bytes) : '', ...(doc.name ? { name: doc.name } : {}), ...(bytes ? {} : { missing: true }) });
   }
   return { texts, images };
 }

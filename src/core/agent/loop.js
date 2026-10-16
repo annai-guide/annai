@@ -2,8 +2,8 @@ import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { AllFailedError, estimateTokens } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
-import { modelOf } from '../llm/config.js';
-import { fromBase64 } from '../bytes.js';
+import { modelOf, saveModel } from '../llm/config.js';
+import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
@@ -14,7 +14,8 @@ import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
 import { tracedFetch, withoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
-import { PhotoCopies, requestLimits, healRegion } from '../request-photos.js';
+import { PhotoCopies, requestLimits, healRegion, fits } from '../request-photos.js';
+import { readRefusal, stricter, tighter, limitImages } from './refusals.js';
 import { photoSettings } from '../photos.js';
 
 /**
@@ -98,6 +99,8 @@ export class Agent {
   #leaving = false;
   /** @type {PhotoCopies | null} */
   #photos = null;
+  /** The wake whose photo couldn't be sent: its card already says why. */
+  #photoCard = '';
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set() };
 
@@ -419,6 +422,15 @@ export class Agent {
     return { tools, via, providerTools };
   }
 
+  /**
+   * The conversation as it is sent: no photo whose bytes are gone, and the oldest photos over the
+   * main model's count as stubs (spec §4.8).
+   */
+  async #sendable() {
+    const messages = this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing) }));
+    return limitImages(messages, (await this.#mainModel())?.images?.maxCount);
+  }
+
   /** The main role's first model. */
   #mainModel() {
     return this.#roleModel('main');
@@ -470,7 +482,7 @@ export class Agent {
     const { tools, providerTools } = await this.#toolsNow();
     if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
     /** @type {import('../llm/contract.js').Message[]} */
-    let messages = this.transcript.messages;
+    let messages = await this.#sendable();
     for (let step = 0; step < 4; step++) {
       const request = { ...buildRequest({ snapshot: this.#snapshot, tools: definitions(tools), transcript: { messages }, tail: instruction(marker), cacheTtl: settings.cacheTtl }), ...providerTools };
       const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' } });
@@ -623,7 +635,7 @@ export class Agent {
       const { tools, via, providerTools } = await this.#toolsNow();
       const plan = await nextPlanItems(this.ws, this.trip, this.now());
       const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: 'off', online: this.online(), reasons, plan });
-      const request = { ...buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: this.transcript, tail, cacheTtl: settings.cacheTtl }), ...providerTools };
+      const request = { ...buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }), ...providerTools };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
@@ -647,6 +659,7 @@ export class Agent {
         result = await this.llm.call({
           role: 'main', request, signal: abort.signal, scope: this.scope, prefer,
           record: { tag: TALK_TAG, wake: wakeId, prefix: fingerprint.slice(0, 16), context: { from: this.transcript.from, to: this.transcript.to }, keepParts: true },
+          repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
         });
       } catch (e) {
         // "Request too long" from every model: compact first, then try once more (spec §9.6).
@@ -730,8 +743,92 @@ export class Agent {
   async #failed(e, wakeId) {
     if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return;
     const body = await withoutSecrets(this.store, this.#explain(e));
-    await this.#notice({ tone: 'warn', title: "Shiori can't reach her model", body });
+    if (this.#photoCard !== wakeId) await this.#notice({ tone: 'warn', title: "Shiori can't reach her model", body });
     await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, message: body } });
+  }
+
+  /**
+   * Fixes a refused photo (spec §4.8, §9.9): learns the limit, saves it on the model, makes new
+   * copies of what no longer fits, and records the swap. Null when it can't: a card says why.
+   * @param {ProviderError} err @param {string} modelId @param {import('../llm/contract.js').Request} request @param {string} wakeId
+   */
+  async #repair(err, modelId, request, wakeId) {
+    const cfg = await this.llm.config();
+    const rec = cfg.models[modelId];
+    if (!rec || !this.#photos || !this.codec) return this.#cantSend(err.message, wakeId);
+    const before = modelOf(rec).images ?? {};
+    const learned = readRefusal(err.message) ?? (await this.#askLimits(err.message));
+    if (!learned || !tighter(before, learned)) return this.#cantSend(err.message, wakeId);
+    const images = stricter(before, learned);
+    const canMake = this.codec.canMake?.bind(this.codec);
+    if (images.formats?.length && canMake && !(await Promise.all(images.formats.map((x) => canMake(x)))).some(Boolean)) {
+      const names = images.formats.map((x) => x.replace('image/', '').toUpperCase()).join(' or ');
+      return this.#cantSend(`This model takes photos only as ${names}, which this browser can't make. A plugin that adds ${names} would fix it (Settings → Plugins).`, wakeId);
+    }
+    await saveModel(this.ws, { ...rec, user: { ...(rec.user ?? {}), images } });
+    const limits = requestLimits(photoSettings(await readAppSettings(this.ws)).request, images);
+    /** @type {Map<string, import('../request-photos.js').Copy>} */
+    const swaps = new Map();
+    const parts = /** @type {{ hash: string, mediaType: string, data: string }[]} */ (request.messages.flatMap((m) => m.parts).filter((p) => p.type === 'image' && p.hash));
+    // An edge can't be measured here, so a learned edge makes every photo again; so does a refusal of
+    // photos that all fit by annai's measure (the provider measures differently, and it refused one).
+    const over = learned.maxEdge ? parts : parts.filter((p) => !fits({ type: p.mediaType, size: Math.floor((p.data.length * 3) / 4) }, limits));
+    for (const p of over.length ? over : parts) {
+      if (swaps.has(p.hash)) continue;
+      const copy = await this.#photos.copy({ hash: p.hash, type: p.mediaType, size: Number.MAX_SAFE_INTEGER }, limits); // always a new copy
+      if (copy.hash !== p.hash) swaps.set(p.hash, copy);
+    }
+    if (!swaps.size) return this.#cantSend(err.message, wakeId);
+    for (const [old, copy] of swaps) {
+      await this.#log({ type: 'photo.replace', actor: 'system', data: { old, new: copy.hash, mediaType: copy.mediaType, wake: wakeId }, blobs: [copy.data ? { bytes: fromBase64(copy.data), type: copy.mediaType } : { hash: copy.hash, type: copy.mediaType }] });
+      await this.store.tx(['files', 'events', 'blobs'], 'readwrite', async (t) => {
+        if (!(await t.blobInUse(old, { events: false }))) await t.deleteBlob(old); // the refused copy, unless a file is that photo
+      });
+    }
+    // A copy made before has no data with it: its bytes come from storage, so the request carries the photo.
+    for (const [old, copy] of swaps) {
+      if (copy.data) continue;
+      const bytes = await blobBytes(this.store, copy.hash);
+      if (bytes) swaps.set(old, { ...copy, data: toBase64(bytes) });
+    }
+    return { ...request, messages: replaceImages(request.messages, swaps) };
+  }
+
+  /** A card for a photo that couldn't be sent; the turn's error then shows no second card. @param {string} why @param {string} wakeId */
+  async #cantSend(why, wakeId) {
+    this.#photoCard = wakeId;
+    await this.#notice({ tone: 'warn', title: "Shiori couldn't send the photo", body: why });
+    return null;
+  }
+
+  /** The utility model reads a refusal annai has no rule for; no clear answer, no limits (fails closed). @param {string} message */
+  async #askLimits(message) {
+    const ask = (/** @type {boolean} */ forced) => this.llm.call({
+      role: 'utility', level: 'off', scope: this.scope, record: { tag: 'refusal' },
+      request: {
+        system: 'A model refused a photo. Read its error message and give the limit it states, by calling limits. Call it with none: true if the message states no limit.',
+        ...(forced ? { toolChoice: 'limits' } : {}), maxOutput: 200,
+        tools: [{ name: 'limits', description: 'The limits the error states.', input: { type: 'object', properties: { maxBytes: { type: 'integer' }, maxEdge: { type: 'integer' }, maxCount: { type: 'integer' }, formats: { type: 'array', items: { type: 'string' } }, none: { type: 'boolean' } } } }],
+        messages: [{ role: 'user', parts: [{ type: 'text', text: message }] }],
+      },
+    });
+    try {
+      /** @type {any} */
+      let r;
+      try {
+        r = await ask(true);
+      } catch {
+        // A model that thinks refuses a forced tool (Opus and Sonnet 5.5): asked again, the tool offered but not forced.
+        r = await ask(false);
+      }
+      const call = r.reply.parts.find((/** @type {any} */ p) => p.type === 'tool_call' && p.name === 'limits');
+      if (!call || call.input?.none) return null;
+      const { maxBytes, maxEdge, maxCount, formats } = call.input ?? {};
+      const out = Object.fromEntries(Object.entries({ maxBytes, maxEdge, maxCount, formats }).filter(([, v]) => v !== undefined));
+      return Object.keys(out).length ? out : null;
+    } catch {
+      return null;
+    }
   }
 
   /** @param {string} id */
@@ -888,4 +985,15 @@ export class Agent {
       }, ms);
     });
   }
+}
+
+/** The messages with each swapped photo replaced by its new copy. @param {import('../llm/contract.js').Message[]} messages @param {Map<string, any>} swaps */
+function replaceImages(messages, swaps) {
+  return messages.map((m) => ({
+    role: m.role,
+    parts: m.parts.map((p) => {
+      const c = p.type === 'image' && p.hash ? swaps.get(p.hash) : null;
+      return c ? { ...p, hash: c.hash, mediaType: c.mediaType, ...(c.data ? { data: c.data } : {}) } : p;
+    }),
+  }));
 }
