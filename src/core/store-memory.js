@@ -75,6 +75,9 @@ function makeTx(d, mode, allowed) {
       return false;
     },
     async listBlobs() { return [...use('blobs').values()].map((b) => ({ hash: b.hash, size: b.size })); },
+    async scopesWithData() {
+      return [...new Set([...use('files').values(), ...use('events').values()].map((x) => x.scope))].sort();
+    },
     async getFile(scope, path) { return out(use('files').get(fkey(scope, path))); },
     async putFile(entry) { use('files', true).set(fkey(entry.scope, entry.path), structuredClone(entry)); },
     async deleteFile(scope, path) { use('files', true).delete(fkey(scope, path)); },

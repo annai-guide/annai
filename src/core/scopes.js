@@ -102,15 +102,42 @@ export async function removeTrip(store, id, now = Date.now()) {
     const rec = await t.getScope(id);
     if (!rec || rec.kind !== 'trip') throw new NotFoundError(`trip ${id}`);
     await t.deleteScope(id);
-    let bytes = 0;
-    // Through the indexes of what files and log entries name: no log is read in full (spec §4.9).
-    for (const b of await t.listBlobs()) {
-      if (await t.blobInUse(b.hash)) continue;
-      await t.deleteBlob(b.hash);
-      bytes += b.size;
-    }
+    const bytes = await freeUnused(t);
     await t.appendEvent(SYS, { ts: now, type: 'trip.remove', actor: 'user', data: { title: rec.title, bytes } });
     return { title: rec.title, bytes };
+  });
+}
+
+/**
+ * Deletes every stored content no file and no log entry names, through the indexes of what they
+ * name: no log is read in full (spec §4.9). @param {Tx} t @returns {Promise<number>} the bytes freed
+ */
+async function freeUnused(t) {
+  let bytes = 0;
+  for (const b of await t.listBlobs()) {
+    if (await t.blobInUse(b.hash)) continue;
+    await t.deleteBlob(b.hash);
+    bytes += b.size;
+  }
+  return bytes;
+}
+
+/**
+ * Removes files and log entries left under a scope that no longer exists, and the content only
+ * they named. A request that ignored Stop can finish after its trip was removed and log itself
+ * there; annai runs this as it starts, so removing still means removing (spec §4.9).
+ * @param {Store} store @param {number} [now]
+ * @returns {Promise<{ scopes: number, bytes: number }>} scopes: how many removed scopes had something left
+ */
+export async function removeLeftovers(store, now = Date.now()) {
+  return store.tx(['scopes', 'files', 'events', 'blobs'], 'readwrite', async (t) => {
+    const known = new Set((await t.listScopes()).map((s) => s.id));
+    const left = (await t.scopesWithData()).filter((id) => !known.has(id));
+    if (!left.length) return { scopes: 0, bytes: 0 };
+    for (const id of left) await t.deleteScope(id);
+    const result = { scopes: left.length, bytes: await freeUnused(t) };
+    await t.appendEvent(SYS, { ts: now, type: 'leftovers.remove', actor: 'system', data: result });
+    return result;
   });
 }
 

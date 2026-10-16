@@ -205,6 +205,36 @@ test('Remove trip runs once at a time', async ({ page }) => {
   await expect(button).toBeEnabled();
 });
 
+test('a log line written into a removed trip is gone after the next start', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  /** Puts one log line into the scope (a request that ignored Stop, finishing late), or counts its lines. */
+  const events = (/** @type {'put' | 'count'} */ op) => page.evaluate(({ scope, op }) => new Promise((resolve, reject) => {
+    const r = indexedDB.open('annai');
+    r.onsuccess = () => {
+      const tx = r.result.transaction('events', op === 'put' ? 'readwrite' : 'readonly');
+      const os = tx.objectStore('events');
+      /** @type {IDBRequest} */
+      const q = op === 'put'
+        ? os.put({ scope, seq: 7, ts: Date.now(), type: 'net.request', actor: 'system', data: { url: 'https://example.com/' } })
+        : os.count(IDBKeyRange.bound([scope, -Infinity], [scope, Infinity]));
+      tx.oncomplete = () => { r.result.close(); resolve(q.result); };
+      tx.onerror = () => reject(tx.error);
+    };
+    r.onerror = () => reject(r.error);
+  }), { scope: id, op });
+  await events('put');
+  expect(await events('count')).toBe(1);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  expect(await events('count')).toBe(0);
+});
+
 test('removing a trip that is already gone says so', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');

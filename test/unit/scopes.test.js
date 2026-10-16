@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, ValidationError, StorageFullError, NotFoundError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, recordBackup, backupState } from '../../src/core/scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, removeLeftovers, recordBackup, backupState } from '../../src/core/scopes.js';
 import { logEvent, blobsOf } from '../../src/core/events.js';
 import { utf8, ownBuffer } from '../../src/core/bytes.js';
 import { sha256Hex } from '../../src/core/hash.js';
@@ -212,6 +212,34 @@ test('removeTrip also frees content nothing refers to, and keeps what any log po
   const left = await storedBlobs(store);
   assert.equal(left.has(orphan), false);
   assert.equal(left.has(traced), true);
+});
+
+test('removeLeftovers removes what a late writer left in a removed trip, and frees what only it named', async () => {
+  const { store, ws } = setup();
+  await ensureBaseScopes(ws);
+  const kept = await createTrip(ws, { title: 'Kept' });
+  const gone = await createTrip(ws, { title: 'Gone' });
+  await removeTrip(store, gone);
+  const before = await storedBlobs(store);
+  // A web request that ignored Stop finishes after the removal: its log line (and a body it kept) land in the removed trip.
+  await store.tx(['blobs', 'files', 'events'], 'readwrite', async (t) => {
+    await t.putBlob({ hash: 'late-body', type: 'text/plain', size: 9, data: ownBuffer(utf8('late body')) });
+    await t.appendEvent(gone, { ts: 1, type: 'net.request', actor: 'system', data: { url: 'https://example.com/' }, refs: ['late-body'] });
+    await t.putFile({ scope: gone, path: '/late.md', hash: 'late-body', size: 9, type: 'text/plain', author: 'agent', created: 1, modified: 1 });
+  });
+  assert.deepEqual(await removeLeftovers(store, 5000), { scopes: 1, bytes: 9 });
+  const left = await store.tx(['scopes', 'files', 'events', 'blobs'], 'readonly', async (t) => ({
+    events: await t.listEvents(gone), files: await t.listFiles(gone), held: await t.scopesWithData(),
+    log: await t.listEvents(SYS, { types: ['leftovers.remove'] }),
+  }));
+  assert.deepEqual(left.events, []);
+  assert.deepEqual(left.files, []);
+  assert.ok(left.held.includes(kept) && left.held.includes(ME) && !left.held.includes(gone));
+  assert.deepEqual([...(await storedBlobs(store)).keys()].sort(), [...before.keys()].sort());
+  assert.deepEqual(left.log.map((e) => [e.ts, e.data]), [[5000, { scopes: 1, bytes: 9 }]]);
+  // Nothing left over: nothing removed, nothing logged.
+  assert.deepEqual(await removeLeftovers(store, 6000), { scopes: 0, bytes: 0 });
+  assert.equal((await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['leftovers.remove'] }))).length, 1);
 });
 
 test('removeTrip removes only trips', async () => {

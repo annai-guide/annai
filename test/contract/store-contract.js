@@ -58,6 +58,19 @@ export function storeContract(test, assert, makeStore) {
     assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-file', { exceptScope: 'trip-1' })), true);
   });
 
+  test('scopesWithData: each scope id that has files or log entries, once, in order, with a record or not', async () => {
+    const s = await makeStore();
+    await s.tx(['scopes', 'files', 'events'], 'readwrite', async (t) => {
+      await t.putFile(file('trip-b', '/a.md'));
+      await t.putFile(file('trip-b', '/z.md'));
+      for (let i = 0; i < 3; i++) await t.appendEvent('trip-b', { ts: i, type: 'x', actor: 'user' });
+      await t.appendEvent('trip-a', { ts: 1, type: 'x', actor: 'user' });
+      await t.putFile(file('trip-c', '/only-a-file.md'));
+      await t.putScope(scopeRec('trip-d')); // a record and nothing else
+    });
+    assert.deepEqual(await s.tx(['files', 'events'], 'readonly', (t) => t.scopesWithData()), ['trip-a', 'trip-b', 'trip-c']);
+  });
+
   test('files: list by prefix in path order, scoped, and delete', async () => {
     const s = await makeStore();
     await s.tx(['files'], 'readwrite', async (t) => {

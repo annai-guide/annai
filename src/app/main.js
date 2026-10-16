@@ -2,7 +2,7 @@ import { VERSION } from './version.js';
 import { createIdbStore } from '../core/store-idb.js';
 import { Workspace } from '../core/workspace.js';
 import { makeSchemaFor } from '../core/schema.js';
-import { kindOf, ensureBaseScopes, syncTripTitles, SYS } from '../core/scopes.js';
+import { kindOf, ensureBaseScopes, syncTripTitles, removeLeftovers, SYS } from '../core/scopes.js';
 import { Registry } from '../core/registry.js';
 import { PluginHost } from '../core/plugins.js';
 import { logEvent } from '../core/events.js';
@@ -49,6 +49,8 @@ async function boot() {
   const registry = new Registry({ log: (ev) => logEvent(store, SYS, ev) });
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
+  // What a late request wrote into a removed trip goes now; if this fails, it goes at the next start (spec §4.9).
+  await removeLeftovers(store).catch(() => {});
   syncTripTitles(ws);
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);

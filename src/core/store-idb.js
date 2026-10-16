@@ -197,6 +197,27 @@ function makeTx(t) {
       };
       r.onerror = () => rej(r.error);
     }),
+    scopesWithData: async () => {
+      // Keys are [scope, path] and [scope, seq]: after each scope's first key, skip past all of its keys
+      // ([scope, []] sorts after them, since an array sorts after any string or number).
+      const firstKeys = (/** @type {string} */ name) => new Promise((res, rej) => {
+        /** @type {string[]} */
+        const out = [];
+        const r = os(name).openKeyCursor();
+        r.onsuccess = () => {
+          const c = r.result;
+          if (!c) {
+            res(out);
+            return;
+          }
+          const scope = /** @type {[string, unknown]} */ (c.primaryKey)[0];
+          out.push(scope);
+          c.continue([scope, []]);
+        };
+        r.onerror = () => rej(r.error);
+      });
+      return [...new Set([...(await firstKeys('files')), ...(await firstKeys('events'))])].sort();
+    },
     getFile: (scope, path) => req(os('files').get([scope, path])),
     putFile: async (entry) => { await req(os('files').put(entry)); },
     deleteFile: async (scope, path) => { await req(os('files').delete([scope, path])); },
