@@ -314,3 +314,16 @@ test('read sends a request copy, named by the turn that sends it, with both size
   assert.equal(sent.hash, first.data.images[0].hash);
   assert.equal(sent.path, '/trip/files/big.webp');
 });
+
+test('read with a region sends a crop, kept in the conversation, and says which region was used', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp', region: [0.75, 0.6, 0.25, 0.1] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  k.agent.send('What does the menu say?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /part \[0\.25, 0\.1, 0\.75, 0\.6\] \(2000×1500 of 4000×3000\)/);
+  assert.match(r.data.content, /swapped/);
+  assert.deepEqual(r.data.images[0].region, [0.25, 0.1, 0.75, 0.6]);
+  assert.deepEqual(k.codec.calls[0].crop, { x: 1000, y: 300, width: 2000, height: 1500 });
+  assert.equal((await k.ws.list(k.trip, '/files/')).length, 1);
+});

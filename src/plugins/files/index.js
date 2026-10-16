@@ -2,7 +2,7 @@ import { VERSION } from '../../app/version.js';
 import { resolvePath } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
 import { ValidationError } from '../../core/workspace.js';
-import { sizeLine } from '../../core/request-photos.js';
+import { sizeLine, healRegion } from '../../core/request-photos.js';
 
 export const manifest = {
   id: 'files',
@@ -49,9 +49,15 @@ export function activate(annai) {
     },
     {
       name: 'read', group: 'Files',
-      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document when your model reads PDFs. Long text comes in pieces; read again with from.',
-      input: { type: 'object', properties: { path: PATH, from: { type: 'integer', minimum: 0, description: 'Character to start from, for long text.' } }, required: ['path'] },
-      /** @param {{ path: string, from?: number }} i @param {any} call */
+      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document when your model reads PDFs. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
+      input: {
+        type: 'object', required: ['path'],
+        properties: {
+          path: PATH, from: { type: 'integer', minimum: 0, description: 'Character to start from, for long text.' },
+          region: { type: 'array', items: { type: 'number' }, minItems: 4, maxItems: 4, description: 'For a closer look at part of a photo: [left, top, right, bottom] as fractions from 0 to 1 (pixels work too).' },
+        },
+      },
+      /** @param {{ path: string, from?: number, region?: number[] }} i @param {any} call */
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         const got = await ws.read(scope, path);
@@ -62,6 +68,19 @@ export function activate(annai) {
           if (!input.includes('image')) return `${i.path} is a photo, and this model can't see photos.`;
           const m = entry.meta ?? {};
           const source = { hash: entry.hash, type: entry.type, width: m.width ?? null, height: m.height ?? null, size: entry.size };
+          if (i.region) {
+            // A closer look (spec §7.2): a crop, always a copy kept in the conversation, never among the trip's files.
+            if (!m.width || !m.height) return `${i.path}'s size isn't known, so it can't be cropped. read it whole instead.`;
+            const healed = healRegion(i.region, m.width, m.height);
+            const sent = call.photos ? await call.photos.copy(source, healed.crop) : null;
+            if (!sent) return "Photos can't be cropped here.";
+            const part = `part [${healed.used.join(', ')}] (${healed.crop.width}×${healed.crop.height} of ${m.width}×${m.height})`;
+            const note = healed.notes.length ? ` (The region was healed: ${healed.notes.join('; ')}.)` : '';
+            return {
+              content: `The photo ${i.path}, ${part}, sent as ${sent.width}×${sent.height}.${note}`,
+              images: [{ mediaType: sent.mediaType, hash: sent.hash, ...(sent.data ? { data: sent.data } : {}), path: i.path, region: healed.used }],
+            };
+          }
           // What Shiori is sent: a request copy within the limits, made once (spec §4.8).
           const sent = call.photos ? await call.photos.copy(source) : { hash: entry.hash, mediaType: entry.type, width: m.width ?? null, height: m.height ?? null, made: false };
           const taken = m.taken ? `, taken ${m.taken}` : '';

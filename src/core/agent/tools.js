@@ -5,10 +5,12 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 /**
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then every running plugin's, in the
  * order they registered; switches come from the app settings, so they cover any plugin's tool.
- * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, name?: string }} Media
+ * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, region?: number[], name?: string }} Media
  * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean }} ToolOutput
  * @typedef {{ id: string, scope: string, trip: string | null, signal: AbortSignal, model: import('../llm/config.js').Model | null, wake: string,
- *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[] }} ToolCall
+ *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[],
+ *   photos?: { copy(source: import('../request-photos.js').Source, crop?: import('../request-photos.js').Crop): Promise<import('../request-photos.js').Copy> } }} ToolCall
+ *   photos: request copies and crops of stored photos (spec §4.8)
  *   providerOff: the provider tools switched off, for a tool that asks a model to use its own (spec §9.5)
  * @typedef {{ name: string, description: string, input: Record<string, any>, run: (input: any, call: ToolCall) => any, group?: string }} Tool
  */
