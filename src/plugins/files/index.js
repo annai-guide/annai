@@ -3,6 +3,7 @@ import { resolvePath } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
 import { ValidationError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
+import { readPass } from '../../core/pkpass.js';
 
 export const manifest = {
   id: 'files',
@@ -49,7 +50,7 @@ export function activate(annai) {
     },
     {
       name: 'read', group: 'Files',
-      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document when your model reads PDFs. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
+      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document when your model reads PDFs, a Wallet pass (.pkpass) as what it says. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
       input: {
         type: 'object', required: ['path'],
         properties: {
@@ -92,6 +93,10 @@ export function activate(annai) {
         if (entry.type === 'application/pdf') {
           if (!input.includes('pdf')) return `${i.path} is a PDF, and this model can't read PDFs. Ask the user for a screenshot of the page you need.`;
           return { content: `The PDF ${i.path}.`, document: { mediaType: 'application/pdf', hash: entry.hash, name: path.split('/').pop(), path: i.path } };
+        }
+        if (entry.type === 'application/vnd.apple.pkpass') {
+          // A Wallet pass (spec §8): what it says, read by annai's own unzip.
+          return `The Wallet pass ${i.path}:\n${JSON.stringify(await readPass(new Blob([/** @type {BlobPart} */ (bytes)])), null, 1)}`;
         }
         if (!isTextType(entry.type)) return `${i.path} is a ${entry.type} file, which can't be read as text.`;
         const all = new TextDecoder().decode(bytes);

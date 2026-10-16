@@ -51,3 +51,8 @@ test('typeForPath and the type predicates', () => {
 test('normPath keeps names in one Unicode form (NFC)', () => {
   assert.equal(normPath('/files/ガイド.png'.normalize('NFD')), '/files/ガイド.png'.normalize('NFC'));
 });
+
+test('emails are text', () => {
+  assert.equal(typeForPath('/files/booking.eml'), 'message/rfc822');
+  assert.equal(isTextType('message/rfc822'), true);
+});

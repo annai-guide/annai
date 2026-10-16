@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { ZipWriter } from '../../src/core/zip.js';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -83,4 +84,18 @@ test('personalities are refused however the path is written (the check is on the
   }
   await assert.rejects(run('patch', { path: '/me//personalities/x.json', changes: { a: 1 } }), /tune_personality/);
   await assert.rejects(run('delete', { path: '/me//personalities/shiori.md' }), /tune_personality/);
+});
+
+test('read: a Wallet pass as what it says, and an email as its text', async () => {
+  const { ws, trip, run } = await setup();
+  const z = new ZipWriter();
+  await z.add('pass.json', utf8(JSON.stringify({ organizationName: 'Example Air', boardingPass: { transitType: 'PKTransitTypeAir', primaryFields: [{ key: 'origin', label: 'SFO', value: 'San Francisco' }] } })));
+  await ws.write(trip, '/files/flight.pkpass', new Uint8Array(await z.finish().arrayBuffer()), { author: 'user' });
+  const read = await run('read', { path: '/trip/files/flight.pkpass' });
+  assert.match(read, /^The Wallet pass \/trip\/files\/flight\.pkpass:\n/);
+  assert.equal(JSON.parse(read.slice(read.indexOf('\n') + 1)).organization, 'Example Air');
+  await ws.write(trip, '/files/broken.pkpass', utf8('not a zip'), { author: 'user' });
+  await assert.rejects(run('read', { path: '/trip/files/broken.pkpass' }), /couldn't open this Wallet pass/);
+  await ws.write(trip, '/files/hotel.eml', utf8('Subject: Your stay\r\n\r\nConfirmation 7788'), { author: 'user' });
+  assert.match(await run('read', { path: '/trip/files/hotel.eml' }), /Confirmation 7788/);
 });
