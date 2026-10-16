@@ -374,6 +374,19 @@ test('a wake for a trip that is not open is written into its conversation, and a
   assert.deepEqual((await eventsIn(k, B, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your flight pass: I put it in the plan.']);
 });
 
+test('a wake kept for a trip that is not open is written by the time wake() settles', async () => {
+  const k = await agentKit([[say('Noted.')]]);
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  // A slow disk: a write starts a moment later, so only waiting for it finds it written.
+  const tx = k.store.tx;
+  k.store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) =>
+    (mode === 'readwrite' ? new Promise((r) => setTimeout(r, 20)).then(() => tx(stores, mode, fn)) : tx(stores, mode, fn));
+  await k.agent.wake({ kind: 'file', scope: B, text: 'The user added a file to the trip: /trip/files/flight.pkpass (application/vnd.apple.pkpass).' });
+  assert.deepEqual((await eventsIn(k, B, ['wake'])).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.kind)), [['file']]);
+  k.store.tx = tx;
+  await k.agent.idle();
+});
+
 test('a wake for the open trip, named by its scope, runs there as before', async () => {
   const k = await agentKit([[say('Got it.')]]);
   k.agent.wake({ kind: 'file', scope: k.trip, text: 'The user added a file to the trip: /trip/files/a.pdf (application/pdf).' });
