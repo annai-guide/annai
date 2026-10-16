@@ -373,13 +373,14 @@ function join(parts) {
 /**
  * The same photo without its embedded metadata (EXIF, XMP, IPTC, comments), every other byte
  * unchanged, so a photo stored as it is carries no hidden location (§4.8, §12.2). Colour profiles
- * stay. JPEG and WebP only; null for anything else or anything it can't follow.
+ * stay. JPEG, WebP and GIF; null for anything else or anything it can't follow.
  * @param {Uint8Array} bytes @param {string} type @returns {Uint8Array | null}
  */
 export function stripMetadata(bytes, type) {
   try {
     if (type === 'image/jpeg') return stripJpeg(bytes);
     if (type === 'image/webp') return stripWebp(bytes);
+    if (type === 'image/gif') return stripGif(bytes);
   } catch {
     // damaged
   }
@@ -452,6 +453,45 @@ function stripJpeg(b) {
     p += 2 + len;
   }
   return null;
+}
+
+/**
+ * Keeps a GIF's frames, their timing and its loop count (NETSCAPE2.0, ANIMEXTS1.0), and drops
+ * comments, other application data (XMP among it) and anything after the trailer.
+ * @param {Uint8Array} b
+ */
+function stripGif(b) {
+  if (b.length < 13 || ascii(b, 0, 4) !== 'GIF8') return null;
+  const tableSize = (/** @type {number} */ flags) => (flags & 0x80 ? 3 * (2 << (flags & 7)) : 0);
+  /** Where a run of data sub-blocks starting at q ends, or -1 when it runs off the file. @param {number} q */
+  const blocksEnd = (q) => {
+    while (q < b.length && b[q] !== 0) q += b[q] + 1;
+    return q < b.length ? q + 1 : -1;
+  };
+  let p = 13 + tableSize(b[10]); // header, screen descriptor, global colour table
+  if (p > b.length) return null;
+  const parts = [b.subarray(0, p)];
+  while (p < b.length) {
+    if (b[p] === 0x3b) {
+      parts.push(b.subarray(p, p + 1));
+      return join(parts);
+    }
+    if (b[p] === 0x21) {
+      const label = b[p + 1];
+      const end = blocksEnd(p + 2);
+      if (end < 0) return null;
+      const loop = label === 0xff && b[p + 2] === 11 && ['NETSCAPE2.0', 'ANIMEXTS1.0'].includes(ascii(b, p + 3, 11));
+      if (label === 0xf9 || label === 0x01 || loop) parts.push(b.subarray(p, end)); // graphic control, plain text, loop count
+      p = end;
+    } else if (b[p] === 0x2c) {
+      if (p + 10 > b.length) return null;
+      const end = blocksEnd(p + 10 + tableSize(b[p + 9]) + 1); // descriptor, local colour table, LZW code size
+      if (end < 0) return null;
+      parts.push(b.subarray(p, end));
+      p = end;
+    } else return null;
+  }
+  return null; // no trailer
 }
 
 /** WebP chunks that decoding needs: everything else (EXIF, XMP, unknown chunks) goes. */

@@ -231,3 +231,21 @@ test('an animated WebP is not stripped: its frames can hold chunks of their own'
   const animated = cat(ascii4('RIFF'), new Uint8Array(new Uint32Array([body.length + 4]).buffer), ascii4('WEBP'), body);
   assert.equal(stripMetadata(animated, 'image/webp'), null);
 });
+
+/** A 1×1 GIF, split after its global colour table, plus extension blocks: the loop count, XMP with GPS, a comment. */
+function taggedGif() {
+  const gif = new Uint8Array(Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64'));
+  const head = gif.subarray(0, 19); // header, screen descriptor, 2-colour table
+  const rest = gif.subarray(19); // graphic control, image, trailer
+  const ext = (/** @type {number} */ label, /** @type {Uint8Array[]} */ ...blocks) => cat(new Uint8Array([0x21, label]), ...blocks.map((b) => cat(new Uint8Array([b.length]), b)), new Uint8Array([0]));
+  const loop = ext(0xff, ascii4('NETSCAPE2.0'), new Uint8Array([1, 0, 0]));
+  const xmp = ext(0xff, ascii4('XMP DataXMP'), ascii4('<x:xmpmeta><exif:GPSLatitude>36,13.31N</exif:GPSLatitude></x:xmpmeta>'));
+  const comment = ext(0xfe, ascii4('taken at home'));
+  return { head, rest, loop, tagged: cat(head, loop, xmp, comment, rest, ascii4('after the end')) };
+}
+
+test('stripping a GIF drops its comments and application data, and keeps its loop count', () => {
+  const { head, rest, loop, tagged } = taggedGif();
+  assert.deepEqual(stripMetadata(tagged, 'image/gif'), cat(head, loop, rest));
+  assert.equal(stripMetadata(tagged.subarray(0, 40), 'image/gif'), null); // cut off before its end
+});

@@ -179,6 +179,15 @@ export async function exportArchive(store, opts) {
           continue;
         }
         out = { ...shared, hash: shared.bytes === out.bytes ? f.hash : await sha256Hex(shared.bytes) };
+      } else if (opts.share && !opts.share.places && (sniffed !== null || f.type.startsWith('image/'))) {
+        // Other images (GIF, TIFF, SVG…) can hold a location too: cleaned without re-encoding, or left out.
+        const stripped = stripMetadata(bytes, sniffed ?? f.type);
+        if (!stripped) {
+          skipped.push(f.path);
+          continue;
+        }
+        const { place: _, ...meta } = out.meta ?? {};
+        out = { bytes: stripped, type: sniffed ?? f.type, hash: await sha256Hex(stripped), meta: out.meta ? meta : undefined };
       }
       await zip.add(name, out.bytes, { compress: !isCompressedType(out.type), mtime: f.modified });
       manifest.files.push({
@@ -204,7 +213,7 @@ export async function exportArchive(store, opts) {
   for (const hash of historic) {
     if (current.has(hash)) continue;
     const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-    if (!rec || (opts.share && photoTypeOf(sniffImageType(new Uint8Array(rec.data)), rec.type))) continue; // a Share leaves out older versions of photos
+    if (!rec || (opts.share && (sniffImageType(new Uint8Array(rec.data)) !== null || rec.type.startsWith('image/')))) continue; // a Share leaves out older versions of images
     const name = `blobs/${hash}`;
     await zip.add(name, new Uint8Array(rec.data), { compress: !isCompressedType(rec.type), mtime: now });
     manifest.blobs.push({ name, hash, type: rec.type, size: rec.size });

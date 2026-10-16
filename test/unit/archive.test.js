@@ -566,3 +566,21 @@ test('older versions and the Photos tickbox know a photo by its bytes too', asyn
   const noPhotos = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: { ...PRESETS.share, photos: false }, app: '0.1.0' });
   assert.equal(noPhotos.manifest.files.some((f) => f.path === '/files/photo.bin'), false);
 });
+
+test('a location-free Share cleans a GIF without stopping its animation, and leaves out an image it cannot clean', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'T' });
+  const gif = new Uint8Array(Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64'));
+  const xmp = utf8('<x:xmpmeta><exif:GPSLatitude>36,13.31N</exif:GPSLatitude></x:xmpmeta>');
+  const tagged = new Uint8Array([...gif.subarray(0, 19), 0x21, 0xff, 11, ...utf8('NETSCAPE2.0'), 3, 1, 0, 0, 0, 0x21, 0xff, 11, ...utf8('XMP DataXMP'), xmp.length, ...xmp, 0, ...gif.subarray(19)]);
+  await a.ws.write(trip, '/files/wave.gif', tagged, { author: 'user', type: 'image/gif' });
+  await a.ws.write(trip, '/files/scan.tiff', utf8('II*\0 a TIFF, which can hold GPS too'), { author: 'user', type: 'image/tiff' });
+  const { blob, manifest, skipped } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: false } });
+  assert.deepEqual(skipped, ['/files/scan.tiff']);
+  const wave = manifest.files.find((f) => f.path === '/files/wave.gif');
+  const bytes = Buffer.from(/** @type {Uint8Array} */ ((await readZip(await bytesOf(blob))).get(/** @type {string} */ (wave?.name))));
+  assert.ok(bytes.includes('NETSCAPE2.0'));
+  assert.ok(!bytes.includes('GPSLatitude'));
+  const withPlaces = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: true } });
+  assert.deepEqual(withPlaces.skipped, []);
+});
