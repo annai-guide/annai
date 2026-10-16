@@ -21,6 +21,7 @@ import { selfTools } from '../core/agent/self-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
+import { Voice } from '../core/voice/voice.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -59,9 +60,16 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/web/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/places/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/go/index.js', import.meta.url).href);
+  await plugins.addBuiltin(new URL('../plugins/voice-browser/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
   let pluginsStarted = () => {};
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
+  // Speaking and hearing (spec §10): the speech lists, through this device's player and microphone.
+  const voice = new Voice({ llm, ws, registry, locale: navigator.language });
+  // The first tap of each session unlocks the audio player (an iPhone rule, spec §10.1).
+  const unlock = () => { voice.platform?.player.unlock(); };
+  addEventListener('pointerdown', unlock, { once: true, capture: true });
+  addEventListener('keydown', unlock, { once: true, capture: true });
 
   // Shiori (spec §6): one agent, talking about the trip that was open last.
   const agent = new Agent({ store, ws, llm, registry, codec });
@@ -71,7 +79,7 @@ async function boot() {
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, presets, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, presets, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.
