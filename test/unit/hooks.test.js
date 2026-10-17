@@ -91,25 +91,53 @@ test("8b-1: a hook never gets what its own plugin caused through annai's APIs: a
   assert.equal(causedBy({ scope: 'sys', seq: 1, ts: 1, type: 'file.write', actor: 'user', data: {} }), null);
 });
 
-test("8b-1: two plugins whose hooks each log on every entry don't ping-pong without end: past the bound it counts as a failure, and they are switched off", async () => {
+test("8b-1: two plugins whose hooks answer every entry, in the log and over the network, can't feed each other: hooks never get what any plugin caused", async () => {
   const { host, ws, registry, log } = await hostKit();
+  let fetches = 0;
+  host.connect({ fetch: async () => { fetches++; return new Response('ok'); } });
   for (const id of ['ping', 'pong']) {
     await host.install(files({
       'annai-plugin.json': JSON.stringify({ id, name: id, version: '1.0.0', api: 1, entry: 'index.js' }),
-      'index.js': `export function activate(annai) { return annai.hooks.on((e) => annai.events.append('sys', '${id}.saw', { seq: e.seq })); }`,
+      'index.js': `export function activate(annai) {
+        globalThis.__${id} = 0;
+        return annai.hooks.on(async (e) => {
+          if (++globalThis.__${id} > 40) return; // the test's own brake
+          await annai.net.fetch('https://${id}.example/log', { method: 'POST', body: String(e.seq) });
+          await annai.events.append('sys', '${id}.saw', { seq: e.seq });
+        });
+      }`,
     }));
     await host.start(id);
   }
+  for (let i = 0; i < 50; i++) await settle();
+  // ping's hooks saw annai install and start pong; count from the user's write on.
+  const g = /** @type {any} */ (globalThis);
+  g.__ping = g.__pong = fetches = 0;
+  const before = (await log()).filter((e) => e.type === 'ping.saw' || e.type === 'pong.saw').length;
   await ws.write('me', '/notes/a.md', 'hi', { author: 'user' });
-  for (let i = 0; i < 5000 && !registry.isDisabled('ping') && !registry.isDisabled('pong'); i++) await settle();
-  assert.ok(registry.isDisabled('ping') || registry.isDisabled('pong'), 'one of them is switched off');
-  const seen = (await log()).filter((e) => e.type === 'ping.saw' || e.type === 'pong.saw').length;
-  assert.ok(seen <= 2 * HOOK_LIMIT + 10, `bounded: ${seen}`);
-  const n = seen;
-  for (let i = 0; i < 100; i++) await settle();
-  assert.equal((await log()).filter((e) => e.type === 'ping.saw' || e.type === 'pong.saw').length, n, 'and it has stopped');
+  for (let i = 0; i < 200; i++) await settle();
+  assert.deepEqual([g.__ping, g.__pong], [1, 1], "each saw the user's write, and nothing the other did");
+  assert.equal(fetches, 2);
+  assert.equal((await log()).filter((e) => e.type === 'ping.saw' || e.type === 'pong.saw').length - before, 2);
+  assert.ok(!registry.isDisabled('ping') && !registry.isDisabled('pong'));
 });
-
+test("8b-1: a hook that feeds itself some way annai can't see (a file it writes as the user) is bounded: past the limit it counts as a failure and is switched off", async () => {
+  const { host, ws, registry, log } = await hostKit();
+  await host.install(files({
+    'annai-plugin.json': JSON.stringify({ id: 'echo', name: 'Echo', version: '1.0.0', api: 1, entry: 'index.js' }),
+    'index.js': `export function activate(annai) {
+      return annai.hooks.on((e) => annai.files.write('me', '/echo/' + (e.seq % 7) + '.md', String(e.seq), { author: 'user' }), { types: ['file.write'] });
+    }`,
+  }));
+  await host.start('echo');
+  await ws.write('me', '/notes/a.md', 'hi', { author: 'user' });
+  for (let i = 0; i < 20000 && !registry.isDisabled('echo'); i++) await settle();
+  assert.ok(registry.isDisabled('echo'), 'switched off');
+  const n = (await log()).length;
+  assert.ok(n <= HOOK_LIMIT + 50, `bounded: ${n}`);
+  for (let i = 0; i < 100; i++) await settle();
+  assert.equal((await log()).length, n, 'and it has stopped');
+});
 test('8b-1 (M1): a write the store tries again reports its entries once', async () => {
   const inner = createMemoryStore();
   let first = true;
