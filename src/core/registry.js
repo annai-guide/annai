@@ -128,18 +128,25 @@ export class Registry {
     const n = (this.#failures.get(pluginId) ?? 0) + 1;
     this.#failures.set(pluginId, n);
     this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data: { name, message: String(e?.message ?? e), count: n } });
-    if (n >= this.maxFailures && !this.#disabled.has(pluginId)) {
-      this.#disabled.add(pluginId);
-      this.#safeLog({ type: 'plugin.disabled', actor: 'system', data: { plugin: pluginId, reason: `failed ${n} times in a row` } });
-      for (const fn of this.#offs) {
-        try {
-          fn({ pluginId, reason: `failed ${n} times in a row`, message: String(e?.message ?? e) });
-        } catch (err) {
-          console.warn('a registry listener failed', err);
-        }
+    if (n >= this.maxFailures) this.disable(pluginId, `failed ${n} times in a row`, String(e?.message ?? e));
+  }
+
+  /**
+   * Switches a plugin off until enable() is called (spec §5.5), and says so once: in the log and to
+   * onDisabled's listeners. @param {string} pluginId @param {string} reason @param {string} [message] the last error
+   */
+  disable(pluginId, reason, message = reason) {
+    if (this.#disabled.has(pluginId)) return;
+    this.#disabled.add(pluginId);
+    this.#safeLog({ type: 'plugin.disabled', actor: 'system', data: { plugin: pluginId, reason } });
+    for (const fn of this.#offs) {
+      try {
+        fn({ pluginId, reason, message });
+      } catch (err) {
+        console.warn('a registry listener failed', err);
       }
-      this.#emit();
     }
+    this.#emit();
   }
 
   /** @param {{ type: string, actor: string, data: any }} ev */

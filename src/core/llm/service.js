@@ -83,17 +83,18 @@ export function createLlm({
     },
     /**
      * A quick decision (spec §9.7), recorded as a decide event.
-     * @param {{ prompt: string, options: { id: string, label: string }[], threshold?: number, scope?: string }} c
+     * @param {{ prompt: string, options: { id: string, label: string }[], threshold?: number, scope?: string, tag?: string }} c
+     *   tag: whose decision it is ("plugin:<id>"), kept on its entries
      * @returns {Promise<Record<string, number>>}
      */
-    async decide({ prompt, options, threshold, scope = SYS }) {
+    async decide({ prompt, options, threshold, scope = SYS, tag }) {
       const cfg = await readConfig(ws);
       const firstId = candidates(cfg, 'decide')[0];
       const first = firstId && cfg.models[firstId] ? modelOf(cfg.models[firstId]) : null;
       // The main model is asked at level off (or the nearest it has), so a quick decision stays quick.
-      const call = (/** @type {string} */ role, /** @type {any} */ request) => service.call({ role, request, scope, ...(role === 'decide' ? {} : { level: 'off' }), record: { tag: 'decide' } });
+      const call = (/** @type {string} */ role, /** @type {any} */ request) => service.call({ role, request, scope, ...(role === 'decide' ? {} : { level: 'off' }), record: { tag: tag ?? 'decide' } });
       const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs) });
-      await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by } }).catch(() => {});
+      await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by, ...(tag ? { tag } : {}) } }).catch(() => {});
       return r.probabilities;
     },
     /**
