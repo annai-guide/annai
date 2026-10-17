@@ -242,7 +242,9 @@ const everything = (store) => store.tx(['files', 'events', 'blobs', 'scopes'], '
   for (const b of await t.listBlobs()) out.push(new TextDecoder().decode(new Uint8Array((await t.getBlob(b.hash))?.data ?? new ArrayBuffer(0))));
   return out.join('\n');
 });
-const addressSecret = (/** @type {any} */ store, id = 'tide-pools') => store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${id}:address`));
+const addressSecret = (/** @type {any} */ store, id = 'tide-pools') => store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`package:${id}:address`));
+/** Where annai kept that secret before Reset's fix pass (R1): among the plugin's own. */
+const oldAddressSecret = (/** @type {any} */ store, id = 'tide-pools') => store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${id}:address`));
 
 test("8a-1: a key in a package's address is kept in its secret: installed.json, its history and the log show «key»; updates still find it; Remove forgets it", async () => {
   let served = SKILL;
@@ -260,6 +262,26 @@ test("8a-1: a key in a package's address is kept in its secret: installed.json, 
   assert.doesNotMatch(await everything(store), new RegExp(KEY));
   await host.uninstall('tide-pools');
   assert.equal(await addressSecret(store), undefined);
+});
+
+test('Reset R1: an address secret kept under its old name, among the plugin\'s own, moves at the next read or start, as one a backup from then brings back does', async () => {
+  const get = async (/** @type {string} */ url) => (url === KEYED ? new Response(SKILL.replace('version: "1.2"', 'version: "1.3"')) : new Response('', { status: 404 }));
+  for (const when of ['read', 'start']) {
+    const k = await hostKit();
+    await k.host.install(await fetchPackage(KEYED, { fetch: async () => new Response(SKILL) }), { source: 'url', url: KEYED });
+    // As annai kept it before this fix.
+    await k.store.tx(['secrets'], 'readwrite', async (/** @type {any} */ t) => {
+      await t.putSecret('plugin:tide-pools:address', await t.getSecret('package:tide-pools:address'));
+      await t.deleteSecret('package:tide-pools:address');
+    });
+    const host = when === 'start' ? k.relaunch() : k.host;
+    if (when === 'start') await host.startInstalled();
+    else assert.equal(await host.address('tide-pools'), KEYED, when);
+    assert.deepEqual(await addressSecret(k.store), { address: KEYED, keys: [KEY] }, when);
+    assert.equal(await oldAddressSecret(k.store), undefined, when);
+    assert.equal(await updateFromAddress(host, 'tide-pools', { fetch: get }), 'started', when);
+    assert.equal((await host.installed())['tide-pools'].version, '1.3.0', when);
+  }
 });
 
 test('8a-1: a plain address still works; a raw one kept before this fix moves into the secret at its next read, or at the next start', async () => {

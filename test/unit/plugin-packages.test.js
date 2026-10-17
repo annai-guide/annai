@@ -294,6 +294,7 @@ const PARK = files({
       station: { type: 'string', title: 'Station', default: 'Monterey' },
       units: { type: 'string', enum: ['ft', 'm'] },
       token: { type: 'string', title: 'Token', writeOnly: true, default: 'never-a-setting' },
+      address: { type: 'string', title: 'Home server', writeOnly: true },
     } },
   }),
   'index.js': `export function activate(annai) {
@@ -307,11 +308,13 @@ async function parkKit() {
   await k.host.install(PARK, { source: 'url', url: PARK_URL });
   await k.host.start('park');
   const secret = (/** @type {string} */ name) => k.store.tx(['secrets'], 'readonly', (t) => t.getSecret(`plugin:park:${name}`));
-  return { ...k, annai: /** @type {any} */ (globalThis).__park, secret };
+  /** The install address, in annai's own secret (Reset R1). */
+  const addressOf = () => k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('package:park:address'));
+  return { ...k, annai: /** @type {any} */ (globalThis).__park, secret, addressOf };
 }
 
 test("Reset clears a plugin's settings file with its history, and its secrets; the address it came from stays, and so do its package, its on/off state, its tool switch and what it wrote into a trip", async () => {
-  const { host, ws, annai, secret } = await parkKit();
+  const { host, ws, annai, secret, addressOf } = await parkKit();
   await ws.patch(SYS_SETTINGS, '/plugin-settings/park.json', { station: 'Big Sur', units: 'm' }, { author: 'user', create: true });
   await annai.settings.set({ station: 'Carmel' });
   await annai.secrets.set('token', 'park-token-123456');
@@ -326,7 +329,7 @@ test("Reset clears a plugin's settings file with its history, and its secrets; t
   assert.deepEqual(await ws.history(SYS_SETTINGS, '/plugin-settings/park.json'), []);
   assert.equal(await secret('token'), undefined);
   assert.equal(await secret('session'), undefined);
-  assert.deepEqual(await secret('address'), { address: PARK_URL, keys: [PARK_KEY] });
+  assert.deepEqual(await addressOf(), { address: PARK_URL, keys: [PARK_KEY] });
   assert.deepEqual(await host.saved('park'), { file: false, keys: [], secrets: [] });
   assert.deepEqual((await ws.list(SYS_PLUGINS, '/park/')).map((f) => f.path), ['/park/annai-plugin.json', '/park/index.js']);
   assert.equal((await host.installed()).park.enabled, true);
@@ -360,7 +363,7 @@ test("a running plugin reads its schema's defaults and null secrets after a Rese
 });
 
 test("a Reset with nothing saved changes nothing and logs nothing; a built-in's secret goes (the web plugin's Jina key); the MCP client's servers are no settings (choice 5)", async () => {
-  const { host, ws, store, log, secret } = await parkKit();
+  const { host, ws, store, log, addressOf } = await parkKit();
   const put = (/** @type {string} */ id, /** @type {any} */ v) => store.tx(['secrets'], 'readwrite', (t) => t.putSecret(id, v));
   const get = (/** @type {string} */ id) => store.tx(['secrets'], 'readonly', (t) => t.getSecret(id));
   await ws.patch(SYS_SETTINGS, '/plugin-settings/park-extra.json', { a: 1 }, { author: 'user', create: true });
@@ -370,7 +373,7 @@ test("a Reset with nothing saved changes nothing and logs nothing; a built-in's 
   assert.equal((await log()).length, before);
   assert.deepEqual(await ws.readJSON(SYS_SETTINGS, '/plugin-settings/park-extra.json'), { a: 1 });
   assert.equal(await get('plugin:park-extra:key'), 'other-key-123456');
-  assert.deepEqual(await secret('address'), { address: PARK_URL, keys: [PARK_KEY] });
+  assert.deepEqual(await addressOf(), { address: PARK_URL, keys: [PARK_KEY] });
   host.builtins.set('web', { id: 'web', name: 'Web tools' });
   await put('plugin:web:jina', 'jina_123456789');
   assert.deepEqual(await host.saved('web'), { file: false, keys: [], secrets: ['jina'] });
@@ -381,4 +384,31 @@ test("a Reset with nothing saved changes nothing and logs nothing; a built-in's 
   assert.equal(await host.saved('mcp'), null);
   await assert.rejects(host.reset('mcp'), /MCP servers/);
   assert.deepEqual(await get('plugin:mcp:docs'), { token: 'mcp-token-123456' });
+});
+
+test("Reset R1: a plugin's own secret called address is its own: annai's install address never meets it, address() leaves it, and Reset clears it", async () => {
+  const { host, store, annai, secret, addressOf } = await parkKit();
+  assert.equal(await annai.secrets.get('address'), null);
+  await annai.secrets.set('address', 'https://home.example/t/abcdef0123456789');
+  assert.deepEqual(await addressOf(), { address: PARK_URL, keys: [PARK_KEY] });
+  assert.equal(await host.address('park'), PARK_URL);
+  assert.equal(await secret('address'), 'https://home.example/t/abcdef0123456789');
+  assert.deepEqual((await host.saved('park'))?.secrets, ['address']);
+  await host.reset('park');
+  assert.equal(await secret('address'), undefined);
+  assert.deepEqual(await addressOf(), { address: PARK_URL, keys: [PARK_KEY] });
+  assert.equal(await host.address('park'), PARK_URL);
+  // With annai's own lost (a backup restored without its keys), one of the plugin's that isn't an address record stays the plugin's.
+  await store.tx(['secrets'], 'readwrite', (t) => t.deleteSecret('package:park:address'));
+  await annai.secrets.set('address', 'https://home.example/t/abcdef0123456789');
+  await host.address('park');
+  assert.equal(await secret('address'), 'https://home.example/t/abcdef0123456789');
+});
+
+test('Reset R1: removing a package removes its install address, package:<id>:address, with its plugin:<id>: secrets', async () => {
+  const { host, store, annai, addressOf } = await parkKit();
+  await annai.secrets.set('address', 'https://home.example/t/abcdef0123456789');
+  assert.deepEqual(await addressOf(), { address: PARK_URL, keys: [PARK_KEY] });
+  await host.uninstall('park');
+  assert.deepEqual(await store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
 });
