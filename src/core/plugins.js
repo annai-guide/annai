@@ -1,8 +1,9 @@
-import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest } from './packages.js';
-import { text } from './bytes.js';
+import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest } from './packages.js';
+import { parseSkill, SKILL_FILE } from './skills.js';
+import { forget } from './forget.js';
 import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
-import { tracedFetch } from './agent/net.js';
+import { tracedFetch, traceUrl } from './agent/net.js';
 import { record } from './agent/log.js';
 import { readAppSettings } from './settings.js';
 import { logEvent } from './events.js';
@@ -46,16 +47,15 @@ export function isPluginBug(e) {
   return !offline && !address && BUGS.some((B) => e instanceof B);
 }
 
-/** The folder the package lives in: "" or "name/" when everything sits in one top folder. @param {Map<string, Uint8Array>} files */
-function findRoot(files) {
-  if (files.has(MANIFEST_FILE)) return '';
-  const tops = new Set([...files.keys()].map((n) => n.split('/')[0]));
-  if (tops.size === 1) {
-    const [top] = tops;
-    if (files.has(`${top}/${MANIFEST_FILE}`)) return `${top}/`;
-  }
-  return '';
+/** A state record's kind: a bare skill, or a plugin (every record from before milestone 8). @param {any} s @returns {'skill' | 'plugin'} */
+const kindOfState = (s) => (s?.kind === 'skill' ? 'skill' : 'plugin');
+/** Where a package came from, read the same way for records from before milestone 8, whose source was the file's name. @param {any} s */
+function sourceOf(s) {
+  if (s?.source === 'official' || s?.source === 'url' || s?.source === 'file') return { source: s.source, file: s.file, url: s.url };
+  return { source: 'file', file: typeof s?.source === 'string' && s.source ? s.source : undefined, url: undefined };
 }
+/** A skill folder as a manifest names it: '' for the package's top. @param {string} f */
+const skillFolder = (f) => (f === '.' ? '' : f.replace(/\/+$/, ''));
 
 /**
  * Installs, starts and stops plugins (spec §5). Installed plugin files live
@@ -99,12 +99,17 @@ export class PluginHost {
     return mod.manifest;
   }
 
-  /** @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string, startFailures?: number }>>} */
+  /**
+   * Each installed package's record, by id. kind: 'skill' for a bare skill (absent before milestone 8: a plugin); source: 'official', 'url'
+   * or 'file' (before milestone 8, the file's name); tools: its tools' names as of its last start.
+   * @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string, kind?: string,
+   *   file?: string, url?: string, fingerprint?: string, tools?: string[], startFailures?: number }>>}
+   */
   async installed() {
     return (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {};
   }
 
-  /** Installs (or replaces) a plugin from a zip file. @param {Uint8Array} bytes @param {{ source?: string }} [opts] */
+  /** Installs (or replaces) a package from a zip file. @param {Uint8Array} bytes @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} [opts] */
   async installZip(bytes, opts) {
     /** @type {Map<string, Uint8Array>} */
     let files;
@@ -117,48 +122,65 @@ export class PluginHost {
   }
 
   /**
-   * Installs (or replaces) a plugin from its files, e.g. an unzipped package.
-   * Everything is checked first, then written in one transaction: all or nothing.
+   * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of
+   * annai's own names, not a package of the other kind, no skill name Shiori already has from
+   * elsewhere. replaces: the installed version this package would replace.
    * @param {Map<string, Uint8Array>} files
-   * @param {{ source?: string }} [opts]
+   * @returns {Promise<import('./packages.js').Package & { replaces: { version: string, kind: string } | null }>}
    */
-  async install(files, { source = 'file' } = {}) {
-    const root = findRoot(files);
-    const raw = files.get(root + MANIFEST_FILE);
-    if (!raw) throw new PluginError('plugin', `there is no ${MANIFEST_FILE} in this package`);
-    /** @type {any} */
-    let manifest;
-    try {
-      manifest = JSON.parse(text(raw));
-    } catch {
-      throw new PluginError('plugin', `its ${MANIFEST_FILE} is not valid JSON`);
+  async inspect(files) {
+    const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
+    const id = pkg.id;
+    if (this.builtins.has(id)) {
+      throw new PluginError(id, pkg.kind === 'skill' ? 'is a name annai uses for one of its own parts, so a skill can\'t have it.' : 'has the same id as a plugin built into annai');
     }
-    checkManifest(manifest);
-    const id = manifest.id;
-    if (this.builtins.has(id)) throw new PluginError(id, 'has the same id as a plugin built into annai');
-    if (manifest.entry && !files.has(root + manifest.entry)) throw new PluginError(id, `its entry file ${manifest.entry} is missing`);
+    const state = await this.installed();
+    const had = state[id];
+    if (had && kindOfState(had) !== pkg.kind) throw new PluginError(id, `is installed already as a ${kindOfState(had)}. Remove it first.`);
+    for (const s of pkg.skills) {
+      const other = this.registry.entries('skill').find((e) => e.pluginId !== id && e.item?.name === s.name);
+      if (!other) continue;
+      const theirs = state[other.pluginId];
+      throw new PluginError(id, theirs
+        ? `Shiori already has a skill called ${s.name}, from ${theirs.name ?? other.pluginId}. Remove that one first.`
+        : `Shiori already has a skill called ${s.name}, built into annai.`);
+    }
+    return { ...pkg, replaces: had ? { version: String(had.version ?? ''), kind: kindOfState(had) } : null };
+  }
+
+  /**
+   * Installs (or replaces) a package from its files, e.g. an unzipped one. Everything is checked
+   * first, then written in one transaction: all or nothing. A package's files keep no history
+   * (choice 3): an install replaces them outright, and the space old versions took comes back.
+   * @param {Map<string, Uint8Array>} files
+   * @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} [opts]
+   */
+  async install(files, { source = 'file', file, url } = {}) {
+    const pkg = await this.inspect(files);
+    const id = pkg.id;
     /** @type {Map<string, Uint8Array>} */
-    const toWrite = new Map();
-    for (const [name, bytes] of files) {
-      if (!name.startsWith(root) || name.endsWith('/')) continue;
-      const rel = name.slice(root.length);
-      try {
-        toWrite.set(normPath(`/${id}/${rel}`), bytes);
-      } catch {
-        throw new PluginError(id, `the file name "${rel}" isn't allowed`);
-      }
-    }
+    const toWrite = new Map([...pkg.files].map(([rel, bytes]) => [`/${id}/${rel}`, bytes]));
     await this.stop(id);
     const state = await this.installed();
-    state[id] = { version: manifest.version, name: manifest.name, enabled: true, installed: this.ws.now(), source };
+    const before = state[id];
+    state[id] = {
+      version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: true, installed: this.ws.now(), source, fingerprint: pkg.fingerprint,
+      ...(file ? { file } : {}), ...(url ? { url } : {}), ...(before?.tools ? { tools: before.tools } : {}),
+    };
     const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
     await this.ws.writeMany(SYS_PLUGINS, [
       ...gone.map((f) => ({ path: f.path, content: null })),
       ...[...toWrite].map(([path, bytes]) => ({ path, content: bytes, type: typeForPath(path) })),
       { path: STATE, content: state },
     ], { author: 'system' });
-    if (this.#loaded.has(id)) this.#stale.add(id);
-    return manifest;
+    // If this fails, the old versions only take space until the next install or removal.
+    await forget(this.ws.store, SYS_PLUGINS, { history: (p) => p.startsWith(`/${id}/`) }).catch(() => {});
+    await logEvent(this.ws.store, SYS, {
+      type: before ? 'plugin.update' : 'plugin.install', actor: 'system',
+      data: { plugin: id, name: pkg.name, version: pkg.version, kind: pkg.kind, from: source, ...(url ? { url: traceUrl(url) } : {}) },
+    }).catch(() => {});
+    if (this.#loaded.has(id) && pkg.code) this.#stale.add(id);
+    return pkg.manifest;
   }
 
   /**
@@ -216,9 +238,13 @@ export class PluginHost {
     if (this.active.has(id)) return;
     if (this.#stale.has(id)) throw new PluginError(id, 'was updated. Restart annai to run the new version.');
     const manifest = await this.#stored(id);
-    this.#loaded.add(id);
+    if (manifest.entry) this.#loaded.add(id);
     const mod = manifest.entry ? await this.importModule(this.pluginUrl(id, manifest.entry)) : {};
     await this.#start(manifest, mod, false);
+    // Its tools' names, kept so removing it removes their switches even while it is off (choice 4).
+    const tools = this.registry.entries('tool').filter((e) => e.pluginId === id).map((e) => String(e.item?.name)).sort();
+    const had = (await this.installed())[id]?.tools ?? [];
+    if (JSON.stringify(had) !== JSON.stringify(tools)) await this.#updateState(id, { tools }).catch(() => {});
   }
 
   /** @param {string} id */
@@ -261,29 +287,113 @@ export class PluginHost {
   /** Rows for the plugins screen. problem: why an installed plugin can't start, if it can't. */
   async describe() {
     const rows = [];
+    const skillsOf = (/** @type {string} */ id) => this.registry.entries('skill').filter((e) => e.pluginId === id).map((e) => String(e.item?.name));
     for (const m of this.builtins.values()) {
-      rows.push({ id: m.id, name: m.name, version: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id), failing: this.registry.isDisabled(m.id), problem: null, restart: false });
+      rows.push({
+        id: m.id, name: m.name, version: m.version, shownVersion: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id),
+        failing: this.registry.isDisabled(m.id), problem: null, restart: false, kind: 'plugin', source: 'builtin', skills: skillsOf(m.id),
+      });
     }
     for (const [id, s] of Object.entries(await this.installed())) {
       /** @type {any} */
       let m = null;
       /** @type {string | null} */
       let problem = null;
+      let shownVersion = String(s.version ?? '');
       try {
-        m = await this.#stored(id);
+        if (kindOfState(s) === 'skill') {
+          const skill = await this.#storedSkill(id);
+          m = skillManifest(skill);
+          shownVersion = skill.metadata.version ?? '';
+        } else {
+          m = await this.#stored(id);
+          shownVersion = m.version;
+        }
       } catch (e) {
         problem = String(/** @type {any} */ (e)?.message ?? e);
       }
+      const active = this.active.has(id);
       rows.push({
-        id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, description: m?.description ?? '', builtin: false,
-        enabled: Boolean(s.enabled), active: this.active.has(id), failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
+        id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
+        enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
+        kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage,
+        skills: active ? skillsOf(id) : kindOfState(s) === 'skill' ? [id] : [],
       });
     }
     return rows;
   }
 
+  /** A bare skill's SKILL.md as stored, read again (choice 2). @param {string} id */
+  async #storedSkill(id) {
+    const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${SKILL_FILE}`).catch(() => undefined);
+    if (t === undefined) throw new PluginError(id, 'is not installed');
+    /** @type {import('./skills.js').Skill} */
+    let skill;
+    try {
+      skill = parseSkill(t);
+    } catch (e) {
+      throw new PluginError(id, String(/** @type {any} */ (e)?.message ?? e));
+    }
+    if (skill.name !== id) throw new PluginError(id, `its ${SKILL_FILE} names "${skill.name}", not the folder it is installed in`);
+    return skill;
+  }
+
+  /**
+   * What a package brings besides code, registered under its id once it has started: its skills,
+   * read fresh from storage each time Shiori loads one; its personalities; its endpoint templates.
+   * @param {string} id @param {any} manifest
+   */
+  async #content(id, manifest) {
+    for (const f of manifest.skills ?? []) {
+      const folder = skillFolder(f);
+      const dir = `/${id}/${folder ? `${folder}/` : ''}`;
+      const read = async () => {
+        const t = await this.ws.readText(SYS_PLUGINS, `${dir}${SKILL_FILE}`);
+        if (t === undefined) throw new PluginError(id, `its skill folder ${f} has no ${SKILL_FILE}`);
+        try {
+          return parseSkill(t);
+        } catch (e) {
+          throw new PluginError(id, `its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
+        }
+      };
+      const skill = await read();
+      this.registry.add(id, 'skill', {
+        name: skill.name, description: skill.description,
+        text: async () => (await read()).body.trim(),
+        files: async () => (await this.ws.list(SYS_PLUGINS, dir)).map((x) => x.path.slice(dir.length)).filter((p) => p !== SKILL_FILE).sort(),
+        read: async (/** @type {string} */ file) => {
+          const path = `${dir}${file}`;
+          try {
+            if (!file || normPath(path) !== path) return null;
+          } catch {
+            return null;
+          }
+          const got = await this.ws.read(SYS_PLUGINS, path);
+          return got ? { bytes: got.bytes, type: got.entry.type } : null;
+        },
+      });
+    }
+    for (const p of manifest.personalities ?? []) {
+      const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${p}`);
+      if (t === undefined) throw new PluginError(id, `its personality ${p} is missing`);
+      this.registry.add(id, 'personality', { name: String(p).split('/').pop()?.replace(/\.md$/, ''), text: t, plugin: manifest.name });
+    }
+    for (const t of manifest.templates ?? []) {
+      /** @type {any} */
+      let json;
+      try {
+        json = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${t}`);
+      } catch {
+        json = null;
+      }
+      if (!Array.isArray(json?.endpoints)) throw new PluginError(id, `its template file ${t} isn't valid`);
+      for (const tpl of json.endpoints) this.registry.add(id, 'template', tpl);
+    }
+  }
+
   /** The stored manifest, checked again: storage can hold one that was never installed through install(). @param {string} id */
   async #stored(id) {
+    if (kindOfState((await this.installed())[id]) === 'skill') return skillManifest(await this.#storedSkill(id));
     /** @type {any} */
     let manifest;
     try {
@@ -308,7 +418,13 @@ export class PluginHost {
       } else if (manifest.entry) {
         throw new PluginError(id, 'its module has no activate() function');
       }
+      if (!builtin) await this.#content(id, manifest);
     } catch (e) {
+      try {
+        dispose();
+      } catch {
+        // it failed already; what it registered goes below
+      }
       this.registry.removePlugin(id); // whatever it registered before failing
       throw e;
     }
