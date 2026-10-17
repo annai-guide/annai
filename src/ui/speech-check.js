@@ -3,6 +3,7 @@ import { relTime } from './format.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
 import { saveModel } from '../core/llm/config.js';
 import { micProblem } from './mic-help.js';
+import { withoutSecrets } from '../core/agent/net.js';
 
 /** What a voice says when it is tested. */
 export const SAMPLE = 'Hello! This is how I sound when I talk to you.';
@@ -56,7 +57,7 @@ export function speechTestPanel(ctx, model, kind, verified, title = 'Test') {
           meter.value = 0;
         }
       } catch (e) {
-        status.textContent = speechProblem(e);
+        status.textContent = await withoutSecrets(ctx.store, speechProblem(e)); // a provider's own words may hold a key (spec §9.9)
         if (e instanceof ProviderError) await mark(false);
       } finally {
         run.disabled = false;

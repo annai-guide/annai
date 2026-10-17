@@ -12,7 +12,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { testModel, testLevels, TEST_IMAGE } from '../../src/core/llm/check.js';
-import { readConfig, modelOf, saveEndpoint, saveModel, saveRoles } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, saveEndpoint, saveModel, saveRoles, setKey } from '../../src/core/llm/config.js';
 import { addFromTemplate } from '../../src/core/llm/templates.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
@@ -147,4 +147,21 @@ test('the Test button checks photo uploads where the endpoint stores files (spec
   assert.deepEqual([last.step, last.ok], ['upload', false]);
   assert.equal(last.detail, "Uploading photos didn't work with this key. annai will send photos in each request instead.");
   assert.equal(refused.ok, true, 'photos still work, sent in each request');
+});
+
+test("what the Test button says never shows a key, whatever the provider's message holds (spec §9.9)", async () => {
+  const { llm, ws, store } = await realLlm();
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
+  await llm.ensureType('scripted');
+  await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
+  const cfg = await readConfig(ws);
+  const [id] = Object.keys(cfg.models);
+  const ep = cfg.endpoints[cfg.models[id].endpoint];
+  await setKey(store, ep.id, 'sk-live-0123456789abcdef');
+  // A kind the plugin made up has no plain words of annai's: the provider's own message is shown, blanked.
+  await saveEndpoint(ws, { ...ep, user: { ...ep.user, tunables: { script: [{ error: 'quota-ish', status: 400, message: 'Key sk-live-0123456789abcdef may not use this model.' }] } } });
+  const r = await llm.test(id);
+  assert.equal(r.ok, false);
+  assert.match(r.steps[0].detail, /may not use this model/);
+  assert.doesNotMatch(JSON.stringify(r), /0123456789abcdef/);
 });
