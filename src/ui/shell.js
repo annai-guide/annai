@@ -78,20 +78,48 @@ export function startShell(root, core) {
   let dockMadeFor = dockKey(ctx);
   /** @type {any} */ (ctx).dock = dock;
   root.replaceChildren(header, installBanner(), main, notices.el, ...(dock ? [dock.el] : []));
+  // The page and the cards make room for the dock as tall as it is now: voice on, typing open, or a plugin's.
+  const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => {
+    document.documentElement.style.setProperty('--dock-h', `${Math.ceil(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`);
+  }) : null;
+  if (dock) dockSize?.observe(dock.el);
   const remakeDock = () => {
     if (!dock || dockKey(ctx) === dockMadeFor) return false;
     dockMadeFor = dockKey(ctx);
     cleanUp('dock');
     /** @type {any} */ (dock).dispose?.(); // what the old one listened to (minors 13)
     const made = makeDock();
+    dockSize?.unobserve(dock.el);
     dock.el.replaceWith(made.el);
+    dockSize?.observe(made.el);
     dock = made;
     /** @type {any} */ (ctx).dock = dock;
     return true;
   };
   let seq = 0;
-  async function render() {
+  // Where you were (the user, 2026-10-18): a screen you go to opens at its top; Back or Forward brings you
+  // back to where you were on it. Each history entry gets a key, and where you were is kept by key.
+  history.scrollRestoration = 'manual';
+  /** @type {Map<string, number>} */
+  const scrolls = new Map();
+  let entry = '';
+  addEventListener('scroll', () => { if (entry) scrolls.set(entry, scrollY); }, { passive: true });
+  /** This history entry's key, and where to scroll to on it. @returns {number} */
+  const arrive = () => {
+    const had = history.state?.annaiScroll;
+    if (typeof had === 'string') {
+      entry = had;
+      return scrolls.get(had) ?? 0;
+    }
+    entry = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    history.replaceState({ ...(history.state ?? {}), annaiScroll: entry }, '');
+    return 0;
+  };
+
+  /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
+  async function render(o = {}) {
     const my = ++seq;
+    const want = o.moved ? arrive() : null;
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
     const section = route.name === 'simulate' || route.name === 'mcp' ? 'settings' : route.name === 'plan' ? 'plan' : route.name === 'drive' ? 'now' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
@@ -110,6 +138,11 @@ export function startShell(root, core) {
       const node = await screen(Object.create(ctx, { seq: { value: my } }), route);
       if (my !== seq) return;
       main.replaceChildren(node);
+      if (want !== null) {
+        scrollTo(0, want);
+        // A screen that fills in a moment later is scrolled again once it is long enough.
+        if (want) setTimeout(() => { if (my === seq && Math.abs(scrollY - want) > 2) scrollTo(0, want); }, 150);
+      }
     } catch (e) {
       if (my !== seq) return;
       main.replaceChildren(h('div', { class: 'screen' },
@@ -119,7 +152,34 @@ export function startShell(root, core) {
       dispatchEvent(new ErrorEvent('error', { error: e, message: String(e) }));
     }
   }
-  addEventListener('hashchange', render);
+  addEventListener('hashchange', () => render({ moved: true }));
+
+  // Swiping a screen sideways moves to the next or the previous tab of the top bar (the user, 2026-10-18). Not
+  // from the screen's edges (the phone's own back gesture), nor on anything that moves sideways itself.
+  /** @type {{ x: number, y: number, t: number } | null} */
+  let swipe = null;
+  const ownsSideways = (/** @type {EventTarget | null} */ t) => {
+    for (let n = t instanceof Element ? t : null; n && n !== main; n = n.parentElement) {
+      if (n.matches('input, textarea, select, [contenteditable], canvas, .viewer-stage, .no-swipe')) return true;
+      if (n.scrollWidth > n.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(n).overflowX)) return true;
+    }
+    return false;
+  };
+  main.addEventListener('pointerdown', (e) => {
+    swipe = e.pointerType === 'touch' && e.isPrimary && e.clientX > 24 && e.clientX < innerWidth - 24 && !ownsSideways(e.target)
+      ? { x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
+  });
+  main.addEventListener('pointercancel', () => { swipe = null; });
+  main.addEventListener('pointerup', (e) => {
+    const s = swipe;
+    swipe = null;
+    if (!s || e.pointerType !== 'touch') return;
+    const dx = e.clientX - s.x;
+    if (Math.abs(dx) < 80 || Math.abs(dx) < 2 * Math.abs(e.clientY - s.y) || e.timeStamp - s.t > 700) return;
+    const i = links.findIndex((a) => a.hasAttribute('aria-current'));
+    const to = i < 0 ? null : links[i + (dx < 0 ? 1 : -1)];
+    if (to) location.hash = /** @type {string} */ (to.getAttribute('href'));
+  });
   // What plugins add redraws when it changes (choice 9 of milestone 8b): once per change, not per item.
   if (core.registry) {
     syncThemes(core.registry, document.head);
@@ -149,7 +209,7 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  render();
+  render({ moved: true });
   return {
     notices,
     render,

@@ -63,3 +63,50 @@ test('the top bar shows there is more of it, and keeps the screen you are on in 
   await nav.evaluate((el) => { el.scrollLeft = el.scrollWidth; el.dispatchEvent(new Event('scroll')); });
   await expect(nav).not.toHaveClass(/\bmore\b/);
 });
+
+test('a screen you go to opens at its top, and Back brings you back to where you were', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/settings');
+  await page.evaluate(() => scrollTo(0, 900));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(600);
+  const was = await page.evaluate(() => scrollY);
+  await page.evaluate(() => { location.hash = '#/models'; });
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(was - 3);
+  expect(Math.abs(await page.evaluate(() => scrollY) - was)).toBeLessThan(3);
+});
+
+test('swiping a screen sideways moves along the top bar; not from its edge, nor on something that scrolls sideways', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/trips');
+  const swipe = (/** @type {number} */ from, /** @type {number} */ to, /** @type {number} */ y = 400) => page.evaluate(([a, b, yy]) => {
+    const main = /** @type {HTMLElement} */ (document.querySelector('main'));
+    const at = (/** @type {number} */ x) => document.elementFromPoint(x, yy) ?? main;
+    const opts = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: yy, pointerId: 7 });
+    at(a).dispatchEvent(new PointerEvent('pointerdown', opts(a)));
+    at(b).dispatchEvent(new PointerEvent('pointerup', opts(b)));
+  }, [from, to, y]);
+  const current = page.locator('.topnav a[aria-current="page"]');
+  await expect(current).toHaveText('Trips');
+  await swipe(280, 120);
+  await expect(current).toHaveText('Plan');
+  await swipe(100, 280);
+  await expect(current).toHaveText('Trips');
+  await swipe(10, 200); // from the left edge: the phone's own back gesture
+  await expect(current).toHaveText('Trips');
+  await swipe(280, 250); // too short
+  await expect(current).toHaveText('Trips');
+});
+
+test('Settings → Shiori shows every way she can look, with the words the dock shows under her', async ({ page }) => {
+  await openApp(page, '#/shiori');
+  const looks = page.locator('.looks .look');
+  await expect(looks).toHaveCount(8);
+  expect(await looks.evaluateAll((els) => els.map((e) => `${/** @type {HTMLElement} */ (e).dataset.state}=${e.querySelector('.av')?.getAttribute('data-state')}`)))
+    .toEqual(['sleeping', 'listening', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline'].map((s) => `${s}=${s}`));
+  await expect(page.getByRole('img', { name: 'Shiori, thinking' })).toBeVisible();
+  await expect(looks.nth(0)).toContainText('Tap to talk');
+});
