@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { relayKit, ENDPOINT, MIN, token } from './relay-kit.js';
 import { UNCONFIRMED, BATCH, KEEP_CONFIRMED } from '../../relay/src/relay.js';
 import { startRelay } from '../../relay/serve.mjs';
+import { MemoryStorage } from '../../relay/memory.js';
 import { newVapidJwk } from '../../relay/src/vapid.js';
 
 const DAY = 86_400_000;
@@ -150,4 +151,16 @@ test('a push service that never answers is given up on, and the reminder tried a
   const [w] = await k.waiting();
   assert.equal(w.tries, 1);
   assert.equal(w.next, k.now() + 30_000);
+});
+
+test("the in-memory storage takes at most 128 keys a call, as Cloudflare's does, so a test meets that limit too", async () => {
+  const s = new MemoryStorage();
+  const keys = Array.from({ length: 129 }, (_, i) => `k${i}`);
+  await assert.rejects(s.put(Object.fromEntries(keys.map((k) => [k, 1]))), /128/);
+  await assert.rejects(s.delete(keys), /128/);
+  await s.put(Object.fromEntries(keys.slice(0, 128).map((k) => [k, 1])));
+  assert.equal(await s.delete(keys.slice(0, 128)), 128);
+  await s.put({ a: 1, b: 2 });
+  await s.deleteAll();
+  assert.deepEqual(s.keys(), []);
 });

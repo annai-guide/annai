@@ -8,7 +8,7 @@ import { readVapidKey, vapidJwt, vapidAuthorization } from './vapid.js';
  * dependencies: the Workers runtime has fetch and WebCrypto, and so has Node, where relay/serve.mjs
  * runs the same code.
  * @typedef {{ get: (key: string) => Promise<any>, put: (key: string | Record<string, any>, value?: any) => Promise<void>,
- *   delete: (key: string | string[]) => Promise<any>, list: (o?: { prefix?: string }) => Promise<Map<string, any>>,
+ *   delete: (key: string | string[]) => Promise<any>, deleteAll: () => Promise<void>, list: (o?: { prefix?: string }) => Promise<Map<string, any>>,
  *   getAlarm: () => Promise<number | null>, setAlarm: (t: number) => Promise<void>, deleteAlarm: () => Promise<void> }} Storage
  * @typedef {{ storage: Storage }} State  a Durable Object's state, as the relay uses it
  * @typedef {{ idFromName: (name: string) => any, get: (id: any) => { fetch: (req: Request) => Promise<Response> } }} Namespace
@@ -314,10 +314,18 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
         }
         const confirmed = await this.storage.get('confirmed');
         if (confirmed && confirmed.at + KEEP_CONFIRMED <= t && !(await this.storage.list({ prefix: 'm:' })).size) await this.storage.delete('confirmed');
+        if (await this.storage.get('fails')) await this.storage.delete('fails');
         await this.rewake();
       } catch {
-        // The relay itself failed: look again in a minute rather than let Cloudflare retry at once.
-        await this.storage.setAlarm(now() + MIN);
+        // The relay itself failed: looked at again later, a minute, then two, four… at most an hour apart,
+        // rather than every minute, or by Cloudflare at once.
+        try {
+          const fails = (Number(await this.storage.get('fails')) || 0) + 1;
+          await this.storage.put('fails', fails);
+          await this.storage.setAlarm(now() + Math.min(60 * MIN, MIN * 2 ** (fails - 1)));
+        } catch {
+          await this.storage.setAlarm(now() + MIN).catch(() => {});
+        }
       }
     }
 
@@ -329,9 +337,8 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
     async #settle(w, t) {
       const r = await this.#deliver(w, t);
       if (r === 'gone') {
-        /** @type {Waiting[]} */
-        const all = [...(await this.storage.list({ prefix: 'm:' })).values()];
-        await this.storage.delete([...all.flatMap((x) => [`m:${x.id}`, `p:${x.id}`]), 'confirmed', 'jwt']);
+        // Everything this subscription's object keeps, however much (a delete takes at most 128 keys).
+        await this.storage.deleteAll();
       } else if (r === 'retry') {
         /** @type {Waiting | undefined} */
         const still = await this.storage.get(`m:${w.id}`);
@@ -407,7 +414,7 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
         return;
       }
       await this.storage.deleteAlarm();
-      await this.storage.delete('jwt');
+      await this.storage.delete(['jwt', 'fails']);
     }
   }
 

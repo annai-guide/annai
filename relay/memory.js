@@ -7,6 +7,13 @@
 
 /** The longest wait setTimeout holds; a longer one is waited in steps. */
 const LONGEST = 2 ** 31 - 1;
+/** Cloudflare's storage takes at most this many keys in one put or delete. */
+export const MAX_KEYS = 128;
+
+/** @param {number} n */
+function allowed(n) {
+  if (n > MAX_KEYS) throw new Error(`Durable Object storage takes at most ${MAX_KEYS} keys a call; this was ${n}.`);
+}
 
 export class MemoryStorage {
   /** @type {Map<string, any>} */
@@ -24,12 +31,17 @@ export class MemoryStorage {
   }
   /** @param {string | Record<string, any>} key @param {any} [value] */
   async put(key, value) {
-    if (typeof key === 'string') this.#data.set(key, structuredClone(value));
-    else for (const [k, v] of Object.entries(key)) this.#data.set(k, structuredClone(v));
+    if (typeof key === 'string') {
+      this.#data.set(key, structuredClone(value));
+      return;
+    }
+    allowed(Object.keys(key).length);
+    for (const [k, v] of Object.entries(key)) this.#data.set(k, structuredClone(v));
   }
   /** @param {string | string[]} key */
   async delete(key) {
     if (!Array.isArray(key)) return this.#data.delete(key);
+    allowed(key.length);
     let n = 0;
     for (const k of key) if (this.#data.delete(k)) n++;
     return n;
@@ -38,6 +50,10 @@ export class MemoryStorage {
   async list({ prefix = '' } = {}) {
     const keys = [...this.#data.keys()].filter((k) => k.startsWith(prefix)).sort();
     return new Map(keys.map((k) => [k, structuredClone(this.#data.get(k))]));
+  }
+  /** Everything stored goes; the alarm stays, as on Cloudflare. */
+  async deleteAll() {
+    this.#data.clear();
   }
   async getAlarm() {
     return this.alarm;
