@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '33e036eaee37';
+const BUILD = '194b2f8e9690';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -138,6 +138,7 @@ const SHELL = [
   '/src/ui/format.js',
   '/src/ui/import-state.js',
   '/src/ui/install.js',
+  '/src/ui/live-chip.js',
   '/src/ui/live-help.js',
   '/src/ui/markdown.js',
   '/src/ui/media-keys.js',
@@ -176,6 +177,7 @@ const SHELL = [
   '/src/ui/tokens.css',
   '/src/ui/unlock.js',
   '/src/ui/voice-chip.js',
+  '/src/ui/wake-lock.js',
 ];
 
 sw.addEventListener('install', (event) => {
