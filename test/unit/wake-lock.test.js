@@ -119,3 +119,23 @@ test('a GPS position from before the GPS was lost, or too old, is not shown as w
   assert.equal(knownFix({ on: true, gps: 'ok', fix: { ...old, at: now } })?.lat, 36.3715);
   assert.equal(knownFix({ on: true, gps: 'denied', fix: old }), null);
 });
+
+test('a choice made before the activity is known (just after live mode came on) carries over to the activity that follows (B6)', async () => {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  await (await import('../../src/core/settings.js')).updateAppSettings(ws, { live: { awake: { 'moving-fast': false } } }); // an older choice
+  const live = fakeLive({ activity: 'unknown' });
+  const lock = fakeLock();
+  const a = keepAwake({ live, ws, lock });
+  await a.ready;
+  await a.choose(true);
+  assert.equal(a.held, true);
+  live.set({ activity: 'moving-fast' });
+  await tick();
+  assert.equal(a.held, true, 'the screen stays on as the drive settles');
+  assert.equal(a.chosen, true);
+  assert.equal((await readAppSettings(ws)).live.awake['moving-fast'], true);
+  live.set({ activity: 'walking' });
+  await tick();
+  assert.equal(a.held, false, 'it was a choice for the drive');
+});
