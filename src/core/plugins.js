@@ -1,6 +1,7 @@
 import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts } from './packages.js';
 import { parseSkill, SKILL_FILE } from './skills.js';
 import { forget } from './forget.js';
+import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme } from './ui-slots.js';
 import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
 import { tracedFetch, traceUrl } from './agent/net.js';
@@ -659,6 +660,32 @@ export class PluginHost {
       ui: Object.freeze({
         card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body, tone: c?.tone, actions: c?.actions }),
         toast: (/** @type {string} */ text) => need('notices').toast(String(text)),
+        // What a plugin adds to annai's screens (spec §16.4), checked first; it goes when the plugin stops.
+        slot: (/** @type {string} */ slot, /** @type {any} */ item) => {
+          const wrong = checkSlot(slot, item);
+          if (wrong) throw new PluginError(id, wrong);
+          return registry.add(id, `ui:${slot}`, item);
+        },
+        cardType: (/** @type {any} */ item) => {
+          const wrong = checkCardType(item);
+          if (wrong) throw new PluginError(id, wrong);
+          return registry.add(id, 'ui:card-type', item);
+        },
+        component: (/** @type {string} */ name, /** @type {any} */ impl) => {
+          const wrong = checkComponent(name, impl);
+          if (wrong) throw new PluginError(id, wrong);
+          return registry.add(id, 'ui:component', { ...impl, name });
+        },
+        screen: (/** @type {any} */ item) => {
+          const wrong = checkScreen(item);
+          if (wrong) throw new PluginError(id, wrong);
+          return registry.add(id, 'ui:screen', item);
+        },
+        theme: (/** @type {string} */ file) => {
+          const wrong = checkTheme(file);
+          if (wrong) throw new PluginError(id, wrong);
+          return registry.add(id, 'ui:theme', { file, href: this.pluginUrl(id, file) });
+        },
       }),
       cache: Object.freeze({ state: () => need('agent').cacheState() }),
       settings: Object.freeze({
