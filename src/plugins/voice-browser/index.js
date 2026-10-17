@@ -3,8 +3,8 @@ import { encodeWav } from '../../core/voice/pcm.js';
 /**
  * The device side of voice (spec §10), a built-in plugin (§19): one audio player for every voice
  * clip, unlocked by the first tap of each session (an iPhone rule, §10.1); the browser's own
- * voice; the microphone, through an AudioWorklet (§10.2); the phone's dictation; and the audio
- * session type where the browser has one (Safari). The core reaches it as 'voice-platform'.
+ * voice; the microphone, through an AudioWorklet (§10.2); the phone's dictation; the audio devices,
+ * for voice Auto (§10.5); and the audio session type where the browser has one (Safari). The core reaches it as 'voice-platform'.
  * @typedef {import('../../core/voice/platform.js').VoicePlatform} VoicePlatform
  */
 export const manifest = { id: 'voice-browser', name: 'Voice on this device', version: '0.1.0', api: 1, description: "The phone's speaker, microphone, voice and dictation." };
@@ -232,6 +232,14 @@ export function browserPlatform() {
           },
         };
       },
+    },
+    async devices() {
+      // Names come only once the microphone was allowed (spec §10.5: without them Auto can't tell).
+      if (!navigator.mediaDevices?.enumerateDevices) return [];
+      return (await navigator.mediaDevices.enumerateDevices()).map((d) => ({ kind: d.kind, label: d.label }));
+    },
+    onDeviceChange(fn) {
+      navigator.mediaDevices?.addEventListener?.('devicechange', fn);
     },
     session(type) {
       // Where the browser has one (Safari): transient while speaking, play-and-record while listening, playback after (spec §10.1).
