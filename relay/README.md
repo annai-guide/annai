@@ -10,11 +10,26 @@ It is a Cloudflare Worker with one Durable Object per push subscription: the obj
 phone's reminders and wakes with its alarm at the next one's time. It has no dependencies.
 
 - `GET /v1/vapid`: the relay's public key, which phones subscribe with.
-- `POST /v1/schedule`: a reminder, `Authorization: Bearer <cancel token>` and JSON `{ endpoint, key, sendAt, ttl?, urgency?, payload, id? }`. Answers `201 { id, sendAt }`.
+- `POST /v1/schedule`: a reminder, `Authorization: Bearer <cancel token>` and JSON `{ endpoint, key, sendAt, ttl?, urgency?, payload, id? }`. Answers `201 { id, sendAt }`. A reminder due now is sent in the same request: `201 { id, sendAt, sent: true }`, or 410 when the phone's subscription no longer exists.
 - `DELETE /v1/schedule/:id`, with the same `Authorization`. Answers 204.
 
-Limits: an encrypted reminder up to 4 KB, 200 waiting per phone, 30 days ahead, 300 requests a
-minute from one address. Errors are `{ error, message }`.
+Limits:
+- an encrypted reminder: up to 4 KB;
+- 200 waiting per phone, up to 30 days ahead;
+- until a phone has had one notification through the relay, it may keep only 3 reminders, due within
+  10 minutes (annai sends a "notifications are on" one first). So an endpoint someone made up costs at
+  most three small reminders, and only until its push service refuses it at the first send;
+- 300 requests a minute from one address;
+- a request body of 8 KB, read no further.
+
+Errors are `{ error, message }`.
+
+**The worst case.** From one address, made-up endpoints can hold at most about 3,000 reminders
+(300 a minute for 10 minutes, about 10 MB), each deleted at its first send; an hour's worth if the
+push services themselves are failing. A phone that really receives notifications holds at most 200
+(about 800 KB) for up to 30 days, and the relay remembers that it received one for 60 days after the
+last. On the Free plan, a flood from many addresses can use up the day's 100,000 Durable Object
+requests: the relay then fails until the next day, and Cloudflare bills nothing.
 
 ## Deploy it to your Cloudflare account
 
@@ -60,6 +75,12 @@ wrangler, Cloudflare's tool, with `npx`; it isn't one of annai's dependencies.
 
 6. **annai's address.** `ORIGINS` in `wrangler.toml` is `https://annai.guide`. If you serve annai
    from somewhere else, put that address there (comma-separated for several) and deploy again.
+
+### The rate limit
+
+`wrangler.toml` declares Cloudflare's rate-limit binding (`[[ratelimits]]`, which needs Wrangler 4.36
+or later). If your account can't have it, the relay still limits each address itself, counted in
+each Worker instance rather than at each Cloudflare location: it never runs without a limit.
 
 ### Changing the key
 

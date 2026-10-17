@@ -61,6 +61,16 @@ Milestone 6 is done when "a reminder arrives on a locked iPhone and opens a catc
 10. **The relay keeps no logs.** `[observability] enabled = false`, and the code never logs an endpoint, an id or a payload.
 11. **The Node runner keeps everything in memory.** Restarting it forgets the reminders waiting; it says so. Its VAPID key is a file only its owner can read (`~/.config/annai-relay/vapid.json` unless `--keys` says otherwise), so phones stay subscribed across restarts. It refuses ports 8765 and 8790–8792.
 12. **`workers_dev = false` and a custom domain route** (`push.annai.guide`). That needs annai.guide's DNS on Cloudflare; `relay/README.md` says what to change when it isn't (the `workers.dev` address, set in annai's Settings).
+13. **Until a subscription has had one push through the relay, it keeps only 3 reminders, due within 10 minutes** (added in the security pass, Task 5). Anyone can make up endpoints at a push service's host with the relay's public key, and each would get its own object with 200 reminders for 30 days; now a made-up one costs three small reminders, and only until its push service refuses the first send (404 or 410 deletes everything).
+    - **A reminder due now is sent in the same request,** and the answer says whether the push service took it (`sent: true`, or 410 "gone"). Milestone 6b sends a "notifications are on" notification when the user turns them on, which confirms the subscription at once and shows the whole chain works.
+    - **The confirmation is kept 60 days after the last push** (with the VAPID token, which Apple says to renew at most hourly), then forgotten; a 404 or 410 forgets it at once.
+    - **The worst case,** stated in `relay/README.md`: from one address, about 3,000 made-up reminders (about 10 MB), each gone within 10 minutes, or an hour if the push services fail.
+    - The cost if wrong: a phone's first reminders beyond three wait until its first notification has arrived, seconds after turning notifications on.
+14. **The security pass also made** (Task 5):
+    - **A request body is read piece by piece, and no further than 8 KB.** A chunked body without Content-Length can't fill the relay's memory.
+    - **The rate limit per address is never missing.** Without Cloudflare's binding, the relay counts each address itself, per isolate. On Cloudflare the address is `CF-Connecting-IP`, which Cloudflare sets. `relay/serve.mjs` takes the last X-Forwarded-For entry when the connection comes from a proxy on the same machine (`tailscale serve`), and the connection's own address otherwise. A client can't choose its address; without one it shares the bucket `unknown`, which limits more, not less.
+    - **One alarm sends at most 25 reminders,** and the next alarm goes straight on. Each send may take 15 seconds before it is tried again later. A long or killed alarm resumes rather than resends: each reminder is read again before it is sent, and deleted as soon as it is.
+    - **Listing a subscription's reminders reads at most 200 small records,** without their payloads, which are kept apart (`p:<id>`).
 
 ## Global Constraints
 

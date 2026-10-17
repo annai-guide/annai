@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { relayKit, ENDPOINT, MIN, token } from './relay-kit.js';
+import { KEEP_CONFIRMED } from '../../relay/src/relay.js';
 import { toB64u } from '../../relay/src/b64.js';
 import { verifyVapid, startPushService } from '../fakes/push-service.js';
 import { encryptPush } from '../../src/core/push/webpush.js';
@@ -25,12 +26,13 @@ test('at its time the relay sends the reminder to its push service, signed, and 
   assert.equal(claims.sub, 'https://annai.guide');
   assert.equal(claims.exp, Math.floor(k.now() / 1000) + 12 * 3600);
   assert.deepEqual(await k.waiting(), []);
-  assert.deepEqual(await k.stored(), [], 'not its payload, not its token, not the VAPID token');
-  assert.equal(await k.alarm(), null);
+  assert.deepEqual(await k.stored(), ['confirmed', 'jwt'], 'not its payload, not its token: only that a push reached the phone, and the VAPID token');
+  assert.equal(await k.alarm(), k.now() + KEEP_CONFIRMED, 'and that only for 60 days');
 });
 
 test('several reminders, each at its own time; the alarm moves on to the next', async () => {
   const k = await relayKit();
+  await k.confirm();
   for (const m of [30, 10, 20]) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + m * MIN, payload: toB64u(new Uint8Array(200).fill(m)) }), token: token() });
   await k.after(10 * MIN);
   assert.deepEqual(k.sent.map((s) => s.init.body[0]), [10]);
@@ -38,17 +40,19 @@ test('several reminders, each at its own time; the alarm moves on to the next', 
   await k.after(10 * MIN);
   await k.after(10 * MIN);
   assert.deepEqual(k.sent.map((s) => s.init.body[0]), [10, 20, 30]);
-  assert.deepEqual(await k.stored(), []);
+  assert.deepEqual(await k.stored(), ['confirmed', 'jwt']);
 });
 
 test('a subscription that is gone (410 or 404): everything waiting for it goes at once, and nothing is tried again', async () => {
   for (const status of [410, 404]) {
     const k = await relayKit({ statuses: [status] });
+    await k.confirm();
+    await k.confirm('https://fcm.googleapis.com/fcm/send/other');
     for (const m of [10, 11, 12]) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + m * MIN }), token: token() });
     await k.call('POST', '/v1/schedule', { body: k.reminder({ endpoint: 'https://fcm.googleapis.com/fcm/send/other', sendAt: k.now() + 11 * MIN }), token: token() });
     await k.after(10 * MIN);
     assert.equal(k.sent.length, 1, String(status));
-    assert.deepEqual(await k.stored(), [], 'all three of its reminders deleted');
+    assert.deepEqual(await k.stored(), [], 'all three of its reminders deleted, and its confirmation');
     assert.equal(await k.alarm(), null);
     await k.after(2 * MIN);
     assert.equal(k.sent.length, 2, "another subscription's reminder still goes");
@@ -76,6 +80,7 @@ test('busy or down (429, 5xx, no connection): tried again with growing waits, an
 
 test('refused for good (400, 413): dropped; 403 once: a new VAPID token, and one more try', async () => {
   const k = await relayKit({ statuses: [400, 413, 403, 201, 403, 403] });
+  await k.confirm();
   for (const m of [10, 11, 12, 13]) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + m * MIN }), token: token() });
   await k.after(10 * MIN);
   await k.after(MIN);
@@ -93,6 +98,7 @@ test('refused for good (400, 413): dropped; 403 once: a new VAPID token, and one
 
 test('one VAPID token for a while: used until an hour is left, then a new one; the subject is the operator\'s', async () => {
   const k = await relayKit({ subject: 'mailto:relay@example.org' });
+  await k.confirm();
   for (const m of [10, 11 * 60, 11 * 60 + 30]) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + m * MIN }), token: token() });
   await k.after(10 * MIN);
   await k.after((11 * 60 - 10) * MIN);

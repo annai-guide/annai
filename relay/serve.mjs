@@ -31,6 +31,19 @@ export async function keyFile(file) {
 }
 
 /**
+ * The address the rate limit counts (spec §11.6). Behind a proxy on this machine (`tailscale serve`),
+ * the last X-Forwarded-For entry, the one the proxy added: the client may have written the others.
+ * Otherwise the connection's own address; X-Forwarded-For from elsewhere is not believed.
+ * @param {import('node:http').IncomingMessage} req
+ */
+export function clientAddress(req) {
+  const peer = req.socket.remoteAddress ?? '';
+  const local = peer === '127.0.0.1' || peer === '::1' || peer === '::ffff:127.0.0.1';
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',').map((x) => x.trim()).filter(Boolean).at(-1);
+  return (local && forwarded) || peer || 'unknown';
+}
+
+/**
  * Starts the relay on a port of this machine.
  * @param {{ port?: number, host?: string, origins?: string[], jwk?: string, keys?: string, subject?: string, extraPushOrigins?: string[],
  *   now?: () => number, timers?: boolean, limit?: number, send?: (url: string, init: RequestInit) => Promise<Response> }} [o]
@@ -50,8 +63,7 @@ export async function startRelay({ port = 0, host = '127.0.0.1', origins = [], j
       try {
         const headers = new Headers();
         for (const [k, v] of Object.entries(req.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(', ') : v);
-        // Behind `tailscale serve`, the phone's address comes as X-Forwarded-For.
-        headers.set('CF-Connecting-IP', String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown');
+        headers.set('CF-Connecting-IP', clientAddress(req));
         const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks);
         const answer = await worker.fetch(new Request(`http://${host}${req.url ?? '/'}`, { method: req.method, headers, body }), env);
         res.writeHead(answer.status, Object.fromEntries(answer.headers));

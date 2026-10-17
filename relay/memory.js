@@ -103,10 +103,12 @@ export function memoryNamespace(Class, env, { now = () => Date.now(), timers = t
       return { fetch: (/** @type {Request} */ req) => o.obj.fetch(req) };
     },
     objects,
-    /** Fires every alarm due by now (a test that moves its own clock). */
+    /** Fires every alarm due by now, and those they set for now, as Cloudflare would (a test that moves its own clock). */
     async runDue() {
-      for (const o of objects.values()) {
-        if (o.storage.alarm !== null && o.storage.alarm <= now()) {
+      for (let round = 0; round < 100; round++) {
+        const due = [...objects.values()].filter((o) => o.storage.alarm !== null && o.storage.alarm <= now());
+        if (!due.length) return;
+        for (const o of due) {
           o.storage.alarm = null;
           await o.obj.alarm();
         }

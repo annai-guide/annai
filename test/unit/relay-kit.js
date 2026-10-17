@@ -15,9 +15,10 @@ export const bytes = (n) => toB64u(crypto.getRandomValues(new Uint8Array(n)));
 /**
  * A relay in memory on a clock the test moves. It sends to a recorder that answers 201, or the
  * statuses given in turn (0: no connection), unless send is given (the real fetch, to a stand-in).
- * @param {{ limit?: number, statuses?: number[], send?: (url: string, init: any) => Promise<Response>, extraPushOrigins?: string[], subject?: string }} [o]
+ * limit: null leaves the rate-limit binding out (the relay's own limiter); timeout: how long a send may take, in ms.
+ * @param {{ limit?: number | null, statuses?: number[], send?: (url: string, init: any) => Promise<Response>, extraPushOrigins?: string[], subject?: string, timeout?: number }} [o]
  */
-export async function relayKit({ limit = 300, statuses = [], send, extraPushOrigins = [], subject } = {}) {
+export async function relayKit({ limit = 300, statuses = [], send, extraPushOrigins = [], subject, timeout } = {}) {
   let t = T0;
   /** @type {{ url: string, init: any }[]} */
   const sent = [];
@@ -28,10 +29,10 @@ export async function relayKit({ limit = 300, statuses = [], send, extraPushOrig
     if (s === 0) throw new TypeError('fetch failed');
     return new Response(null, { status: s });
   };
-  const { worker, PushRelay } = makeRelay({ now: () => t, send: send ?? record });
+  const { worker, PushRelay } = makeRelay({ now: () => t, send: send ?? record, ...(timeout ? { timeout } : {}) });
   const jwk = await newVapidJwk();
   /** @type {any} */
-  const env = { VAPID_KEY: jwk, ORIGINS: `${APP}, http://127.0.0.1:8790`, EXTRA_PUSH_ORIGINS: extraPushOrigins.join(','), LIMIT: memoryLimiter({ limit, now: () => t }), ...(subject ? { VAPID_SUBJECT: subject } : {}) };
+  const env = { VAPID_KEY: jwk, ORIGINS: `${APP}, http://127.0.0.1:8790`, EXTRA_PUSH_ORIGINS: extraPushOrigins.join(','), ...(limit === null ? {} : { LIMIT: memoryLimiter({ limit, now: () => t }) }), ...(subject ? { VAPID_SUBJECT: subject } : {}) };
   env.RELAY = memoryNamespace(PushRelay, env, { now: () => t, timers: false });
   const key = (await readVapidKey(jwk)).publicKey;
   /**
@@ -51,7 +52,18 @@ export async function relayKit({ limit = 300, statuses = [], send, extraPushOrig
   };
   const object = async (/** @type {string} */ endpoint) => env.RELAY.objects.get(await subscriptionName(endpoint));
   return {
-    env, key, sent, call,
+    env, key, sent, call, object,
+    /** A request as it is, to the Worker. @param {Request} req */
+    raw: (req) => worker.fetch(req, env),
+    /**
+     * The subscription has had a push through the relay (choice 13), written straight into its object, so a test
+     * can hold more than 3 reminders, or ones further ahead, without a send of its own.
+     */
+    async confirm(endpoint = ENDPOINT) {
+      const name = await subscriptionName(endpoint);
+      env.RELAY.get(env.RELAY.idFromName(name));
+      await env.RELAY.objects.get(name)?.storage.put('confirmed', { at: t });
+    },
     /** A valid schedule request's body, changed by o. @param {Record<string, any>} [o] */
     reminder: (o = {}) => ({ endpoint: ENDPOINT, key, sendAt: t + 10 * MIN, ttl: 3600, payload: bytes(3174), ...o }),
     now: () => t,

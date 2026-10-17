@@ -24,6 +24,15 @@ const DAY = 86_400_000;
 export const LIMITS = Object.freeze({ payload: 4096, pending: 200, ahead: 30 * DAY, behind: 5 * MIN, body: 8192, endpoint: 2048, ttl: 28 * 86_400 });
 /** A reminder its push service won't take is tried again until this long after its time, then dropped (choice 6). */
 export const RETRY_FOR = 60 * MIN;
+/**
+ * Until a subscription has had a push through the relay, it keeps only this many reminders, due within this long
+ * (choice 13): a made-up endpoint costs little, and only until its push service refuses it.
+ */
+export const UNCONFIRMED = Object.freeze({ pending: 3, within: 10 * MIN });
+/** A subscription's first push is remembered this long after its last one. */
+export const KEEP_CONFIRMED = 60 * DAY;
+/** One alarm sends at most this many; the next alarm goes straight on with the rest. */
+export const BATCH = 25;
 /** A VAPID token lives 12 hours and is used until an hour is left (choice 7). */
 const JWT_LIFE_S = 12 * 3600;
 const JWT_RENEW_MS = 60 * MIN;
@@ -86,12 +95,37 @@ const listOf = (list) => String(list ?? '').split(',').map((s) => s.trim()).filt
 /** @param {Request} req */
 const bearer = (req) => BEARER.exec(req.headers.get('Authorization') ?? '')?.[1] ?? null;
 
-/** The body as text, or null when it is larger than max bytes. @param {Request} req @param {number} max */
+/**
+ * The body as text, or null when it is larger than max bytes. It is read piece by piece and the
+ * rest is never read once it passes max, so a body sent without its length (chunked) can't fill
+ * the relay's memory.
+ * @param {Request} req @param {number} max
+ */
 async function readBody(req, max) {
   const declared = Number(req.headers.get('Content-Length'));
   if (Number.isFinite(declared) && declared > max) return null;
-  const bytes = new Uint8Array(await req.arrayBuffer());
-  return bytes.length > max ? null : new TextDecoder().decode(bytes);
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  /** @type {Uint8Array[]} */
+  const parts = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    parts.push(value);
+  }
+  const bytes = new Uint8Array(n);
+  let at = 0;
+  for (const p of parts) {
+    bytes.set(p, at);
+    at += p.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 /** The VAPID key, read once for each secret it is given. @type {Map<string, Promise<import('./vapid.js').VapidKey | null>>} */
@@ -108,20 +142,43 @@ function vapid(env) {
 }
 
 /**
- * The relay, on a clock and a fetch of its own (tests and Node give theirs).
- * @param {{ now?: () => number, send?: (url: string, init: RequestInit) => Promise<Response> }} [o]
+ * A limit per address of the relay's own, for an isolate without Cloudflare's rate-limit binding:
+ * the relay never runs without one (spec §11.6: "rate limits per IP"). It counts per isolate, as
+ * the binding counts per Cloudflare location. @param {() => number} now
  */
-export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(url, init) } = {}) {
+function ownLimiter(now, limit = 300, period = 60_000) {
+  /** @type {Map<string, number[]>} */
+  const seen = new Map();
+  return {
+    /** @param {{ key: string }} o */
+    async limit({ key }) {
+      const t = now();
+      if (seen.size > 10_000) for (const [k, v] of seen) if (!v.some((x) => x > t - period)) seen.delete(k);
+      const recent = (seen.get(key) ?? []).filter((x) => x > t - period);
+      const success = recent.length < limit;
+      if (success) recent.push(t);
+      seen.set(key, recent);
+      return { success };
+    },
+  };
+}
+
+/**
+ * The relay, on a clock and a fetch of its own (tests and Node give theirs). timeout: how long one
+ * send to a push service may take before it is tried again later.
+ * @param {{ now?: () => number, send?: (url: string, init: RequestInit) => Promise<Response>, timeout?: number }} [o]
+ */
+export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(url, init), timeout = 15_000 } = {}) {
+  const fallback = ownLimiter(now);
   /** @param {Request} req @param {Env} env @returns {Promise<Response>} */
   async function route(req, env) {
     const { pathname } = new URL(req.url);
     if (req.method === 'OPTIONS') {
       return reply(204, null, { 'Access-Control-Allow-Methods': 'GET, POST, DELETE', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400' });
     }
-    if (env.LIMIT) {
-      const { success } = await env.LIMIT.limit({ key: `ip:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}` });
-      if (!success) return fail(429, 'rate', 'Too many requests from this address. annai tries again in a minute.', { 'Retry-After': '60' });
-    }
+    // On Cloudflare, CF-Connecting-IP is the client's address, set by Cloudflare itself; relay/serve.mjs sets it too.
+    const { success } = await (env.LIMIT ?? fallback).limit({ key: `ip:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}` });
+    if (!success) return fail(429, 'rate', 'Too many requests from this address. annai tries again in a minute.', { 'Retry-After': '60' });
     if (pathname === '/v1/vapid') {
       if (req.method !== 'GET') return fail(405, 'method', 'Ask for the key with GET.');
       const key = await vapid(env);
@@ -203,12 +260,26 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       /** @type {Waiting | undefined} */
       const had = await this.storage.get(`m:${m.id}`);
       if (had) return same(had.token, m.token) ? reply(201, { id: m.id, sendAt: had.sendAt }) : fail(409, 'id', 'A reminder with that id is already waiting. annai picks another.');
-      if ((await this.storage.list({ prefix: 'm:' })).size >= LIMITS.pending) {
+      const t = now();
+      const waiting = (await this.storage.list({ prefix: 'm:' })).size;
+      if (!(await this.storage.get('confirmed'))) {
+        if (waiting >= UNCONFIRMED.pending || m.sendAt > t + UNCONFIRMED.within) {
+          return fail(429, 'unconfirmed', `This phone's subscription hasn't had a notification through the relay yet. Until one arrives, the relay keeps just ${UNCONFIRMED.pending} reminders, due within 10 minutes. annai sends one when notifications are turned on, then the rest.`, { 'Retry-After': '10' });
+        }
+      } else if (waiting >= LIMITS.pending) {
         return fail(429, 'full', `This phone already has ${LIMITS.pending} reminders waiting at the relay. More can wait once some are sent.`);
       }
       /** @type {Waiting} */
       const w = { id: m.id, endpoint: m.endpoint, sendAt: m.sendAt, next: m.sendAt, ttl: m.ttl, urgency: m.urgency, token: m.token, tries: 0 };
       await this.storage.put({ [`m:${m.id}`]: w, [`p:${m.id}`]: m.payload });
+      if (m.sendAt <= t) {
+        // Due now: sent in this request, so annai hears at once whether the phone's push service took it.
+        const r = await this.#settle(w, t);
+        await this.rewake();
+        if (r === 'gone') return fail(410, 'gone', "The phone's push service says this subscription no longer exists. annai subscribes again.");
+        if (r === 'drop') return fail(400, 'refused', "The phone's push service refused this reminder.");
+        return reply(201, { id: m.id, sendAt: m.sendAt, sent: r === 'sent' });
+      }
       const alarm = await this.storage.getAlarm();
       if (alarm === null || m.sendAt < alarm) await this.storage.setAlarm(m.sendAt);
       return reply(201, { id: m.id, sendAt: m.sendAt });
@@ -225,39 +296,56 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       return reply(204, null);
     }
 
-    /** The alarm: sends what is due (spec §11.6: "sends at sendAt"), then waits for the next. */
+    /**
+     * The alarm: sends what is due (spec §11.6: "sends at sendAt"), at most BATCH at a time, so one
+     * alarm never runs long; the next goes straight on. A subscription's first push is forgotten
+     * KEEP_CONFIRMED after its last one.
+     */
     async alarm() {
       try {
         const t = now();
         /** @type {Waiting[]} */
-        const due = [...(await this.storage.list({ prefix: 'm:' })).values()].filter((w) => w.next <= t).sort((a, b) => a.next - b.next);
+        const due = [...(await this.storage.list({ prefix: 'm:' })).values()].filter((w) => w.next <= t).sort((a, b) => a.next - b.next).slice(0, BATCH);
         for (const w of due) {
           // Read again: while a send waits, Cloudflare lets other requests in, and one may have cancelled this.
           /** @type {Waiting | undefined} */
           const fresh = await this.storage.get(`m:${w.id}`);
-          if (!fresh) continue;
-          const r = await this.#deliver(fresh, t);
-          if (r === 'gone') {
-            /** @type {Waiting[]} */
-            const all = [...(await this.storage.list({ prefix: 'm:' })).values()].filter((x) => x.endpoint === fresh.endpoint);
-            await this.storage.delete(all.flatMap((x) => [`m:${x.id}`, `p:${x.id}`]));
-          } else if (r === 'retry') {
-            /** @type {Waiting | undefined} */
-            const still = await this.storage.get(`m:${w.id}`);
-            if (!still) continue;
-            const tries = still.tries + 1;
-            const next = t + Math.min(10 * MIN, 30_000 * 2 ** (tries - 1));
-            if (next > still.sendAt + RETRY_FOR) await this.storage.delete([`m:${w.id}`, `p:${w.id}`]);
-            else await this.storage.put(`m:${w.id}`, { ...still, tries, next });
-          } else {
-            await this.storage.delete([`m:${w.id}`, `p:${w.id}`]); // sent, or never will be
-          }
+          if (fresh && (await this.#settle(fresh, t)) === 'gone') break;
         }
+        const confirmed = await this.storage.get('confirmed');
+        if (confirmed && confirmed.at + KEEP_CONFIRMED <= t && !(await this.storage.list({ prefix: 'm:' })).size) await this.storage.delete('confirmed');
         await this.rewake();
       } catch {
         // The relay itself failed: look again in a minute rather than let Cloudflare retry at once.
         await this.storage.setAlarm(now() + MIN);
       }
+    }
+
+    /**
+     * Sends one reminder and keeps what came of it (choice 6): a gone subscription forgets
+     * everything; a delivered reminder confirms its subscription (choice 13).
+     * @param {Waiting} w @param {number} t @returns {Promise<'sent' | 'gone' | 'retry' | 'drop'>}
+     */
+    async #settle(w, t) {
+      const r = await this.#deliver(w, t);
+      if (r === 'gone') {
+        /** @type {Waiting[]} */
+        const all = [...(await this.storage.list({ prefix: 'm:' })).values()];
+        await this.storage.delete([...all.flatMap((x) => [`m:${x.id}`, `p:${x.id}`]), 'confirmed', 'jwt']);
+      } else if (r === 'retry') {
+        /** @type {Waiting | undefined} */
+        const still = await this.storage.get(`m:${w.id}`);
+        if (still) {
+          const tries = still.tries + 1;
+          const next = t + Math.min(10 * MIN, 30_000 * 2 ** (tries - 1));
+          if (next > still.sendAt + RETRY_FOR) await this.storage.delete([`m:${w.id}`, `p:${w.id}`]);
+          else await this.storage.put(`m:${w.id}`, { ...still, tries, next });
+        }
+      } else {
+        await this.storage.delete([`m:${w.id}`, `p:${w.id}`]); // sent, or never will be
+        if (r === 'sent') await this.storage.put('confirmed', { at: t });
+      }
+      return r;
     }
 
     /**
@@ -275,7 +363,7 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       try {
         const jwt = await this.#jwt(key, new URL(w.endpoint).origin, t);
         res = await send(w.endpoint, {
-          method: 'POST', body,
+          method: 'POST', body, signal: AbortSignal.timeout(timeout),
           headers: { TTL: String(w.ttl), Urgency: w.urgency, 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', Authorization: vapidAuthorization(jwt, key.publicKey) },
         });
       } catch {
@@ -302,16 +390,24 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       return token;
     }
 
-    /** The alarm at the next reminder's time; with none left, no alarm and nothing stored. */
+    /**
+     * The alarm at the next reminder's time. With none left, a confirmed subscription keeps only
+     * that, and its VAPID token, until the confirmation runs out; otherwise nothing is stored.
+     */
     async rewake() {
       /** @type {Waiting[]} */
       const waiting = [...(await this.storage.list({ prefix: 'm:' })).values()];
-      if (!waiting.length) {
-        await this.storage.deleteAlarm();
-        await this.storage.delete('jwt');
+      if (waiting.length) {
+        await this.storage.setAlarm(Math.min(...waiting.map((w) => w.next)));
         return;
       }
-      await this.storage.setAlarm(Math.min(...waiting.map((w) => w.next)));
+      const confirmed = await this.storage.get('confirmed');
+      if (confirmed) {
+        await this.storage.setAlarm(confirmed.at + KEEP_CONFIRMED);
+        return;
+      }
+      await this.storage.deleteAlarm();
+      await this.storage.delete('jwt');
     }
   }
 
