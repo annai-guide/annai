@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, filterTrace } from './helpers.js';
 import { startGitHub } from '../fakes/github.js';
 
 const REPO = 'me/annai-backup';
@@ -82,9 +82,9 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
 
     // The trace shows each request annai sent to GitHub.
     await page.getByRole('link', { name: 'Trace' }).click();
-    await page.getByLabel('Kind').selectOption('Web');
+    await filterTrace(page, { kind: 'Web' });
     await expect(page.locator('.trace li', { hasText: 'plugin:storage-github · PATCH' }).first()).toBeVisible();
-    await page.getByLabel('Kind').selectOption('Backups');
+    await filterTrace(page, { kind: 'Backups' });
     await expect(page.locator('.trace li', { hasText: 'github · auto' }).first()).toBeVisible();
 
     // This phone is wiped. The same place, set up again, brings everything back.
@@ -139,7 +139,9 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
     await second.getByRole('button', { name: 'Import' }).click();
     await second.getByRole('link', { name: 'Open Kyoto' }).click();
     await writeNote(second, '/notes/fushimi.md', 'Fushimi Inari at dawn');
-    await expect.poll(() => [...gh.files(REPO).keys()].some((p) => p.endsWith('/notes/fushimi.md')), { timeout: 30_000 }).toBe(true);
+    // Its note is backed up as written (it is created, then saved); then the second phone is put away, so it backs up no more.
+    await expect.poll(() => [...gh.files(REPO)].some(([p, b]) => p.endsWith('/notes/fushimi.md') && b.toString() === 'Fushimi Inari at dawn'), { timeout: 30_000 }).toBe(true);
+    await second.close();
 
     // The first phone's next backup meets it: a card, and nothing is overwritten.
     const commits = gh.commits(REPO).length;

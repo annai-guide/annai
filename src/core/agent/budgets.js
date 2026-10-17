@@ -1,9 +1,12 @@
 /**
  * Budgets and safeguards (spec §6.6). All are opt-in, with no defaults. Cost is always visible:
- * per wake and per trip, from the model.turn records.
+ * per wake and per trip, from the model.turn records and speech requests.
  * @typedef {import('../types.js').Store} Store
  * @typedef {import('./loop.js').Budgets} Budgets
  */
+
+/** Whether an entry carries a call's cost: a role call's model.turn, or a speech request (their costs aren't in any model.turn). @param {any} e */
+const priced = (e) => e.type === 'model.turn' || (e.type === 'net.request' && String(e.data?.kind ?? '').startsWith('speech-'));
 
 /** Minutes since local midnight. @param {number} now @param {string} timeZone */
 function minutes(now, timeZone) {
@@ -43,9 +46,9 @@ export async function spentToday(store, now, timeZone) {
   return store.tx(['scopes', 'events'], 'readonly', async (t) => {
     let sum = 0;
     for (const s of await t.listScopes()) {
-      for (const e of await t.listEvents(s.id, { types: ['model.turn'], reverse: true, limit: 2000 })) {
+      for (const e of await t.listEvents(s.id, { types: ['model.turn', 'net.request'], reverse: true, limit: 4000 })) {
         if (e.ts < since) break;
-        sum += typeof e.data?.cost === 'number' ? e.data.cost : 0;
+        if (priced(e)) sum += typeof e.data?.cost === 'number' ? e.data.cost : 0;
       }
     }
     return sum;
@@ -54,7 +57,7 @@ export async function spentToday(store, now, timeZone) {
 
 /** The cost of a conversation, per wake and in all. @param {Store} store @param {string} scope */
 export async function costs(store, scope) {
-  const turns = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['model.turn'] }));
+  const turns = (await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['model.turn', 'net.request'] }))).filter(priced);
   /** @type {Map<string, number>} */
   const byWake = new Map();
   let total = 0;

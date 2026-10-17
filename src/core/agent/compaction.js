@@ -1,3 +1,5 @@
+import { NOT_TRANSCRIBED } from '../voice/resolve.js';
+
 /**
  * Housekeeping (spec §6.5). Two limits trigger it, the context window and the maximum request
  * size: it is due at a threshold and forced before an overflow. The older part becomes a compaction
@@ -102,6 +104,8 @@ function asText(messages) {
     if (p.type === 'tool_result') return `← ${cut(String(p.content), 1500)}`;
     if (p.type === 'image') return m.role === 'user' ? `User: ${photoStub(p)}` : photoStub(p);
     if (p.type === 'document') return '[a PDF]';
+    if (p.type === 'speech') return `User (spoke): ${p.text ?? NOT_TRANSCRIBED}`;
+    if (p.type === 'audio') return 'User: [audio]';
     return '';
   }).filter(Boolean).join('\n')).join('\n\n');
 }

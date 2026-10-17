@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply, filterTrace } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/');
@@ -151,13 +151,13 @@ test('done: a conversation with tool use, with fallback across two providers, su
 
     // The trace: every model request, every tool call with what it sent, and what it read.
     await page.getByRole('link', { name: 'Trace' }).click();
-    await page.getByLabel('Kind').selectOption('Models');
+    await filterTrace(page, { kind: 'Models' });
     await expect(page.getByText(/a-model · credit \(402\)/).first()).toBeVisible();
     await expect(page.getByText(/b-model · ok \(200\)/).first()).toBeVisible();
-    await page.getByLabel('Kind').selectOption('Tools');
+    await filterTrace(page, { kind: 'Tools' });
     await expect(page.getByText(/^write \{"path":"\/trip\/notes\/dinner\.md"/)).toBeVisible();
     await expect(page.getByText(/^write · ok · \d+ ms · Wrote \/trip\/notes\/dinner\.md/)).toBeVisible();
-    await page.getByLabel('Kind').selectOption('Conversation');
+    await filterTrace(page, { kind: 'Conversation' });
     await expect(page.getByText(/the user wrote · (free|\$)/).first()).toBeVisible(); // the stand-in model has no prices
     for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
     expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
@@ -248,8 +248,7 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
     await page.getByRole('link', { name: 'Trace' }).click();
     await page.getByLabel('Type contains').fill('photo.replace');
     await expect(page.locator('ol.trace > li')).toHaveCount(1);
-    await page.getByLabel('Type contains').fill('');
-    await page.getByLabel('Kind').selectOption('Models');
+    await filterTrace(page, { type: '', kind: 'Models' });
     await expect(page.getByText(/a-model · credit \(402\)/).first()).toBeVisible();
     await expect(page.getByText(/b-model · image \(400\)/).first()).toBeVisible();
     await expect(page.getByText(/b-model · ok \(200\)/).first()).toBeVisible();

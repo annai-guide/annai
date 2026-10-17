@@ -6,10 +6,10 @@ import { toolSwitchList } from './tools.js';
 /** What each kind of entry is, for the Kind filter. */
 const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Everything: null,
-  Conversation: ['wake', 'msg.user', 'out.speak', 'out.show', 'out.ask'],
+  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request'],
-  Models: ['model.turn', 'net.request', 'decide'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser'],
   Housekeeping: ['compaction'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
   Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
@@ -25,10 +25,12 @@ export async function renderTrace(ctx, route) {
   const kind = h('select', { id: 'trace-kind' }, ...Object.keys(KINDS).map((k) => h('option', { value: k, text: k })));
   kind.value = route.params.kind && KINDS[route.params.kind] !== undefined ? route.params.kind : 'Everything';
   const filter = h('input', { id: 'trace-type', autocomplete: 'off', placeholder: 'file.write', value: route.params.type ?? '' });
-  const list = h('ol', { class: 'trace' });
+  // aria-busy while the list reloads after a filter changes, so a screen reader (or a test) knows the rows are not yet the new ones.
+  const list = h('ol', { class: 'trace', 'aria-busy': 'true' });
   let pending = 0;
   const load = async () => {
     const my = ++pending;
+    list.setAttribute('aria-busy', 'true');
     const ids = select.value ? [select.value] : scopes.map((/** @type {any} */ s) => s.id);
     const all = (await Promise.all(ids.map((/** @type {string} */ id) => ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { reverse: true, limit: 300 }))))).flat();
     if (my !== pending) return;
@@ -40,12 +42,13 @@ export async function renderTrace(ctx, route) {
     if (my !== pending) return;
     const rows = all.filter((e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))).sort((a, b) => b.ts - a.ts || b.seq - a.seq).slice(0, 300);
     list.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake)) : [h('li', { class: 'empty', text: 'Nothing here yet.' })]));
+    list.setAttribute('aria-busy', 'false');
   };
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   select.addEventListener('change', load);
   kind.addEventListener('change', load);
-  filter.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 150); });
+  filter.addEventListener('input', () => { list.setAttribute('aria-busy', 'true'); clearTimeout(timer); timer = setTimeout(load, 150); });
   await load();
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Trace' }),
@@ -84,6 +87,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
     return c !== undefined ? `${why} · ${formatCost(c)}` : why;
   }
   if (e.type === 'msg.user' || e.type === 'out.speak') return cut(d.text);
+  if (e.type === 'heard') {
+    return [d.source === 'dictation' ? 'phone dictation' : `${((d.ms ?? 0) / 1000).toFixed(1)} s from the microphone`, d.text ? `"${cut(d.text)}"` : null,
+      d.answer ? 'an answer' : d.meanwhile ? 'while she was thinking' : null, d.dismissed ? 'not for Shiori' : null, d.clip ? 'clip kept' : null].filter(Boolean).join(' · ');
+  }
+  if (e.type === 'heard.text') return `"${cut(d.text)}"${d.by ? ` · written down by ${d.by}` : ''}`;
   if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
   if (e.type === 'out.ask') return cut(d.question);
   if (e.type === 'tool.call') return `${d.name} ${cut(JSON.stringify(d.input ?? {}), 120)}`;

@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '0412fbd9c840';
+const BUILD = '3ed039787e58';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -33,6 +33,7 @@ const SHELL = [
   '/src/core/agent/compaction.js',
   '/src/core/agent/context.js',
   '/src/core/agent/instructions.js',
+  '/src/core/agent/listen.js',
   '/src/core/agent/log.js',
   '/src/core/agent/loop.js',
   '/src/core/agent/personalities.js',
@@ -66,6 +67,7 @@ const SHELL = [
   '/src/core/llm/reasoning.js',
   '/src/core/llm/retry.js',
   '/src/core/llm/service.js',
+  '/src/core/llm/speech.js',
   '/src/core/llm/sse.js',
   '/src/core/llm/templates.js',
   '/src/core/llm/trace.js',
@@ -92,6 +94,20 @@ const SHELL = [
   '/src/core/time.js',
   '/src/core/xml.js',
   '/src/core/tsv.js',
+  '/src/core/voice/detector.js',
+  '/src/core/voice/gate.js',
+  '/src/core/voice/listening.js',
+  '/src/core/voice/mic.js',
+  '/src/core/voice/mode.js',
+  '/src/core/voice/pcm.js',
+  '/src/core/voice/platform.js',
+  '/src/core/voice/recorder.js',
+  '/src/core/voice/resolve.js',
+  '/src/core/voice/sentences.js',
+  '/src/core/voice/settings.js',
+  '/src/core/voice/speaker.js',
+  '/src/core/voice/voice.js',
+  '/src/core/voice/where.js',
   '/src/core/types.js',
   '/src/core/workspace.js',
   '/src/core/zip.js',
@@ -100,6 +116,8 @@ const SHELL = [
   '/src/plugins/files/index.js',
   '/src/plugins/go/index.js',
   '/src/plugins/places/index.js',
+  '/src/plugins/voice-browser/capture-worklet.js',
+  '/src/plugins/voice-browser/index.js',
   '/src/plugins/web/index.js',
   '/src/ui/base.css',
   '/src/ui/cards.js',
@@ -115,6 +133,8 @@ const SHELL = [
   '/src/ui/import-state.js',
   '/src/ui/install.js',
   '/src/ui/markdown.js',
+  '/src/ui/media-keys.js',
+  '/src/ui/mic-help.js',
   '/src/ui/model-check.js',
   '/src/ui/notices.js',
   '/src/ui/open-file.js',
@@ -141,11 +161,15 @@ const SHELL = [
   '/src/ui/screens/trace.js',
   '/src/ui/screens/trip.js',
   '/src/ui/screens/trips.js',
+  '/src/ui/screens/voice.js',
   '/src/ui/shell.js',
   '/src/ui/shiori.css',
+  '/src/ui/speech-check.js',
   '/src/ui/storage-full.js',
   '/src/ui/talk-panel.js',
   '/src/ui/tokens.css',
+  '/src/ui/unlock.js',
+  '/src/ui/voice-chip.js',
 ];
 
 sw.addEventListener('install', (event) => {

@@ -124,6 +124,8 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .role-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
 .role-item { display: flex; align-items: center; gap: 2px; }
 .role-item span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.where { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.where .sub { margin: 2px 0 0; }
 textarea.mono { font-family: var(--f-mono); font-size: 13px; }
 .listed { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
 .listed li { justify-content: space-between; }
