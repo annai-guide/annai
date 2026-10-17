@@ -81,6 +81,8 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/places/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/go/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/skills/index.js', import.meta.url).href);
+  // MCP servers the user adds give Shiori their tools (spec §5.1).
+  await plugins.addBuiltin(new URL('../plugins/mcp/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/voice-browser/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/sensors/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
