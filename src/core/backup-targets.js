@@ -102,8 +102,11 @@ export async function removeTarget(ws, id) {
   await setTargetSecret(ws.store, id, null);
 }
 
+/** The ids of backup places' secrets begin so. They never leave this device: not even an encrypted backup with API keys holds them. */
+export const BACKUP_SECRET_PREFIX = 'backup:';
+
 /** @param {string} id */
-export const secretId = (id) => `backup:${id}`;
+export const secretId = (id) => `${BACKUP_SECRET_PREFIX}${id}`;
 
 /** What a place needs to sign in, such as { token }. @param {Store} store @param {string} id @returns {Promise<Record<string, string>>} */
 export async function targetSecret(store, id) {

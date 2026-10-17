@@ -8,6 +8,7 @@ import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId } from '.
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf } from './events.js';
+import { BACKUP_SECRET_PREFIX } from './backup-targets.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -234,7 +235,8 @@ export async function exportArchive(store, opts) {
   if (opts.secrets) {
     const secrets = await store.tx(['secrets'], 'readonly', async (t) => {
       const out = [];
-      for (const id of await t.listSecretIds()) out.push({ id, value: await t.getSecret(id) });
+      // A backup place's sign-in stays on this device (spec §12.4): its screen promises so.
+      for (const id of await t.listSecretIds()) if (!id.startsWith(BACKUP_SECRET_PREFIX)) out.push({ id, value: await t.getSecret(id) });
       return out;
     });
     const name = 'system/secrets.json';
@@ -502,7 +504,9 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
     }
   }
   /** @type {{ id: string, value: any }[]} */
-  const secrets = choices.secrets && manifest.secrets ? JSON.parse(text(await readEntry(zip, manifest.secrets))) : [];
+  const secrets = (choices.secrets && manifest.secrets ? JSON.parse(text(await readEntry(zip, manifest.secrets))) : [])
+    // Never a backup place's sign-in, even from an archive made before annai left them out.
+    .filter((/** @type {any} */ s) => typeof s?.id === 'string' && !s.id.startsWith(BACKUP_SECRET_PREFIX));
 
   const result = {
     trips: /** @type {string[]} */ ([]), archived: /** @type {string[]} */ ([]), me: false, settings: false, plugins: false, secrets: 0,

@@ -61,7 +61,11 @@ test('encrypted with the passphrase annai keeps for the place; API keys only whe
   await d.backups.update(id, { keys: true });
   await later();
   const second = await d.backups.backUp(id);
-  assert.equal(typeof (await openArchive(await d.backups.download(id, second.id), 'pine needle')).manifest.secrets, 'string');
+  const withKeys = await openArchive(await d.backups.download(id, second.id), 'pine needle');
+  assert.equal(typeof withKeys.manifest.secrets, 'string');
+  // The model's key travels; the backup place's own sign-in never does (its screen says so).
+  const ids = JSON.parse(new TextDecoder().decode(await withKeys.zip.read(/** @type {string} */ (withKeys.manifest.secrets)))).map((/** @type {any} */ x) => x.id);
+  assert.deepEqual(ids, ['endpoint:x']);
   // A new passphrase: the old backup opens with the old one, the next with the new one.
   await d.backups.update(id, { passphrase: 'cedar bark' });
   await later();
