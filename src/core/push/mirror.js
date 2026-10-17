@@ -97,6 +97,16 @@ export async function subscriptionName(endpoint) {
   return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', ownBuffer(utf8(endpoint)))));
 }
 
+/**
+ * What a failed turn-on says: what happened, that nothing was turned on, and what to do (fix pass N5).
+ * @param {unknown} e
+ */
+function turnOnError(e) {
+  if (!(e instanceof RelayError)) return e;
+  const next = e.passing ? 'check the connection, then tap Turn on notifications again.' : 'tap Turn on notifications again once that is fixed.';
+  return new RelayError(`${e.message.replace(/\s+$/, '')} Nothing was turned on: ${next}`, { code: e.code, status: e.status, retryAfter: e.retryAfter });
+}
+
 /** @param {number} n */
 const random = (n) => toBase64Url(crypto.getRandomValues(new Uint8Array(n)));
 
@@ -209,33 +219,36 @@ export class PushMirror {
    * every reminder. @param {string} [relay] its address; the one kept if not given
    */
   turnOn(relay) {
-    return this.#run(async () => {
-      const st = await this.#read();
-      const tokens = await this.#readTokens();
-      const base = relayAddress(relay ?? st.relay);
-      if (!base) throw new Error(ADDRESS);
-      const key = await this.#client(base).vapid();
-      if (base !== st.relay) this.#moveAll(st); // the old relay's copies are called off there (choice 13)
-      const had = await this.source.get().catch(() => null);
-      /** @type {Sub} */
-      let sub;
-      if (had && had.endpoint === st.endpoint && st.key === key && st.on) {
-        sub = had;
-      } else {
-        if (had) await this.source.unsubscribe().catch(() => {});
-        this.#moveAll(st);
-        sub = await this.source.subscribe(key);
-        st.hello = null;
-      }
-      st.on = true;
-      st.relay = base;
-      st.key = key;
-      st.endpoint = sub.endpoint;
-      st.problem = null;
-      if (st.hello?.endpoint !== sub.endpoint) await this.#hello(st, sub, HELLO);
-      await this.#save(st, tokens);
-      this.#tell();
-    }).then(() => this.sync());
+    return this.#run(() => this.#turnOn(relay).catch((e) => { throw turnOnError(e); })).then(() => this.sync());
+  }
+
+  /** @param {string} [relay] */
+  async #turnOn(relay) {
+    const st = await this.#read();
+    const tokens = await this.#readTokens();
+    const base = relayAddress(relay ?? st.relay);
+    if (!base) throw new Error(ADDRESS);
+    const key = await this.#client(base).vapid();
+    if (base !== st.relay) this.#moveAll(st); // the old relay's copies are called off there (choice 13)
+    const had = await this.source.get().catch(() => null);
+    /** @type {Sub} */
+    let sub;
+    if (had && had.endpoint === st.endpoint && st.key === key && st.on) {
+      sub = had;
+    } else {
+      if (had) await this.source.unsubscribe().catch(() => {});
+      this.#moveAll(st);
+      sub = await this.source.subscribe(key);
+      st.hello = null;
+    }
+    st.on = true;
+    st.relay = base;
+    st.key = key;
+    st.endpoint = sub.endpoint;
+    st.problem = null;
+    if (st.hello?.endpoint !== sub.endpoint) await this.#hello(st, sub, HELLO);
+    await this.#save(st, tokens);
+    this.#tell();
   }
 
   /** Turns notifications off: everything at the relay is called off, then the subscription goes (choice 9). */
@@ -612,7 +625,8 @@ export class PushMirror {
     if (e.code === 'unconfirmed' && st.hello && now - st.hello.at > MIN) st.hello = null;
     const message = await withoutSecrets(this.store, e.message);
     if (e.passing) {
-      st.problem = { message, at: now, needsYou: false };
+      // In the background, there is nothing for the user to do (fix pass N5).
+      st.problem = { message: /tries again|keeps trying/.test(message) ? message : `${message} annai tries again by itself.`, at: now, needsYou: false };
       const wait = e.retryAfter ? e.retryAfter * 1000 : Math.min(30 * MIN, MIN * 2 ** this.#retries);
       this.#retries++;
       // The retry is the next sync: a sooner one already waiting would only fail again (fix pass N4).
