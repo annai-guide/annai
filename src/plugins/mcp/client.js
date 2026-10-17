@@ -264,11 +264,13 @@ export const KEY_BLANK = '«key»';
 const WORDS = /^[a-z]+(?:[-_.][a-z]+)*$/;
 /**
  * A part of an address that may be a key (the coordinator's third finding; fix pass 8c-2): 12 or more
- * digits, or a part that isn't words and is 16 or more characters, or 8 or more mixing letters and
- * digits. Words stay at any length.
+ * digits; or a part that isn't words and is 16 or more characters, or 8 or more mixing letters and
+ * digits; or lowercase letters alone, 24 or more, as no ordinary word is that long without a - _ or .
+ * Words joined by - _ or . stay at any length. The gap accepted: a key of lowercase letters alone,
+ * shorter than 24, stays visible.
  * @param {string} v
  */
-const keyLike = (v) => /^\d{12,}$/.test(v) || (!WORDS.test(v) && (v.length >= 16 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v))));
+const keyLike = (v) => /^\d{12,}$/.test(v) || /^[a-z]{24,}$/.test(v) || (!WORDS.test(v) && (v.length >= 16 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v))));
 
 /**
  * An address as annai shows and keeps it, and the keys in it (the coordinator's third finding): every
