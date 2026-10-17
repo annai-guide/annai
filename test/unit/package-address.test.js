@@ -114,3 +114,19 @@ test('8a-4 (follow-up): a name that would lead out of the package once it is an 
   assert.deepEqual(names(await fetchPackage(`${T}/s/SKILL.md`, { fetch: w.fetch })), ['SKILL.md', 'references/safety.md']);
   assert.ok(w.asked.every((u) => u.startsWith(`${T}/s/`)), w.asked.join(' '));
 });
+
+test("minors 17: every file of a package is asked for with the browser's cache revalidated, so an unchanged one comes back as a 304 from its cache, never a stale copy", async () => {
+  const manifest = JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js', skills: ['skills/tide-pools'] });
+  const routes = { [`${T}/tides/annai-plugin.json`]: manifest, [`${T}/tides/index.js`]: '', [`${T}/tides/skills/tide-pools/SKILL.md`]: SKILL, [`${T}/tides/skills/tide-pools/references/safety.md`]: 'Watch the waves.' };
+  /** @type {(RequestInit | undefined)[]} */
+  const inits = [];
+  const fetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    inits.push(init);
+    return new Response(routes[url]);
+  };
+  await fetchPackage(`${T}/tides/annai-plugin.json`, { fetch });
+  assert.equal(inits.length, 4);
+  assert.ok(inits.every((i) => i?.cache === 'no-cache'), JSON.stringify(inits));
+  // No header of annai's own: one would make the browser ask the site first (CORS), which GitHub's raw files refuse.
+  assert.ok(inits.every((i) => i?.headers === undefined));
+});
