@@ -87,7 +87,7 @@ export class Live {
   #places = [];
   /** @type {Map<string, Record<string, any>>} each watch's memory, by scope and id */
   #mem = new Map();
-  /** @type {Map<string, { at: number, place: any }>} each watch's last firing, from the log */
+  /** @type {Map<string, { at: number, place: any, for?: number }>} each watch's last firing, from the log; for: the plan item's time it was for */
   #fired = new Map();
   /** @type {Set<string>} problems already noted in a log, so each is noted once */
   #noted = new Set();
@@ -631,7 +631,7 @@ export class Live {
     for (const scope of scopes) {
       await this.#loadScope(scope);
       for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['trigger.fired'] }))) {
-        this.#fired.set(this.#key(scope, String(e.data?.watch)), { at: e.ts, place: e.data?.place ?? null });
+        this.#fired.set(this.#key(scope, String(e.data?.watch)), { at: e.ts, place: e.data?.place ?? null, ...(typeof e.data?.for === 'number' ? { for: e.data.for } : {}) });
       }
     }
   }
@@ -756,7 +756,7 @@ export class Live {
       }
     }
     for (const w of this.#plan) {
-      if (!w.repeat && this.#fired.has(this.#key(open, w.id))) continue;
+      if (!w.repeat && this.#spent(open, w)) continue;
       const f = this.#try(PLAN, w, open, m);
       if (f) fired.push(this.#firedOf(open, w, PLAN, f, m.now));
     }
@@ -785,11 +785,11 @@ export class Live {
       await logEvent(this.store, x.scope, {
         type: 'trigger.fired', actor: 'system',
         data: {
-          watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
+          watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), ...(forAt(x.watch) !== null ? { for: forAt(x.watch) } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
           ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
         },
       }, now);
-      this.#fired.set(key, { at: now, place: f.place ?? null });
+      this.#fired.set(key, { at: now, place: f.place ?? null, ...(forAt(x.watch) !== null ? { for: /** @type {number} */ (forAt(x.watch)) } : {}) });
       const mem = this.#mem.get(key);
       if (mem) {
         mem.lastAt = now;
@@ -843,6 +843,18 @@ export class Live {
   /** @param {string} scope */
   async #exists(scope) {
     return scope === ME || Boolean(await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)));
+  }
+
+  /**
+   * Whether a one-time watch has fired. The plan's leave, late and coming-up reminders are spent only
+   * for the time they fired for: an item moved later gets them again; arriving stays arrived.
+   * @param {string} scope @param {Watch} w
+   */
+  #spent(scope, w) {
+    const f = this.#fired.get(this.#key(scope, w.id));
+    if (!f) return false;
+    const at = forAt(w);
+    return at === null || f.for === undefined || f.for === at;
   }
 
   /** What is wrong with a watch, in plain words, or null (a file can say anything; spec §4.4). @param {TriggerType} type @param {Watch} w */
@@ -900,7 +912,7 @@ export class Live {
     }
     for (const w of this.#plan) {
       const mem = this.#mem.get(this.#key(open, w.id));
-      if (mem && (w.repeat || !this.#fired.has(this.#key(open, w.id)))) consider(PLAN.next?.(w.when, m, mem));
+      if (mem && (w.repeat || !this.#spent(open, w))) consider(PLAN.next?.(w.when, m, mem));
     }
     if (next === Infinity) return;
     this.#timer = this.clock.set(() => {
@@ -913,6 +925,12 @@ export class Live {
     if (this.#timer !== null) this.clock.clear(this.#timer);
     this.#timer = null;
   }
+}
+
+/** For the plan's reminders bound to an item's time (leave, late, coming up): that time; else null. @param {Watch} w @returns {number | null} */
+function forAt(w) {
+  const when = /** @type {any} */ (w.when);
+  return when?.type === 'plan' && ['leave', 'late', 'coming-up'].includes(when.event) && typeof when.at === 'number' ? when.at : null;
 }
 
 /** A location point as the log keeps it (spec §4.5). @param {Fix} f */
