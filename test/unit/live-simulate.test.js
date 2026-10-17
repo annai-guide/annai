@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { trackFrom, Simulation } from '../../src/core/live/simulate.js';
+import { trackFrom, trackFromLog, Simulation, SIMULATION } from '../../src/core/live/simulate.js';
+import { Registry } from '../../src/core/registry.js';
 import { ManualClock, scaledClock } from '../../src/core/live/clock.js';
 import { meters } from '../../src/core/live/geo.js';
 import { liveKit, at, MONTEREY, BIXBY } from './live-kit.js';
@@ -67,4 +68,39 @@ test('played on a clock ten times faster than real time (spec §18), 20 s of tra
   await k.settle();
   assert.equal(k.live.online, false);
   assert.equal(ended, true);
+});
+
+test('a recorded track: still fixes fill the stops the log kept no points for, and a jump marks the phone locked (spec §13, choice 12)', () => {
+  const at = (/** @type {string} */ t) => Date.parse(`2026-11-27T${t}:00-08:00`);
+  const track = trackFromLog([
+    { lat: 36.3715, lng: -121.9017, at: at('09:30'), accuracy: 8, speed: 0 },
+    { lat: 36.3716, lng: -121.9016, at: at('09:50'), accuracy: 8, speed: 1.2 }, // the leaving, 20 min later
+    { lat: 36.36, lng: -121.89, at: at('09:52'), accuracy: 8, speed: 14 },
+    { lat: 35.68, lng: -121.17, at: at('16:40'), accuracy: 12 }, // unlocked at Hearst Castle
+  ]);
+  const fixes = track.filter((e) => e.kind === 'fix');
+  assert.equal(fixes.filter((e) => e.at > at('09:30') && e.at < at('09:50')).length, 119); // every 10 s while stopped
+  assert.ok(fixes.filter((e) => e.at > at('09:30') && e.at < at('09:50')).every((e) => e.kind === 'fix' && e.fix.speed === 0));
+  assert.deepEqual(track.filter((e) => e.kind !== 'fix').map((e) => [e.kind, e.at]), [['hide', at('09:52') + 1000], ['show', at('16:40') - 1000]]);
+  assert.equal(/** @type {any} */ (fixes.at(-1)).fix.speed, undefined); // no speed recorded: the GPS's own isn't made up
+  assert.throws(() => trackFromLog([{ lat: 1, lng: 1, at: 0 }]), /^Error: That trip has no recorded track yet: live mode records one while it is on\.$/);
+});
+
+test('a run stops when told, and waits at its gate', async () => {
+  const registry = new Registry();
+  const track = trackFrom({ start: '2026-11-27T09:00:00-08:00', route: [{ lat: 36.6, lng: -121.9, leave: '09:01' }, { lat: 36.5, lng: -121.9, arrive: '09:11' }], endMin: 1 });
+  const sim = new Simulation({ registry, track });
+  const clock = new ManualClock(track[0].at);
+  const abort = new AbortController();
+  let sent = 0;
+  /** @type {() => void} */
+  let open = () => {};
+  const gate = () => (sent === 10 ? new Promise((resolve) => { open = () => resolve(undefined); }) : Promise.resolve());
+  const running = sim.run(clock, async () => { sent++; if (sent === 20) abort.abort(); }, { signal: abort.signal, gate });
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(sent, 10); // waiting at the gate
+  open();
+  await running;
+  assert.equal(sent, 20); // stopped
+  assert.equal(SIMULATION, 'simulation');
 });

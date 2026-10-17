@@ -13,12 +13,15 @@ import { meters } from './geo.js';
  *   route: RoutePoint[], marks?: { at: string, kind: 'hide' | 'show' | 'offline' | 'online' }[] }} Itinerary
  *   start: an ISO date-time with an offset; everySec: a fix this often while moving (5); stillSec: while stopped (10);
  *   endMin: how long the track stays at the last stop (30); marks: the phone locked and unlocked, the connection lost and back
- * @typedef {{ lat: number, lng: number, accuracy: number, speed: number }} TrackFix
+ * @typedef {{ lat: number, lng: number, accuracy: number, speed?: number }} TrackFix  speed: none when a recorded point has none
  * @typedef {{ at: number, kind: 'fix', fix: TrackFix } | { at: number, kind: 'hide' | 'show' | 'offline' | 'online' }} TrackEvent
  */
 
 /** Meters in a degree of latitude. */
 const DEG = (6_371_000 * Math.PI) / 180;
+
+/** The plugin id a simulation's sensors are registered under: live mode tells them from the phone's. */
+export const SIMULATION = 'simulation';
 
 /** The point d meters along a path. @param {{ lat: number, lng: number }[]} path @param {number} d */
 function along(path, d) {
@@ -33,6 +36,9 @@ function along(path, d) {
   }
   return { lat: path[0].lat, lng: path[0].lng };
 }
+
+/** In time order; at the same moment a mark comes first: the phone is unlocked, then its GPS gives a fix. @param {TrackEvent} a @param {TrackEvent} b */
+const byTime = (a, b) => a.at - b.at || (a.kind === 'fix' ? 1 : 0) - (b.kind === 'fix' ? 1 : 0);
 
 /**
  * A track from an itinerary: still at each stop (with a little GPS jitter), and at a steady speed
@@ -89,8 +95,37 @@ export function trackFrom(it) {
     reached = reach;
   }
   for (const m of it.marks ?? []) out.push({ at: time(m.at, `The mark ${m.kind}`), kind: m.kind });
-  // At the same moment a mark comes first: the phone is unlocked, then its GPS gives a fix.
-  return out.sort((a, b) => a.at - b.at || (a.kind === 'fix' ? 1 : 0) - (b.kind === 'fix' ? 1 : 0));
+  return out.sort(byTime);
+}
+
+/**
+ * A track from a trip's recorded location points (spec §13: "a recorded … GPS track"). The log keeps
+ * a point only after moving (§4.5), so a stop between two points close together a minute or more
+ * apart is filled with still fixes; where the track jumps (a kilometre or more after ten minutes or
+ * more: the phone was locked, or annai closed) the phone is marked locked, so catch-up runs as it did.
+ * @param {{ lat: number, lng: number, at: number, accuracy?: number, speed?: number }[]} points in time order
+ * @param {{ stillSec?: number }} [o] @returns {TrackEvent[]}
+ */
+export function trackFromLog(points, { stillSec = 10 } = {}) {
+  if (points.length < 2) throw new Error('That trip has no recorded track yet: live mode records one while it is on.');
+  const still = stillSec * 1000;
+  /** @type {TrackEvent[]} */
+  const out = [];
+  for (let k = 0; k < points.length; k++) {
+    const p = points[k];
+    const accuracy = p.accuracy ?? 10;
+    out.push({ at: p.at, kind: 'fix', fix: { lat: p.lat, lng: p.lng, accuracy, ...(typeof p.speed === 'number' ? { speed: p.speed } : {}) } });
+    const q = points[k + 1];
+    if (!q) break;
+    const gap = q.at - p.at;
+    const d = meters(p, q);
+    if (gap > 60_000 && d < 150) {
+      for (let t = p.at + still; t < q.at; t += still) out.push({ at: t, kind: 'fix', fix: { lat: p.lat, lng: p.lng, accuracy, speed: 0 } });
+    } else if (gap >= 10 * 60_000 && d >= 1000) {
+      out.push({ at: p.at + 1000, kind: 'hide' }, { at: q.at - 1000, kind: 'show' });
+    }
+  }
+  return out.sort(byTime);
 }
 
 /** A track played through sensors of its own (spec §13, §18). */
@@ -107,7 +142,7 @@ export class Simulation {
   /** @param {{ registry: import('../registry.js').Registry, track: TrackEvent[] }} c */
   constructor({ registry, track }) {
     this.track = track;
-    this.#offs = ['location', 'visibility', 'connectivity'].map((kind) => registry.add('simulation', 'sensor', {
+    this.#offs = ['location', 'visibility', 'connectivity'].map((kind) => registry.add(SIMULATION, 'sensor', {
       kind,
       start: (/** @type {(x: any) => void} */ fn) => {
         this.#emit[kind] = fn;
@@ -130,12 +165,17 @@ export class Simulation {
   }
 
   /**
-   * As fast as it can go, on a manual clock: each event at its time, settle() after each.
-   * @param {import('./clock.js').ManualClock} clock @param {() => Promise<unknown>} [settle] @param {{ from?: number, to?: number }} [o]
+   * As fast as it can go, on a manual clock: each event at its time, settle() after each. signal stops
+   * it; gate() is awaited before each event (a pause).
+   * @param {import('./clock.js').ManualClock} clock @param {() => Promise<unknown>} [settle]
+   * @param {{ from?: number, to?: number, signal?: AbortSignal, gate?: () => Promise<unknown> }} [o]
    */
-  async run(clock, settle = async () => {}, { from = -Infinity, to = Infinity } = {}) {
+  async run(clock, settle = async () => {}, { from = -Infinity, to = Infinity, signal, gate } = {}) {
     for (const e of this.track) {
+      if (signal?.aborted) return;
       if (e.at < from || e.at > to) continue;
+      if (gate) await gate();
+      if (signal?.aborted) return;
       await clock.advanceTo(e.at, settle);
       this.send(e);
       await settle();
