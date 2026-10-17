@@ -16,6 +16,8 @@ test('Now: where you are, the sun, what is next and the latest card; live mode f
     },
   });
   await writeEvent(page, trip, { type: 'reminder', data: { watch: 'plan:lunch:leave', text: 'Leave soon: Lunch at Nepenthe.' } });
+  await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
+  await expect(page.locator('main.view > *')).toBeVisible();
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Now' }).click();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   await expect(page.locator('.now-place')).toHaveText("Live mode is off, so annai isn't following where you are.");

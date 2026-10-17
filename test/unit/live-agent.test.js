@@ -174,3 +174,13 @@ test('thousands of location points never reach her context, and housekeeping doe
   const [c] = await k.events(['compaction']);
   assert.equal(c.data.to, wakes[1].seq - 1); // only the oldest exchange: the points weighed nothing
 });
+
+test('opening a conversation tells live mode, so it follows the open trip (spec §11)', async () => {
+  const k = await agentKit([[say('Hi.')]], { open: false });
+  /** @type {any[]} */
+  const opened = [];
+  k.agent.on('open', (o) => opened.push(o));
+  await k.agent.open(k.trip);
+  await k.agent.open(null);
+  assert.deepEqual(opened, [{ trip: k.trip, scope: k.trip }, { trip: null, scope: 'me' }]);
+});
