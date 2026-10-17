@@ -138,3 +138,17 @@ test('parts a month old are downloaded again, and kept as they were when that fa
   assert.deepEqual(await files(ws, trip), before);
   assert.equal(m.files.length, 7);
 });
+
+test("a service that doesn't answer in time is a failure that says so; a stop while waiting is a stop", async () => {
+  const { ws, trip } = await packTrip();
+  const hang = (/** @type {string} */ _url, /** @type {any} */ init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+  const slow = services({ overpass: hang });
+  const m = await downloadPack({ ws, scope: trip, fetch: slow.fetch, version: V, gapMs: 0, answerMs: 30 });
+  assert.equal(m.failed[0].why, "OpenStreetMap didn't answer (overpass.private.coffee didn't answer in time).");
+  assert.equal(m.stopped, true); // three in a row
+  const abort = new AbortController();
+  setTimeout(() => abort.abort(), 30);
+  const stopped = await downloadPack({ ws, scope: trip, fetch: services({ overpass: hang }).fetch, version: V, gapMs: 0, signal: abort.signal });
+  assert.equal(stopped.stopped, true);
+  assert.deepEqual(stopped.failed, []);
+});
