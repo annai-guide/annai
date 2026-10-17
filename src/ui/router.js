@@ -1,6 +1,7 @@
 /**
  * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
- * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate",
+ * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate", plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>",
+ * "#/trip/<id>/ext/<plugin>/<tab>",
  * "#/plugins", "#/plugin-install" (the package picked on Plugins), "#/models", "#/voice", "#/shiori" (?edit=, ?compare=), "#/talk", "#/tools", "#/models/endpoint?id=…", "#/models/model?id=…", "#/trace", "#/notifications", "#/import?inbox=1". "#import=<url>" (spec §12.3)
  * becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash
@@ -24,7 +25,7 @@ function parse(hash) {
   const query = q < 0 ? '' : h.slice(q + 1);
   const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
   if (!parts.length) parts.push('trips');
-  const SUB = { file: 'file', plan: 'plan', booking: 'booking', recap: 'recap', replay: 'replay' };
+  const SUB = { file: 'file', plan: 'plan', booking: 'booking', recap: 'recap', replay: 'replay', ext: 'trip-ext' };
   const name = parts[0] === 'trip' && Object.hasOwn(SUB, parts[2] ?? '') ? SUB[/** @type {keyof typeof SUB} */ (parts[2])] : parts[0];
   return { name, parts, params: Object.fromEntries(new URLSearchParams(query)) };
 }

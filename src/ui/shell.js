@@ -26,9 +26,11 @@ import { renderReplay } from './screens/replay.js';
 import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
+import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
+import { uiSignature, syncThemes, cleanUp, slotEntries } from './slots.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab };
 
 /**
  * @param {HTMLElement} root
@@ -37,10 +39,20 @@ const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settin
 export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
-  const links = [['#/now', 'Now'], ['#/trips', 'Trips'], ['#/plan', 'Plan'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
+  const builtIn = [['#/now', 'Now'], ['#/trips', 'Trips'], ['#/plan', 'Plan'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
+  /** @type {HTMLAnchorElement[]} the top bar's links: annai's, then plugins' screens with a tab (choice 5 of milestone 8b) */
+  let links = builtIn;
+  const nav = h('nav', { class: 'topnav', 'aria-label': 'Main' }, ...links);
   const header = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
-    h('nav', { class: 'topnav', 'aria-label': 'Main' }, ...links));
+    nav);
+  const drawTabs = () => {
+    const tabs = slotEntries({ registry: core.registry }, 'ui:screen').filter((e) => e.item?.tab)
+      .map((e) => h('a', { href: `#/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) }));
+    links = [...builtIn, ...tabs];
+    nav.replaceChildren(...links);
+  };
+  drawTabs();
 
   const update = { ready: false, apply: () => {} };
   const ctx = {
@@ -55,10 +67,12 @@ export function startShell(root, core) {
   let seq = 0;
   async function render() {
     const my = ++seq;
+    cleanUp('screen'); // what plugins drew on the screen before
     const route = parseHash(location.hash);
     const section = route.name === 'simulate' ? 'settings' : route.name === 'plan' ? 'plan' : route.name === 'drive' ? 'now' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
+    const current = route.name === 'ext' ? location.hash : `#/${section}`;
     for (const a of links) {
-      if (a.getAttribute('href') === `#/${section}`) a.setAttribute('aria-current', 'page');
+      if (a.getAttribute('href') === current) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     }
     const screen = SCREENS[route.name] ?? SCREENS.trips;
@@ -76,6 +90,26 @@ export function startShell(root, core) {
     }
   }
   addEventListener('hashchange', render);
+  // What plugins add redraws when it changes (choice 9 of milestone 8b): once per change, not per item.
+  if (core.registry) {
+    syncThemes(core.registry, document.head);
+    let drawn = uiSignature(core.registry);
+    let queued = false;
+    core.registry.onChange(() => {
+      if (queued) return;
+      queued = true;
+      setTimeout(() => {
+        queued = false;
+        const now = uiSignature(core.registry);
+        if (now === drawn) return;
+        drawn = now;
+        syncThemes(core.registry, document.head);
+        drawTabs();
+        /** @type {any} */ (ctx).dock?.refreshSlots?.();
+        render();
+      }, 0);
+    });
+  }
   // Spec §12.3: a file dropped anywhere on annai opens on the import screen.
   addEventListener('dragover', (e) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault(); });
   addEventListener('drop', (e) => {
