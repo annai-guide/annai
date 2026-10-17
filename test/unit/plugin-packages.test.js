@@ -273,3 +273,13 @@ test('8a-5: a new version of a code plugin that is off stays off: its code runs 
   await next.install(code('1.2.0'));
   assert.equal((await next.installed()).tides.enabled, true);
 });
+
+test("minors 18: describe() lists an off plugin package's skills, as it does when it is on", async () => {
+  const { host } = await hostKit();
+  await host.install(KIT());
+  await host.start('trail-kit');
+  const row = async () => (await host.describe()).find((r) => r.id === 'trail-kit');
+  assert.deepEqual((await row())?.skills, ['trail-safety']);
+  await host.setEnabled('trail-kit', false);
+  assert.deepEqual((await row())?.skills, ['trail-safety']);
+});
