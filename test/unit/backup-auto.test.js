@@ -54,6 +54,7 @@ test('dueNow: daily or after changes, on Wi-Fi, with annai open, and only when s
   assert.equal(why(dueNow(place({ hold: { ...large, at: 10 * H - 10 * 60_000 } }), 'tree', env({ connection: 'unknown' }))), `run ${TIMINGS.askAbove}`, 'it changed since annai asked');
   assert.equal(holdKey(place()), null);
   assert.equal(holdKey(place({ hold: { kind: 'newer', remote: { id: 'b9', at: 0 } } })), 'bt-1 newer b9');
+  assert.equal(holdKey(place({ hold: { kind: 'newer', remote: { id: 'b9', at: 0 }, seen: true } })), null, 'the user found it testing the place, on its screen');
   assert.equal(holdKey(place({ hold: large })), `bt-1 large ${large.at}`);
   assert.equal(holdKey(place({ hold: error })), null, 'a passing problem shows only on the Backups screen');
   assert.equal(holdKey(place({ hold: { ...error, needsYou: true } })), 'bt-1 error x');

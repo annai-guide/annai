@@ -223,7 +223,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         checked: now(),
         // A backup this device made but didn't get to note is the one to build on.
         ...(unseen && !newer ? { last: { id: remote.id, at: remote.at, seqs: {}, bytes: 0 } } : {}),
-        hold: newer ? { kind: 'newer', remote: newer } : rec.hold?.kind === 'large' ? rec.hold : null,
+        // The user is looking at the place's screen, which shows the newer backup: no card for it.
+        hold: newer ? { kind: 'newer', remote: newer, seen: true } : rec.hold?.kind === 'large' ? rec.hold : null,
       });
       emit();
       return { note, newer };

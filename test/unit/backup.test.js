@@ -69,7 +69,7 @@ test('single writer: a newer backup from another device pauses this one until th
   // The other phone sees a backup it didn't make, and waits for its user.
   const seen = await android.backups.check(b);
   assert.deepEqual([seen.newer?.id, seen.newer?.label], ['b1', 'iPhone']);
-  assert.equal((await android.backups.get(b))?.hold?.kind, 'newer');
+  assert.deepEqual((await android.backups.get(b))?.hold, { kind: 'newer', remote: seen.newer, seen: true }, 'found by the user, on the place screen: no card');
   await assert.rejects(android.backups.backUp(b), (e) => e instanceof TargetError && e.kind === 'newer');
   assert.equal(place.kept.length, 1);
   // Its user backs it up over the other one: annai builds on the one the user saw.

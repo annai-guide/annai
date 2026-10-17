@@ -10,10 +10,11 @@ import { NotFoundError } from './workspace.js';
  * @typedef {'off'|'changes'|'daily'} Auto
  * @typedef {{ id: string, at: number, device?: string, label?: string }} RemoteBackup
  *   a backup at a place: its id there, when it was made, and the device that made it, when known
- * @typedef {{ kind: 'newer', remote: RemoteBackup } | { kind: 'large', bytes: number, at: number }
+ * @typedef {{ kind: 'newer', remote: RemoteBackup, seen?: boolean } | { kind: 'large', bytes: number, at: number }
  *   | { kind: 'error', message: string, at: number, count: number, retryAt: number, needsYou: boolean }} Hold
  *   why automatic backups to a place wait: a backup there this device hasn't taken in; an upload too
- *   large to make without asking; or a failure, tried again at retryAt (needsYou: only the user can fix it)
+ *   large to make without asking; or a failure, tried again at retryAt (needsYou: only the user can fix it).
+ *   seen: the user found the newer backup themselves, testing the place on its screen
  * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number }} LastBackup
  *   the backup at the place this device builds on, one it made or took in; seqs: each scope's last log entry in it
  * @typedef {{ id: string, type: string, name: string, config: Record<string, string>, auto: Auto, mobileData: boolean,

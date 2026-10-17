@@ -82,7 +82,7 @@ export function dueNow(t, stores, env, timings = TIMINGS) {
 /** What a place waits on that the user should hear of, as a key to tell it once by; null for nothing. @param {Target} t */
 export function holdKey(t) {
   const h = t.hold;
-  if (h?.kind === 'newer') return `${t.id} newer ${h.remote.id}`;
+  if (h?.kind === 'newer') return h.seen ? null : `${t.id} newer ${h.remote.id}`;
   if (h?.kind === 'large') return `${t.id} large ${h.at}`;
   if (h?.kind === 'error' && h.needsYou) return `${t.id} error ${h.message}`;
   return null;
