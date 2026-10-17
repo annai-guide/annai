@@ -1,0 +1,9 @@
+{
+  "id": "trail-kit",
+  "name": "Trail kit",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Test package: a skill and a personality, no code.",
+  "skills": ["skills/trail-safety"],
+  "personalities": ["personalities/ranger.md"]
+}

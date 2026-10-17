@@ -1,12 +1,17 @@
 # Writing an annai plugin
 
-This guide covers the plugin interface as it is built today: plugin API version 1, the milestone 1 subset of the design. The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
+This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8a (skills and packages). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
 
 A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1).
 
 ## The package
 
-A plugin is a folder or a zip with `annai-plugin.json` at its top, either directly or inside one top folder:
+A package is one of two kinds:
+
+- **A skill**, in the open [Agent Skills](https://agentskills.io/specification) format: a folder with `SKILL.md`, and optional `references/`, `assets/` and `scripts/` (annai never runs scripts). No `annai-plugin.json` is needed. See "Skills" below.
+- **A plugin**: a folder or a zip with `annai-plugin.json` at its top, either directly or inside one top folder. It may have code (an `entry` module), and it may bring skills, personalities and endpoint templates without any code.
+
+A plugin's manifest:
 
 ```json
 {
@@ -27,10 +32,16 @@ A plugin is a folder or a zip with `annai-plugin.json` at its top, either direct
 - **Optional fields:**
   - `description` (up to 500 characters), `author`, `homepage`.
   - `entry`: an ES module inside the package, ending in `.js` or `.mjs`.
-  - `skills`, `personalities`, `templates`, `settings` (spec §5.2).
+  - `skills`: skill folders in the package, each holding a `SKILL.md` (`"."` is the package's top).
+  - `personalities`: Markdown files, each a personality named by its file (`ranger.md` is "ranger"). Settings → Shiori offers them; Add makes a copy the user owns.
+  - `templates`: JSON files of endpoint templates, `{ "endpoints": [{ "id", "version", "type", "name", … }] }`, in the format of annai's own `catalog/templates.json`. They join annai's in Settings → Models; annai's own win on the same id.
+  - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing").
+  - `settings` (spec §5.2).
 - **Size:** a package may unpack to at most 64 MiB.
 
-annai copies the package into its own storage, so the plugin works offline, and serves its files at `/plugins/<id>/…`. Relative imports between a plugin's own modules therefore just work.
+annai copies the package into its own storage, so the plugin works offline, and serves its files at `/plugins/<id>/…`. Relative imports between a plugin's own modules therefore just work. A package's files keep no history: installing it again replaces them.
+
+A package's id is one name space with every other package: a skill is installed under its own name, and a skill name Shiori already has (one of annai's own, or another package's, on or off) can't be installed again.
 
 ## The entry module
 
@@ -68,10 +79,49 @@ export function activate(annai) {
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
 | `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change) |
 | `annai.searchProviders()` | the search providers, in the order the user set |
-| `annai.register('skill', { name, description, text })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool |
+| `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has is refused. Skills in a package's `skills` don't need this. |
 | `annai.register('search', { id, name, needsKey?, search(query, { key, fetch, signal }) })` | a search provider for `web_search`: returns `[{ title, url, snippet }]` |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
+
+## Skills
+
+A skill is instructions for Shiori, for a kind of situation: planning a hike, reading a tide table. annai reads `SKILL.md` in the Agent Skills format:
+
+```markdown
+---
+name: tide-pools
+description: When the user asks about tide pools - how to read a tide table, and when the pools are safe to visit.
+license: CC-BY-4.0
+metadata:
+  author: Example Trails
+  version: "1.2"
+---
+# Tide pools
+
+Pools are safest from an hour before low tide until low tide. Read [the safety notes](references/safety.md) first.
+```
+
+- **The name** is 1 to 64 lowercase letters, digits and dashes, not starting or ending with a dash, without two in a row. **The description** is at most 1024 characters: say what the skill is for and when Shiori should use it, because that is all she sees until she loads it.
+- **Only the name and description sit in Shiori's context.** She loads the body with `skill({ name })`, which also lists the skill's other files, and reads one with `skill({ name, file: "references/safety.md" })`: text comes back as text, a PNG, JPEG, WebP or GIF up to 5 MB as an image, anything else described.
+- **`scripts/` are never run.** Shiori may read a script as text.
+- **The front matter** is read by a small parser of annai's own: `key: value` (plain, quoted), `|` and `>` blocks, comments, a one-level `metadata:` map and a list (`allowed-tools`). Other YAML is skipped.
+- **A skill installed or removed** shows in Shiori's context at her next wake.
+- **What a skill says is the user's responsibility,** as anything they bring in is (spec §2). annai's install screen says so.
+
+## Installing, updating, removing
+
+- **From a file:** Settings → Plugins → Install from a file: a zip, or a `SKILL.md` on its own.
+- **From an address:** Settings → Plugins → Address of a plugin or skill. The address holds one of:
+  - a zip file, whatever its name;
+  - an `annai-plugin.json`: annai fetches the files it names (`entry`, each skill's `SKILL.md`, `personalities`, `templates`, and `files`), relative to it;
+  - a `SKILL.md`: annai fetches the files its links point to inside the skill's folder.
+
+  The site must let web apps read it (GitHub's raw files do; a `github.com/…/blob/…` page is read from there). At most 200 files and 64 MB.
+- **From annai's catalog:** Settings → Plugins lists annai's own plugins that aren't installed.
+- **The install screen** comes first, for a file or an address: what the package is, where it came from, and what it brings. A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys."
+- **Updates:** a package installed from an address is checked there when annai starts and once a day; a changed package (its files, not just its version) is offered on a card and in Settings → Plugins. Nothing changes until the user taps Update. An update that brings something new (code where there was none, or new skills, personalities or templates) lists it and asks again, with the full-trust words for new code. Code that already ran runs the new version from the next start.
+- **Removing** removes everything the package stored: its files, its settings (`annai.settings`), its secrets (`annai.secrets`), its tools' switches, and what it kept in the system log with `annai.events.append('sys', …)`. What it wrote into a trip stays: that is the trip's.
 
 ## Tools Shiori uses
 
