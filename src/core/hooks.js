@@ -1,9 +1,10 @@
 /**
  * Hooks (spec §5.4: "subscribe to log appends; read-only in v1"). A watched store reports the log
- * entries each committed write appended; each running plugin's hooks get frozen copies, never of
- * an entry their own plugin caused: one it appended, or one annai logged for its fetch, model call
- * or wake (fix pass 8b-1). A plugin's hooks get at most HOOK_LIMIT entries in HOOK_WINDOW_MS; one more
- * is its failure and switches it off (§5.5, with its card), so two plugins can't feed each other for long.
+ * entries each committed write appended; each running plugin's hooks get frozen copies of what the
+ * user, Shiori and annai do, never of an entry any plugin caused: one it appended, or one annai logged
+ * for its fetch, model call or wake (fix pass 8b-1). So no plugin feeds its own hooks or another's.
+ * A plugin's hooks get at most HOOK_LIMIT entries in HOOK_WINDOW_MS, for a loop annai can't see (a
+ * file it writes as the user): one more is its failure and switches it off (§5.5, with its card).
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').EventRecord} EventRecord
  * @typedef {import('./registry.js').Registry} Registry
@@ -94,7 +95,7 @@ export function deliverHooks(registry, events, now = () => Date.now()) {
       if (typeof item?.fn !== 'function') continue;
       const types = Array.isArray(item.types) ? item.types : null;
       for (const e of events) {
-        if (causedBy(e) === pluginId || (types && !types.includes(e.type))) continue;
+        if (causedBy(e) !== null || (types && !types.includes(e.type))) continue;
         if (registry.isDisabled(pluginId)) break;
         const t = now();
         let w = counts.get(pluginId);
