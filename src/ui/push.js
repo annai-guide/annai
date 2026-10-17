@@ -88,10 +88,24 @@ export function browserSource() {
   };
 }
 
-/** What the service worker saw since annai last looked, oldest first; read once (6b choice 10). @returns {Promise<any[]>} */
-export async function takeNews() {
-  if (typeof caches === 'undefined') return [];
-  const box = await caches.open(PUSH_NEWS);
+/** @type {Promise<unknown>} */
+let reading = Promise.resolve();
+
+/**
+ * What the service worker saw since annai last looked, oldest first; read once (6b choice 10). Reads
+ * run one after another, so two at the same moment never both get an entry (fix pass N2).
+ * @param {CacheStorage} [cache] @returns {Promise<any[]>}
+ */
+export function takeNews(cache = globalThis.caches) {
+  const run = reading.then(() => readNews(cache));
+  reading = run.catch(() => {});
+  return run;
+}
+
+/** @param {CacheStorage | undefined} cache @returns {Promise<any[]>} */
+async function readNews(cache) {
+  if (!cache) return [];
+  const box = await cache.open(PUSH_NEWS);
   /** @type {any[]} */
   const out = [];
   for (const req of await box.keys()) {
