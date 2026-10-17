@@ -133,6 +133,24 @@ test('while she thinks, the microphone keeps recording; what is heard reaches he
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [Boolean(e.data.answer), Boolean(e.data.meanwhile)]), [[true, false], [false, true]]);
 });
 
+test('speech heard while she thinks: her next speak does not wait a silence for an answer; what was said reaches her at once (spec §10.4)', async () => {
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'speak', input: { text: 'Want tacos?' } }] },
+    { delayMs: 120, toolCalls: [{ name: 'speak', input: { text: 'Tacos it is.' } }] },
+    say('And a coffee, noted.'),
+  ]], { voice: { speechIn: ['m-hear'], hears: ['yes please', 'and a coffee'] } });
+  k.agent.send('Lunch ideas?');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'first-one');
+  await until(() => k.requests.length === 2);
+  await hear(k, 'gas-station');
+  await k.agent.idle();
+  const second = (await results(k, 'speak'))[1];
+  assert.equal(second.data.content, 'Said aloud. Not listening for an answer: the user spoke while you were thinking; it follows.');
+  assert.ok(second.data.ms < 80, `it took ${second.data.ms} ms: no silence limit (80 ms here) was waited`);
+  assert.deepEqual(k.requests[2].messages.at(-1).parts.slice(-2), [{ type: 'text', text: '[heard while you were thinking]' }, { type: 'text', text: 'and a coffee' }]);
+});
+
 test('nothing heard is lost: speech that comes as she goes to sleep starts a new turn (spec §10.4)', async () => {
   const k = await agentKit([[
     { toolCalls: [{ name: 'speak', input: { text: 'Anything else?' } }] },
