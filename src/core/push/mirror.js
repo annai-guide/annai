@@ -22,11 +22,14 @@ import { realClock } from '../live/clock.js';
  * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, sending?: boolean }} Item
  *   a reminder at the relay; sending: written down before it was sent, not yet known to have arrived
  * @typedef {{ m: Mirrored, sendAt: number, title: string, body: string, hash: string, reuse?: boolean }} Want
- * @typedef {{ on: boolean, relay: string, key: string | null, endpoint: string | null, hello: { endpoint: string, at: number } | null,
+ * @typedef {{ on: boolean, relay: string, key: string | null, endpoint: string | null, hello: { endpoint: string, relay: string, at: number } | null,
  *   items: Record<string, Item>, cancels: Cancel[], problem: { message: string, at: number, needsYou: boolean } | null }} State
  * @typedef {{ id: string, relay: string, sendAt: number }} Cancel  a reminder to call off at a relay; sendAt: when that relay would send it
- *   key, endpoint: what the phone subscribed with; hello: the "notifications are on" sent for that endpoint
+ *   key, endpoint: what the phone subscribed with; hello: the "notifications are on" sent for that endpoint, through that relay
  */
+
+/** Whether this subscription had its "notifications are on" through this relay: each relay confirms it once (6a choice 13). @param {State} st @param {Sub} sub */
+const greeted = (st, sub) => st.hello?.endpoint === sub.endpoint && st.hello.relay === st.relay;
 
 export const FILE = '/push.json';
 export const TOKENS = 'push:tokens';
@@ -119,12 +122,14 @@ async function digest(text) {
 function stateOf(v) {
   const o = v && typeof v === 'object' && !Array.isArray(v) ? v : {};
   const items = o.items && typeof o.items === 'object' && !Array.isArray(o.items) ? o.items : {};
+  const relay = relayAddress(o.relay ?? '') ?? DEFAULT_RELAY;
   return {
     on: o.on === true,
-    relay: relayAddress(o.relay ?? '') ?? DEFAULT_RELAY,
+    relay,
     key: typeof o.key === 'string' ? o.key : null,
     endpoint: typeof o.endpoint === 'string' ? o.endpoint : null,
-    hello: o.hello && typeof o.hello.endpoint === 'string' && Number.isFinite(o.hello.at) ? { endpoint: o.hello.endpoint, at: o.hello.at } : null,
+    // A hello kept before it named its relay was through the relay in use then.
+    hello: o.hello && typeof o.hello.endpoint === 'string' && Number.isFinite(o.hello.at) ? { endpoint: o.hello.endpoint, relay: typeof o.hello.relay === 'string' ? o.hello.relay : relay, at: o.hello.at } : null,
     items: Object.fromEntries(Object.entries(items).filter(([, i]) => i && typeof i.id === 'string' && Number.isFinite(i.sendAt) && Number.isFinite(i.due))),
     cancels: Array.isArray(o.cancels)
       ? o.cancels.filter((/** @type {any} */ c) => c && typeof c.id === 'string' && typeof c.relay === 'string').map((/** @type {any} */ c) => ({ id: c.id, relay: c.relay, sendAt: Number(c.sendAt) || 0 }))
@@ -246,7 +251,7 @@ export class PushMirror {
     st.key = key;
     st.endpoint = sub.endpoint;
     st.problem = null;
-    if (st.hello?.endpoint !== sub.endpoint) await this.#hello(st, sub, HELLO);
+    if (!greeted(st, sub)) await this.#hello(st, sub, HELLO);
     await this.#save(st, tokens);
     this.#tell();
   }
@@ -552,7 +557,7 @@ export class PushMirror {
    * @param {State} st @param {Record<string, string>} tokens @param {Sub} sub @param {Want[]} list
    */
   async #send(st, tokens, sub, list) {
-    if (st.hello?.endpoint !== sub.endpoint) await this.#hello(st, sub, AGAIN);
+    if (!greeted(st, sub)) await this.#hello(st, sub, AGAIN);
     const name = await subscriptionName(sub.endpoint);
     for (const w of list) {
       if (w.reuse) continue;
@@ -598,7 +603,7 @@ export class PushMirror {
     const rand = random(16);
     const payload = await encryptPush(sub, utf8(JSON.stringify({ v: 1, key: `hello|${rand}`, title: 'annai', body: words, test: true })), { pad: PAD });
     await this.#client(st.relay).schedule({ endpoint: sub.endpoint, key: st.key, id: rand, token: random(32), sendAt: this.clock.now(), ttl: 600, payload });
-    st.hello = { endpoint: sub.endpoint, at: this.clock.now() };
+    st.hello = { endpoint: sub.endpoint, relay: st.relay, at: this.clock.now() };
   }
 
   /**
