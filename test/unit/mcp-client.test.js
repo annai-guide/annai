@@ -128,3 +128,52 @@ test("minors 1: a time limit reached while an answer is read is the time limit, 
   await new Promise((done) => setTimeout(done, 20));
   await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: traced, signal }), (e) => /** @type {any} */ (e).name === 'TimeoutError');
 });
+
+test('minors 3: after close(), a call says the server was removed, also one in flight that sees the session gone; no session starts again', async () => {
+  const s = await startMcpServer({});
+  try {
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((done) => { release = () => done(undefined); });
+    // tools/call waits until the session was ended, so the server answers it 404.
+    const gated = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (String(init?.body ?? '').includes('tools/call')) await held;
+      return fetch(url, init);
+    };
+    const c = client(s.url, '');
+    await c.listTools({ fetch: get });
+    const inFlight = c.callTool('echo', { text: 'tide' }, { fetch: gated });
+    await new Promise((done) => setTimeout(done, 20));
+    await c.close({ fetch: get });
+    release();
+    await assert.rejects(inFlight, (e) => e instanceof McpError && /The MCP server trail was removed/.test(e.message));
+    await assert.rejects(c.callTool('echo', { text: 'again' }, { fetch: get }), /The MCP server trail was removed/);
+    await assert.rejects(c.listTools({ fetch: get }), /was removed/);
+    assert.equal(s.requests.filter((r) => r.rpc?.method === 'initialize').length, 1);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('minors 3: a session that starts while the client closes is ended at once', async () => {
+  const s = await startMcpServer({});
+  try {
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((done) => { release = () => done(undefined); });
+    const gated = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (String(init?.body ?? '').includes('"initialize"')) await held;
+      return fetch(url, init);
+    };
+    const c = client(s.url, '');
+    const listing = c.listTools({ fetch: gated });
+    await new Promise((done) => setTimeout(done, 20));
+    await c.close({ fetch: get });
+    release();
+    await assert.rejects(listing, /The MCP server trail was removed/);
+    assert.equal(s.requests.filter((r) => r.method === 'DELETE').length, 1, 'the session it got was ended');
+    assert.equal(s.requests.filter((r) => r.rpc?.method === 'tools/list').length, 0);
+  } finally {
+    await s.stop();
+  }
+});

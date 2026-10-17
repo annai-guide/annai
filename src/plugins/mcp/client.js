@@ -42,6 +42,8 @@ export class McpClient {
   /** @type {string | null} the protocol version agreed on: set once connected */ #version = null;
   #id = 0;
   /** @type {Promise<void> | null} */ #connecting = null;
+  /** Set once the session is ended for good (close, ending): no other starts, and every call says the server was removed (minors 3). */
+  #closed = false;
 
   /**
    * @param {{ url: string | (() => Promise<string>), server: string, auth: () => Promise<Record<string, string>> }} o
@@ -58,6 +60,11 @@ export class McpClient {
     this.#session = null;
     this.#version = null;
     const result = await this.#request('initialize', { protocolVersion: ASKED, capabilities: {}, clientInfo: { name: 'annai', version: '1' } }, o, true);
+    if (this.#closed) {
+      // Closed while it started: the session it got is ended too.
+      await this.close(o);
+      throw this.#removed();
+    }
     const v = String(result?.protocolVersion ?? '');
     if (!SUPPORTED.includes(v)) throw new McpError('server', `The MCP server ${this.server} speaks MCP ${v || 'an unknown version'}; annai speaks 2025-03-26 to 2025-11-25.`);
     this.#version = v;
@@ -103,6 +110,7 @@ export class McpClient {
    * @returns {Promise<((o: { fetch: Fetch, signal?: AbortSignal }) => Promise<void>) | null>}
    */
   async ending() {
+    this.#closed = true;
     const session = this.#session;
     this.#session = null;
     this.#version = null;
@@ -128,12 +136,18 @@ export class McpClient {
     try {
       return await work();
     } catch (e) {
+      // A request the removal overtook (its session gone, its server's answer cut) was for a server that is gone.
+      if (this.#closed && !stopOf(e, o.signal)) throw this.#removed();
       if (!(e instanceof McpError) || e.kind !== 'session') throw e;
       this.#version = null;
       this.#session = null;
       await this.#ready(o);
       return work();
     }
+  }
+
+  #removed() {
+    return new McpError('session', `The MCP server ${this.server} was removed.`);
   }
 
   /** The server's full address. */
@@ -143,6 +157,7 @@ export class McpClient {
 
   /** @param {{ fetch: Fetch, signal?: AbortSignal }} o */
   async #ready(o) {
+    if (this.#closed) throw this.#removed();
     if (this.#version) return;
     if (!this.#connecting) this.#connecting = this.connect(o).finally(() => { this.#connecting = null; });
     await this.#connecting;
