@@ -10,6 +10,7 @@ import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
 import { speechCall } from './speech.js';
+import { withoutSecretsIn } from '../agent/net.js';
 
 /**
  * Everything the UI needs to talk to models (spec §9): settings, endpoint types installed on
@@ -136,14 +137,17 @@ export function createLlm({
       if (!rec || !epRec || !type?.uploadRequest || !type.readUpload || !modelOf(rec).input.includes('image')) return false;
       return endpointOf(epRec, type.tunables).tunables?.uploads !== false && !uploads.isOff(epRec.id);
     },
-    /** The Test button for one model; what it found is recorded on the model (spec §9.8). @param {string} modelId */
+    /**
+     * The Test button for one model; what it found is recorded on the model (spec §9.8). What it
+     * says may hold the provider's own words: shown with every key blanked (§9.9). @param {string} modelId
+     */
     async test(modelId) {
       const { rec, type, endpoint, model, key } = await resolve(modelId);
       const result = await testModel({ type, endpoint, model, key, fetch: get, probe });
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
       if (found.access && found.key !== false) bench.clear(modelId); // reachable with a working key: no reason to rest
       await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), ...found, at: Date.now() } });
-      return result;
+      return withoutSecretsIn(store, result);
     },
     /**
      * Puts an endpoint's models back in use after its settings or key change: the user may
@@ -155,7 +159,7 @@ export function createLlm({
     /** Tries each reasoning level of one model, and records which work (spec §9.3). @param {string} modelId */
     async testLevels(modelId) {
       const { rec, type, endpoint, model, key } = await resolve(modelId);
-      const levels = await testLevels({ type, endpoint, model, key, fetch: get });
+      const levels = await withoutSecretsIn(store, await testLevels({ type, endpoint, model, key, fetch: get }));
       await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), levels, levelsAt: Date.now() } });
       return levels;
     },

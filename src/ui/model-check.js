@@ -1,5 +1,6 @@
 import { h } from './dom.js';
 import { relTime, outcomeText } from './format.js';
+import { withoutSecrets } from '../core/agent/net.js';
 
 /**
  * The Test button (spec §9.8) and "Test reasoning levels" (§9.3) for one model, with what the
@@ -24,7 +25,7 @@ export function testPanel(ctx, modelId, verified, title = 'Test') {
         status.textContent = !r.ok ? 'Something needs attention:' : r.steps.every((/** @type {any} */ s) => s.ok) ? 'Everything works.' : 'It works, with one note:';
         show(r.steps.map((/** @type {any} */ s) => ({ ok: s.ok, text: s.detail })));
       } catch (e) {
-        status.textContent = String(/** @type {any} */ (e)?.message ?? e);
+        status.textContent = await withoutSecrets(ctx.store, String(/** @type {any} */ (e)?.message ?? e));
       } finally {
         run.disabled = false;
       }
@@ -40,7 +41,7 @@ export function testPanel(ctx, modelId, verified, title = 'Test') {
         status.textContent = r.length ? 'Reasoning levels:' : 'This model has no reasoning levels to try.';
         show(r.map(([level, outcome]) => ({ ok: outcome === 'ok', text: `${level}: ${outcome === 'ok' ? 'works' : outcomeText(outcome)}` })));
       } catch (e) {
-        status.textContent = String(/** @type {any} */ (e)?.message ?? e);
+        status.textContent = await withoutSecrets(ctx.store, String(/** @type {any} */ (e)?.message ?? e));
       } finally {
         levels.disabled = false;
       }
