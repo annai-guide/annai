@@ -61,6 +61,16 @@ export function toBase64(b) {
   return btoa(s);
 }
 
+/**
+ * Whether s is base64 itself (RFC 4648 §4, padded or not): not a data: address, base64url, or text with
+ * spaces in it, which fromBase64 would refuse or read wrong (fix pass 8c-1).
+ * @param {unknown} s
+ */
+export function isBase64(s) {
+  if (typeof s !== 'string' || !s || !/^[A-Za-z0-9+/]*={0,2}$/.test(s)) return false;
+  return s.includes('=') ? s.length % 4 === 0 : s.length % 4 !== 1;
+}
+
 /** @param {string} s */
 export function fromBase64(s) {
   const bin = atob(s);

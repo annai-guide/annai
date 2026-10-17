@@ -1,6 +1,7 @@
 import { answerJSON } from '../../core/answer.js';
 import { sse } from '../../core/llm/sse.js';
 import { CREDENTIAL } from '../../core/agent/net.js';
+import { isBase64 } from '../../core/bytes.js';
 
 /**
  * annai's MCP client (spec §5.1): MCP's Streamable HTTP transport, as a web app speaks it. Each
@@ -240,7 +241,7 @@ export function toolOutput(result) {
   const images = [];
   for (const p of parts) {
     if (p?.type === 'text') texts.push(String(p.text ?? ''));
-    else if (p?.type === 'image' && IMAGE_TYPES.includes(p.mimeType) && typeof p.data === 'string' && p.data.length * 0.75 <= IMAGE_MAX) {
+    else if (p?.type === 'image' && IMAGE_TYPES.includes(p.mimeType) && isBase64(p.data) && p.data.length * 0.75 <= IMAGE_MAX) {
       images.push({ mediaType: p.mimeType, data: p.data });
       texts.push(`An image (${p.mimeType}).`);
     } else if (p?.type === 'image') texts.push(`An image (${String(p.mimeType ?? 'of an unknown kind')}) that annai doesn't pass on.`);

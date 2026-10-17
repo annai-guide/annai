@@ -76,6 +76,15 @@ test("what a tool answers, for Shiori: text, images, a resource's text, structur
   assert.equal(toolOutput({}).content, 'The tool answered nothing.');
 });
 
+test("8c-1: an image passes on only when its data is base64; a data: address, base64url or anything else doesn't", () => {
+  for (const data of ['data:image/png;base64,iVBORw0KGgo=', 'iVBORw0KGgo-_w', 'iVBO Rw0K', 'not base64!', 'iVBORw0KGgo=A', 'A', '']) {
+    const out = toolOutput({ content: [{ type: 'image', data, mimeType: 'image/png' }] });
+    assert.deepEqual(out, { content: "An image (image/png) that annai doesn't pass on." }, data);
+  }
+  assert.deepEqual(toolOutput({ content: [{ type: 'image', data: 'iVBORw0KGgo', mimeType: 'image/png' }] }).images, [{ mediaType: 'image/png', data: 'iVBORw0KGgo' }]);
+  assert.deepEqual(toolOutput({ content: [{ type: 'image', data: 'iVBORw0KGgo+/A==', mimeType: 'image/png' }] }).images, [{ mediaType: 'image/png', data: 'iVBORw0KGgo+/A==' }]);
+});
+
 test('an address and its keys: shown with each part that may be a key blanked, and put back whole (the third finding)', () => {
   const a = 'https://mcp.example.com/api/mcp/s/zap1a2b3c4d5e6f7g8h9/mcp?v=2&key=q9w8e7r6t5y4&k=abc&api_key=short';
   const { shown, keys } = addressParts(a);
