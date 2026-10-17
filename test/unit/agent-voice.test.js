@@ -88,6 +88,36 @@ test('tapping her while she speaks stops her, keeps where, and opens the microph
   assert.equal(k.requests.length, 2);
 });
 
+test('two speaks in one streamed reply: the second plays after the first has listened, never over the open microphone (spec §10.4)', async () => {
+  const k = await agentKit([[
+    { stream: true, toolCalls: [{ name: 'speak', input: { text: 'First thing.' } }, { name: 'speak', input: { text: 'Second thing.' } }] },
+    { toolCalls: [{ name: 'sleep', input: {} }] },
+  ]], { voice: { playMs: 40, speechIn: ['m-hear'] } });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.deepEqual(k.platform.log, ['play m-say:First thing.', 'mic open', 'mic close', 'play m-say:Second thing.', 'mic open', 'mic close']);
+});
+
+test('once she is stopped, a later speak in the same reply is not said and does not listen; it shows as a bubble (spec §10.4)', async () => {
+  const k = await agentKit([[
+    { stream: true, toolCalls: [{ name: 'speak', input: { text: 'Bixby Bridge is two miles ahead. It opened in 1932.' } }, { name: 'speak', input: { text: 'Want to stop there?' } }] },
+    say('OK, the beach.'),
+  ]], { voice: { playMs: 60, speechIn: ['m-hear'], hears: ['tell me about the beach'] } });
+  k.agent.send('What is ahead?');
+  await until(() => plays(k).length === 1);
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-lunch');
+  await k.agent.idle();
+  const [a, b] = await results(k, 'speak');
+  assert.match(a.data.content, /^The user stopped you after: "Bixby Bridge is…"\. The user said:/);
+  assert.equal(b.data.content, 'Not said aloud: the user stopped you. It was shown on screen.');
+  assert.ok(!plays(k).includes('Want to stop there?'));
+  assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1, 'one listening window, from the tap');
+  assert.equal((await k.events(['out.speak']))[1].data.voice, undefined, 'shown, not said');
+  assert.equal(k.requests.length, 2);
+});
+
 test('tapping her while she sleeps starts listening; the first thing said wakes her; the microphone closes after her turn (spec §10.4)', async () => {
   const k = await agentKit([[say('Yes, there is a café ahead.')]], { voice: { speechIn: ['m-hear'], hears: ['is there coffee nearby'] } });
   assert.equal(k.agent.tap(), 'listening');

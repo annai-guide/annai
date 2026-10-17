@@ -91,3 +91,28 @@ test('chatter during an ask is written in, and the buttons keep waiting (spec §
   assert.equal(heard.length, 1);
   assert.equal(heard[0].data.dismissed, true);
 });
+
+test('after chatter ends her turn, a later speak in the same reply is not said and does not listen; the gate is told only what she said (spec §10.4)', async () => {
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'speak', input: { text: 'Bixby Bridge is ahead.' } }, { name: 'speak', input: { text: 'Want to stop there?' } }] },
+    { delayMs: 150, toolCalls: [{ name: 'sleep', input: {} }] },
+  ]], { voice: { decide: [choose('B'), choose('B')], speechIn: ['m-hear'], hears: ['turn the radio down', 'is there gas', 'pass the water'] } });
+  k.agent.send('What is ahead?');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-lunch');
+  await k.agent.idle();
+  const [a, b] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
+  assert.match(a.data.content, /You went back to sleep\.$/);
+  assert.equal(b.data.content, 'Not said aloud: you went back to sleep. It was shown on screen.');
+  assert.ok(!k.platform.log.includes('play m-say:Want to stop there?'));
+  assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1);
+  assert.equal(mainRequests(k).length, 1);
+  // Her next turn: speech heard while she thinks goes to the gate, which is told what she last said aloud.
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'gas-station');
+  await until(() => mainRequests(k).length === 2);
+  await hear(k, 'first-one');
+  await k.agent.idle();
+  assert.match(gateRequests(k).at(-1).messages[0].parts[0].text, /She last said aloud: "Bixby Bridge is ahead\."/);
+});

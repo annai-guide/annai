@@ -140,6 +140,10 @@ export class Agent {
   #toldDeaf = false;
   /** The user stopped her during this step: nothing more is said until she has listened. */
   #cut = false;
+  /** Chatter sent her back to sleep during this step: a later speak in the reply isn't said (spec §10.4). */
+  #wentToSleep = false;
+  /** The speak whose words play as the reply streams in; a later speak in the reply plays after this one has listened. */
+  #streaming = '';
   /** The model that answered last in this turn: it heard any audio sent (spec §10.3). @type {string | null} */
   #heardBy = null;
   /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
@@ -777,6 +781,8 @@ export class Agent {
       }
       const prefer = this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
       this.#cut = false;
+      this.#wentToSleep = false;
+      this.#streaming = '';
       this.#setState('thinking');
       /** @type {any} */
       let result;
@@ -828,7 +834,7 @@ export class Agent {
       let endTurn = false;
       for (const c of ordered) {
         const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off });
-        if (output.endTurn) endTurn = true;
+        if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
       if (stop) {
@@ -1082,7 +1088,9 @@ export class Agent {
         input: { type: 'object', properties: { text: { type: 'string', minLength: 1 } }, required: ['text'] },
         run: async (/** @type {{ text: string }} */ i, /** @type {any} */ call) => {
           const text = String(i.text ?? '');
-          await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(call.voice ? { voice: true } : {}) }, texts: [['text', text]] });
+          const unsaid = call.voice && this.voice ? this.#unsaid(call.id) : '';
+          await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(call.voice && !unsaid ? { voice: true } : {}) }, texts: [['text', text]] });
+          if (unsaid) return unsaid;
           if (call.voice && this.voice) return this.#say(text, call);
           this.#setState('speaking');
           return call.sleeping ? 'shown' : SPEAK_RESULT;
@@ -1207,11 +1215,15 @@ export class Agent {
     if (ev.type === 'restart') {
       for (const u of this.#utterances.values()) u.stop();
       this.#utterances.clear();
+      this.#streaming = '';
       return;
     }
     if (!this.#voiceNow || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
     let u = this.#utterances.get(ev.id);
     if (!u) {
+      // Only the reply's first speak plays as it streams: a later one plays when its turn comes, after the first has listened.
+      if (this.#streaming && this.#streaming !== ev.id) return;
+      this.#streaming = ev.id;
       u = this.voice.speaker.begin();
       this.#utterances.set(ev.id, u);
       if (this.#cut) u.stop(); // she was stopped: nothing more until she has listened
@@ -1226,6 +1238,16 @@ export class Agent {
     } else {
       u.end(String(ev.input?.text ?? ''));
     }
+  }
+
+  /**
+   * A later speak in a reply after the user stopped her, or after chatter sent her back to sleep, isn't
+   * said and doesn't listen (spec §10.4); it shows as a bubble. A speak that had begun to play is said up to the stop.
+   * @param {string} id @returns {string} the result, or '' when it is said
+   */
+  #unsaid(id) {
+    if (this.#utterances.has(id) || (!this.#cut && !this.#wentToSleep)) return '';
+    return `Not said aloud: ${this.#wentToSleep ? 'you went back to sleep' : 'the user stopped you'}. It was shown on screen.`;
   }
 
   /**
@@ -1247,7 +1269,7 @@ export class Agent {
     }
     u.end(text);
     const spoken = await u.done;
-    this.#lastSaid = spoken.heard || text;
+    if (spoken.heard) this.#lastSaid = spoken.heard; // only what was said aloud
     if (spoken.failed) {
       await this.#notice(spoken.failed === 'blocked'
         ? { tone: 'info', title: 'Tap the screen so Shiori can speak', body: 'This browser plays sound only after a tap. Her words are in the conversation.' }
@@ -1273,7 +1295,7 @@ export class Agent {
     this.#setState('speaking');
     u.end(question);
     const spoken = await u.done;
-    this.#lastSaid = question;
+    if (spoken.heard) this.#lastSaid = spoken.heard;
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', (await voice.settings()).silenceSeconds);
     if (got.dismissed) {
