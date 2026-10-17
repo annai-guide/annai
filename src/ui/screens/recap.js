@@ -9,6 +9,9 @@ import { codec } from '../photo-codec.js';
 import { fileHref, relTime } from '../format.js';
 import { tripStamps, stampMarks } from '../stamps.js';
 
+/** Recaps being written, by trip: the screen drawn again finds its own, and leaving the screen stops it. @type {Map<string, AbortController>} */
+const writing = new Map();
+
 /**
  * Recap (spec §13, §16.2): the trip's recap as the utility model wrote it, rendered by annai's own
  * Markdown renderer (§15); a tap writes it, or writes it again (the old one stays in the file's
@@ -26,21 +29,28 @@ export async function renderRecap(ctx, route) {
   const stamps = await tripStamps(ctx, id);
   const model = ctx.llm ? recapModels(await ctx.llm.config().catch(() => null))[0] ?? null : null;
   const trip = `#/trip/${encodeURIComponent(id)}`;
-  const status = h('p', { class: 'sub', role: 'status' });
-  const write = h('button', { class: recap ? 'btn' : 'btn pri', type: 'button', disabled: !model }, recap ? 'Write it again' : 'Write the recap');
+  const busy = (/** @type {{ name: string }} */ m) => `Writing it: ${m.name} is reading the trip. This can take a minute.`;
+  const status = h('p', { class: 'sub', role: 'status', text: model && writing.has(id) ? busy(model) : '' });
+  const write = h('button', { class: recap ? 'btn' : 'btn pri', type: 'button', disabled: !model || writing.has(id) }, recap ? 'Write it again' : 'Write the recap');
+  const here = () => location.hash.startsWith(`${trip}/recap`);
   write.addEventListener('click', async () => {
-    if (!model) return;
+    if (!model || writing.has(id)) return;
     write.disabled = true;
-    status.textContent = `Writing it: ${model.name} is reading the trip. This can take a minute.`;
+    status.textContent = busy(model);
+    const abort = new AbortController();
+    writing.set(id, abort);
+    const leave = () => { if (!here()) abort.abort(); };
+    addEventListener('hashchange', leave);
     try {
       const pack = await loadPack(ctx.ws, id).catch(() => null);
-      await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer: (p) => pack?.name(p) ?? null });
+      await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer: (p) => pack?.name(p) ?? null, signal: abort.signal });
       ctx.notices.toast('The recap is written.');
-      if (status.isConnected) ctx.render();
     } catch (e) {
-      status.textContent = '';
-      write.disabled = false;
-      ctx.notices.card({ tone: 'warn', title: "The recap wasn't written", body: await withoutSecrets(ctx.store, recapError(e)) });
+      if (!abort.signal.aborted) ctx.notices.card({ tone: 'warn', title: "The recap wasn't written", body: await withoutSecrets(ctx.store, recapError(e)) });
+    } finally {
+      writing.delete(id);
+      removeEventListener('hashchange', leave);
+      if (here()) ctx.render(); // the screen, as drawn now, shows how it went
     }
   });
   const tell = recap && ctx.agent ? h('button', {

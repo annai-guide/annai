@@ -219,6 +219,7 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, si
   const r = await llm.call({ role: 'utility', request: { system: RECAP_SYSTEM, messages: [{ role: 'user', parts }] }, scope: trip, record: { tag: 'recap' }, signal });
   const out = String(r?.reply?.text ?? '').trim();
   if (!out) throw new Error('The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).');
+  signal?.throwIfAborted(); // stopped as the answer came: nothing is written
   await ws.write(trip, RECAP_FILE, `${out}\n`, { author: 'shiori' });
   await record(store, trip, { type: 'recap', actor: 'system', data: { path: RECAP_FILE, chars: text.length, photos: blobs.length, points: j.points.length }, blobs });
   return { text: out, photos: blobs.length, chars: text.length };

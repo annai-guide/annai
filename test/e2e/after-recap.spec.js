@@ -74,3 +74,41 @@ test("a recap that can't be written says why and what to do; with no model the b
     await llm.stop();
   }
 });
+
+test('a recap being written is remembered when the screen is drawn again, so it is written once; leaving the screen stops it', async ({ page }) => {
+  const slow = { ...sse(anthropicToolReply([], RECAP)), delayMs: 3000 };
+  const llm = await startModelServer({ '/b/v1/messages': sse(anthropicToolReply([sleep])), '/u/v1/messages': slow });
+  try {
+    await models(page, llm.origin);
+    await page.goto('/#/trips');
+    const trip = await startTrip(page, 'Big Sur');
+    await seedMorning(page, trip);
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}/recap`);
+    await page.getByRole('button', { name: 'Write the recap' }).click();
+    await expect.poll(() => llm.bodies('/u/v1/messages').length).toBe(1);
+    await page.evaluate(() => dispatchEvent(new HashChangeEvent('hashchange'))); // the screen is drawn again
+    await expect(page.getByRole('button', { name: 'Write the recap' })).toBeDisabled();
+    await expect(page.getByRole('status').filter({ hasText: 'Writing it' })).toBeVisible();
+    await expect(page.locator('.recap-text')).toContainText('The fog lifted over Bixby Creek Bridge.', { timeout: 20_000 });
+    expect(llm.bodies('/u/v1/messages').length).toBe(1);
+    // Write it again, then leave: it stops, and the recap stays as it was.
+    await page.getByRole('button', { name: 'Write it again' }).click();
+    await expect.poll(() => llm.bodies('/u/v1/messages').length).toBe(2);
+    await page.goto('/#/trips');
+    await page.waitForTimeout(4000); // the model's answer came meanwhile, to a request that was stopped
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}/recap`);
+    await expect(page.getByRole('button', { name: 'Write it again' })).toBeEnabled();
+    const versions = await page.evaluate(async (id) => {
+      const load = (/** @type {string} */ url) => import(url);
+      const { createIdbStore } = await load('/src/core/store-idb.js');
+      const { Workspace } = await load('/src/core/workspace.js');
+      const store = await createIdbStore();
+      const n = (await new Workspace(store).history(id, '/recap.md')).length;
+      store.close();
+      return n;
+    }, trip);
+    expect(versions).toBe(1);
+  } finally {
+    await llm.stop();
+  }
+});
