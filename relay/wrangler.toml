@@ -1,0 +1,33 @@
+# The annai push relay (spec §11.6): a Cloudflare Worker with one Durable Object per push
+# subscription. How to deploy it: README.md in this folder. The VAPID private key is the secret
+# VAPID_KEY, never in this file.
+name = "annai-push"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+routes = [{ pattern = "push.annai.guide", custom_domain = true }]
+
+[vars]
+# The address annai is served from; more than one, comma-separated.
+ORIGINS = "https://annai.guide"
+# Who runs the relay, for the push services (a URL or a mailto: address).
+VAPID_SUBJECT = "https://annai.guide"
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "PushRelay"
+
+# SQLite-backed objects: the kind the Workers Free plan has.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PushRelay"]
+
+# 300 requests a minute from one address, counted at each Cloudflare location.
+[[ratelimits]]
+name = "LIMIT"
+namespace_id = "6001"
+simple = { limit = 300, period = 60 }
+
+# The relay keeps no logs.
+[observability]
+enabled = false

@@ -1,0 +1,105 @@
+#!/usr/bin/env node
+/**
+ * The push relay in Node, for a device test on your own network before deploying (relay/README.md):
+ * the same Worker code, with its Durable Objects in memory. A restart forgets the reminders waiting.
+ * Not for production.
+ *   node relay/serve.mjs --port 8796 --origin https://your-machine.your-tailnet.ts.net:8792 [--keys FILE] [--subject URI] [--host 127.0.0.1]
+ */
+import http from 'node:http';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { makeRelay } from './src/relay.js';
+import { newVapidJwk, readVapidKey } from './src/vapid.js';
+import { memoryNamespace, memoryLimiter } from './memory.js';
+
+/** Ports annai's own servers use on this machine: never the relay's. */
+const TAKEN = [8765, 8790, 8791, 8792];
+
+/** The VAPID key in file, made there (readable by its owner alone) the first time (choice 11). @param {string} file */
+export async function keyFile(file) {
+  try {
+    return await readFile(file, 'utf8');
+  } catch (e) {
+    if (/** @type {any} */ (e)?.code !== 'ENOENT') throw e;
+  }
+  const jwk = await newVapidJwk();
+  await mkdir(dirname(file), { recursive: true, mode: 0o700 });
+  await writeFile(file, jwk, { mode: 0o600, flag: 'wx' });
+  return jwk;
+}
+
+/**
+ * Starts the relay on a port of this machine.
+ * @param {{ port?: number, host?: string, origins?: string[], jwk?: string, keys?: string, subject?: string, extraPushOrigins?: string[],
+ *   now?: () => number, timers?: boolean, limit?: number, send?: (url: string, init: RequestInit) => Promise<Response> }} [o]
+ */
+export async function startRelay({ port = 0, host = '127.0.0.1', origins = [], jwk, keys, subject, extraPushOrigins = [], now = () => Date.now(), timers = true, limit = 300, send } = {}) {
+  const secret = jwk ?? (await keyFile(keys ?? join(homedir(), '.config', 'annai-relay', 'vapid.json')));
+  const { publicKey } = await readVapidKey(secret);
+  const { worker, PushRelay } = makeRelay({ now, ...(send ? { send } : {}) });
+  /** @type {any} */
+  const env = { VAPID_KEY: secret, VAPID_SUBJECT: subject ?? 'https://annai.guide', ORIGINS: origins.join(','), EXTRA_PUSH_ORIGINS: extraPushOrigins.join(','), LIMIT: memoryLimiter({ limit, now }) };
+  env.RELAY = memoryNamespace(PushRelay, env, { now, timers });
+  const server = http.createServer((req, res) => {
+    /** @type {Buffer[]} */
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', async () => {
+      try {
+        const headers = new Headers();
+        for (const [k, v] of Object.entries(req.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(', ') : v);
+        // Behind `tailscale serve`, the phone's address comes as X-Forwarded-For.
+        headers.set('CF-Connecting-IP', String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown');
+        const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks);
+        const answer = await worker.fetch(new Request(`http://${host}${req.url ?? '/'}`, { method: req.method, headers, body }), env);
+        res.writeHead(answer.status, Object.fromEntries(answer.headers));
+        res.end(Buffer.from(await answer.arrayBuffer()));
+      } catch {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }).end('The relay failed to answer.');
+      }
+    });
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, host, () => resolve(undefined));
+  });
+  const { port: bound } = /** @type {import('node:net').AddressInfo} */ (server.address());
+  return {
+    origin: `http://${host}:${bound}`,
+    key: publicKey,
+    env,
+    close: () => new Promise((resolve) => {
+      env.RELAY.close();
+      server.closeAllConnections?.();
+      server.close(() => resolve(undefined));
+    }),
+  };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  const one = (/** @type {string} */ name) => {
+    const i = args.indexOf(name);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  const all = (/** @type {string} */ name) => args.flatMap((a, i) => (a === name && args[i + 1] ? [args[i + 1]] : []));
+  const port = Number(one('--port') ?? 8796);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    console.error('--port must be a port number, such as 8796.');
+    process.exit(1);
+  }
+  if (TAKEN.includes(port)) {
+    console.error(`Port ${port} is one of annai's own on this machine (8765, 8790 to 8792). Choose another, such as 8796.`);
+    process.exit(1);
+  }
+  const origins = all('--origin');
+  if (!origins.length) {
+    console.error("Give the address annai is served from, so the relay answers it: --origin https://your-machine.your-tailnet.ts.net:8792");
+    process.exit(1);
+  }
+  const r = await startRelay({ port, host: one('--host') ?? '127.0.0.1', origins, keys: one('--keys'), subject: one('--subject') });
+  console.log(`annai push relay, in memory (a restart forgets what is waiting): ${r.origin}/ for ${origins.join(', ')}`);
+  console.log(`VAPID public key: ${r.key}`);
+}
