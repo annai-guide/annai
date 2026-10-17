@@ -203,6 +203,19 @@ export class PluginHost {
     return manifest;
   }
 
+  /**
+   * Whether a plugin's stored files are exactly the ones annai's catalog lists for it (spec §5.3:
+   * official plugins are checked against the catalog's SHA-256s). A copy that came any other way,
+   * such as a restored backup's, isn't official until it matches.
+   * @param {string} id @param {{ files: Record<string, string> }} entry
+   */
+  async verifyOfficial(id, entry) {
+    const stored = await this.ws.list(SYS_PLUGINS, `/${id}/`);
+    const want = Object.entries(entry.files ?? {});
+    if (stored.length !== want.length) return false;
+    return want.every(([name, hash]) => stored.some((f) => f.path === `/${id}/${name}` && f.hash === hash));
+  }
+
   /** Whether annai must restart before this plugin's current code can run. @param {string} id */
   needsRestart(id) {
     return this.#stale.has(id);

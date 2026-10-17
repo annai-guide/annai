@@ -65,9 +65,15 @@ export async function installOfficial(host, entry, opts = {}) {
  */
 export async function officialUpdates(host, opts = {}) {
   const state = await host.installed();
-  return (await officialPlugins(opts))
-    .filter((p) => state[p.id]?.source === 'official' && state[p.id].version !== p.version)
-    .map((p) => ({ id: p.id, name: p.name, installed: state[p.id].version, available: p.version, entry: p }));
+  /** @type {{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin }[]} */
+  const out = [];
+  for (const p of await officialPlugins(opts)) {
+    const s = state[p.id];
+    if (s?.source !== 'official') continue;
+    // Official means matching the catalog: a changed copy is offered the catalog's files, whatever its version.
+    if (s.version !== p.version || !(await host.verifyOfficial(p.id, p))) out.push({ id: p.id, name: p.name, installed: s.version, available: p.version, entry: p });
+  }
+  return out;
 }
 
 /**
@@ -126,8 +132,11 @@ async function ensureNow(host, kind, type, opts) {
   const entry = (await officialPlugins(opts)).find((p) => p.provides?.[kind]?.includes(type));
   if (!entry) throw new PluginError(type, `isn't ${what} annai knows. Install a plugin that provides it.`);
   const state = (await host.installed())[entry.id];
-  if (state && state.version === entry.version) {
-    if (!state.enabled) await host.setEnabled(entry.id, true);
+  // Only files that match the catalog run as an official plugin; anything else, such as a copy a
+  // restored backup brought, is fetched again from annai and checked (spec §5.3).
+  if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
+    // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on.
+    if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
   } else {
     await installOfficial(host, entry, opts);
