@@ -13,7 +13,9 @@
  * @typedef {{ available(): boolean, open(o: { lang?: string, onSegment: (text: string) => void, onSpeech?: () => void, onError: (e: Error & { code?: string }) => void }): { close(): void } }} Dictation
  *   phone dictation (§10.2)
  * @typedef {'transient' | 'play-and-record' | 'playback'} SessionType  the audio session type (§10.1)
- * @typedef {{ player: Player, synth: Synth, mic: Mic, dictation: Dictation, session(type: SessionType): void }} VoicePlatform
+ * @typedef {{ player: Player, synth: Synth, mic: Mic, dictation: Dictation, session(type: SessionType): void,
+ *   devices?(): Promise<{ kind: string, label: string }[]>, onDeviceChange?(fn: () => void): void }} VoicePlatform
+ *   devices: the audio devices, by name, and onDeviceChange when they change (§10.5)
  */
 
 /** The voice platform a running plugin gives (built-ins are plugins, spec §5.4), or null. @param {import('../registry.js').Registry} registry @returns {VoicePlatform | null} */

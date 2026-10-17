@@ -1,4 +1,5 @@
-import { readAppSettings } from '../settings.js';
+import { readAppSettings, updateAppSettings } from '../settings.js';
+import { voiceMode, routeOf } from './mode.js';
 import { SYS } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
 import { COOLDOWN_MS } from '../llm/fallback.js';
@@ -37,8 +38,11 @@ export class Voice {
   memory = new HeardMemory();
   /** Phone dictation failed in this session: listening records instead (spec §10.3). */
   dictationFailed = false;
-  /** Whether voice is on now (spec §10.5); refresh() works it out again. */
-  on = false;
+  /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
+  mode = { setting: 'auto', on: false, why: 'not sure' };
+  /** @type {Set<(m: import('./mode.js').VoiceMode) => void>} */
+  #changes = new Set();
+  #watching = false;
   /** @type {Set<LevelListener>} */
   #levels = new Set();
 
@@ -161,10 +165,80 @@ export class Voice {
     return voiceSettings(await readAppSettings(this.ws));
   }
 
-  /** Whether voice is on (spec §10.5): On is, Off isn't; Auto works out the situation in milestone 3c, and is off until then. */
+  /** Whether voice is on now. */
+  get on() {
+    return this.mode.on;
+  }
+
+  /**
+   * Works out the voice mode (spec §10.5): the setting; for Auto, the activity sensor and the
+   * audio devices' names; and, where it can't tell, the last explicit choice. Listeners hear a change.
+   * @returns {Promise<boolean>} whether voice is on
+   */
   async refresh() {
-    this.on = (await this.settings()).mode === 'on';
-    return this.on;
+    const s = await this.settings();
+    const route = s.mode === 'auto' ? await this.route() : 'unknown';
+    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices });
+    this.#watch();
+    if (next.on !== this.mode.on || next.why !== this.mode.why || next.setting !== this.mode.setting) {
+      this.mode = next;
+      for (const fn of this.#changes) {
+        try {
+          fn(next);
+        } catch (e) {
+          console.warn('a voice listener failed', e);
+        }
+      }
+    }
+    return next.on;
+  }
+
+  /** What the activity sensor says (live mode's, spec §11.2); unknown without one. @returns {string} */
+  activity() {
+    try {
+      return this.registry.list('activity')[0]?.now?.() ?? 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  }
+
+  /** What audio is connected, from the devices' names (spec §10.5). */
+  async route() {
+    try {
+      return routeOf((await this.platform?.devices?.()) ?? []);
+    } catch {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * An explicit choice of Auto, On or Off (spec §10.5). On or Off, where annai can't tell what audio
+   * is connected, is remembered for this activity: Auto follows it there.
+   * @param {'auto' | 'on' | 'off'} setting
+   */
+  async choose(setting) {
+    /** @type {Record<string, any>} */
+    const change = { mode: setting };
+    if (setting !== 'auto' && (await this.route()) === 'unknown') change.lastChoices = { [this.activity()]: setting };
+    await updateAppSettings(this.ws, { voice: change });
+    await this.refresh();
+  }
+
+  /** Hears when the voice mode changes. @param {(m: import('./mode.js').VoiceMode) => void} fn @returns {() => void} */
+  onChange(fn) {
+    this.#changes.add(fn);
+    return () => this.#changes.delete(fn);
+  }
+
+  /** Devices coming and going, and the activity changing, work out the mode again. */
+  #watch() {
+    if (this.#watching) return;
+    const platform = this.platform;
+    if (!platform) return;
+    this.#watching = true;
+    const again = () => { this.refresh().catch(() => {}); };
+    platform.onDeviceChange?.(again);
+    this.registry.list('activity')[0]?.onChange?.(again);
   }
 
   /** How to listen now (spec §10.3), against the first main model that isn't resting: it is expected to hear. */

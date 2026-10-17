@@ -8,8 +8,8 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-/** @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string }} [o] */
-export function fakePlatform({ playMs = 20, blocked = false, dictation = false, micFails = '' } = {}) {
+/** @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string, devices?: { kind: string, label: string }[] }} [o] */
+export function fakePlatform({ playMs = 20, blocked = false, dictation = false, micFails = '', devices = [] } = {}) {
   /** @type {string[]} */
   const log = [];
   /** @type {string[]} */
@@ -24,6 +24,18 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     sessions,
     get opens() { return opens; },
     session(/** @type {string} */ t) { sessions.push(t); },
+    /** @type {{ kind: string, label: string }[]} */
+    deviceList: devices,
+    /** @type {(() => void)[]} */
+    deviceChanges: [],
+    async devices() { return platform.deviceList; },
+    /** @param {() => void} fn */
+    onDeviceChange(fn) { platform.deviceChanges.push(fn); },
+    /** Plugs in or unplugs audio devices. @param {{ kind: string, label: string }[]} list */
+    setDevices(list) {
+      platform.deviceList = list;
+      for (const fn of platform.deviceChanges) fn();
+    },
     player: {
       async unlock() { log.push('unlock'); },
       /** @param {{ data: Uint8Array }} clip @param {{ signal: AbortSignal, onLevel?: (x: number) => void }} o */

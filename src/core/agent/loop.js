@@ -166,6 +166,7 @@ export class Agent {
     this.#photos = codec ? new PhotoCopies({ codec, read: (hash) => blobBytes(this.store, hash) }) : null;
     this.#loopTools = this.#talkTools();
     this.voice = voice ?? null;
+    this.voice?.onChange((m) => this.#voiceChanged(m));
   }
 
   /**
@@ -742,7 +743,8 @@ export class Agent {
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
       const { tools, via, providerTools } = await this.#toolsNow();
       const plan = await nextPlanItems(this.ws, this.trip, this.now());
-      const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', online: this.online(), reasons, plan });
+      const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
+      const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, plan });
       const request = { ...buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }), ...providerTools };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
@@ -1154,6 +1156,21 @@ export class Agent {
         resolve({});
       }, ms);
     });
+  }
+
+  /**
+   * The voice mode changed (spec §4.5, §10.5): written in the log. Voice going off closes the
+   * microphone, stops her voice, and turns the rest of this turn to bubbles; voice coming on takes
+   * effect at her next turn. @param {import('../voice/mode.js').VoiceMode} m
+   */
+  #voiceChanged(m) {
+    record(this.store, this.scope, { type: 'state', actor: 'system', data: { voice: m.on ? 'on' : 'off', setting: m.setting, why: m.why } }).catch(() => {});
+    if (m.on) return;
+    this.#voiceNow = false;
+    this.#closeEar();
+    this.voice?.speaker.stop();
+    const p = this.#pending?.listening ? this.#pending : null;
+    if (p) p.listening = false; // a wait for an answer goes on, for typing
   }
 
   /** Whether voice is on for this turn (spec §10.5): it is on, and speak isn't switched off (§7.2). */

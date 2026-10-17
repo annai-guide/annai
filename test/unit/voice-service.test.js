@@ -91,7 +91,7 @@ test('listenOnce(): nothing heard in time gives null, and the mic closes', async
 });
 
 test('Settings → Voice: defaults, and values outside their range fall back', async () => {
-  assert.deepEqual(voiceSettings({}), { mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1 });
+  assert.deepEqual(voiceSettings({}), { mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, lastChoices: {} });
   assert.deepEqual(voiceSettings({ voice: { pauseMs: 50, browserVoice: 'Samantha', rate: 1.2 } }), { ...voiceSettings({}), browserVoice: 'Samantha', rate: 1.2 });
   const k = await voiceKit();
   await updateAppSettings(k.ws, { voice: { browserVoice: 'v-en', rate: 0.9 } });

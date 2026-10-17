@@ -111,7 +111,7 @@ test('writeDown(): the words, and who wrote them down; sent audio is written dow
 });
 
 test('Settings → Voice: mode, silence, first words and clips, with defaults; refresh() turns voice on for On', async () => {
-  assert.deepEqual(voiceSettings({}), { mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1 });
+  assert.deepEqual(voiceSettings({}), { mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, lastChoices: {} });
   assert.deepEqual(voiceSettings({ voice: { mode: 'loud', silenceSeconds: 1, firstWordsSeconds: 500, keepClips: 'yes' } }), voiceSettings({}));
   const k = await voiceKit();
   assert.equal(await k.voice.refresh(), false, 'Auto is off until milestone 3c can tell the situation');
