@@ -7,6 +7,7 @@ import { renderCard } from '../cards.js';
 import { liveText } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
 import { fileHref } from '../format.js';
+import { packLine } from '../offline-pack.js';
 
 /**
  * Now (spec §16.2), the home screen during a trip: where you are, golden hour and other chips, the
@@ -57,6 +58,7 @@ export async function renderNow(ctx) {
       h('h2', { class: 'section', text: 'Next' }),
       next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => nowRow(id, r))) : h('p', { class: 'empty', text: 'Nothing more is planned.' }),
       h('p', {}, h('a', { href: '#/plan' }, 'The whole plan'))),
+    await packLine(ctx, id),
     latest ? h('section', { 'aria-label': 'Latest' }, h('h2', { class: 'section', text: 'Latest' }), latest) : null,
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, 'Driving')));
 }

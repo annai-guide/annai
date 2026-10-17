@@ -8,6 +8,7 @@ import { relTime, bytes, dateRange, fileHref } from '../format.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
+import { packPanel } from '../offline-pack.js';
 
 export { fileHref };
 
@@ -24,7 +25,7 @@ export async function renderTrip(ctx, route) {
     ctx.agent.open(id).catch(() => {});
   }
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
-  const files = await ctx.ws.list(id, '/');
+  const files = (await ctx.ws.list(id, '/')).filter((/** @type {any} */ f) => !f.path.startsWith('/offline/')); // the pack has its own panel
   const archived = scope.status === 'archived';
   const extra = h('div', {}); // the export panel opens here
   return h('div', { class: 'screen' },
@@ -39,6 +40,7 @@ export async function renderTrip(ctx, route) {
         : twoStep('Archive trip', 'Tap again to archive', async () => { await setTripStatus(ctx.store, id, 'archived'); ctx.go('#/trips'); }),
       h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, 'Remove trip')),
     extra,
+    await packPanel(ctx, id),
     fileList(id, files),
     newFile(ctx, id));
 }
