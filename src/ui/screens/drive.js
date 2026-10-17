@@ -4,7 +4,7 @@ import { distanceText } from '../../core/plan.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
 import { whileText, knownFix } from '../live-chip.js';
-import { latestCard, eventCard } from './now.js';
+import { latestCard, eventCard, nowOf } from './now.js';
 
 /** Big quick-ask buttons (spec §16.2): what each says to Shiori. */
 const QUICK = /** @type {const} */ ([
@@ -38,7 +38,7 @@ export async function renderDrive(ctx) {
   const latest = h('div', { class: 'drive-latest', 'aria-live': 'polite' });
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
-    const stops = routeStrip(rows, here, Date.now(), live?.activity ?? 'unknown');
+    const stops = routeStrip(rows, here, nowOf(live), live?.activity ?? 'unknown');
     strip.replaceChildren(
       h('li', { class: 'you' }, here ? 'You' : live?.on ? 'You (finding where)' : 'You (live mode is off)'),
       ...stops.map((s) => h('li', {},

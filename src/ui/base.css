@@ -178,3 +178,57 @@ button.chip.undo { min-height: 44px; border: 1px solid var(--line); cursor: poin
 .facts dt { color: var(--ink-2); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .original { display: flex; flex-direction: column; gap: 8px; }
+/* Stamps (spec §13, §16.2): station-stamp marks for visited places. */
+.trip-card { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.trip-card-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stamps { display: flex; flex: none; padding-left: 10px; }
+.stamp {
+  width: 40px; height: 40px; margin-left: -10px; padding: 3px; border-radius: 50%; border: 3px double var(--ai);
+  background: var(--sheet); color: var(--ai); display: grid; place-items: center; text-align: center;
+  font-family: var(--f-display); font-size: 9px; font-weight: 700; line-height: 1.05; overflow: hidden; word-break: keep-all;
+}
+.stamp.long { font-size: 7.5px; }
+.stamp.longer { font-size: 6.5px; }
+.stamp:nth-child(3n + 1) { transform: rotate(-9deg); }
+.stamp:nth-child(3n + 2) { transform: rotate(6deg); }
+.stamp:nth-child(3n) { transform: rotate(-3deg); }
+.stamp.more { font-family: var(--f-mono); font-size: 11px; }
+.stamps.big { flex-wrap: wrap; gap: 8px; padding-left: 0; }
+.stamps.big .stamp { width: 60px; height: 60px; margin-left: 0; font-size: 11px; }
+.stamps.big .stamp.long { font-size: 9.5px; }
+.stamps.big .stamp.longer { font-size: 8px; }
+/* Recap (spec §13) */
+.recap-text { padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
+.recap-text .md { display: flex; flex-direction: column; gap: 10px; }
+.recap-text .md-h { font-family: var(--f-display); font-weight: 700; font-size: 18px; }
+.sent summary { cursor: pointer; color: var(--ink-2); min-height: 44px; display: flex; align-items: center; }
+.sent ul { padding-left: 20px; color: var(--ink-2); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+/* Replay (spec §13): a flat map, no tiles; strokes and geometry are attributes and these rules, never a style attribute. */
+.tab[aria-current='page'] { background: var(--ai-wash); color: var(--ai); border-color: transparent; }
+a.tab { display: inline-flex; align-items: center; text-decoration: none; }
+.route { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.route-map { display: block; width: 100%; height: auto; max-height: 62vh; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); }
+.route-all, .route-done { fill: none; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+.route-all { stroke: var(--line); }
+.route-done { stroke: var(--ai); }
+.route-jump { stroke: var(--ink-2); stroke-width: 4; stroke-dasharray: 12 14; }
+.route-stay { fill: var(--sheet); stroke: var(--ink-2); stroke-width: 4; }
+.route-stamp { fill: var(--sheet); stroke: var(--ai); stroke-width: 6; }
+.route-here { fill: var(--ai); stroke: var(--sheet); stroke-width: 5; }
+.replay-now { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
+.replay-time { font-family: var(--f-mono); color: var(--ink-2); }
+.replay-photo { display: block; max-width: 100%; max-height: 40vh; border-radius: 10px; }
+.replay-figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.replay-figure figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.replay-controls { display: flex; flex-direction: column; gap: 10px; }
+/* A field fills a row; in a column it keeps its own height. */
+.replay-controls .field, .simulate .field { flex: none; }
+.replay-controls input[type='range'] { padding: 0; accent-color: var(--ai); }
+.timeline { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.replay-item { width: 100%; min-height: 44px; display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.replay-item .when { font-family: var(--f-mono); font-size: 13px; color: var(--ink-2); }
+.replay-entry.kind-stay .what { font-weight: 700; }
+.replay-entry.now .replay-item { background: var(--ai-wash); }
+/* Simulate a trip (spec §13) */
+.simulate progress { width: 100%; height: 12px; accent-color: var(--ai); }
+.sim-time { font-family: var(--f-mono); }

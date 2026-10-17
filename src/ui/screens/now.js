@@ -9,6 +9,9 @@ import { tripRows } from '../trip-rows.js';
 import { fileHref } from '../format.js';
 import { packLine } from '../offline-pack.js';
 
+/** Now, by live mode's own clock: a simulation's while one runs (spec §13). @param {any} live */
+export const nowOf = (live) => live?.clock?.now() ?? Date.now();
+
 /**
  * Now (spec §16.2), the home screen during a trip: where you are, golden hour and other chips, the
  * next items as a timetable, and the latest card. When live mode says moving fast, it hands over
@@ -29,7 +32,7 @@ export async function renderNow(ctx) {
   const chips = h('div', { class: 'chips' });
   const start = h('div', { class: 'acts' });
   const draw = () => {
-    const now = Date.now();
+    const now = nowOf(live);
     place.textContent = whereWords(live, locale);
     const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
     const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? 'Offline · reminders still work' : null];
@@ -50,7 +53,7 @@ export async function renderNow(ctx) {
     was = live.activity;
     if (began && live.on && location.hash.startsWith('#/now')) ctx.go('#/drive');
   });
-  const next = upcoming(rows, Date.now(), 4);
+  const next = upcoming(rows, nowOf(live), 4);
   const latest = await latestCard(ctx, id);
   return h('div', { class: 'screen now' },
     h('h1', { class: 'title', text: String(scope?.title ?? 'Now') }),

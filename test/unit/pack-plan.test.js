@@ -7,7 +7,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 
-const fixture = JSON.parse(await readFile(new URL('../fixtures/live/big-sur.json', import.meta.url), 'utf8'));
+const fixture = JSON.parse(await readFile(new URL('../../assets/simulations/big-sur.json', import.meta.url), 'utf8'));
 const bigSur = Object.entries(fixture.plan).map(([id, item]) => ({ path: `/plan/${id}.json`, item }));
 const pt = (/** @type {[number, number]} */ p) => ({ lat: p[0], lng: p[1] });
 

@@ -250,9 +250,17 @@ function makeTx(t) {
         const kinds = [...new Set(q.types)].filter((k) => !q.notTypes?.includes(k));
         const index = os('events').index('type');
         Promise.all(kinds.map((k) => new Promise((done, fail) => {
+          const range = IDBKeyRange.bound([scope, k, lo], [scope, k, hi]);
+          if (limit === Infinity || !q.reverse) {
+            // Every entry of a type, or the first few: one request (a five-day trip's points), not one callback each.
+            const all = index.getAll(range, limit === Infinity ? undefined : limit);
+            all.onsuccess = () => done(q.reverse ? /** @type {any[]} */ (all.result).reverse() : all.result);
+            all.onerror = () => fail(all.error);
+            return;
+          }
           /** @type {any[]} */
           const got = [];
-          const r = index.openCursor(IDBKeyRange.bound([scope, k, lo], [scope, k, hi]), q.reverse ? 'prev' : 'next');
+          const r = index.openCursor(range, 'prev');
           r.onsuccess = () => {
             const c = r.result;
             if (!c || got.length >= limit) {

@@ -9,7 +9,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request', 'pack.download'],
-  Models: ['model.turn', 'net.request', 'decide', 'speech.browser'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap'],
   Housekeeping: ['compaction'],
   // Live is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).

@@ -54,12 +54,12 @@ export function selfTools(agent) {
             /** @type {import('../llm/contract.js').Part[]} */
             const results = [];
             for (const c of calls) {
-              await record(agent.store, agent.scope, { type: 'tool.call', actor: 'shiori', data: { id: c.id, name: c.name, input: c.input, wake: call.wake, task: taskId } });
+              await record(agent.store, agent.scope, { now: agent.now(), type: 'tool.call', actor: 'shiori', data: { id: c.id, name: c.name, input: c.input, wake: call.wake, task: taskId } });
               const tool = tools.find((t) => t.name === c.name);
               const { output, ms } = tool
                 ? await runTool(tool, c.input ?? {}, { ...call, id: c.id, fetch: tracedFetch(agent.store, agent.scope, { tool: c.name, wake: call.wake }, agent.get) })
                 : { output: { content: `Error: the helper has no tool called ${c.name}.`, isError: true }, ms: 0 };
-              await record(agent.store, agent.scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: call.wake, task: taskId }, texts: [['content', output.content]] });
+              await record(agent.store, agent.scope, { now: agent.now(), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: call.wake, task: taskId }, texts: [['content', output.content]] });
               results.push({ type: 'tool_result', id: c.id, content: output.content, ...(output.isError ? { isError: true } : {}) });
             }
             messages.push({ role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results });
