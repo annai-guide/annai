@@ -27,6 +27,7 @@ import { armUnlock } from '../ui/unlock.js';
 import { Live } from '../core/live/live.js';
 import { watchTools } from '../core/live/watch-tools.js';
 import { tellGps } from '../ui/live-help.js';
+import { keepAwake } from '../ui/wake-lock.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -85,13 +86,14 @@ async function boot() {
   const live = new Live({ store, ws, registry, agent });
   agent.addLoopTools(watchTools(live));
   agent.sense = () => live.nowInfo();
+  const awake = keepAwake({ live, ws });
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
   live.start().catch((e) => console.warn('Live mode could not start', e));
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, presets, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, presets, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   tellGps({ live, notices: shell.notices });
