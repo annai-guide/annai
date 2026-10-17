@@ -1,4 +1,4 @@
-import { dayIn } from '../time.js';
+import { dayIn, validZone } from '../time.js';
 
 /**
  * Stamps (spec §13), like a station stamp book: each arrival at a plan place or a named point of
@@ -23,7 +23,7 @@ const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 /**
  * The stamps a trip has earned, oldest first.
  * @param {{ ts: number, data?: any }[]} fired its trigger.fired entries
- * @param {string} tz the trip's zone: a place earns one stamp a day there
+ * @param {string} tz the trip's zone, for an arrival that doesn't name its own: a place earns one stamp a day, in the zone it was earned in
  * @returns {Stamp[]}
  */
 export function stampsOf(fired, tz) {
@@ -35,7 +35,7 @@ export function stampsOf(fired, tz) {
     const p = d?.place;
     const name = typeof p?.name === 'string' ? p.name.trim() : '';
     if (!isArrival(d) || !name || !finite(p.lat) || !finite(p.lng) || !finite(e.ts)) continue;
-    const key = `${name.toLowerCase()}\n${dayIn(e.ts, tz)}`;
+    const key = `${name.toLowerCase()}\n${dayIn(e.ts, validZone(d.tz) ? d.tz : tz)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ name, lat: p.lat, lng: p.lng, at: e.ts, plan: d.type === 'plan' && d.event === 'arrived' });

@@ -1143,12 +1143,15 @@ export class Live {
       }
       const key = this.#key(x.scope, x.watch.id);
       const f = { ...x.firing, place: this.#stampPlace(x.watch, x.firing.place) };
+      // An arrival names its zone, so its stamp's day is the day where it was earned (spec §13): the plan item's, else the phone's.
+      const when = /** @type {any} */ (x.watch.when);
+      const tz = isArrival({ type: when?.type, event: when?.event }) ? (validZone(when?.tz) ? when.tz : this.timeZone()) : null;
       // A firing the log can't take still fires, once: it is told, never tried again at every check.
       await logEvent(this.store, x.scope, {
         type: 'trigger.fired', actor: 'system',
         data: {
           watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), ...(forAt(x.watch) !== null ? { for: forAt(x.watch) } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
-          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
+          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(tz ? { tz } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
         },
       }, now).catch((e) => this.#fail(e));
       this.#fired.set(key, { at: now, place: f.place ?? null, ...(forAt(x.watch) !== null ? { for: /** @type {number} */ (forAt(x.watch)) } : {}) });
