@@ -14,7 +14,7 @@ import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
-import { secretFreeLog } from '../core/agent/net.js';
+import { secretFreeLog, tracedFetch } from '../core/agent/net.js';
 import { offerPluginUpdates } from '../ui/plugin-updates.js';
 import { Agent } from '../core/agent/loop.js';
 import { codec } from '../ui/photo-codec.js';
@@ -164,7 +164,9 @@ async function boot() {
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
   // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
   // Plugin updates are looked for at start and once a day, and only offered (spec §5.3).
-  const lookForUpdates = () => controllerReady().then(() => offerPluginUpdates({ plugins, notices: shell.notices }));
+  // Packages installed from an address are checked there too, each request in the trace (milestone 8a).
+  const addressFetch = tracedFetch(store, SYS, { tool: 'plugin updates' });
+  const lookForUpdates = () => controllerReady().then(() => offerPluginUpdates({ plugins, notices: shell.notices }, { addressFetch }));
   startPlugins(plugins, shell).finally(() => {
     pluginsStarted();
     lookForUpdates();
