@@ -155,3 +155,20 @@ test('while another trip opens, the list never pairs the new trip with the old p
   assert.ok(list.some((r) => r.scope === other && r.watch.startsWith('plan:tea:')), JSON.stringify(list));
   k.live.dispose();
 });
+
+test('a reminder said in a catch-up counts as said: its notification arriving later is a double; one shown while annai was away is not', async () => {
+  const k = await liveKit({ live: false });
+  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  const v = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:05') }, fallback: 'Walk.' });
+  k.sensors.visible(false);
+  await k.settle();
+  await k.to(at('10:20'));
+  // While away, Walk's notification was shown; Tea's was held up at the push service.
+  const away = await k.live.pushNews([{ kind: 'shown', key: `${k.trip}|${v.id}`, scope: k.trip, watch: v.id, t: at('10:05:30') }]);
+  assert.deepEqual(away, []);
+  k.sensors.visible(true); // the catch-up says both
+  await k.settle();
+  assert.equal(k.agent.wakes.at(-1)?.kind, 'catch-up');
+  const later = await k.live.pushNews([{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:20:10') }]);
+  assert.deepEqual(later, [`${k.trip}|${w.id}`]);
+});

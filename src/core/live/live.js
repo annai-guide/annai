@@ -1145,7 +1145,8 @@ export class Live {
       }
       if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch);
       done.push(x);
-      if (!this.#catch && this.shown) {
+      // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
+      if (this.shown) {
         this.#said.add(this.#keyOf(x.scope, x.watch));
         if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.values().next().value));
       }
