@@ -39,6 +39,8 @@ export const STOP_M = 100;
 export const FRESH_MS = 10 * 60_000;
 /** While live, the clock looks again at least this often (arrival estimates change with time). */
 export const RECHECK_MS = 60_000;
+/** The one timer waits at most a day, whatever is planned weeks ahead: the clock can't hold much longer. */
+export const MAX_WAIT_MS = 86_400_000;
 /** After coming back on screen, catch-up waits this long for a GPS fix (spec §11.4). */
 export const FIX_WAIT_MS = 15_000;
 /** A firing this long after it came due is labelled late (spec §11.4: "late by N min"). */
@@ -855,7 +857,7 @@ export class Live {
     this.#timer = this.clock.set(() => {
       this.#timer = null;
       this.#bg(() => this.#check());
-    }, next - m.now);
+    }, Math.min(next - m.now, MAX_WAIT_MS));
   }
 
   #clearTimer() {

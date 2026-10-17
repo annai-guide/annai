@@ -4,7 +4,7 @@ import { liveKit, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE, CAMBRIA, HEARST }
 import { readAppSettings } from '../../src/core/settings.js';
 import { readWatches } from '../../src/core/live/watches.js';
 import { createTrip, removeTrip, ME } from '../../src/core/scopes.js';
-import { ManualClock, scaledClock } from '../../src/core/live/clock.js';
+import { ManualClock, scaledClock, realClock } from '../../src/core/live/clock.js';
 
 const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, end: { at: iso('13:15'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
 const BIX = { title: 'Bixby Bridge photo stop', fixed: false, start: { at: iso('09:45'), tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
@@ -277,4 +277,35 @@ test('opening another trip makes live mode look at its plan at once, even with n
   await k.settle();
   await k.to(at('08:45'));
   assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: "Tea at the inn" (fixed) starts at 09:00, in 15 min.']);
+});
+
+test('a plan item weeks ahead with live mode off: the one timer waits at most a day, and checks once a day', async () => {
+  const k = await liveKit({ live: false, start: Date.parse('2026-10-16T12:00:00-07:00'), plan: {
+    flight: { title: 'UA 123', fixed: true, start: { at: '2026-11-25T08:00:00-08:00', tz: LA }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } },
+  } });
+  /** @type {number[]} */
+  const delays = [];
+  const set = k.clock.set;
+  k.clock.set = (fn, ms) => {
+    delays.push(ms);
+    return set(fn, ms);
+  };
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: '2026-11-20T18:00:00-08:00' }, fallback: 'Pack for the flight.' });
+  await k.settle();
+  assert.ok(delays.length > 0 && delays.every((d) => d > 0 && d <= 86_400_000), String(delays));
+  const before = delays.length;
+  await k.to(Date.parse('2026-10-17T12:00:01-07:00'));
+  assert.equal(delays.length - before, 1, 'one check, and one timer for the next day');
+  assert.equal(k.agent.wakes.length, 0);
+});
+
+test("the real clock holds a delay longer than the browser's timers can", async () => {
+  let fired = false;
+  const c = realClock();
+  const h = c.set(() => {
+    fired = true;
+  }, 40 * 86_400_000);
+  await new Promise((r) => setTimeout(r, 30));
+  c.clear(h);
+  assert.equal(fired, false);
 });

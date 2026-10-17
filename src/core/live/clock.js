@@ -5,9 +5,26 @@
  * @typedef {{ now: () => number, set: (fn: () => void, ms: number) => any, clear: (handle: any) => void }} Clock
  */
 
+/** The longest wait setTimeout holds (about 24.8 days); a longer one fires at once. */
+const LONGEST = 2 ** 31 - 1;
+
 /** @returns {Clock} */
 export function realClock() {
-  return { now: () => Date.now(), set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h) };
+  return {
+    now: () => Date.now(),
+    // A wait longer than setTimeout holds is waited in steps.
+    set: (fn, ms) => {
+      const h = { t: /** @type {ReturnType<typeof setTimeout> | undefined} */ (undefined) };
+      const end = Date.now() + ms;
+      const step = () => {
+        const left = end - Date.now();
+        h.t = left > LONGEST ? setTimeout(step, LONGEST) : setTimeout(fn, Math.max(0, left));
+      };
+      step();
+      return h;
+    },
+    clear: (h) => clearTimeout(h?.t),
+  };
 }
 
 /** A clock that moves only when told. */
