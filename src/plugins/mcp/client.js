@@ -1,5 +1,6 @@
 import { answerJSON } from '../../core/answer.js';
 import { sse } from '../../core/llm/sse.js';
+import { CREDENTIAL } from '../../core/agent/net.js';
 
 /**
  * annai's MCP client (spec §5.1): MCP's Streamable HTTP transport, as a web app speaks it. Each
@@ -258,7 +259,6 @@ export function toolOutput(result) {
 
 /** The blank a key's place shows. */
 export const KEY_BLANK = '«key»';
-const CREDENTIAL_NAME = /key|token|secret|sig|auth|pass|session|credential|code/i;
 /** A part of an address that may be a key (the coordinator's third finding): 16 characters or more, or 8 or more mixing letters and digits. @param {string} v */
 const keyLike = (v) => v.length >= 16 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v));
 
@@ -286,7 +286,7 @@ export function addressParts(address) {
   /** @type {string[]} */
   const query = [];
   for (const [k, v] of u.searchParams) {
-    if (v && (keyLike(v) || CREDENTIAL_NAME.test(k))) {
+    if (v && (keyLike(v) || CREDENTIAL.test(k))) {
       keys.push(v);
       query.push(`${encodeURIComponent(k)}=${KEY_BLANK}`);
     } else {

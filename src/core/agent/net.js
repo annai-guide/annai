@@ -10,7 +10,8 @@ import { logEvent } from '../events.js';
  * @typedef {import('../types.js').Store} Store
  */
 
-const CREDENTIAL = /key|token|secret|sig|auth|pass|session|credential|appid|app_id|code/i;
+/** Query names whose values the trace always blanks; the MCP client's shown addresses use the same (one list, so they can't drift). */
+export const CREDENTIAL = /key|token|secret|sig|auth|pass|session|credential|appid|app_id|code/i;
 /** Shorter stored values are not blanked: "ab" would wreck the trace, and no real key is that short. */
 const SECRET_MIN = 8;
 const BLANK = '«key»';
