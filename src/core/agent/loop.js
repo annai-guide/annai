@@ -101,6 +101,8 @@ export class Agent {
   #opens = 0;
   /** Counts opens: only the latest one does anything. */
   #generation = 0;
+  /** Reminders written into a conversation while it was being opened, for its transcript once open. @type {{ scope: string, e: any }[]} */
+  #late = [];
   /** @type {(() => void)[]} waiting for the running turn or housekeeping to end */
   #free = [];
   /** The page is being left. */
@@ -293,6 +295,7 @@ export class Agent {
     this.trip = trip;
     this.scope = scope;
     this.transcript = transcript;
+    for (const l of this.#late.splice(0)) if (l.scope === scope) this.#joinLate(l.e);
     this.#snapshot = null;
     // The last conversation's housekeeping stays with it: it is checked again at its next turn.
     this.#due = false;
@@ -702,10 +705,25 @@ export class Agent {
       const aloud = Boolean(this.voice?.on);
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
-      else await record(this.store, scope, { now: this.#stamp(scope), ...ev });
+      else {
+        const e = await record(this.store, scope, { now: this.#stamp(scope), ...ev });
+        // The conversation being opened (as annai starts) may have read its log already: its
+        // transcript takes the reminder once open, so Shiori knows and doesn't say it again.
+        if (open) {
+          if (scope === this.scope) this.#joinLate(e);
+          else this.#late.push({ scope, e });
+        }
+      }
       await this.#notice({ tone: 'info', title: 'Reminder', body: text });
       if (aloud) this.voice?.say(text).catch(() => {});
     }
+  }
+
+  /** An entry written while the open conversation was being read: added unless the reading had it. @param {any} e */
+  #joinLate(e) {
+    if (e.seq <= this.transcript.through) return;
+    this.transcript.apply(e, { texts: {}, images: [] });
+    this.#emit('event', e);
   }
 
   /** Writes a conversation event, adds it to the transcript, and tells the screen. @param {Parameters<typeof record>[2]} ev */
@@ -925,7 +943,7 @@ export class Agent {
         owed.push(...more.flatMap((w) => w.fallbacks ?? []));
       }
     }
-    if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed);
+    if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope);
     return answered && !failed;
   }
 

@@ -194,3 +194,29 @@ test("a reminder for a conversation that isn't open is said aloud too, with voic
   assert.equal(r.data.aloud, true);
   assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body]), [['Reminder', 'Call Grandma.']]);
 });
+
+test('a reminder annai says while the conversation is still being opened (as annai starts) is in what Shiori knows, so she never says it again', async () => {
+  const k = await agentKit([[say('Hi.')]], { open: false });
+  // Live mode's catch-up says a reminder just as the conversation's log has been read, before it is open.
+  /** @type {Promise<void> | null} */
+  let reminding = null;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+    get(o, key) {
+      const v = o[key];
+      if (key !== 'listEvents') return typeof v === 'function' ? v.bind(o) : v;
+      return async (/** @type {string} */ scope, /** @type {any} */ q = {}) => {
+        const out = await o.listEvents(scope, q);
+        if (!reminding && scope === k.trip && q.types?.includes('msg.user')) reminding = k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]);
+        return out;
+      };
+    },
+  })));
+  await k.agent.open(k.trip);
+  await reminding;
+  assert.ok(reminding);
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.ok(JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'));
+  assert.deepEqual((await k.events(['reminder'])).length, 1);
+});

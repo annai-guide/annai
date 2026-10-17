@@ -28,6 +28,8 @@ export class Transcript {
   to = 0;
   /** The compaction event this transcript starts from, 0 for none. */
   compaction = 0;
+  /** The last entry load() read: anything written later wasn't in the log it read. */
+  through = 0;
   /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet: after a reload mid-call. */
   unanswered = false;
   /** What is waiting when unanswered: 'user' (a message) or 'wake' (something else, such as files added while it was closed). @type {'' | 'user' | 'wake'} */
@@ -158,6 +160,7 @@ export class Transcript {
     const t = new Transcript();
     if (latest) t.apply(latest, await resolveEvent(store, latest));
     for (const e of events) if (e.type !== 'compaction' && !NOT_SAID.has(e.type)) t.apply(e, await resolveEvent(store, e));
+    t.through = Math.max(latest?.seq ?? 0, events.at(-1)?.seq ?? 0);
     return t;
   }
 }
