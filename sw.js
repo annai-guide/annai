@@ -4,6 +4,7 @@ const VERSION = '0.1.0';
 const BUILD = '56d3604f036f';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
+const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
 const SHELL = [
@@ -364,4 +365,78 @@ async function receiveShare(req) {
     // The import screen explains when the inbox is empty.
   }
   return Response.redirect(new URL('/#/import?inbox=1', sw.location.origin).href, 303);
+}
+
+// A reminder from the push relay (spec §11.6). Every push shows a notification, readable or not:
+// Safari takes the subscription away after a few pushes that show none, even with annai open.
+sw.addEventListener('push', (event) => {
+  event.waitUntil(showReminder(/** @type {any} */ (event).data));
+});
+
+/** @param {any} data */
+async function showReminder(data) {
+  /** @type {any} */
+  let m = null;
+  try {
+    m = data ? data.json() : null;
+  } catch {
+    m = null;
+  }
+  const ok = m !== null && typeof m === 'object' && typeof m.body === 'string' && m.body.trim() !== '' && typeof m.key === 'string';
+  const title = ok && typeof m.title === 'string' && m.title.trim() ? m.title.slice(0, 120) : 'annai';
+  const body = ok ? m.body.slice(0, 500) : 'annai has a reminder for you. Open annai to see it.';
+  /** @type {Record<string, unknown>} */
+  const info = ok ? { key: m.key.slice(0, 300), scope: String(m.scope ?? ''), watch: String(m.watch ?? ''), at: Number(m.at) || 0, ...(m.test ? { test: true } : {}) } : {};
+  await sw.registration.showNotification(title, { body, tag: typeof info.key === 'string' ? info.key : 'annai-reminder', data: info, icon: '/assets/icons/icon-192.png' });
+  await keepNews({ kind: 'shown', ...info, t: Date.now() });
+}
+
+// Tapping one opens annai, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is
+// written down first: on iPhone the app may open at its start URL, and a message may not arrive.
+sw.addEventListener('notificationclick', (event) => {
+  const e = /** @type {any} */ (event);
+  e.notification.close();
+  e.waitUntil(openReminder(e.notification));
+});
+
+/** @param {any} n */
+async function openReminder(n) {
+  const info = n.data && typeof n.data === 'object' ? n.data : {};
+  await keepNews({ kind: 'opened', ...info, title: String(n.title ?? ''), body: String(n.body ?? ''), t: Date.now() });
+  const windows = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const open = windows.find((c) => new URL(c.url).origin === sw.location.origin);
+  if (open) {
+    await open.focus().catch(() => {});
+    return;
+  }
+  await sw.clients.openWindow('/');
+}
+
+// Chrome and Firefox renew a subscription themselves; annai sends its reminders to the new one next time it runs.
+sw.addEventListener('pushsubscriptionchange', (event) => {
+  /** @type {any} */ (event).waitUntil(renewSubscription(/** @type {any} */ (event)));
+});
+
+/** @param {any} event */
+async function renewSubscription(event) {
+  const key = event.oldSubscription?.options?.applicationServerKey;
+  if (!event.newSubscription && key) {
+    try {
+      await sw.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    } catch {
+      // annai notices at its next start, and asks
+    }
+  }
+  await keepNews({ kind: 'changed', t: Date.now() });
+}
+
+/** Keeps what happened until annai reads it (6b choice 10), and tells an open annai now. @param {Record<string, unknown>} news */
+async function keepNews(news) {
+  try {
+    const box = await caches.open(PUSH_NEWS);
+    await box.put(`/push-news/${Date.now()}-${Math.random().toString(36).slice(2)}`, new Response(JSON.stringify(news), { headers: { 'Content-Type': 'application/json' } }));
+  } catch {
+    // storage full: catch-up still covers the reminder
+  }
+  for (const c of await sw.clients.matchAll({ type: 'window', includeUncontrolled: true })) c.postMessage({ type: 'annai.push', kind: news.kind });
 }
