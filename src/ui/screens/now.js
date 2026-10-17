@@ -4,7 +4,7 @@ import { sunChips } from '../../core/sun.js';
 import { distanceText } from '../../core/plan.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { renderCard } from '../cards.js';
-import { liveText } from '../live-chip.js';
+import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
 import { fileHref } from '../format.js';
 import { packLine } from '../offline-pack.js';
@@ -31,7 +31,7 @@ export async function renderNow(ctx) {
   const draw = () => {
     const now = Date.now();
     place.textContent = whereWords(live, locale);
-    const sunAt = sunPlace(live?.on ? live.fix : null, rows, now);
+    const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
     const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? 'Offline · reminders still work' : null];
     chips.replaceChildren(...words.filter(Boolean).map((t) => h('span', { class: 'chip', text: String(t) })));
     start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Turn on live mode')] : []));
@@ -66,8 +66,11 @@ export async function renderNow(ctx) {
 /** Where the user is, in words for them (Shiori's are in the now block). @param {any} live @param {string} locale */
 export function whereWords(live, locale) {
   if (!live || !live.on) return "Live mode is off, so annai isn't following where you are.";
-  const f = live.fix;
-  if (!f) return live.gps === 'denied' ? "Location isn't allowed for annai. Tap Live below to say where you are." : 'Finding where you are…';
+  const f = knownFix(live);
+  if (!f) {
+    if (live.gps === 'denied') return "Location isn't allowed for annai. Tap Live below to say where you are.";
+    return live.gps === 'unavailable' ? 'No GPS signal right now. Tap Live below to say where you are.' : 'Finding where you are…';
+  }
   const near = live.near(f);
   if (near) return near.m < 100 ? `At ${near.name}` : `Near ${near.name}, ${distanceText(near.m / 1000, locale)}`;
   return `${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}`;

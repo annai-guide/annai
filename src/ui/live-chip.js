@@ -1,12 +1,24 @@
 import { h } from './dom.js';
 import { PLAN_FILE } from '../core/plan.js';
+import { FRESH_MS } from '../core/live/live.js';
 
 const DOING = /** @type {Record<string, string>} */ ({ 'moving-fast': 'moving fast', walking: 'walking', still: 'stopped' });
 
-/** The live chip's words. @param {{ on: boolean, gps: string, activity: string, fix: unknown }} live */
+/**
+ * Where the user is, when annai knows: a place they said, or a GPS position that is current. One from
+ * before the GPS was lost (refused, a tunnel) or older than ten minutes isn't where they are now.
+ * @param {{ on: boolean, gps: string, fix: any }} live @param {number} [now]
+ */
+export function knownFix(live, now = Date.now()) {
+  const f = live.fix;
+  if (!live.on || !f) return null;
+  return f.source === 'manual' || (live.gps === 'ok' && now - f.at <= FRESH_MS) ? f : null;
+}
+
+/** The live chip's words. @param {{ on: boolean, gps: string, activity: string, fix: any }} live */
 export function liveText(live) {
   if (!live.on) return 'Live off';
-  if (!live.fix) return live.gps === 'denied' ? 'Live · no location' : live.gps === 'unavailable' ? 'Live · no GPS' : 'Live · finding you';
+  if (!knownFix(live)) return live.gps === 'denied' ? 'Live · no location' : live.gps === 'unavailable' ? 'Live · no GPS' : 'Live · finding you';
   return DOING[live.activity] ? `Live · ${DOING[live.activity]}` : 'Live on';
 }
 
