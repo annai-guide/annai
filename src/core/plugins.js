@@ -606,7 +606,7 @@ export class PluginHost {
     };
     const llm = Object.assign(
       async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
-      { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS }) },
+      { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS, tag: `plugin:${id}` }) },
     );
     return Object.freeze({
       id,

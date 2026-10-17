@@ -144,6 +144,9 @@ export async function callRole(c) {
   /** @type {number | undefined} */
   let cost;
   const { keepParts, ...meta } = c.record ?? {};
+  // A plugin's call is its own in the trace too, so its hooks don't get the requests it caused (fix pass 8b-1).
+  const trace = c.trace && typeof meta.tag === 'string' && meta.tag.startsWith('plugin:')
+    ? { ...c.trace, request: (/** @type {any} */ i) => /** @type {any} */ (c.trace).request({ ...i, tag: meta.tag }) } : c.trace;
   /**
    * @param {string | null} answeredBy @param {string} text @param {string} [stop] @param {string} [reasoning]
    * @param {import('./contract.js').Part[]} [parts] @param {{ url: string, title?: string }[]} [citations]
@@ -188,7 +191,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace: c.trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads,
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads,
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);

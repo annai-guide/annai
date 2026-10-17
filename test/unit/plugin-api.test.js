@@ -23,6 +23,9 @@ test('plugins can call models, decide, wake Shiori, fetch (traced), show cards, 
   assert.equal((await a.llm('main', { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] })).text, 'Plugin reply.');
   const [turn] = await k.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }));
   assert.equal(turn.data.tag, 'plugin:probe');
+  // Fix pass 8b-1: the model requests a plugin causes carry it too, so its hooks never get them.
+  const requests = await k.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['net.request'] }));
+  assert.ok(requests.length && requests.every((e) => e.data.tag === 'plugin:probe'), JSON.stringify(requests.map((e) => e.data.tag)));
   assert.deepEqual(await a.llm.decide({ prompt: 'p', options: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }] }), { a: 0.9, b: 0.1 });
   a.wake('Low tide in 30 minutes.');
   await k.agent.idle();
