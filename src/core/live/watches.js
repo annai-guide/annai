@@ -47,6 +47,8 @@ export async function readWatches(ws, scope) {
       broken++;
     }
   }
+  // In the order they were set (ties by id): simultaneous firings keep one order.
+  watches.sort((a, b) => String(a.created ?? '').localeCompare(String(b.created ?? '')));
   return { watches, broken };
 }
 
