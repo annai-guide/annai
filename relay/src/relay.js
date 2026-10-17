@@ -303,10 +303,13 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       } else if (waiting >= LIMITS.pending) {
         return fail(429, 'full', `This phone already has ${LIMITS.pending} reminders waiting at the relay. More can wait once some are sent.`);
       }
+      const dueNow = m.sendAt <= t;
+      // One due now is sent in this request: until it is, the alarm leaves it alone (its lease), or it would
+      // be sent twice while this request awaits the push service.
       /** @type {Waiting} */
-      const w = { id: m.id, endpoint: m.endpoint, sendAt: m.sendAt, next: m.sendAt, ttl: m.ttl, urgency: m.urgency, token: m.token, tries: 0 };
+      const w = { id: m.id, endpoint: m.endpoint, sendAt: m.sendAt, next: dueNow ? t + timeout + 1000 : m.sendAt, ttl: m.ttl, urgency: m.urgency, token: m.token, tries: 0 };
       await this.storage.put({ [`m:${m.id}`]: w, [`p:${m.id}`]: m.payload });
-      if (m.sendAt <= t) {
+      if (dueNow) {
         // Due now: sent in this request, so annai hears at once whether the phone's push service took it.
         const r = await this.#settle(w, t);
         await this.rewake();
@@ -344,7 +347,8 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
           // Read again: while a send waits, Cloudflare lets other requests in, and one may have cancelled this.
           /** @type {Waiting | undefined} */
           const fresh = await this.storage.get(`m:${w.id}`);
-          if (fresh && (await this.#settle(fresh, t)) === 'gone') break;
+          if (!fresh || fresh.next > t) continue; // cancelled, or being sent by its own request meanwhile
+          if ((await this.#settle(fresh, t)) === 'gone') break;
         }
         const confirmed = await this.storage.get('confirmed');
         if (confirmed && confirmed.at + KEEP_CONFIRMED <= t && !(await this.storage.list({ prefix: 'm:' })).size) await this.storage.delete('confirmed');
