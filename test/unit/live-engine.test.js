@@ -322,3 +322,26 @@ test('a 90-minute stop with 30 m of GPS wander and no GPS speed: still, no dista
     assert.ok(points <= 5, `accuracy ${accuracy}: ${points} points kept`);
   }
 });
+
+test('a watch written by hand with parts missing is listed as broken, in plain words, and never fires; the good one still does', async () => {
+  const k = await liveKit({ live: false });
+  await k.ws.write(k.trip, '/watches/w-hand.json', { id: 'w-hand', owner: 'shiori', when: { type: 'enter' }, fallback: 'Look.', created: iso('08:00') }, { author: 'shiori' });
+  await k.ws.write(k.trip, '/watches/w-six.json', { id: 'w-six', owner: 'shiori', when: { type: 'time', at: 'tomorrow at six' }, fallback: 'Six.', created: iso('08:00') }, { author: 'shiori' });
+  await k.ws.write(k.trip, '/watches/w-often.json', { id: 'w-often', owner: 'shiori', when: { type: 'every', minutes: 'often' }, fallback: 'Often.', created: iso('08:00') }, { author: 'shiori' });
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Fine.' });
+  await k.settle();
+  const list = await k.live.listWatches(k.trip);
+  assert.match(list, /\nw-hand\tshiori\tan enter watch, broken: it needs lat and lng, so it won't fire\t/);
+  assert.match(list, /\nw-six\tshiori\ta time watch, broken: at must be an ISO date-time with an offset, like [^,]+, so it won't fire\t/);
+  assert.match(list, /\nw-often\tshiori\tan every watch, broken: minutes must be a number from 1 to 1440, so it won't fire\t/);
+  await k.to(at('12:00'));
+  assert.equal(k.agent.wakes.length, 1);
+  assert.match(k.agent.wakes[0].text, /Its reminder: "Fine\."/);
+});
+
+test("a plugin trigger whose validate throws: setting its watch says so plainly", async () => {
+  const k = await liveKit({ live: false });
+  k.registry.add('tides', 'trigger', { type: 'tide', validate() { throw new TypeError('no tide table'); }, check: () => null });
+  await assert.rejects(k.live.setWatch(k.trip, { when: { type: 'tide' }, fallback: 'Low tide.' }),
+    (/** @type {any} */ e) => e.constructor === Error && /^The tide trigger couldn't check this watch \(no tide table\)\. Try another kind of watch\.$/.test(e.message));
+});
