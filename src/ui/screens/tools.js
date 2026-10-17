@@ -12,7 +12,8 @@ export async function toolSwitchList(ctx) {
   /** @type {Map<string, any[]>} */
   const groups = new Map();
   for (const t of all) {
-    const g = t.group && GROUPS.includes(t.group) ? t.group : `Plugin: ${t.pluginId}`;
+    // An MCP server's tools have a group of their own (milestone 8c): "MCP: <server>".
+    const g = t.group && (GROUPS.includes(t.group) || String(t.group).startsWith('MCP: ')) ? t.group : `Plugin: ${t.pluginId}`;
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g)?.push(t);
   }
@@ -71,6 +72,10 @@ export async function renderTools(ctx) {
           ctx.render();
         } }, 'Save key'),
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.deleteSecret('plugin:web:jina')); ctx.render(); } }, 'Remove key') : null)),
+    h('section', { class: 'panel', 'aria-label': 'MCP servers' },
+      h('h2', { class: 'section', text: 'MCP servers' }),
+      h('p', { class: 'sub', text: 'Servers that give Shiori tools of their own, with a token or headers kept on this device.' }),
+      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/mcp' }, 'MCP servers'))),
     h('section', { class: 'panel', 'aria-label': 'Tool switches' },
       h('h2', { class: 'section', text: 'Tool switches' }),
       h('p', { class: 'sub', text: 'Every tool Shiori has, including plugins\' tools. A switched-off tool is left out of her next request.' }),
