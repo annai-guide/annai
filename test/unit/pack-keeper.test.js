@@ -216,3 +216,17 @@ test('stop() can be awaited: once it settles, the download has ended and what ca
   await keeper.stop(); // nothing running: settles at once
   keeper.dispose();
 });
+
+test('a pack is old once its oldest part is a month old, however recent its last update', async () => {
+  let now = Date.now();
+  const { keeper, trip, ws } = await kit({ now: () => now });
+  await keeper.download(trip);
+  now += 20 * 86_400_000;
+  // Twenty days later the plan changes near Nepenthe: only the parts there are downloaded again.
+  await ws.write(trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
+  await keeper.download(trip);
+  assert.equal((await keeper.status(trip)).why, null);
+  now += 11 * 86_400_000; // the parts around Bixby are now 31 days old
+  assert.equal((await keeper.status(trip)).why, 'old');
+  keeper.dispose();
+});
