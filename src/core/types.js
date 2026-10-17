@@ -32,6 +32,8 @@
  * @property {(scope: string) => Promise<number>} lastSeq  0 when the scope has no events
  * @property {(scope: string, ev: NewEvent) => Promise<EventRecord>} appendEvent  assigns seq = lastSeq + 1
  * @property {(rec: EventRecord) => Promise<void>} putEvent  keeps rec.seq (used by import)
+ * @property {(scope: string, seq: number) => Promise<void>} deleteEvent  removes one log entry; nothing there is no error (spec §4.9:
+ *   removing a plugin frees what only its entries named)
  * @property {(scope: string, q?: EventQuery) => Promise<EventRecord[]>} listEvents
  * @property {(id: string) => Promise<ScopeRecord|undefined>} getScope
  * @property {(rec: ScopeRecord) => Promise<void>} putScope

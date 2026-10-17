@@ -154,6 +154,25 @@ export function storeContract(test, assert, makeStore) {
     assert.equal(next.seq, 42);
   });
 
+  test('events: deleteEvent removes one entry, from every index', async () => {
+    const s = await makeStore();
+    await s.tx(['events'], 'readwrite', async (t) => {
+      await t.appendEvent('a', { ts: 1, type: 'x', actor: 'user' });
+      await t.appendEvent('a', { ts: 2, type: 'file.write', actor: 'user', data: { path: '/p', old: null, new: 'h-new' }, refs: ['h-ref'] });
+      await t.appendEvent('a', { ts: 3, type: 'x', actor: 'user' });
+      await t.appendEvent('b', { ts: 1, type: 'file.write', actor: 'user' });
+    });
+    await s.tx(['events'], 'readwrite', (t) => t.deleteEvent('a', 2));
+    await s.tx(['events'], 'readwrite', (t) => t.deleteEvent('a', 99)); // nothing there: no error
+    const got = await s.tx(['files', 'events'], 'readonly', async (t) => ({
+      seqs: (await t.listEvents('a')).map((e) => e.seq),
+      typed: (await t.listEvents('a', { types: ['file.write'] })).length,
+      b: (await t.listEvents('b')).length,
+      used: [await t.blobInUse('h-new'), await t.blobInUse('h-ref')],
+    }));
+    assert.deepEqual(got, { seqs: [1, 3], typed: 0, b: 1, used: [false, false] });
+  });
+
   test('scopes: put, get, list; deleteScope removes only that scope', async () => {
     const s = await makeStore();
     await s.tx(['scopes', 'files', 'events'], 'readwrite', async (t) => {
