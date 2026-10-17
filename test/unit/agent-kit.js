@@ -51,7 +51,7 @@ export function fakeCodec(formats) {
  * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
+ * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string } }} [opts]
  *   uploading: whether the main model's endpoint takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
@@ -76,7 +76,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   /** @type {any} */
   const config = { endpoints: {}, models: {}, roles: { main: { models: [], level: 'medium' }, utility: { models: [], level: 'low' }, decide: { models: [], level: 'off' } } };
   scripts.forEach((script, i) => {
-    config.endpoints[`ep-${i}`] = { id: `ep-${i}`, type: 'scripted', template: null, user: { name: `E${i}`, tunables: { script } }, created: 0 };
+    config.endpoints[`ep-${i}`] = { id: `ep-${i}`, type: 'scripted', template: null, user: { name: `E${i}`, tunables: Array.isArray(script) ? { script } : script }, created: 0 };
     config.models[`m-${i}`] = { id: `m-${i}`, endpoint: `ep-${i}`, template: null, user: { providerId: `model-${i}`, prices: { input: 1, output: 1 }, input: ['text', 'image'], ...(models[i] ?? {}) }, created: 0 };
     config.roles.main.models.push(`m-${i}`);
   });

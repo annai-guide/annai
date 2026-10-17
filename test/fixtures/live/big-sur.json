@@ -1,0 +1,47 @@
+{
+  "name": "Big Sur on Highway 1: Monterey to Cambria",
+  "note": "A synthetic drive for annai's trip simulation (spec §18). It stops at Bixby Bridge, the Big Sur River Inn (not on the plan), Nepenthe, McWay Falls, Ragged Point and San Simeon pier (neither on the plan), Hearst Castle and Cambria. The connection is gone from 13:50 to 14:35 near Lucia; the phone is locked from 15:18 to 16:05.",
+  "start": "2026-11-27T08:30:00-08:00",
+  "timezone": "America/Los_Angeles",
+  "everySec": 5,
+  "stillSec": 10,
+  "accuracy": 8,
+  "endMin": 30,
+  "route": [
+    { "name": "Monterey", "lat": 36.6036, "lng": -121.8916, "leave": "09:00" },
+    { "lat": 36.5367, "lng": -121.9081 },
+    { "lat": 36.5153, "lng": -121.9387 },
+    { "lat": 36.46, "lng": -121.92 },
+    { "lat": 36.3789, "lng": -121.9033 },
+    { "name": "Bixby Bridge", "lat": 36.3715, "lng": -121.9017, "arrive": "09:30", "leave": "09:50" },
+    { "lat": 36.307, "lng": -121.899 },
+    { "lat": 36.284, "lng": -121.844 },
+    { "name": "Big Sur River Inn", "lat": 36.27, "lng": -121.807, "arrive": "10:08", "leave": "11:40" },
+    { "name": "Nepenthe", "lat": 36.2213, "lng": -121.7567, "arrive": "11:48", "leave": "13:10" },
+    { "name": "McWay Falls", "lat": 36.158, "lng": -121.672, "arrive": "13:22", "leave": "13:45" },
+    { "lat": 36.02, "lng": -121.548 },
+    { "lat": 35.93, "lng": -121.466 },
+    { "name": "Ragged Point", "lat": 35.779, "lng": -121.329, "arrive": "14:43", "leave": "15:15" },
+    { "name": "San Simeon pier", "lat": 35.6431, "lng": -121.1888, "arrive": "15:37", "leave": "16:30" },
+    { "name": "Hearst Castle", "lat": 35.6852, "lng": -121.166, "arrive": "16:36", "leave": "18:15" },
+    { "name": "Cambria", "lat": 35.5641, "lng": -121.0807, "arrive": "18:32" }
+  ],
+  "marks": [
+    { "at": "13:50", "kind": "offline" },
+    { "at": "14:35", "kind": "online" },
+    { "at": "15:18", "kind": "hide" },
+    { "at": "16:05", "kind": "show" }
+  ],
+  "plan": {
+    "bixby": { "id": "bixby", "title": "Bixby Bridge photo stop", "fixed": false, "priority": 1, "start": { "at": "2026-11-27T09:45:00-08:00", "tz": "America/Los_Angeles" }, "end": { "at": "2026-11-27T10:05:00-08:00", "tz": "America/Los_Angeles" }, "place": { "name": "Bixby Creek Bridge", "lat": 36.3715, "lng": -121.9017 } },
+    "nepenthe": { "id": "nepenthe", "title": "Lunch at Nepenthe", "kind": "meal", "fixed": true, "priority": 2, "start": { "at": "2026-11-27T12:00:00-08:00", "tz": "America/Los_Angeles" }, "end": { "at": "2026-11-27T13:15:00-08:00", "tz": "America/Los_Angeles" }, "place": { "name": "Nepenthe", "lat": 36.2213, "lng": -121.7567, "address": "48510 CA-1, Big Sur, CA" }, "booking": "/trip/bookings/nepenthe.json", "notes": "Window table if they have one." },
+    "mcway": { "id": "mcway", "title": "McWay Falls", "fixed": false, "priority": 2, "start": { "at": "2026-11-27T13:45:00-08:00", "tz": "America/Los_Angeles" }, "end": { "at": "2026-11-27T14:15:00-08:00", "tz": "America/Los_Angeles" }, "place": { "name": "McWay Falls", "lat": 36.158, "lng": -121.672 } },
+    "hearst": { "id": "hearst", "title": "Hearst Castle tour", "kind": "event", "fixed": true, "priority": 3, "start": { "at": "2026-11-27T16:30:00-08:00", "tz": "America/Los_Angeles" }, "end": { "at": "2026-11-27T18:15:00-08:00", "tz": "America/Los_Angeles" }, "place": { "name": "Hearst Castle", "lat": 35.6852, "lng": -121.166 }, "booking": "/trip/bookings/hearst.json" },
+    "cambria": { "id": "cambria", "title": "Check in: Cambria Pines Lodge", "kind": "lodging", "fixed": true, "priority": 3, "start": { "at": "2026-11-27T19:00:00-08:00", "tz": "America/Los_Angeles" }, "place": { "name": "Cambria Pines Lodge", "lat": 35.5641, "lng": -121.0807 }, "booking": "/trip/bookings/lodge.json" }
+  },
+  "bookings": {
+    "nepenthe": { "id": "nepenthe", "kind": "restaurant", "status": "confirmed", "source": "/files/nepenthe.pdf", "title": "Nepenthe", "confirmation": "NP-2241" },
+    "hearst": { "id": "hearst", "kind": "event", "status": "confirmed", "source": "/files/hearst.pdf", "title": "Hearst Castle Grand Rooms Tour", "confirmation": "HC-88812" },
+    "lodge": { "id": "lodge", "kind": "lodging", "status": "confirmed", "source": "/files/lodge.pdf", "title": "Cambria Pines Lodge", "confirmation": "CPL-5531" }
+  }
+}

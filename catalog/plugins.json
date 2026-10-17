@@ -32,15 +32,15 @@
     {
       "id": "scripted-model",
       "name": "Scripted model",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "provides": {
         "endpoint-type": [
           "scripted"
         ]
       },
       "files": {
-        "annai-plugin.json": "42e06c8ef3fc621c84fd33aa2cbd3ebe76a95c8d033c5b96d2b04229aacb8a9f",
-        "index.js": "58fe9ba590907737181608d845ccb494d7e96e2a0e579aa50b6ac43c29f09967"
+        "annai-plugin.json": "cac2038fd1953e9e4aa6427aa6afbf94cec44f1aa76a250ecc038d8b1c5f53d6",
+        "index.js": "d9bd785496151303af878df2fcac11d401a8edbdce92c2074298e1809a1a8736"
       }
     },
     {

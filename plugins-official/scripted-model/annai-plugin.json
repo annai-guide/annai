@@ -1,7 +1,7 @@
 {
   "id": "scripted-model",
   "name": "Scripted model",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "api": 1,
   "entry": "index.js",
   "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",

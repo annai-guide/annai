@@ -7,6 +7,9 @@
  *   { text, cut: true }                                                 says text, then the connection drops
  *   logprobs: [{ token, logprob }] reports the first token's alternatives; stop: the stop reason (default "tool" or "end").
  *   stream: true gives each tool call's arguments as tool_input events first, pieceMs apart; breakAt: n drops the connection after n of them.
+ * With a rules tunable instead ([{ match, reply, then, times }]), the step depends on what woke her: the first
+ * rule whose match (a case-insensitive regular expression) finds the request's "woke for:" line replies; a call
+ * that follows tool results gets its rule's then (default: sleep); times limits how often a rule answers.
  * It reads no messages, so it takes the request as built, tail included (tail: true).
  * @param {any} annai
  */
@@ -14,17 +17,45 @@ export function activate(annai) {
   const { ProviderError } = annai.helpers;
   /** @type {Map<string, number>} calls so far, by endpoint */
   const calls = new Map();
+  /** @type {Map<string, number>} how often each rule has answered, by endpoint and rule */
+  const used = new Map();
+  /**
+   * The step for this call, from the rules (by what woke her) or the script (in turn).
+   * @param {any} endpoint @param {any} request @param {number} n
+   */
+  const stepFor = (endpoint, request, n) => {
+    const rules = Array.isArray(endpoint.tunables?.rules) ? endpoint.tunables.rules : null;
+    if (!rules) {
+      const script = Array.isArray(endpoint.tunables?.script) && endpoint.tunables.script.length ? endpoint.tunables.script : [{ text: '' }];
+      return script[Math.min(n, script.length - 1)] ?? {};
+    }
+    const tail = String(request?.tail ?? '');
+    const woke = /^woke for: (.*)$/m.exec(tail)?.[1] ?? tail;
+    const last = request?.messages?.at(-1);
+    // Results of its own tool calls come last; a new wake's words would follow them in the same message.
+    const followUp = last?.role === 'user' && last.parts?.at(-1)?.type === 'tool_result';
+    const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+    let i = 0;
+    for (const r of rules) {
+      const key = `${endpoint.id}:${i++}`;
+      if (typeof r?.match !== 'string' || !new RegExp(r.match, 'i').test(woke)) continue;
+      if (typeof r.times === 'number' && (used.get(key) ?? 0) >= r.times && !followUp) continue;
+      if (followUp) return r.then ?? sleep;
+      used.set(key, (used.get(key) ?? 0) + 1);
+      return r.reply ?? sleep;
+    }
+    return sleep;
+  };
   return annai.providers.register({
     type: 'scripted',
     name: 'Scripted model (for testing)',
     tunables: { script: [{ text: 'Hello from the scripted model.' }] },
     tail: true,
-    /** @param {{ endpoint: any, signal?: AbortSignal }} c */
-    async *run({ endpoint, signal }) {
-      const script = Array.isArray(endpoint.tunables?.script) && endpoint.tunables.script.length ? endpoint.tunables.script : [{ text: '' }];
+    /** @param {{ endpoint: any, signal?: AbortSignal, request?: any }} c */
+    async *run({ endpoint, signal, request }) {
       const n = calls.get(endpoint.id) ?? 0;
       calls.set(endpoint.id, n + 1);
-      const step = script[Math.min(n, script.length - 1)] ?? {};
+      const step = stepFor(endpoint, request, n);
       if (step.delayMs) await sleep(step.delayMs, signal);
       if (step.error) throw new ProviderError(step.error, step.message ?? `Scripted ${step.error}.`, { status: step.status, retryAfter: step.retryAfter });
       if (step.reasoning) yield { type: 'reasoning', text: step.reasoning };

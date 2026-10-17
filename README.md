@@ -18,7 +18,10 @@ memories afterwards.
 > confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
 > search and directions links. And voice: Shiori speaks (OpenAI-compatible voices, or the phone's own) and listens
 > (recording with an end-of-sentence detector, a transcription model or the model itself, or phone dictation), with interruptions,
-> a quick check that talk is meant for her, and Auto, On and Off. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> a quick check that talk is meant for her, and Auto, On and Off. Milestone 5 (live mode) is in progress: watches Shiori sets, the
+> plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
+> shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; the phone's sensors and the Now and
+> Driving screens come next, then the offline pack. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Plan and bookings
