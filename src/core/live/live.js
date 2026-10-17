@@ -1,5 +1,5 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
-import { ActivityTracker } from './activity.js';
+import { ActivityTracker, STILL_BELOW } from './activity.js';
 import { TRIGGERS } from './triggers.js';
 import { PLAN, planWatches } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
@@ -466,13 +466,17 @@ export class Live {
     }
     if (!this.stop || meters(this.stop, fix) > Math.max(STOP_M, fix.accuracy)) this.stop = { lat: fix.lat, lng: fix.lng, since: fix.at };
     const moving = this.activity === 'walking' || this.activity === 'moving-fast';
-    if (keep(this.#kept, fix, moving)) {
+    // Not moving (and the GPS says no speed): GPS jitter at a stop is no movement, so a point is kept
+    // only once the user is truly elsewhere, beyond the stop's own 100 m (spec §4.5's "after moving").
+    const goes = moving || (fix.speed ?? 0) >= STILL_BELOW;
+    if (goes ? keep(this.#kept, fix, moving) : !this.#kept || meters(this.#kept, fix) >= Math.max(STOP_M, 2 * fix.accuracy)) {
       this.#kept = fix;
       if (this.#trip) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at);
     }
-    // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13).
+    // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
+    // only steps longer than twice the accuracy, which jitter doesn't make.
     if (!this.#odo) this.#odo = fix;
-    else if (moving && fix.accuracy <= 100 && meters(this.#odo, fix) >= Math.max(KEEP_M, fix.accuracy)) {
+    else if (moving && fix.accuracy <= 100 && meters(this.#odo, fix) >= Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy)) {
       this.odometer += meters(this.#odo, fix) / 1000;
       this.#odo = fix;
     }

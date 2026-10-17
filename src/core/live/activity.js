@@ -63,12 +63,17 @@ export class ActivityTracker {
     this.#recent = [];
   }
 
-  /** m/s: the GPS's own, when it gives one with a usable fix; else over the last 15 to 60 s, less what the accuracy could explain. @param {Fix} fix */
+  /**
+   * m/s: the GPS's own, when it gives one with a usable fix; else over the last 15 to 60 s, less what
+   * the accuracy of both ends could explain: each can be off by its accuracy, so jitter at a stop
+   * reads as no speed at all.
+   * @param {Fix} fix
+   */
   #speedAt(fix) {
     if (fix.speed !== null && fix.accuracy <= 50) return fix.speed;
     const old = this.#recent.find((f) => fix.at - f.at >= SPAN_MS); // the oldest kept, at most RECENT_MS back
     if (!old) return null;
-    const d = Math.max(0, meters(old, fix) - (old.accuracy + fix.accuracy) / 2);
+    const d = Math.max(0, meters(old, fix) - (old.accuracy + fix.accuracy));
     return d / ((fix.at - old.at) / 1000);
   }
 }
