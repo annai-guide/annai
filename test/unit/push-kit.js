@@ -53,12 +53,16 @@ export async function pushKit(o) {
   /** @type {any} */
   const env = { VAPID_KEY: jwk, ORIGINS: '', EXTRA_PUSH_ORIGINS: service.origin };
   env.RELAY = memoryNamespace(PushRelay, env, { now: () => k.clock.now(), timers: false });
-  /** offline: every request fails; gate: schedules wait for it; calls: every request, in order */
-  const net = { offline: false, gate: /** @type {Promise<unknown> | null} */ (null), calls: /** @type {{ method: string, url: string, auth: string | null }[]} */ ([]) };
+  /**
+   * offline: every request fails; down: hosts whose requests fail; failDeletes: DELETEs answer 503; online: what the
+   * browser says of the connection; gate: schedules wait for it; calls: every request, in order
+   */
+  const net = { offline: false, down: new Set(), failDeletes: false, online: true, gate: /** @type {Promise<unknown> | null} */ (null), calls: /** @type {{ method: string, url: string, auth: string | null }[]} */ ([]) };
   const relayFetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init = {}) => {
-    if (net.offline) throw new TypeError('Failed to fetch');
     const req = new Request(url, init);
+    if (net.offline || net.down.has(new URL(req.url).host)) throw new TypeError('Failed to fetch');
     net.calls.push({ method: req.method, url: req.url, auth: req.headers.get('Authorization') });
+    if (req.method === 'DELETE' && net.failDeletes) return new Response(JSON.stringify({ error: 'relay', message: 'The relay is down.' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
     if (req.method === 'POST' && net.gate) await net.gate;
     return worker.fetch(req, env);
   };

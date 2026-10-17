@@ -442,3 +442,51 @@ test('a new relay address, even one with the same key, gets everything, and the 
     await k.stop();
   }
 });
+
+test("a cancel at an old relay that can't be reached never holds up the new one, and is dropped once its time has passed (fix pass N1)", async () => {
+  const k = await pushKit({ live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+    await k.flush();
+    k.net.down.add('push.annai.guide'); // the old relay is off (a laptop relay after the test)
+    await k.mirror.setRelay('https://relay.example');
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('11:00') }, fallback: 'Walk.' });
+    await k.flush();
+    const posts = k.net.calls.filter((c) => c.method === 'POST' && new URL(c.url).host === 'relay.example');
+    assert.equal(posts.length, 2, 'both reminders reach the new relay');
+    const st = await k.mirror.status();
+    assert.equal(st.waiting, 2);
+    assert.match(String(st.problem?.message), /old relay/);
+    assert.match(String(st.problem?.message), /push\.annai\.guide/);
+    assert.equal(st.problem?.needsYou, false);
+    k.sensors.visible(false); // off screen: nothing fires on the phone meanwhile
+    await k.settle();
+    await k.to(at('10:45'));
+    await k.mirror.sync();
+    const file = await k.ws.readJSON(SYS_DEVICE, FILE);
+    assert.deepEqual(file.cancels, [], 'past its time, the old reminder is not called off any more: it was sent, or never will be');
+  } finally {
+    await k.stop();
+  }
+});
+
+test('a DELETE the relay fails (5xx) holds up no other send; it is tried again until it goes', async () => {
+  const k = await pushKit({ live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+    await k.flush();
+    k.net.failDeletes = true;
+    await k.live.cancelWatch(k.trip, w.id);
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('11:00') }, fallback: 'Walk.' });
+    await k.flush();
+    assert.equal((await k.waiting()).length, 2, 'the new one is there; the old one still, until its DELETE goes');
+    assert.ok(k.net.calls.some((c) => c.method === 'POST' && c.url.endsWith('/v1/schedule')));
+    k.net.failDeletes = false;
+    await k.flush(3 * MIN);
+    assert.deepEqual((await k.waiting()).map((x) => x.sendAt), [at('11:00') + GRACE_MS]);
+  } finally {
+    await k.stop();
+  }
+});
