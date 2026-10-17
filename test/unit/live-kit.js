@@ -94,9 +94,9 @@ export function fakeSensors(registry) {
 /**
  * A memory annai in live mode: a trip with the plan and bookings given, a Live engine on a manual
  * clock (08:30 on the day of the drive), sensors driven by hand, and an agent that records.
- * @param {{ plan?: Record<string, any>, bookings?: Record<string, any>, live?: boolean, start?: number }} [o]
+ * @param {{ plan?: Record<string, any>, bookings?: Record<string, any>, live?: boolean, start?: number, news?: () => Promise<any[]> }} [o]
  */
-export async function liveKit({ plan = {}, bookings = {}, live = true, start = at('08:30') } = {}) {
+export async function liveKit({ plan = {}, bookings = {}, live = true, start = at('08:30'), news } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -110,7 +110,7 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
   const clock = new ManualClock(start);
   const agent = fakeAgent(trip);
   const sensors = fakeSensors(registry);
-  const engine = new Live({ store, ws, registry, agent, clock, timeZone: () => LA });
+  const engine = new Live({ store, ws, registry, agent, clock, timeZone: () => LA, ...(news ? { news } : {}) });
   await engine.start();
   await engine.settled();
   const settle = () => engine.settled();
