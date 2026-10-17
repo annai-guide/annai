@@ -79,7 +79,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     },
     dictation: {
       available: () => dictation,
-      /** @param {{ onSegment: (text: string) => void, onSpeech?: () => void, onError: (e: Error) => void }} o */
+      /** @param {{ onSegment: (text: string) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error) => void }} o */
       open(o) {
         log.push('dictation open');
         heard = o;
@@ -87,6 +87,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       },
       /** Dictation hears someone say this. @param {string} text */
       say(text) { heard?.onSpeech?.(); heard?.onSegment(text); },
+      /** Dictation hears a sound that gives no words (road noise): speech starts, then it says so. */
+      noise() { heard?.onSpeech?.(); heard?.onQuiet?.(); },
       /** Dictation fails, as the browser's recognition does. @param {string} code */
       fail(code) { heard?.onError(Object.assign(new Error(`Phone dictation stopped (${code}).`), { code })); },
     },

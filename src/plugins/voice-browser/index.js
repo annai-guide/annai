@@ -195,19 +195,34 @@ export function browserPlatform() {
     },
     dictation: {
       available: () => Boolean(/** @type {any} */ (globalThis).SpeechRecognition || /** @type {any} */ (globalThis).webkitSpeechRecognition),
-      open({ lang, onSegment, onSpeech, onError }) {
+      open({ lang, onSegment, onSpeech, onQuiet, onError }) {
         const Recognition = /** @type {any} */ (globalThis).SpeechRecognition ?? /** @type {any} */ (globalThis).webkitSpeechRecognition;
         const r = new Recognition();
         r.continuous = true;
         r.interimResults = true;
         r.lang = lang || navigator.language;
         let closed = false;
-        r.onspeechstart = () => onSpeech?.();
+        // Speech started and no words came for it yet: a noise ends as quiet, so the silence limit starts again.
+        let speaking = false;
+        const quiet = () => {
+          if (!speaking) return;
+          speaking = false;
+          onQuiet?.();
+        };
+        r.onspeechstart = () => {
+          speaking = true;
+          onSpeech?.();
+        };
         r.onresult = (/** @type {any} */ e) => {
           for (let i = e.resultIndex; i < e.results.length; i++) {
             const res = e.results[i];
-            const text = res.isFinal ? String(res[0]?.transcript ?? '').trim() : '';
-            if (text) onSegment(text);
+            if (!res.isFinal) continue;
+            const text = String(res[0]?.transcript ?? '').trim();
+            if (!text) quiet();
+            else {
+              speaking = false;
+              onSegment(text);
+            }
           }
         };
         r.onerror = (/** @type {any} */ e) => {
@@ -218,6 +233,7 @@ export function browserPlatform() {
         // Dictation ends by itself after a silence; while listening goes on, it starts again.
         r.onend = () => {
           if (closed) return;
+          quiet(); // it ended without words (no-speech)
           try {
             r.start();
           } catch {
