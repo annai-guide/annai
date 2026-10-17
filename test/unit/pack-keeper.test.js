@@ -230,3 +230,35 @@ test('a pack is old once its oldest part is a month old, however recent its last
   assert.equal((await keeper.status(trip)).why, 'old');
   keeper.dispose();
 });
+
+test('a plan change while an update annai began by itself runs: once it ends, the pack is brought up to date again, without waiting an hour (fix pass L2)', async () => {
+  const t = await packTrip();
+  const agent = fakeAgent(t.trip);
+  /** @type {(v?: unknown) => void} */
+  let open = () => {};
+  const gate = new Promise((r) => { open = r; });
+  let gateOn = false;
+  let waiting = false;
+  const net = services({ overpass: async () => {
+    if (gateOn && !waiting) {
+      waiting = true;
+      await gate;
+    }
+    return { elements: [] };
+  } });
+  let now = Date.now();
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now });
+  await keeper.download(t.trip); // the first, by hand
+  now += 2 * 3_600_000;
+  gateOn = true;
+  await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
+  await until(() => waiting); // annai's own update runs, waiting on Overpass
+  // The plan changes again in the middle of it.
+  await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.21 } }, { author: 'user' });
+  await new Promise((r) => setTimeout(r, 40));
+  open();
+  await until(async () => (await keeper.status(t.trip)).why === null, 3000);
+  const log = await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }));
+  assert.deepEqual(log.map((e) => e.data.auto), [false, true, true]);
+  keeper.dispose();
+});

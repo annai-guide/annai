@@ -37,7 +37,7 @@ export class PackKeeper {
   #timer;
   /** @type {Map<string, number>} when annai last updated each trip's pack by itself */
   #autoAt = new Map();
-  /** The plan changed (or the connection came) while a download ran: look again once it ends. */
+  /** The plan changed while a download ran: look again once it ends, past the hourly gate (fix pass L2). */
   #again = false;
   /** @type {import('./read.js').Pack | null} the open trip's pack, for names */
   #named = null;
@@ -119,7 +119,11 @@ export class PackKeeper {
       this.#abort = null;
       this.running = null;
       this.#emit();
-      if (this.#again) this.poke();
+      // What changed during it waits for no hourly gate: this download's own start doesn't count against it (fix pass L2).
+      if (this.#again) {
+        this.#autoAt.delete(scope);
+        this.poke();
+      }
       this.#again = false;
     });
     return this.#job;
@@ -168,7 +172,10 @@ export class PackKeeper {
   #changed(c) {
     if (c.scope !== this.o.agent.target) return;
     if (c.path === MANIFEST) this.#loadNames();
-    else if (PLAN_FILE.test(c.path) || c.path === '/trip.json') this.#schedule(this.o.quietMs ?? QUIET_MS);
+    else if (PLAN_FILE.test(c.path) || c.path === '/trip.json') {
+      if (this.#job) this.#again = true; // a plan change in the middle of a download: looked at when it ends
+      this.#schedule(this.o.quietMs ?? QUIET_MS);
+    }
   }
 
   #loadNames() {
@@ -189,7 +196,6 @@ export class PackKeeper {
   async #auto() {
     const scope = this.o.agent.target;
     const now = (this.o.now ?? Date.now)();
-    if (this.#job) this.#again = true; // a plan change in the middle of a download: looked at when it ends
     if (!scope || this.#job || this.o.connection() !== 'wifi' || !(this.o.visible?.() ?? true)) return;
     if (now - (this.#autoAt.get(scope) ?? -Infinity) < AUTO_EVERY_MS) return;
     const s = await this.status(scope);
