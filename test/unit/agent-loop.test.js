@@ -413,3 +413,16 @@ test("show: a plugin's card type joins the tool's card, its data is checked, and
   assert.equal(results[2], 'Error: there is no card type ferries. Types: tides.');
   assert.equal((await k.events(['out.show'])).length, 1);
 });
+
+test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shiori's turn goes on", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'snap', input: {} }] }, say('That picture was broken.')]]);
+  k.registry.add('test', 'tool', { name: 'snap', description: 'A picture.', input: { type: 'object' }, run: async () => ({ content: 'A picture.', images: [{ mediaType: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=' }] }) });
+  k.agent.send('Show me the trail.');
+  await k.agent.idle();
+  const [snap] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'snap');
+  assert.equal(snap.data.ok, false);
+  assert.equal(snap.data.images, undefined);
+  assert.match(snap.data.content, /snap gave back an image annai can't read/);
+  assert.equal((await k.events(['out.speak']))[0]?.data.text, 'That picture was broken.');
+  assert.deepEqual(k.agent.transcript.open(), []);
+});

@@ -1142,9 +1142,19 @@ export class Agent {
       blobs.push({ hash: m.hash, type: m.mediaType });
       return { hash: m.hash, mediaType: m.mediaType, ...where };
     };
-    const images = [];
-    for (const m of output.images ?? []) images.push(await media(m));
-    const document = output.document ? await media(output.document) : null;
+    let images = [];
+    /** @type {any} */
+    let document = null;
+    try {
+      for (const m of output.images ?? []) images.push(await media(m));
+      document = output.document ? await media(output.document) : null;
+    } catch {
+      // An image or document annai can't read is the tool's error, not the turn's (fix pass 8c-1).
+      blobs.length = 0;
+      images = [];
+      document = null;
+      output = { content: `Error: ${c.name} gave back an image annai can't read, so its answer was left out.`, isError: true };
+    }
     await this.#log({
       type: 'tool.result', actor: 'system',
       data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}) },
