@@ -38,6 +38,14 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 - [ ] The reminder's fallback is said aloud by the phone's own voice and shown as a card; the dock says "Offline · reminders still work".
 - [ ] When the connection is back, Shiori hears what came while offline, once.
 
+## The offline pack
+- [ ] On the trip's page, Offline pack shows "Download (about … KB)" before anything is downloaded. On Wi-Fi, tap it: it shows each part as it goes, then "Downloaded just now · … · … places, … Wikipedia summaries, … Wikivoyage guides" and the guides' names.
+- [ ] Trace → Web: the requests went to overpass-api.de, en.wikipedia.org and en.wikivoyage.org only, one at a time, about a second apart, and a "pack.download" line sums it up.
+- [ ] Android, on Wi-Fi with the trip open: ask Shiori to add a stop to the plan. Within a few minutes the panel says "Downloaded just now" again, without a tap (Trace → Web: "by itself on Wi-Fi").
+- [ ] iPhone: the panel says Safari doesn't tell annai when it is on Wi-Fi; after a plan change it offers "Update (about … KB)".
+- [ ] Airplane mode, at a stop on the plan: ask "What's around here?" and "Tell me about Big Sur" (or the trip's destination). Shiori answers from the pack, and says it comes from the offline pack; Now says "Near …" a place the pack names.
+- [ ] Still in airplane mode, ask about a place far off the plan: she says OpenStreetMap and Wikipedia didn't answer.
+
 ## Battery
 - [ ] An hour of live mode with the screen on (on the charger, and once off it): note the battery used, and whether the phone got warm. Compare with an hour of Maps navigation.
 

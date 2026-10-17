@@ -19,10 +19,10 @@ memories afterwards.
 > search and directions links. And voice: Shiori speaks (OpenAI-compatible voices, or the phone's own) and listens
 > (recording with an end-of-sentence detector, a transcription model or the model itself, or phone dictation), with interruptions,
 > a quick check that talk is meant for her, and Auto, On and Off. And backups to GitHub, S3-compatible storage and WebDAV
-> (milestone 9). Milestone 5 (live mode) is in progress: watches Shiori sets, the
+> (milestone 9). And live mode (milestone 5; its real-drive checklist is next): watches Shiori sets, the
 > plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode, the Live chip (the screen kept on as
-> you choose, and where you are without GPS), and the Now and Driving screens. The offline pack is next. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Plan and bookings

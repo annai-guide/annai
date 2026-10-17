@@ -29,6 +29,8 @@ test('each part once, a moment apart, into named files; the guides by name only'
   assert.deepEqual(m.guides.map((g) => [g.title, g.asked]), [['Cambria (California)', ['Cambria, California']], ['Big Sur', ['Big Sur']]]);
   assert.equal(m.files.length, 7);
   assert.equal(m.bytes, m.files.reduce((n, f) => n + f.bytes, 0));
+  assert.equal(m.places, 5); // each place once, though the areas overlap
+  assert.equal(m.summaries, 4);
   const overpassAsked = asked.filter((a) => a.url.includes('overpass')).map(body);
   assert.ok(overpassAsked.some((q) => q.includes('nwr(around:5000,36.3715,-121.9017)[amenity=toilets];')));
   assert.ok(overpassAsked.some((q) => q.includes('around:3000,36.3715,-121.9017,36.2213,-121.7567')));

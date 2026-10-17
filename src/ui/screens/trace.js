@@ -8,7 +8,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Everything: null,
   Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'],
   Tools: ['tool.call', 'tool.result'],
-  Web: ['net.request'],
+  Web: ['net.request', 'pack.download'],
   Models: ['model.turn', 'net.request', 'decide', 'speech.browser'],
   Housekeeping: ['compaction'],
   Live: ['location', 'trigger.fired', 'state', 'reminder'],
@@ -117,6 +117,10 @@ export function traceSummary(e, { costs: perWake } = {}) {
     return `${d.role}: ${d.answeredBy ?? 'no answer'} · ${n} attempt${n === 1 ? '' : 's'}${d.cost !== undefined ? ` · ${formatCost(d.cost)}` : ''}`;
   }
   if (e.type === 'net.request') return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'pack.download') {
+    return [`${d.files ?? 0} files`, bytes(d.bytes ?? 0), `${d.guides ?? 0} guide${d.guides === 1 ? '' : 's'}`, d.failed ? `${d.failed} failed` : null,
+      d.full ? 'at its limit' : null, d.stopped ? 'stopped' : null, d.auto ? 'by itself on Wi-Fi' : null].filter(Boolean).join(' · ');
+  }
   if (e.type === 'backup') return `${d.type} · ${d.reason} · ${d.files ?? '?'} files sent, ${bytes(d.uploaded ?? 0)} · ${d.ms ?? '?'} ms`;
   if (e.type === 'backup.newer') return `${d.type} · a newer backup from ${d.remote?.label ? withArticle(d.remote.label) : 'another device'} is there`;
   if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;

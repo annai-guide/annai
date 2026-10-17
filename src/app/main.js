@@ -9,7 +9,7 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
-import { isStandalone, requestPersist, watchForUpdates, platform, deviceName } from '../ui/platform.js';
+import { isStandalone, requestPersist, watchForUpdates, platform, deviceName, connectionOf } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
@@ -29,6 +29,7 @@ import { Live } from '../core/live/live.js';
 import { watchTools } from '../core/live/watch-tools.js';
 import { tellGps } from '../ui/live-help.js';
 import { keepAwake } from '../ui/wake-lock.js';
+import { PackKeeper } from '../core/pack/keeper.js';
 import { createBackups } from '../core/backup.js';
 import { ensureProvided } from '../core/llm/official.js';
 import { startBackups } from '../ui/auto-backup.js';
@@ -92,6 +93,12 @@ async function boot() {
   agent.addLoopTools(watchTools(live));
   agent.sense = () => live.nowInfo();
   const awake = keepAwake({ live, ws });
+  // The offline pack (spec §11.5): downloaded when asked, then kept up to date on Wi-Fi; it names places for live mode.
+  const pack = new PackKeeper({ store, ws, agent, version: VERSION, connection: () => connectionOf(navigator), visible: () => document.visibilityState === 'visible' });
+  live.namers.push((p) => pack.name(p));
+  addEventListener('online', () => pack.poke());
+  /** @type {any} */ (navigator).connection?.addEventListener?.('change', () => pack.poke());
+  document.addEventListener('visibilitychange', () => pack.poke());
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).
   const active = (await readAppSettings(ws)).activeTrip;
@@ -108,7 +115,7 @@ async function boot() {
       await ensureProvided(plugins, 'storage-type', type);
     },
   });
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, presets, backups, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   tellGps({ live, notices: shell.notices });

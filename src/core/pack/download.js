@@ -21,8 +21,9 @@ import { StorageFullError } from '../errors.js';
  * @typedef {{ title: string, asked: string[], path: string }} Guide
  *   asked: the names that led to it ("Hearst Castle" leads to San Simeon)
  * @typedef {{ format: 1, key: string, at: string, files: PackFile[], guides: Guide[],
- *   failed: { label: string, why: string }[], full: boolean, stopped: boolean, bytes: number }} Manifest
- *   key: the plan's when it was downloaded; full: it reached its 20 MB; stopped: it was stopped, or gave up
+ *   failed: { label: string, why: string }[], full: boolean, stopped: boolean, bytes: number, places: number, summaries: number }} Manifest
+ *   key: the plan's when it was downloaded; full: it reached its 20 MB; stopped: it was stopped, or gave up;
+ *   places and summaries: each once, though the parts' areas overlap
  * @typedef {{ done: number, total: number, label: string }} Progress
  * @typedef {(url: string, init: RequestInit, where: string) => Promise<any>} Ask
  */
@@ -65,7 +66,7 @@ export async function readManifest(ws, scope) {
     guides: m.guides.filter((g) => typeof g?.title === 'string' && typeof g.path === 'string')
       .map((g) => ({ title: g.title, asked: Array.isArray(g.asked) ? g.asked.filter((a) => typeof a === 'string') : [], path: g.path })),
     failed: m.failed.filter((f) => typeof f?.label === 'string').map((f) => ({ label: f.label, why: String(f.why ?? '') })),
-    full: m.full === true, stopped: m.stopped === true, bytes: Number(m.bytes) || 0,
+    full: m.full === true, stopped: m.stopped === true, bytes: Number(m.bytes) || 0, places: Number(m.places) || 0, summaries: Number(m.summaries) || 0,
   };
 }
 
@@ -206,11 +207,24 @@ export async function downloadPack(o) {
   /** @type {Manifest} */
   const manifest = {
     format: 1, key: plan.key, at: new Date(now()).toISOString(), files: [...files.values()], guides, failed,
-    full, stopped: signal.aborted || fails >= GIVE_UP, bytes,
+    full, stopped: signal.aborted || fails >= GIVE_UP, bytes, ...(await counted(ws, scope, files)),
   };
   const gone = [...have.keys()].filter((path) => path !== MANIFEST && !files.has(path));
   await ws.writeMany(scope, [...gone.map((path) => ({ path, content: null })), { path: MANIFEST, content: JSON.stringify(manifest) }], { author: 'system' });
   return manifest;
+}
+
+/** How many places and summaries the pack holds, each once. @param {Workspace} ws @param {string} scope @param {Map<string, PackFile>} files */
+async function counted(ws, scope, files) {
+  const places = new Set();
+  const summaries = new Set();
+  for (const f of files.values()) {
+    if (f.kind === 'wikivoyage') continue;
+    const v = await ws.readJSON(scope, f.path).catch(() => null);
+    for (const r of Array.isArray(v?.rows) ? v.rows : []) if (Array.isArray(r)) places.add(r[0]);
+    for (const p of Array.isArray(v?.pages) ? v.pages : []) if (Array.isArray(p)) summaries.add(p[0]);
+  }
+  return { places: places.size, summaries: summaries.size };
 }
 
 /** OpenStreetMap places for a part: every kind nearby knows, from the first Overpass server that answers. @param {import('./plan.js').OsmPart} p @param {Ask} ask */
