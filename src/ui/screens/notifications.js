@@ -1,0 +1,137 @@
+import { h, field } from '../dom.js';
+import { platform } from '../platform.js';
+
+/** @param {string} title @param {...any} children */
+const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
+
+/** Where to allow notifications, for this phone (spec §17 rule 3). @param {'ios' | 'android' | 'desktop'} where */
+export function deniedHelp(where) {
+  if (where === 'ios') return 'Notifications are turned off for annai on this iPhone. Turn them on in Settings → Notifications → annai, then come back here.';
+  if (where === 'android') return "Notifications are blocked for annai. Touch and hold annai's icon, then App info → Notifications, and allow them; then come back here.";
+  return "Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.";
+}
+
+/** @param {{ on: boolean, waiting: number }} st */
+const statusText = (st) => (st.on ? `On · ${st.waiting === 1 ? '1 reminder' : `${st.waiting} reminders`} waiting at the relay.` : 'Off.');
+
+/**
+ * Settings → Notifications (spec §11.6, §11.7): reminders for a closed annai through the push relay,
+ * with plain words on what the relay learns.
+ * @param {any} ctx
+ */
+export async function renderNotifications(ctx) {
+  const push = ctx.push;
+  const st = await push.status();
+  const where = platform();
+  const status = h('p', { class: 'sub', role: 'status', text: statusText(st) });
+  const alert = h('p', { class: 'error', role: 'alert', hidden: !st.problem, text: st.problem?.message ?? '' });
+  /** @param {string} text */
+  const fail = (text) => {
+    alert.textContent = text;
+    alert.hidden = false;
+  };
+  const address = h('input', { id: 'push-relay', type: 'url', inputmode: 'url', autocomplete: 'off', spellcheck: 'false', value: st.relay });
+  const save = h('button', {
+    class: 'btn', type: 'button',
+    onclick: async () => {
+      save.disabled = true;
+      try {
+        await push.setRelay(address.value);
+        ctx.notices.toast('Saved');
+        ctx.render();
+      } catch (e) {
+        fail(String(/** @type {any} */ (e)?.message ?? e));
+      } finally {
+        save.disabled = false;
+      }
+    },
+  }, 'Save address');
+  /** @type {any[]} */
+  const acts = [];
+  /** @type {any} */
+  let help = null;
+  if (st.supported === 'install') {
+    help = h('p', { text: 'On iPhone, notifications work only in the Home Screen app. In Safari, tap Share, then Add to Home Screen, and open annai from your Home Screen.' });
+  } else if (st.supported === 'no') {
+    help = h('p', { text: "This browser can't show annai's notifications. On iPhone they need iOS 16.4 or later, in the Home Screen app." });
+  } else if (st.on) {
+    const off = h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        off.disabled = true;
+        try {
+          await push.turnOff();
+          ctx.notices.toast('Notifications are off.');
+          ctx.render();
+        } catch (e) {
+          fail(String(/** @type {any} */ (e)?.message ?? e));
+          off.disabled = false;
+        }
+      },
+    }, 'Turn off');
+    const trial = h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        trial.disabled = true;
+        try {
+          await push.test();
+          ctx.notices.toast('A test notification comes in about 15 seconds. Lock the phone to see it arrive.');
+        } catch (e) {
+          fail(String(/** @type {any} */ (e)?.message ?? e));
+        } finally {
+          trial.disabled = false;
+        }
+      },
+    }, 'Send a test notification');
+    acts.push(off, trial);
+  } else {
+    const on = h('button', {
+      class: 'btn pri', type: 'button',
+      onclick: () => {
+        // First thing in the tap, before anything is awaited: iOS asks only during a user activation (6b choice 11).
+        const asking = push.source.ask();
+        on.disabled = true;
+        alert.hidden = true;
+        status.textContent = 'Asking…';
+        asking.then(async (/** @type {string} */ p) => {
+          if (p !== 'granted') {
+            status.textContent = statusText(st);
+            fail(deniedHelp(where));
+            on.disabled = false;
+            return;
+          }
+          status.textContent = 'Turning them on…';
+          try {
+            await push.turnOn(address.value);
+            ctx.notices.toast('Notifications are on. A first one comes now.');
+            ctx.render();
+          } catch (e) {
+            status.textContent = statusText(st);
+            fail(String(/** @type {any} */ (e)?.message ?? e));
+            on.disabled = false;
+          }
+        }, () => {
+          fail(deniedHelp(where));
+          on.disabled = false;
+        });
+      },
+    }, 'Turn on notifications');
+    acts.push(on);
+    if (st.permission === 'denied') help = h('p', { class: 'sub', text: deniedHelp(where) });
+  }
+  return h('div', { class: 'screen' },
+    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('h1', { class: 'title', text: 'Notifications' }),
+    h('p', { class: 'sub', text: "Shiori's reminders for a time, and the plan's \"coming up\" and \"leave soon\", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up." }),
+    status, alert, help,
+    acts.length ? h('div', { class: 'acts' }, ...acts) : null,
+    section('Relay', field('Relay address', address), h('div', { class: 'acts' }, save),
+      h('p', { class: 'sub', text: "Reminders go through annai's relay, push.annai.guide, unless you run your own: its code is in annai's source, under relay/." })),
+    section('What the relay learns', h('ul', { class: 'where' },
+      h('li', { text: "annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one." }),
+      h('li', { text: "It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from." }),
+      h('li', { text: 'Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder\'s time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your plan; the relay doesn\'t.' }),
+      h('li', { text: 'Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.' }),
+      h('li', { text: 'With annai open on screen, annai says a reminder itself, and the relay\'s copy is called off: you never get it twice.' }))),
+    h('p', { class: 'sub', text: 'Every request to the relay is in Trace, under System · This device.' }));
+}
