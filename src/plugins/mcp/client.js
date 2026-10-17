@@ -260,8 +260,12 @@ export function toolOutput(result) {
 
 /** The blank a key's place shows. */
 export const KEY_BLANK = '«key»';
-/** A part of an address that may be a key (the coordinator's third finding): 16 characters or more, or 8 or more mixing letters and digits. @param {string} v */
-const keyLike = (v) => v.length >= 16 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v));
+/**
+ * A part of an address that may be a key (the coordinator's third finding): 8 characters or more mixing
+ * letters and digits, or 32 or more, so ordinary words such as model-context-protocol stay (fix pass 8c-2).
+ * @param {string} v
+ */
+const keyLike = (v) => v.length >= 32 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v));
 
 /**
  * An address as annai shows and keeps it, and the keys in it (the coordinator's third finding): every
