@@ -3,6 +3,7 @@ import { sunTimes } from '../../core/sun.js';
 import { deviceZone, timeIn } from '../../core/time.js';
 import { answerJSON } from '../../core/answer.js';
 import { OVERPASS, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../../core/pack/osm.js';
+import { loadPack } from '../../core/pack/read.js';
 
 export { KINDS };
 
@@ -51,6 +52,21 @@ function sunOnly(i, e) {
   return `${head}sunrise ${hm(t.sunrise)}, sunset ${hm(t.sunset)}, ${golden}.`;
 }
 
+/** A guide's introduction and the names of its sections; or one section. @param {string} title @param {string} text @param {string | undefined} section @param {string} source */
+function guideText(title, text, section, source) {
+  const heads = [...text.matchAll(/^(={2,4}) (.+?) \1$/gm)];
+  if (!section) {
+    const intro = (heads.length ? text.slice(0, heads[0].index) : text).trim();
+    return `${title} (${source})\n\n${intro}${heads.length ? `\n\nSections: ${heads.map((m) => m[2]).join(', ')}. Ask for one with section.` : ''}`;
+  }
+  const k = heads.findIndex((m) => m[2].toLowerCase() === String(section).toLowerCase());
+  if (k < 0) return `${title} has no section "${section}". Its sections: ${heads.map((m) => m[2]).join(', ')}.`;
+  const level = heads[k][1].length;
+  const end = heads.slice(k + 1).find((m) => m[1].length <= level);
+  const body = text.slice(/** @type {number} */ (heads[k].index) + heads[k][0].length, end?.index ?? text.length).trim();
+  return `${title}: ${heads[k][2]} (${source})\n\n${body}`;
+}
+
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 const POINT = { lat: { type: 'number', minimum: -90, maximum: 90 }, lng: { type: 'number', minimum: -180, maximum: 180 } };
 
@@ -74,42 +90,53 @@ export function activate(annai) {
   const tools = [
     {
       name: 'nearby', group: 'Places',
-      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note. kinds: ${KIND_NAMES.join(', ')} (default sights and food).`,
+      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note. kinds: ${KIND_NAMES.join(', ')} (default sights and food). Reads the trip's offline pack first, so it works without a connection along the planned route.`,
       input: { type: 'object', properties: { ...POINT, radius: { type: 'number', minimum: 50, maximum: 20000, description: 'Meters, default 1000.' }, kinds: { type: 'array', items: { enum: KIND_NAMES } } }, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number, radius?: number, kinds?: string[] }} i @param {any} call */
       async run(i, call) {
         const radius = Math.round(Math.min(20000, Math.max(50, i.radius ?? 1000)));
+        const kinds = i.kinds?.length ? i.kinds : ['sights', 'food'];
+        const answer = (/** @type {any[][]} */ rows) => tsv(['name', 'kind', 'distance_m', 'lat', 'lng', 'source', 'note'], rows.sort((a, b) => a[2] - b[2]).slice(0, 40));
+        // The offline pack first (spec §8): where it holds the whole circle, nothing is asked.
+        const pack = await loadPack(annai.files, call.trip).catch(() => null);
+        if (pack?.covers(i, radius)) return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack (downloaded ${pack.day}).`;
         const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
-        const filters = overpassFilters(i.kinds?.length ? i.kinds : ['sights', 'food']);
         // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
-        const query = `[out:json][timeout:20];(${filters.map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
-        /** @type {any[]} */
-        const rows = [];
-        let osm = false;
+        const query = `[out:json][timeout:20];(${overpassFilters(kinds).map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
+        /** @type {any[][] | null} */
+        let osm = null;
         for (const server of OVERPASS) {
           try {
             const data = await json(server, call, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` });
+            /** @type {any[][]} */
+            const rows = [];
             for (const e of Array.isArray(data?.elements) ? data.elements : []) {
               const r = osmRow(e);
               if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', r[5]]);
             }
-            osm = true;
+            osm = rows;
             break;
           } catch (e) {
             if (call.signal.aborted) throw e;
           }
         }
+        /** @type {any[][] | null} */
+        let wiki = null;
         try {
           const w = await json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${round(i.lat)}%7C${round(i.lng)}&gsradius=${Math.min(radius, 10000)}&gslimit=30&format=json&origin=*`, call);
-          for (const g of w.query?.geosearch ?? []) {
-            rows.push([g.title, 'wikipedia article', Math.round(g.dist), round(g.lat), round(g.lon), 'wikipedia', `https://en.wikipedia.org/wiki/${encodeURIComponent(g.title.replace(/ /g, '_'))}`]);
-          }
+          wiki = (Array.isArray(w?.query?.geosearch) ? w.query.geosearch : []).filter((/** @type {any} */ g) => typeof g?.title === 'string')
+            .map((/** @type {any} */ g) => [g.title, 'wikipedia article', Math.round(g.dist), round(g.lat), round(g.lon), 'wikipedia', `https://en.wikipedia.org/wiki/${encodeURIComponent(g.title.replace(/ /g, '_'))}`]);
         } catch (e) {
           if (call.signal.aborted) throw e;
-          if (!osm) throw new Error("Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.");
         }
-        rows.sort((a, b) => a[2] - b[2]);
-        const out = tsv(['name', 'kind', 'distance_m', 'lat', 'lng', 'source', 'note'], rows.slice(0, 40));
+        // What didn't answer comes from the pack, where the pack reaches (spec §17 rule 2).
+        const missing = [osm === null ? 'OpenStreetMap' : '', wiki === null ? 'Wikipedia' : ''].filter(Boolean);
+        if (missing.length && pack?.touches(i)) {
+          const what = missing.length === 2 ? 'these come' : osm === null ? 'its places come' : 'its articles come';
+          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${missing.join(' and ')} didn't answer, so ${what} from the offline pack (downloaded ${pack.day}).`;
+        }
+        if (osm === null && wiki === null) throw new Error('Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.');
+        const out = answer([...(osm ?? []), ...(wiki ?? [])]);
         return osm ? out : `${out}\nOpenStreetMap didn't answer; these are Wikipedia articles only.`;
       },
     },
@@ -175,30 +202,22 @@ export function activate(annai) {
     },
     {
       name: 'guide', group: 'Places',
-      description: "A Wikivoyage travel guide for a place: its introduction and sections (Understand, See, Do, Eat, Sleep…); ask for one section to read it.",
+      description: "A Wikivoyage travel guide for a place: its introduction and sections (Understand, See, Do, Eat, Sleep…); ask for one section to read it. Reads the trip's offline pack first.",
       input: { type: 'object', properties: { place: { type: 'string', minLength: 1 }, section: { type: 'string' } }, required: ['place'] },
       /** @param {{ place: string, section?: string }} i @param {any} call */
       async run(i, call) {
+        const pack = await loadPack(annai.files, call.trip).catch(() => null);
+        const saved = pack ? await pack.guide(i.place).catch(() => null) : null;
+        if (pack && saved) return guideText(saved.title, saved.text, i.section, `Wikivoyage, offline pack of ${pack.day}`);
         const base = 'https://en.wikivoyage.org/w/api.php';
         const r = await json(`${base}?action=query&prop=extracts&explaintext=1&exsectionformat=wiki&redirects=1&titles=${encodeURIComponent(i.place)}&format=json&origin=*`, call);
         const page = /** @type {any} */ (Object.values(r?.query?.pages ?? {})[0]);
-        if (!page || page.missing !== undefined || !page.extract) {
+        if (!page || page.missing !== undefined || typeof page.extract !== 'string' || !page.extract) {
           const s = await json(`${base}?action=opensearch&search=${encodeURIComponent(i.place)}&limit=5&namespace=0&format=json&origin=*`, call).catch(() => null);
-          const close = Array.isArray(s?.[1]) ? s[1] : [];
+          const close = Array.isArray(s?.[1]) ? s[1].filter((/** @type {unknown} */ x) => typeof x === 'string') : [];
           return `Wikivoyage has no article called "${i.place}".${close.length ? ` Close ones: ${close.join(', ')}.` : ''}`;
         }
-        const text = String(page.extract);
-        const heads = [...text.matchAll(/^(={2,4}) (.+?) \1$/gm)];
-        if (!i.section) {
-          const intro = (heads.length ? text.slice(0, heads[0].index) : text).trim();
-          return `${page.title} (Wikivoyage)\n\n${intro}${heads.length ? `\n\nSections: ${heads.map((m) => m[2]).join(', ')}. Ask for one with section.` : ''}`;
-        }
-        const k = heads.findIndex((m) => m[2].toLowerCase() === String(i.section).toLowerCase());
-        if (k < 0) return `${page.title} has no section "${i.section}". Its sections: ${heads.map((m) => m[2]).join(', ')}.`;
-        const level = heads[k][1].length;
-        const end = heads.slice(k + 1).find((m) => m[1].length <= level);
-        const body = text.slice(/** @type {number} */ (heads[k].index) + heads[k][0].length, end?.index ?? text.length).trim();
-        return `${page.title}: ${heads[k][2]} (Wikivoyage)\n\n${body}`;
+        return guideText(String(page.title ?? i.place), page.extract, i.section, 'Wikivoyage');
       },
     },
   ];
