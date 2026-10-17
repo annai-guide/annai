@@ -10,7 +10,8 @@ import { typeForPath } from '../../core/paths.js';
 import { bringIn } from '../bring-in.js';
 import { explainStorageFull } from '../storage-full.js';
 
-/** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob }} Source */
+/** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob, from?: import('../import-state.js').From | null }} Source
+ *   from: the backup place it came from (spec §12.4) */
 
 /** @typedef {{ key: Request | null, file: File }} InboxFile  key: its entry in the share inbox, if it came that way */
 
@@ -29,6 +30,7 @@ export async function renderImport(ctx, route) {
   let source;
   try {
     source = await pickSource(route.params, came.filter(archive));
+    if (source && pending?.from) source = { ...source, from: pending.from };
   } catch (e) {
     body.append(h('p', { class: 'error', role: 'alert', text: String(/** @type {any} */ (e)?.message ?? e) }), openFileButton(ctx, 'Choose a file instead'));
     return screen;
@@ -78,7 +80,8 @@ async function step(ctx, body, source, passphrase) {
     body.replaceChildren(h('p', { class: 'error', role: 'alert', text: String(/** @type {any} */ (e)?.message ?? e) }), openFileButton(ctx, 'Choose another file'));
     return;
   }
-  body.replaceChildren(preview(ctx, body, opened, await describeArchive(ctx.store, opened)));
+  const { active, archived } = await listTrips(ctx.store);
+  body.replaceChildren(preview(ctx, body, opened, await describeArchive(ctx.store, opened), source.from ?? null, !active.length && !archived.length));
 }
 
 /** @param {any} ctx @param {HTMLElement} body @param {Source} source @param {string | null} problem */
@@ -91,8 +94,12 @@ function passphraseForm(ctx, body, source, problem) {
     h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, 'Unlock')));
 }
 
-/** @param {any} ctx @param {HTMLElement} body @param {any} opened @param {any} desc */
-function preview(ctx, body, opened, desc) {
+/**
+ * @param {any} ctx @param {HTMLElement} body @param {any} opened @param {any} desc
+ * @param {import('../import-state.js').From | null} from the backup place it came from
+ * @param {boolean} fresh this device has no trips yet: restoring onto it brings the profile and settings too
+ */
+function preview(ctx, body, opened, desc, from, fresh) {
   /** @type {Record<string, 'new'|'replace'>} */
   const trips = {};
   const rows = desc.trips.map((/** @type {any} */ t) => {
@@ -104,8 +111,8 @@ function preview(ctx, body, opened, desc) {
         ? radios(`You already have "${t.existingTitle}"`, [['new', 'Add as a new trip'], ['replace', 'Replace mine (yours moves to archived trips)']], 'new', (v) => { trips[t.scope] = /** @type {any} */ (v); })
         : null);
   });
-  const me = desc.hasMe ? checkbox('Replace my profile and memory with the ones in this file', false) : null;
-  const settings = desc.hasSettings ? checkbox('Replace my settings', false) : null;
+  const me = desc.hasMe ? checkbox('Replace my profile and memory with the ones in this file', Boolean(from) && fresh) : null;
+  const settings = desc.hasSettings ? checkbox('Replace my settings', Boolean(from) && fresh) : null;
   const plugins = desc.hasPlugins ? checkbox('Replace my plugins', false) : null;
   const keys = desc.hasSecrets ? checkbox('Restore API keys (keys already on this device are kept)', false) : null;
   const status = h('p', { class: 'sub', role: 'status' });
@@ -119,6 +126,8 @@ function preview(ctx, body, opened, desc) {
           trips, me: me?.input.checked ? 'replace' : 'keep', settings: settings?.input.checked ? 'replace' : 'keep',
           plugins: plugins?.input.checked ? 'replace' : 'keep', secrets: keys?.input.checked ?? false,
         });
+        // This device has taken in that backup: its next backup there builds on it (spec §12.4).
+        if (from) await ctx.backups?.accept(from.target, from.remote).catch(() => {});
         const titles = desc.trips.map((/** @type {any} */ t) => t.title);
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: 'Imported.' }),
@@ -126,7 +135,8 @@ function preview(ctx, body, opened, desc) {
           result.archived.length ? h('p', { class: 'sub', text: `${result.archived.length} older ${result.archived.length === 1 ? 'copy' : 'copies'} moved to archived trips.` }) : null,
           result.settings || result.plugins ? h('p', { class: 'sub', text: 'Restart annai to use the imported settings and plugins.' }) : null,
           result.plugins ? h('p', { class: 'sub', text: 'Imported plugins arrive switched off. Turn on the ones you trust in Plugins.' }) : null,
-          result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null));
+          result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null,
+          from ? h('p', { class: 'sub', text: "annai's next backup to that place builds on this one." }) : null));
       } catch (e) {
         explainStorageFull(ctx, e);
         status.textContent = String(/** @type {any} */ (e)?.message ?? e);

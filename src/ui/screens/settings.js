@@ -17,6 +17,8 @@ export async function renderSettings(ctx) {
   const st = await storageStatus();
   const app = await readAppSettings(ctx.ws);
   const exportSlot = h('div', {});
+  const places = ctx.backups ? await ctx.backups.list() : [];
+  const automatic = places.filter((/** @type {any} */ p) => p.auto !== 'off').map((/** @type {any} */ p) => p.name);
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Settings' }),
     section('Storage',
@@ -32,10 +34,11 @@ export async function renderSettings(ctx) {
       }, 'Protect my data'))),
     section('Backup',
       h('p', { class: 'sub', text: app.lastExportAt ? `Last export ${relTime(app.lastExportAt)}.` : 'No export yet. Export regularly: annai keeps everything on this device.' }),
+      h('p', { class: 'sub', text: automatic.length ? `Backing up automatically to ${automatic.join(', ')}.` : 'No automatic backups yet. Add a place to back up to, such as a private GitHub repository.' }),
       h('div', { class: 'acts' }, h('button', {
         class: 'btn', type: 'button',
         onclick: () => exportSlot.replaceChildren(exportPanel(ctx, { kind: 'everything', title: 'everything' })),
-      }, 'Export everything')),
+      }, 'Export everything'), h('a', { class: 'btn', href: '#/backups' }, 'Automatic backups')),
       exportSlot),
     section('Photos', ...(await photoControls(ctx, app))),
     section('Open an annai file', openFileButton(ctx, 'Open an annai file')),

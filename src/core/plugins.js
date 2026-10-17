@@ -6,7 +6,9 @@ import { tracedFetch } from './agent/net.js';
 import { record } from './agent/log.js';
 import { readAppSettings } from './settings.js';
 import { logEvent } from './events.js';
-import { readZip } from './zip.js';
+import { readZip, ZipReader, ZipWriter } from './zip.js';
+import { xmlElements, xmlText } from './xml.js';
+import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
 import { PluginError } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
@@ -31,7 +33,21 @@ const STATE = '/installed.json';
 /** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
-const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch });
+const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
+  backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer });
+
+/**
+ * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the
+ * browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer (§17).
+ * @param {unknown} e
+ */
+export function isPluginBug(e) {
+  if (!(e instanceof Error)) return true;
+  const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
+  // An address the user typed that isn't one is the user's to fix, not a bug.
+  const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
+  return !offline && !address && BUGS.some((B) => e instanceof B);
+}
 
 export const PLUGIN_MANIFEST_SCHEMA = {
   type: 'object',
@@ -187,6 +203,19 @@ export class PluginHost {
     ], { author: 'system' });
     if (this.#loaded.has(id)) this.#stale.add(id);
     return manifest;
+  }
+
+  /**
+   * Whether a plugin's stored files are exactly the ones annai's catalog lists for it (spec §5.3:
+   * official plugins are checked against the catalog's SHA-256s). A copy that came any other way,
+   * such as a restored backup's, isn't official until it matches.
+   * @param {string} id @param {{ files: Record<string, string> }} entry
+   */
+  async verifyOfficial(id, entry) {
+    const stored = await this.ws.list(SYS_PLUGINS, `/${id}/`);
+    const want = Object.entries(entry.files ?? {});
+    if (stored.length !== want.length) return false;
+    return want.every(([name, hash]) => stored.some((f) => f.path === `/${id}/${name}` && f.hash === hash));
   }
 
   /** Whether annai must restart before this plugin's current code can run. @param {string} id */
@@ -398,8 +427,7 @@ export class PluginHost {
                 // A tool's own error is its answer: Shiori sees it and adapts (spec §6.7). Only a crash counts
                 // against the plugin, which is switched off when it keeps crashing (§5.5).
                 // A fetch the browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer too (§17).
-                const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
-                if (e instanceof Error && (offline || !BUGS.some((B) => e instanceof B))) throw e;
+                if (!isPluginBug(e)) throw e;
                 registry.fail(id, `tool ${tool.name}`, e);
                 throw new PluginError(id, `the tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, e);
               }
@@ -445,6 +473,14 @@ export class PluginHost {
             throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech()`);
           }
           return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
+        },
+      }),
+      storage: Object.freeze({
+        /** A kind of place to back up to (spec §12.4); storage-types.js says what it must have. */
+        register: (/** @type {any} */ type) => {
+          const wrong = checkStorageType(type);
+          if (wrong) throw new PluginError(id, wrong);
+          return registry.add(id, 'storage-type', Object.freeze({ ...type, name: String(type.name).trim(), fields: type.fields ?? [], secret: type.secret ?? [], pluginId: id }));
         },
       }),
       helpers: HELPERS,

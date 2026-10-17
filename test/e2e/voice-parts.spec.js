@@ -111,6 +111,8 @@ test('Settings → Voice says where your voice goes: each speech-in entry, phone
   await expect(where.getByText('Phone dictation', { exact: true })).toBeVisible();
   await expect(where.getByText(/^Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's/)).toBeVisible();
   await expect(where.getByText('Send audio to the model', { exact: true })).toBeVisible();
+  // Keyboard dictation can't be started by a page, but it types into the message box like any keyboard.
+  await expect(where.getByText("To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.")).toBeVisible();
   await expect(where.getByText('Browser voice', { exact: true })).toBeVisible();
   await where.getByRole('link', { name: 'Settings → Models' }).click();
   await expect(page.getByRole('heading', { name: 'Speech in: how Shiori hears you' })).toBeVisible();

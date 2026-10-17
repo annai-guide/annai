@@ -1,6 +1,5 @@
 import { sha256Hex } from '../hash.js';
 import { PluginError } from '../registry.js';
-import { endpointTypes } from './contract.js';
 
 /**
  * annai's official on-demand plugins (spec §5.3, §9.1): listed in /catalog/plugins.json with the
@@ -66,9 +65,15 @@ export async function installOfficial(host, entry, opts = {}) {
  */
 export async function officialUpdates(host, opts = {}) {
   const state = await host.installed();
-  return (await officialPlugins(opts))
-    .filter((p) => state[p.id]?.source === 'official' && state[p.id].version !== p.version)
-    .map((p) => ({ id: p.id, name: p.name, installed: state[p.id].version, available: p.version, entry: p }));
+  /** @type {{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin }[]} */
+  const out = [];
+  for (const p of await officialPlugins(opts)) {
+    const s = state[p.id];
+    if (s?.source !== 'official') continue;
+    // Official means matching the catalog: a changed copy is offered the catalog's files, whatever its version.
+    if (s.version !== p.version || !(await host.verifyOfficial(p.id, p))) out.push({ id: p.id, name: p.name, installed: s.version, available: p.version, entry: p });
+  }
+  return out;
 }
 
 /**
@@ -88,36 +93,61 @@ export async function updateOfficial(host, entry, opts = {}) {
   return 'started';
 }
 
-/**
- * Makes an endpoint type available. Nothing to do when a running plugin provides it. Otherwise it
- * starts the installed official plugin that provides it, or installs the catalog's version.
- * @param {PluginHost} host @param {string} type @param {FetchOptions} [opts]
- */
+/** What each kind of thing a plugin provides is called, for messages. @type {Record<string, string>} */
+const KINDS = { 'endpoint-type': 'an endpoint type', 'storage-type': 'a kind of backup place' };
+
+/** The type ids of a kind that running plugins provide. @param {import('../registry.js').Registry} registry @param {string} kind */
+const provided = (registry, kind) => new Set(registry.list(kind).map((/** @type {any} */ t) => t.type));
+
+/** Makes an endpoint type available (see ensureProvided). @param {PluginHost} host @param {string} type @param {FetchOptions} [opts] */
 export function ensureType(host, type, opts = {}) {
-  if (endpointTypes(host.registry).has(type)) return Promise.resolve();
+  return ensureProvided(host, 'endpoint-type', type, opts);
+}
+
+/**
+ * Makes a type of a kind ("endpoint-type", "storage-type") available. Nothing to do when a running
+ * plugin provides it. Otherwise it starts the installed official plugin that provides it, or
+ * installs the catalog's version (spec §5.3).
+ * @param {PluginHost} host @param {string} kind @param {string} type @param {FetchOptions} [opts]
+ */
+export function ensureProvided(host, kind, type, opts = {}) {
+  if (provided(host.registry, kind).has(type)) return Promise.resolve();
   // Two callers at once share one install: a second install would stop the plugin the first one started.
   const running = inFlight.get(host) ?? new Map();
   inFlight.set(host, running);
-  const had = running.get(type);
+  const key = `${kind} ${type}`;
+  const had = running.get(key);
   if (had) return had;
-  const work = ensureNow(host, type, opts).finally(() => running.delete(type));
-  running.set(type, work);
+  const work = ensureNow(host, kind, type, opts).finally(() => running.delete(key));
+  running.set(key, work);
   return work;
 }
 
-/** Installs or starts what provides a type, once per host and type at a time. @type {WeakMap<PluginHost, Map<string, Promise<void>>>} */
+/** Installs or starts what provides a type, once per host, kind and type at a time. @type {WeakMap<PluginHost, Map<string, Promise<void>>>} */
 const inFlight = new WeakMap();
 
-/** @param {PluginHost} host @param {string} type @param {FetchOptions} opts */
-async function ensureNow(host, type, opts) {
-  const entry = (await officialPlugins(opts)).find((p) => p.provides?.['endpoint-type']?.includes(type));
-  if (!entry) throw new PluginError(type, "isn't an endpoint type annai knows. Install a plugin that provides it.");
+/** @param {PluginHost} host @param {string} kind @param {string} type @param {FetchOptions} opts */
+async function ensureNow(host, kind, type, opts) {
+  const what = KINDS[kind] ?? kind;
+  const entry = (await officialPlugins(opts)).find((p) => p.provides?.[kind]?.includes(type));
+  if (!entry) throw new PluginError(type, `isn't ${what} annai knows. Install a plugin that provides it.`);
   const state = (await host.installed())[entry.id];
-  if (state && state.version === entry.version) {
-    if (!state.enabled) await host.setEnabled(entry.id, true);
+  // Only files that match the catalog run as an official plugin; anything else, such as a copy a
+  // restored backup brought, is fetched again from annai and checked (spec §5.3).
+  if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
+    // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on.
+    if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
   } else {
     await installOfficial(host, entry, opts);
   }
-  if (!endpointTypes(host.registry).has(type)) throw new PluginError(entry.id, `didn't provide the endpoint type ${type}`);
+  if (!provided(host.registry, kind).has(type)) throw new PluginError(entry.id, `didn't provide ${what} ${type}`);
+}
+
+/**
+ * The types of a kind annai's catalog offers, each with the name of the plugin that brings it.
+ * @param {string} kind @param {FetchOptions} [opts] @returns {Promise<{ type: string, name: string }[]>}
+ */
+export async function offeredTypes(kind, opts = {}) {
+  return (await officialPlugins(opts)).flatMap((p) => (p.provides?.[kind] ?? []).map((type) => ({ type, name: p.name })));
 }

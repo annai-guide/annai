@@ -4,10 +4,11 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf } from './events.js';
+import { BACKUP_SECRET_PREFIX } from './backup-targets.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -152,7 +153,8 @@ export async function exportArchive(store, opts) {
   const all = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
   const scopes = opts.kind === 'trip'
     ? all.filter((s) => s.kind === 'trip' && (opts.scopes ?? []).includes(s.id))
-    : all.filter((s) => s.id !== SYS || opts.include.history);
+    // This device's own scope never travels (spec §12.4); the system log goes only with history.
+    : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || opts.include.history));
   if (!scopes.length) throw new ArchiveError('There is nothing to export.');
 
   /** @type {Manifest} */
@@ -233,7 +235,8 @@ export async function exportArchive(store, opts) {
   if (opts.secrets) {
     const secrets = await store.tx(['secrets'], 'readonly', async (t) => {
       const out = [];
-      for (const id of await t.listSecretIds()) out.push({ id, value: await t.getSecret(id) });
+      // A backup place's sign-in stays on this device (spec §12.4): its screen promises so.
+      for (const id of await t.listSecretIds()) if (!id.startsWith(BACKUP_SECRET_PREFIX)) out.push({ id, value: await t.getSecret(id) });
       return out;
     });
     const name = 'system/secrets.json';
@@ -481,7 +484,7 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
     } else if (rec.id === SYS_PLUGINS && choices.plugins === 'replace') {
       target = SYS_PLUGINS; mode = 'system';
     } else {
-      continue; // kept, or the system log, which belongs to the device it came from
+      continue; // kept, or the system log or this device's own scope, which belong to the device they came from
     }
     const files = manifest.files.filter((f) => f.scope === rec.id);
     const events = (s.events && logs.get(s.events)) || [];
@@ -501,7 +504,9 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
     }
   }
   /** @type {{ id: string, value: any }[]} */
-  const secrets = choices.secrets && manifest.secrets ? JSON.parse(text(await readEntry(zip, manifest.secrets))) : [];
+  const secrets = (choices.secrets && manifest.secrets ? JSON.parse(text(await readEntry(zip, manifest.secrets))) : [])
+    // Never a backup place's sign-in, even from an archive made before annai left them out.
+    .filter((/** @type {any} */ s) => typeof s?.id === 'string' && !s.id.startsWith(BACKUP_SECRET_PREFIX));
 
   const result = {
     trips: /** @type {string[]} */ ([]), archived: /** @type {string[]} */ ([]), me: false, settings: false, plugins: false, secrets: 0,

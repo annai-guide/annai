@@ -18,7 +18,8 @@ memories afterwards.
 > confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
 > search and directions links. And voice: Shiori speaks (OpenAI-compatible voices, or the phone's own) and listens
 > (recording with an end-of-sentence detector, a transcription model or the model itself, or phone dictation), with interruptions,
-> a quick check that talk is meant for her, and Auto, On and Off. Milestone 5 (live mode) is in progress: watches Shiori sets, the
+> a quick check that talk is meant for her, and Auto, On and Off. And backups to GitHub, S3-compatible storage and WebDAV
+> (milestone 9). Milestone 5 (live mode) is in progress: watches Shiori sets, the
 > plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode, the Live chip (the screen kept on as
 > you choose, and where you are without GPS), and the Now and Driving screens. The offline pack is next. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
@@ -34,7 +35,14 @@ memories afterwards.
 
 - Tap Shiori and talk. With voice on she answers aloud, sentence by sentence as she writes, then listens for your answer; tap her while she speaks to cut her off.
 - Voices and transcription are lists you order in Settings → Models: OpenAI-compatible voices and transcription (OpenAI, Groq, local servers), "Send audio to the model" for models that take audio, phone dictation, and the browser's own voice.
-- The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it.
+- The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it. To keep your voice on the phone, type with your keyboard's microphone key instead: iPhone and most Android keyboards can dictate on the phone itself.
+
+## Backups
+
+- Back up everything automatically to a private GitHub repository, an S3-compatible bucket (AWS, Cloudflare R2, Backblaze B2 …) or a WebDAV folder: after changes or once a day, on Wi-Fi, while annai is open. On GitHub each backup is one commit of your files, and only what changed is uploaded; a bucket or a folder keeps each backup as one file, encrypted if you like.
+- Restore any backup onto a new or wiped phone from Settings → Automatic backups.
+- A newer backup from your other phone is never overwritten: annai pauses, and offers to import it as a copy.
+- The sign-ins for those places (the GitHub token, the bucket's keys, the WebDAV password) stay on the device and are never in a backup. API keys go into a backup only when you choose, and only into an encrypted one.
 
 ## Principles
 
@@ -87,6 +95,6 @@ ImageMagick 7 with HEIC and WebP support. They're committed; rebuild them only t
 changes. CI fails when the stamp is stale; the Cloudflare Pages build command should be
 `node scripts/stamp.mjs`, so the deployed `sw.js` is always current.
 
-`docs/testing/device-checklist-m1.md`, `-m1b.md`, `-m1c.md` and `-m3.md` list what to verify by hand on real phones.
+`docs/testing/device-checklist-*.md`, one for each milestone, list what to verify by hand on real phones.
 
 **Plugins.** [docs/plugins.md](docs/plugins.md) is the guide to writing one.

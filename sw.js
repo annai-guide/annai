@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '989bffa658fc';
+const BUILD = '8cb17c3001a0';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -45,6 +45,9 @@ const SHELL = [
   '/src/core/agent/via.js',
   '/src/core/agent/warmth.js',
   '/src/core/archive.js',
+  '/src/core/backup.js',
+  '/src/core/backup-auto.js',
+  '/src/core/backup-targets.js',
   '/src/core/bookings.js',
   '/src/core/bytes.js',
   '/src/core/crc32.js',
@@ -97,9 +100,11 @@ const SHELL = [
   '/src/core/scopes.js',
   '/src/core/settings.js',
   '/src/core/store-idb.js',
+  '/src/core/storage-types.js',
   '/src/core/store-memory.js',
   '/src/core/sun.js',
   '/src/core/time.js',
+  '/src/core/xml.js',
   '/src/core/tsv.js',
   '/src/core/voice/detector.js',
   '/src/core/voice/gate.js',
@@ -132,6 +137,7 @@ const SHELL = [
   '/src/ui/dock.js',
   '/src/ui/dom.js',
   '/src/ui/add-files.js',
+  '/src/ui/auto-backup.js',
   '/src/ui/ask.js',
   '/src/ui/avatar.js',
   '/src/ui/bring-in.js',
@@ -154,6 +160,7 @@ const SHELL = [
   '/src/ui/plugin-updates.js',
   '/src/ui/router.js',
   '/src/ui/save.js',
+  '/src/ui/screens/backups.js',
   '/src/ui/screens/booking.js',
   '/src/ui/screens/drive.js',
   '/src/ui/screens/endpoint.js',
