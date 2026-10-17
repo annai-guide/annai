@@ -154,7 +154,8 @@ export async function renderTalk(ctx) {
       if (node) {
         list.append(node);
         if (near) node.scrollIntoView({ block: 'end' });
-        if (built && e.actor === 'shiori') ctx.dock?.avatar.glance(0, 1.5);
+        // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
+        if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
       }
       if (built) showCost();
     },

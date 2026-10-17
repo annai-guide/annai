@@ -141,3 +141,20 @@ test("a plugin's page saves the settings its schema asks for; a secret is kept a
     await llm.stop();
   }
 });
+
+test('8b-2: with a plugin\'s dock, the Conversation shows what Shiori says, and nothing goes wrong', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'About two miles.' } }, { name: 'sleep', input: {} }]))] });
+  /** @type {string[]} */
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  try {
+    await modelSetUp(page, llm.origin);
+    await install(page, await zipOf(await fixtureFiles('trail-look')), 'Trail look');
+    await page.getByRole('navigation', { name: 'Shiori' }).getByRole('button', { name: 'Ask about the trail' }).click();
+    await expect(page.locator('.convo .shiori p')).toHaveText('About two miles.');
+    await expect(page.getByText('Something went wrong')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  } finally {
+    await llm.stop();
+  }
+});
