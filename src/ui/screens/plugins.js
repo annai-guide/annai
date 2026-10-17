@@ -48,7 +48,7 @@ export async function renderPlugins(ctx, route) {
       h('h2', { class: 'section', text: 'Add a plugin or skill' }),
       h('div', { class: 'acts' }, h('label', { class: 'btn pri', for: 'plugin-file' }, 'Install from a file'), input),
       h('label', { class: 'field' }, h('span', { class: 'field-label', text: 'Address of a plugin or skill' }), address),
-      h('p', { class: 'sub', text: 'A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub pages work).' }),
+      h('p', { class: 'sub', text: 'A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).' }),
       error,
       h('div', { class: 'acts' }, get)),
     h('section', { class: 'panel', 'aria-label': "From annai's catalog" },
