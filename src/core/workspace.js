@@ -196,11 +196,25 @@ export class Workspace {
 
   /** @param {string} scope @param {string} path */
   async history(scope, path) {
-    const p = normPath(path);
+    return (await this.histories(scope)).get(normPath(path)) ?? [];
+  }
+
+  /**
+   * Every file's history in a scope, by path, oldest first: one read of the log, by type.
+   * @param {string} scope
+   * @returns {Promise<Map<string, { seq: number, ts: number, actor: string, type: string, old: string | null, new: string | null }[]>>}
+   */
+  async histories(scope) {
     const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['file.write', 'file.delete'] }));
-    return events
-      .filter((e) => e.data?.path === p)
-      .map((e) => ({ seq: e.seq, ts: e.ts, actor: e.actor, type: e.type, old: e.data.old ?? null, new: e.data.new ?? null }));
+    /** @type {Map<string, { seq: number, ts: number, actor: string, type: string, old: string | null, new: string | null }[]>} */
+    const by = new Map();
+    for (const e of events) {
+      const p = e.data?.path;
+      if (typeof p !== 'string') continue;
+      if (!by.has(p)) by.set(p, []);
+      by.get(p)?.push({ seq: e.seq, ts: e.ts, actor: e.actor, type: e.type, old: e.data.old ?? null, new: e.data.new ?? null });
+    }
+    return by;
   }
 
   /** @param {string} scope @param {string} path @param {any} content @param {WriteOptions} opts */

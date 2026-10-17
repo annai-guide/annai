@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingRef, planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE, beforeShiori } from '../../src/core/plan.js';
+import { bookingRef, planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos } from '../../src/core/plan.js';
+import { createMemoryStore } from '../../src/core/store-memory.js';
+import { Workspace } from '../../src/core/workspace.js';
+import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
+import { logEvent } from '../../src/core/events.js';
+import { noteQueries } from './store-spy.js';
 
 const LA = 'America/Los_Angeles';
 const NY = 'America/New_York';
@@ -124,4 +129,29 @@ test("a plan item Shiori changed last can go back to the version before all her 
   assert.deepEqual(beforeShiori([w('user', null, 'a'), w('shiori', 'a', null, 'file.delete'), w('shiori', null, 'b')]), { remove: true });
   assert.equal(beforeShiori([w('user', null, 'a'), w('shiori', 'a', null, 'file.delete')]), null);
   assert.equal(beforeShiori([]), null);
+});
+
+test("the Plan's Undos come from one read of the log, however many items Shiori changed (B7)", async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  /** @type {{ path: string, author: string }[]} */
+  const files = [];
+  for (let i = 0; i < 20; i++) {
+    const path = `/plan/stop-${i}.json`;
+    await ws.write(trip, path, { id: `stop-${i}`, title: `Stop ${i}` }, { author: 'user' });
+    await ws.write(trip, path, { id: `stop-${i}`, title: `Stop ${i}`, notes: 'moved' }, { author: 'shiori' });
+    files.push({ path, author: 'shiori' });
+  }
+  await ws.write(trip, '/plan/new.json', { id: 'new', title: 'Added' }, { author: 'shiori' });
+  files.push({ path: '/plan/new.json', author: 'shiori' }, { path: '/plan/mine.json', author: 'user' });
+  for (let i = 0; i < 500; i++) await logEvent(store, trip, { type: 'location', actor: 'system', data: { lat: 36, lng: -121 } });
+  const queries = noteQueries(store);
+  const undo = await shioriUndos(ws, trip, files);
+  assert.equal(queries.length, 1);
+  assert.equal(undo.size, 21);
+  assert.ok(undo.get('/plan/stop-3.json') && 'restore' in /** @type {any} */ (undo.get('/plan/stop-3.json')));
+  assert.deepEqual(undo.get('/plan/new.json'), { remove: true });
+  assert.equal(undo.has('/plan/mine.json'), false);
 });
