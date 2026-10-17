@@ -690,9 +690,22 @@ export async function pushKit(o) {
   const kit = {
     ...k, service, env, net, source, mirror, notices,
     key: async () => (await readVapidKey(env.VAPID_KEY)).publicKey,
-    /** Lets the clock and the mirror catch up: a second on, and its syncs done. */
+    /**
+     * Lets the clock and the mirror catch up, 5 s at a time, each step's syncs done: a retry the mirror
+     * sets during a sync is a timer the manual clock must still meet.
+     */
     async flush(ms = 1000) {
-      await k.to(k.clock.now() + ms);
+      const end = k.clock.now() + ms;
+      for (;;) {
+        const step = Math.min(end, k.clock.now() + 5000);
+        await k.to(step);
+        await mirror.settled();
+        await k.settle();
+        await mirror.settled();
+        if (step >= end) break;
+      }
+      // News that came while settling set a half-second timer: one more short step meets it.
+      await k.to(k.clock.now() + 600);
       await mirror.settled();
       await k.settle();
       await mirror.settled();
@@ -1235,7 +1248,7 @@ export function relayClient({ base, fetch }) {
 ```js
 import { SYS_DEVICE, ensureDeviceScope, ME } from '../scopes.js';
 import { logEvent } from '../events.js';
-import { utf8, toBase64Url, hex } from '../bytes.js';
+import { utf8, toBase64Url, hex, ownBuffer } from '../bytes.js';
 import { encryptPush } from './webpush.js';
 import { relayClient, relayAddress, RelayError, DEFAULT_RELAY, ADDRESS } from './relay-client.js';
 import { tracedFetch, withoutSecrets } from '../agent/net.js';
@@ -1325,7 +1338,7 @@ export function plan(items, wanted, now) {
 
 /** The relay's name for a subscription's object: the SHA-256 of its endpoint (6a choice 1). @param {string} endpoint */
 export async function subscriptionName(endpoint) {
-  return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', utf8(endpoint))));
+  return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', ownBuffer(utf8(endpoint)))));
 }
 
 /** @param {number} n */
@@ -1333,7 +1346,7 @@ const random = (n) => toBase64Url(crypto.getRandomValues(new Uint8Array(n)));
 
 /** @param {string} text */
 async function digest(text) {
-  return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', utf8(text)))).slice(0, 16);
+  return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', ownBuffer(utf8(text))))).slice(0, 16);
 }
 
 /** @param {any} v @returns {State} */
@@ -1547,9 +1560,9 @@ export class PushMirror {
     this.#dirty = false;
     if (this.#retryTimer !== null) this.clock.clear(this.#retryTimer);
     this.#retryTimer = null;
-    const started = this.clock.now();
     const st = await this.#read();
     const tokens = await this.#readTokens();
+    const before = st.problem; // a passing one from an earlier sync clears once this one goes well
     let sent = 0;
     let calledOff = 0;
     /** @type {RelayError | null} */
@@ -1570,7 +1583,7 @@ export class PushMirror {
       }
       calledOff = await this.#callOff(st, tokens);
       if (sub && send.length) sent = await this.#send(st, tokens, sub, send);
-      if (st.problem && !st.problem.needsYou && st.problem.at < started) st.problem = null;
+      if (st.problem && st.problem === before && !before.needsYou) st.problem = null;
       this.#retries = 0;
     } catch (e) {
       if (!(e instanceof RelayError)) throw e;
