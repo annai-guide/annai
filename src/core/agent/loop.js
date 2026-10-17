@@ -316,14 +316,14 @@ export class Agent {
     if (!elsewhere.length) return;
     this.#queue = this.#queue.filter((w) => w.scope === scope);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
-      await this.#logWakes(elsewhere.filter((w) => w.scope === s), newId('w'), false, (ev) => record(this.store, s, ev), s === ME ? null : s);
+      await this.#logWakes(elsewhere.filter((w) => w.scope === s), newId('w'), false, (ev) => record(this.store, s, { now: this.now(), ...ev }), s === ME ? null : s);
     }
   }
 
   /** Writes a wake into a conversation that isn't open. idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
   #keepFor(scope, w) {
     this.#checking++;
-    return this.#logWakes([{ ...w, scope }], newId('w'), false, (ev) => record(this.store, scope, ev), scope === ME ? null : scope)
+    return this.#logWakes([{ ...w, scope }], newId('w'), false, (ev) => record(this.store, scope, { now: this.now(), ...ev }), scope === ME ? null : scope)
       .catch(() => {})
       .finally(() => {
         this.#checking--;
@@ -450,6 +450,28 @@ export class Agent {
     await this.#hearing;
     if (!this.#busy && !this.#queue.length && !this.#checking) return;
     await new Promise((resolve) => { this.#idle.push(() => resolve(undefined)); });
+  }
+
+  /** Whether she is busy: a turn or housekeeping runs, wakes wait, or a wake's budgets are being checked. */
+  get busy() {
+    return this.#busy || this.#queue.length > 0 || this.#checking > 0;
+  }
+
+  /**
+   * A simulation's clock, zone and connection in place of the device's (spec §13, choice 11), until the
+   * returned function puts them back: the conversation's entries are stamped in its time, so a replay lines up.
+   * @param {{ now: () => number, online: () => boolean, timeZone: () => string }} c @returns {() => void}
+   */
+  useClock({ now, online, timeZone }) {
+    const was = { now: this.now, online: this.online, timeZone: this.timeZone };
+    this.now = now;
+    this.online = online;
+    this.timeZone = timeZone;
+    return () => {
+      this.now = was.now;
+      this.online = was.online;
+      this.timeZone = was.timeZone;
+    };
   }
 
   /** The queued wakes for the open conversation, the user's first. */
@@ -579,7 +601,7 @@ export class Agent {
     this.#setState('away', 'tidying up the conversation');
     const summary = mode === 'warm' ? await this.#warmSummary(marker, settings) : await this.#coldSummary(cut);
     if (!summary) return false;
-    await record(this.store, this.scope, { type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
+    await record(this.store, this.scope, { now: this.now(), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
     this.transcript = await Transcript.load(this.store, this.scope);
     this.#snapshot = null;
     this.#due = false;
@@ -605,7 +627,7 @@ export class Agent {
         const out = memory && tool
           ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
           : { content: 'Not during housekeeping: only memory moves work now.', isError: true };
-        await record(this.store, this.scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
+        await record(this.store, this.scope, { now: this.now(), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
         results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
       }
       messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
@@ -669,7 +691,7 @@ export class Agent {
       const aloud = Boolean(this.voice?.on);
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
-      else await record(this.store, scope, ev);
+      else await record(this.store, scope, { now: this.now(), ...ev });
       await this.#notice({ tone: 'info', title: 'Reminder', body: text });
       if (aloud) this.voice?.say(text).catch(() => {});
     }
@@ -677,7 +699,7 @@ export class Agent {
 
   /** Writes a conversation event, adds it to the transcript, and tells the screen. @param {Parameters<typeof record>[2]} ev */
   async #log(ev) {
-    const stored = await record(this.store, this.scope, ev);
+    const stored = await record(this.store, this.scope, { now: this.now(), ...ev });
     this.transcript.apply(stored, await resolveEvent(this.store, stored));
     this.#emit('event', stored);
     return stored;
@@ -1221,7 +1243,7 @@ export class Agent {
    * effect at her next turn. @param {import('../voice/mode.js').VoiceMode} m
    */
   #voiceChanged(m) {
-    record(this.store, this.scope, { type: 'state', actor: 'system', data: { voice: m.on ? 'on' : 'off', setting: m.setting, why: m.why } }).catch(() => {});
+    record(this.store, this.scope, { now: this.now(), type: 'state', actor: 'system', data: { voice: m.on ? 'on' : 'off', setting: m.setting, why: m.why } }).catch(() => {});
     if (m.on) return;
     this.#voiceNow = false;
     this.#closeEar();

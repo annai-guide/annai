@@ -14,6 +14,7 @@ import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 import { isPluginBug } from '../plugins.js';
 import { isArrival } from '../after/stamps.js';
+import { SIMULATION } from './simulate.js';
 
 /**
  * Live mode (spec §11): where the user is and what they are doing, the watches and the plan's own
@@ -118,6 +119,8 @@ export class Live {
   #held = [];
   /** @type {number | null} when the connection went */
   #offlineSince = null;
+  /** @type {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string } | null} while a simulation runs: the device's clock and zone, and the simulation's trip */
+  #sim = null;
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
@@ -173,6 +176,79 @@ export class Live {
     }
   }
 
+  /** A simulation has live mode now (spec §13). */
+  get simulating() {
+    return this.#sim !== null;
+  }
+
+  /**
+   * A simulation takes live mode over (spec §13: "feeds a … GPS track and clock through the same
+   * machinery", choice 10): its clock and zone, and only its own sensors (the phone's GPS stops; the
+   * phone's visibility and connection aren't heard), from nothing known; live mode is then on for it
+   * through setLive without saving the switch, and does nothing while another trip is open. The
+   * function returned gives live mode back as it was.
+   * @param {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string }} s trip: the simulation's own
+   * @returns {Promise<() => Promise<void>>}
+   */
+  async simulate({ clock, timeZone, trip }) {
+    await this.#run(async () => {
+      if (this.#sim) throw new Error('A simulation is already running.');
+      this.#gpsStop();
+      this.#quiet();
+      this.#sim = { clock: this.clock, timeZone: this.timeZone, trip };
+      this.clock = clock;
+      this.timeZone = timeZone;
+      this.#fresh(false);
+      await this.#check();
+    });
+    let given = false;
+    return async () => {
+      if (given) return;
+      given = true;
+      await this.#run(async () => {
+        const was = this.#sim;
+        if (!was) return;
+        this.#gpsStop();
+        this.#quiet();
+        this.#sim = null;
+        this.clock = was.clock;
+        this.timeZone = was.timeZone;
+        this.#fresh(Boolean((await readAppSettings(this.ws)).live?.on));
+        if (this.on && this.shown) this.#gpsStart();
+        await this.#check();
+      });
+    };
+  }
+
+  /** Stops the timer and any catch-up, on the clock they were set on. */
+  #quiet() {
+    this.#clearTimer();
+    if (this.#catch && this.#catch.timer !== null) this.clock.clear(this.#catch.timer);
+    this.#catch = null;
+  }
+
+  /** Nothing known of where the user is or has been, as a simulation starts or ends. @param {boolean} on */
+  #fresh(on) {
+    this.on = on;
+    this.fix = null;
+    this.activity = 'unknown';
+    this.odometer = 0;
+    this.stop = null;
+    this.gps = 'off';
+    this.gpsMessage = '';
+    this.shown = true;
+    this.online = true;
+    this.#tracker.reset();
+    this.#kept = null;
+    this.#odo = null;
+    this.#away = null;
+    this.#held = [];
+    this.#offlineSince = null;
+    this.#mem.clear();
+    this.#tell();
+    this.#tellActivity();
+  }
+
   /**
    * The live mode switch (spec §11.1). Turning it on wakes Shiori once, so the driving-companion
    * skill can set its watches (choice 10).
@@ -182,7 +258,7 @@ export class Live {
     const changed = await this.#run(async () => {
       if (on === this.on) return false;
       this.on = on;
-      await updateAppSettings(this.ws, { live: { on } });
+      if (!this.#sim) await updateAppSettings(this.ws, { live: { on } }); // a simulation's switch isn't the user's (choice 10)
       await logEvent(this.store, this.#scope(), { type: 'state', actor: 'user', data: { live: on ? 'on' : 'off' } }, this.clock.now());
       if (on) {
         if (this.shown) this.#gpsStart();
@@ -417,11 +493,15 @@ export class Live {
 
   /** Starts the visibility and connectivity sensors once each, and the location ones while live and on screen. */
   #sensors() {
-    for (const s of this.registry.list('sensor')) {
+    for (const { pluginId, item: s } of this.registry.entries('sensor')) {
       if (this.#sensorsOn.has(s) || (s?.kind !== 'visibility' && s?.kind !== 'connectivity') || typeof s.start !== 'function') continue;
       this.#sensorsOn.add(s);
       try {
-        const off = s.start((/** @type {any} */ v) => (s.kind === 'visibility' ? this.visible(Boolean(v)) : this.connected(Boolean(v))));
+        const off = s.start((/** @type {any} */ v) => {
+          if (!this.#heeds(pluginId)) return;
+          if (s.kind === 'visibility') this.visible(Boolean(v));
+          else this.connected(Boolean(v));
+        });
         if (typeof off === 'function') this.#offs.push(off);
       } catch (e) {
         console.warn('a sensor did not start', e);
@@ -430,12 +510,26 @@ export class Live {
     if (this.on && this.shown) this.#gpsStart();
   }
 
+  /** While a simulation runs, only its sensors are heard (choice 10). @param {string} pluginId */
+  #heeds(pluginId) {
+    return !this.#sim || pluginId === SIMULATION;
+  }
+
+  /** A simulation runs, and the open trip isn't its own: nothing of it may go there (choice 10). */
+  #elsewhere() {
+    return this.#sim !== null && this.agent.target !== this.#sim.trip;
+  }
+
   #gpsStart() {
-    for (const s of this.registry.list('sensor')) {
-      if (s?.kind !== 'location' || this.#gpsOn.has(s) || typeof s.start !== 'function') continue;
+    for (const { pluginId, item: s } of this.registry.entries('sensor')) {
+      if (s?.kind !== 'location' || this.#gpsOn.has(s) || typeof s.start !== 'function' || !this.#heeds(pluginId)) continue;
       if (this.gps !== 'ok') this.gps = 'waiting';
       try {
-        const off = s.start((/** @type {any} */ x) => (x && typeof x === 'object' && 'error' in x ? this.#bg(async () => this.#gpsFailed(x)) : this.fixed(x)));
+        const off = s.start((/** @type {any} */ x) => {
+          if (!this.#heeds(pluginId)) return;
+          if (x && typeof x === 'object' && 'error' in x) this.#bg(async () => this.#gpsFailed(x));
+          else this.fixed(x);
+        });
         this.#gpsOn.set(s, typeof off === 'function' ? off : () => {});
       } catch (e) {
         this.#gpsFailed({ error: 'unavailable', message: String(/** @type {any} */ (e)?.message ?? e) });
@@ -463,7 +557,7 @@ export class Live {
 
   /** @param {any} raw */
   async #onFix(raw) {
-    if (!this.on || !this.shown) return;
+    if (!this.on || !this.shown || this.#elsewhere()) return;
     const fix = fixOf(raw, this.clock.now());
     if (!fix) return;
     await this.#follow();
@@ -742,6 +836,7 @@ export class Live {
 
   /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: { from: string, to: string } | null, past?: boolean }} [o] */
   async #check(o = {}) {
+    if (this.#elsewhere()) return;
     await this.#follow();
     const m = this.#moment(o);
     const open = this.#scope();
