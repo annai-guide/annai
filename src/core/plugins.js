@@ -5,7 +5,7 @@ import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
 import { tracedFetch, traceUrl } from './agent/net.js';
 import { record } from './agent/log.js';
-import { readAppSettings } from './settings.js';
+import { readAppSettings, updateAppSettings } from './settings.js';
 import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
@@ -350,16 +350,37 @@ export class PluginHost {
     }
   }
 
-  /** @param {string} id */
+  /**
+   * Removes a package and everything it stored (choice 4; the user's rule: removing means removing):
+   * its files and their history, its settings file and its history, its secrets, its tools' switches,
+   * and what it kept in the system log. What it wrote into a trip is the trip's, and stays. The space
+   * comes back at once; the system log says how much.
+   * @param {string} id @returns {Promise<{ bytes: number }>}
+   */
   async uninstall(id) {
+    const tools = new Set(this.registry.entries('tool', { all: true }).filter((e) => e.pluginId === id).map((e) => String(e.item?.name)));
     await this.stop(id);
     const state = await this.installed();
+    const was = state[id];
+    for (const t of was?.tools ?? []) tools.add(t);
     delete state[id];
-    await this.ws.writeMany(SYS_PLUGINS, [
-      ...(await this.ws.list(SYS_PLUGINS, `/${id}/`)).map((f) => ({ path: f.path, content: null })),
-      { path: STATE, content: state },
-    ], { author: 'system' });
+    const inPackage = (/** @type {string} */ p) => p.startsWith(`/${id}/`);
+    const settings = `/plugin-settings/${id}.json`;
+    const isSettings = (/** @type {string} */ p) => p === settings;
+    // Its files first: should what follows fail, the record still shows it, and Remove can run again.
+    let bytes = (await forget(this.ws.store, SYS_PLUGINS, { files: inPackage, history: inPackage })).bytes;
+    await this.ws.write(SYS_PLUGINS, STATE, state, { author: 'system' });
+    bytes += (await forget(this.ws.store, SYS_SETTINGS, { files: isSettings, history: isSettings })).bytes;
+    bytes += (await forget(this.ws.store, SYS, { events: (e) => e.actor === `plugin:${id}` && Boolean(e.refs?.length) })).bytes;
+    await this.ws.store.tx(['secrets'], 'readwrite', async (t) => {
+      for (const s of await t.listSecretIds()) if (s.startsWith(`plugin:${id}:`)) await t.deleteSecret(s);
+    });
+    const switches = (await readAppSettings(this.ws)).tools ?? {};
+    const off = [...tools].filter((t) => Object.hasOwn(switches, t));
+    if (off.length) await updateAppSettings(this.ws, { tools: Object.fromEntries(off.map((t) => [t, null])) });
+    await logEvent(this.ws.store, SYS, { type: 'plugin.remove', actor: 'user', data: { plugin: id, name: was?.name ?? id, kind: kindOfState(was), bytes } }).catch(() => {});
     if (this.#loaded.has(id)) this.#stale.add(id);
+    return { bytes };
   }
 
   /** Rows for the plugins screen. problem: why an installed plugin can't start, if it can't. */
