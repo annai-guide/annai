@@ -12,6 +12,7 @@ import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
 import { validZone, deviceZone, isoInZone, timeIn } from '../time.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
+import { isPluginBug } from '../plugins.js';
 
 /**
  * Live mode (spec §11): where the user is and what they are doing, the watches and the plan's own
@@ -88,6 +89,8 @@ export class Live {
   #mem = new Map();
   /** @type {Map<string, { at: number, place: any }>} each watch's last firing, from the log */
   #fired = new Map();
+  /** @type {Set<string>} problems already noted in a log, so each is noted once */
+  #noted = new Set();
   /** @type {any} */
   #timer = null;
   /** @type {Promise<unknown>} */
@@ -701,16 +704,30 @@ export class Live {
     return mem;
   }
 
-  /** One check of one watch; a plugin's trigger that throws counts against its plugin (spec §5.5). @param {TriggerType} type @param {Watch} w @param {string} scope @param {Moment} m */
+  /**
+   * One check of one watch. A bug in a plugin's trigger counts against its plugin (spec §5.5); a
+   * plain error is the trigger saying it can't tell yet, noted once in the conversation's log.
+   * @param {TriggerType} type @param {Watch} w @param {string} scope @param {Moment} m
+   */
   #try(type, w, scope, m) {
     const mem = this.#memFor(type, w, scope, m);
     try {
       return type.check(w.when, m, mem) ?? null;
     } catch (e) {
-      if (type.pluginId) this.registry.fail(type.pluginId, `trigger ${type.type}`, e);
-      else console.warn(`the trigger ${type.type} failed`, e);
+      if (type.pluginId && isPluginBug(e)) this.registry.fail(type.pluginId, `trigger ${type.type}`, e);
+      else this.#noteOnce(scope, `The ${type.type} watch ${w.id} can't be checked: ${String(/** @type {any} */ (e)?.message ?? e).replace(/[.!?]$/, '')}.`);
       return null;
     }
+  }
+
+  /** Notes a problem in a conversation's log, once. @param {string} scope @param {string} message */
+  #noteOnce(scope, message) {
+    const key = `${scope}\n${message}`;
+    if (this.#noted.has(key)) return;
+    this.#noted.add(key);
+    this.#bg(async () => {
+      if (await this.#exists(scope)) await logEvent(this.store, scope, { type: 'error', actor: 'system', data: { kind: 'trigger', message } });
+    });
   }
 
   /** Whether a watch is looked at now: its conversation's, live mode for GPS, and time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */

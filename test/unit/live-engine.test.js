@@ -345,3 +345,29 @@ test("a plugin trigger whose validate throws: setting its watch says so plainly"
   await assert.rejects(k.live.setWatch(k.trip, { when: { type: 'tide' }, fallback: 'Low tide.' }),
     (/** @type {any} */ e) => e.constructor === Error && /^The tide trigger couldn't check this watch \(no tide table\)\. Try another kind of watch\.$/.test(e.message));
 });
+
+test("a plugin trigger's plain error is noted once in the trip's log and doesn't count against its plugin; only a bug does (spec §5.5)", async () => {
+  const k = await liveKit();
+  let plain = 0;
+  k.registry.add('tides', 'trigger', { type: 'tide', check() { plain++; throw new Error('tide table not downloaded yet'); } });
+  k.registry.add('comets', 'trigger', { type: 'comet', check() { throw new TypeError("Cannot read properties of undefined (reading 'orbit')"); } });
+  await k.live.setWatch(k.trip, { when: { type: 'tide' }, fallback: 'Low tide.' });
+  await k.live.setWatch(k.trip, { when: { type: 'comet' }, fallback: 'Look up.' });
+  for (let s = 0; s < 10; s++) await k.fix(at('08:31') + s * 1000, MONTEREY);
+  assert.ok(plain >= 10, String(plain));
+  assert.equal(k.registry.isDisabled('tides'), false);
+  assert.equal(k.registry.isDisabled('comets'), true);
+  const noted = (await k.events(['error'])).filter((e) => /tide/.test(String(e.data?.message)));
+  assert.equal(noted.length, 1);
+  assert.match(noted[0].data.message, /^The tide watch w-[0-9a-z]+ can't be checked: tide table not downloaded yet\.$/);
+});
+
+test("a plugin trigger whose describe throws: what fired still reaches Shiori", async () => {
+  const k = await liveKit({ live: false });
+  k.registry.add('tides', 'trigger', { type: 'tide', describe() { throw new TypeError('no words'); }, check: (/** @type {any} */ w, /** @type {any} */ m) => (m.now >= Date.parse(iso('09:00')) ? { text: 'low tide now' } : null) });
+  await k.live.setWatch(k.trip, { when: { type: 'tide' }, fallback: 'Low tide.' });
+  await k.to(at('09:00'));
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:30') }, fallback: 'Walk.' });
+  await k.to(at('09:30'));
+  assert.ok(k.agent.wakes.some((w) => /\(a tide watch\) fired: low tide now/.test(w.text)), k.agent.wakes.map((w) => w.text).join(' | '));
+});
