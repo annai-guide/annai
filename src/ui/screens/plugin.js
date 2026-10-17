@@ -3,6 +3,7 @@ import { settingsForm, formFields } from '../settings-form.js';
 import { sourceLine, FULL_ACCESS } from './plugin-install.js';
 import { pluginActions, stateOf, updateFor } from './plugins.js';
 import { slotEntries } from '../slots.js';
+import { explainStorageFull } from '../storage-full.js';
 
 /** An http(s) address or null. @param {unknown} url */
 function webAddress(url) {
@@ -28,18 +29,21 @@ export function resetNote(c, schema) {
   return parts.length ? `Cleared ${parts.join(' and ')}.` : 'Nothing was saved, so nothing changed.';
 }
 
+/** Reset, confirmed: what it cleared goes to the page's note, and a failure to a card, as Remove's does. @param {any} ctx @param {any} r */
+export async function resetSettings(ctx, r) {
+  try {
+    notes.set(r.id, resetNote(await ctx.plugins.reset(r.id), r.settings));
+  } catch (e) {
+    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name}'s settings weren't reset`, body: `${String(/** @type {any} */ (e)?.message ?? e)} Try again.` });
+  }
+  ctx.render();
+}
+
 /** Reset settings, with one confirmation as Remove has (the user's ask, 2026-10-18). @param {any} ctx @param {any} r */
 function resetPart(ctx, r) {
   return h('div', {},
     h('p', { class: 'sub', text: 'Reset forgets the settings and keys this plugin keeps, with their history. The plugin stays, and so do its tool switches and what it wrote into trips.' }),
-    h('div', { class: 'acts' }, twoStep('Reset settings', 'Tap again to reset', async () => {
-      try {
-        notes.set(r.id, resetNote(await ctx.plugins.reset(r.id), r.settings));
-      } catch (e) {
-        ctx.notices.card({ tone: 'warn', title: `${r.name}'s settings weren't reset`, body: `${String(/** @type {any} */ (e)?.message ?? e)} Try again.` });
-      }
-      ctx.render();
-    })));
+    h('div', { class: 'acts' }, twoStep('Reset settings', 'Tap again to reset', () => resetSettings(ctx, r))));
 }
 
 /**
