@@ -236,3 +236,8 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 /* Simulate a trip (spec §13) */
 .simulate progress { width: 100%; height: 12px; accent-color: var(--ai); }
 .sim-time { font-family: var(--f-mono); }
+
+/* What plugins add (spec §16.4): a Now section, a page's body. */
+.now-section { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
+.now-section[hidden] { display: none; }
+.ext-body { display: flex; flex-direction: column; gap: 12px; }

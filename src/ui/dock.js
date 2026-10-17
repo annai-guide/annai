@@ -3,6 +3,7 @@ import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
 import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
+import { component, mount, cleanUp, slotEntries, pluginUi } from './slots.js';
 
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
@@ -10,7 +11,7 @@ import { liveChip } from './live-chip.js';
  * @param {any} ctx
  */
 export function createDock(ctx) {
-  const avatar = createAvatar({ size: 'dock' });
+  const avatar = dockAvatar(ctx);
   const label = h('span', { class: 'talk-label', text: ctx.agent.state.label });
   const input = h('textarea', { id: 'dock-text', rows: 2, 'aria-label': 'Message to Shiori', enterkeyhint: 'send' });
   const sheet = h('form', {
@@ -91,13 +92,38 @@ export function createDock(ctx) {
     lastSaid = String(e.data.text ?? '');
     if (!caption.hidden) caption.textContent = lastSaid;
   });
+  // Plugins' status chips and dock actions (spec §16.4), drawn again whenever they change (refreshSlots).
+  const pluginChips = h('span', { class: 'plugin-chips' });
+  const pluginActions = h('span', { class: 'plugin-actions' });
   const el = h('nav', { class: 'dock', 'aria-label': 'Shiori' },
-    chip || live ? h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords) : null, caption,
+    h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords, pluginChips), caption,
     sheet,
     h('div', { class: 'dock-row' },
       h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: '◉' })), camera,
       talk,
-      h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: '⌨' }))));
+      h('span', { class: 'dock-end' },
+        h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: '⌨' })),
+        pluginActions)));
+  const refreshSlots = () => {
+    cleanUp('dock');
+    pluginChips.replaceChildren(...slotEntries(ctx, 'ui:status-chip').map((e) => {
+      const c = h('span', { class: 'chip plugin-chip' });
+      mount(ctx, e, c, (ui) => e.item.render(c, ui), { group: 'dock', what: `status chip ${e.item.id}` });
+      return c;
+    }));
+    pluginActions.replaceChildren(...slotEntries(ctx, 'ui:dock-action').map((e) => h('button', {
+      class: 'ib plugin-action', type: 'button', 'aria-label': String(e.item.label), title: String(e.item.label),
+      onclick: () => {
+        try {
+          const r = e.item.run(pluginUi(ctx, e.pluginId));
+          if (r && typeof r.catch === 'function') r.catch((/** @type {unknown} */ err) => ctx.registry?.fail(e.pluginId, `dock action ${e.item.id}`, err));
+        } catch (err) {
+          ctx.registry?.fail(e.pluginId, `dock action ${e.item.id}`, err);
+        }
+      },
+    }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: String(e.item.icon) }))));
+  };
+  refreshSlots();
   /** The Driving screen's big dock, voice or not (spec §16.2). */
   let large = false;
   /** @param {{ on: boolean }} m */
@@ -109,11 +135,30 @@ export function createDock(ctx) {
   ctx.voice?.onChange(layout);
   if (ctx.voice) layout(ctx.voice.mode);
   return {
-    el, avatar,
+    el, avatar, refreshSlots,
     /** @param {boolean} on */
     setLarge(on) {
       large = on;
       layout(ctx.voice?.mode ?? { on: false });
     },
   };
+}
+
+/**
+ * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art),
+ * else annai's own. A plugin's that fails counts against it.
+ * @param {any} ctx
+ */
+function dockAvatar(ctx) {
+  const c = component(ctx, 'avatar');
+  if (c) {
+    try {
+      const a = c.item.create({ size: 'dock' });
+      if (!(a?.el instanceof Node) || typeof a.setState !== 'function' || typeof a.setLevel !== 'function') throw new Error('its avatar create() must return el, setState and setLevel');
+      return { glance() {}, blink() {}, ...a };
+    } catch (e) {
+      ctx.registry?.fail(c.pluginId, 'avatar', e);
+    }
+  }
+  return createAvatar({ size: 'dock' });
 }

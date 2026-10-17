@@ -8,6 +8,7 @@ import { relTime, bytes } from '../format.js';
 import { storageStatus, requestPersist, platform, isStandalone } from '../platform.js';
 import { exportPanel } from '../export-panel.js';
 import { openFileButton } from '../open-file.js';
+import { slotEntries } from '../slots.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -53,6 +54,7 @@ export async function renderSettings(ctx) {
     section('Tools', h('p', { class: 'sub', text: 'Switches for every tool Shiori has, web search and fetch, and the Jina key.' }),
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/tools' }, 'Tools'))),
     section('Plugins', h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/plugins' }, 'Manage plugins'))),
+    await pluginPages(ctx),
     section('App',
       h('p', { text: `annai ${ctx.version}` }),
       ctx.update.ready
@@ -175,4 +177,13 @@ function eraseControls(ctx) {
     h('p', { class: 'sub', text: 'Deletes every trip, file, setting and key on this device. Export a backup first.' }),
     field('Type ERASE to confirm', input),
     h('div', { class: 'acts' }, go));
+}
+
+/** Settings pages plugins add (spec §16.4), each with its plugin's name; nothing when there are none. @param {any} ctx */
+async function pluginPages(ctx) {
+  const pages = slotEntries(ctx, 'ui:settings-page');
+  if (!pages.length) return null;
+  const names = new Map((await ctx.plugins?.describe().catch(() => []) ?? []).map((/** @type {any} */ r) => [r.id, r.name]));
+  return section('From plugins', h('ul', { class: 'file-list' }, ...pages.map((e) => h('li', {},
+    h('a', { href: `#/plugin-page/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: `${e.item.title} (${names.get(e.pluginId) ?? e.pluginId})` })))));
 }

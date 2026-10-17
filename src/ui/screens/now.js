@@ -8,6 +8,7 @@ import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
 import { fileHref } from '../format.js';
 import { packLine } from '../offline-pack.js';
+import { component, mount, slotEntries } from '../slots.js';
 
 /** Now, by live mode's own clock: a simulation's while one runs (spec §13). @param {any} live */
 export const nowOf = (live) => live?.clock?.now() ?? Date.now();
@@ -40,31 +41,72 @@ export async function renderNow(ctx) {
     start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Turn on live mode')] : []));
   };
   draw();
-  // Hands over when moving fast begins while Now is on screen: not on every fix of a drive already
-  // going, so "← Now" from Driving stays on Now (choice 4).
+  // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
+  // activity, milestone 8b choice 5): not on every fix of a drive already going, so "← Now" stays on Now (choice 4).
   let was = live?.activity;
   const off = live?.onChange(() => {
-    if (!place.isConnected) {
+    if (!place.isConnected && !top.isConnected) {
       off?.();
       return;
     }
     draw();
-    const began = live.activity === 'moving-fast' && was !== 'moving-fast';
+    const to = handover(live.activity, was, slotEntries(ctx, 'ui:screen'));
     was = live.activity;
-    if (began && live.on && location.hash.startsWith('#/now')) ctx.go('#/drive');
+    if (to && live.on && location.hash.startsWith('#/now')) ctx.go(to);
   });
   const next = upcoming(rows, nowOf(live), 4);
   const latest = await latestCard(ctx, id);
+  const title = String(scope?.title ?? 'Now');
+  // A plugin may draw the Now card's top itself (spec §16.4: now-card); annai's own when there is none.
+  const card = component(ctx, 'now-card');
+  const top = h('div', { class: 'now-card' });
+  if (card) {
+    const words = [live ? liveText(live) : null, live && !live.online ? 'Offline · reminders still work' : null].filter(Boolean);
+    mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live, locale), chips: words, liveOn: Boolean(live?.on) }), { what: 'now-card' });
+  } else {
+    top.append(place, chips, start);
+  }
+  const sections = slotEntries(ctx, 'ui:now-section').map((e) => {
+    const el = h('section', { class: 'now-section', 'aria-label': String(e.item.title) });
+    mount(ctx, e, el, (ui) => e.item.render(el, ui), { what: `Now section ${e.item.id}` });
+    return el;
+  });
   return h('div', { class: 'screen now' },
-    h('h1', { class: 'title', text: String(scope?.title ?? 'Now') }),
-    place, chips, start,
+    h('h1', { class: 'title', text: title }),
+    top, ...sections,
     h('section', { 'aria-label': 'Next' },
       h('h2', { class: 'section', text: 'Next' }),
-      next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => nowRow(id, r))) : h('p', { class: 'empty', text: 'Nothing more is planned.' }),
+      next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time) ?? nowRow(id, r))) : h('p', { class: 'empty', text: 'Nothing more is planned.' }),
       h('p', {}, h('a', { href: '#/plan' }, 'The whole plan'))),
     await packLine(ctx, id),
     latest ? h('section', { 'aria-label': 'Latest' }, h('h2', { class: 'section', text: 'Latest' }), latest) : null,
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, 'Driving')));
+}
+
+/**
+ * Where Now hands over to when the activity changes: a running plugin's screen for that activity (the
+ * last one registered), else Driving for moving fast, else nowhere (milestone 8b, choice 5).
+ * @param {string} activity @param {string | undefined} was @param {{ pluginId: string, item: any }[]} screens @returns {string | null}
+ */
+export function handover(activity, was, screens) {
+  if (activity === was) return null;
+  const home = screens.filter((e) => e.item?.homeFor === activity).pop();
+  if (home) return `#/ext/${encodeURIComponent(home.pluginId)}/${encodeURIComponent(home.item.id)}`;
+  return activity === 'moving-fast' ? '#/drive' : null;
+}
+
+/**
+ * A timetable row a plugin draws (spec §16.4: plan-row), or null for annai's own.
+ * @param {any} ctx @param {string} trip @param {import('../../core/plan.js').PlanRow} r @param {string} when
+ */
+export function planRowOf(ctx, trip, r, when) {
+  const c = component(ctx, 'plan-row');
+  if (!c) return null;
+  const it = r.item;
+  const li = h('li', { class: ['plan-row', 'plugin-row', it.fixed ? 'fixed' : 'flexible'] });
+  const row = { trip, path: r.path, when, title: String(it.title ?? r.path), fixed: Boolean(it.fixed), place: it.place?.name ? String(it.place.name) : '', kind: String(it.kind ?? '') };
+  mount(ctx, c, li, (ui) => c.item.render(li, row, ui), { what: 'plan-row' });
+  return li;
 }
 
 /** Where the user is, in words for them (Shiori's are in the now block). @param {any} live @param {string} locale */

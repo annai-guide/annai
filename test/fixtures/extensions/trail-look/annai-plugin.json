@@ -1,0 +1,8 @@
+{
+  "id": "trail-look",
+  "name": "Trail look",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "index.js",
+  "description": "Test plugin: annai's avatar, Now card and dock, replaced."
+}
