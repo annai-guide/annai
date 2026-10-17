@@ -137,3 +137,29 @@ test('phone dictation that hears a noise and no words: the silence limit starts 
   await until(() => k.agent.state.name === 'sleeping', 1500);
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('dictation ')).at(-1), 'dictation close');
 });
+
+test('a write-down that fails keeps the sound: nothing is written as not transcribed, and the next turn that works writes the words (spec §10.3)', async () => {
+  const k = await agentKit([[say('Tacos are close.'), { error: 'bad-request', status: 400 }, say('Still tacos.'), { text: 'where should we eat' }]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
+  await tapAndSay(k, 'where-eat');
+  assert.equal(k.requests[1].system, WRITE_DOWN);
+  assert.equal((await k.events(['heard.text'])).length, 0, 'nothing is written while the sound is at hand');
+  assert.equal(k.voice.memory.size, 1);
+  k.agent.send('And again?');
+  await k.agent.idle();
+  assert.equal(k.requests[2].messages[0].parts[1].type, 'audio', 'the next turn still sends the sound');
+  assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['where should we eat']);
+  assert.equal(k.voice.memory.size, 0);
+});
+
+test('a segment that three turns in a row could not write down is written as not transcribed, and its sound let go (spec §10.3)', async () => {
+  const fail = { error: 'bad-request', status: 400 };
+  const k = await agentKit([[say('One.'), fail, say('Two.'), fail, say('Three.'), fail]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
+  await tapAndSay(k, 'where-eat');
+  for (const text of ['Again', 'And again']) {
+    assert.equal((await k.events(['heard.text'])).length, 0);
+    k.agent.send(text);
+    await k.agent.idle();
+  }
+  assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['[audio, not transcribed]']);
+  assert.equal(k.voice.memory.size, 0);
+});
