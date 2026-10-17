@@ -480,3 +480,12 @@ test("a typed card's label names its kind; an unknown one is plain SHIORI", asyn
   assert.equal(cardWho({ registry }, { type: 'ferries' }), 'SHIORI');
   assert.equal(cardWho({ registry }, { title: 'Hi' }), 'SHIORI');
 });
+
+test("Reset's note names what it cleared by the form's labels; with nothing saved it says so", async () => {
+  const { resetNote } = await import('../../src/ui/screens/plugin.js');
+  const schema = { type: 'object', properties: { trailhead: { type: 'string', title: 'Trailhead' }, token: { type: 'string', title: 'Token', writeOnly: true } } };
+  assert.equal(resetNote({ file: true, keys: ['seen', 'trailhead'], secrets: ['token'] }, schema), 'Cleared its settings (seen, Trailhead) and its secrets (Token).');
+  assert.equal(resetNote({ file: false, keys: [], secrets: ['jina'] }, null), 'Cleared its secrets (jina).');
+  assert.equal(resetNote({ file: true, keys: [], secrets: [] }, schema), 'Cleared its settings.');
+  assert.equal(resetNote({ file: false, keys: [], secrets: [] }, schema), 'Nothing was saved, so nothing changed.');
+});
