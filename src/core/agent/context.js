@@ -79,18 +79,19 @@ function localTime(now, timeZone) {
   return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}, ${timeZone} (${parts.timeZoneName})`;
 }
 
-const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on', auto: 'auto' });
+const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)', auto: 'auto' });
 
 /**
  * The now block (spec §6.3, item 4): sent last, never cached.
- * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][], place?: string, activity?: string }} c
+ * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][], place?: string, activity?: string, voiceWhy?: string }} c
+ *   voiceWhy: why voice is what it is, for Auto (spec §10.5)
  */
-export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown' }) {
+export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '' }) {
   const lines = [
     `time: ${localTime(now, timeZone)}`,
     `place: ${place}`,
     `activity: ${activity}`,
-    `voice: ${VOICE[voice] ?? voice}`,
+    `voice: ${VOICE[voice] ?? voice}${voiceWhy ? ` (${voiceWhy})` : ''}`,
     `connection: ${online ? 'online' : 'offline'}`,
     `woke for: ${reasons.length ? reasons.join('; ') : 'a reason annai did not record'}`,
     plan.length ? `next in the plan:\n${tsv(['start', 'title', 'fixed', 'place'], plan)}` : 'next in the plan: nothing',

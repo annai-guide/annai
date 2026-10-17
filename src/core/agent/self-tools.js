@@ -99,7 +99,7 @@ async function recall(agent, i) {
   const all = await agent.store.tx(['events'], 'readonly', (t) => t.listEvents(agent.scope, {
     ...(i.from ? { after: i.from - 1 } : {}), ...(i.to ? { before: i.to + 1 } : {}),
   }));
-  const shown = ['wake', 'msg.user', 'out.speak', 'out.show', 'out.ask', 'tool.call', 'tool.result'];
+  const shown = ['wake', 'msg.user', 'heard', 'out.speak', 'out.show', 'out.ask', 'tool.call', 'tool.result'];
   const events = all.filter((e) => shown.includes(e.type) && !e.data?.task);
   /** @type {any[][]} exchanges: from a wake that isn't "meanwhile" to the next */
   const exchanges = [];
@@ -107,19 +107,21 @@ async function recall(agent, i) {
     if ((e.type === 'wake' && !e.data?.meanwhile) || !exchanges.length) exchanges.push([]);
     exchanges[exchanges.length - 1].push(e);
   }
+  const words = new Map(all.filter((e) => e.type === 'heard.text').map((e) => [e.data?.of, String(e.data?.text ?? '')]));
   const lines = async (/** @type {any[]} */ ex) => {
     const out = [];
     for (const e of ex) {
       const t = { ...e.data, ...(await storedTexts(agent.store, e)) };
       const photos = (Array.isArray(e.data?.images) ? e.data.images : []).map((/** @type {any} */ p) => ` ${photoStub(p)}`).join('');
       if (e.type === 'msg.user') out.push(`#${e.seq} user: ${t.text ?? ''}${photos}`);
+      else if (e.type === 'heard') out.push(`#${e.seq} ${t.dismissed ? 'someone said, not to Shiori' : 'user said'}: ${t.text ?? words.get(t.id) ?? '[audio]'}`);
       else if (e.type === 'out.speak') out.push(`#${e.seq} Shiori said: ${t.text ?? ''}`);
       else if (e.type === 'out.show') out.push(`#${e.seq} Shiori showed: ${[t.card?.title, t.card?.text].filter(Boolean).join(' — ')}`);
       else if (e.type === 'out.ask') out.push(`#${e.seq} Shiori asked: ${t.question} (${(Array.isArray(t.options) ? t.options : []).join(' / ')})`);
       else if (e.type === 'tool.call' && !QUIET.includes(t.name)) out.push(`#${e.seq} ${t.name} ${JSON.stringify(t.input ?? {})}`);
       else if (e.type === 'tool.result' && !QUIET.includes(t.name)) out.push(`#${e.seq} → ${String(t.content ?? '').slice(0, 1500)}${photos}`);
       else if (e.type === 'wake') {
-        const others = (t.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user');
+        const others = (t.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user' && w.kind !== 'heard');
         if (others.length) out.push(`#${e.seq} [annai] ${others.map((/** @type {any} */ w) => w.text).join('; ')}`);
       }
     }

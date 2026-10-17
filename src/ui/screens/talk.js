@@ -6,7 +6,7 @@ import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
 
-const SHOWN = ['msg.user', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error'];
 
 /**
  * The copy a photo ended up as, following its replacements (each refused copy names the next).
@@ -67,6 +67,8 @@ export async function renderTalk(ctx) {
   };
   /** @type {Map<string, HTMLElement>} asks still open, by call id */
   const asks = new Map();
+  /** @type {Map<string, HTMLElement>} heard speech whose words are still being written down */
+  const unheard = new Map();
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
   const replaced = new Map((await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['photo.replace'] })))
     .map((/** @type {any} */ e) => [e.data?.old, e.data]));
@@ -88,7 +90,32 @@ export async function renderTalk(ctx) {
     const d = e.data ?? {};
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
     if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }), ...(await sentPhotos(d.images)));
-    if (e.type === 'out.speak') return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
+    if (e.type === 'out.speak') {
+      if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
+      // Said aloud: hidden unless asked (spec §2 principle 4, §16.1).
+      const words = h('p', { text: texts.text ?? '', hidden: true });
+      const show = h('button', {
+        class: 'btn ghost', type: 'button', 'aria-expanded': 'false',
+        onclick: () => {
+          words.hidden = !words.hidden;
+          show.setAttribute('aria-expanded', String(!words.hidden));
+          show.textContent = words.hidden ? 'Show what she said' : 'Hide';
+        },
+      }, 'Show what she said');
+      return h('li', { class: 'shiori said' }, h('span', { class: 'who', text: 'SHIORI' }), h('span', { class: 'sub', text: 'Said aloud' }), show, words);
+    }
+    if (e.type === 'heard') {
+      // What annai heard you say, so you can see what it understood (spec §10.3).
+      const words = h('span', { text: typeof d.text === 'string' ? d.text : '…' });
+      if (typeof d.text !== 'string') unheard.set(d.id, words);
+      return d.dismissed ? h('li', { class: 'system-line' }, 'Heard, not for Shiori: ', words) : h('li', { class: 'you heard' }, h('p', {}, words));
+    }
+    if (e.type === 'heard.text') {
+      const words = unheard.get(d.of);
+      if (words) words.textContent = String(d.text ?? '');
+      unheard.delete(d.of);
+      return null;
+    }
     if (e.type === 'out.show') {
       const card = renderCard(d.card ?? {}, { ctx, onChoice: (o) => agent.send(o) });
       const undo = d.tune ? h('button', { class: 'btn ghost', type: 'button', onclick: async () => { await undoTuning(ctx.ws, d.tune.name, d.tune.old); ctx.notices.toast('Undone. Her old personality applies at her next wake.'); } }, 'Undo') : null;

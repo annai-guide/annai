@@ -543,7 +543,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 - **Mid-answer fallback.** If a voice fails partway through, the same sentence replays on the next voice in the list, and the failed voice is benched.
 - **Audio unlock.** Playback goes through one audio player, unlocked by the first tap of each session (an iOS rule).
 - **Audio session type:**
-  - `transient` while speaking, so the car's music ducks rather than stopping
+  - `playback` while speaking, so she's heard with the iPhone's silent switch on (WebKit mutes `transient` with it); the car's music pauses while she talks instead of ducking
   - `play-and-record` while listening
   - `playback` afterwards, to restore full-quality Bluetooth audio
 - **The interruption point** is tracked by sentence plus elapsed fraction, or by word timings when the voice provides them.
@@ -569,7 +569,7 @@ Privacy:
 Entries:
 - each configured transcription model
 - one stand-in entry, **"Send audio to the model"**
-- phone dictation, where available
+- phone dictation, where available. The browser's own speech service hears it (Google on Chrome, Apple on Safari), unless it recognizes speech on the device (§11.7).
 
 The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template. With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
 
@@ -695,6 +695,7 @@ When the app becomes visible:
 
 - The Places tools send coordinates to OpenStreetMap, Wikipedia and Open-Meteo.
 - Location otherwise goes only to the user's own model provider.
+- Speech goes only to the entries in the speech-in list. Phone dictation and the browser voice go to the browser's own speech service (Google on Chrome, Apple on Safari) unless they run on the device. Settings → Voice says where each one goes, and the trace notes it.
 
 ## 12. Import, export and backup
 
@@ -957,7 +958,7 @@ Eyes-free voice mode also serves users with low vision.
 - **Trip simulation:** a GPS track plus a fake clock at 10× speed, with assertions on which triggers fired and what Shiori did.
 - **End-to-end (Playwright):** Chromium and WebKit, with simulated location, a fake microphone fed from a WAV file, pre-granted permissions, and phone-sized viewports.
 - **Device checklist** (manual, on a real iPhone and Android phone):
-  - car Bluetooth quality while the mic is open; whether `transient` ducks music
+  - car Bluetooth quality while the mic is open; whether music resumes by itself after she speaks
   - built-in voice needing a first tap; word timings
   - dictation in the installed app on iOS
   - headphone or car-audio detection

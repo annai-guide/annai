@@ -6,10 +6,10 @@ import { toolSwitchList } from './tools.js';
 /** What each kind of entry is, for the Kind filter. */
 const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Everything: null,
-  Conversation: ['wake', 'msg.user', 'out.speak', 'out.show', 'out.ask'],
+  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request'],
-  Models: ['model.turn', 'net.request', 'decide'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser'],
   Housekeeping: ['compaction'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
 });
@@ -83,6 +83,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
     return c !== undefined ? `${why} · ${formatCost(c)}` : why;
   }
   if (e.type === 'msg.user' || e.type === 'out.speak') return cut(d.text);
+  if (e.type === 'heard') {
+    return [d.source === 'dictation' ? 'phone dictation' : `${((d.ms ?? 0) / 1000).toFixed(1)} s from the microphone`, d.text ? `"${cut(d.text)}"` : null,
+      d.answer ? 'an answer' : d.meanwhile ? 'while she was thinking' : null, d.dismissed ? 'not for Shiori' : null, d.clip ? 'clip kept' : null].filter(Boolean).join(' · ');
+  }
+  if (e.type === 'heard.text') return `"${cut(d.text)}"${d.by ? ` · written down by ${d.by}` : ''}`;
   if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
   if (e.type === 'out.ask') return cut(d.question);
   if (e.type === 'tool.call') return `${d.name} ${cut(JSON.stringify(d.input ?? {}), 120)}`;

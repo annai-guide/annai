@@ -29,6 +29,8 @@ export class Transcript {
   #calls = new Map();
   /** @type {Set<string>} */
   #answered = new Set();
+  /** Heard answers (spec §10.3), by segment id: their tool's result carries them. @type {Map<string, Part>} */
+  #heard = new Map();
 
   /** @param {any} e an event @param {Resolved} r its stored texts and images */
   apply(e, r) {
@@ -42,7 +44,7 @@ export class Transcript {
       this.from = e.seq;
       this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
-      const others = (d.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user' && w.text);
+      const others = (d.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user' && w.kind !== 'heard' && w.text);
       if (others.length) {
         this.#add('user', others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${w.text}` })));
         this.unanswered = true;
@@ -80,14 +82,44 @@ export class Transcript {
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
       this.unanswered = false;
       return;
+    } else if (e.type === 'heard') {
+      // What the microphone heard (spec §10.3); its words come with it (dictation) or later (heard.text).
+      /** @type {Part} */
+      const speech = { type: 'speech', id: d.id, ...(typeof d.text === 'string' ? { text: d.text } : {}), ...(d.clip ? { clip: d.clip } : {}) };
+      if (d.answer) {
+        this.#heard.set(d.id, speech); // an answer: part of its tool's result
+        return;
+      }
+      const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile ? '[heard while you were thinking]' : '[heard]';
+      this.#add('user', [{ type: 'text', text: label }, speech]);
+      if (!d.dismissed) {
+        this.unanswered = true;
+        this.waiting = 'user';
+      }
+    } else if (e.type === 'heard.text') {
+      // A segment's words, written down later: every place it is sent now sends them (spec §10.3).
+      const text = String(d.text ?? '');
+      const had = this.#heard.get(d.of);
+      if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
+      this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'speech' && p.id === d.of ? { ...p, text } : p)) }));
+      return;
     } else if (e.type === 'tool.result' && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
-      this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images]);
+      const heard = (Array.isArray(d.heard) ? d.heard : []).map((/** @type {string} */ id) => this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id }));
+      this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
     } else {
       return;
     }
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  /** The heard segments here whose words aren't written down yet (spec §10.3). @returns {string[]} */
+  unwritten() {
+    /** @type {string[]} */
+    const out = [];
+    for (const m of this.messages) for (const p of m.parts) if (p.type === 'speech' && p.text === undefined && !out.includes(p.id)) out.push(p.id);
+    return out;
   }
 
   /** Shiori's tool calls that have no result yet. @returns {{ id: string, name: string }[]} */

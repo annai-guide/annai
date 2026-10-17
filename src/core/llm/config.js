@@ -35,6 +35,16 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
 
 /** The roles that call chat models; an empty one uses the main list (spec §9.6). */
 export const CHAT_ROLES = Object.freeze(['main', 'utility', 'decide']);
+/** The speech roles (spec §9.6, §10). Their lists hold stand-in entries besides models. */
+export const SPEECH_ROLES = Object.freeze(['speech-in', 'speech-out']);
+/** @type {Readonly<Record<string, { role: string, name: string }>>} */
+export const STAND_INS = Object.freeze({
+  'send-audio': { role: 'speech-in', name: 'Send audio to the model' },
+  dictation: { role: 'speech-in', name: 'Phone dictation' },
+  'browser-voice': { role: 'speech-out', name: 'Browser voice' },
+});
+/** "Send audio to the model", then phone dictation (§10.3); speech-out ends with the browser voice (§9.6). @type {Readonly<Record<string, readonly string[]>>} */
+export const SPEECH_DEFAULTS = Object.freeze({ 'speech-in': Object.freeze(['send-audio', 'dictation']), 'speech-out': Object.freeze(['browser-voice']) });
 
 const endpointPath = (/** @type {string} */ id) => `/llm/endpoints/${id}.json`;
 const modelPath = (/** @type {string} */ id) => `/llm/models/${id}.json`;
@@ -160,15 +170,21 @@ export async function readConfig(ws) {
   return cfg;
 }
 
-/** Every chat role with its level, keeping only models that exist. @param {any} saved @param {Record<string, ModelRecord>} models @returns {Roles} */
+/**
+ * Every chat and speech role with its level, keeping only models that exist and, in a speech
+ * list, its own stand-ins. A speech list never saved holds the defaults; one the user emptied stays empty.
+ * @param {any} saved @param {Record<string, ModelRecord>} models @returns {Roles}
+ */
 function rolesFrom(saved, models) {
   const s = saved && typeof saved === 'object' ? saved : {};
   /** @type {Roles} */
   const out = {};
-  for (const role of new Set([...CHAT_ROLES, ...Object.keys(s)])) {
+  for (const role of new Set([...CHAT_ROLES, ...SPEECH_ROLES, ...Object.keys(s)])) {
     const r = s[role] ?? {};
+    const speech = SPEECH_ROLES.includes(role);
+    const kept = (/** @type {any} */ id) => typeof id === 'string' && (Boolean(models[id]) || (speech && STAND_INS[id]?.role === role));
     out[role] = {
-      models: (Array.isArray(r.models) ? r.models : []).filter((/** @type {any} */ id) => typeof id === 'string' && models[id]),
+      models: Array.isArray(r.models) ? r.models.filter(kept) : speech ? [...SPEECH_DEFAULTS[role]] : [],
       level: LEVELS.includes(r.level) ? r.level : /** @type {Record<string, string>} */ (ROLE_LEVELS)[role] ?? 'off',
       ...(Number.isInteger(r.firstOutputSeconds) && r.firstOutputSeconds >= 1 ? { firstOutputSeconds: r.firstOutputSeconds } : {}),
     };
@@ -240,4 +256,16 @@ export async function setKey(store, endpointId, key) {
 export async function getKey(store, endpointId) {
   const v = await store.tx(['secrets'], 'readonly', (t) => t.getSecret(secretId(endpointId)));
   return typeof v === 'string' && v ? v : null;
+}
+
+/**
+ * Whether a model transcribes ('in') or speaks ('out'), from its endpoint's type; null for a chat
+ * model or one whose type isn't running. @param {ModelConfig} cfg @param {Map<string, { speech?: string }>} types @param {string} id
+ * @returns {'in' | 'out' | null}
+ */
+export function speechKind(cfg, types, id) {
+  const rec = cfg.models[id];
+  const ep = rec ? cfg.endpoints[rec.endpoint] : undefined;
+  const s = ep ? types.get(ep.type)?.speech : undefined;
+  return s === 'in' || s === 'out' ? s : null;
 }

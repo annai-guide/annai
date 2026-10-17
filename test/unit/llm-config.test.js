@@ -4,7 +4,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, ValidationError } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_SETTINGS } from '../../src/core/scopes.js';
 import {
-  CHAT_ROLES, readConfig, endpointOf, endpointBase, modelOf, modelBase, diffLayer, newEndpoint, newModel,
+  CHAT_ROLES, SPEECH_ROLES, readConfig, endpointOf, endpointBase, modelOf, modelBase, diffLayer, newEndpoint, newModel,
   saveEndpoint, saveModel, saveRoles, removeEndpoint, removeModel, setKey, getKey,
 } from '../../src/core/llm/config.js';
 
@@ -80,14 +80,14 @@ test('model names are unique, whatever their case', async () => {
   await assert.rejects(saveModel(ws, newModel('ep-gone', { user: { providerId: 'z' } })), ValidationError);
 });
 
-test('roles: every chat role, its default level, and only models that exist', async () => {
+test('roles: every chat and speech role, its default level, and only models that exist', async () => {
   const { ws } = await setup();
   const ep = openrouter();
   const a = newModel(ep.id, { user: { providerId: 'a' } });
   await saveEndpoint(ws, ep, [a]);
   await saveRoles(ws, { main: { models: [a.id, 'm-gone'], level: 'high', firstOutputSeconds: 20 }, utility: { models: [], level: 'low' } });
   const { roles } = await readConfig(ws);
-  assert.deepEqual(Object.keys(roles).sort(), [...CHAT_ROLES].sort());
+  assert.deepEqual(Object.keys(roles).sort(), [...CHAT_ROLES, ...SPEECH_ROLES].sort());
   assert.deepEqual(roles.main, { models: [a.id], level: 'high', firstOutputSeconds: 20 });
   assert.deepEqual(roles.decide, { models: [], level: 'off' });
   await assert.rejects(saveRoles(ws, { main: { models: [], level: 'extreme' } }), ValidationError);

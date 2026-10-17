@@ -11,6 +11,9 @@ import { mapsUrl, tripPath } from '../../src/ui/cards.js';
 import { follow } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary } from '../../src/ui/screens/trace.js';
+import { micProblem } from '../../src/ui/mic-help.js';
+import { priceLine } from '../../src/ui/screens/endpoint.js';
+import { mediaKeys } from '../../src/ui/media-keys.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -213,4 +216,47 @@ test('bookingLines: what a booking says, with times in their own zone', () => {
   // Only what is required; a zone annai doesn't know leaves the time out rather than breaking.
   assert.deepEqual(bookingLines({ id: 'x', kind: 'other', status: 'unverified', source: '/files/x' }, 'en-US'), [['Kind', 'Other']]);
   assert.deepEqual(bookingLines({ kind: 'car', start: { at: '2026-11-25T08:00:00-08:00', tz: 'Nowhere' }, fields: 'not an object' }, 'en-US'), [['Kind', 'Car']]);
+});
+
+test('a microphone that fails says what happened and what to do, for this phone (spec §17 rule 3)', () => {
+  const denied = Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' });
+  assert.match(micProblem(denied, 'ios').body, /Settings → Apps → Safari → Microphone/);
+  assert.match(micProblem(denied, 'android').body, /App info → Permissions/);
+  assert.match(micProblem(denied, 'desktop').body, /site settings/);
+  assert.equal(micProblem(Object.assign(new Error('x'), { name: 'NotFoundError' })).title, 'No microphone found');
+  assert.equal(micProblem(Object.assign(new Error('x'), { name: 'NotReadableError' })).title, 'The microphone is busy');
+  assert.match(micProblem(new Error('Weird')).body, /^Weird\. Try again/);
+});
+
+test('model prices in a line: tokens, minutes of speech, or characters', () => {
+  assert.equal(priceLine({ input: 2, output: 10 }), '$2 in, $10 out per million tokens');
+  assert.equal(priceLine({ input: 0, output: 0 }), 'free');
+  assert.equal(priceLine({ perMinute: 0.006 }), '$0.006 a minute of speech');
+  assert.equal(priceLine({ perMillionChars: 15 }), '$15 per million characters');
+  assert.equal(priceLine(null), null);
+});
+
+test("steering-wheel and headset buttons tap Shiori while voice is on, and do nothing while it's off (spec §18)", () => {
+  /** @type {Record<string, any>} */
+  const handlers = {};
+  const session = {
+    setActionHandler(/** @type {string} */ action, /** @type {any} */ fn) {
+      if (action === 'previoustrack') throw new Error('not supported here');
+      handlers[action] = fn;
+    },
+  };
+  /** @type {((m: any) => void)[]} */
+  const listeners = [];
+  const voice = { on: false, onChange: (/** @type {any} */ fn) => { listeners.push(fn); return () => {}; } };
+  let taps = 0;
+  mediaKeys({ session, agent: { tap: () => { taps++; return 'listening'; } }, voice });
+  assert.equal(handlers.play, null);
+  for (const fn of listeners) fn({ on: true });
+  handlers.play();
+  handlers.pause();
+  handlers.nexttrack();
+  assert.equal(taps, 3);
+  for (const fn of listeners) fn({ on: false });
+  assert.equal(handlers.pause, null);
+  assert.doesNotThrow(() => mediaKeys({ session: undefined, agent: { tap: () => 'typing' }, voice }));
 });

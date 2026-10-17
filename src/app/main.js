@@ -9,7 +9,7 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
-import { isStandalone, requestPersist, watchForUpdates } from '../ui/platform.js';
+import { isStandalone, requestPersist, watchForUpdates, platform } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
@@ -21,6 +21,9 @@ import { selfTools } from '../core/agent/self-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
+import { Voice } from '../core/voice/voice.js';
+import { mediaKeys } from '../ui/media-keys.js';
+import { armUnlock } from '../ui/unlock.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -59,19 +62,27 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/web/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/places/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/go/index.js', import.meta.url).href);
+  await plugins.addBuiltin(new URL('../plugins/voice-browser/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
   let pluginsStarted = () => {};
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
+  // Speaking and hearing (spec §10): the speech lists, through this device's player and microphone.
+  const voice = new Voice({ llm, ws, registry, store, locale: navigator.language, where: platform() });
+  voice.refresh().catch(() => {});
+  // Sound may play only after a tap (an iPhone rule, spec §10.1): every tap tries until one works.
+  armUnlock(window, () => voice.unlock());
 
   // Shiori (spec §6): one agent, talking about the trip that was open last.
-  const agent = new Agent({ store, ws, llm, registry, codec });
+  const agent = new Agent({ store, ws, llm, registry, codec, voice });
+  // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
+  mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent));
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, presets, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, presets, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.

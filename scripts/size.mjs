@@ -1,7 +1,7 @@
 // Fails when the JavaScript and CSS annai ships grow past the budget (spec §18).
 import { readFile, stat } from 'node:fs/promises';
 
-const BUDGET = 740 * 1024; // bytes, uncompressed; raised from 680 KiB for milestone 4 (planning and bookings)
+const BUDGET = 880 * 1024; // bytes, uncompressed; raised from 740 KiB for milestone 3 (voice): 820, then 880 when Shiori learned to talk and listen
 const root = new URL('../', import.meta.url);
 const sw = await readFile(new URL('sw.js', root), 'utf8');
 const shell = [...(/const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '').matchAll(/'(\/[^']+\.(?:js|css))'/g)].map((m) => m[1]);
