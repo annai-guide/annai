@@ -46,6 +46,8 @@ export async function renderSettings(ctx) {
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/models' }, 'Models'))),
     section('Voice', h('p', { class: 'sub', text: 'How Shiori speaks and hears you, with a test for each.' }),
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/voice' }, 'Voice'))),
+    section('Notifications', h('p', { class: 'sub', text: 'Reminders while annai is closed, through the push relay, and what it learns.' }),
+      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/notifications' }, 'Notifications'))),
     section('Shiori', h('p', { class: 'sub', text: 'Her personality, budgets and housekeeping.' }),
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/shiori' }, 'Shiori'))),
     section('Tools', h('p', { class: 'sub', text: 'Switches for every tool Shiori has, web search and fetch, and the Jina key.' }),

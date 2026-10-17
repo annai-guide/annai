@@ -2530,7 +2530,7 @@ test('Settings → Notifications: what the relay learns, the address, on, a test
     await expect.poll(() => kit.pushed().length).toBe(1);
     expect(kit.pushed()[0]).toMatchObject({ title: 'annai', test: true });
     await page.getByRole('button', { name: 'Send a test notification' }).click();
-    await expect(page.locator('.toast')).toContainText('in about 15 seconds');
+    await expect(page.locator('.toast', { hasText: 'in about 15 seconds' })).toBeVisible();
     await kit.at(Date.now() + 16_000);
     expect(kit.pushed().at(-1)?.body).toMatch(/^A test/);
     await page.getByRole('button', { name: 'Turn off' }).click();
@@ -2681,7 +2681,7 @@ export async function renderNotifications(ctx) {
     acts.length ? h('div', { class: 'acts' }, ...acts) : null,
     section('Relay', field('Relay address', address), h('div', { class: 'acts' }, save),
       h('p', { class: 'sub', text: "Reminders go through annai's relay, push.annai.guide, unless you run your own: its code is in annai's source, under relay/." })),
-    section('What the relay learns', h('ul', { class: 'plain' },
+    section('What the relay learns', h('ul', { class: 'where' },
       h('li', { text: "annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one." }),
       h('li', { text: "It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from." }),
       h('li', { text: 'Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder\'s time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your plan; the relay doesn\'t.' }),
