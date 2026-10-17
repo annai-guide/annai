@@ -37,7 +37,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       for (const fn of platform.deviceChanges) fn();
     },
     player: {
-      async unlock() { log.push('unlock'); },
+      async unlock() { log.push('unlock'); return true; },
       /** @param {{ data: Uint8Array }} clip @param {{ signal: AbortSignal, onLevel?: (x: number) => void }} o */
       play(clip, { signal, onLevel }) {
         const name = dec.decode(clip.data);

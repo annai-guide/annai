@@ -4,8 +4,8 @@
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {{ open(o: { onFrames: (pcm: Float32Array, sampleRate: number) => void, onError: (e: Error) => void }): Promise<{ close(): void }> }} Mic
  *   the microphone: open only while listening (§10.2)
- * @typedef {{ unlock(): Promise<void>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }> }} Player
- *   the one audio player (§10.1); play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound
+ * @typedef {{ unlock(): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }> }} Player
+ *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now; play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound
  * @typedef {{ id: string, name: string, lang: string }} SystemVoice
  * @typedef {{ available(): boolean, voices(): SystemVoice[],
  *   say(text: string, o: { signal: AbortSignal, voice?: string, rate?: number, lang?: string, onLevel?: (x: number) => void }): Promise<{ ended: boolean, charIndex: number }> }} Synth

@@ -47,16 +47,19 @@ export function browserPlatform() {
 
   return {
     player: {
-      async unlock() {
-        // The first tap of each session: the player, the microphone's context and the browser voice may start.
+      unlock() {
+        // Inside a tap: the player, the microphone's context and the browser voice may start. Each is
+        // started now, in the tap; after a wait it would no longer count. Until the player played, every tap tries again.
+        /** @type {Promise<boolean>} */
+        let played;
         try {
           const a = player();
           a.src = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (encodeWav(new Float32Array(800), 16000))], { type: 'audio/wav' }));
-          await a.play();
+          played = a.play().then(() => true, () => false);
         } catch {
-          // a later tap tries again
+          played = Promise.resolve(false);
         }
-        await context().resume().catch(() => {});
+        context().resume().catch(() => {});
         try {
           const quiet = new SpeechSynthesisUtterance(' ');
           quiet.volume = 0;
@@ -64,6 +67,7 @@ export function browserPlatform() {
         } catch {
           // no browser voice here
         }
+        return played;
       },
       async play(clip, { signal, onLevel = () => {} }) {
         if (signal.aborted) return { ended: false, fraction: 0 };

@@ -1497,6 +1497,7 @@ export class Agent {
    * @returns {'cut' | 'stopped' | 'listening' | 'typing'}
    */
   tap() {
+    this.voice?.unlock(); // inside the tap: sound may play from now on (spec §10.1)
     const voiceOn = Boolean(this.voice?.on);
     if (this.voice?.speaker.speaking) {
       this.voice.speaker.stop();
