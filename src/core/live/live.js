@@ -1,4 +1,4 @@
-import { meters, keep, fixOf, kmText, KEEP_M } from './geo.js';
+import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
 import { ActivityTracker } from './activity.js';
 import { TRIGGERS } from './triggers.js';
 import { PLAN, planWatches } from './plan-watches.js';
@@ -9,7 +9,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { logEvent } from '../events.js';
 import { ME, listTrips } from '../scopes.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
-import { validZone, deviceZone, isoInZone } from '../time.js';
+import { validZone, deviceZone, isoInZone, timeIn } from '../time.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 
@@ -39,6 +39,10 @@ export const STOP_M = 100;
 export const FRESH_MS = 10 * 60_000;
 /** While live, the clock looks again at least this often (arrival estimates change with time). */
 export const RECHECK_MS = 60_000;
+/** After coming back on screen, catch-up waits this long for a GPS fix (spec §11.4). */
+export const FIX_WAIT_MS = 15_000;
+/** A firing this long after it came due is labelled late (spec §11.4: "late by N min"). */
+export const LATE_MS = 2 * 60_000;
 const NEAR_M = 2000;
 const MIN = 60_000;
 /** @param {number} x */
@@ -96,6 +100,14 @@ export class Live {
   #gpsOn = new Map();
   /** @type {(() => void)[]} */
   #offs = [];
+  /** @type {{ since: number, from: Fix | null } | null} when annai went off screen, and where the user was */
+  #away = null;
+  /** @type {{ how: 'start' | 'shown', since: number | null, from: Fix | null, fired: Fired[], timer: any } | null} a catch-up collecting what fires (spec §11.4) */
+  #catch = null;
+  /** @type {{ scope: string, text: string }[]} what fired while there was no connection */
+  #held = [];
+  /** @type {number | null} when the connection went */
+  #offlineSince = null;
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
@@ -130,8 +142,9 @@ export class Live {
     await this.#run(async () => {
       await this.#loadAll();
       await this.#follow();
+      const last = await this.#lastSeen();
       this.#sensors();
-      await this.#check();
+      await this.#catchUp({ ...last, how: 'start' });
     });
   }
 
@@ -463,6 +476,7 @@ export class Live {
     if (change) this.#tellActivity();
     this.#tell();
     await this.#check({ newFix: true, change });
+    if (this.#catch) await this.#endCatchUp(); // the first fix after coming back: the catch-up is complete
   }
 
   /** @param {boolean} v */
@@ -470,22 +484,93 @@ export class Live {
     if (v === this.shown) return;
     this.shown = v;
     if (!v) {
-      // Off screen nothing is evaluated (spec §11.1, choice 15).
+      // Off screen nothing is evaluated (spec §11.1, choice 15); catch-up covers the gap.
+      this.#away = { since: this.clock.now(), from: this.fix };
       this.#gpsStop();
       this.#clearTimer();
+      if (this.#catch) await this.#endCatchUp();
       this.#tell();
       return;
     }
+    const away = this.#away ?? { since: this.clock.now(), from: this.fix };
+    this.#away = null;
     if (this.on) this.#gpsStart();
     this.#tell();
-    await this.#check();
+    await this.#catchUp({ ...away, how: 'shown' });
   }
 
   /** @param {boolean} v */
   async #onConnected(v) {
     if (v === this.online) return;
     this.online = v;
+    if (!v) this.#offlineSince = this.clock.now();
     this.#tell();
+    if (!v) return;
+    const since = this.#offlineSince ?? this.clock.now();
+    this.#offlineSince = null;
+    const held = this.#held.splice(0);
+    /** @type {Map<string, string[]>} */
+    const by = new Map();
+    for (const h of held) by.set(h.scope, [...(by.get(h.scope) ?? []), h.text]);
+    for (const [scope, texts] of by) {
+      const text = `While there was no connection (for ${span(this.clock.now() - since)}, since ${timeIn(since, this.timeZone())}), these came, and annai showed their reminders by itself: ${texts.join(' ')}`;
+      await this.agent.wake({ kind: 'trigger', text, fallbacks: [], ...(scope === this.#scope() ? {} : { scope }) });
+    }
+  }
+
+  /** When annai last ran in the open conversation, and the last point it kept (spec §11.4, after a restart). */
+  async #lastSeen() {
+    const scope = this.#scope();
+    const [last] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { reverse: true, limit: 1 }));
+    const [point] = this.#trip ? await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['location'], reverse: true, limit: 1 })) : [];
+    const from = point ? fixOf({ ...point.data, at: point.ts }, point.ts) : null;
+    if (from) {
+      this.#kept = from;
+      this.#odo = from; // the distance from there counts once the user moves
+    }
+    return { since: last ? last.ts : null, from };
+  }
+
+  /**
+   * Catch-up (spec §11.4). First, from where the user was when annai went away, what the clock made
+   * due fires late; then, with the first fix (or after FIX_WAIT_MS without one), arriving and
+   * leaving are inferred from there against here. Everything goes into one catch-up wake.
+   * @param {{ how: 'start' | 'shown', since: number | null, from: Fix | null }} gap
+   */
+  async #catchUp(gap) {
+    if (this.#catch) await this.#endCatchUp();
+    const c = { ...gap, fired: /** @type {Fired[]} */ ([]), timer: /** @type {any} */ (null) };
+    this.#catch = c;
+    await this.#check({ past: true });
+    if (this.on && this.shown && this.#gpsOn.size && this.gps !== 'denied') {
+      c.timer = this.clock.set(() => {
+        this.#bg(async () => {
+          if (this.#catch === c) await this.#endCatchUp();
+        });
+      }, FIX_WAIT_MS);
+    } else {
+      await this.#endCatchUp();
+    }
+  }
+
+  async #endCatchUp() {
+    const c = this.#catch;
+    if (!c) return;
+    this.#catch = null;
+    if (c.timer !== null) this.clock.clear(c.timer);
+    if (c.fired.length) await this.#deliver(c.fired, 'catch-up', this.#catchUpHeader(c));
+  }
+
+  /** "Catch-up: annai was off screen for 47 min (since 15:18), and the user moved 17.0 km from near … to near …." @param {{ how: 'start' | 'shown', since: number | null, from: Fix | null }} c */
+  #catchUpHeader(c) {
+    const now = this.clock.now();
+    const was = c.how === 'start' ? 'closed' : 'off screen';
+    const head = c.since === null ? 'Catch-up: annai has just started' : `Catch-up: annai was ${was} for ${span(now - c.since)} (since ${timeIn(c.since, this.timeZone())})`;
+    const moved = c.from && this.fix && this.fix !== c.from ? meters(c.from, this.fix) : 0;
+    if (moved < 500 || !c.from || !this.fix) return `${head}.`;
+    const a = this.near(c.from);
+    const b = this.near(this.fix);
+    return `${head}, and the user moved ${kmText(moved)}${a ? ` from near ${a.name}` : ''}${b ? ` to near ${b.name}` : ''}.`;
   }
 
   /** A wake of hers: moved counts again from here (spec §11.3: "X km travelled since the last wake"). @param {any} e */
@@ -571,15 +656,19 @@ export class Live {
     }
   }
 
-  /** The moment checks see. @param {{ newFix?: boolean, change?: { from: string, to: string } | null }} [o] @returns {Moment} */
+  /** The moment checks see. @param {{ newFix?: boolean, change?: { from: string, to: string } | null, past?: boolean }} [o] @returns {Moment} */
   #moment(o = {}) {
     const now = this.clock.now();
-    const f = this.fix;
-    const fix = this.on && f && (f.source === 'manual' || now - f.at <= FRESH_MS) ? f : null;
+    const c = this.#catch;
+    // A catch-up's first look sees where the user was when annai went away (spec §11.4).
+    const past = Boolean(o.past) && c !== null;
+    const f = past && c ? c.from : this.fix;
+    const fix = this.on && f && (past || f.source === 'manual' || now - f.at <= FRESH_MS) ? f : null;
     const scope = this.#scope();
     return {
-      now, fix, newFix: Boolean(o.newFix) && Boolean(fix), past: false, live: this.on, activity: this.on ? this.activity : 'unknown', change: o.change ?? null,
-      odometer: this.odometer, stop: this.on ? this.stop : null, gap: null, fired: (id) => this.#fired.has(this.#key(scope, id)),
+      now, fix, newFix: !past && Boolean(o.newFix) && Boolean(fix), past, live: this.on, activity: this.on ? this.activity : 'unknown', change: o.change ?? null,
+      odometer: this.odometer, stop: this.on && !past ? this.stop : null, gap: c ? { since: c.since, from: c.from } : null,
+      fired: (id) => this.#fired.has(this.#key(scope, id)),
     };
   }
 
@@ -616,7 +705,7 @@ export class Live {
     return Boolean(type) && !(type?.gps && !this.on) && (scope === this.#scope() || type?.type === 'time');
   }
 
-  /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: { from: string, to: string } | null }} [o] */
+  /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: { from: string, to: string } | null, past?: boolean }} [o] */
   async #check(o = {}) {
     await this.#follow();
     const m = this.#moment(o);
@@ -647,7 +736,8 @@ export class Live {
 
   /** @param {string} scope @param {Watch} watch @param {TriggerType} type @param {Firing} firing @param {number} now @returns {Fired} */
   #firedOf(scope, watch, type, firing, now) {
-    return { scope, watch, type, firing, late: 0, fallback: firing.fallback ?? watch.fallback };
+    const late = this.#catch && firing.at !== undefined && now - firing.at >= LATE_MS ? Math.round((now - firing.at) / MIN) : 0;
+    return { scope, watch, type, firing, late, ...(this.#catch ? { away: this.#catch.how } : {}), fallback: firing.fallback ?? watch.fallback };
   }
 
   /** Logs each firing, then wakes Shiori: one wake a conversation (spec §6.1). @param {Fired[]} list @param {number} now */
@@ -666,7 +756,7 @@ export class Live {
         type: 'trigger.fired', actor: 'system',
         data: {
           watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
-          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}),
+          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
         },
       }, now);
       this.#fired.set(key, { at: now, place: f.place ?? null });
@@ -679,7 +769,8 @@ export class Live {
       if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch);
       done.push(x);
     }
-    if (done.length) await this.#deliver(done);
+    if (this.#catch) this.#catch.fired.push(...done);
+    else if (done.length) await this.#deliver(done);
   }
 
   /**
@@ -700,13 +791,20 @@ export class Live {
         await this.agent.wake({ kind, text: reasons.join(' '), scope });
         continue;
       }
-      await this.agent.wake({ kind, text: [header, ...reasons].filter(Boolean).join(' '), fallbacks });
+      const text = [header, ...reasons].filter(Boolean).join(' ');
+      if (!this.online) {
+        // No connection: annai says the reminders itself now; Shiori hears of them when it is back (spec §17, choice 8).
+        await this.agent.remind(fallbacks);
+        this.#held.push({ scope, text });
+        continue;
+      }
+      await this.agent.wake({ kind, text, fallbacks });
     }
   }
 
   /** What fired, in words for Shiori's wake. @param {Fired} x */
   #reason(x) {
-    const late = x.late ? ` (late by ${x.late} min: annai was off screen)` : '';
+    const late = x.late ? ` (late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : 'off screen'})` : '';
     if (x.watch.owner === 'system') return `${x.firing.text}${late}.`;
     const whose = x.watch.owner === 'shiori' ? 'Your watch' : `The watch of ${x.watch.owner}`;
     return `${whose} ${x.watch.id} (${x.type.describe(x.watch.when)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
