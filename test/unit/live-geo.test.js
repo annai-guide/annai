@@ -101,3 +101,20 @@ test('activity: between walking and moving fast, nothing changes; reset forgets'
   assert.equal(t.activity, 'unknown');
   assert.equal(t.speed, null);
 });
+
+test('parked with 30 m of GPS wander, no GPS speed, accuracy 20 to 65 m: still for half an hour; a slow walk is still walking (Review Focus 1)', () => {
+  for (const accuracy of [20, 40, 65]) {
+    const t = new ActivityTracker();
+    for (let s = 0; s <= 1800; s += 5) {
+      const seen = t.feed(at(off(NEPENTHE, Math.sin(s * 7.3) * 30, Math.cos(s * 3.1) * 30), s, { accuracy }));
+      assert.ok(seen?.to !== 'walking' && seen?.to !== 'moving-fast', `accuracy ${accuracy}, at ${s} s: ${seen?.to}`);
+    }
+    assert.equal(t.activity, 'still', `accuracy ${accuracy}`);
+  }
+  for (const accuracy of [8, 15]) {
+    const walk = new ActivityTracker();
+    let p = BIXBY;
+    for (let s = 0; s <= 120; s += 5) walk.feed(at((p = off(p, 6, 0)), s, { accuracy })); // 1.2 m/s
+    assert.equal(walk.activity, 'walking', `accuracy ${accuracy}`);
+  }
+});

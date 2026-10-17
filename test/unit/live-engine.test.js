@@ -309,3 +309,16 @@ test("the real clock holds a delay longer than the browser's timers can", async 
   c.clear(h);
   assert.equal(fired, false);
 });
+
+test('a 90-minute stop with 30 m of GPS wander and no GPS speed: still, no distance, no moved wake, few points (Review Focus 1)', async () => {
+  for (const accuracy of [20, 40, 65]) {
+    const k = await liveKit({ start: at('12:00') });
+    await k.live.setWatch(k.trip, { when: { type: 'moved', km: 15 }, repeat: true, fallback: 'Say something about the road.' });
+    for (let s = 0; s <= 5400; s += 5) await k.fix(at('12:00') + s * 1000, off(NEPENTHE, Math.sin(s * 7.3) * 30, Math.cos(s * 3.1) * 30), { accuracy, speed: null });
+    assert.equal(k.live.activity, 'still', `accuracy ${accuracy}`);
+    assert.ok(k.live.odometer < 0.05, `accuracy ${accuracy}: odometer ${k.live.odometer} km`);
+    assert.deepEqual(k.agent.wakes.filter((w) => /travelled/.test(w.text)), [], `accuracy ${accuracy}`);
+    const points = (await k.events(['location'])).length;
+    assert.ok(points <= 5, `accuracy ${accuracy}: ${points} points kept`);
+  }
+});
