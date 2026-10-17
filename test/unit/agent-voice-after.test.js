@@ -163,3 +163,32 @@ test('a segment that three turns in a row could not write down is written as not
   assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['[audio, not transcribed]']);
   assert.equal(k.voice.memory.size, 0);
 });
+
+test('housekeeping first writes down what was heard in the part it summarizes: the summary and the log have the words (spec §10.3, §6.5)', async () => {
+  const fail = { error: 'bad-request', status: 400 };
+  const k = await agentKit([[fail, fail]], { utility: [{ text: 'They looked for food.' }], voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
+  await tapAndSay(k, 'where-eat'); // the turn fails: the words aren't written down yet
+  k.agent.send('Hello?');
+  await k.agent.idle();
+  assert.equal((await k.events(['heard.text'])).length, 0);
+  assert.equal(await k.agent.compact('cold', { forced: true }), true);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /User \(spoke\): where should we eat/);
+  assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => [e.data.text, e.data.wake]), [['where should we eat', 'housekeeping']]);
+  assert.equal(k.voice.memory.size, 0);
+});
+
+test('housekeeping waits while what was heard can\'t be written down, unless the conversation would overflow: then it is written as not transcribed (spec §10.3)', async () => {
+  const k = await agentKit([[{ text: 'never reached' }]], { utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], failing: ['m-hear'] } });
+  await tapAndSay(k, 'where-eat');
+  for (let i = 0; i < 4; i++) {
+    k.agent.send(`Message ${i}`);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), false, 'not now: the sound is still at hand');
+  assert.equal((await k.events(['compaction'])).length, 0);
+  assert.equal(k.voice.memory.size, 1);
+  assert.equal(await k.agent.compact('cold', { forced: true }), true);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /User \(spoke\): \[audio, not transcribed\]/);
+  assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['[audio, not transcribed]']);
+  assert.equal(k.voice.memory.size, 0);
+});
