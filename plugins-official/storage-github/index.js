@@ -7,7 +7,7 @@ import { blobId, treeId, GitPathError } from './git.js';
  * but annai's backups (a README and the like stay). The token is a fine-grained personal access
  * token with Contents: Read and write for that repository.
  * @typedef {{ base: string, repo: string, token: string, device: { id: string, label: string }, app: string,
- *   TargetError: any, zip: any, read: (res: Response, how: string, where: string) => Promise<any>,
+ *   TargetError: any, zip: any, read: (res: Response, how: string, where: string, o?: { max?: number }) => Promise<any>,
  *   net: (url: string, init?: RequestInit) => Promise<Response>, seen: Set<string> }} G
  *   read: annai's reader of a server's answer: whatever is wrong with an answer is GitHub's doing (a TargetError), never a bug here
  *   seen: blob ids GitHub confirmed in this session, so a later try sends nothing twice
@@ -21,6 +21,10 @@ const MAX_FILE = 100 * 1024 * 1024;
 const INLINE_MAX = 256 * 1024;
 /** At most this much text in one tree request; the rest goes as blobs. */
 const INLINE_TOTAL = 4 * 1024 * 1024;
+/** The most annai reads of an error's body: GitHub's are a few hundred bytes. */
+const ERROR_MAX = 64 * 1024;
+/** The most annai reads of a backup's annai-archive.json: about 250 bytes a file, so some 30,000 files. */
+const MANIFEST_MAX = 8 * 1024 * 1024;
 /** The longest wait GitHub may ask for that annai sits out; a longer one ends this backup for now. */
 const MAX_WAIT = 5 * 60_000;
 const MANIFEST = 'annai-archive.json';
@@ -132,7 +136,7 @@ async function call(g, method, path, { body, raw = false, signal } = {}) {
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-    const wait = await rateWait(res);
+    const wait = await rateWait(g, res);
     if (wait === null) return res;
     if (wait > MAX_WAIT || tries >= 6) {
       throw new g.TargetError('rate', `GitHub asked annai to slow down. The backup carries on by itself in about ${minutes(wait)}.`, { retryAt: Date.now() + wait });
@@ -141,21 +145,21 @@ async function call(g, method, path, { body, raw = false, signal } = {}) {
   }
 }
 
-/** How long GitHub asks annai to wait, or null when this isn't a rate limit. @param {Response} res @returns {Promise<number | null>} */
-async function rateWait(res) {
+/** How long GitHub asks annai to wait, or null when this isn't a rate limit. @param {G} g @param {Response} res @returns {Promise<number | null>} */
+async function rateWait(g, res) {
   if (res.status !== 403 && res.status !== 429) return null;
   const after = Number(res.headers.get('retry-after'));
   if (Number.isFinite(after) && after > 0) return after * 1000;
   if (res.headers.get('x-ratelimit-remaining') === '0') return Math.max(1000, Number(res.headers.get('x-ratelimit-reset')) * 1000 - Date.now());
   if (res.status === 429) return 60_000;
-  return /rate limit/i.test(await res.clone().text().catch(() => '')) ? 60_000 : null;
+  return /rate limit/i.test(await g.read(res.clone(), 'text', 'GitHub', { max: ERROR_MAX }).catch(() => '')) ? 60_000 : null;
 }
 
 /** A failed answer from GitHub in plain words. @param {G} g @param {Response} res */
 async function failure(g, res) {
   let said = '';
   try {
-    said = String((await res.json())?.message ?? '');
+    said = String((await g.read(res, 'json', 'GitHub', { max: ERROR_MAX }))?.message ?? '');
   } catch {
     // not JSON
   }
@@ -375,7 +379,7 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
   const { files } = await snapshot(g, id);
   const m = files.get(MANIFEST);
   if (!m) throw new E('missing', "That commit isn't an annai backup.");
-  const manifestBytes = await blob(g, m.sha, signal);
+  const manifestBytes = await blob(g, m.sha, signal, MANIFEST_MAX);
   /** @type {any} */
   let manifest;
   try {
@@ -397,9 +401,9 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
   return out.finish();
 }
 
-/** @param {G} g @param {string} sha @param {AbortSignal} [signal] */
-async function blob(g, sha, signal) {
+/** One file's bytes, at most max of them (GitHub holds none larger than MAX_FILE). @param {G} g @param {string} sha @param {AbortSignal} [signal] @param {number} [max] */
+async function blob(g, sha, signal, max = MAX_FILE) {
   const res = await call(g, 'GET', `/git/blobs/${sha}`, { raw: true, signal });
   if (!res.ok) throw await failure(g, res);
-  return new Uint8Array(await g.read(res, 'arrayBuffer', 'GitHub'));
+  return /** @type {Uint8Array} */ (await g.read(res, 'bytes', 'GitHub', { max }));
 }
