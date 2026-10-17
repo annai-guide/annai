@@ -55,6 +55,7 @@ const SOON_MS = 500;
 export const CALM_MS = 30_000;
 const HELLO = 'Notifications are on. Reminders come like this while annai is closed.';
 const AGAIN = 'Notifications are on again: reminders come like this while annai is closed.';
+const NO_CONNECTION = "This phone has no connection: annai sends its reminders to the relay once it's back.";
 const OFF_BY_PHONE = "The phone turned annai's notifications off, or they were turned off in its settings, so reminders don't reach a closed annai. Turn them on again in Settings → Notifications.";
 
 /**
@@ -142,19 +143,23 @@ export class PushMirror {
   /** The "notifications are off" card, once a run. */
   #warned = false;
   #lastState = '';
+  /** @type {Promise<void> | null} a sync waiting to run */
+  #queued = null;
   #lastTokens = '';
 
   /**
    * @param {{ store: Store, ws: Workspace, live: LiveLike, source: Source, fetch?: (url: string, init?: RequestInit) => Promise<Response>,
-   *   clock?: import('../live/clock.js').Clock, notice?: (n: { title: string, body: string }) => void }} c
+   *   clock?: import('../live/clock.js').Clock, notice?: (n: { title: string, body: string }) => void, online?: () => boolean }} c
+   *   online: whether the browser says it has a connection; without one, nothing is tried until it is back (fix pass N4)
    */
-  constructor({ store, ws, live, source, fetch, clock = realClock(), notice = () => {} }) {
+  constructor({ store, ws, live, source, fetch, clock = realClock(), notice = () => {}, online = () => true }) {
     this.store = store;
     this.ws = ws;
     this.live = live;
     this.source = source;
     this.clock = clock;
     this.notice = notice;
+    this.online = online;
     this.fetch = fetch ?? tracedFetch(store, SYS_DEVICE, { tool: 'push relay' });
   }
 
@@ -307,13 +312,33 @@ export class PushMirror {
     if (list.some((n) => n?.kind === 'changed')) this.#soon();
   }
 
-  /** Brings the relay into step with live mode. */
+  /**
+   * Brings the relay into step with live mode. One waiting to run is enough: more asked meanwhile (timers
+   * firing while a slow request fails) join it, rather than pile up (fix pass N4).
+   * @returns {Promise<void>}
+   */
   sync() {
-    return this.#run(() => this.#sync());
+    if (this.#queued) return this.#queued;
+    const job = this.#run(() => {
+      this.#queued = null;
+      return this.#sync();
+    });
+    this.#queued = job;
+    return job;
   }
 
   async #sync() {
     this.#dirty = false;
+    if (!this.online()) {
+      // Nothing can reach the relay: the browser's online event brings the next sync (fix pass N4).
+      const st = await this.#read();
+      if (st.on && st.problem?.message !== NO_CONNECTION) {
+        st.problem = { message: NO_CONNECTION, at: this.clock.now(), needsYou: false };
+        await this.#save(st, await this.#readTokens());
+        this.#tell();
+      }
+      return;
+    }
     if (this.#retryTimer !== null) this.clock.clear(this.#retryTimer);
     this.#retryTimer = null;
     const st = await this.#read();
@@ -590,6 +615,9 @@ export class PushMirror {
       st.problem = { message, at: now, needsYou: false };
       const wait = e.retryAfter ? e.retryAfter * 1000 : Math.min(30 * MIN, MIN * 2 ** this.#retries);
       this.#retries++;
+      // The retry is the next sync: a sooner one already waiting would only fail again (fix pass N4).
+      if (this.#soonTimer !== null) this.clock.clear(this.#soonTimer);
+      this.#soonTimer = null;
       this.#retryTimer = this.clock.set(() => {
         this.#retryTimer = null;
         this.sync().catch((x) => console.warn('push: a sync failed', x));
@@ -610,6 +638,8 @@ export class PushMirror {
    */
   #soon(level = 'prompt') {
     if (level === 'urgent') this.#dirty = true;
+    // A retry waits its turn: calm news doesn't cut its growing wait short (fix pass N4).
+    if (level === 'calm' && this.#retryTimer !== null) return;
     const wait = level === 'calm' ? CALM_MS : SOON_MS;
     const at = this.clock.now() + wait;
     if (this.#soonTimer !== null) {
