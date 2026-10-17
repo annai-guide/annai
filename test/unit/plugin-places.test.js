@@ -211,3 +211,15 @@ test('nearby asks online where the pack holds only the first of more places than
   assert.match(offline, /McWay Falls Overlook/);
   assert.match(offline, /from the offline pack/);
 });
+
+test("a JSON null, or an answer of the wrong shape, is the plain \"couldn't read\" answer, never a TypeError (C2)", async () => {
+  const { run } = await setup();
+  NOMINATIM_GAP.ms = 1;
+  const plain = (/** @type {RegExp} */ re) => (/** @type {any} */ e) => e.constructor === Error && re.test(e.message);
+  await assert.rejects(run('geocode', { query: 'Big Sur' }, () => null), plain(/^Nominatim sent an answer annai can't read\.$/));
+  await assert.rejects(run('geocode', { query: 'Big Sur' }, () => ({ results: [] })), plain(/^Nominatim sent an answer annai can't read\.$/));
+  await assert.rejects(run('reverse', McWay, () => null), plain(/^Nominatim sent an answer annai can't read\.$/));
+  assert.match(await run('weather', { ...McWay, when: '2026-11-27' }, () => null), /^Open-Meteo didn't answer \(api\.open-meteo\.com sent an answer annai can't read\), so there is no forecast\./);
+  const odd = await run('weather', { ...McWay, when: '2026-11-27' }, () => ({ timezone: 'America/Los_Angeles', hourly: { time: ['2026-11-27T10:00', 5] }, daily: { time: ['2026-11-27'] } }));
+  assert.equal(typeof odd, 'string');
+});

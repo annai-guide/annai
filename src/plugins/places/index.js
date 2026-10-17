@@ -68,6 +68,8 @@ function guideText(title, text, section, source) {
 }
 
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
+/** The plain answer for a server's answer that isn't what it should be (never a TypeError: spec §5.5). @param {string} where */
+const UNREADABLE = (where) => `${where} sent an answer annai can't read.`;
 const POINT = { lat: { type: 'number', minimum: -90, maximum: 90 }, lng: { type: 'number', minimum: -180, maximum: 180 } };
 
 /** @param {any} annai */
@@ -147,8 +149,10 @@ export function activate(annai) {
       /** @param {{ query: string }} i @param {any} call */
       async run(i, call) {
         const found = await nominatim(`${NOMINATIM}/search?q=${encodeURIComponent(i.query)}&format=jsonv2&limit=5`, call);
-        if (!found.length) return `Nothing found for "${i.query}".`;
-        return tsv(['name', 'lat', 'lng', 'type'], found.map((/** @type {any} */ f) => [f.display_name, f.lat, f.lon, `${f.category ?? f.class}/${f.type}`]));
+        if (!Array.isArray(found)) throw new Error(UNREADABLE('Nominatim'));
+        const places = found.filter((f) => f && typeof f === 'object');
+        if (!places.length) return `Nothing found for "${i.query}".`;
+        return tsv(['name', 'lat', 'lng', 'type'], places.map((/** @type {any} */ f) => [f.display_name, f.lat, f.lon, `${f.category ?? f.class}/${f.type}`]));
       },
     },
     {
@@ -158,6 +162,7 @@ export function activate(annai) {
       /** @param {{ lat: number, lng: number }} i @param {any} call */
       async run(i, call) {
         const f = await nominatim(`${NOMINATIM}/reverse?lat=${i.lat}&lon=${i.lng}&format=jsonv2&zoom=18`, call);
+        if (!f || typeof f !== 'object' || Array.isArray(f)) throw new Error(UNREADABLE('Nominatim'));
         if (f.error) return `Nothing is known at ${i.lat}, ${i.lng}.`;
         return JSON.stringify({ name: f.name ?? '', address: f.display_name ?? '', type: `${f.category ?? f.class}/${f.type}` });
       },
@@ -178,22 +183,26 @@ export function activate(annai) {
           if (call.signal.aborted) throw e;
           return sunOnly(i, e); // spec §11.5: the sun is worked out on the phone
         }
+        if (!w || typeof w !== 'object' || Array.isArray(w)) return sunOnly(i, new Error(UNREADABLE('api.open-meteo.com')));
         const day = i.when ? String(i.when).slice(0, 10) : null;
-        const h = w.hourly ?? {};
-        const times = /** @type {string[]} */ (h.time ?? []);
+        const h = w.hourly && typeof w.hourly === 'object' ? w.hourly : {};
+        // Only what has the shape of an hour counts (a bad answer is no crash, C2).
+        const times = /** @type {string[]} */ ((Array.isArray(h.time) ? h.time : []).map((/** @type {unknown} */ t) => (typeof t === 'string' ? t : '')));
         let idx = times.map((_, k) => k);
+        idx = idx.filter((k) => times[k] !== '');
         if (day) idx = idx.filter((k) => times[k].startsWith(day));
         else {
           const nowLocal = times.findIndex((t) => Date.parse(`${t}:00Z`) >= Date.now() + (w.utc_offset_seconds ?? 0) * 1000 - 3_600_000);
           idx = idx.slice(Math.max(0, nowLocal), Math.max(0, nowLocal) + 24);
         }
         if (!idx.length) return `No forecast for ${day ?? 'that time'}: Open-Meteo forecasts 16 days ahead.`;
-        const d = w.daily ?? {};
-        const di = (d.time ?? []).indexOf(times[idx[0]].slice(0, 10));
+        const d = w.daily && typeof w.daily === 'object' ? w.daily : {};
+        const at = (/** @type {string} */ key, /** @type {number} */ k) => (Array.isArray(d[key]) ? d[key][k] : undefined);
+        const di = (Array.isArray(d.time) ? d.time : []).indexOf(times[idx[0]].slice(0, 10));
         const lines = [`Time zone: ${w.timezone}${w.timezone_abbreviation ? ` (${w.timezone_abbreviation})` : ''}`];
         if (di >= 0) {
-          lines.push(`${d.time[di]}: ${Math.round(d.temperature_2m_min[di])} to ${Math.round(d.temperature_2m_max[di])} °C, rain chance up to ${d.precipitation_probability_max[di]}%, `
-            + `sunrise ${String(d.sunrise[di]).slice(11)}, sunset ${String(d.sunset[di]).slice(11)}`);
+          lines.push(`${d.time[di]}: ${Math.round(at('temperature_2m_min', di))} to ${Math.round(at('temperature_2m_max', di))} °C, rain chance up to ${at('precipitation_probability_max', di)}%, `
+            + `sunrise ${String(at('sunrise', di)).slice(11)}, sunset ${String(at('sunset', di)).slice(11)}`);
         }
         lines.push(tsv(['time', 'temp_c', 'rain_chance_pct', 'rain_mm', 'weather', 'wind_kmh'],
           idx.map((k) => [times[k], h.temperature_2m?.[k], h.precipitation_probability?.[k], h.precipitation?.[k], WEATHER[h.weather_code?.[k]] ?? h.weather_code?.[k], h.wind_speed_10m?.[k]])));
