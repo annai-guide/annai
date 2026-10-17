@@ -121,3 +121,11 @@ test('weather without a connection: no forecast, but the sun, worked out on the 
   const far = await run('weather', { lat: 69.6492, lng: 18.9553, when: '2026-12-21' }, () => { throw new TypeError('Load failed'); });
   assert.match(far, /the sun doesn't rise that day; twilight from \d\d:\d\d to \d\d:\d\d\.$/);
 });
+
+test("a server's answer annai can't read is the tool's plain answer, not a bug in the plugin", async () => {
+  const { run } = await setup();
+  await assert.rejects(run('geocode', { query: 'Big Sur' }, () => new Response('<html>Bad gateway</html>')),
+    (/** @type {any} */ e) => e.constructor === Error && /^Nominatim sent an answer annai can't read\.$/.test(e.message));
+  await assert.rejects(run('guide', { place: 'Big Sur' }, () => new Response('{"query":')),
+    (/** @type {any} */ e) => e.constructor === Error && /^en\.wikivoyage\.org sent an answer annai can't read\.$/.test(e.message));
+});
