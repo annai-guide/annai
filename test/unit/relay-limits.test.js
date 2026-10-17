@@ -187,3 +187,28 @@ test('an IPv6 address counts by its /64, the block one home or phone gets: per a
   assert.equal((await k.call('GET', '/v1/vapid', { ip: '2001:db8:1:2:ffff::c' })).status, 429, 'the same /64');
   assert.equal((await k.call('GET', '/v1/vapid', { ip: '2001:db8:1:3::a' })).status, 200, 'another /64');
 });
+
+test("endpoints must have each push service's own shape, not just its host: other paths there can't be used to confirm made-up ones", async () => {
+  const { pushEndpointAllowed } = await import('../../relay/src/relay.js');
+  for (const ok of ['https://fcm.googleapis.com/fcm/send/dXk3:APA91b', 'https://fcm.googleapis.com/wp/dXk3:APA91b', 'https://android.googleapis.com/gcm/send/abc',
+    'https://web.push.apple.com/QGuQyavXutnMei7Ldr5a6zf', 'https://api.push.apple.com/abc', 'https://updates.push.services.mozilla.com/wpush/v2/gAAAA',
+    'https://wns2-par02p.notify.windows.com/w/?token=BQYAAA']) assert.equal(pushEndpointAllowed(ok), true, ok);
+  for (const no of ['https://fcm.googleapis.com/', 'https://fcm.googleapis.com/v1/projects/p/messages:send', 'https://fcm.googleapis.com/fcm/send/', 'https://fcm.googleapis.com/fcm/other/x',
+    'https://android.googleapis.com/x', 'https://web.push.apple.com/', 'https://updates.push.services.mozilla.com/other/x', 'https://wns2-par02p.notify.windows.com/x',
+    'https://fcm.googleаpis.com/fcm/send/x' /* a Cyrillic а */, 'https://web.push.аpple.com/abc']) assert.equal(pushEndpointAllowed(no), false, no);
+});
+
+test('only a 201 confirms a subscription (RFC 8030 §5): another 2xx from its host takes the reminder, but confirms nothing', async () => {
+  for (const status of [200, 202, 204]) {
+    const k = await relayKit({ statuses: [status] });
+    await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + MIN }), token: token() });
+    await k.after(MIN);
+    assert.deepEqual(await k.waiting(), [], `${status}: taken, and not tried again`);
+    const far = await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + 60 * MIN }), token: token() });
+    assert.equal(far.body.error, 'unconfirmed', `${status}: not confirmed`);
+  }
+  const k = await relayKit({ statuses: [201] });
+  await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + MIN }), token: token() });
+  await k.after(MIN);
+  assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + 60 * MIN }), token: token() })).status, 201, '201: confirmed');
+});
