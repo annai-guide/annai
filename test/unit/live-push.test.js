@@ -142,3 +142,16 @@ test("a notification for a reminder annai already said on screen is a double: pu
   ]);
   assert.deepEqual(doubles, [`${k.trip}|${w.id}`]);
 });
+
+test('while another trip opens, the list never pairs the new trip with the old plan: the plan and the conversation are read together', async () => {
+  const k = await liveKit({ plan: { nepenthe: NEP } });
+  const other = await createTrip(k.ws, { title: 'Carmel' });
+  await k.ws.write(other, '/plan/tea.json', { id: 'tea', ...TEA }, { author: 'user' });
+  await k.to(at('11:00'));
+  assert.ok((await k.live.reminders())?.some((r) => r.scope === k.trip && r.watch.startsWith('plan:nepenthe:')));
+  k.agent.target = other; // the Agent has started opening Carmel; its "open" event comes once its log is read
+  const list = /** @type {any[]} */ (await k.live.reminders());
+  assert.ok(!list.some((r) => r.scope === other && r.watch.startsWith('plan:nepenthe:')), JSON.stringify(list));
+  assert.ok(list.some((r) => r.scope === other && r.watch.startsWith('plan:tea:')), JSON.stringify(list));
+  k.live.dispose();
+});
