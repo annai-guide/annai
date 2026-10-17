@@ -31,6 +31,12 @@ import { renderMcp } from './screens/mcp.js';
 import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi, made } from './slots.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
+/** The top bar's tab each screen belongs to, where it isn't the screen's own name. */
+const SECTION = /** @type {Record<string, string>} */ ({
+  trip: 'trips', file: 'trips', booking: 'trips', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
+  plugins: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
+  voice: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings',
+});
 const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp };
 
 /**
@@ -58,6 +64,7 @@ export function startShell(root, core) {
   const showMore = () => nav.classList.toggle('more', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
   nav.addEventListener('scroll', showMore, { passive: true });
   addEventListener('resize', showMore);
+  document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
   drawTabs();
 
   const update = { ready: false, apply: () => {} };
@@ -100,10 +107,28 @@ export function startShell(root, core) {
   // Where you were (the user, 2026-10-18): a screen you go to opens at its top; Back or Forward brings you
   // back to where you were on it. Each history entry gets a key, and where you were is kept by key.
   history.scrollRestoration = 'manual';
+  // Kept for the tab's life, so a reload (iPhone reloads an app it set aside) still knows.
+  const KEPT = 'annai-scrolls';
   /** @type {Map<string, number>} */
-  const scrolls = new Map();
+  const scrolls = new Map((() => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(KEPT) ?? '[]');
+      return Array.isArray(v) ? v.filter((x) => Array.isArray(x) && typeof x[0] === 'string' && typeof x[1] === 'number') : [];
+    } catch {
+      return [];
+    }
+  })());
   let entry = '';
   addEventListener('scroll', () => { if (entry) scrolls.set(entry, scrollY); }, { passive: true });
+  addEventListener('pagehide', () => {
+    try {
+      sessionStorage.setItem(KEPT, JSON.stringify([...scrolls].slice(-50)));
+    } catch {
+      // not kept: a reload then opens at the top
+    }
+  });
+  /** Where a screen still being drawn should scroll to: whichever drawing finishes first after a move uses it. @type {number | null} */
+  let pending = null;
   /** This history entry's key, and where to scroll to on it. @returns {number} */
   const arrive = () => {
     const had = history.state?.annaiScroll;
@@ -119,10 +144,10 @@ export function startShell(root, core) {
   /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
   async function render(o = {}) {
     const my = ++seq;
-    const want = o.moved ? arrive() : null;
+    if (o.moved) pending = arrive();
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
-    const section = route.name === 'simulate' || route.name === 'mcp' ? 'settings' : route.name === 'plan' ? 'plan' : route.name === 'drive' ? 'now' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
+    const section = SECTION[route.name] ?? (route.parts[0] === 'trip' ? 'trips' : route.parts[0]);
     const current = route.name === 'ext' ? location.hash : `#/${section}`;
     for (const a of links) {
       if (a.getAttribute('href') === current) a.setAttribute('aria-current', 'page');
@@ -130,7 +155,7 @@ export function startShell(root, core) {
     }
     // The screen you are on stays in view in the top bar, however far along it is.
     const on = links.find((a) => a.hasAttribute('aria-current'));
-    if (on) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth);
+    if (on) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
     showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
@@ -138,10 +163,13 @@ export function startShell(root, core) {
       const node = await screen(Object.create(ctx, { seq: { value: my } }), route);
       if (my !== seq) return;
       main.replaceChildren(node);
-      if (want !== null) {
+      if (pending !== null) {
+        const want = pending;
+        pending = null;
         scrollTo(0, want);
-        // A screen that fills in a moment later is scrolled again once it is long enough.
-        if (want) setTimeout(() => { if (my === seq && Math.abs(scrollY - want) > 2) scrollTo(0, want); }, 150);
+        // A screen that fills in a moment later is scrolled again once it is long enough; not the Conversation,
+        // which goes to its last message itself.
+        if (want && route.name !== 'talk') setTimeout(() => { if (my === seq && Math.abs(scrollY - want) > 2) scrollTo(0, want); }, 150);
       }
     } catch (e) {
       if (my !== seq) return;

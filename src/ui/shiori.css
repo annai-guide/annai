@@ -88,8 +88,9 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
    while voice is on, the dock grows, and never moves. */
 .voice-row { display: flex; justify-content: center; align-items: center; gap: 2px; max-width: 560px; margin: 2px auto 0; flex-wrap: wrap; }
 .voice-row > :not([hidden]):not(:empty) ~ :not([hidden]):not(:empty) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
-.voice-row .voice-chip-wrap, .voice-row .plugin-chips { display: inline-flex; align-items: center; }
-.voice-row .chip { border: 0; background: none; min-height: 32px; padding: 4px 6px; font-size: 13px; color: var(--ink-2); }
+.voice-row .voice-chip-wrap, .voice-row .plugin-chips { display: inline-flex; align-items: center; gap: 4px; }
+.voice-row .chip { border: 0; background: none; min-height: 32px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); }
+.ib-icon { font-size: 22px; line-height: 1; }
 .voice-row .chip:hover { color: var(--ink); }
 .ib-svg { display: block; }
 .voice-chip-wrap { position: relative; }
@@ -127,6 +128,8 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
 .md p { margin: 0 0 6px; white-space: pre-line; overflow-wrap: anywhere; }
 .md .md-h { font-weight: 700; }
 .md ul, .md ol { margin: 0 0 6px; padding-left: 20px; }
+/* A code block wraps, so it never widens the page (and the page takes sideways swipes itself). */
+.md pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 6px; font-size: 13px; }
 
 /* System cards sit above the dock, so their buttons can be reached. */
 body:has(.dock:not(.seat)) .notices { bottom: calc(var(--dock-h, 140px) + 8px); z-index: 25; }
