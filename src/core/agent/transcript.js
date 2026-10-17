@@ -12,6 +12,8 @@ import { toBase64 } from '../bytes.js';
  */
 
 export const RESTARTED = 'interrupted by app restart';
+/** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
+export const NOT_SAID = new Set(['location', 'trigger.fired']);
 
 export class Transcript {
   /** @type {Message[]} */
@@ -103,6 +105,10 @@ export class Transcript {
       if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
       this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'speech' && p.id === d.of ? { ...p, text } : p)) }));
       return;
+    } else if (e.type === 'reminder') {
+      // A reminder annai showed (and said) by itself, the model out of reach (spec §11.3): she knows, so she doesn't repeat it.
+      if (!texts.text) return;
+      this.#add('user', [{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since you couldn't be reached: "${texts.text}"` }]);
     } else if (e.type === 'tool.result' && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       const heard = (Array.isArray(d.heard) ? d.heard : []).map((/** @type {string} */ id) => this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id }));
@@ -146,7 +152,7 @@ export class Transcript {
     }));
     const t = new Transcript();
     if (latest) t.apply(latest, await resolveEvent(store, latest));
-    for (const e of events) if (e.type !== 'compaction') t.apply(e, await resolveEvent(store, e));
+    for (const e of events) if (e.type !== 'compaction' && !NOT_SAID.has(e.type)) t.apply(e, await resolveEvent(store, e));
     return t;
   }
 }

@@ -295,7 +295,18 @@ export class Voice {
     this.#watching = true;
     const again = () => { this.refresh().catch(() => {}); };
     platform.onDeviceChange?.(again);
-    this.registry.list('activity')[0]?.onChange?.(again);
+    // The activity sensor comes with live mode (spec §11.2), maybe after voice started: followed once it is there.
+    /** @type {any} */
+    let followed = null;
+    const follow = (/** @type {boolean} */ late) => {
+      const sensor = this.registry.list('activity')[0] ?? null;
+      if (!sensor || sensor === followed) return;
+      followed = sensor;
+      sensor.onChange?.(again);
+      if (late) again(); // one that came later may already say something
+    };
+    follow(false); // called from refresh(), which reads the activity itself
+    this.registry.onChange(() => follow(true));
   }
 
   /** How to listen now (spec §10.3), against the first main model that isn't resting: it is expected to hear. */

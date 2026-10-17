@@ -24,7 +24,7 @@ const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settin
 
 /**
  * @param {HTMLElement} root
- * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, presets?: Record<string, string>, version: string }} core
+ * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, presets?: Record<string, string>, version: string }} core
  */
 export function startShell(root, core) {
   const notices = createNotices();
