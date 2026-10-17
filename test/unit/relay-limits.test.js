@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { relayKit, ENDPOINT, MIN, token } from './relay-kit.js';
-import { UNCONFIRMED, BATCH, KEEP_CONFIRMED } from '../../relay/src/relay.js';
+import { UNCONFIRMED, BATCH, KEEP_CONFIRMED, addressKey } from '../../relay/src/relay.js';
 import { startRelay } from '../../relay/serve.mjs';
 import { MemoryStorage } from '../../relay/memory.js';
 import { newVapidJwk } from '../../relay/src/vapid.js';
@@ -33,7 +33,7 @@ test('a body sent without its length is read only up to 8 KB, then refused; the 
 
 test("without Cloudflare's rate-limit binding, the relay limits each address itself: never no limit (spec §11.6)", async () => {
   const k = await relayKit({ limit: null });
-  for (let i = 0; i < 300; i++) assert.equal((await k.call('GET', '/v1/vapid', { ip: '198.51.100.1' })).status, 200);
+  for (let i = 0; i < 60; i++) assert.equal((await k.call('GET', '/v1/vapid', { ip: '198.51.100.1' })).status, 200);
   const r = await k.call('GET', '/v1/vapid', { ip: '198.51.100.1' });
   assert.equal(r.status, 429);
   assert.equal(r.body.error, 'rate');
@@ -163,4 +163,27 @@ test("the in-memory storage takes at most 128 keys a call, as Cloudflare's does,
   await s.put({ a: 1, b: 2 });
   await s.deleteAll();
   assert.deepEqual(s.keys(), []);
+});
+
+test('one address may make 60 requests a minute: under the Free plan\'s 100,000 a day, and still far more than annai needs', async () => {
+  const k = await relayKit({ limit: null });
+  let ok = 0;
+  for (let i = 0; i < 61; i++) if ((await k.call('GET', '/v1/vapid', { ip: '198.51.100.9' })).status === 200) ok++;
+  assert.equal(ok, 60);
+  assert.ok(60 * 60 * 24 < 100_000);
+});
+
+test('an IPv6 address counts by its /64, the block one home or phone gets: per address means something there too', async () => {
+  assert.equal(addressKey('2001:db8:1:2:3:4:5:6'), '2001:db8:1:2::/64');
+  assert.equal(addressKey('2001:0db8:0001:0002:aaaa::1'), '2001:db8:1:2::/64');
+  assert.equal(addressKey('2001:db8::1'), '2001:db8:0:0::/64');
+  assert.notEqual(addressKey('2001:db8:1:3::1'), addressKey('2001:db8:1:2::1'));
+  assert.equal(addressKey('203.0.113.7'), '203.0.113.7');
+  assert.equal(addressKey('::ffff:203.0.113.7'), '203.0.113.7');
+  assert.equal(addressKey(''), 'unknown');
+  const k = await relayKit({ limit: 2 });
+  assert.equal((await k.call('GET', '/v1/vapid', { ip: '2001:db8:1:2::a' })).status, 200);
+  assert.equal((await k.call('GET', '/v1/vapid', { ip: '2001:db8:1:2::b' })).status, 200);
+  assert.equal((await k.call('GET', '/v1/vapid', { ip: '2001:db8:1:2:ffff::c' })).status, 429, 'the same /64');
+  assert.equal((await k.call('GET', '/v1/vapid', { ip: '2001:db8:1:3::a' })).status, 200, 'another /64');
 });

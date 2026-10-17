@@ -70,8 +70,12 @@ test("the runner keeps off annai's own ports, and asks for the app's address", (
 test('wrangler.toml: one SQLite-backed Durable Object class per subscription, the rate limit, the route, no key; index.js exports both', async () => {
   const toml = await readFile(new URL('../../relay/wrangler.toml', import.meta.url), 'utf8');
   for (const line of ['main = "src/index.js"', 'name = "RELAY"', 'class_name = "PushRelay"', 'new_sqlite_classes = ["PushRelay"]', 'name = "LIMIT"',
-    'simple = { limit = 300, period = 60 }', 'pattern = "push.annai.guide"', 'custom_domain = true', 'ORIGINS = "https://annai.guide"']) assert.ok(toml.includes(line), line);
+    'simple = { limit = 60, period = 60 }', 'pattern = "push.annai.guide"', 'custom_domain = true', 'ORIGINS = "https://annai.guide"']) assert.ok(toml.includes(line), line);
   assert.doesNotMatch(toml, /VAPID_KEY\s*=/, 'the private key is a secret, never in the file');
+  const readme = await readFile(new URL('../../relay/README.md', import.meta.url), 'utf8');
+  assert.match(readme, /100,000/, 'the Free plan\'s daily caps, in plain words');
+  assert.match(readme, /Workers Paid plan/);
+  assert.match(readme, /60 requests a minute/);
   const mod = await import('../../relay/src/index.js');
   assert.equal(typeof mod.default.fetch, 'function');
   assert.equal(typeof mod.PushRelay.prototype.alarm, 'function');

@@ -48,7 +48,7 @@ export function clientAddress(req) {
  * @param {{ port?: number, host?: string, origins?: string[], jwk?: string, keys?: string, subject?: string, extraPushOrigins?: string[],
  *   now?: () => number, timers?: boolean, limit?: number, send?: (url: string, init: RequestInit) => Promise<Response> }} [o]
  */
-export async function startRelay({ port = 0, host = '127.0.0.1', origins = [], jwk, keys, subject, extraPushOrigins = [], now = () => Date.now(), timers = true, limit = 300, send } = {}) {
+export async function startRelay({ port = 0, host = '127.0.0.1', origins = [], jwk, keys, subject, extraPushOrigins = [], now = () => Date.now(), timers = true, limit = 60, send } = {}) {
   const secret = jwk ?? (await keyFile(keys ?? join(homedir(), '.config', 'annai-relay', 'vapid.json')));
   const { publicKey } = await readVapidKey(secret);
   const { worker, PushRelay } = makeRelay({ now, ...(send ? { send } : {}) });

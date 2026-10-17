@@ -19,17 +19,23 @@ Limits:
 - until a phone has had one notification through the relay, it may keep only 3 reminders, due within
   10 minutes (annai sends a "notifications are on" one first). So an endpoint someone made up costs at
   most three small reminders, and only until its push service refuses it at the first send;
-- 300 requests a minute from one address;
+- 60 requests a minute from one address (an IPv6 address counts by its /64);
 - a request body of 8 KB, read no further.
 
 Errors are `{ error, message }`.
 
-**The worst case.** From one address, made-up endpoints can hold at most about 3,000 reminders
-(300 a minute for 10 minutes, about 10 MB), each deleted at its first send; an hour's worth if the
+**The worst case.** From one address, made-up endpoints can hold at most about 600 reminders
+(60 a minute for 10 minutes, about 2 MB), each deleted at its first send; an hour's worth if the
 push services themselves are failing. A phone that really receives notifications holds at most 200
 (about 800 KB) for up to 30 days, and the relay remembers that it received one for 60 days after the
-last. On the Free plan, a flood from many addresses can use up the day's 100,000 Durable Object
-requests: the relay then fails until the next day, and Cloudflare bills nothing.
+last.
+
+**The Free plan's daily caps.** The Workers Free plan allows 100,000 Worker requests a day, and
+100,000 Durable Object requests a day; each counts every request, refused ones (429) too. One
+address at the limit makes 86,400 a day, so it stays under them, but two or three addresses at the
+limit together use a day's worth up within hours. Then the relay fails for every phone until the
+daily reset (00:00 UTC), and Cloudflare bills nothing. The Workers Paid plan removes the daily caps
+(it bills per million requests instead). annai itself needs a handful of requests per reminder.
 
 ## Deploy it to your Cloudflare account
 
@@ -90,9 +96,9 @@ there is no need to keep a copy of the key.
 
 ### Costs
 
-On the Free plan, Durable Objects allow 100,000 requests a day. Each reminder costs about three
-(sent, scheduled, and the alarm that sends it), and a cancelled one about three. One person's trips
-use a few hundred a day at most.
+On the Free plan, Workers and Durable Objects each allow 100,000 requests a day (above). Each
+reminder costs about three (scheduled, the alarm that sends it, the send), and a cancelled one about
+three. One person's trips use a few hundred a day at most.
 
 ### Self-hosting
 

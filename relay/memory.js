@@ -147,7 +147,7 @@ export function memoryNamespace(Class, env, { now = () => Date.now(), timers = t
  * A limit per key like Cloudflare's rate-limit binding: at most limit calls in each period (ms).
  * @param {{ limit?: number, period?: number, now?: () => number }} [o]
  */
-export function memoryLimiter({ limit = 300, period = 60_000, now = () => Date.now() } = {}) {
+export function memoryLimiter({ limit = 60, period = 60_000, now = () => Date.now() } = {}) {
   /** @type {Map<string, number[]>} */
   const seen = new Map();
   return {
