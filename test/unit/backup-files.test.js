@@ -124,3 +124,36 @@ test('a whole file over the limit waits for the user, before anything is sent', 
   await assert.rejects(d.backups.backUp(id, { maxUpload: 10, reason: 'auto' }), (e) => e instanceof TargetError && e.kind === 'large' && (e.bytes ?? 0) > 10);
   assert.equal(place.files.size, 0);
 });
+
+test("minors 23: single writer, for whole files, with a clock that is behind: another device's backup made after this one's base is newer, whatever its time says", async () => {
+  const place = memoryFilePlace();
+  const phone = await device(place, 'iPhone');
+  /** The Android phone's backups, by its clock, an hour behind. */
+  const android = () => {
+    const name = backupFileName({ at: Date.now() - 3_600_000, label: 'Android phone', device: 'k3j2h4l1abcd', encrypted: false });
+    place.files.set(name, new Blob(['a backup']));
+    return name;
+  };
+  android();
+  const a = await filePlaceOn(phone);
+  await phone.backups.backUp(a, { over: true });
+  await later();
+  await phone.backups.backUp(a);
+  assert.equal((await phone.backups.get(a))?.hold, null);
+  // The Android phone backs up after the iPhone did; its file says an hour earlier.
+  await later();
+  const skewed = android();
+  await assert.rejects(phone.backups.backUp(a), (e) => e instanceof TargetError && e.kind === 'newer' && e.remote?.id === skewed);
+  assert.equal((await phone.backups.check(a)).newer?.id, skewed, 'its screen says so too');
+  // Backed up over it, it is known: the next backup goes ahead.
+  await later();
+  await phone.backups.backUp(a, { over: true });
+  await later();
+  await phone.backups.backUp(a);
+  assert.equal((await phone.backups.get(a))?.hold, null);
+  // A device it never saw, whose clock is a day behind: newer too.
+  const stranger = backupFileName({ at: Date.now() - 86_400_000, label: 'iPad', device: 'q8w7e6r5t4y3', encrypted: false });
+  place.files.set(stranger, new Blob(['a backup']));
+  await later();
+  await assert.rejects(phone.backups.backUp(a), (e) => e instanceof TargetError && e.kind === 'newer' && e.remote?.id === stranger);
+});
