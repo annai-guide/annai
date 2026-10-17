@@ -8,7 +8,7 @@ import { readAppSettings } from './settings.js';
 import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
-import { TargetError, checkStorageType, backupFileName, parseBackupFileName } from './storage-types.js';
+import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
 import { PluginError } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
@@ -34,7 +34,7 @@ const STATE = '/installed.json';
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
-  backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }) });
+  backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer });
 
 /**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the

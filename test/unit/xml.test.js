@@ -51,3 +51,19 @@ test('entities, CDATA, empty and self-closing elements, attributes', () => {
   assert.equal(xmlText('<x><a id="1"/><a id="2">two</a></x>', 'a'), '');
   assert.deepEqual(xmlElements('<x><a id="1"/><a id="2">two</a></x>', 'a'), ['', 'two']);
 });
+
+test("a server's broken or hostile answer can't make annai throw or stall", { timeout: 10_000 }, () => {
+  assert.equal(xmlText('<a>&#x110000;&#9999999999;&#xD800;&#0;ok</a>', 'a'), '����ok');
+  const flood = '<Key>'.repeat(200_000); // 1 MB of openings without a close
+  const started = Date.now();
+  assert.deepEqual(xmlElements(flood, 'Key'), []);
+  assert.equal(xmlText(flood, 'Key'), null);
+  assert.ok(Date.now() - started < 200, `${Date.now() - started} ms`);
+  const more = Date.now();
+  assert.equal(xmlElements(`<a>${'<![CDATA['.repeat(100_000)}</a>`, 'a').length, 1);
+  xmlText(`<a>${'<![CDATA['.repeat(100_000)}</a>`, 'a');
+  xmlText(`<a>${'<'.repeat(1_000_000)}</a>`, 'a');
+  xmlText(`<a>${'&#'.repeat(500_000)}</a>`, 'a');
+  xmlElements(`${'</Key'.repeat(200_000)}`, 'Key');
+  assert.ok(Date.now() - more < 1000, `${Date.now() - more} ms`);
+});

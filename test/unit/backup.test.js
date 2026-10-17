@@ -211,7 +211,12 @@ test('GitHub through annai: every request is in the trace, and the token is in n
     assert.ok(traced.every((e) => e.data.tool === 'plugin:storage-github'));
     assert.deepEqual(traced.map((e) => `${e.data.method} ${new URL(e.data.url).pathname} ${e.data.status}`), gh.log.map((l) => `${l.method} ${l.path} ${l.status}`));
     assert.equal((await everything(store)).includes(gh.token), false);
+    for (const [path, bytes] of gh.files('me/annai-backup')) assert.equal(bytes.toString('latin1').includes(gh.token), false, path);
+    // A broken answer from GitHub is GitHub's answer: the plugin isn't blamed, and keeps running.
+    gh.garbleNext({ method: 'GET', part: '/repos/me/annai-backup', body: '<html>Unicorn!</html>' });
+    await assert.rejects(backups.check(id), (e) => e instanceof TargetError && e.kind === 'other' && /can't read/.test(e.message));
     assert.deepEqual(logged, []);
+    assert.equal(registry.isDisabled('storage-github'), false);
   } finally {
     await gh.stop();
   }

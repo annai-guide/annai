@@ -98,3 +98,58 @@ export function parseBackupFileName(name) {
   const at = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], +m[7]);
   return { id: name, at, device: m[9], label: KINDS[m[8]] ?? m[8].replace(/-/g, ' '), encrypted: !m[10] };
 }
+
+/** The most annai reads of a server's answer as text or JSON. An archive's download has no such limit. */
+export const TEXT_MAX = 8 * 1024 * 1024;
+
+/**
+ * Reads a server's answer for a storage plugin. Whatever is wrong with the answer (cut off, not
+ * JSON, too large) is the server's doing, so it is a TargetError, never a crash in the plugin's code:
+ * only real bugs count against a plugin (spec §5.5), and a broken or hostile server mustn't switch
+ * backups off.
+ * @param {Response} res @param {'json' | 'text' | 'blob' | 'arrayBuffer'} how
+ * @param {string} where the server, in a few words ("GitHub", "the bucket")
+ * @param {{ max?: number }} [o] max: the most bytes read as text or JSON
+ * @returns {Promise<any>}
+ */
+export async function readAnswer(res, how, where, { max = TEXT_MAX } = {}) {
+  const tooLarge = () => new TargetError('other', `${where} sent an answer larger than annai reads (${Math.round(max / 1048576)} MB). annai tries again later.`);
+  try {
+    if (how === 'blob') return await res.blob();
+    if (how === 'arrayBuffer') return await res.arrayBuffer();
+    if (Number(res.headers.get('content-length')) > max) {
+      res.body?.cancel().catch(() => {});
+      throw tooLarge();
+    }
+    /** @type {Uint8Array[]} */
+    const chunks = [];
+    let n = 0;
+    const reader = res.body?.getReader();
+    for (;;) {
+      const step = reader ? await reader.read() : { done: true, value: undefined };
+      if (step.done || !step.value) break;
+      n += step.value.byteLength;
+      if (n > max) {
+        await reader?.cancel().catch(() => {});
+        throw tooLarge();
+      }
+      chunks.push(step.value);
+    }
+    const bytes = new Uint8Array(n);
+    let at = 0;
+    for (const c of chunks) {
+      bytes.set(c, at);
+      at += c.byteLength;
+    }
+    const text = new TextDecoder().decode(bytes);
+    if (how === 'text') return text;
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new TargetError('other', `${where} answered something annai can't read. annai tries again later.`);
+    }
+  } catch (e) {
+    if (e instanceof TargetError || /** @type {any} */ (e)?.name === 'AbortError') throw e;
+    throw new TargetError('other', `The connection to ${where} broke while annai read its answer. annai tries again later.`);
+  }
+}
