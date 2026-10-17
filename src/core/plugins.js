@@ -1,4 +1,4 @@
-import { validate } from './schema.js';
+import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest } from './packages.js';
 import { text } from './bytes.js';
 import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
@@ -20,10 +20,7 @@ import { mergePatch } from './patch.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
-export const API_VERSION = 1;
-export const MANIFEST_FILE = 'annai-plugin.json';
-/** A plugin package may unpack to at most this much. */
-export const PLUGIN_MAX_BYTES = 64 * 1024 * 1024;
+export { API_VERSION, MANIFEST_FILE, PLUGIN_MAX_BYTES, PLUGIN_MANIFEST_SCHEMA } from './packages.js';
 /** How long a plugin's activate() may take before annai gives up on it. */
 export const START_TIMEOUT = 10_000;
 /** Launches in a row a plugin may fail to start on before annai turns it off. */
@@ -47,47 +44,6 @@ export function isPluginBug(e) {
   // An address the user typed that isn't one is the user's to fix, not a bug.
   const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
   return !offline && !address && BUGS.some((B) => e instanceof B);
-}
-
-export const PLUGIN_MANIFEST_SCHEMA = {
-  type: 'object',
-  required: ['id', 'name', 'version', 'api'],
-  properties: {
-    id: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{1,63}$' },
-    name: { type: 'string', minLength: 1, maxLength: 80 },
-    version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)?$' },
-    api: { type: 'integer', minimum: 1 },
-    description: { type: 'string', maxLength: 500 },
-    author: { type: 'string', maxLength: 200 },
-    homepage: { type: 'string', maxLength: 500 },
-    entry: { type: 'string', pattern: '^[^/].*\\.m?js$' },
-    skills: { type: 'array', items: { type: 'string' } },
-    personalities: { type: 'array', items: { type: 'string' } },
-    templates: { type: 'array', items: { type: 'string' } },
-    settings: { type: 'object' },
-  },
-};
-
-/** @param {any} manifest */
-function checkManifest(manifest) {
-  const id = typeof manifest?.id === 'string' ? manifest.id : 'plugin';
-  const errors = validate(PLUGIN_MANIFEST_SCHEMA, manifest);
-  if (errors.length) throw new PluginError(id, `its ${MANIFEST_FILE} is not valid: ${errors.join('; ')}`);
-  if (manifest.api !== API_VERSION) {
-    throw new PluginError(id, `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION}`);
-  }
-  if (manifest.entry !== undefined && !insidePlugin(manifest.entry)) {
-    throw new PluginError(id, `its entry "${manifest.entry}" isn't a file inside the plugin`);
-  }
-}
-
-/** A relative path that stays inside the plugin's folder. @param {string} rel */
-function insidePlugin(rel) {
-  try {
-    return normPath(`/p/${rel}`) === `/p/${rel}`;
-  } catch {
-    return false;
-  }
 }
 
 /** The folder the package lives in: "" or "name/" when everything sits in one top folder. @param {Map<string, Uint8Array>} files */
