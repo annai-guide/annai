@@ -22,7 +22,7 @@ memories afterwards.
 > (milestone 9). And live mode (milestone 5; its real-drive checklist is next): watches Shiori sets, the
 > plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode, the Live chip (the screen kept on as
-> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. And notifications (milestone 6; its device checklist is next): reminders reach a closed annai through a small push relay, encrypted on the phone, and opening one starts a catch-up. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Plan and bookings
@@ -43,6 +43,12 @@ memories afterwards.
 - Restore any backup onto a new or wiped phone from Settings → Automatic backups.
 - A newer backup from your other phone is never overwritten: annai pauses, and offers to import it as a copy.
 - The sign-ins for those places (the GitHub token, the bucket's keys, the WebDAV password) stay on the device and are never in a backup. API keys go into a backup only when you choose, and only into an encrypted one.
+
+## Notifications
+
+- Turn on Settings → Notifications, and Shiori's reminders for a time, and the plan's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.
+- They go through a small relay, `push.annai.guide` (its code is in [`relay/`](relay/README.md), to run your own). annai encrypts each reminder on the phone and pads it to one size: the relay learns only the phone's push address, when each reminder is due and how many are waiting. Reminders about places never leave the phone.
+- With annai open on screen, annai says a reminder itself and the relay's copy is called off, so it never comes twice.
 
 ## Principles
 

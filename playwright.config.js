@@ -14,7 +14,10 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Pixel 7'] } },
-    { name: 'webkit', use: { ...devices['iPhone 15'] } },
+    { name: 'chromium', use: { ...devices['Pixel 7'] }, testIgnore: /push-sw\.spec\.js/ },
+    { name: 'webkit', use: { ...devices['iPhone 15'] }, testIgnore: /push-sw\.spec\.js/ },
+    // Chromium's new headless mode shows notifications (the default headless shell refuses them), and its
+    // DevTools protocol can deliver a push: the phone's side of milestone 6.
+    { name: 'chromium-notifications', use: { ...devices['Pixel 7'], channel: 'chromium' }, testMatch: /push-sw\.spec\.js/ },
   ],
 });

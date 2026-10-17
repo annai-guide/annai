@@ -207,6 +207,7 @@ export class PushMirror {
       const base = relayAddress(relay ?? st.relay);
       if (!base) throw new Error(ADDRESS);
       const key = await this.#client(base).vapid();
+      if (base !== st.relay) this.#moveAll(st); // the old relay's copies are called off there (choice 13)
       const had = await this.source.get().catch(() => null);
       /** @type {Sub} */
       let sub;
@@ -359,7 +360,14 @@ export class PushMirror {
 
   /** The phone's subscription, renewed by itself when it is gone and permission stays (choice 12). @param {State} st */
   async #subscription(st) {
-    const sub = await this.source.get().catch(() => null);
+    /** @type {Sub | null} */
+    let sub;
+    try {
+      sub = await this.source.get();
+    } catch (e) {
+      // It can't be asked yet (annai's offline service starting): later, not "off".
+      throw new RelayError(String(/** @type {any} */ (e)?.message ?? e), { code: 'offline' });
+    }
     if (sub) {
       if (sub.endpoint !== st.endpoint) this.#renewed(st, sub);
       return sub;

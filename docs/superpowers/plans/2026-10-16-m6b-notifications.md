@@ -83,7 +83,13 @@ Done when: a reminder arrives on a locked iPhone and opens a catch-up wake. Task
     - Shown and opened notifications are `push.shown` and `push.opened` in the trip's log.
     - Trace → Notifications shows them.
 16. **The test hook:** `localStorage['annai.pushSubscription']` (an endpoint and keys) stands in for the phone's subscription in the end-to-end tests, the way `annai.forceDownload` works. Playwright's browsers have no push service.
-17. **The size budget** grows from 1150 KiB (Task 6 sets the new figure, and lists it).
+17. **The size budget** grows from 1150 KiB to 1215 KiB (1198.6 used at the end).
+18. **How soon annai tells the relay** (decided while building Task 2):
+    - **Half a second after a reminder came or changed.**
+    - **Half a second after one went** (said, cancelled, its trip removed). A batch still being sent then stops, so the call-off goes first.
+    - **At most every 30 seconds when only times may have moved:** each GPS fix while driving moves "leave soon" a little.
+    - The cost: a moved "leave soon" reaches the relay up to 30 seconds later.
+19. **The phone's side runs in Chromium's new headless mode** (Task 6). The end-to-end project `chromium-notifications` runs `test/e2e/push-sw.spec.js` there, because Playwright's default headless shell refuses notifications.
 
 ## Global Constraints
 
@@ -146,7 +152,7 @@ In addition to 6a's:
   - `Mirrored = { key: string, scope: string, watch: string, due: number, text: string }`. key is `<scope>|<watch id>`, plus `|<item time>` for the plan's reminders bound to an item's time.
   - `PushNews = { kind: 'shown' | 'opened' | 'changed', key?, scope?, watch?, at?, title?, body?, test?, t? }`.
   - `live.reminders(): Promise<Mirrored[] | null>`: null until `start` has loaded; sorted by due; in live mode's queue.
-  - `live.onReminders(fn: () => void): () => void`: told after each check, a watch set or dropped, and a forget.
+  - `live.onReminders(fn: (level: 'calm' | 'prompt' | 'urgent') => void): () => void`. Told after each check: urgent if it fired something, calm otherwise. Prompt after a watch is set, or a watch file or the plan changes; urgent after a watch is dropped or a trip forgotten (choice 18).
   - `live.forget(scope: string): Promise<void>`: a removed trip's watches, memory and firings leave live mode.
   - `live.pushNews(list: PushNews[]): Promise<string[]>`: hears the service worker's news while on screen. Opened ones become a catch-up wake now (or join the running catch-up); returns the keys of notifications for reminders annai had already said on screen.
   - `new Live({ …, news })`: `news: () => Promise<PushNews[]>`, read at the start of each catch-up.
@@ -1450,6 +1456,7 @@ export class PushMirror {
       const base = relayAddress(relay ?? st.relay);
       if (!base) throw new Error(ADDRESS);
       const key = await this.#client(base).vapid();
+      if (base !== st.relay) this.#moveAll(st); // the old relay's copies are called off there (choice 13)
       const had = await this.source.get().catch(() => null);
       /** @type {Sub} */
       let sub;
@@ -1602,7 +1609,14 @@ export class PushMirror {
 
   /** The phone's subscription, renewed by itself when it is gone and permission stays (choice 12). @param {State} st */
   async #subscription(st) {
-    const sub = await this.source.get().catch(() => null);
+    /** @type {Sub | null} */
+    let sub;
+    try {
+      sub = await this.source.get();
+    } catch (e) {
+      // It can't be asked yet (annai's offline service starting): later, not "off".
+      throw new RelayError(String(/** @type {any} */ (e)?.message ?? e), { code: 'offline' });
+    }
     if (sub) {
       if (sub.endpoint !== st.endpoint) this.#renewed(st, sub);
       return sub;
