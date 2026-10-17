@@ -54,7 +54,7 @@ export function relayClient({ base, fetch }) {
       res = await fetch(`${base}${path}`, init);
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw new RelayError(`annai couldn't reach the relay at ${host}. Is the phone offline? annai tries again by itself.`, { code: 'offline' });
+      throw new RelayError(`annai couldn't reach the relay at ${host}. Is the phone offline?`, { code: 'offline' });
     }
     let text = '';
     try {
@@ -79,11 +79,11 @@ export function relayClient({ base, fetch }) {
     const retryAfter = Number(res.headers.get('Retry-After')) || 0;
     if (res.status === 429 && code === 'unconfirmed') return new RelayError(said || 'The relay is waiting for this phone\'s first notification.', { code: 'unconfirmed', status: 429, retryAfter: retryAfter || 10 });
     if (res.status === 429) {
-      return new RelayError(said || `The relay at ${host} is busy. annai tries again in a minute.`, { code: code === 'full' ? 'full' : 'rate', status: 429, retryAfter: code === 'full' ? 0 : retryAfter || 60 });
+      return new RelayError(said || `The relay at ${host} is busy.`, { code: code === 'full' ? 'full' : 'rate', status: 429, retryAfter: code === 'full' ? 0 : retryAfter || 60 });
     }
     if (res.status === 409 && code === 'key') return new RelayError(said || "The relay's key changed.", { code: 'key', status: 409 });
     if (res.status === 410) return new RelayError(said || "The phone's push service says this subscription no longer exists.", { code: 'gone', status: 410 });
-    if (res.status >= 500) return new RelayError(`The relay at ${host} answered ${res.status}${said ? `: ${said}` : ''}. annai tries again later.`, { code: 'relay', status: res.status });
+    if (res.status >= 500) return new RelayError(`The relay at ${host} answered ${res.status}${said ? `: ${said.replace(/[.\s]+$/, '')}` : ''}.`, { code: 'relay', status: res.status });
     return new RelayError(`The relay at ${host} refused it (${res.status}${said ? `: ${said}` : ''}).`, { code: 'refused', status: res.status });
   }
 
@@ -91,6 +91,7 @@ export function relayClient({ base, fetch }) {
     /** The relay's VAPID public key, which the phone subscribes with. @returns {Promise<string>} */
     async vapid() {
       const { res, body } = await call('/v1/vapid', { method: 'GET' });
+      if (res.status === 404) throw new RelayError(`There's no annai push relay at ${host} (it answered 404). Check the relay address.`, { code: 'refused', status: 404 });
       if (!res.ok) throw failure(res, body);
       const raw = typeof body?.key === 'string' ? fromBase64Url(body.key) : null;
       if (!raw || raw.length !== 65 || raw[0] !== 4) throw new RelayError(`The relay at ${host} sent a key annai can't use. Is this the address of an annai push relay?`, { code: 'refused', status: res.status });
