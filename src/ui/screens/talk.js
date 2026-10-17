@@ -90,7 +90,20 @@ export async function renderTalk(ctx) {
     const d = e.data ?? {};
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
     if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }), ...(await sentPhotos(d.images)));
-    if (e.type === 'out.speak') return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
+    if (e.type === 'out.speak') {
+      if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
+      // Said aloud: hidden unless asked (spec §2 principle 4, §16.1).
+      const words = h('p', { text: texts.text ?? '', hidden: true });
+      const show = h('button', {
+        class: 'btn ghost', type: 'button', 'aria-expanded': 'false',
+        onclick: () => {
+          words.hidden = !words.hidden;
+          show.setAttribute('aria-expanded', String(!words.hidden));
+          show.textContent = words.hidden ? 'Show what she said' : 'Hide';
+        },
+      }, 'Show what she said');
+      return h('li', { class: 'shiori said' }, h('span', { class: 'who', text: 'SHIORI' }), h('span', { class: 'sub', text: 'Said aloud' }), show, words);
+    }
     if (e.type === 'heard') {
       // What annai heard you say, so you can see what it understood (spec §10.3).
       const words = h('span', { text: typeof d.text === 'string' ? d.text : '…' });
