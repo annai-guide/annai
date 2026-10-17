@@ -323,3 +323,23 @@ test('minors 2: an add that fails after the server started a session ends that s
     await s.stop();
   }
 });
+
+test("minors 6 and 7: headers annai sets itself are refused, and so is a token or header value a web request can't carry, each in words that say what is wrong", async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    const k = await kit();
+    for (const name of ['Content-Type', 'accept', 'MCP-Protocol-Version', 'mcp-session-id']) {
+      await assert.rejects(k.servers.add({ name: 'trail', url: s.url, headers: `Authorization: Bearer ${TOKEN}\n${name}: text/plain` }), new RegExp(`annai sends ${name} itself`, 'i'), name);
+    }
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: `${TOKEN}…` }), (/** @type {any} */ e) => /The token has a character a web request can't carry: U\+2026, its 21st/.test(e.message) && !/CORS/.test(e.message));
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, headers: 'X-Api-Key: it’s-a-key' }), /The header X-Api-Key has a character a web request can't carry: U\+2019, its 3rd/);
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: 'abc\u0000def12345' }), /U\+0000, its 4th/);
+    assert.equal(s.requests.length, 0, 'nothing was sent');
+    assert.deepEqual(await k.servers.list(), []);
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), undefined);
+    // Latin-1 is a byte a request carries.
+    await k.servers.add({ name: 'trail', url: s.url, headers: `Authorization: Bearer ${TOKEN}\nX-Note: café` });
+  } finally {
+    await s.stop();
+  }
+});
