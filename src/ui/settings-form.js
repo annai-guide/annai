@@ -19,7 +19,9 @@ export function formFields(schema) {
       ...(typeof p?.description === 'string' && p.description ? { hint: p.description } : {}),
       ...(p?.default !== undefined ? { default: p.default } : {}),
     };
-    if (p?.type === 'string' && p.writeOnly === true) return { ...base, kind: /** @type {const} */ ('secret') };
+    // A writeOnly field is a secret when it is a string; annai keeps no other kind of secret, and never
+    // puts one into a file (fix pass 8b-5).
+    if (p?.writeOnly) return { ...base, kind: /** @type {'secret' | 'unsupported'} */ (p.type === 'string' ? 'secret' : 'unsupported') };
     if (p?.type === 'string' && Array.isArray(p.enum)) return { ...base, kind: /** @type {const} */ ('select'), options: p.enum.map(String) };
     if (p?.type === 'string') return { ...base, kind: /** @type {const} */ ('text') };
     if (p?.type === 'number' || p?.type === 'integer') {
