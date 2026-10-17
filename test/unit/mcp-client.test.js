@@ -85,6 +85,16 @@ test("8c-1: an image passes on only when its data is base64; a data: address, ba
   assert.deepEqual(toolOutput({ content: [{ type: 'image', data: 'iVBORw0KGgo+/A==', mimeType: 'image/png' }] }).images, [{ mediaType: 'image/png', data: 'iVBORw0KGgo+/A==' }]);
 });
 
+test('8c-2: ordinary words in an address stay; a key is 8 or more characters mixing letters and digits, or 32 or more', () => {
+  for (const a of ['https://mcp.example.com/model-context-protocol/mcp', 'https://mcp.example.com/my-company-name-here/mcp', 'https://mcp.example.com/mcp?topic=trailheads-and-parking&v=2']) {
+    assert.deepEqual(addressParts(a), { shown: a, keys: [] }, a);
+  }
+  const long = 'abcdefghijklmnopqrstuvwxyzabcdefgh';
+  const { shown, keys } = addressParts(`https://mcp.example.com/s/${long}/a1b2c3d4/mcp?q=${long}&n=abcdefgh&token=x`);
+  assert.equal(shown, 'https://mcp.example.com/s/«key»/«key»/mcp?q=«key»&n=abcdefgh&token=«key»');
+  assert.deepEqual(keys, [long, 'a1b2c3d4', long, 'x']);
+});
+
 test('an address and its keys: shown with each part that may be a key blanked, and put back whole (the third finding)', () => {
   const a = 'https://mcp.example.com/api/mcp/s/zap1a2b3c4d5e6f7g8h9/mcp?v=2&key=q9w8e7r6t5y4&k=abc&api_key=short';
   const { shown, keys } = addressParts(a);
