@@ -138,3 +138,32 @@ test('with no connection, annai says each reminder at once and holds the wakes; 
   await k.settle();
   assert.equal(k.agent.wakes.length, 1);
 });
+
+test("after a restart the way travelled while closed counts once, in the catch-up, and the odometer doesn't jump when the user later starts moving", async () => {
+  const k = await liveKit();
+  const moved = await k.live.setWatch(k.trip, { when: { type: 'moved', km: 10 }, fallback: 'Ten km.' });
+  await k.fix(at('08:31'), MONTEREY);
+  k.live.dispose();
+  // annai is closed while the user drives to Nepenthe, and starts again there.
+  const clock = new ManualClock(at('10:30'));
+  const agent = fakeAgent(k.trip);
+  const sensors = fakeSensors(k.registry);
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA });
+  await live.start();
+  await live.settled();
+  sensors.fix({ lat: NEPENTHE.lat, lng: NEPENTHE.lng, accuracy: 8, speed: 0 });
+  await live.settled();
+  assert.equal(agent.wakes.length, 1);
+  assert.equal(agent.wakes[0].kind, 'catch-up');
+  assert.ok(agent.wakes[0].text.includes(`Your watch ${moved.id} (after 10 km travelled) fired: you have travelled 4`), agent.wakes[0].text);
+  const km = live.odometer;
+  assert.ok(km > 40 && km < 50, `odometer ${km}`);
+  // Driving on from Nepenthe adds only the road from there.
+  for (let s = 0; s <= 120; s += 5) {
+    await clock.advanceTo(at('10:31') + s * 1000, () => live.settled());
+    sensors.fix({ ...off(NEPENTHE, 0, -s * 15), accuracy: 8, speed: 15 });
+    await live.settled();
+  }
+  assert.ok(live.odometer - km < 2, `odometer ${live.odometer}`);
+  live.dispose();
+});

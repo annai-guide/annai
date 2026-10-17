@@ -772,9 +772,11 @@ export class Live {
       if (this.#trip && this.#inPlay(this.#trip)) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at);
     }
     // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
-    // only steps longer than twice the accuracy, which jitter doesn't make.
+    // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
+    // away counts the way since then at once, in the catch-up (spec §11.4), not as a jump when the user next moves.
+    const back = this.#catch !== null;
     if (!this.#odo) this.#odo = fix;
-    else if (moving && fix.accuracy <= 100 && meters(this.#odo, fix) >= Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy)) {
+    else if ((moving || back) && fix.accuracy <= 100 && meters(this.#odo, fix) >= (back ? Math.max(STOP_M, 2 * fix.accuracy) : Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy))) {
       this.odometer += meters(this.#odo, fix) / 1000;
       this.#odo = fix;
     }
