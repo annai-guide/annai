@@ -1,3 +1,5 @@
+import { WATCH_SCHEMA } from '../../core/live/watches.js';
+
 const TIME = {
   type: 'object', required: ['at', 'tz'],
   properties: { at: { type: 'string', format: 'date-time' }, tz: { type: 'string', minLength: 1 } },
@@ -77,4 +79,6 @@ export const CORE_SCHEMAS = [
   { scope: 'trip', pattern: '/trip.json', schema: TRIP_SCHEMA },
   { scope: 'trip', pattern: '/plan/*.json', schema: PLAN_ITEM_SCHEMA },
   { scope: 'trip', pattern: '/bookings/*.json', schema: BOOKING_SCHEMA },
+  { scope: 'trip', pattern: '/watches/*.json', schema: WATCH_SCHEMA },
+  { scope: 'me', pattern: '/watches/*.json', schema: WATCH_SCHEMA },
 ];
