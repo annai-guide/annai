@@ -91,3 +91,20 @@ test("a status chip that throws doesn't break the dock; it counts against its pl
     await llm.stop();
   }
 });
+
+test("Shiori shows a plugin's kind of card: the plugin draws it, and its label names the kind", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [
+    sse(anthropicToolReply([{ name: 'show', input: { card: { type: 'trail', data: { name: 'Pfeiffer Falls' } } } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Show me the falls');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.convo .trail-card')).toHaveText('Trail: Pfeiffer Falls');
+    await expect(page.locator('.convo .who').last()).toHaveText('SHIORI · TRAIL');
+  } finally {
+    await llm.stop();
+  }
+});

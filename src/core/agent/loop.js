@@ -21,6 +21,8 @@ import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { GATE_OPTIONS, gatePrompt } from '../voice/gate.js';
+import { cardSchema } from '../ui-slots.js';
+import { validate } from '../schema.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -56,18 +58,9 @@ export const STOPPED = 'Stopped by the user.';
 /** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
 export const WRITE_TRIES = 3;
 
-const CARD = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    text: { type: 'string', description: 'Markdown: **bold**, *italic*, lists and [links](https://…).' },
-    place: { type: 'object', properties: { name: { type: 'string' }, address: { type: 'string' }, lat: { type: 'number' }, lng: { type: 'number' } }, required: ['name'] },
-    links: { type: 'array', items: { type: 'object', properties: { label: { type: 'string' }, url: { type: 'string' } }, required: ['label', 'url'] } },
-    booking: { type: 'string', description: 'A booking’s path, such as /trip/bookings/hotel.json.' },
-    image: { type: 'string', description: 'A photo’s path, such as /trip/files/2026-11-26-1604.webp.' },
-    choice: { type: 'array', items: { type: 'string' }, description: 'Buttons. A tap comes back to you as a message.' },
-  },
-};
+
+/** The card types running plugins add (spec §16.4). @param {import('../registry.js').Registry} registry @returns {any[]} */
+const cardTypes = (registry) => registry.list('ui:card-type').filter((t) => typeof t?.type === 'string');
 
 export class Agent {
   scope = ME;
@@ -1163,6 +1156,7 @@ export class Agent {
   /** The output tools (spec §7.1). @returns {LoopTool[]} */
   #talkTools() {
     const core = /** @type {const} */ ('core');
+    const registry = this.registry;
     return [
       {
         name: 'speak', pluginId: core, group: 'Talk',
@@ -1180,10 +1174,23 @@ export class Agent {
       },
       {
         name: 'show', pluginId: core, group: 'Talk',
-        description: 'Show the user a card: text, a place, links, a booking, a photo, or a choice of buttons.',
-        input: { type: 'object', properties: { card: CARD }, required: ['card'] },
+        // Plugins' card types join the card as they come and go (spec §16.4, milestone 8b choice 7).
+        get description() {
+          const types = cardTypes(registry);
+          return `Show the user a card: text, a place, links, a booking, a photo, or a choice of buttons.${types.length ? ` Card types plugins add: ${types.map((t) => `${t.type} (${t.name}): ${t.description}`).join('; ')}` : ''}`;
+        },
+        get input() {
+          return { type: 'object', properties: { card: cardSchema(cardTypes(registry)) }, required: ['card'] };
+        },
         run: async (/** @type {{ card: any }} */ i, /** @type {any} */ call) => {
           if (!i.card || typeof i.card !== 'object') throw new Error('show needs a card.');
+          if (i.card.type !== undefined) {
+            const types = cardTypes(registry);
+            const type = types.find((t) => t.type === i.card.type);
+            if (!type) return { content: `Error: there is no card type ${i.card.type}. Types: ${types.map((t) => t.type).join(', ') || 'none'}.`, isError: true };
+            const wrong = type.schema ? validate(type.schema, i.card.data ?? {}) : [];
+            if (wrong.length) return { content: `Error: the ${type.type} card's data isn't valid: ${wrong.join('; ')}`, isError: true };
+          }
           await this.#log({ type: 'out.show', actor: 'shiori', data: { id: call.id, wake: call.wake, card: i.card } });
           return 'shown';
         },

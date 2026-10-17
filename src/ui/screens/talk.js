@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { renderCard } from '../cards.js';
+import { renderCard, cardWho } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
 import { storedTexts, blobBytes } from '../../core/agent/log.js';
 import { openPhotoViewer } from '../photo-viewer.js';
@@ -119,7 +119,7 @@ export async function renderTalk(ctx) {
     if (e.type === 'out.show') {
       const card = renderCard(d.card ?? {}, { ctx, onChoice: (o) => agent.send(o) });
       const undo = d.tune ? h('button', { class: 'btn ghost', type: 'button', onclick: async () => { await undoTuning(ctx.ws, d.tune.name, d.tune.old); ctx.notices.toast('Undone. Her old personality applies at her next wake.'); } }, 'Undo') : null;
-      return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), card, undo);
+      return h('li', { class: 'shiori' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo);
     }
     if (e.type === 'out.ask') {
       const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { class: 'btn', type: 'button', onclick: () => agent.answer(d.id, o) }, String(o)));
