@@ -489,3 +489,21 @@ test("Reset's note names what it cleared by the form's labels; with nothing save
   assert.equal(resetNote({ file: true, keys: [], secrets: [] }, schema), 'Cleared its settings.');
   assert.equal(resetNote({ file: false, keys: [], secrets: [] }, schema), 'Nothing was saved, so nothing changed.');
 });
+
+test("Reset M5: the trace's line for plugin.reset counts what went and says the space it gave back", () => {
+  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'park', name: 'Park', settings: ['station'], otherSettings: 1, secrets: ['token'], otherSecrets: 0, bytes: 2048 } }), `Park · 2 settings, 1 secret · ${bytes(2048)}`);
+  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'web', name: 'Web tools', settings: [], otherSettings: 0, secrets: [], otherSecrets: 1, bytes: 0 } }), 'Web tools · 0 settings, 1 secret · 0 B');
+});
+
+test("Reset M4: a Reset that fails on a full disk shows the storage-full card, as Remove does; any other failure says it wasn't reset", async () => {
+  const { resetSettings } = await import('../../src/ui/screens/plugin.js');
+  /** @type {any[]} */
+  const cards = [];
+  let renders = 0;
+  const ctx = (/** @type {unknown} */ e) => ({ plugins: { reset: async () => { throw e; } }, notices: { card: (/** @type {any} */ c) => cards.push(c) }, go: () => {}, render: () => { renders++; } });
+  await resetSettings(ctx(new StorageFullError()), { id: 'park', name: 'Park', settings: null });
+  await resetSettings(ctx(new Error('The disk broke.')), { id: 'park', name: 'Park', settings: null });
+  assert.deepEqual(cards.map((c) => [c.title, c.body]).slice(1), [["Park's settings weren't reset", 'The disk broke. Try again.']]);
+  assert.equal(cards[0].title, "annai's storage is full");
+  assert.equal(renders, 2);
+});

@@ -136,6 +136,10 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;
   if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}`;
   if (e.type === 'backup.prune') return `${d.type} · deleted an older backup, ${d.backup}`;
+  if (e.type === 'plugin.reset') {
+    const n = (/** @type {number} */ c, /** @type {string} */ w) => `${c} ${w}${c === 1 ? '' : 's'}`;
+    return `${d.name ?? d.plugin} · ${n((d.settings?.length ?? 0) + (d.otherSettings ?? 0), 'setting')}, ${n((d.secrets?.length ?? 0) + (d.otherSecrets ?? 0), 'secret')} · ${bytes(d.bytes ?? 0)}`;
+  }
   return d.message ?? d.title ?? '';
 }
 
