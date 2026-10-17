@@ -60,10 +60,11 @@ export class MemoryStorage {
     await this.#saved();
     return n;
   }
-  /** @param {{ prefix?: string }} [o] @returns {Promise<Map<string, any>>} */
-  async list({ prefix = '' } = {}) {
+  /** As Cloudflare's: by prefix, in key order (reverse: from the end), at most limit. @param {{ prefix?: string, limit?: number, reverse?: boolean }} [o] @returns {Promise<Map<string, any>>} */
+  async list({ prefix = '', limit = Infinity, reverse = false } = {}) {
     const keys = [...this.#data.keys()].filter((k) => k.startsWith(prefix)).sort();
-    return new Map(keys.map((k) => [k, structuredClone(this.#data.get(k))]));
+    if (reverse) keys.reverse();
+    return new Map(keys.slice(0, limit).map((k) => [k, structuredClone(this.#data.get(k))]));
   }
   /** Everything stored goes; the alarm stays, as on Cloudflare. */
   async deleteAll() {

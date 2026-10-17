@@ -8,7 +8,7 @@ import { readVapidKey, vapidJwt, vapidAuthorization } from './vapid.js';
  * dependencies: the Workers runtime has fetch and WebCrypto, and so has Node, where relay/serve.mjs
  * runs the same code.
  * @typedef {{ get: (key: string) => Promise<any>, put: (key: string | Record<string, any>, value?: any) => Promise<void>,
- *   delete: (key: string | string[]) => Promise<any>, deleteAll: () => Promise<void>, list: (o?: { prefix?: string }) => Promise<Map<string, any>>,
+ *   delete: (key: string | string[]) => Promise<any>, deleteAll: () => Promise<void>, list: (o?: { prefix?: string, limit?: number, reverse?: boolean }) => Promise<Map<string, any>>,
  *   getAlarm: () => Promise<number | null>, setAlarm: (t: number) => Promise<void>, deleteAlarm: () => Promise<void> }} Storage
  * @typedef {{ storage: Storage }} State  a Durable Object's state, as the relay uses it
  * @typedef {{ idFromName: (name: string) => any, get: (id: any) => { fetch: (req: Request) => Promise<Response> } }} Namespace
