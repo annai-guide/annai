@@ -196,3 +196,23 @@ test('a pack at its size limit is complete for its plan: no "Download the rest",
   assert.equal(net.asked.length, asked);
   keeper.dispose();
 });
+
+test('stop() can be awaited: once it settles, the download has ended and what came is written down', async () => {
+  const t = await packTrip();
+  let waiting = false;
+  const net = services({ overpass: async (url, init) => {
+    waiting = true;
+    // Overpass takes its time; the stop cuts the wait short.
+    await new Promise((r) => { init.signal.addEventListener('abort', r, { once: true }); });
+    throw new DOMException('Stopped.', 'AbortError');
+  } });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), version: '1', connection: () => 'wifi', fetch: net.fetch, gapMs: 0 });
+  const running = keeper.download(t.trip);
+  await until(() => waiting);
+  await keeper.stop();
+  assert.equal(keeper.running, null);
+  assert.equal((await keeper.status(t.trip)).manifest?.stopped, true);
+  assert.equal((await running).stopped, true);
+  await keeper.stop(); // nothing running: settles at once
+  keeper.dispose();
+});

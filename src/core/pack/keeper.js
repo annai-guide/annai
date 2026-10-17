@@ -123,9 +123,10 @@ export class PackKeeper {
     return this.#job;
   }
 
-  /** Stops the download that is running; what came stays. */
-  stop() {
+  /** Stops the download that is running; what came stays. Settles once it has ended, its manifest written. */
+  async stop() {
     this.#abort?.abort();
+    await this.#job?.catch(() => {});
   }
 
   /** The connection or the screen changed: maybe the open trip's pack can be brought up to date. */
@@ -140,7 +141,7 @@ export class PackKeeper {
 
   dispose() {
     clearTimeout(this.#timer);
-    this.stop();
+    this.stop().catch(() => {});
     for (const off of this.#offs) off();
   }
 
@@ -156,7 +157,7 @@ export class PackKeeper {
 
   #opened() {
     // Another trip, or none (this one was removed): its download stops (choice 10).
-    if (this.running && this.running.scope !== this.o.agent.target) this.stop();
+    if (this.running && this.running.scope !== this.o.agent.target) this.stop().catch(() => {});
     this.#loadNames();
     this.poke();
   }

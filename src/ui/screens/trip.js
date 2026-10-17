@@ -90,6 +90,8 @@ async function askAndRemove(ctx, id, scope) {
       await updateAppSettings(ctx.ws, { activeTrip: null });
       await ctx.agent.open(null);
     }
+    // Its offline pack's download has ended, its last file written, before the trip goes.
+    if (ctx.pack?.running?.scope === id) await ctx.pack.stop();
     const { bytes: freed } = await removeTrip(ctx.store, id);
     // Its reminders leave live mode, and so the push relay, at once (spec §4.9).
     await ctx.live?.forget(id);
