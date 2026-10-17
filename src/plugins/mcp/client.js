@@ -30,6 +30,12 @@ export class McpError extends Error {
 
 /** A stop by the user or a time limit stays what it is. @param {unknown} e */
 const isStop = (e) => /** @type {any} */ (e)?.name === 'AbortError' || /** @type {any} */ (e)?.name === 'TimeoutError';
+/**
+ * The stop behind a failure, or null: the request's own reason once it was stopped, however the fetch
+ * or the read said so (a body read cut by the time limit, a traced fetch's words), else e when it is one.
+ * @param {unknown} e @param {AbortSignal} [signal]
+ */
+const stopOf = (e, signal) => (signal?.aborted ? signal.reason : isStop(e) ? e : null);
 
 export class McpClient {
   /** @type {string | null} */ #session = null;
@@ -164,7 +170,7 @@ export class McpClient {
     try {
       res = await fetch(await this.#address(), { method: 'POST', headers, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
     } catch (e) {
-      if (isStop(e)) throw e;
+      if (stopOf(e, signal)) throw stopOf(e, signal);
       throw new McpError('cors', `annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`);
     }
     if (res.status === 401 || res.status === 403) {
@@ -219,7 +225,7 @@ export class McpClient {
           if (m && typeof m === 'object' && m.id === id && ('result' in m || 'error' in m)) return m;
         }
       } catch (e) {
-        if (isStop(e)) throw e;
+        if (stopOf(e, signal)) throw stopOf(e, signal);
         if (over) throw tooMuch();
       }
       throw unreadable();
@@ -229,7 +235,7 @@ export class McpClient {
     try {
       m = await answerJSON(res, this.server);
     } catch (e) {
-      if (isStop(e)) throw e;
+      if (stopOf(e, signal)) throw stopOf(e, signal);
       throw unreadable();
     }
     if (Array.isArray(m)) m = m.find((x) => x && x.id === id);

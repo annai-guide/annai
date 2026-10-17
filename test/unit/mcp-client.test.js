@@ -108,3 +108,23 @@ test('8c-5: a tool a server lists twice is listed once, the first time', async (
     await s.stop();
   }
 });
+
+/** An answer whose body never ends, and stops with the request's own reason, as a browser's does. @param {RequestInit | undefined} init @param {string} type */
+const stalled = (init, type) => new Response(new ReadableStream({
+  start(c) {
+    c.enqueue(new TextEncoder().encode(type === 'application/json' ? '{"jsonrpc":"2.0",' : 'event: message\n'));
+    init?.signal?.addEventListener('abort', () => c.error(init.signal?.reason));
+  },
+}), { status: 200, headers: { 'Content-Type': type } });
+
+test("minors 1: a time limit reached while an answer is read is the time limit, as JSON or as SSE, never \"can't read\"", async () => {
+  for (const type of ['application/json', 'text/event-stream']) {
+    const slow = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => stalled(init, type);
+    await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: slow, signal: AbortSignal.timeout(50) }), (e) => /** @type {any} */ (e).name === 'TimeoutError', type);
+  }
+  // A fetch that says so in its own words (annai's traced fetch does) is the time limit too.
+  const traced = async () => { throw new Error("annai couldn't reach mcp.example (The operation timed out.). Is the device offline?"); };
+  const signal = AbortSignal.timeout(1);
+  await new Promise((done) => setTimeout(done, 20));
+  await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: traced, signal }), (e) => /** @type {any} */ (e).name === 'TimeoutError');
+});
