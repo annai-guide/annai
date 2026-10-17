@@ -1,6 +1,6 @@
 # Writing an annai plugin
 
-This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8a (skills and packages). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
+This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8b (plugins in the UI). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
 
 A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1).
 
@@ -36,7 +36,7 @@ A plugin's manifest:
   - `personalities`: Markdown files, each a personality named by its file (`ranger.md` is "ranger"). Settings → Shiori offers them; Add makes a copy the user owns.
   - `templates`: JSON files of endpoint templates, `{ "endpoints": [{ "id", "version", "type", "name", … }] }`, in the format of annai's own `catalog/templates.json`. They join annai's in Settings → Models; annai's own win on the same id.
   - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing").
-  - `settings` (spec §5.2).
+  - `settings`: a JSON Schema object; annai draws a form from it on your plugin's page in Settings → Plugins. See "Settings" below.
 - **Size:** a package may unpack to at most 64 MiB.
 
 annai copies the package into its own storage, so the plugin works offline, and serves its files at `/plugins/<id>/…`. Relative imports between a plugin's own modules therefore just work. A package's files keep no history: installing it again replaces them.
@@ -76,6 +76,8 @@ export function activate(annai) {
 | `annai.wake(reason)` | wakes Shiori, with the reason she sees. Quiet hours and the per-hour limit apply (spec §6.6). |
 | `annai.net.fetch(url, init?)` | a web request, recorded in the trace without any secret annai keeps |
 | `annai.ui.card({ title, body, tone?, actions? })`, `annai.ui.toast(text)` | a system card or a toast. These are never in Shiori's voice. |
+| `annai.ui.slot(slot, item)`, `annai.ui.cardType(item)`, `annai.ui.component(name, impl)`, `annai.ui.screen(item)`, `annai.ui.theme(file)` | what your plugin adds to annai's screens: see "The UI" below. Each returns a function that removes it. |
+| `annai.hooks.on(fn, { types? })` | follows the log: see "Following the log" below |
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
 | `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change) |
 | `annai.searchProviders()` | the search providers, in the order the user set |
@@ -122,6 +124,52 @@ Pools are safest from an hour before low tide until low tide. Read [the safety n
 - **The install screen** comes first, for a file or an address: what the package is, where it came from, and what it brings. A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys."
 - **Updates:** a package installed from an address is checked there when annai starts and once a day; a changed package (its files, not just its version) is offered on a card and in Settings → Plugins. Nothing changes until the user taps Update. An update that brings something new (code where there was none, or new skills, personalities or templates) lists it and asks again, with the full-trust words for new code. Code that already ran runs the new version from the next start.
 - **Removing** removes everything the package stored: its files, its settings (`annai.settings`), its secrets (`annai.secrets`), its tools' switches, and what it kept in the system log with `annai.events.append('sys', …)`. What it wrote into a trip stays: that is the trip's.
+
+## The UI
+
+A code plugin's own UI is fully trusted: it draws with any DOM API it likes. Only the slots, components and CSS variables below are stable across annai's updates (spec §16.4); anything else on annai's pages can change without notice.
+
+Every drawing function gets an element annai made, and a `ui` object:
+
+| | |
+|---|---|
+| `ui.h(tag, attrs, ...children)` | annai's DOM builder (no `innerHTML`, no `style` attribute) |
+| `ui.go(hash)` | goes to a screen, such as `'#/now'` |
+| `ui.trip()` | the open trip's id, or null |
+| `ui.toast(text)`, `ui.card({ title, body, tone, actions })` | a toast or a system card (never in Shiori's voice) |
+| `ui.shiori.state()`, `ui.shiori.on(kind, fn)`, `ui.shiori.tap()`, `ui.shiori.send(text)` | Shiori: her state (`{ name, label }`), her events (`'state'`, `'event'`), a tap on her, a message to her |
+| `ui.live.on()`, `ui.live.activity()`, `ui.live.onChange(fn)` | live mode: on or off, `still` / `walking` / `moving-fast`, changes |
+
+A drawing may return a cleanup function, which annai calls when it draws that place again. A drawing that throws counts against your plugin as a tool's crash does; its element stays empty, and the rest of the screen draws.
+
+- **Slots,** `annai.ui.slot(slot, item)`; every item has an `id` (lowercase letters, digits and dashes):
+  - `'status-chip'`, `{ id, render(el, ui) }`: a chip in the dock's row of chips, after the voice and live chips.
+  - `'now-section'`, `{ id, title, render(el, ui) }`: a section of the Now card, after its chips.
+  - `'dock-action'`, `{ id, label, icon, run(ui) }`: a button in the dock after Type; `icon` is 1 or 2 characters, `label` its name.
+  - `'trip-tab'`, `{ id, title, render(el, ui, { trip }) }`: a button on a trip's page, after Replay, opening a page of yours for that trip.
+  - `'settings-page'`, `{ id, title, render(el, ui) }`: a page listed under Settings → From plugins and on your plugin's page.
+- **Card types,** `annai.ui.cardType({ type, name, description, schema?, render(data, el, ui) })`: a kind of card Shiori can show. Her `show` tool gains `type` and `data`, and its description lists your type with its description; `data` must pass `schema` when you give one, or Shiori is told why. The card's label reads "SHIORI · <NAME>". A card of your type shown while your plugin is off shows its title and text.
+- **Components,** `annai.ui.component(name, impl)`; the last plugin to register one wins, and annai's own is used when yours fails:
+  - `'avatar'`, `{ create({ size }) }` returning `{ el, setState(state), setLevel(0..1, who), glance(dx, dy), blink() }` (spec §16.3).
+  - `'now-card'`, `{ render(el, ui, { title, place, chips, liveOn }) }`: the top of the Now card.
+  - `'dock'`, `{ create(ui) }` returning `{ el }`: the whole dock.
+  - `'plan-row'`, `{ render(li, row, ui) }` with `row = { trip, path, when, title, fixed, place, kind }`: one row of the Plan's and Now's timetables.
+- **Screens,** `annai.ui.screen({ id, title, render(el, ui), tab?, homeFor? })`: a page at `#/ext/<your id>/<screen id>`. `tab: true` adds it to the top bar; `homeFor: 'walking'` (or `'still'`, `'moving-fast'`) makes Now hand over to it when live mode says that activity starts, as it hands over to Driving.
+- **Themes,** `annai.ui.theme('theme.css')`: a CSS file in your package, loaded while your plugin runs. Set annai's CSS variables (in `src/ui/tokens.css`): colors (`--paper`, `--sheet`, `--ink`, `--ink-2`, `--line`, `--ai`, `--ai-ink`, `--ai-wash`, `--amber`, `--amber-wash`, `--risk`, `--risk-wash`, `--ok`, `--ok-wash`, `--lattice`, `--shadow`), type (`--f-display`, `--f-body`, `--f-mono`) and spacing (`--radius`, `--gap`); set them inside `@media (prefers-color-scheme: dark)` too for the dark theme.
+
+## Following the log
+
+`annai.hooks.on(fn, { types })` calls `fn` with each log entry appended after a write commits (`types` filters by entry type, such as `['file.write']`). Entries are frozen copies: hooks read the log, they can't change it (spec §5.4). Entries your own plugin appended don't come back to your hooks, so a hook that logs can't loop. An error in a hook counts against your plugin.
+
+## Settings
+
+A manifest's `settings` is a JSON Schema object. annai draws a form from its top-level properties on your plugin's page:
+
+- `string` as a text field, a choice when it has `enum`, a password field when it has `writeOnly: true`;
+- `number` and `integer` (with `minimum` and `maximum`), `boolean` as a switch;
+- `title` labels a field, `description` explains it, `default` fills it when nothing is saved.
+
+What the user saves is checked against the schema and comes back from `annai.settings.get()`. A `writeOnly` field goes to your secrets instead, never into a file: read it with `annai.secrets.get(key)`. Other kinds of property are listed as ones annai can't show; draw a settings page of your own for them.
 
 ## Tools Shiori uses
 
