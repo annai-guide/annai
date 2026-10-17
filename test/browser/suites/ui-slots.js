@@ -2,9 +2,23 @@ import { Registry } from '../../../src/core/registry.js';
 import { renderExt } from '../../../src/ui/screens/ext.js';
 import { mount, cleanUp, syncThemes, dockKey } from '../../../src/ui/slots.js';
 import { renderCard } from '../../../src/ui/cards.js';
+import { createDock } from '../../../src/ui/dock.js';
 
 /** A tick, for drawings whose promise settles. */
 const tick = () => new Promise((done) => setTimeout(done, 0));
+
+/** Shiori as the dock follows her: her state, and who listens to what. */
+function fakeAgent() {
+  /** @type {Record<string, Set<(x: any) => void>>} */
+  const on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set() };
+  return {
+    state: { name: 'sleeping', label: '' },
+    on: (/** @type {string} */ kind, /** @type {(x: any) => void} */ fn) => { on[kind].add(fn); return () => { on[kind].delete(fn); }; },
+    emit: (/** @type {string} */ kind, /** @type {any} */ x) => { for (const fn of on[kind]) fn(x); },
+    listening: () => Object.values(on).reduce((n, s) => n + s.size, 0),
+    tap() {}, send() {},
+  };
+}
 
 /**
  * What annai draws of plugins' UI (spec §16.4), in a real DOM: the minors batch's fixes and the
@@ -117,5 +131,28 @@ export default function (test, assert) {
     assert.equal(errors.at(-1)?.data.name, 'card type broken');
     const off = renderCard({ type: 'ferries', title: 'Ferries' }, { ctx });
     assert.ok(off.textContent?.includes("This card's kind (ferries) comes from a plugin that isn't on."));
+  });
+
+  test("minors 12: a plugin's avatar whose setState, setLevel or glance throws counts against its plugin, and repeated throws give annai's own avatar back", () => {
+    const { registry, errors } = kit();
+    const agent = fakeAgent();
+    const ctx = { registry, agent, notices: { card() {}, toast() {} }, go() {} };
+    const theirs = document.createElement('span');
+    theirs.className = 'their-avatar';
+    registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: theirs, setState() { throw new TypeError('no state'); }, setLevel() { throw new TypeError('no level'); }, glance() { throw new TypeError('no glance'); } }) });
+    const dock = createDock(ctx);
+    assert.ok(dock.el.contains(theirs), 'their avatar is in the dock');
+    assert.equal(errors.length, 1, 'the first setState, as the dock was made, counted');
+    dock.avatar.glance(0, 1);
+    assert.ok(dock.el.contains(theirs));
+    agent.emit('state', { name: 'thinking', label: 'Thinking' });
+    assert.deepEqual(errors.map((e) => e.data.name), ['avatar setState', 'avatar glance', 'avatar setState']);
+    assert.ok(!dock.el.contains(theirs), 'after three throws, annai draws her own');
+    assert.ok(dock.el.querySelector('.talk .seat .av'));
+    assert.equal(/** @type {HTMLElement} */ (dock.el.querySelector('.talk .av')).dataset.state, 'thinking');
+    agent.emit('state', { name: 'speaking', label: '' });
+    dock.avatar.setLevel(0.5);
+    assert.equal(errors.length, 3, "annai's own avatar is used from then on");
+    assert.equal(/** @type {HTMLElement} */ (dock.el.querySelector('.talk .av')).dataset.state, 'speaking');
   });
 }
