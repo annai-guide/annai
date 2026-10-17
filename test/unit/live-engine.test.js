@@ -393,3 +393,28 @@ test("an item moved later gets the plan's reminders again, for its new time; and
   assert.equal(k.agent.wakes.length, 2, 'not again after a restart');
   again.dispose();
 });
+
+test("a log write that fails doesn't hold a reminder back or make it fire again: it still comes, once, and the problem is told once (a card)", async () => {
+  /** @type {unknown[]} */
+  const problems = [];
+  const k = await liveKit({ problem: (e) => problems.push(e) });
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Call Mia.' });
+  await k.fix(at('09:56'), MONTEREY);
+  await k.live.setWatch(k.trip, { when: { type: 'every', minutes: 5 }, fallback: 'Stretch.' });
+  // From now on the log takes no firing and no point (the disk is full, say).
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+    get(o, key) {
+      const v = o[key];
+      if (key === 'appendEvent') return (/** @type {string} */ scope, /** @type {any} */ e) => (['trigger.fired', 'location'].includes(e.type) ? Promise.reject(new Error('The disk is full.')) : o.appendEvent(scope, e));
+      return typeof v === 'function' ? v.bind(o) : v;
+    },
+  })));
+  await k.fix(at('09:58'), MONTEREY);
+  await k.to(at('10:12'));
+  const reasons = k.agent.wakes.map((w) => w.text);
+  assert.equal(reasons.filter((t) => t.includes('Call Mia.')).length, 1, reasons.join(' | '));
+  assert.equal(reasons.filter((t) => t.includes('Stretch.')).length, 3, reasons.join(' | ')); // 10:01, 10:06 and 10:11, each once
+  assert.equal(problems.length, 1);
+  assert.match(String(/** @type {any} */ (problems[0])?.message), /disk is full/);
+});

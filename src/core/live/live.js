@@ -100,6 +100,8 @@ export class Live {
   #fired = new Map();
   /** @type {Set<string>} problems already noted in a log, so each is noted once */
   #noted = new Set();
+  /** @type {Set<string>} live mode's own failures already told, so each is told once */
+  #told = new Set();
   /** @type {any} */
   #timer = null;
   /** @type {Promise<unknown>} */
@@ -139,10 +141,11 @@ export class Live {
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
-   *   agent: AgentLike, clock?: import('./clock.js').Clock, timeZone?: () => string, news?: () => Promise<PushNews[]> }} c
-   *   news: what the service worker saw while annai was away, read at each catch-up (spec §11.6)
+   *   agent: AgentLike, clock?: import('./clock.js').Clock, timeZone?: () => string, news?: () => Promise<PushNews[]>, problem?: (e: unknown) => void }} c
+   *   news: what the service worker saw while annai was away, read at each catch-up (spec §11.6);
+   *   problem: live mode's own work failed (a log that can't be written), for a card: each kind is told once
    */
-  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone, news = async () => [] }) {
+  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone, news = async () => [], problem = () => {} }) {
     this.store = store;
     this.ws = ws;
     this.registry = registry;
@@ -150,6 +153,7 @@ export class Live {
     this.clock = clock;
     this.timeZone = timeZone;
     this.news = news;
+    this.problem = problem;
   }
 
   /** Follows the sensors, the watches and the plan, from the switch as it was left (choice 11). */
@@ -577,9 +581,22 @@ export class Live {
     return job;
   }
 
-  /** Work nobody waits for (a sensor's news): an error is only logged. @param {() => Promise<unknown>} fn */
+  /** Work nobody waits for (a sensor's news): an error is told (#fail). @param {() => Promise<unknown>} fn */
   #bg(fn) {
-    this.#run(fn).catch((e) => console.warn('live mode: a check failed', e));
+    this.#run(fn).catch((e) => this.#fail(e));
+  }
+
+  /** Live mode's own work failed: told once for each problem, so a card says so (spec §17 rule 4), and it goes on. @param {unknown} e */
+  #fail(e) {
+    const key = String(/** @type {any} */ (e)?.message ?? e);
+    if (this.#told.has(key)) return;
+    this.#told.add(key);
+    console.warn('live mode: a check failed', e);
+    try {
+      this.problem(e);
+    } catch {
+      // whoever is told can't stop live mode
+    }
   }
 
   #tell() {
@@ -769,7 +786,8 @@ export class Live {
     const goes = moving || (fix.speed ?? 0) >= STILL_BELOW;
     if (goes ? keep(this.#kept, fix, moving) : !this.#kept || meters(this.#kept, fix) >= Math.max(STOP_M, 2 * fix.accuracy)) {
       this.#kept = fix;
-      if (this.#trip && this.#inPlay(this.#trip)) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at);
+      // A point that can't be written is told, and the checks go on (reminders don't wait for the log).
+      if (this.#trip && this.#inPlay(this.#trip)) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at).catch((e) => this.#fail(e));
     }
     // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
     // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
@@ -1095,13 +1113,14 @@ export class Live {
       }
       const key = this.#key(x.scope, x.watch.id);
       const f = { ...x.firing, place: this.#stampPlace(x.watch, x.firing.place) };
+      // A firing the log can't take still fires, once: it is told, never tried again at every check.
       await logEvent(this.store, x.scope, {
         type: 'trigger.fired', actor: 'system',
         data: {
           watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), ...(forAt(x.watch) !== null ? { for: forAt(x.watch) } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
           ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
         },
-      }, now);
+      }, now).catch((e) => this.#fail(e));
       this.#fired.set(key, { at: now, place: f.place ?? null, ...(forAt(x.watch) !== null ? { for: /** @type {number} */ (forAt(x.watch)) } : {}) });
       const mem = this.#mem.get(key);
       if (mem) {
