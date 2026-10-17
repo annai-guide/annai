@@ -232,7 +232,7 @@ function accessPanel(ctx, type) {
   }
   if (!a?.code) return null;
   const code = String(a.code);
-  const pre = h('pre', { class: 'mono', text: code });
+  const pre = h('pre', { class: 'mono code', text: code });
   return h('section', { class: 'panel', 'aria-label': 'Browser access' },
     h('h2', { class: 'section', text: 'Browser access' }),
     h('p', { class: 'sub', text: String(a.text ?? '') }),

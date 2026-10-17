@@ -58,7 +58,7 @@ export function activate(annai) {
 | `annai.files` | the files of every scope: `read`, `readText`, `readJSON`, `list`, `write`, `patch`, `delete`, `history`, `restore` |
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Endpoint types" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
-| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key. Never put them in files or log entries. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
 | `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
@@ -172,8 +172,11 @@ export function activate(annai) {
   - **Single writer:** refuse with `new TargetError('newer', words, { remote })` when the place's newest backup is neither `o.base` nor one this device made (`c.device.id`). annai then asks the user.
   - **Size:** refuse with `TargetError('large', words, { bytes })`, before uploading anything, when you would send more than `o.maxUpload` bytes.
   - **Progress:** call `o.onProgress({ phase: 'uploading', done, total })` as you go, and stop when `o.signal` aborts.
+  - **Whole files** (`stores: 'file'`): annai names the file (`archive.name`, made with `annai.helpers.backupFiles.name`), encrypts it when the place says so, checks its size and the place's newest backup before calling `put`, and deletes this device's older backups with your `delete`. Your `list` turns file names back into backups with `annai.helpers.backupFiles.parse(name)`, which returns null for other files. `put` only stores the file.
 - **`get(c, id, o)`** returns the backup as an annai archive file (a `Blob`), which annai opens on its import screen.
 - **`delete(c, id)`**, optional, removes one backup.
+- **`browserAccess(origin)`**, optional, returns `{ text, code }`: what the place must allow for annai at that origin (CORS rules, server headers). The place's screen shows it, with a Copy button.
+- **Read every answer with `annai.helpers.readAnswer(res, 'json' | 'text' | 'blob' | 'arrayBuffer', where)`.** Whatever is wrong with an answer (not JSON, cut off, over 8 MB of text) becomes a `TargetError`, so a broken or hostile server never counts as a bug in your plugin. `annai.helpers.xml.elements(xml, name)` and `.text(xml, name)` read XML answers in one pass, and never throw.
 - **Errors are answers:** throw a `TargetError` with a kind and plain words:
   - `auth`, `refused`, `missing` and `setup` need the user, so annai shows a card once.
   - `rate` (with `retryAt`) and `other` are tried again later.
