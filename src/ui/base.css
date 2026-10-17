@@ -199,3 +199,27 @@ button.chip.undo { min-height: 44px; border: 1px solid var(--line); cursor: poin
 .recap-text .md-h { font-family: var(--f-display); font-weight: 700; font-size: 18px; }
 .sent summary { cursor: pointer; color: var(--ink-2); min-height: 44px; display: flex; align-items: center; }
 .sent ul { padding-left: 20px; color: var(--ink-2); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+/* Replay (spec §13): a flat map, no tiles; strokes and geometry are attributes and these rules, never a style attribute. */
+.tab[aria-current='page'] { background: var(--ai-wash); color: var(--ai); border-color: transparent; }
+a.tab { display: inline-flex; align-items: center; text-decoration: none; }
+.route { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.route-map { display: block; width: 100%; height: auto; max-height: 62vh; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--radius); }
+.route-all, .route-done { fill: none; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+.route-all { stroke: var(--line); }
+.route-done { stroke: var(--ai); }
+.route-jump { stroke: var(--ink-2); stroke-width: 4; stroke-dasharray: 12 14; }
+.route-stay { fill: var(--sheet); stroke: var(--ink-2); stroke-width: 4; }
+.route-stamp { fill: var(--sheet); stroke: var(--ai); stroke-width: 6; }
+.route-here { fill: var(--ai); stroke: var(--sheet); stroke-width: 5; }
+.replay-now { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
+.replay-time { font-family: var(--f-mono); color: var(--ink-2); }
+.replay-photo { display: block; max-width: 100%; max-height: 40vh; border-radius: 10px; }
+.replay-figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.replay-figure figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.replay-controls { display: flex; flex-direction: column; gap: 10px; }
+.replay-controls input[type='range'] { padding: 0; accent-color: var(--ai); }
+.timeline { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.replay-item { width: 100%; min-height: 44px; display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.replay-item .when { font-family: var(--f-mono); font-size: 13px; color: var(--ink-2); }
+.replay-entry.stay .what { font-weight: 700; }
+.replay-entry.now .replay-item { background: var(--ai-wash); }
