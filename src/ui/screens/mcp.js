@@ -66,6 +66,7 @@ export async function renderMcp(ctx) {
       field('Address', address),
       field('Key', kind),
       tokenField, headersField,
+      h('p', { class: 'sub', text: "To change a server's token or headers later, remove it and add it again." }),
       h('p', { class: 'sub', text: "The server must let web apps call it (CORS): allow annai's address, the headers Content-Type, Accept, Authorization, Mcp-Session-Id and MCP-Protocol-Version, and expose Mcp-Session-Id." }),
       error,
       h('div', { class: 'acts' }, add)));
