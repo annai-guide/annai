@@ -106,9 +106,53 @@ Change `name`, the route and `ORIGINS`, and `VAPID_SUBJECT` to a URL or `mailto:
 Apple refuses a subject that is neither, and has been seen refusing `mailto:` addresses at
 `localhost`.
 
+## Run it on a machine of your own
+
+`serve.mjs` runs the same code in Node, with no dependencies. With `--data`, everything waiting is
+written to that file before each answer, and comes back when it starts again; the file holds each
+reminder's ciphertext, endpoint, time and cancel token, and only its owner can read it. A reminder
+that came due while the relay was down is sent when it starts, if it is less than an hour late, and
+dropped after that, so the machine and its connection must be up when reminders are due. There is no
+daily cap; the limits above still apply.
+
+```bash
+node relay/serve.mjs --port 18011 --origin https://annai.example \
+  --data /var/lib/annai-relay/relay.json --keys /var/lib/annai-relay/vapid.json --subject https://annai.example
+```
+
+Put it behind an HTTPS reverse proxy on the same machine. The proxy must add the client's address as
+the **last** `X-Forwarded-For` entry: frp's `http` and `https2http` proxies do, and so does nginx with
+`proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`. The relay believes that header only
+from a connection on the same machine, and counts its limit by that last entry; anything a client
+wrote before it is ignored.
+
+A systemd unit that runs it as a user of its own, with its state in `/var/lib/annai-relay`:
+
+```ini
+[Unit]
+Description=annai push relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/node /srv/annai/current/relay/serve.mjs --port 18011 --origin https://annai.example --data /var/lib/annai-relay/relay.json --keys /var/lib/annai-relay/vapid.json --subject https://annai.example
+DynamicUser=yes
+StateDirectory=annai-relay
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+```
+
 ## A device test before deploying
 
-`serve.mjs` runs the same code in Node, with the reminders in memory (a restart forgets them). Its
+`serve.mjs` runs the same code in Node; without `--data`, with the reminders in memory (a restart forgets them). Its
 VAPID key is a file only you can read, by default `~/.config/annai-relay/vapid.json`, so phones stay
 subscribed across restarts. Phones need it over https; on a tailnet, `tailscale serve` gives that:
 

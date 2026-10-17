@@ -689,7 +689,7 @@ When the app becomes visible:
   - `DELETE /v1/schedule/:id` (requires the cancel token)
 - **Abuse limits** live on the relay: payloads up to 4 KB, at most 200 pending per subscription, at most 30 days ahead, and rate limits per IP.
 - **Cancelling a watch** deletes it at the relay. **Opening a notification** starts a catch-up wake with "opened the reminder for X".
-- **Deployment:** a Cloudflare Worker at `push.annai.guide`. Each push subscription gets its own Durable Object, which holds that subscription's pending messages and uses its alarm to fire at the next `sendAt`. The source is published under `relay/` for self-hosting.
+- **Deployment:** the relay is written as a Cloudflare Worker. Each push subscription gets its own Durable Object, which holds that subscription's pending messages and uses its alarm to fire at the next `sendAt`. The same code runs in Node (`relay/serve.mjs`, its storage in a file), and that is how `push.annai.guide` runs while annai is being tested: on the author's own machine behind a reverse proxy. It moves to a Cloudflare Worker once things settle. The source is published under `relay/` for self-hosting either way.
 
 ### 11.7 Privacy
 
@@ -989,10 +989,10 @@ Eyes-free voice mode also serves users with low vision.
   - dev dependencies: TypeScript (type-checking only), Playwright
   - Node 26 for tooling
 - **Hosting:**
-  - static files on Cloudflare Pages at `annai.guide`
+  - while annai is being tested (2026), `annai.guide` and `push.annai.guide` are served from the author's own machine behind a reverse proxy: the static files by `scripts/serve.mjs` from a release of the repository, with the `_headers` rules applied, and the relay by `relay/serve.mjs`
+  - once things settle: static files on Cloudflare Pages at `annai.guide`, so the site stays up when that machine doesn't, and the push relay as a Cloudflare Worker at `push.annai.guide` (Workers Paid if the Free plan's daily caps are reached)
   - `anai.guide` is a 301 redirect only, never shown as the name
-  - the push relay is a Cloudflare Worker at `push.annai.guide`
-  - the domain is registered at Porkbun; a transfer to Cloudflare Registrar is possible later
+  - the domain is registered at Porkbun, with its DNS there; a transfer to Cloudflare is possible later
 - **Repository layout:**
 
 ```
