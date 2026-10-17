@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { startRelay } from '../../relay/serve.mjs';
+import { memoryNamespace } from '../../relay/memory.js';
 import { newVapidJwk } from '../../relay/src/vapid.js';
 import { toB64u } from '../../relay/src/b64.js';
 import { startPushService } from '../fakes/push-service.js';
@@ -128,6 +129,57 @@ test('a request larger than the relay reads is refused as soon as it is, without
     assert.equal(status, 413);
   } finally {
     await r.close();
+  }
+});
+
+test('closing waits for an alarm already running, and arms no timer after, so a restart neither sends twice nor keeps running', async () => {
+  /** @type {() => void} */
+  let release = () => {};
+  const gate = new Promise((done) => { release = () => done(undefined); });
+  let started = false;
+  class Obj {
+    /** @param {{ storage: any }} state */
+    constructor(state) {
+      this.storage = state.storage;
+    }
+    async fetch() {
+      await this.storage.setAlarm(Date.now());
+      return new Response('ok');
+    }
+    async alarm() {
+      started = true;
+      await gate;
+      await this.storage.setAlarm(Date.now() + 60_000); // as a retry's back-off does
+    }
+  }
+  const ns = memoryNamespace(Obj, {});
+  await ns.get(ns.idFromName('x')).fetch(new Request('http://relay/'));
+  for (let i = 0; i < 50 && !started; i++) await new Promise((done) => setTimeout(done, 10));
+  assert.ok(started);
+  let closed = false;
+  const closing = Promise.resolve(ns.close()).then(() => { closed = true; });
+  await new Promise((done) => setTimeout(done, 30));
+  assert.equal(closed, false, 'it waits for the alarm that is running');
+  release();
+  await closing;
+  const o = /** @type {any} */ (ns.objects.get('x'));
+  assert.equal(o.timer, null, 'no timer left running');
+  assert.ok(o.storage.alarm > Date.now(), 'the time it set is kept, for the next start');
+});
+
+test('the runner stops on SIGTERM (systemd stopping it) by closing, so a reminder being sent is written down first', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-relay-'));
+  try {
+    const { spawn } = await import('node:child_process');
+    const child = spawn(process.execPath, [serve, '--port', '0', '--origin', 'https://x.example', '--keys', join(dir, 'vapid.json'), '--data', join(dir, 'relay.json')], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const exited = new Promise((done) => child.on('exit', (code, signal) => done({ code, signal })));
+    await new Promise((done) => child.stdout.on('data', (b) => String(b).includes('annai push relay') && done(undefined)));
+    child.kill('SIGTERM');
+    const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
+    assert.deepEqual(await exited, { code: 0, signal: null });
+    clearTimeout(timer);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });
 

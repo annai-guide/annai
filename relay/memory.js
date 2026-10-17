@@ -136,6 +136,9 @@ export function memoryNamespace(Class, env, { now = () => Date.now(), timers = t
   /** @typedef {{ obj: any, storage: MemoryStorage, timer: ReturnType<typeof setTimeout> | null }} Entry */
   /** @type {Map<string, Entry>} */
   const objects = new Map();
+  /** Alarms running now, which close() waits for. @type {Set<Promise<void>>} */
+  const running = new Set();
+  let closed = false;
   const save = file
     ? fileSaver(file, () => ({
       v: 1,
@@ -147,7 +150,7 @@ export function memoryNamespace(Class, env, { now = () => Date.now(), timers = t
     : async () => {};
   /** @param {Entry} o */
   const arm = (o) => {
-    if (!timers) return;
+    if (!timers || closed) return;
     if (o.timer) clearTimeout(o.timer);
     o.timer = null;
     if (o.storage.alarm === null) return;
@@ -159,7 +162,11 @@ export function memoryNamespace(Class, env, { now = () => Date.now(), timers = t
       }
       o.timer = null;
       o.storage.alarm = null;
-      Promise.resolve(o.obj.alarm()).catch((/** @type {unknown} */ e) => console.warn('the relay alarm failed', e));
+      const run = Promise.resolve()
+        .then(() => o.obj.alarm())
+        .catch((/** @type {unknown} */ e) => console.warn('the relay alarm failed', e))
+        .finally(() => running.delete(run));
+      running.add(run);
     };
     step();
   };
@@ -217,9 +224,17 @@ export function memoryNamespace(Class, env, { now = () => Date.now(), timers = t
       for (const o of objects.values()) out.push(...(await o.storage.list({ prefix: 'm:' })).values());
       return out;
     },
-    /** Stops the timers (a runner closing). */
-    close() {
-      for (const o of objects.values()) if (o.timer) clearTimeout(o.timer);
+    /**
+     * Stops the timers (a runner closing), then waits for the alarms already running: what they
+     * send is written down before a restart reads the file, and the times they set wait for it.
+     */
+    async close() {
+      closed = true;
+      for (const o of objects.values()) {
+        if (o.timer) clearTimeout(o.timer);
+        o.timer = null;
+      }
+      await Promise.all(running);
     },
   };
 }
