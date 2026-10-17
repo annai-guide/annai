@@ -87,7 +87,7 @@ export function startShell(root, core) {
   let seq = 0;
   async function render() {
     const my = ++seq;
-    cleanUp('screen'); // what plugins drew on the screen before
+    cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
     const section = route.name === 'simulate' || route.name === 'mcp' ? 'settings' : route.name === 'plan' ? 'plan' : route.name === 'drive' ? 'now' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
     const current = route.name === 'ext' ? location.hash : `#/${section}`;
@@ -97,7 +97,8 @@ export function startShell(root, core) {
     }
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
-      const node = await screen(ctx, route);
+      // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once (minors 15).
+      const node = await screen(Object.create(ctx, { seq: { value: my } }), route);
       if (my !== seq) return;
       main.replaceChildren(node);
     } catch (e) {

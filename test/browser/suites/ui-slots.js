@@ -3,6 +3,7 @@ import { renderExt } from '../../../src/ui/screens/ext.js';
 import { mount, cleanUp, syncThemes, dockKey } from '../../../src/ui/slots.js';
 import { renderCard } from '../../../src/ui/cards.js';
 import { createDock } from '../../../src/ui/dock.js';
+import { startShell } from '../../../src/ui/shell.js';
 
 /** A tick, for drawings whose promise settles. */
 const tick = () => new Promise((done) => setTimeout(done, 0));
@@ -178,5 +179,31 @@ export default function (test, assert) {
     assert.ok(all().every((n) => n > 0), JSON.stringify(all()));
     dock.dispose();
     assert.deepEqual(all(), [0, 0, 0, 0, 0]);
+  });
+
+  // Last: it starts a shell, which follows this page's address from then on.
+  test("minors 15: what a render the shell gave up on drew is cleaned up as it comes, not at the next render", async () => {
+    const registry = new Registry();
+    /** @type {string[]} */
+    const cleaned = [];
+    registry.add('tides', 'ui:trip-tab', { id: 'table', title: 'Tide table', render: () => () => { cleaned.push('table'); } });
+    registry.add('tides', 'ui:screen', { id: 'now', title: 'Tides now', render: () => () => { cleaned.push('now'); } });
+    // The trip tab reads its trip first, slowly: the next render starts meanwhile.
+    const store = { tx: () => new Promise((done) => setTimeout(() => done({ title: 'Big Sur' }), 150)) };
+    const root = document.createElement('div');
+    document.body.append(root);
+    await new Promise((done) => {
+      addEventListener('hashchange', done, { once: true });
+      location.hash = '#/trip/t1/ext/tides/table';
+    });
+    startShell(root, /** @type {any} */ ({ registry, plugins: { active: new Map([['tides', { manifest: { name: 'Tides' } }]]) }, store, version: 'test' }));
+    await new Promise((done) => setTimeout(done, 30));
+    location.hash = '#/ext/tides/now';
+    await new Promise((done) => setTimeout(done, 300));
+    assert.ok(root.textContent?.includes('Tides now'), String(root.textContent));
+    assert.deepEqual(cleaned, ['table'], `the tab's drawing, drawn after its render was given up, is cleaned up at once: ${JSON.stringify(cleaned)}`);
+    location.hash = '#/ext/tides/table';
+    await new Promise((done) => setTimeout(done, 100));
+    assert.deepEqual(cleaned, ['table', 'now'], "the screen shown is cleaned up when the next is drawn");
   });
 }

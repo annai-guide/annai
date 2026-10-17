@@ -110,3 +110,28 @@ test("8b-6: the show tool's type is a string as well as one of the plugins' type
   const s = cardSchema([{ type: 'tides', name: 'Tides', description: 'Low and high tides.' }]);
   assert.equal(s.properties.type.type, 'string');
 });
+
+test("minors 15: a drawing's cleanup is tagged with its render: one that comes after its render was superseded runs at once, and the shown render's wait for the next", async () => {
+  const { mount, cleanUp } = await import('../../src/ui/slots.js');
+  const registry = new Registry();
+  const el = () => /** @type {any} */ ({ hidden: false, replaceChildren() {} });
+  const entry = { pluginId: 'tides', item: {} };
+  /** @type {string[]} */
+  const ran = [];
+  cleanUp('screen', 1);
+  /** @type {(fn: () => void) => void} */
+  let late = () => {};
+  mount({ registry, seq: 1 }, entry, el(), () => new Promise((done) => { late = done; }));
+  mount({ registry, seq: 1 }, entry, el(), () => () => ran.push('first'));
+  cleanUp('screen', 2);
+  assert.deepEqual(ran, ['first']);
+  // Render 1, superseded, still drawing: what it draws now is gone at once, and so is what comes later.
+  mount({ registry, seq: 1 }, entry, el(), () => () => ran.push('first, drawn late'));
+  late(() => ran.push('first, its promise late'));
+  await new Promise((done) => setTimeout(done, 0));
+  assert.deepEqual(ran, ['first', 'first, drawn late', 'first, its promise late']);
+  mount({ registry, seq: 2 }, entry, el(), () => () => ran.push('second'));
+  assert.equal(ran.includes('second'), false, "the shown render's cleanup waits");
+  cleanUp('screen', 3);
+  assert.equal(ran.at(-1), 'second');
+});
