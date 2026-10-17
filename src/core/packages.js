@@ -59,15 +59,27 @@ export function checkManifest(manifest) {
 
 /** A path that starts with a scheme (http:, javascript:), which an address would read off the package's site, as skillLinks refuses (fix pass 8a-4). */
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+/** Whitespace, control characters and backslashes, which an address parser drops or reads as / (fix pass 8a-4). */
+const UNSAFE = /[\s\u0000-\u001f\u007f-\u009f\\]/;
 
-/** A relative path that stays inside the plugin's folder, with no scheme. @param {string} rel */
-export function insidePlugin(rel) {
-  if (SCHEME.test(rel)) return false;
+/**
+ * A relative path that stays inside the package's folder, as it is and once percent-decoded as an
+ * address would be (%2e%2e is ..), with no scheme, whitespace, control character or backslash (fix pass 8a-4).
+ * @param {string} rel
+ */
+function plainPath(rel) {
+  if (typeof rel !== 'string' || SCHEME.test(rel) || UNSAFE.test(rel)) return false;
   try {
-    return normPath(`/p/${rel}`) === `/p/${rel}`;
+    const decoded = decodeURIComponent(rel);
+    return [rel, decoded].every((p) => normPath(`/p/${p}`) === `/p/${p}`);
   } catch {
     return false;
   }
+}
+
+/** A relative path that stays inside the plugin's folder (see plainPath). @param {string} rel */
+export function insidePlugin(rel) {
+  return plainPath(rel);
 }
 
 /** What zips carry that is no part of a package: macOS's and Windows' own files, and folder entries. @param {string} name */
@@ -245,15 +257,8 @@ export function rawAddress(address) {
   return m ? `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}` : address;
 }
 
-/** Whether a name stays inside the package, with no scheme. @param {string} name */
-const fileName = (name) => {
-  if (SCHEME.test(name)) return false;
-  try {
-    return normPath(`/${name}`) === `/${name}`;
-  } catch {
-    return false;
-  }
-};
+/** Whether a name stays inside the package (see plainPath). @param {string} name */
+const fileName = (name) => plainPath(name);
 
 /**
  * A package's files from an address (choice 6): a zip, whatever the address ends with; an
@@ -297,6 +302,17 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   }
   const body = text(first).replace(/^﻿/, '');
   const base = url;
+  const home = new URL('.', base); // the package's folder
+  /**
+   * Where a file of the package is: an address on the same site, inside the package's folder; null for a
+   * name that would lead anywhere else (fix pass 8a-4).
+   * @param {string} name
+   */
+  const fileUrl = (name) => {
+    if (!fileName(name)) return null;
+    const u = new URL(name, base);
+    return u.origin === home.origin && u.pathname.startsWith(home.pathname) ? u : null;
+  };
   const tooMany = () => new Error(`That package has more than ${ADDRESS_MAX_FILES} files; annai installs packages of up to ${ADDRESS_MAX_FILES} from an address. Use a zip instead.`);
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
@@ -310,10 +326,11 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     }
     for (const link of links.slice(0, SKILL_MAX_LINKS)) {
       const name = `${folder}${link}`;
-      if (files.has(name) || !fileName(name)) continue;
+      const at = files.has(name) ? null : fileUrl(name);
+      if (!at) continue;
       if (files.size >= ADDRESS_MAX_FILES) throw tooMany();
       try {
-        files.set(name, await download(new URL(name, base)));
+        files.set(name, await download(at));
       } catch (e) {
         if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
       }
@@ -338,8 +355,14 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     for (const f of [...(Array.isArray(manifest.personalities) ? manifest.personalities : []), ...(Array.isArray(manifest.templates) ? manifest.templates : [])]) add(f);
     names.delete(MANIFEST_FILE);
     if (names.size + 1 > ADDRESS_MAX_FILES) throw tooMany();
-    for (const name of names) if (!fileName(name)) throw new Error(`The file name "${name}" isn't allowed.`);
-    for (const name of names) files.set(name, await download(new URL(name, base)));
+    /** @type {Map<string, URL>} */
+    const at = new Map();
+    for (const name of names) {
+      const u = fileUrl(name);
+      if (!u) throw new Error(`The file name "${name}" isn't allowed.`);
+      at.set(name, u);
+    }
+    for (const [name, u] of at) files.set(name, await download(u));
     for (const s of skillFiles) await linked(s.slice(0, -SKILL_FILE.length), /** @type {Uint8Array} */ (files.get(s)));
     return files;
   }

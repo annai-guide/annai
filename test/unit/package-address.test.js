@@ -99,3 +99,18 @@ test('8a-4: a manifest naming a file with a scheme is refused before anything el
   assert.deepEqual(names(await fetchPackage(`${T}/s/SKILL.md`, { fetch: w.fetch })), ['SKILL.md']);
   assert.ok(w.asked.every((u) => u.startsWith(T)));
 });
+
+test('8a-4 (follow-up): a name that would lead out of the package once it is an address is refused; lib/util.js still comes', async () => {
+  for (const name of [' http:/evil.example/x.js', '\thttp:/evil.example/x.js', '\\\\evil.example\\x.js', '%2e%2e/%2e%2e/x.js']) {
+    const w = web({ [`${T}/tides/annai-plugin.json`]: JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, files: [name] }) });
+    await assert.rejects(fetchPackage(`${T}/tides/annai-plugin.json`, { fetch: w.fetch }), /isn't allowed/, JSON.stringify(name));
+    assert.deepEqual(w.asked, [`${T}/tides/annai-plugin.json`], JSON.stringify(name));
+  }
+  const ok = web({ [`${T}/tides/annai-plugin.json`]: JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js', files: ['lib/util.js'] }), [`${T}/tides/index.js`]: '', [`${T}/tides/lib/util.js`]: '' });
+  assert.deepEqual(names(await fetchPackage(`${T}/tides/annai-plugin.json`, { fetch: ok.fetch })).sort(), ['annai-plugin.json', 'index.js', 'lib/util.js']);
+  // A SKILL.md's links: the same ones are left out, and nothing is asked outside its folder.
+  const links = ['%2e%2e/%2e%2e/secret.md', '\\\\evil.example\\x.md', 'references/safety.md'].map((l, i) => `[${i}](${l})`).join(' ');
+  const w = web({ [`${T}/s/SKILL.md`]: SKILL.replace('See [safety](references/safety.md).', links), [`${T}/s/references/safety.md`]: 'Watch the waves.' });
+  assert.deepEqual(names(await fetchPackage(`${T}/s/SKILL.md`, { fetch: w.fetch })), ['SKILL.md', 'references/safety.md']);
+  assert.ok(w.asked.every((u) => u.startsWith(`${T}/s/`)), w.asked.join(' '));
+});

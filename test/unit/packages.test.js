@@ -72,3 +72,11 @@ test('8a-4: an entry, or any path in a package, that starts with a scheme is ref
   checkManifest(JSON.parse(MANIFEST({ entry: 'lib/index.js' })));
   assert.equal(insidePlugin('lib/index.js'), true);
 });
+
+test('8a-4 (follow-up): an entry with whitespace, a control character or a backslash, or one that climbs out once decoded, is refused; lib/util.js is fine', () => {
+  for (const entry of [' http:/evil.example/x.js', '\thttp:/evil.example/x.js', '\\\\evil.example\\x.js', '%2e%2e/x.js', 'lib/%2e%2e/%2e%2e/x.js', 'lib/\u0000x.js']) {
+    assert.throws(() => checkManifest(JSON.parse(MANIFEST({ entry }))), PluginError, JSON.stringify(entry));
+    assert.equal(insidePlugin(entry), false, JSON.stringify(entry));
+  }
+  checkManifest(JSON.parse(MANIFEST({ entry: 'lib/util.js' })));
+});
