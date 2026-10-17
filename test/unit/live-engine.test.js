@@ -5,6 +5,7 @@ import { readAppSettings } from '../../src/core/settings.js';
 import { readWatches } from '../../src/core/live/watches.js';
 import { createTrip, removeTrip, ME } from '../../src/core/scopes.js';
 import { ManualClock, scaledClock, realClock } from '../../src/core/live/clock.js';
+import { Live } from '../../src/core/live/live.js';
 
 const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, end: { at: iso('13:15'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
 const BIX = { title: 'Bixby Bridge photo stop', fixed: false, start: { at: iso('09:45'), tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
@@ -370,4 +371,26 @@ test("a plugin trigger whose describe throws: what fired still reaches Shiori", 
   await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:30') }, fallback: 'Walk.' });
   await k.to(at('09:30'));
   assert.ok(k.agent.wakes.some((w) => /\(a tide watch\) fired: low tide now/.test(w.text)), k.agent.wakes.map((w) => w.text).join(' | '));
+});
+
+test("an item moved later gets the plan's reminders again, for its new time; and a restart remembers which time they were for", async () => {
+  const k = await liveKit({ live: false, plan: { bixby: BIX, nepenthe: NEP } });
+  await k.to(at('11:09'));
+  assert.equal(k.agent.wakes.length, 1);
+  await k.ws.write(k.trip, '/plan/nepenthe.json', { id: 'nepenthe', ...NEP, start: { at: iso('13:00'), tz: LA }, end: { at: iso('14:15'), tz: LA } }, { author: 'shiori' });
+  await k.settle();
+  await k.to(at('12:08'));
+  assert.equal(k.agent.wakes.length, 1);
+  await k.to(at('12:09'));
+  assert.equal(k.agent.wakes.length, 2);
+  assert.match(k.agent.wakes[1].text, /time to leave soon for "Lunch at Nepenthe" \(fixed, 13:00\)/);
+  const fired = (await k.events(['trigger.fired'])).map((e) => e.data.for);
+  assert.deepEqual(fired, [Date.parse(iso('12:00')), Date.parse(iso('13:00'))]);
+  k.live.dispose();
+  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA });
+  await again.start();
+  await again.settled();
+  await k.clock.advanceTo(at('12:20'), () => again.settled());
+  assert.equal(k.agent.wakes.length, 2, 'not again after a restart');
+  again.dispose();
 });
