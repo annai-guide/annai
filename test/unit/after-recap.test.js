@@ -116,3 +116,10 @@ test("why a recap wasn't written, in plain words with what to do next", () => {
   assert.equal(recapError(new ProviderError('rate', 'slow down')), 'The provider says too many requests for now. Try again in a while.');
   assert.equal(recapError(new Error('The model sent back an empty recap.')), 'The model sent back an empty recap.');
 });
+
+test('what the Recap screen says goes to the model is true of photos too: one kept as taken can hold where it was taken (review 6)', async () => {
+  const { RECAP_SENDS } = /** @type {any} */ (await import('../../src/core/after/recap.js'));
+  assert.ok(Array.isArray(RECAP_SENDS) && RECAP_SENDS.length >= 5);
+  assert.match(RECAP_SENDS.join('\n'), /rounded to about 100 m\. Never the GPS track itself\./);
+  assert.match(RECAP_SENDS.join('\n'), /Up to 6 photos, if the model takes photos\. A photo kept as taken \(Settings → Photos → Keep originals\) can still hold where it was taken\./);
+});

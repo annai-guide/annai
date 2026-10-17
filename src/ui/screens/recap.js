@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
-import { writeRecap, recapModels, recapError, RECAP_FILE, TELL_RECAP, RECAP_PHOTOS } from '../../core/after/recap.js';
+import { writeRecap, recapModels, recapError, RECAP_FILE, TELL_RECAP, RECAP_SENDS } from '../../core/after/recap.js';
 import { loadPack } from '../../core/pack/read.js';
 import { updateAppSettings } from '../../core/settings.js';
 import { withoutSecrets } from '../../core/agent/net.js';
@@ -70,11 +70,6 @@ export async function renderRecap(ctx, route) {
     model
       ? h('details', { class: 'sent' },
         h('summary', { text: `What goes to ${model.name}` }),
-        h('ul', {},
-          h('li', { text: 'Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.' }),
-          h('li', { text: 'How far you drove or walked between, the stamps, and the plan.' }),
-          h('li', { text: "Shiori's cards and your words, typed or spoken, each shortened." }),
-          h('li', { text: 'The trip\'s notes and memory, and your profile.' }),
-          h('li', { text: `Up to ${RECAP_PHOTOS} photos, if the model takes photos.` })))
+        h('ul', {}, ...RECAP_SENDS.map((line) => h('li', { text: line }))))
       : h('p', { class: 'sub' }, 'No model is set up to write it yet. ', h('a', { href: '#/models' }, 'Add one in Settings → Models.')));
 }

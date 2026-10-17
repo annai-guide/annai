@@ -27,7 +27,7 @@ import { mediaKeys } from '../ui/media-keys.js';
 import { armUnlock } from '../ui/unlock.js';
 import { Live } from '../core/live/live.js';
 import { watchTools } from '../core/live/watch-tools.js';
-import { SimRun } from '../core/live/sim-run.js';
+import { SimRun, recoverSimulation } from '../core/live/sim-run.js';
 import { tellGps } from '../ui/live-help.js';
 import { keepAwake } from '../ui/wake-lock.js';
 import { PackKeeper } from '../core/pack/keeper.js';
@@ -104,6 +104,8 @@ async function boot() {
   document.addEventListener('visibilitychange', () => pack.poke());
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).
+  // A simulation the page went away in the middle of is over: the trip open before it comes back (spec §13).
+  await recoverSimulation({ store, ws }).catch(() => {});
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
