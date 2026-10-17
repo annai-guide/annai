@@ -832,6 +832,7 @@ export class Live {
     // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
     // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
     // away counts the way since then at once, in the catch-up (spec §11.4), not as a jump when the user next moves.
+    // Only while the catch-up waits for it: a first fix after FIX_WAIT_MS counts as any fix does.
     const back = this.#catch !== null;
     if (!this.#odo) this.#odo = fix;
     else if ((moving || back) && fix.accuracy <= 100 && meters(this.#odo, fix) >= (back ? Math.max(STOP_M, 2 * fix.accuracy) : Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy))) {
