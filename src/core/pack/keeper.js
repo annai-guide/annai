@@ -73,7 +73,9 @@ export class PackKeeper {
     const manifest = await readManifest(ws, scope);
     const have = new Set((await ws.list(scope, DIR)).map((f) => f.path));
     const missing = plan.parts.filter((p) => !have.has(pathOf(p)));
-    const old = manifest !== null && !(now - Date.parse(manifest.at) <= STALE_MS);
+    // Old by its oldest part: an update that brought only what the plan changed leaves the rest as old as it was.
+    const oldest = manifest ? Math.min(Date.parse(manifest.at), ...manifest.files.map((f) => f.at || Infinity)) : NaN;
+    const old = manifest !== null && !(now - oldest <= STALE_MS);
     /** @type {Why} */
     // A pack that reached its size limit holds all of its plan it can: the rest is no more to come (until it is old).
     const why = !manifest ? null
