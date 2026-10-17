@@ -100,11 +100,14 @@ export async function startRelay({ port = 0, host = '127.0.0.1', origins = [], j
     origin: `http://${host}:${bound}`,
     key: publicKey,
     env,
-    close: () => new Promise((resolve) => {
-      env.RELAY.close();
-      server.closeAllConnections?.();
-      server.close(() => resolve(undefined));
-    }),
+    /** Stops taking requests, then waits for the alarms already sending. */
+    close: async () => {
+      await new Promise((resolve) => {
+        server.close(() => resolve(undefined));
+        server.closeAllConnections?.();
+      });
+      await env.RELAY.close();
+    },
   };
 }
 
@@ -132,6 +135,14 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   }
   const data = one('--data');
   const r = await startRelay({ port, host: one('--host') ?? '127.0.0.1', origins, keys: one('--keys'), subject: one('--subject'), ...(data ? { data } : {}) });
+  // Stopping (systemd sends SIGTERM) closes first, so what is being sent is written down (ten seconds at most);
+  // set before the runner says it is running, so a stop right after that is caught too.
+  for (const signal of /** @type {const} */ (['SIGTERM', 'SIGINT'])) {
+    process.once(signal, () => {
+      setTimeout(() => process.exit(1), 10_000).unref();
+      r.close().then(() => process.exit(0), () => process.exit(1));
+    });
+  }
   console.log(data
     ? `annai push relay, keeping what is waiting in ${data}: ${r.origin}/ for ${origins.join(', ')}`
     : `annai push relay, in memory (a restart forgets what is waiting): ${r.origin}/ for ${origins.join(', ')}`);
