@@ -22,6 +22,7 @@ import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
 import { Voice } from '../core/voice/voice.js';
+import { mediaKeys } from '../ui/media-keys.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -74,6 +75,8 @@ async function boot() {
 
   // Shiori (spec §6): one agent, talking about the trip that was open last.
   const agent = new Agent({ store, ws, llm, registry, codec, voice });
+  // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
+  mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent));
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).
