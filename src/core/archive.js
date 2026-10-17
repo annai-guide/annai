@@ -4,7 +4,7 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, FORMAT, newId } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf } from './events.js';
@@ -152,7 +152,8 @@ export async function exportArchive(store, opts) {
   const all = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
   const scopes = opts.kind === 'trip'
     ? all.filter((s) => s.kind === 'trip' && (opts.scopes ?? []).includes(s.id))
-    : all.filter((s) => s.id !== SYS || opts.include.history);
+    // This device's own scope never travels (spec §12.4); the system log goes only with history.
+    : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || opts.include.history));
   if (!scopes.length) throw new ArchiveError('There is nothing to export.');
 
   /** @type {Manifest} */
@@ -481,7 +482,7 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
     } else if (rec.id === SYS_PLUGINS && choices.plugins === 'replace') {
       target = SYS_PLUGINS; mode = 'system';
     } else {
-      continue; // kept, or the system log, which belongs to the device it came from
+      continue; // kept, or the system log or this device's own scope, which belong to the device they came from
     }
     const files = manifest.files.filter((f) => f.scope === rec.id);
     const events = (s.events && logs.get(s.events)) || [];

@@ -8,6 +8,8 @@ export const ME = 'me';
 export const SYS = 'sys';
 export const SYS_SETTINGS = 'sys:settings';
 export const SYS_PLUGINS = 'sys:plugins';
+/** This device's own scope: never exported, never imported (see ensureDeviceScope). */
+export const SYS_DEVICE = 'sys:device';
 
 /** @param {string} scope @returns {'me'|'trip'|'sys'|'other'} */
 export function kindOf(scope) {
@@ -46,6 +48,20 @@ export async function ensureBaseScopes(ws) {
     await ws.write(ME, '/profile.md', PROFILE, { author: 'user' });
     await ws.write(ME, '/memory.md', '# Memory\n', { author: 'user' });
   }
+}
+
+/**
+ * This device's own scope, made on first use: what annai keeps about this device alone, such as
+ * where it backs up to (spec §12.4). Exports leave it out and imports skip it, so a restored backup
+ * can never make two devices one.
+ * @param {Store} store @param {number} [now]
+ */
+export async function ensureDeviceScope(store, now = Date.now()) {
+  await store.tx(['scopes'], 'readwrite', async (t) => {
+    if (!(await t.getScope(SYS_DEVICE))) {
+      await t.putScope({ id: SYS_DEVICE, kind: 'sys', title: 'This device', status: 'active', created: now, updated: now, format: FORMAT });
+    }
+  });
 }
 
 /**
