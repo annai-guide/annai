@@ -225,9 +225,81 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       return reply(204, null);
     }
 
-    /** The alarm: sends what is due (spec §11.6: "sends at sendAt"). Task 4. */
+    /** The alarm: sends what is due (spec §11.6: "sends at sendAt"), then waits for the next. */
     async alarm() {
-      await this.rewake();
+      try {
+        const t = now();
+        /** @type {Waiting[]} */
+        const due = [...(await this.storage.list({ prefix: 'm:' })).values()].filter((w) => w.next <= t).sort((a, b) => a.next - b.next);
+        for (const w of due) {
+          // Read again: while a send waits, Cloudflare lets other requests in, and one may have cancelled this.
+          /** @type {Waiting | undefined} */
+          const fresh = await this.storage.get(`m:${w.id}`);
+          if (!fresh) continue;
+          const r = await this.#deliver(fresh, t);
+          if (r === 'gone') {
+            /** @type {Waiting[]} */
+            const all = [...(await this.storage.list({ prefix: 'm:' })).values()].filter((x) => x.endpoint === fresh.endpoint);
+            await this.storage.delete(all.flatMap((x) => [`m:${x.id}`, `p:${x.id}`]));
+          } else if (r === 'retry') {
+            /** @type {Waiting | undefined} */
+            const still = await this.storage.get(`m:${w.id}`);
+            if (!still) continue;
+            const tries = still.tries + 1;
+            const next = t + Math.min(10 * MIN, 30_000 * 2 ** (tries - 1));
+            if (next > still.sendAt + RETRY_FOR) await this.storage.delete([`m:${w.id}`, `p:${w.id}`]);
+            else await this.storage.put(`m:${w.id}`, { ...still, tries, next });
+          } else {
+            await this.storage.delete([`m:${w.id}`, `p:${w.id}`]); // sent, or never will be
+          }
+        }
+        await this.rewake();
+      } catch {
+        // The relay itself failed: look again in a minute rather than let Cloudflare retry at once.
+        await this.storage.setAlarm(now() + MIN);
+      }
+    }
+
+    /**
+     * Sends one reminder to its push service (RFC 8030, VAPID per RFC 8292), choice 6.
+     * @param {Waiting} w @param {number} t @returns {Promise<'sent' | 'gone' | 'retry' | 'drop'>}
+     */
+    async #deliver(w, t) {
+      if (t > w.sendAt + RETRY_FOR) return 'drop'; // expired
+      const key = await vapid(this.env);
+      if (!key) return 'retry';
+      const body = fromB64u((await this.storage.get(`p:${w.id}`)) ?? '');
+      if (!body?.length) return 'drop';
+      /** @type {Response} */
+      let res;
+      try {
+        const jwt = await this.#jwt(key, new URL(w.endpoint).origin, t);
+        res = await send(w.endpoint, {
+          method: 'POST', body,
+          headers: { TTL: String(w.ttl), Urgency: w.urgency, 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', Authorization: vapidAuthorization(jwt, key.publicKey) },
+        });
+      } catch {
+        return 'retry';
+      }
+      await res.arrayBuffer().catch(() => null);
+      if (res.ok) return 'sent';
+      if (res.status === 404 || res.status === 410) return 'gone';
+      if (res.status === 403 && w.tries === 0) {
+        await this.storage.delete('jwt');
+        return 'retry';
+      }
+      if (res.status === 429 || res.status >= 500) return 'retry';
+      return 'drop';
+    }
+
+    /** A VAPID token for one push service, kept until an hour is left (choice 7). @param {import('./vapid.js').VapidKey} key @param {string} aud @param {number} t */
+    async #jwt(key, aud, t) {
+      const had = await this.storage.get('jwt');
+      if (had && had.aud === aud && had.key === key.publicKey && had.exp * 1000 - t > JWT_RENEW_MS) return String(had.token);
+      const exp = Math.floor(t / 1000) + JWT_LIFE_S;
+      const token = await vapidJwt(key, { aud, exp, sub: this.env.VAPID_SUBJECT || 'https://annai.guide' });
+      await this.storage.put('jwt', { aud, key: key.publicKey, exp, token });
+      return token;
     }
 
     /** The alarm at the next reminder's time; with none left, no alarm and nothing stored. */
