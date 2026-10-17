@@ -3,7 +3,7 @@ import { recordBackup, SYS } from './scopes.js';
 import { logEvent } from './events.js';
 import { withoutSecrets } from './agent/net.js';
 import { isPluginBug } from './plugins.js';
-import { storageTypes, TargetError, NEEDS_YOU } from './storage-types.js';
+import { storageTypes, TargetError, NEEDS_YOU, backupFileName } from './storage-types.js';
 import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret } from './backup-targets.js';
 
 /**
@@ -114,6 +114,35 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     return e;
   }
 
+  /**
+   * Before a whole file is sent: its size against what may go without asking, and the place's
+   * newest backup (single writer). A git place checks both in its own put.
+   * @param {Target} rec @param {number} bytes @param {string | null} base @param {number} maxUpload @param {string} me
+   */
+  async function beforeFile(rec, bytes, base, maxUpload, me) {
+    if (bytes > maxUpload) throw new TargetError('large', `This backup would upload ${Math.ceil(bytes / 1_000_000)} MB.`, { bytes });
+    const [newest] = await call(rec, 'list', (t, c) => t.list(c));
+    if (newest && newest.id !== base && newest.device !== me) throw new TargetError('newer', `There is a newer backup at ${rec.name}.`, { remote: newest });
+  }
+
+  /**
+   * Keeps the last few backups this device made at a whole-file place, deleting older ones;
+   * another device's are never touched. A failure here is logged, and the backup still counts.
+   * @param {Target} rec @param {string} me
+   */
+  async function keepLast(rec, me) {
+    if (typeof typeOf(rec.type)?.delete !== 'function') return;
+    try {
+      const own = (await call(rec, 'list', (t, c) => t.list(c))).filter((b) => b.device === me).sort((a, b) => b.at - a.at);
+      for (const b of own.slice(Math.max(1, rec.keep ?? 3))) {
+        await call(rec, 'delete', (t, c) => /** @type {NonNullable<StorageType['delete']>} */ (t.delete)(c, b.id));
+        await log('backup.prune', { target: rec.id, type: rec.type, backup: b.id });
+      }
+    } catch (e) {
+      await log('backup.error', { target: rec.id, type: rec.type, kind: 'prune', message: String(/** @type {any} */ (e)?.message ?? e) });
+    }
+  }
+
   /** @param {string} id @param {{ over?: boolean, maxUpload?: number, reason?: 'auto' | 'user' }} o */
   async function backUpNow(id, { over = false, maxUpload = Infinity, reason = 'user' }) {
     const rec = await target(id);
@@ -123,8 +152,17 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     const started = now();
     try {
       const base = over && rec.hold?.kind === 'newer' ? rec.hold.remote.id : rec.last?.id ?? null;
-      const built = await exportArchive(store, { kind: 'everything', include: { ...PRESETS.backup }, app, now: Date.now() });
-      const result = await call(rec, 'put', (t, c) => t.put(c, { blob: built.blob, name: built.filename, manifest: built.manifest }, {
+      const file = typeOf(rec.type)?.stores === 'file';
+      const me = await deviceId(ws);
+      // A whole-file place may keep its backups encrypted, with the API keys when the user chose (spec §12.2).
+      const passphrase = file && rec.encrypt ? (await targetSecret(store, id)).passphrase : undefined;
+      if (file && rec.encrypt && !passphrase) throw new TargetError('setup', `Type the passphrase for the encrypted backups at ${rec.name}, then save.`);
+      const built = await exportArchive(store, {
+        kind: 'everything', include: { ...PRESETS.backup }, app, now: Date.now(), ...(passphrase ? { passphrase, secrets: Boolean(rec.keys) } : {}),
+      });
+      const name = file ? backupFileName({ at: built.manifest.created, label, device: me, encrypted: Boolean(passphrase) }) : built.filename;
+      if (file) await beforeFile(rec, built.blob.size, base, maxUpload, me);
+      const result = await call(rec, 'put', (t, c) => t.put(c, { blob: built.blob, name, manifest: built.manifest }, {
         base, maxUpload, signal: stop.signal,
         onProgress: (p) => {
           running.set(id, { ...p, stop });
@@ -135,6 +173,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       await recordBackup(store, built.seqs, at);
       await setTarget(ws, id, { last: { id: result.id, at, seqs: Object.fromEntries(built.seqs), bytes: built.blob.size }, hold: null });
       await log('backup', { target: id, type: rec.type, reason, backup: result.id, files: result.files ?? null, uploaded: result.uploaded ?? built.blob.size, ms: now() - started });
+      if (file) await keepLast(rec, me);
       return result;
     } catch (e) {
       if (stopped(e)) throw e;
@@ -171,17 +210,28 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
 
     /**
      * Changes a place. Changing where it is or how it signs in means it must pass a test again
-     * before automatic backups use it.
-     * @param {string} id @param {{ config?: Record<string, string>, secret?: Record<string, string>, auto?: Auto, mobileData?: boolean }} c
+     * before automatic backups use it; a passphrase for its encrypted backups doesn't.
+     * @param {string} id
+     * @param {{ config?: Record<string, string>, secret?: Record<string, string>, auto?: Auto, mobileData?: boolean,
+     *   encrypt?: boolean, keys?: boolean, keep?: number, passphrase?: string }} c
      */
-    async update(id, { config, secret, auto, mobileData }) {
+    async update(id, { config, secret, auto, mobileData, encrypt, keys, keep, passphrase }) {
       const rec = await target(id);
       const signIn = Boolean(secret && Object.keys(secret).length);
       if (signIn) await setTargetSecret(store, id, /** @type {Record<string, string>} */ (secret));
+      if (passphrase !== undefined) await setTargetSecret(store, id, { passphrase });
+      const encrypting = encrypt ?? rec.encrypt ?? false;
+      const withKeys = encrypt === false ? false : keys ?? rec.keys ?? false;
+      if (encrypt !== undefined || keys !== undefined || passphrase !== undefined) {
+        if (encrypting && !(await targetSecret(store, id)).passphrase) throw new TargetError('setup', 'Type a passphrase for the encrypted backups, then save.');
+        if (withKeys && !encrypting) throw new TargetError('setup', 'API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.');
+      }
       await setTarget(ws, id, {
         ...(config ? { config: { ...rec.config, ...config } } : {}),
         ...(auto ? { auto } : {}),
         ...(mobileData === undefined ? {} : { mobileData }),
+        ...(encrypt === undefined && keys === undefined ? {} : { encrypt: encrypting, keys: withKeys }),
+        ...(keep === undefined ? {} : { keep: Math.min(30, Math.max(1, Math.round(Number(keep) || 3))) }),
         ...(config || signIn ? { checked: null } : {}),
       });
       emit();

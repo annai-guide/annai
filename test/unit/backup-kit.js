@@ -4,7 +4,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { TargetError } from '../../src/core/storage-types.js';
+import { TargetError, parseBackupFileName } from '../../src/core/storage-types.js';
 import { createBackups } from '../../src/core/backup.js';
 
 // Shared by the backup tests: a place in memory, and devices that back up to it.
@@ -78,7 +78,7 @@ export function memoryPlace() {
   };
 }
 
-/** A device whose registry has the place's type. @param {ReturnType<typeof memoryPlace>} place @param {string} [label] */
+/** A device whose registry has the place's type. @param {{ type: any }} place @param {string} [label] */
 export async function device(place, label = 'iPhone') {
   /** @type {any[]} */
   const logged = [];
@@ -115,3 +115,40 @@ export async function until(ok) {
   while (!ok()) await new Promise((resolve) => setTimeout(resolve, 1));
 }
 
+
+/** A place that keeps whole files in memory (stores: "file"), as S3 and WebDAV do. */
+export function memoryFilePlace() {
+  /** @type {Map<string, Blob>} */
+  const files = new Map();
+  /** @type {unknown} */
+  let failDelete = null;
+  const type = {
+    type: 'memory-file', name: 'Folder', stores: 'file', pluginId: 'memory-place', fields: [], secret: [],
+    where: () => 'memory',
+    check: async () => ({ note: 'Works.' }),
+    list: async () => [...files.keys()].map((n) => parseBackupFileName(n)).filter((b) => b !== null).sort((a, b) => b.at - a.at),
+    put: async (/** @type {any} */ _c, /** @type {any} */ a, /** @type {any} */ o) => {
+      o.onProgress({ phase: 'uploading', done: 0, total: 1 });
+      files.set(a.name, a.blob);
+      return { id: a.name, at: parseBackupFileName(a.name)?.at ?? 0, uploaded: a.blob.size, files: 1 };
+    },
+    get: async (/** @type {any} */ _c, /** @type {string} */ id) => {
+      const b = files.get(id);
+      if (!b) throw new TargetError('missing', 'That backup is gone.');
+      return b;
+    },
+    delete: async (/** @type {any} */ _c, /** @type {string} */ id) => {
+      if (failDelete) {
+        const e = failDelete;
+        failDelete = null;
+        throw e;
+      }
+      files.delete(id);
+    },
+  };
+  return {
+    files, type,
+    /** The next deletion throws e. @param {unknown} e */
+    failDeleteNext(e) { failDelete = e; },
+  };
+}
