@@ -255,7 +255,13 @@ export class Live {
     const when = i?.when;
     const type = typeof when?.type === 'string' ? types.get(when.type) : undefined;
     if (!type) throw new Error(`when.type must be one of: ${[...types.keys()].join(', ')}.`);
-    const wrong = type.validate(when);
+    /** @type {string | null} */
+    let wrong;
+    try {
+      wrong = type.validate(when);
+    } catch (e) {
+      throw new Error(`The ${type.type} trigger couldn't check this watch (${String(/** @type {any} */ (e)?.message ?? e).replace(/\.$/, '')}). Try another kind of watch.`);
+    }
     if (wrong) throw new Error(`A ${type.type} watch: ${wrong}.`);
     const fallback = typeof i.fallback === 'string' ? i.fallback.trim() : '';
     if (!fallback) throw new Error("Every watch needs a fallback: the words annai shows, and says with voice on, by itself when it fires and you can't be reached.");
@@ -282,7 +288,7 @@ export class Live {
   /** watch_set's result: what was set, and how things stand. @param {Watch} w */
   watchText(w) {
     const type = this.types().get(w.when.type);
-    const parts = [`Set ${w.id}: ${type ? type.describe(w.when) : w.when.type}${w.repeat ? ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
+    const parts = [`Set ${w.id}: ${this.#describe(type, w)}${w.repeat ? ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
     if (type?.gps && !this.on) parts.push('Live mode is off, so it waits until the user turns it on.');
     const here = this.nowInfo();
     parts.push(`Now: ${here.activity}; ${here.place}.`);
@@ -295,8 +301,7 @@ export class Live {
     const types = this.types();
     const rows = [];
     for (const w of this.#watches.get(scope) ?? []) {
-      const type = types.get(w.when.type);
-      rows.push([w.id, w.owner, type ? type.describe(w.when) : `${w.when.type} (its trigger type isn't installed)`, w.repeat ? 'yes' : 'no', w.fallback, w.expires ?? '', this.#lastFired(scope, w.id)]);
+      rows.push([w.id, w.owner, this.#describe(types.get(w.when?.type), w), w.repeat ? 'yes' : 'no', w.fallback, w.expires ?? '', this.#lastFired(scope, w.id)]);
     }
     if (scope === this.#scope()) for (const w of this.#plan) rows.push([w.id, 'system', PLAN.describe(w.when), w.repeat ? 'yes' : 'no', w.fallback, '', this.#lastFired(scope, w.id)]);
     return rows.length ? tsv(['id', 'owner', 'when', 'repeat', 'reminder', 'expires', 'last_fired'], rows) : 'No watches.';
@@ -728,7 +733,7 @@ export class Live {
           continue;
         }
         const type = types.get(w.when?.type);
-        if (!type || !this.#looked(type, scope)) continue;
+        if (!type || !this.#looked(type, scope) || this.#broken(type, w)) continue; // a broken watch never fires; watch_list says why
         const f = this.#try(type, w, scope, m);
         if (f) fired.push(this.#firedOf(scope, w, type, f, m.now));
       }
@@ -815,12 +820,35 @@ export class Live {
     const late = x.late ? ` (late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : 'off screen'})` : '';
     if (x.watch.owner === 'system') return `${x.firing.text}${late}.`;
     const whose = x.watch.owner === 'shiori' ? 'Your watch' : `The watch of ${x.watch.owner}`;
-    return `${whose} ${x.watch.id} (${x.type.describe(x.watch.when)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
+    return `${whose} ${x.watch.id} (${this.#describe(x.type, x.watch)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
   }
 
   /** @param {string} scope */
   async #exists(scope) {
     return scope === ME || Boolean(await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)));
+  }
+
+  /** What is wrong with a watch, in plain words, or null (a file can say anything; spec §4.4). @param {TriggerType} type @param {Watch} w */
+  #broken(type, w) {
+    try {
+      const wrong = type.validate(w.when);
+      return typeof wrong === 'string' && wrong ? wrong : null;
+    } catch {
+      return `its ${type.type} trigger can't read it`;
+    }
+  }
+
+  /** A watch's when, in words, whatever is in it; never throws. @param {TriggerType | undefined} type @param {Watch} w */
+  #describe(type, w) {
+    if (!type) return `${String(w.when?.type)} (its trigger type isn't installed)`;
+    const a = `${/^[aeiou]/i.test(type.type) ? 'an' : 'a'} ${type.type} watch`;
+    const wrong = this.#broken(type, w);
+    if (wrong) return `${a}, broken: ${wrong}, so it won't fire`;
+    try {
+      return String(type.describe(w.when));
+    } catch {
+      return a;
+    }
   }
 
   /** Removes a watch: fired once, cancelled, or expired. @param {string} scope @param {Watch} w */
@@ -845,7 +873,7 @@ export class Live {
         if (w.expires) consider(Date.parse(w.expires));
         const type = types.get(w.when?.type);
         const mem = this.#mem.get(this.#key(scope, w.id));
-        if (!type?.next || !mem || !this.#looked(type, scope)) continue;
+        if (!type?.next || !mem || !this.#looked(type, scope) || this.#broken(type, w)) continue;
         try {
           consider(type.next(w.when, m, mem));
         } catch {
