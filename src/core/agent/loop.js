@@ -1309,17 +1309,20 @@ export class Agent {
       return `${lead}The user wrote: ${got.text}`;
     }
     if (got.deaf) return `${lead}annai couldn't listen: ${got.deaf} The user may type.`;
+    if (got.earlier) return `${lead}Not listening for an answer: the user spoke while you were thinking; it follows.`;
     return `${lead}${silence}`;
   }
 
   /**
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a
    * silence of seconds. Speech heard before isn't an answer: it reaches her as heard while she was
-   * thinking. @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @returns {Promise<Got>}
+   * thinking, and with such speech waiting, speak and wait don't listen: it reaches her at once.
+   * @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @returns {Promise<Got>}
    */
   async #listenFor(id, kind, seconds) {
     const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (typed >= 0) return { text: this.#queue.splice(typed, 1)[0].text };
+    if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
     const deaf = await this.#openEar('turn');
     if (deaf) return { deaf };
     this.#setState('listening');

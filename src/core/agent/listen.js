@@ -2,9 +2,10 @@
  * The words speak, wait and ask return about listening (spec §7.1). What the user said follows them
  * as heard speech, resolved for each model, so these say only what happened.
  * @typedef {{ heard?: import('../voice/resolve.js').Heard, dismissed?: import('../voice/resolve.js').Heard, text?: string, chosen?: string,
- *   stopped?: boolean, deaf?: string, gate?: string }} Got
+ *   stopped?: boolean, deaf?: string, gate?: string, earlier?: boolean }} Got
  *   what a listen got: speech for her (heard) or not (dismissed), typing, a tap on an option, a stop, why annai couldn't listen,
- *   or nothing (a silence); gate: what the quick-decision gate made of it
+ *   or nothing (a silence); gate: what the quick-decision gate made of it; earlier: no listening, as speech heard while she
+ *   thought is waiting (it follows the result)
  */
 
 /** How speak's result begins: what she said, and whether the user stopped her (spec §7.1). @param {import('../voice/speaker.js').Spoken} spoken */
