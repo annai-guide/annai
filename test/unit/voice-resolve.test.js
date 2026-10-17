@@ -103,3 +103,16 @@ test('text versions: a transcript made already, dictation, the hearing model for
   assert.equal(memory.get('s-4'), null);
   assert.equal(memory.size, 2);
 });
+
+test('heard sound in memory has a cap: past it the oldest segments go first, and the newest always stays (spec §10.3)', () => {
+  const memory = new HeardMemory({ maxBytes: 20 }); // each segment here is 8 bytes of sound
+  for (const id of ['s-1', 's-2', 's-3']) memory.keep(segment(id));
+  assert.deepEqual(['s-1', 's-2', 's-3'].map((id) => Boolean(memory.get(id))), [false, true, true]);
+  memory.keep(segment('s-big', { audio: { data: new Uint8Array(50), mediaType: 'audio/wav', seconds: 9 } }));
+  assert.equal(memory.size, 1);
+  assert.ok(memory.get('s-big'));
+  memory.drop('s-big');
+  memory.keep(segment('s-4'));
+  assert.equal(memory.size, 1);
+  assert.ok(new HeardMemory().get('x') === null);
+});

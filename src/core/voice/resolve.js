@@ -21,14 +21,34 @@ export const NOT_TRANSCRIBED = '[audio, not transcribed]';
 /** Providers refuse empty text. @param {string} t */
 const said = (t) => t.trim() || '(nothing clear was said)';
 
-/** Heard segments in memory, until the turn that used them succeeds (spec §10.3). */
+/** How much heard sound memory holds, in bytes: about 8 minutes of speech as it is sent. */
+export const HEARD_MAX_BYTES = 16 * 1024 * 1024;
+
+/** @param {Heard} h */
+const bytesOf = (h) => (h.audio?.data.byteLength ?? 0) + (h.text?.length ?? 0);
+
+/**
+ * Heard segments in memory, until the turn that used them succeeds (spec §10.3). Past the cap
+ * (turns failing for a long time) the oldest go first; they are then written as not transcribed.
+ */
 export class HeardMemory {
   /** @type {Map<string, Kept>} */
   #all = new Map();
+  #bytes = 0;
+
+  constructor({ maxBytes = HEARD_MAX_BYTES } = {}) {
+    this.maxBytes = maxBytes;
+  }
 
   /** @param {Heard} h */
   keep(h) {
-    if (!this.#all.has(h.id)) this.#all.set(h.id, { ...h, transcripts: new Map() });
+    if (this.#all.has(h.id)) return;
+    this.#all.set(h.id, { ...h, transcripts: new Map() });
+    this.#bytes += bytesOf(h);
+    for (const id of this.#all.keys()) {
+      if (this.#bytes <= this.maxBytes || id === h.id) break;
+      this.drop(id);
+    }
   }
 
   /** @param {string} id @returns {Kept | null} */
@@ -38,6 +58,8 @@ export class HeardMemory {
 
   /** @param {string} id */
   drop(id) {
+    const kept = this.#all.get(id);
+    if (kept) this.#bytes -= bytesOf(kept);
     this.#all.delete(id);
   }
 
