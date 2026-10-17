@@ -18,8 +18,9 @@ import { NotFoundError } from './workspace.js';
  * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number }} LastBackup
  *   the backup at the place this device builds on, one it made or took in; seqs: each scope's last log entry in it
  * @typedef {{ id: string, type: string, name: string, config: Record<string, string>, auto: Auto, mobileData: boolean,
- *   created: number, checked: number | null, last: LastBackup | null, hold: Hold | null }} Target
- *   checked: when it last passed a test; automatic backups wait for one
+ *   created: number, checked: number | null, last: LastBackup | null, hold: Hold | null, encrypt?: boolean, keys?: boolean, keep?: number }} Target
+ *   checked: when it last passed a test; automatic backups wait for one. For whole-file places: encrypt, the backups are
+ *   encrypted with the passphrase in its secret; keys, and hold the API keys; keep, how many of this device's backups stay there
  * @typedef {{ device: string | null, targets: Record<string, Target> }} State
  */
 
@@ -77,7 +78,7 @@ export async function deviceId(ws) {
 export async function addTarget(ws, { type, name, config = {}, auto = 'changes', mobileData = false }) {
   const id = newId('bt');
   await change(ws, (v) => {
-    v.targets[id] = { id, type, name, config, auto, mobileData, created: ws.now(), checked: null, last: null, hold: null };
+    v.targets[id] = { id, type, name, config, auto, mobileData, created: ws.now(), checked: null, last: null, hold: null, encrypt: false, keys: false, keep: 3 };
   });
   return id;
 }

@@ -24,7 +24,9 @@
  *   list: (c: TargetContext) => Promise<RemoteBackup[]>,
  *   put: (c: TargetContext, archive: Archive, o: PutOptions) => Promise<{ id: string, at: number, uploaded?: number, files?: number }>,
  *   get: (c: TargetContext, id: string, o: { signal?: AbortSignal, onProgress: (p: Progress) => void }) => Promise<Blob>,
- *   delete?: (c: TargetContext, id: string) => Promise<void>, pluginId: string }} StorageType
+ *   delete?: (c: TargetContext, id: string) => Promise<void>, browserAccess?: (origin: string) => { text: string, code: string },
+ *   pluginId: string }} StorageType
+ *   browserAccess: what the place must allow for annai at this origin, shown on its screen
  */
 
 /** Why a backup place said no, in plain words, with what annai needs to act on it. */
@@ -72,4 +74,27 @@ export function storageTypes(registry) {
   const out = new Map();
   for (const t of registry.list('storage-type')) if (!out.has(t.type)) out.set(t.type, t);
   return out;
+}
+
+/** The kinds of device annai backs up from, by the word in a whole-file backup's name. @type {Record<string, string>} */
+const KINDS = { iphone: 'iPhone', ipad: 'iPad', 'android-phone': 'Android phone', computer: 'computer' };
+
+/**
+ * The name of a whole-file backup (stores: "file"): when it was made (UTC, to the millisecond), the
+ * kind of device and the device's id, and whether it is encrypted (spec §12.2: ".annai" encrypted,
+ * ".annai.zip" plain): "annai-backup-20261016T180405123Z-iphone-<device id>.annai.zip".
+ * @param {{ at: number, label: string, device: string, encrypted: boolean }} b
+ */
+export function backupFileName({ at, label, device, encrypted }) {
+  const stamp = new Date(at).toISOString().replace(/[-:.]/g, '');
+  const kind = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'device';
+  return `annai-backup-${stamp}-${kind}-${device}${encrypted ? '.annai' : '.annai.zip'}`;
+}
+
+/** A whole-file backup as annai lists it, from its name; null for any other file. @param {string} name @returns {(RemoteBackup & { encrypted: boolean }) | null} */
+export function parseBackupFileName(name) {
+  const m = /^annai-backup-(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})Z-([a-z0-9-]+?)-([0-9a-z]{8,})\.annai(\.zip)?$/.exec(name);
+  if (!m) return null;
+  const at = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], +m[7]);
+  return { id: name, at, device: m[9], label: KINDS[m[8]] ?? m[8].replace(/-/g, ' '), encrypted: !m[10] };
 }
