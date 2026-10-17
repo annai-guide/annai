@@ -22,7 +22,7 @@ memories afterwards.
 > (milestone 9). And live mode (milestone 5; its real-drive checklist is next): watches Shiori sets, the
 > plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode, the Live chip (the screen kept on as
-> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. And after the trip (milestone 7): stamps for the places you arrived at, shown on trip cards; a recap written by your utility model from the trip, which Shiori can tell aloud; a replay of the timeline and the route on a flat map; and Settings → Developer → Simulate a trip. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Plan and bookings
@@ -36,6 +36,13 @@ memories afterwards.
 - Tap Shiori and talk. With voice on she answers aloud, sentence by sentence as she writes, then listens for your answer; tap her while she speaks to cut her off.
 - Voices and transcription are lists you order in Settings → Models: OpenAI-compatible voices and transcription (OpenAI, Groq, local servers), "Send audio to the model" for models that take audio, phone dictation, and the browser's own voice.
 - The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it. To keep your voice on the phone, type with your keyboard's microphone key instead: iPhone and most Android keyboards can dictate on the phone itself.
+
+## After the trip
+
+- Stamps: each place you arrived at on the plan, or a named place the offline pack knows, earns a station stamp, shown on the trip's card. They come from the trip's log; nothing extra is stored.
+- Recap: your utility model writes `/trip/recap.md` from where you stayed and went (in words: never the GPS track itself), the stamps, what you and Shiori said, your notes and up to six photos. Shiori can tell it aloud.
+- Replay: the trip's timeline, the route drawn on a flat map with no map tiles, playback at a minute, ten minutes or an hour a second, a scrubber, and a day at a time.
+- Settings → Developer → Simulate a trip: the Big Sur sample, an itinerary file, or a trip's recorded track, played through live mode and Shiori in a new trip of its own, so the replay and the recap can be tried before a real trip.
 
 ## Backups
 
