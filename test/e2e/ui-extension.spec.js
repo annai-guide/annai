@@ -142,6 +142,47 @@ test("a plugin's page saves the settings its schema asks for; a secret is kept a
   }
 });
 
+test("Reset on a plugin's page clears its settings and its secret: after a reload the form shows the defaults, and IndexedDB holds neither", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
+    await page.getByRole('link', { name: 'Trail UI' }).click();
+    await expect(page.getByLabel('Trailhead')).toHaveValue('Big Sur Station');
+    await page.getByLabel('Trailhead').fill('Pfeiffer Big Sur');
+    await page.getByLabel('Token').fill('trail-secret-123456');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Saved.')).toBeVisible();
+    await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
+    await page.getByRole('button', { name: 'Reset settings' }).click();
+    await page.getByRole('button', { name: 'Tap again to reset' }).click();
+    await expect(page.getByText('Cleared its settings (Trailhead) and its secrets (Token).')).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel('Trailhead')).toHaveValue('Big Sur Station');
+    await expect(page.getByLabel('Token')).toHaveValue('');
+    await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', '');
+    // The plugin is still there and running.
+    await expect(page.getByRole('navigation', { name: 'Shiori' }).getByText('Trail ok')).toBeVisible();
+    const stored = await page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      const out = {
+        file: (await ws.readText('sys:settings', '/plugin-settings/trail-ui.json')) ?? null,
+        history: (await ws.history('sys:settings', '/plugin-settings/trail-ui.json')).length,
+        secrets: (await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.listSecretIds())).filter((/** @type {string} */ s) => s.startsWith('plugin:trail-ui:')),
+      };
+      store.close();
+      return out;
+    });
+    expect(stored).toEqual({ file: null, history: 0, secrets: [] });
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('8b-2: with a plugin\'s dock, the Conversation shows what Shiori says, and nothing goes wrong', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'About two miles.' } }, { name: 'sleep', input: {} }]))] });
   /** @type {string[]} */

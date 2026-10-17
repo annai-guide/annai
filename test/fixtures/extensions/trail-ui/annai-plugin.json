@@ -10,7 +10,7 @@
   "settings": {
     "type": "object",
     "properties": {
-      "trailhead": { "type": "string", "title": "Trailhead", "description": "Where the hike starts." },
+      "trailhead": { "type": "string", "title": "Trailhead", "description": "Where the hike starts.", "default": "Big Sur Station" },
       "token": { "type": "string", "title": "Token", "writeOnly": true }
     }
   }
