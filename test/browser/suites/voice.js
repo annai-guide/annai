@@ -71,6 +71,39 @@ export default function (test, assert) {
     assert.ok(Array.isArray(p.synth.voices()));
   });
 
+  test('dictation: words come as segments; a sound with no words says so, on an empty result or an end without words (spec §10.2)', async () => {
+    const w = /** @type {any} */ (window);
+    const saved = [w.SpeechRecognition, w.webkitSpeechRecognition];
+    /** @type {any[]} */
+    const made = [];
+    w.SpeechRecognition = class {
+      constructor() { made.push(this); }
+      start() {}
+      abort() {}
+    };
+    try {
+      /** @type {string[]} */
+      const got = [];
+      const session = /** @type {any} */ (browserPlatform().dictation).open({
+        onSegment: (/** @type {string} */ t) => got.push(`words ${t}`), onSpeech: () => got.push('speech'), onQuiet: () => got.push('quiet'), onError: (/** @type {Error} */ e) => got.push(`error ${e.message}`),
+      });
+      const r = made[0];
+      const final = (/** @type {string} */ text) => ({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal: true })] });
+      r.onspeechstart();
+      r.onresult(final(' '));
+      r.onspeechstart();
+      r.onerror({ error: 'no-speech' });
+      r.onend();
+      r.onspeechstart();
+      r.onresult(final('the beach'));
+      r.onend();
+      session.close();
+      assert.deepEqual(got, ['speech', 'quiet', 'speech', 'quiet', 'speech', 'words the beach']);
+    } finally {
+      [w.SpeechRecognition, w.webkitSpeechRecognition] = saved;
+    }
+  });
+
   test('the audio devices by name, and word when they change (spec §10.5)', async () => {
     const real = MediaDevices.prototype.enumerateDevices;
     MediaDevices.prototype.enumerateDevices = async () => /** @type {any} */ ([

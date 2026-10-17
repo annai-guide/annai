@@ -33,6 +33,7 @@ export async function listen(c) {
     running = c.platform.dictation.open({
       lang: c.lang,
       onSpeech: c.onSpeech,
+      onQuiet: c.onQuiet,
       onSegment: (text) => c.onSegment({ id: newId('s'), source: 'dictation', text, ms: 0, at: now() }),
       onError: (e) => {
         if (stopped) return;

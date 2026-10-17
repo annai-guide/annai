@@ -10,8 +10,8 @@
  * @typedef {{ available(): boolean, voices(): SystemVoice[],
  *   say(text: string, o: { signal: AbortSignal, voice?: string, rate?: number, lang?: string, onLevel?: (x: number) => void }): Promise<{ ended: boolean, charIndex: number }> }} Synth
  *   the browser voice; charIndex: where the word being spoken starts
- * @typedef {{ available(): boolean, open(o: { lang?: string, onSegment: (text: string) => void, onSpeech?: () => void, onError: (e: Error & { code?: string }) => void }): { close(): void } }} Dictation
- *   phone dictation (§10.2)
+ * @typedef {{ available(): boolean, open(o: { lang?: string, onSegment: (text: string) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error & { code?: string }) => void }): { close(): void } }} Dictation
+ *   phone dictation (§10.2); onQuiet: what began like speech gave no words (a noise)
  * @typedef {'transient' | 'play-and-record' | 'playback'} SessionType  the audio session type (§10.1)
  * @typedef {{ player: Player, synth: Synth, mic: Mic, dictation: Dictation, session(type: SessionType): void,
  *   devices?(): Promise<{ kind: string, label: string }[]>, onDeviceChange?(fn: () => void): void }} VoicePlatform

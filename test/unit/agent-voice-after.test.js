@@ -121,3 +121,19 @@ test('phone dictation in the loop: its words need no transcription; when it fail
   assert.deepEqual(k.transcribed, ['m-hear']);
   assert.match(JSON.stringify(k.requests[1].messages.at(-1)), /and a coffee/);
 });
+
+test('phone dictation that hears a noise and no words: the silence limit starts again, so speak hears nothing and a tap window closes (spec §7.1, §10.4)', async () => {
+  const k = await agentKit([[speakOnly('Anything else?'), { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: { dictation: true, speechIn: ['dictation'] } });
+  k.agent.send('Thanks');
+  await until(() => k.agent.state.name === 'listening');
+  k.platform.dictation.noise();
+  await until(() => k.agent.state.name === 'sleeping', 1500);
+  await k.agent.idle();
+  const [speak] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
+  assert.equal(speak.data.content, 'Said aloud. Heard nothing (8 seconds).');
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  k.platform.dictation.noise();
+  await until(() => k.agent.state.name === 'sleeping', 1500);
+  assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('dictation ')).at(-1), 'dictation close');
+});
