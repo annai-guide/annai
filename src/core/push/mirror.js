@@ -4,6 +4,7 @@ import { utf8, toBase64Url, hex, ownBuffer } from '../bytes.js';
 import { encryptPush } from './webpush.js';
 import { relayClient, relayAddress, RelayError, DEFAULT_RELAY, ADDRESS } from './relay-client.js';
 import { tracedFetch, withoutSecrets } from '../agent/net.js';
+import { forget } from '../forget.js';
 import { realClock } from '../live/clock.js';
 
 /**
@@ -712,6 +713,8 @@ export class PushMirror {
     const text = JSON.stringify(st);
     if (text !== this.#lastState) {
       await this.ws.write(SYS_DEVICE, FILE, st, { author: 'system' });
+      // Kept without history, as a package's files are: an old version would keep ids, times and a removed trip's id (spec §4.9).
+      await forget(this.store, SYS_DEVICE, { history: (p) => p === FILE });
       this.#lastState = text;
     }
     const t = JSON.stringify(tokens);

@@ -154,6 +154,16 @@ test("removing a trip calls off its reminders at once (spec §4.9)", async () =>
     assert.deepEqual((await k.waiting()).map((x) => x.sendAt), [at('11:00') + GRACE_MS]);
     const st = await k.ws.readJSON(SYS_DEVICE, FILE);
     assert.equal(JSON.stringify(st).includes(k.trip), false, "the trip's id is gone from this device's state");
+    // Nor is it in an older version of that state: /push.json keeps no history ("This device" in Trace and files).
+    assert.deepEqual(await k.ws.history(SYS_DEVICE, FILE), []);
+    let states = 0;
+    for (const b of await k.store.tx(['blobs'], 'readonly', (t) => t.listBlobs())) {
+      const blob = await k.store.tx(['blobs'], 'readonly', (t) => t.getBlob(b.hash));
+      const text = blob?.type === 'application/json' ? new TextDecoder().decode(blob.data) : '';
+      if (text.includes('"items"')) states++;
+      assert.equal(text.includes('"items"') && text.includes(k.trip), false, 'no old version of the state is stored');
+    }
+    assert.equal(states, 1, 'the state as it is now, and no other');
   } finally {
     await k.stop();
   }
