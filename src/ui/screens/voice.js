@@ -3,6 +3,7 @@ import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf } from '../../core/llm/config.js';
 import { SAMPLE, speechProblem } from '../speech-check.js';
+import { whereHeard, whereSaid } from '../../core/voice/where.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -18,6 +19,12 @@ export async function renderVoice(ctx) {
   const s = voiceSettings(await readAppSettings(ctx.ws));
   const entries = await voice.outEntries();
   const synth = voice.platform?.synth;
+  const cfg = await ctx.llm.config();
+  const dictation = { available: Boolean(voice.platform?.dictation.available()), local: await voice.dictationLocal() };
+  /** Where your voice goes (spec §11.7), one entry a row. @param {import('../../core/voice/where.js').Where[]} rows */
+  const whereRows = (rows) => rows.map((r) => h('li', {}, h('strong', { text: r.name }), h('p', { class: 'sub', text: r.where })));
+  const heardWhere = h('ol', { class: 'where' }, ...whereRows(whereHeard(cfg, { dictation })));
+  const saidWhere = h('ol', { class: 'where' });
   /** Saves a voice setting and works out the voice again. @param {Record<string, any>} change @param {string} [said] */
   const save = async (change, said = 'Saved') => {
     await updateAppSettings(ctx.ws, { voice: change });
@@ -64,12 +71,17 @@ export async function renderVoice(ctx) {
   }, 'Test the voice');
 
   const pick = h('select', { id: 'voice-browser' });
+  // Her voice's row says whether the voice picked speaks on this phone (spec §11.7).
+  const drawSaid = () => saidWhere.replaceChildren(...whereRows(whereSaid(cfg, { browser: Boolean(synth?.available()), voice: voice.browserVoice(pick.value) })));
   const fill = () => {
     const chosen = pick.value || s.browserVoice;
-    pick.replaceChildren(h('option', { value: '', text: "The browser's choice" }), ...(synth?.voices() ?? []).map((/** @type {any} */ v) => h('option', { value: v.id, text: `${v.name} (${v.lang})` })));
+    pick.replaceChildren(h('option', { value: '', text: 'Automatic: one on this phone when there is one' }),
+      ...(synth?.voices() ?? []).map((/** @type {any} */ v) => h('option', { value: v.id, text: `${v.name} (${v.lang}${v.local ? '' : ', online'})` })));
     pick.value = chosen;
+    drawSaid();
   };
   fill();
+  pick.addEventListener('change', drawSaid);
   // The browser loads its voices a moment after the page opens.
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.addEventListener('voiceschanged', fill, { once: true });
   const rate = h('input', { id: 'voice-rate', type: 'number', min: '0.5', max: '2', step: '0.1', value: String(s.rate) });
@@ -149,7 +161,7 @@ export async function renderVoice(ctx) {
       h('p', { class: 'sub', text: `Voices, tried in order: ${entries.map((/** @type {any} */ e) => e.name).join(', ') || 'none'}.` }),
       h('div', { class: 'acts' }, sayButton), sayStatus),
     section('Browser voice',
-      h('p', { class: 'sub', text: synth?.available() ? "This phone's own voice. It works offline." : 'This browser has no voice of its own.' }),
+      h('p', { class: 'sub', text: synth?.available() ? 'The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.' : 'This browser has no voice of its own.' }),
       h('div', { class: 'row' }, field('Voice', pick), field('Speed (0.5 to 2)', rate)),
       h('div', { class: 'acts' }, saveBrowser), browserStatus),
     section('Listening',
@@ -157,5 +169,9 @@ export async function renderVoice(ctx) {
       field('Pause that ends a sentence (ms)', pause), h('div', { class: 'acts' }, savePause),
       meter, h('div', { class: 'acts' }, micButton), micStatus,
       clips.el,
-      h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' })));
+      h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' })),
+    section('Where your voice goes',
+      h('p', { class: 'sub' }, 'What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to ', h('a', { href: '#/models' }, 'Settings → Models'), '.'),
+      h('h3', { class: 'section', text: 'What you say' }), heardWhere,
+      h('h3', { class: 'section', text: 'What she says' }), saidWhere));
 }

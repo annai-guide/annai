@@ -1399,7 +1399,7 @@ export class Agent {
     this.#ear = ear;
     try {
       const session = await voice.open({
-        kind: how.kind,
+        kind: how.kind, scope: this.scope,
         onSegment: (h) => this.#heard(h),
         onSpeech: () => this.#speechStarted(),
         onQuiet: () => this.#speechStopped(),

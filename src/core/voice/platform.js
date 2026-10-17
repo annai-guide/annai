@@ -6,12 +6,15 @@
  *   the microphone: open only while listening (§10.2)
  * @typedef {{ unlock(): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }> }} Player
  *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now; play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound
- * @typedef {{ id: string, name: string, lang: string }} SystemVoice
+ * @typedef {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }} SystemVoice
+ *   local: it speaks on this phone (otherwise the browser sends the words to the voice's service, spec §11.7); default: the browser's own choice
  * @typedef {{ available(): boolean, voices(): SystemVoice[],
  *   say(text: string, o: { signal: AbortSignal, voice?: string, rate?: number, lang?: string, onLevel?: (x: number) => void }): Promise<{ ended: boolean, charIndex: number }> }} Synth
  *   the browser voice; charIndex: where the word being spoken starts
- * @typedef {{ available(): boolean, open(o: { lang?: string, onSegment: (text: string) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error & { code?: string }) => void }): { close(): void } }} Dictation
- *   phone dictation (§10.2); onQuiet: what began like speech gave no words (a noise)
+ * @typedef {{ available(): boolean, local?(lang?: string): Promise<boolean>,
+ *   open(o: { lang?: string, local?: boolean, onSegment: (text: string) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error & { code?: string }) => void }): { close(): void } }} Dictation
+ *   phone dictation (§10.2); onQuiet: what began like speech gave no words (a noise); local(): whether it can recognize speech on this
+ *   phone for the language now, nothing to download (§11.7); open's local: do so
  * @typedef {'play-and-record' | 'playback'} SessionType  the audio session type (§10.1): playback while she speaks and after, play-and-record while listening
  * @typedef {{ player: Player, synth: Synth, mic: Mic, dictation: Dictation, session(type: SessionType): void,
  *   devices?(): Promise<{ kind: string, label: string }[]>, onDeviceChange?(fn: () => void): void }} VoicePlatform

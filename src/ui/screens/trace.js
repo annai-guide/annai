@@ -9,7 +9,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request'],
-  Models: ['model.turn', 'net.request', 'decide'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser'],
   Housekeeping: ['compaction'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
 });

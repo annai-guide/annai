@@ -111,7 +111,8 @@ export function browserPlatform() {
     },
     synth: {
       available: () => typeof speechSynthesis !== 'undefined',
-      voices: () => (typeof speechSynthesis === 'undefined' ? [] : speechSynthesis.getVoices().map((v) => ({ id: v.voiceURI, name: v.name, lang: v.lang }))),
+      // localService false: the browser sends the words to the voice's service (spec §11.7).
+      voices: () => (typeof speechSynthesis === 'undefined' ? [] : speechSynthesis.getVoices().map((v) => ({ id: v.voiceURI, name: v.name, lang: v.lang, local: Boolean(v.localService), default: Boolean(v.default) }))),
       say(text, { signal, voice, rate = 1, lang, onLevel = () => {} }) {
         return new Promise((resolve, reject) => {
           const u = new SpeechSynthesisUtterance(text);
@@ -195,6 +196,8 @@ export function browserPlatform() {
     },
     dictation: {
       available: () => Boolean(/** @type {any} */ (globalThis).SpeechRecognition || /** @type {any} */ (globalThis).webkitSpeechRecognition),
+      // No local(): on-device recognition (Web Speech's processLocally) is asked for with SpeechRecognition.available(), and in
+      // Chrome 153 that call crashed the page (seen in Playwright's Chromium). Until it is safe, dictation is the browser's service.
       open({ lang, onSegment, onSpeech, onQuiet, onError }) {
         const Recognition = /** @type {any} */ (globalThis).SpeechRecognition ?? /** @type {any} */ (globalThis).webkitSpeechRecognition;
         const r = new Recognition();

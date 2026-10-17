@@ -103,6 +103,28 @@ export default function (test, assert) {
     }
   });
 
+  test("dictation never asks whether it could stay on the phone (Chrome 153's check crashed the page), so it says it can't; the voices say which are on the phone (spec §11.7)", async () => {
+    const w = /** @type {any} */ (window);
+    const saved = [w.SpeechRecognition, w.webkitSpeechRecognition];
+    let asked = 0;
+    class Local {
+      start() {}
+      abort() {}
+      static async available() { asked++; return 'available'; }
+    }
+    /** @type {any} */ (Local.prototype).processLocally = false;
+    try {
+      w.SpeechRecognition = Local;
+      const p = browserPlatform();
+      assert.equal(await (/** @type {any} */ (p.dictation).local?.('en-US') ?? false), false);
+      /** @type {any} */ (p.dictation).open({ lang: 'en-US', local: true, onSegment: () => {}, onError: () => {} }).close();
+      assert.equal(asked, 0);
+      for (const v of p.synth.voices()) assert.equal(typeof v.local, 'boolean', v.name);
+    } finally {
+      [w.SpeechRecognition, w.webkitSpeechRecognition] = saved;
+    }
+  });
+
   test('the audio devices by name, and word when they change (spec §10.5)', async () => {
     const real = MediaDevices.prototype.enumerateDevices;
     MediaDevices.prototype.enumerateDevices = async () => /** @type {any} */ ([

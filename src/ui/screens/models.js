@@ -13,7 +13,8 @@ const ROLE_NAMES = {
   'speech-in': 'Speech in: how Shiori hears you', 'speech-out': "Speech out: Shiori's voice",
 };
 /** What each stand-in entry is (spec §10.1, §10.3). @type {Record<string, string>} */
-const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: "the phone's own, where it has one", 'browser-voice': 'works offline' };
+/** Short notes on the stand-ins; Settings → Voice says where each sends your voice (spec §11.7). */
+const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: "the phone's own; usually goes to Google or Apple", 'browser-voice': "the browser's own; some voices go online" };
 
 /**
  * Settings → Models (spec §9.2, §9.6, §9.8): the endpoints annai calls, their models, and which

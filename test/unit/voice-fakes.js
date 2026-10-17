@@ -20,6 +20,12 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   let heard = null;
   let opens = 0;
   const platform = {
+    /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
+    voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
+    /** Whether dictation recognizes speech on the phone. */
+    dictationLocal: false,
+    /** What each dictation was opened with. @type {any[]} */
+    dictationOpened: [],
     log,
     sessions,
     get opens() { return opens; },
@@ -53,7 +59,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     },
     synth: {
       available: () => true,
-      voices: () => [{ id: 'v-en', name: 'Samantha', lang: 'en-US' }],
+      voices: () => platform.voiceList,
       /** @param {string} text @param {{ signal: AbortSignal }} o */
       say(text, { signal }) {
         log.push(`browser ${text}`);
@@ -79,9 +85,11 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     },
     dictation: {
       available: () => dictation,
+      local: async () => platform.dictationLocal,
       /** @param {{ onSegment: (text: string) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error) => void }} o */
       open(o) {
         log.push('dictation open');
+        platform.dictationOpened.push(o);
         heard = o;
         return { close() { log.push('dictation close'); heard = null; } };
       },
