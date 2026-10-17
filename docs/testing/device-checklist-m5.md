@@ -12,7 +12,7 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 - [ ] Close annai fully and open it again: live mode is still on, and nothing is asked again.
 
 ## Refused location
-- [ ] On one phone, refuse location (or turn it off in Settings). A card says "annai can't see where you are" with steps for this phone; the steps are right for iOS / Android.
+- [ ] On one phone, refuse location (or turn it off in Settings). A card says "annai can't see where you are" with steps for this phone; the steps are right for iOS / Android. On iPhone, try it both in a Safari tab (the card points to aA → Website Settings → Location) and in the Home Screen app (Location Services → Safari Websites, and Safari's own Location setting): note whether each path leads to the setting that lets annai see where you are, and what it is called on your iOS version.
 - [ ] Live → Where are you? lists the plan's places; choosing one makes Now say "At …".
 - [ ] Allow location again, turn live mode off and on: the GPS works.
 
