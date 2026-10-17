@@ -66,3 +66,114 @@ export async function decryptPush(to, body) {
   if (end < 0 || record[end] !== 2) throw new Error('no last-record delimiter');
   return record.slice(0, end);
 }
+
+/**
+ * Checks a VAPID Authorization header (RFC 8292) and returns its claims; throws Error(reason) with
+ * Apple's reasons. key: the VAPID public key the subscription was made with.
+ * @param {string | undefined} header @param {{ aud: string, now: number, key?: string }} o
+ */
+export async function verifyVapid(header, { aud, now, key }) {
+  const m = /^vapid t=([\w-]+\.[\w-]+\.[\w-]+), ?k=([\w-]+)$/.exec(String(header ?? ''));
+  if (!m) throw new Error('BadAuthorizationHeader');
+  if (key && m[2] !== key) throw new Error('VapidPkHashMismatch');
+  /** @type {CryptoKey} */
+  let pub;
+  try {
+    pub = await crypto.subtle.importKey('raw', b64u(m[2]), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+  } catch {
+    throw new Error('BadVapidPublicKey');
+  }
+  const [h, c, s] = m[1].split('.');
+  /** @type {any} */
+  let head;
+  /** @type {any} */
+  let claims;
+  try {
+    head = JSON.parse(td.decode(b64u(h)));
+    claims = JSON.parse(td.decode(b64u(c)));
+  } catch {
+    throw new Error('BadJwtToken');
+  }
+  if (head?.alg !== 'ES256') throw new Error('BadJwtToken');
+  if (!(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, pub, b64u(s), te.encode(`${h}.${c}`)))) throw new Error('BadJwtToken');
+  const t = now / 1000;
+  if (claims?.aud !== aud || !(claims.exp > t) || claims.exp > t + 86_400 || !/^(?:mailto:|https:)/.test(String(claims.sub ?? ''))) throw new Error('BadJwtToken');
+  return claims;
+}
+
+/**
+ * @typedef {{ path: string, headers: import('node:http').IncomingHttpHeaders, bytes: number, status: number, reason: string | null, claims: any, plaintext: string | null }} Received
+ * @param {{ now?: () => number }} [o] now: the clock tokens are checked against (a test's own)
+ */
+export async function startPushService({ now = () => Date.now() } = {}) {
+  /** @type {Map<string, TestSubscription & { gone?: boolean }>} by path */
+  const subs = new Map();
+  /** @type {Received[]} */
+  const received = [];
+  /** @type {number[]} */
+  const forced = [];
+  let origin = '';
+  /** @param {import('node:http').IncomingMessage} req @param {string} path @param {Uint8Array} body @param {Received} got @returns {Promise<[number, string | null]>} */
+  async function check(req, path, body, got) {
+    if (req.method !== 'POST') return [405, 'MethodNotAllowed'];
+    const sub = subs.get(path);
+    if (!sub) return [404, 'BadPath'];
+    if (sub.gone) return [410, 'Unregistered'];
+    const f = forced.shift();
+    if (f) return [f, 'Forced'];
+    if (!/^\d+$/.test(String(req.headers.ttl ?? ''))) return [400, 'BadTtl'];
+    if (req.headers.urgency !== undefined && !['very-low', 'low', 'normal', 'high'].includes(String(req.headers.urgency))) return [400, 'BadUrgency'];
+    if (req.headers['content-encoding'] !== 'aes128gcm') return [400, 'BadWebPushRequest'];
+    if (body.length > 4096) return [413, 'PayloadTooLarge'];
+    try {
+      got.claims = await verifyVapid(req.headers.authorization, { aud: origin, now: now(), key: sub.serverKey });
+    } catch (e) {
+      return [403, String(/** @type {any} */ (e)?.message)];
+    }
+    try {
+      got.plaintext = td.decode(await decryptPush(sub, body));
+    } catch {
+      return [400, 'BadWebPushRequest'];
+    }
+    return [201, null];
+  }
+  const server = http.createServer((req, res) => {
+    /** @type {Buffer[]} */
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', async () => {
+      const body = new Uint8Array(Buffer.concat(chunks));
+      const path = new URL(req.url ?? '/', 'http://x').pathname;
+      /** @type {Received} */
+      const got = { path, headers: req.headers, bytes: body.length, status: 0, reason: null, claims: null, plaintext: null };
+      const [status, reason] = await check(req, path, body, got);
+      got.status = status;
+      got.reason = reason;
+      received.push(got);
+      res.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(reason ? { reason } : {}));
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
+  origin = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`;
+  return {
+    origin,
+    received,
+    /** A new subscription at this service, made with the relay's VAPID public key. @param {string} [serverKey] */
+    async subscribe(serverKey) {
+      const s = await testSubscription(origin, serverKey);
+      subs.set(new URL(s.endpoint).pathname, s);
+      return s;
+    },
+    /** The next answers, whatever the request (429, 500…). @param {...number} statuses */
+    answer: (...statuses) => { forced.push(...statuses); },
+    /** The subscription is gone (the user turned notifications off): 410 from now on. @param {string} endpoint */
+    drop: (endpoint) => {
+      const s = subs.get(new URL(endpoint).pathname);
+      if (s) s.gone = true;
+    },
+    stop: () => new Promise((resolve) => {
+      server.closeAllConnections?.();
+      server.close(() => resolve(undefined));
+    }),
+  };
+}
