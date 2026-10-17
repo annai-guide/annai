@@ -5,7 +5,7 @@ import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme } fro
 import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
 import { tracedFetch } from './agent/net.js';
-import { addressParts } from './address.js';
+import { addressParts, KEY_BLANK } from './address.js';
 import { record } from './agent/log.js';
 import { readAppSettings, updateAppSettings } from './settings.js';
 import { logEvent } from './events.js';
@@ -29,8 +29,8 @@ export const START_TIMEOUT = 10_000;
 /** Launches in a row a plugin may fail to start on before annai turns it off. */
 export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
-/** A package's secret holding the address it came from, keys and all (fix pass 8a-1). @param {string} id */
-const ADDRESS = (id) => `plugin:${id}:address`;
+/** A package's secret holding the address it came from, keys and all (fix pass 8a-1); annai's alone, as a plugin's are plugin:<id>:… (Reset R1). @param {string} id */
+const ADDRESS = (id) => `package:${id}:address`;
 /** A plugin's settings file in sys:settings (spec §5.4). @param {string} id */
 const SETTINGS = (id) => `/plugin-settings/${id}.json`;
 /** Built-ins whose secrets are no settings: the MCP client's are its servers', which their own screen removes (spec §5.1). */
@@ -340,8 +340,18 @@ export class PluginHost {
   async address(id) {
     const s = (await this.installed())[id];
     if (s?.source !== 'url' || typeof s.url !== 'string') return null;
-    const kept = await this.ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(ADDRESS(id)));
-    if (typeof kept?.address === 'string') return kept.address;
+    const shownUrl = s.url;
+    const kept = await this.ws.store.tx(['secrets'], 'readwrite', async (/** @type {any} */ t) => {
+      const now = await t.getSecret(ADDRESS(id));
+      if (typeof now?.address === 'string') return now.address;
+      // Kept among the plugin's own before Reset R1 (or by a backup from then): moved when it is surely annai's.
+      const old = await t.getSecret(`plugin:${id}:address`);
+      if (!shownUrl.includes(KEY_BLANK) || typeof old?.address !== 'string' || !Array.isArray(old.keys) || !old.keys.every((k) => typeof k === 'string')) return null;
+      await t.putSecret(ADDRESS(id), { address: old.address, keys: old.keys });
+      await t.deleteSecret(`plugin:${id}:address`);
+      return old.address;
+    });
+    if (kept) return kept;
     const shown = await this.#keepAddress(id, s.url);
     if (shown !== s.url) {
       await this.#updateState(id, { url: shown });
@@ -446,8 +456,8 @@ export class PluginHost {
 
   /**
    * Removes a package and everything it stored (choice 4; the user's rule: removing means removing):
-   * its files and their history, its settings file and its history, its secrets, its tools' switches,
-   * and what it kept in the system log. What it wrote into a trip is the trip's, and stays. The space
+   * its files and their history, its settings file and its history, its secrets and the address it came
+   * from, its tools' switches, and what it kept in the system log. What it wrote into a trip is the trip's, and stays. The space
    * comes back at once; the system log says how much.
    * @param {string} id @returns {Promise<{ bytes: number }>}
    */
@@ -469,6 +479,7 @@ export class PluginHost {
     bytes += (await forget(this.ws.store, SYS, { events: (e) => e.actor === `plugin:${id}` && Boolean(e.refs?.length) })).bytes;
     await this.ws.store.tx(['secrets'], 'readwrite', async (t) => {
       for (const s of await t.listSecretIds()) if (s.startsWith(`plugin:${id}:`)) await t.deleteSecret(s);
+      await t.deleteSecret(ADDRESS(id));
     });
     const switches = (await readAppSettings(this.ws)).tools ?? {};
     const off = [...tools].filter((t) => Object.hasOwn(switches, t));
@@ -480,7 +491,7 @@ export class PluginHost {
 
   /**
    * What Reset would clear: whether the plugin's settings file, or a version of it, is stored; the
-   * file's keys; its secrets' names, the address it came from aside (8a-1). null for the MCP client.
+   * file's keys; its secrets' names (the address it came from is annai's, R1). null for the MCP client.
    * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[] } | null>}
    */
   async saved(id) {
@@ -491,13 +502,13 @@ export class PluginHost {
     const ids = await this.ws.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds());
     return {
       file, keys: now && typeof now === 'object' && !Array.isArray(now) ? Object.keys(now).sort() : [],
-      secrets: ids.filter((s) => s.startsWith(mine) && s !== ADDRESS(id)).map((s) => s.slice(mine.length)).sort(),
+      secrets: ids.filter((s) => s.startsWith(mine)).map((s) => s.slice(mine.length)).sort(),
     };
   }
 
   /**
    * Reset on a plugin's page (the user's ask, 2026-10-18; removing means removing): its settings file
-   * and that file's history, and its secrets, the address it came from aside. Its package, its on/off
+   * and that file's history, and all its secrets (the address it came from is annai's). Its package, its on/off
    * state, its tools' switches and what it wrote into trips stay. It keeps running, and what it reads
    * next is its schema's defaults and no secrets. The system log names what went, never its values.
    * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[], bytes: number }>}
