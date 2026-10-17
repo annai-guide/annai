@@ -139,12 +139,30 @@ export function createDock(ctx) {
 
 /**
  * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art),
- * else annai's own. A plugin's that fails counts against it.
+ * else annai's own. A plugin's that fails counts against it: made, and each call after (minors 12),
+ * where three throws give annai's own back in its place.
  * @param {any} ctx
  */
 function dockAvatar(ctx) {
   const c = component(ctx, 'avatar');
   const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
     a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : 'its avatar create() must return el, setState and setLevel');
-  return a ? { glance() {}, blink() {}, ...a } : createAvatar({ size: 'dock' });
+  if (!a) return createAvatar({ size: 'dock' });
+  /** @type {any} annai's own, once theirs threw three times */
+  let own = null;
+  let throws = 0;
+  const call = (/** @type {string} */ name) => (/** @type {any[]} */ ...args) => {
+    if (own) return own[name](...args);
+    try {
+      if (typeof a[name] === 'function') a[name](...args);
+    } catch (e) {
+      ctx.registry?.fail(c.pluginId, `avatar ${name}`, e);
+      if (++throws < 3) return;
+      own = createAvatar({ size: 'dock' });
+      own.setState(ctx.agent.state.name);
+      own[name](...args);
+      /** @type {any} */ (a.el).replaceWith?.(own.el);
+    }
+  };
+  return { get el() { return own?.el ?? a.el; }, setState: call('setState'), setLevel: call('setLevel'), glance: call('glance'), blink: call('blink') };
 }
