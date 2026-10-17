@@ -31,6 +31,15 @@ export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
 /** A package's secret holding the address it came from, keys and all (fix pass 8a-1). @param {string} id */
 const ADDRESS = (id) => `plugin:${id}:address`;
+/** A plugin's settings file in sys:settings (spec §5.4). @param {string} id */
+const SETTINGS = (id) => `/plugin-settings/${id}.json`;
+/** Built-ins whose secrets are no settings: the MCP client's are its servers', which their own screen removes (spec §5.1). */
+const NO_RESET = new Set(['mcp']);
+/** What a settings schema gives a key nothing is saved for: its default, writeOnly ones aside (they are secrets). @param {any} schema */
+function defaultsOf(schema) {
+  const props = schema?.properties && typeof schema.properties === 'object' ? schema.properties : {};
+  return structuredClone(Object.fromEntries(Object.entries(props).filter(([, p]) => p?.default !== undefined && !p.writeOnly).map(([k, p]) => [k, p.default])));
+}
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
 /** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
@@ -452,8 +461,7 @@ export class PluginHost {
     for (const t of was?.tools ?? []) tools.add(t);
     delete state[id];
     const inPackage = (/** @type {string} */ p) => p.startsWith(`/${id}/`);
-    const settings = `/plugin-settings/${id}.json`;
-    const isSettings = (/** @type {string} */ p) => p === settings;
+    const isSettings = (/** @type {string} */ p) => p === SETTINGS(id);
     // Its files first: should what follows fail, the record still shows it, and Remove can run again.
     let bytes = (await forget(this.ws.store, SYS_PLUGINS, { files: inPackage, history: inPackage })).bytes;
     await this.ws.write(SYS_PLUGINS, STATE, state, { author: 'system' });
@@ -468,6 +476,45 @@ export class PluginHost {
     await logEvent(this.ws.store, SYS, { type: 'plugin.remove', actor: 'user', data: { plugin: id, name: was?.name ?? id, kind: kindOfState(was), bytes } }).catch(() => {});
     if (this.#loaded.has(id)) this.#stale.add(id);
     return { bytes };
+  }
+
+  /**
+   * What Reset would clear: whether the plugin's settings file, or a version of it, is stored; the
+   * file's keys; its secrets' names, the address it came from aside (8a-1). null for the MCP client.
+   * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[] } | null>}
+   */
+  async saved(id) {
+    if (NO_RESET.has(id)) return null;
+    const now = await this.ws.readJSON(SYS_SETTINGS, SETTINGS(id)).catch(() => null);
+    const file = now !== undefined || (await this.ws.history(SYS_SETTINGS, SETTINGS(id))).length > 0;
+    const mine = `plugin:${id}:`;
+    const ids = await this.ws.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds());
+    return {
+      file, keys: now && typeof now === 'object' && !Array.isArray(now) ? Object.keys(now).sort() : [],
+      secrets: ids.filter((s) => s.startsWith(mine) && s !== ADDRESS(id)).map((s) => s.slice(mine.length)).sort(),
+    };
+  }
+
+  /**
+   * Reset on a plugin's page (the user's ask, 2026-10-18; removing means removing): its settings file
+   * and that file's history, and its secrets, the address it came from aside. Its package, its on/off
+   * state, its tools' switches and what it wrote into trips stay. It keeps running, and what it reads
+   * next is its schema's defaults and no secrets. The system log names what went, never its values.
+   * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[], bytes: number }>}
+   */
+  async reset(id) {
+    const had = await this.saved(id);
+    if (!had) throw new PluginError(id, 'keeps MCP servers, not settings: remove a server on its own screen.');
+    const isSettings = (/** @type {string} */ p) => p === SETTINGS(id);
+    const bytes = had.file ? (await forget(this.ws.store, SYS_SETTINGS, { files: isSettings, history: isSettings })).bytes : 0;
+    await this.ws.store.tx(['secrets'], 'readwrite', async (t) => {
+      for (const s of had.secrets) await t.deleteSecret(`plugin:${id}:${s}`);
+    });
+    if (had.file || had.secrets.length) {
+      const name = this.builtins.get(id)?.name ?? (await this.installed())[id]?.name ?? id;
+      await logEvent(this.ws.store, SYS, { type: 'plugin.reset', actor: 'user', data: { plugin: id, name, settings: had.keys, secrets: had.secrets, bytes } }).catch(() => {});
+    }
+    return { ...had, bytes };
   }
 
   /** Rows for the plugins screen. problem: why an installed plugin can't start, if it can't. */
@@ -602,7 +649,7 @@ export class PluginHost {
     let dispose = () => {};
     try {
       if (typeof mod?.activate === 'function') {
-        const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, () => mod.activate(api)))(this.#api(id));
+        const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, () => mod.activate(api)))(this.#api(id, manifest));
         if (typeof r === 'function') dispose = r;
       } else if (manifest.entry) {
         throw new PluginError(id, 'its module has no activate() function');
@@ -650,8 +697,8 @@ export class PluginHost {
     this.#services = { ...this.#services, ...services };
   }
 
-  /** The object a plugin's activate() receives (milestone 1 subset of spec §5.4). @param {string} id */
-  #api(id) {
+  /** The object a plugin's activate() receives (milestone 1 subset of spec §5.4). @param {string} id @param {any} manifest */
+  #api(id, manifest) {
     const registry = this.registry;
     const need = (/** @type {'llm' | 'agent' | 'notices'} */ what) => {
       const svc = this.#services[what];
@@ -749,8 +796,9 @@ export class PluginHost {
       }),
       cache: Object.freeze({ state: () => need('agent').cacheState() }),
       settings: Object.freeze({
-        get: async () => (await this.ws.readJSON(SYS_SETTINGS, `/plugin-settings/${id}.json`)) ?? {},
-        set: (/** @type {Record<string, any>} */ changes) => this.ws.patch(SYS_SETTINGS, `/plugin-settings/${id}.json`, changes, { author: `plugin:${id}`, create: true }),
+        /** What is saved, over the schema's defaults: what the form shows (plugin reset, choice 2). */
+        get: async () => ({ ...defaultsOf(manifest.settings), ...(await this.ws.readJSON(SYS_SETTINGS, SETTINGS(id))) }),
+        set: (/** @type {Record<string, any>} */ changes) => this.ws.patch(SYS_SETTINGS, SETTINGS(id), changes, { author: `plugin:${id}`, create: true }),
       }),
       searchProviders: ordered,
       searchProvidersAsync: async () => {
@@ -784,7 +832,7 @@ export class PluginHost {
       files: this.ws,
       secrets: Object.freeze({
         /** A secret of this plugin's own, such as a key; never in files or the trace (spec §9.9). */
-        get: (/** @type {string} */ name) => this.ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${id}:${name}`)),
+        get: async (/** @type {string} */ name) => (await this.ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${id}:${name}`))) ?? null,
         /** null removes it. */
         set: (/** @type {string} */ name, /** @type {any} */ value) => this.ws.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => (value === null || value === undefined
           ? t.deleteSecret(`plugin:${id}:${name}`) : t.putSecret(`plugin:${id}:${name}`, value))),

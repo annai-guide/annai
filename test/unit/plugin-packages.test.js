@@ -283,3 +283,102 @@ test("minors 18: describe() lists an off plugin package's skills, as it does whe
   await host.setEnabled('trail-kit', false);
   assert.deepEqual((await row())?.skills, ['trail-safety']);
 });
+
+const PARK_KEY = 'zap1a2b3c4d5e6f7g8h9';
+const PARK_URL = `https://trails.example/s/${PARK_KEY}/park/annai-plugin.json`;
+/** A plugin with a settings form, installed from an address with a key in it; it keeps the annai it was given where a test can reach it. */
+const PARK = files({
+  'annai-plugin.json': JSON.stringify({
+    id: 'park', name: 'Park', version: '1.0.0', api: 1, entry: 'index.js',
+    settings: { type: 'object', properties: {
+      station: { type: 'string', title: 'Station', default: 'Monterey' },
+      units: { type: 'string', enum: ['ft', 'm'] },
+      token: { type: 'string', title: 'Token', writeOnly: true, default: 'never-a-setting' },
+    } },
+  }),
+  'index.js': `export function activate(annai) {
+    globalThis.__park = annai;
+    return annai.tools.register({ name: 'park_hours', description: 'Hours.', input: { type: 'object' }, run: () => '8 to 5' });
+  }`,
+});
+/** The park plugin, installed and running, and the annai it was given. */
+async function parkKit() {
+  const k = await hostKit();
+  await k.host.install(PARK, { source: 'url', url: PARK_URL });
+  await k.host.start('park');
+  const secret = (/** @type {string} */ name) => k.store.tx(['secrets'], 'readonly', (t) => t.getSecret(`plugin:park:${name}`));
+  return { ...k, annai: /** @type {any} */ (globalThis).__park, secret };
+}
+
+test("Reset clears a plugin's settings file with its history, and its secrets; the address it came from stays, and so do its package, its on/off state, its tool switch and what it wrote into a trip", async () => {
+  const { host, ws, annai, secret } = await parkKit();
+  await ws.patch(SYS_SETTINGS, '/plugin-settings/park.json', { station: 'Big Sur', units: 'm' }, { author: 'user', create: true });
+  await annai.settings.set({ station: 'Carmel' });
+  await annai.secrets.set('token', 'park-token-123456');
+  await annai.secrets.set('session', { id: 'park-session-654321' });
+  await setToolSwitch(ws, 'park_hours', false);
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(trip, '/notes/park.md', 'from the plugin', { author: 'plugin:park' });
+  assert.deepEqual(await host.saved('park'), { file: true, keys: ['station', 'units'], secrets: ['session', 'token'] });
+  const { bytes } = await host.reset('park');
+  assert.ok(bytes > 0);
+  assert.equal(await ws.read(SYS_SETTINGS, '/plugin-settings/park.json'), undefined);
+  assert.deepEqual(await ws.history(SYS_SETTINGS, '/plugin-settings/park.json'), []);
+  assert.equal(await secret('token'), undefined);
+  assert.equal(await secret('session'), undefined);
+  assert.deepEqual(await secret('address'), { address: PARK_URL, keys: [PARK_KEY] });
+  assert.deepEqual(await host.saved('park'), { file: false, keys: [], secrets: [] });
+  assert.deepEqual((await ws.list(SYS_PLUGINS, '/park/')).map((f) => f.path), ['/park/annai-plugin.json', '/park/index.js']);
+  assert.equal((await host.installed()).park.enabled, true);
+  assert.ok(host.active.has('park'));
+  assert.equal((await readAppSettings(ws)).tools?.park_hours, false);
+  assert.equal(await ws.readText(trip, '/notes/park.md'), 'from the plugin');
+});
+
+test('the plugin.reset entry in the system log names the settings and secrets Reset cleared, never their values, and the space it gave back', async () => {
+  const { host, annai, log } = await parkKit();
+  await annai.settings.set({ station: 'Carmel Highlands' });
+  await annai.secrets.set('token', 'park-token-123456');
+  const { bytes } = await host.reset('park');
+  const entries = (await log()).filter((e) => e.type === 'plugin.reset');
+  assert.deepEqual(entries.map((e) => [e.actor, e.data]), [['user', { plugin: 'park', name: 'Park', settings: ['station'], secrets: ['token'], bytes }]]);
+  assert.doesNotMatch(JSON.stringify(entries), /Carmel Highlands|park-token-123456/);
+});
+
+test("a running plugin reads its schema's defaults and null secrets after a Reset (choices 1 to 3); a key without a default is missing", async () => {
+  const { host, annai } = await parkKit();
+  assert.deepEqual(await annai.settings.get(), { station: 'Monterey' });
+  assert.equal(await annai.secrets.get('token'), null);
+  await annai.settings.set({ station: 'Carmel', units: 'm', seen: 3 });
+  await annai.secrets.set('token', 'park-token-123456');
+  assert.deepEqual(await annai.settings.get(), { station: 'Carmel', units: 'm', seen: 3 });
+  assert.equal(await annai.secrets.get('token'), 'park-token-123456');
+  await host.reset('park');
+  assert.ok(host.active.has('park'));
+  assert.deepEqual(await annai.settings.get(), { station: 'Monterey' });
+  assert.equal(await annai.secrets.get('token'), null);
+});
+
+test("a Reset with nothing saved changes nothing and logs nothing; a built-in's secret goes (the web plugin's Jina key); the MCP client's servers are no settings (choice 5)", async () => {
+  const { host, ws, store, log, secret } = await parkKit();
+  const put = (/** @type {string} */ id, /** @type {any} */ v) => store.tx(['secrets'], 'readwrite', (t) => t.putSecret(id, v));
+  const get = (/** @type {string} */ id) => store.tx(['secrets'], 'readonly', (t) => t.getSecret(id));
+  await ws.patch(SYS_SETTINGS, '/plugin-settings/park-extra.json', { a: 1 }, { author: 'user', create: true });
+  await put('plugin:park-extra:key', 'other-key-123456');
+  const before = (await log()).length;
+  assert.deepEqual(await host.reset('park'), { file: false, keys: [], secrets: [], bytes: 0 });
+  assert.equal((await log()).length, before);
+  assert.deepEqual(await ws.readJSON(SYS_SETTINGS, '/plugin-settings/park-extra.json'), { a: 1 });
+  assert.equal(await get('plugin:park-extra:key'), 'other-key-123456');
+  assert.deepEqual(await secret('address'), { address: PARK_URL, keys: [PARK_KEY] });
+  host.builtins.set('web', { id: 'web', name: 'Web tools' });
+  await put('plugin:web:jina', 'jina_123456789');
+  assert.deepEqual(await host.saved('web'), { file: false, keys: [], secrets: ['jina'] });
+  assert.deepEqual((await host.reset('web')).secrets, ['jina']);
+  assert.equal(await get('plugin:web:jina'), undefined);
+  host.builtins.set('mcp', { id: 'mcp', name: 'MCP servers' });
+  await put('plugin:mcp:docs', { token: 'mcp-token-123456' });
+  assert.equal(await host.saved('mcp'), null);
+  await assert.rejects(host.reset('mcp'), /MCP servers/);
+  assert.deepEqual(await get('plugin:mcp:docs'), { token: 'mcp-token-123456' });
+});
