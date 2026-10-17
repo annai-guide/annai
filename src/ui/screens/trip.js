@@ -39,6 +39,7 @@ export async function renderTrip(ctx, route) {
     h('div', { class: 'acts' },
       h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, 'Plan'),
       h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, 'Recap'),
+      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, 'Replay'),
       ...tripActions(ctx, id, scope, extra),
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); ctx.render(); } }, 'Unarchive')
