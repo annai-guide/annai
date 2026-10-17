@@ -36,7 +36,10 @@ export class McpClient {
   #id = 0;
   /** @type {Promise<void> | null} */ #connecting = null;
 
-  /** @param {{ url: string, server: string, auth: () => Promise<Record<string, string>> }} o */
+  /**
+   * @param {{ url: string | (() => Promise<string>), server: string, auth: () => Promise<Record<string, string>> }} o
+   *   url: the server's address, or where to read it (it may hold a key, so annai keeps it in secrets)
+   */
   constructor({ url, server, auth }) {
     this.url = url;
     this.server = server;
@@ -83,7 +86,7 @@ export class McpClient {
     this.#version = null;
     if (!session) return;
     try {
-      await fetch(this.url, { method: 'DELETE', headers: { ...(await this.auth()), 'Mcp-Session-Id': session } });
+      await fetch(await this.#address(), { method: 'DELETE', headers: { ...(await this.auth()), 'Mcp-Session-Id': session } });
     } catch {
       // gone already: nothing to end
     }
@@ -105,6 +108,11 @@ export class McpClient {
       await this.#ready(o);
       return work();
     }
+  }
+
+  /** The server's full address. */
+  async #address() {
+    return typeof this.url === 'function' ? this.url() : this.url;
   }
 
   /** @param {{ fetch: Fetch, signal?: AbortSignal }} o */
@@ -134,7 +142,7 @@ export class McpClient {
     /** @type {Response} */
     let res;
     try {
-      res = await fetch(this.url, { method: 'POST', headers, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
+      res = await fetch(await this.#address(), { method: 'POST', headers, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
     } catch (e) {
       if (isStop(e)) throw e;
       throw new McpError('cors', `annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`);
@@ -246,4 +254,50 @@ export function toolOutput(result) {
   if (!content && result?.structuredContent !== undefined) content = JSON.stringify(result.structuredContent);
   if (!content) content = 'The tool answered nothing.';
   return { content, ...(images.length ? { images } : {}), ...(result?.isError ? { isError: true } : {}) };
+}
+
+/** The blank a key's place shows. */
+export const KEY_BLANK = '«key»';
+const CREDENTIAL_NAME = /key|token|secret|sig|auth|pass|session|credential|code/i;
+/** A part of an address that may be a key (the coordinator's third finding): 16 characters or more, or 8 or more mixing letters and digits. @param {string} v */
+const keyLike = (v) => v.length >= 16 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v));
+
+/**
+ * An address as annai shows and keeps it, and the keys in it (the coordinator's third finding): every
+ * path segment or query value that may be a key, and every credential-named query value, becomes
+ * «key»; the keys go to secrets. The fragment is left out. fullAddress puts them back.
+ * @param {string} address @returns {{ shown: string, keys: string[] }}
+ */
+export function addressParts(address) {
+  const u = new URL(address);
+  /** @type {string[]} */
+  const keys = [];
+  const path = u.pathname.split('/').map((seg) => {
+    let value = seg;
+    try {
+      value = decodeURIComponent(seg);
+    } catch {
+      // kept as it is
+    }
+    if (!seg || !keyLike(value)) return seg;
+    keys.push(value);
+    return KEY_BLANK;
+  }).join('/');
+  /** @type {string[]} */
+  const query = [];
+  for (const [k, v] of u.searchParams) {
+    if (v && (keyLike(v) || CREDENTIAL_NAME.test(k))) {
+      keys.push(v);
+      query.push(`${encodeURIComponent(k)}=${KEY_BLANK}`);
+    } else {
+      query.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+    }
+  }
+  return { shown: `${u.origin}${path}${query.length ? `?${query.join('&')}` : ''}`, keys };
+}
+
+/** The address with its keys back in their places. @param {string} shown @param {string[]} keys */
+export function fullAddress(shown, keys) {
+  const pieces = shown.split(KEY_BLANK);
+  return pieces.map((piece, i) => (i < pieces.length - 1 ? piece + encodeURIComponent(keys[i] ?? '') : piece)).join('');
 }

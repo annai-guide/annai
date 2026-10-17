@@ -1,15 +1,16 @@
 import { VERSION } from '../../app/version.js';
-import { McpClient, McpError, mcpToolName, toolOutput } from './client.js';
+import { McpClient, McpError, mcpToolName, toolOutput, addressParts, fullAddress } from './client.js';
 import { SYS_SETTINGS } from '../../core/scopes.js';
 import { forget } from '../../core/forget.js';
-import { withoutSecrets, traceUrl } from '../../core/agent/net.js';
+import { withoutSecrets } from '../../core/agent/net.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 
 /**
  * The built-in MCP client plugin (spec §5.1): each MCP server the user adds gives Shiori its tools,
  * as mcp_<server>_<tool> (milestone 8c, choice 1), under Settings → Tools with switches, every
- * request in the trace. A server is its file /mcp/<server>.json in sys:settings (name, address, kind
- * of auth, its tools) and its secret plugin:mcp:<server> (a token or headers); removing it forgets both.
+ * request in the trace. A server is its file /mcp/<server>.json in sys:settings (name, its address as
+ * shown, with any part that may be a key blanked; kind of auth; its tools) and its secret
+ * plugin:mcp:<server> (the address's keys, and a token or headers); removing it forgets both.
  */
 export const manifest = {
   id: 'mcp',
@@ -28,8 +29,11 @@ const CALL_MS = 120_000;
 const HEADER = /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):\s*(.*\S)\s*$/;
 
 /**
- * @typedef {{ name: string, url: string, auth: 'none' | 'token' | 'headers', tools: any[], more: number, added: number, refreshed: number }} Server
+ * @typedef {{ name: string, shown: string, auth: 'none' | 'token' | 'headers', tools: any[], more: number, added: number, refreshed: number }} Server
+ *   shown: the address with every part that may be a key blanked (the coordinator's third finding); the keys are in its secret
  * @typedef {{ token?: string, headers?: Record<string, string> }} Auth
+ * @typedef {Auth & { keys?: string[] }} ServerSecret  a server's secret: its address's keys, and its auth
+ * @typedef {{ removed: boolean }} Life  set when a server is removed, so work that was waiting for it stops (the coordinator's fourth finding)
  */
 
 /** An address annai may call (choice 3): https, or http on this device. @param {string} url */
@@ -43,6 +47,7 @@ function checkAddress(url) {
   }
   const local = u && u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
   if (!u || (u.protocol !== 'https:' && !local)) throw new Error('The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).');
+  if (u.username || u.password) throw new Error('This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.');
   return u.href;
 }
 
@@ -69,8 +74,10 @@ const inputOf = (s) => (s && typeof s === 'object' && !Array.isArray(s) && (s.ty
 export async function activate(annai) {
   const ws = annai.files;
   const store = ws.store;
-  /** @type {Map<string, { config: Server, client: McpClient, names: string[], offs: (() => void)[] }>} */
+  /** @type {Map<string, { config: Server, client: McpClient, names: string[], offs: (() => void)[], life: Life }>} */
   const servers = new Map();
+  /** @type {Set<string>} names being added now: a second add of one waits for nothing and is refused */
+  const adding = new Set();
   /** Words for the user with every secret annai keeps blanked, and the ones being added too. @param {unknown} e @param {string[]} [own] */
   const words = async (e, own = []) => {
     let t = String(/** @type {any} */ (e)?.message ?? e);
@@ -78,12 +85,20 @@ export async function activate(annai) {
     return withoutSecrets(store, t);
   };
   const fileOf = (/** @type {string} */ name) => `${DIR}${name}.json`;
+  /** A server's client: its full address and its auth read from its secret, each time. @param {Server} config */
+  const clientFor = (config) => new McpClient({
+    url: async () => fullAddress(config.shown, (await annai.secrets.get(config.name))?.keys ?? []),
+    server: config.name,
+    auth: async () => headersOf(await annai.secrets.get(config.name)),
+  });
+  /** @param {string} name */
+  const gone = (name) => new Error(`The MCP server ${name} was removed.`);
 
-  /** Registers a server's tools, the first 100 (choice 5), replacing what it had. @param {Server} config @param {McpClient} [client] */
-  const register = (config, client) => {
+  /** Registers a server's tools, the first 100 (choice 5), replacing what it had. @param {Server} config @param {McpClient} [client] @param {Life} [life] */
+  const register = (config, client, life) => {
     const had = servers.get(config.name);
     had?.offs.forEach((off) => off());
-    const c = client ?? had?.client ?? new McpClient({ url: config.url, server: config.name, auth: async () => headersOf(await annai.secrets.get(config.name)) });
+    const c = client ?? had?.client ?? clientFor(config);
     /** @type {Set<string>} */
     const taken = new Set();
     /** @type {string[]} */
@@ -102,7 +117,7 @@ export async function activate(annai) {
         run: (/** @type {any} */ input, /** @type {any} */ call) => runTool(config.name, String(t.name), input, call),
       }));
     }
-    servers.set(config.name, { config, client: c, names, offs });
+    servers.set(config.name, { config, client: c, names, offs, life: life ?? had?.life ?? { removed: false } });
   };
 
   /**
@@ -145,21 +160,44 @@ export async function activate(annai) {
   /** @param {Server} config */
   const save = (config) => ws.write(SYS_SETTINGS, fileOf(config.name), config, { author: 'plugin:mcp' });
 
-  /** @param {string} name */
+  /**
+   * Asks a server for its tools again. A server removed meanwhile stays removed: nothing is saved or
+   * registered for it, and a file saved as it went is forgotten again (the coordinator's fourth finding).
+   * @param {string} name
+   */
   const refresh = async (name) => {
     const s = servers.get(name);
     if (!s) throw new Error(`There is no MCP server called ${name}.`);
-    const tools = await listTools(s.client);
+    const { life } = s;
+    /** @type {any[]} */
+    let tools;
+    try {
+      tools = await listTools(s.client);
+    } catch (e) {
+      if (life.removed) throw gone(name);
+      throw e;
+    }
+    if (life.removed) throw gone(name);
     const config = { ...s.config, tools: tools.slice(0, MAX_TOOLS), more: Math.max(0, tools.length - MAX_TOOLS), refreshed: Date.now() };
     await save(config);
-    register(config, s.client);
+    if (life.removed) {
+      await forgetFile(name);
+      throw gone(name);
+    }
+    register(config, s.client, life);
     return { tools: Math.min(tools.length, MAX_TOOLS) };
+  };
+
+  /** A server's file and its history, for good. @param {string} name */
+  const forgetFile = (name) => {
+    const path = fileOf(name);
+    return forget(store, SYS_SETTINGS, { files: (p) => p === path, history: (p) => p === path });
   };
 
   const service = Object.freeze({
     /** The servers, as the screen shows them: the address as the trace keeps it, never a key. */
     list: async () => [...servers.values()].map(({ config, names }) => ({
-      name: config.name, url: traceUrl(config.url), auth: config.auth, refreshed: config.refreshed, more: config.more ?? 0,
+      name: config.name, url: config.shown, auth: config.auth, refreshed: config.refreshed, more: config.more ?? 0,
       tools: config.tools.slice(0, MAX_TOOLS).map((t, i) => ({ name: names[i], mcp: String(t.name) })),
     })),
     /**
@@ -169,38 +207,55 @@ export async function activate(annai) {
     add: async ({ name, url, token, headers }) => {
       const n = String(name ?? '').trim();
       if (!NAME.test(n)) throw new Error("A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.");
-      if (servers.has(n)) throw new Error(`There is a server called ${n} already.`);
+      if (servers.has(n) || adding.has(n)) throw new Error(`There is a server called ${n} already.`);
       const address = checkAddress(url);
       /** @type {Auth | null} */
       let auth = null;
       if (token && String(token).trim()) auth = { token: String(token).trim() };
       else if (headers && String(headers).trim()) auth = { headers: readHeaders(String(headers)) };
-      const own = auth?.token ? [auth.token] : Object.values(auth?.headers ?? {});
-      const client = new McpClient({ url: address, server: n, auth: async () => headersOf(auth) });
-      const tools = await listTools(client, own);
-      const now = Date.now();
-      /** @type {Server} */
-      const config = { name: n, url: address, auth: auth?.token ? 'token' : auth?.headers ? 'headers' : 'none', tools: tools.slice(0, MAX_TOOLS), more: Math.max(0, tools.length - MAX_TOOLS), added: now, refreshed: now };
-      if (auth) await annai.secrets.set(n, auth);
+      // A key in the address goes to secrets with the auth, before any request, so the trace blanks it too.
+      const { shown, keys } = addressParts(address);
+      /** @type {ServerSecret} */
+      const record = { ...(keys.length ? { keys } : {}), ...(auth ?? {}) };
+      const keeps = Object.keys(record).length > 0;
+      const own = [...keys, ...(auth?.token ? [auth.token] : Object.values(auth?.headers ?? {}))];
+      adding.add(n);
       try {
-        await save(config);
-      } catch (e) {
-        if (auth) await annai.secrets.set(n, null).catch(() => {});
-        throw e;
+        if (keeps) await annai.secrets.set(n, record);
+        const forgetSecret = () => (keeps ? annai.secrets.set(n, null).catch(() => {}) : Promise.resolve());
+        /** @type {any[]} */
+        let tools;
+        try {
+          tools = await listTools(new McpClient({ url: address, server: n, auth: async () => headersOf(auth) }), own);
+        } catch (e) {
+          await forgetSecret();
+          throw e;
+        }
+        const now = Date.now();
+        /** @type {Server} */
+        const config = { name: n, shown, auth: auth?.token ? 'token' : auth?.headers ? 'headers' : 'none', tools: tools.slice(0, MAX_TOOLS), more: Math.max(0, tools.length - MAX_TOOLS), added: now, refreshed: now };
+        try {
+          await save(config);
+        } catch (e) {
+          await forgetSecret();
+          throw e;
+        }
+        register(config, clientFor(config), { removed: false });
+        return { tools: config.tools.length };
+      } finally {
+        adding.delete(n);
       }
-      register(config, new McpClient({ url: address, server: n, auth: async () => headersOf(await annai.secrets.get(n)) }));
-      return { tools: config.tools.length };
     },
     refresh,
     /** Removes a server and everything it stored (choice 10). @param {string} name */
     remove: async (name) => {
       const s = servers.get(name);
       if (!s) return;
+      s.life.removed = true; // first: a refresh waiting on the server now stops (the coordinator's fourth finding)
       s.offs.forEach((off) => off());
       servers.delete(name);
       await s.client.close({ fetch: annai.net.fetch }).catch(() => {});
-      const path = fileOf(name);
-      await forget(store, SYS_SETTINGS, { files: (p) => p === path, history: (p) => p === path });
+      await forgetFile(name);
       await annai.secrets.set(name, null);
       const switches = (await readAppSettings(ws)).tools ?? {};
       const off = s.names.filter((t) => Object.hasOwn(switches, t));
@@ -212,7 +267,7 @@ export async function activate(annai) {
   for (const f of await ws.list(SYS_SETTINGS, DIR)) {
     if (!f.path.endsWith('.json')) continue;
     const config = await ws.readJSON(SYS_SETTINGS, f.path).catch(() => null);
-    if (config && typeof config.name === 'string' && NAME.test(config.name) && typeof config.url === 'string' && Array.isArray(config.tools)) register(config);
+    if (config && typeof config.name === 'string' && NAME.test(config.name) && typeof config.shown === 'string' && Array.isArray(config.tools)) register(config);
   }
   const offService = annai.register('mcp-servers', service);
   return () => {

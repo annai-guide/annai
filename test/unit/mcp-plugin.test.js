@@ -129,3 +129,70 @@ test('two servers never share a tool name; more than 100 tools are cut and said'
     await b.stop();
   }
 });
+
+// The coordinator's third security finding (milestone 8c): a key in a server's address lives only in
+// secrets; the file, list(), the log and the trace keep a shown form with it blanked.
+test("a key in a server's address (in its path, ?key=, ?k=) never reaches its file, list(), the log or the trace; user:pass@ is refused", async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    const PATH_KEY = 'zap1a2b3c4d5e6f7g8h9';
+    const KEY_Q = 'q9w8e7r6t5y4';
+    const K_Q = 'k3yabcdef1234567';
+    await k.servers.add({ name: 'zap', url: `${s.origin}/api/mcp/s/${PATH_KEY}/mcp` });
+    await k.servers.add({ name: 'qkey', url: `${s.url}?key=${KEY_Q}` });
+    await k.servers.add({ name: 'kkey', url: `${s.url}?v=2&k=${K_Q}` });
+    assert.equal(await k.call('mcp_zap_echo', { text: 'tide' }), 'tide');
+    assert.equal(await k.call('mcp_kkey_echo', { text: 'tide' }), 'tide');
+    const rows = await k.servers.list();
+    assert.deepEqual(rows.map((r) => r.url), [`${s.origin}/api/mcp/s/«key»/mcp`, `${s.url}?key=«key»`, `${s.url}?v=2&k=«key»`]);
+    const all = await k.everything();
+    for (const key of [PATH_KEY, KEY_Q, K_Q]) {
+      assert.doesNotMatch(all, new RegExp(key), key);
+      assert.doesNotMatch(JSON.stringify(rows), new RegExp(key), key);
+    }
+    assert.ok(s.requests.some((r) => r.rpc?.method === 'tools/call'), 'the calls reached the server at its full address');
+    await assert.rejects(k.servers.add({ name: 'userinfo', url: `https://someone:pass1234@mcp.example/mcp` }), /Token or Headers field/);
+    await k.servers.remove('zap');
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:zap')), undefined, 'the address is forgotten with the secret');
+  } finally {
+    await s.stop();
+  }
+});
+
+// The coordinator's fourth finding: a refresh racing a remove, or two adds of one name.
+test('removing a server while its tools are being listed leaves no file and no tools, also after a restart', async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url });
+    s.slowList(400);
+    const asked = s.requests.length;
+    const refreshing = k.servers.refresh('trail');
+    while (!s.requests.slice(asked).some((r) => r.rpc?.method === 'tools/list')) await new Promise((done) => setTimeout(done, 10));
+    await k.servers.remove('trail');
+    await assert.rejects(refreshing, /was removed/);
+    assert.equal(k.registry.list('tool').filter((t) => t.name.startsWith('mcp_')).length, 0);
+    assert.equal(await k.ws.read(SYS_SETTINGS, '/mcp/trail.json'), undefined);
+    assert.deepEqual(await k.ws.history(SYS_SETTINGS, '/mcp/trail.json'), []);
+    const next = k.relaunch();
+    await next.addBuiltin(new URL('../../src/plugins/mcp/index.js', import.meta.url).href);
+    assert.equal(next.registry.list('tool').filter((t) => t.name.startsWith('mcp_')).length, 0);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('two adds of one name at once leave exactly one server', async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    const [a, b] = await Promise.allSettled([k.servers.add({ name: 'trail', url: s.url }), k.servers.add({ name: 'trail', url: s.url })]);
+    assert.deepEqual([a.status, b.status].sort(), ['fulfilled', 'rejected']);
+    assert.match(String(/** @type {any} */ (a.status === 'rejected' ? a : b).reason?.message), /There is a server called trail already/);
+    assert.equal((await k.servers.list()).length, 1);
+    assert.equal(k.registry.list('tool').filter((t) => t.name.startsWith('mcp_trail_')).length, 6);
+  } finally {
+    await s.stop();
+  }
+});

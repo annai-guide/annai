@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { McpClient, McpError, mcpToolName, toolOutput } from '../../src/plugins/mcp/client.js';
+import { McpClient, McpError, mcpToolName, toolOutput, addressParts, fullAddress } from '../../src/plugins/mcp/client.js';
 import { startMcpServer } from '../fakes/mcp.js';
 
 const TOKEN = 'mcp-token-0123456789';
@@ -74,4 +74,13 @@ test("what a tool answers, for Shiori: text, images, a resource's text, structur
   assert.equal(toolOutput({ content: [], structuredContent: { sum: 5 } }).content, '{"sum":5}');
   assert.deepEqual(toolOutput({ content: [{ type: 'text', text: 'no such trail' }], isError: true }), { content: 'no such trail', isError: true });
   assert.equal(toolOutput({}).content, 'The tool answered nothing.');
+});
+
+test('an address and its keys: shown with each part that may be a key blanked, and put back whole (the third finding)', () => {
+  const a = 'https://mcp.example.com/api/mcp/s/zap1a2b3c4d5e6f7g8h9/mcp?v=2&key=q9w8e7r6t5y4&k=abc&api_key=short';
+  const { shown, keys } = addressParts(a);
+  assert.equal(shown, 'https://mcp.example.com/api/mcp/s/«key»/mcp?v=2&key=«key»&k=abc&api_key=«key»');
+  assert.deepEqual(keys, ['zap1a2b3c4d5e6f7g8h9', 'q9w8e7r6t5y4', 'short']);
+  assert.equal(fullAddress(shown, keys), a);
+  assert.deepEqual(addressParts('http://127.0.0.1:8080/mcp'), { shown: 'http://127.0.0.1:8080/mcp', keys: [] });
 });
