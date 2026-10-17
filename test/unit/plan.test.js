@@ -115,11 +115,13 @@ test('PLAN_FILE and BOOKING_FILE: records sit directly in their folder, as the f
   assert.equal(BOOKING_FILE.test('/bookings/hotel.pdf'), false);
 });
 
-test("a plan item Shiori changed last can go back to the version before (spec §11.5: every replan can be undone)", () => {
+test("a plan item Shiori changed last can go back to the version before all her changes in a row (spec §11.5: every replan can be undone)", () => {
   const w = (/** @type {string} */ actor, /** @type {string | null} */ old, /** @type {string | null} */ next, type = 'file.write') => ({ seq: 1, ts: 1, actor, type, old, new: next });
-  assert.equal(beforeShiori([w('user', null, 'a'), w('shiori', 'a', 'b')]), 'a');
+  assert.deepEqual(beforeShiori([w('user', null, 'a'), w('shiori', 'a', 'b')]), { restore: 'a' });
+  assert.deepEqual(beforeShiori([w('user', null, 'a'), w('shiori', 'a', 'b'), w('shiori', 'b', 'c')]), { restore: 'a' }); // moved, then a note: both go (B3)
   assert.equal(beforeShiori([w('user', null, 'a'), w('shiori', 'a', 'b'), w('user', 'b', 'c')]), null); // the user changed it since
-  assert.equal(beforeShiori([w('shiori', null, 'a')]), null); // she added it: nothing to go back to
+  assert.deepEqual(beforeShiori([w('shiori', null, 'a'), w('shiori', 'a', 'b')]), { remove: true }); // she added it: Undo removes it
+  assert.deepEqual(beforeShiori([w('user', null, 'a'), w('shiori', 'a', null, 'file.delete'), w('shiori', null, 'b')]), { remove: true });
   assert.equal(beforeShiori([w('user', null, 'a'), w('shiori', 'a', null, 'file.delete')]), null);
   assert.equal(beforeShiori([]), null);
 });
