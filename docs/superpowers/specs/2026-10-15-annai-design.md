@@ -732,6 +732,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **Encryption (optional):** the whole zip is encrypted with a passphrase, using PBKDF2-SHA-256 to derive the key and AES-GCM to encrypt. It is sealed in 1 MiB chunks, each bound to its position and to whether it is the last, so neither side holds the whole file in memory and a dropped, moved or cut-off chunk is refused.
 - **File names:** encrypted files end in `.annai`; plain ones end in `.annai.zip`.
 - **Saving:** the share sheet on phones (Files, iCloud Drive, AirDrop…), a download on desktop.
+- **Later: Share to GitHub.** Writes a Share to a repo the user picks, public repos allowed with a warning, and gives the `annai.guide/#import=<url>` link (§12.3). Backups stay refused on public repos (§12.4).
 
 ### 12.3 Import
 
