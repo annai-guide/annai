@@ -1,4 +1,4 @@
-# Device checklist: milestone 9a (backups to GitHub)
+# Device checklist: milestone 9 (backups)
 
 The done criterion is that automatic backup and restore to GitHub work on an iPhone and an Android phone, in the app installed to the Home Screen, with your own private repository and tokens. Open annai over HTTPS at the address you will travel with: each address keeps its own data.
 
@@ -42,9 +42,39 @@ The done criterion is that automatic backup and restore to GitHub work on an iPh
 - [ ] Restart annai, as the import screen asks. The next commit's parent is the one you restored from.
 - [ ] Backups → GitHub → **Show the backups here** → an older one → **Open**: the import preview shows that day's trips.
 
+## S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, …)
+
+- [ ] Make a bucket for annai alone, and an access key that may only list, read, write and delete in it. (R2: R2 → Create bucket; then Manage API tokens → Object Read & Write, for that bucket.)
+- [ ] annai: Settings → Automatic backups → **S3-compatible storage** → Add. The "Browser access" panel shows rules like these, with your annai address as the origin:
+
+  ```json
+  [
+    {
+      "AllowedOrigins": ["https://annai.guide"],
+      "AllowedMethods": ["GET", "PUT", "DELETE"],
+      "AllowedHeaders": ["authorization", "content-type", "x-amz-content-sha256", "x-amz-date"],
+      "MaxAgeSeconds": 3600
+    }
+  ]
+  ```
+
+  **Copy** them into the bucket's CORS settings (R2: the bucket → Settings → CORS policy; AWS: the bucket → Permissions → CORS).
+- [ ] Fill in the address (R2: `https://<account id>.r2.cloudflarestorage.com`, region `auto`; AWS: `https://s3.<region>.amazonaws.com` and the region), the bucket, the key ID and the secret. Tick **Encrypt backups with a passphrase** and type one twice. **Save and test**: "Works: …".
+- [ ] Before pasting the CORS rules, **Save and test** says the bucket doesn't allow browser access yet; after pasting, it works.
+- [ ] Within a few minutes: a file `annai/annai-backup-…-iphone-….annai` in the bucket. Four backups later (change something each time), only the last 3 of this phone's are there.
+- [ ] Restore onto the wiped phone, as for GitHub: it asks for the passphrase, and everything comes back.
+
+## WebDAV (a server you run, with browser access)
+
+- [ ] The server must send the headers the "Browser access" panel shows, and answer OPTIONS requests without a password. Nextcloud doesn't by default; a plain Apache with mod_dav and mod_headers does with those lines.
+- [ ] Settings → Automatic backups → **WebDAV** → the folder's address (it may not exist yet), user name and password (an app password where the server has them) → **Save and test**: "Works: annai made the folder …".
+- [ ] A backup file appears in the folder; **Show the backups here** → **Open** brings up the import preview.
+
 ## What should fail kindly
 
 - [ ] A public repository: **Save and test** says it is public, and how to make it private.
 - [ ] A wrong or expired token: "GitHub didn't accept the access token …", and a card once when an automatic backup meets it.
 - [ ] A repository with code in it: "… holds other files (…), so annai won't back up into it."
 - [ ] Airplane mode: no pile of cards. Backups show that the last try failed, and carry on by themselves later.
+- [ ] A wrong S3 secret: "… didn't accept the access key …". The wrong region: "… is in the region …; set Region to …".
+- [ ] A wrong WebDAV password: "… didn't accept the user name and password …".

@@ -16,7 +16,7 @@ memories afterwards.
 > photos: request copies within each model's limits, closer looks at a part, repair when a model refuses a
 > photo, and uploads to the provider where it can store files. And planning: bookings brought in from
 > confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
-> search and directions links. Backups to GitHub (milestone 9) too. Voice (milestone 3) is next. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> search and directions links. Backups to GitHub, S3-compatible storage and WebDAV (milestone 9) too. Voice (milestone 3) is next. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Plan and bookings
@@ -27,7 +27,7 @@ memories afterwards.
 
 ## Backups
 
-- Back up everything automatically to a private GitHub repository: after changes or once a day, on Wi-Fi, while annai is open. Each backup is one commit of your files, and only what changed is uploaded.
+- Back up everything automatically to a private GitHub repository, an S3-compatible bucket (AWS, Cloudflare R2, Backblaze B2 …) or a WebDAV folder: after changes or once a day, on Wi-Fi, while annai is open. On GitHub each backup is one commit of your files, and only what changed is uploaded; a bucket or a folder keeps each backup as one file, encrypted if you like.
 - Restore any backup onto a new or wiped phone from Settings → Automatic backups.
 - A newer backup from your other phone is never overwritten: annai pauses, and offers to import it as a copy.
 - Your API keys and the GitHub token stay on the device; they are never in a backup.
