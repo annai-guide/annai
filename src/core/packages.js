@@ -375,7 +375,15 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       if (!u) throw new Error(`The file name "${name}" isn't allowed.`);
       at.set(name, u);
     }
-    for (const [name, u] of at) files.set(name, await download(u));
+    for (const [name, u] of at) {
+      try {
+        files.set(name, await download(u));
+      } catch (e) {
+        // Which file the site lacks (minors 21).
+        const status = /** @type {any} */ (e)?.status;
+        throw status ? new Error(`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
+      }
+    }
     for (const s of skillFiles) await linked(s.slice(0, -SKILL_FILE.length), /** @type {Uint8Array} */ (files.get(s)));
     return files;
   }
