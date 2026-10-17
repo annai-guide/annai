@@ -120,6 +120,8 @@ test("a photo this browser can't show says so, with what is known about it", asy
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.heic'));
+  // The card saying it was kept as taken covers much of a small phone's screen: read, then dismissed.
+  await page.locator('.notice', { hasText: "can't convert portrait.heic" }).getByRole('button', { name: 'Dismiss' }).click();
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904\.heic/ }).click();
   await expect(page.getByText("This browser can't show this photo.")).toBeVisible();
   await expect(page.locator('figcaption')).toContainText('Stored as taken');
