@@ -216,3 +216,12 @@ test('only a 201 confirms a subscription (RFC 8030 §5): another 2xx from its ho
   await k.after(MIN);
   assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + 60 * MIN }), token: token() })).status, 201, '201: confirmed');
 });
+
+test("the in-memory storage lists as Cloudflare's does: by prefix, in key order, at most limit, from the end with reverse", async () => {
+  const s = new MemoryStorage();
+  await s.put({ 'm:c': 3, 'm:a': 1, 'm:b': 2, 'p:a': 'x' });
+  assert.deepEqual([...(await s.list({ prefix: 'm:' })).keys()], ['m:a', 'm:b', 'm:c']);
+  assert.deepEqual([...(await s.list({ prefix: 'm:', limit: 2 })).keys()], ['m:a', 'm:b']);
+  assert.deepEqual([...(await s.list({ prefix: 'm:', limit: 2, reverse: true })).keys()], ['m:c', 'm:b']);
+  assert.deepEqual([...(await s.list({ limit: 1 })).entries()], [['m:a', 1]]);
+});
