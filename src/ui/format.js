@@ -1,4 +1,5 @@
 import { validZone } from '../core/time.js';
+import { TIMINGS } from '../core/backup-auto.js';
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 /** @type {[Intl.RelativeTimeFormatUnit, number][]} */
 const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
@@ -159,4 +160,29 @@ export function newerText(t, { where, noun, tree }, now = Date.now()) {
   return `${who[0].toUpperCase()}${who.slice(1)} backed up to ${where} ${relTime(r.at, now)}${t.last ? `, after this ${noun}'s last backup` : ''}. `
     + 'Automatic backups there are paused, so neither device overwrites the other. '
     + `Import it as a copy to bring its trips here, or back up this ${noun} over it${tree ? ' (the other backup stays in its history)' : ''}.`;
+}
+
+const MIB = 1024 * 1024;
+
+/**
+ * The limit for automatic uploads on a connection the browser doesn't name, as typed in megabytes:
+ * bytes, null for none (empty), or undefined when it isn't a number of megabytes.
+ * @param {string} text @returns {number | null | undefined}
+ */
+export function limitFromField(text) {
+  const t = String(text ?? '').trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * MIB) : undefined;
+}
+
+/** The limit as its field shows it, in megabytes: annai's own when unset, empty for none. @param {number | null | undefined} limit */
+export function limitField(limit) {
+  if (limit === null) return '';
+  return String(Math.round(((limit ?? TIMINGS.askAbove) / MIB) * 10) / 10);
+}
+
+/** The limit in words. @param {number | null | undefined} limit */
+export function limitText(limit) {
+  return limit === null ? 'no limit' : bytes(limit ?? TIMINGS.askAbove);
 }

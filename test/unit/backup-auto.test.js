@@ -36,6 +36,11 @@ test('dueNow: daily or after changes, on Wi-Fi, with annai open, and only when s
   assert.equal(why(dueNow(place({ mobileData: true }), 'tree', env({ connection: 'cellular' }))), 'run Infinity');
   assert.equal(why(dueNow(place(), 'tree', env({ connection: 'unknown' }))), `run ${TIMINGS.askAbove}`);
   assert.equal(why(dueNow(place({ mobileData: true }), 'tree', env({ connection: 'unknown' }))), 'run Infinity');
+  // The place's own limit for an unnamed connection, chosen by the user: a number, or none at all.
+  assert.equal(why(dueNow(place({ askAbove: 5 * 1024 * 1024 }), 'tree', env({ connection: 'unknown' }))), `run ${5 * 1024 * 1024}`);
+  assert.equal(why(dueNow(place({ askAbove: 0 }), 'tree', env({ connection: 'unknown' }))), 'run 0');
+  assert.equal(why(dueNow(place({ askAbove: null }), 'tree', env({ connection: 'unknown' }))), 'run Infinity');
+  assert.equal(why(dueNow(place({ askAbove: 5 * 1024 * 1024 }), 'tree', env())), 'run Infinity', "on Wi-Fi the limit doesn't apply");
   // How often: after changes, at most hourly to a tree and every 6 hours to a whole file; daily, once a day.
   assert.equal(why(dueNow(place({ last: lastAt(9.5 * H) }), 'tree', env())), 'backed up recently');
   assert.equal(why(dueNow(place({ last: lastAt(8.9 * H) }), 'tree', env())), 'run Infinity');

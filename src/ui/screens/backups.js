@@ -1,7 +1,6 @@
 import { h, field, checkbox, radios, twoStep } from '../dom.js';
-import { placeStatus, placeHref, newerText, withArticle, relTime, bytes } from '../format.js';
+import { placeStatus, placeHref, newerText, withArticle, relTime, bytes, limitFromField, limitField, limitText } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
-import { TIMINGS } from '../../core/backup-auto.js';
 import { connectionOf } from '../platform.js';
 import { restoreFrom, whereOf } from '../auto-backup.js';
 
@@ -162,6 +161,19 @@ async function renderPlace(ctx, id) {
     await ctx.backups.update(id, { mobileData: mobile.input.checked });
     ctx.notices.toast('Saved');
   });
+  // Where the browser can't say whether it is on Wi-Fi (Safari on iPhone), how much goes without asking: the user's choice.
+  const limit = h('input', { id: 'place-ask-above', type: 'number', min: '0', step: 'any', inputmode: 'decimal', placeholder: 'No limit', value: limitField(t.askAbove) });
+  const limitNote = h('p', { class: 'sub', text: limitNoteText(t.askAbove, connectionOf(navigator)) });
+  limit.addEventListener('change', async () => {
+    const value = limitFromField(limit.value);
+    if (value === undefined) {
+      ctx.notices.toast('Type a number of megabytes, or leave it empty for no limit.');
+      return;
+    }
+    await ctx.backups.update(id, { askAbove: value });
+    limitNote.textContent = limitNoteText(value, connectionOf(navigator));
+    ctx.notices.toast('Saved');
+  });
   const list = h('ul', { class: 'cards' });
   const show = h('button', {
     class: 'btn', type: 'button',
@@ -205,9 +217,8 @@ async function renderPlace(ctx, id) {
     accessPanel(ctx, type),
     h('section', { class: 'panel', 'aria-label': 'When' },
       auto, mobile.el,
-      connectionOf(navigator) === 'unknown'
-        ? h('p', { class: 'sub', text: `This browser doesn't tell annai whether it is on Wi-Fi, so automatic backups larger than ${bytes(TIMINGS.askAbove)} wait for your OK, unless "Also over mobile data" is on.` })
-        : null,
+      field('Upload without asking up to, MB', limit),
+      limitNote,
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => backUpNow({}) }, 'Back up now'), stop)),
     h('section', { class: 'panel', 'aria-label': 'Restore' },
       h('h2', { class: 'section', text: 'Restore' }),
@@ -249,6 +260,17 @@ function accessPanel(ctx, type) {
         }
       },
     }, 'Copy')));
+}
+
+/**
+ * What the limit for unnamed connections does, in words. @param {number | null | undefined} limit
+ * @param {import('../../core/backup-auto.js').Connection} connection
+ */
+function limitNoteText(limit, connection) {
+  const where = connection === 'unknown' ? "This browser doesn't tell annai whether it is on Wi-Fi" : "Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone)";
+  return limit === null
+    ? `${where}: automatic backups go without asking, whatever their size. Type a number to set a limit.`
+    : `${where}: automatic backups larger than ${limitText(limit)} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.`;
 }
 
 /** @param {any} ctx @param {string} id */

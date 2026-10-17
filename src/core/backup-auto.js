@@ -76,7 +76,9 @@ export function dueNow(t, stores, env, timings = TIMINGS) {
   if (!env.changed) return no('nothing changed');
   if (env.lastChangeAt !== null && env.now - env.lastChangeAt < timings.quietMs) return no('changes still coming');
   if (t.last && env.now - t.last.at < timings.gapMs[stores][t.auto === 'daily' ? 'daily' : 'changes']) return no('backed up recently');
-  return { run: true, maxUpload: free ? Infinity : timings.askAbove };
+  // Where the browser can't say whether it is on Wi-Fi, the place's own limit (the user's), or annai's.
+  const limit = t.askAbove === null ? Infinity : t.askAbove ?? timings.askAbove;
+  return { run: true, maxUpload: free ? Infinity : limit };
 }
 
 /** What a place waits on that the user should hear of, as a key to tell it once by; null for nothing. @param {Target} t */

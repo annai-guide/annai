@@ -231,10 +231,14 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
      * before automatic backups use it; a passphrase for its encrypted backups doesn't.
      * @param {string} id
      * @param {{ config?: Record<string, string>, secret?: Record<string, string>, auto?: Auto, mobileData?: boolean,
-     *   encrypt?: boolean, keys?: boolean, keep?: number, passphrase?: string }} c
+     *   encrypt?: boolean, keys?: boolean, keep?: number, passphrase?: string, askAbove?: number | null }} c
+     *   askAbove: bytes an automatic backup may upload without asking where the browser can't name the connection; null for no limit
      */
-    async update(id, { config, secret, auto, mobileData, encrypt, keys, keep, passphrase }) {
+    async update(id, { config, secret, auto, mobileData, encrypt, keys, keep, passphrase, askAbove }) {
       const rec = await target(id);
+      if (askAbove !== undefined && askAbove !== null && !(Number.isFinite(askAbove) && askAbove >= 0)) {
+        throw new TargetError('setup', 'Type a number of megabytes, or leave it empty for no limit.');
+      }
       // An address with a user name and password in it would keep them in the place's record.
       for (const v of Object.values(config ?? {})) {
         /** @type {URL | null} */
@@ -259,6 +263,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         ...(config ? { config: { ...rec.config, ...config } } : {}),
         ...(auto ? { auto } : {}),
         ...(mobileData === undefined ? {} : { mobileData }),
+        ...(askAbove === undefined ? {} : { askAbove: askAbove === null ? null : Math.round(askAbove) }),
         ...(encrypt === undefined && keys === undefined ? {} : { encrypt: encrypting, keys: withKeys }),
         ...(keep === undefined ? {} : { keep: Math.min(30, Math.max(1, Math.round(Number(keep) || 3))) }),
         ...(config || signIn ? { checked: null } : {}),

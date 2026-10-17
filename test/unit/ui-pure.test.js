@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref } from '../../src/ui/format.js';
+import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -278,4 +278,19 @@ test('a restore behind a backup the user started says it waits; then it says it 
   await done;
   assert.deepEqual(said.slice(1), ['Downloading the backup…', 'Downloading 2 of 9 files…']);
   assert.deepEqual(went, ['#/import']);
+});
+
+test('the limit for an unnamed connection, as typed and as shown', () => {
+  assert.equal(limitFromField(''), null);
+  assert.equal(limitFromField('  '), null);
+  assert.equal(limitFromField('25'), 25 * 1024 * 1024);
+  assert.equal(limitFromField('0'), 0);
+  assert.equal(limitFromField('2.5'), Math.round(2.5 * 1024 * 1024));
+  for (const bad of ['-1', 'lots', '1e9999']) assert.equal(limitFromField(bad), undefined, bad);
+  assert.equal(limitField(undefined), '25');
+  assert.equal(limitField(null), '');
+  assert.equal(limitField(100 * 1024 * 1024), '100');
+  assert.equal(limitText(undefined), '25 MB');
+  assert.equal(limitText(null), 'no limit');
+  assert.equal(limitText(0), '0 B');
 });
