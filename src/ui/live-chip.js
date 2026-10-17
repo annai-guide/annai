@@ -122,7 +122,8 @@ export function liveChip(ctx) {
     close();
     chip.focus();
   });
-  return { el };
+  // dispose: the dock is remade; an open menu's listener for a tap elsewhere goes with it.
+  return { el, dispose: close };
 }
 
 /** The open trip's plan places, for "Where are you?". @param {any} ctx @returns {Promise<{ name: string, lat: number, lng: number }[]>} */
