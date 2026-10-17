@@ -71,7 +71,7 @@ test("the second Overpass server when the first fails; a part that fails is note
       return body({ init }).includes('around:3000') ? new Response('', { status: 504 }) : { elements: [] };
     },
   });
-  const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0 });
+  const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0, busyMs: 1 });
   assert.ok(asked.some((a) => a.url.includes('overpass.private.coffee')));
   assert.deepEqual(m.failed, [{ label: 'OpenStreetMap between Bixby Creek Bridge and Nepenthe', why: "OpenStreetMap didn't answer (overpass.private.coffee answered 504)." }]);
   assert.equal(m.stopped, false);
@@ -151,4 +151,16 @@ test("a service that doesn't answer in time is a failure that says so; a stop wh
   const stopped = await downloadPack({ ws, scope: trip, fetch: services({ overpass: hang }).fetch, version: V, gapMs: 0, signal: abort.signal });
   assert.equal(stopped.stopped, true);
   assert.deepEqual(stopped.failed, []);
+});
+
+test("Overpass's 429 (too many requests) is waited out once before the other server is asked", async () => {
+  const { ws, trip } = await packTrip();
+  let busy = 1;
+  const { fetch, asked } = services({ overpass: (url, init) => (url.includes('overpass-api.de') && busy-- > 0 ? new Response('', { status: 429 }) : { elements: [] }) });
+  const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0, busyMs: 40 });
+  const first = asked.filter((a) => a.url.includes('overpass')).slice(0, 2);
+  assert.deepEqual(first.map((a) => new URL(a.url).hostname), ['overpass-api.de', 'overpass-api.de']);
+  assert.ok(first[1].at - first[0].at >= 35, 'it waited');
+  assert.ok(!asked.some((a) => a.url.includes('private.coffee')));
+  assert.deepEqual(m.failed, []);
 });

@@ -29,8 +29,11 @@ export const MAX_OSM = 100;
 export const MAX_WIKI = 100;
 export const MAX_GUIDES = 12;
 
-/** Rough sizes, from real answers along Big Sur in October 2026, for the estimate shown before downloading (choice 9). */
-export const SIZES = Object.freeze({ osmPerKm: 1024, osmStop: 20 * 1024, wikipedia: 11 * 1024, guide: 30 * 1024 });
+/**
+ * Rough sizes for the estimate shown before downloading (choice 9), from a real Big Sur pack in October
+ * 2026 (143 KB for 19 parts and 4 guides), rounded up: towns are denser than the coast.
+ */
+export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 10 * 1024, wikipedia: 6 * 1024, guide: 25 * 1024 });
 
 const r4 = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 const pt = (/** @type {LatLng} */ p) => ({ lat: p[0], lng: p[1] });
