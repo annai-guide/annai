@@ -116,7 +116,7 @@ Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`
 
 - **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it, by listing its fingerprint in `refs` (§4.9).
 - **A model request is logged as a reference,** not a copy: the range of events in context, the prefix fingerprint, token counts, cost. Copying every context would grow storage quadratically.
-- **Location points are thinned.** A point is kept only after moving about 20 m (or the GPS accuracy, if worse), or after 1 minute while moving.
+- **Location points are thinned.** A point is kept only after moving about 20 m (or the GPS accuracy, if worse), or after 1 minute while moving. Until the phone reports a speed, it takes 100 m of movement: a parked phone's GPS jitter otherwise reads as walking.
 
 ### 4.6 Robustness
 
@@ -194,7 +194,7 @@ Removing a trip deletes it from the device and frees its space at once. There is
   - Only `name` and `description` sit in Shiori's context. She loads the body with the `skill` tool.
   - The front matter is parsed by a small parser for the subset the standard uses: strings, plus a one-level `metadata` map.
   - `scripts/` are not run.
-- **MCP servers.** Remote servers over HTTP. A built-in MCP client plugin registers each server's tools as `mcp.<server>.<tool>`.
+- **MCP servers.** Remote servers over HTTP. A built-in MCP client plugin registers each server's tools as `mcp_<server>_<tool>` (model providers refuse dots in tool names).
   - The server must allow browser access (CORS).
   - Auth is a URL plus headers or a bearer token. OAuth for MCP comes later.
 - **Code plugins.** Full-trust ES modules with the same powers as built-ins. The install screen says so plainly: "This plugin gets full access to your trips and API keys."
