@@ -412,3 +412,12 @@ test('Reset R1: removing a package removes its install address, package:<id>:add
   await host.uninstall('park');
   assert.deepEqual(await store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
 });
+
+test('Reset M2: a plugin that is being removed is not reset, as it is not started', async () => {
+  const { host, annai, log } = await parkKit();
+  await annai.secrets.set('token', 'park-token-123456');
+  const removing = host.uninstall('park');
+  await assert.rejects(host.reset('park'), /park: is being removed/);
+  await removing;
+  assert.deepEqual((await log()).filter((e) => e.type === 'plugin.reset'), []);
+});

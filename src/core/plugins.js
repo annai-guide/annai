@@ -514,6 +514,7 @@ export class PluginHost {
    * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[], bytes: number }>}
    */
   async reset(id) {
+    if (this.#removing.has(id)) throw new PluginError(id, 'is being removed');
     const had = await this.saved(id);
     if (!had) throw new PluginError(id, 'keeps MCP servers, not settings: remove a server on its own screen.');
     const isSettings = (/** @type {string} */ p) => p === SETTINGS(id);
