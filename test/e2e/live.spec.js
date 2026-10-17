@@ -61,6 +61,7 @@ test('a watch Shiori sets fires on arriving; she is told where you are; the trac
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Live' });
     await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' }).first()).toBeVisible();
+    await filterTrace(page, { kind: 'Location' });
     await expect(page.locator('ol.trace .k', { hasText: 'location' }).first()).toBeVisible();
     await filterTrace(page, { kind: 'Everything' });
     await expect(page.locator('ol.trace .k', { hasText: /^location$/ })).toHaveCount(0);
@@ -169,4 +170,26 @@ test('Undo puts back the item as it was before all of Shiori\'s changes in a row
   await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
   await expect(page.locator('.plan-row', { hasText: 'Pfeiffer Beach' })).toHaveCount(0);
   await expect(mcway).toBeVisible();
+});
+
+test("Trace → Live shows the firings, reminders and switches however many location points came after them; Location shows the points (B5)", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Big Sur');
+  await page.evaluate(async (scope) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { logEvent } = await load('/src/core/events.js');
+    const store = await createIdbStore();
+    await logEvent(store, scope, { type: 'trigger.fired', actor: 'system', data: { watch: 'plan:lunch:leave', text: 'Plan: time to leave soon for "Lunch at Nepenthe"' } });
+    for (let i = 0; i < 400; i++) await logEvent(store, scope, { type: 'location', actor: 'system', data: { lat: 36.3 + i / 1e4, lng: -121.9, accuracy: 8 } });
+    store.close();
+  }, trip);
+  await page.goto('/#/trace');
+  await filterTrace(page, { kind: 'Live' });
+  await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' })).toHaveCount(1);
+  await expect(page.locator('ol.trace .k', { hasText: /^location$/ })).toHaveCount(0);
+  await filterTrace(page, { kind: 'Location' });
+  await expect(page.locator('ol.trace .k', { hasText: /^location$/ })).toHaveCount(300);
+  await filterTrace(page, { kind: 'Live', type: 'trigger' });
+  await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' })).toHaveCount(1);
 });
