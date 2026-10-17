@@ -121,7 +121,7 @@ export async function renderReplay(ctx, route) {
   // The timeline (choice 6): each entry a button that moves the playback there.
   const items = r.entries.map((e) => {
     const { when, text } = entryLine(e, r.tz);
-    return h('li', { class: ['replay-entry', e.kind] }, h('button', {
+    return h('li', { class: ['replay-entry', `kind-${e.kind}`] }, h('button', {
       class: 'replay-item', type: 'button',
       onclick: () => {
         clock.seek(e.at);

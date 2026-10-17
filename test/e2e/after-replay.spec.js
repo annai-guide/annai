@@ -15,6 +15,7 @@ test('the replay: the timeline, the route on a flat map and in words, scrubbing 
     /^\d\d:\d\dDrove \d+\.\d km · 30 min$/, /Bixby Creek Bridge · 20 min · stamp/, /^09:35Shiori: Bixby Creek Bridge$/,
     /^09:36You: Sam wants to see the sea lions\.$/, /^09:45Photo 2026-11-27-0945\.jpg$/, /^\d\d:\d\dDrove .*partly unseen/, /^16:40–18:15Hearst Castle · 1 h 35 min$/,
   ]);
+  await expect(timeline.locator('li.card')).toHaveCount(0); // a card entry isn't drawn as a card box
   const map = page.getByRole('img', { name: /^The route: \d+\.\d km on the road, from Bixby Creek Bridge to Hearst Castle, with 2 stops and 1 stamp\.$/ });
   await expect(map).toBeVisible();
   expect((await page.locator('svg.route-map polyline.route-all').first().getAttribute('points'))?.split(' ').length).toBeGreaterThan(100);

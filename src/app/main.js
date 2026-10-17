@@ -27,6 +27,7 @@ import { mediaKeys } from '../ui/media-keys.js';
 import { armUnlock } from '../ui/unlock.js';
 import { Live } from '../core/live/live.js';
 import { watchTools } from '../core/live/watch-tools.js';
+import { SimRun } from '../core/live/sim-run.js';
 import { tellGps } from '../ui/live-help.js';
 import { keepAwake } from '../ui/wake-lock.js';
 import { PackKeeper } from '../core/pack/keeper.js';
@@ -93,6 +94,8 @@ async function boot() {
   agent.addLoopTools(watchTools(live));
   agent.sense = () => live.nowInfo();
   const awake = keepAwake({ live, ws });
+  // Developer → Simulate a trip (spec §13): one at a time, shared by its screen and the live chip.
+  const sim = new SimRun({ store, ws, registry, agent, live });
   // The offline pack (spec §11.5): downloaded when asked, then kept up to date on Wi-Fi; it names places for live mode.
   const pack = new PackKeeper({ store, ws, agent, version: VERSION, connection: () => connectionOf(navigator), visible: () => document.visibilityState === 'visible' });
   live.namers.push((p) => pack.name(p));
@@ -115,7 +118,7 @@ async function boot() {
       await ensureProvided(plugins, 'storage-type', type);
     },
   });
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   tellGps({ live, notices: shell.notices });

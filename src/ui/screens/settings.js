@@ -56,6 +56,9 @@ export async function renderSettings(ctx) {
       ctx.update.ready
         ? h('div', { class: 'acts' }, h('span', { text: 'An update is ready.' }), h('button', { class: 'btn pri', type: 'button', onclick: () => ctx.update.apply() }, 'Restart annai'))
         : h('p', { class: 'sub', text: 'No update waiting.' })),
+    section('Developer',
+      h('p', { class: 'sub', text: 'Try live mode, the replay and the recap with a simulated trip.' }),
+      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/simulate' }, 'Simulate a trip'))),
     section('Diagnostics',
       h('p', { class: 'sub', text: 'A report of recent errors and system events, without your files or keys, to paste into a bug report.' }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => copyDiagnostics(ctx) }, 'Copy diagnostics'))),

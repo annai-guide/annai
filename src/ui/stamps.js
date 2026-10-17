@@ -21,6 +21,11 @@ export function stampMarks(stamps, { max = 2, big = false } = {}) {
   if (!stamps.length) return null;
   const shown = stamps.length > max + 1 ? stamps.slice(0, max) : stamps;
   return h('span', { class: ['stamps', big ? 'big' : ''], role: 'img', 'aria-label': `${stampCount(stamps.length)}: ${stamps.map((s) => s.name).join(', ')}` },
-    ...shown.map((s) => h('span', { class: 'stamp', title: s.name, text: stampLabel(s.name) })),
+    ...shown.map((s) => {
+      const label = stampLabel(s.name);
+      // Longer words get smaller type, so a word is never broken across lines.
+      const n = [...label].length;
+      return h('span', { class: ['stamp', n >= 11 ? 'longer' : n >= 8 ? 'long' : ''], title: s.name, text: label });
+    }),
     stamps.length > shown.length ? h('span', { class: 'stamp more', text: `+${stamps.length - shown.length}` }) : null);
 }
