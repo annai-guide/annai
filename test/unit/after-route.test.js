@@ -88,3 +88,13 @@ test('a flat map: north up, west left, inside its padding; one point sits in the
   const [bx] = fiji.xy({ lat: -17.1, lng: -179.9 });
   assert.ok(bx > ax && bx - ax < 960, `${ax} ${bx}`);
 });
+
+test('a stay the track ends in lasts until the record ends, when it is known (live mode turned off there)', () => {
+  const evening = [...road(HEARST, CAMBRIA, at('18:15'), at('18:32')), { ...CAMBRIA, at: at('18:32') }];
+  assert.deepEqual(legsOf(evening).map((l) => l.kind), ['move']); // no end known: nothing says how long
+  const legs = legsOf(evening, { end: at('19:02') });
+  assert.deepEqual(legs.map((l) => l.kind), ['move', 'stay']);
+  assert.deepEqual([/** @type {any} */ (legs[1]).lat, legs[1].to], [CAMBRIA.lat, at('19:02')]);
+  assert.ok(Math.abs(legs[1].from - at('18:32')) <= 30_000);
+  assert.deepEqual(legsOf(evening, { end: at('18:35') }).map((l) => l.kind), ['move']); // three minutes: not a stay
+});

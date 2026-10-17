@@ -74,3 +74,19 @@ test("when a photo was taken: with its offset, or the wall clock where it was ta
   assert.equal(takenAt('yesterday', LA), null);
   assert.equal(takenAt(undefined, LA), null);
 });
+
+test('an arrival the road shows no stay for is still in the timeline; live mode turned off ends the last stay there (spec §13)', async () => {
+  const k = await liveKit({ live: false });
+  await k.ws.patch(k.trip, '/trip.json', { timezones: [LA] }, { author: 'user' });
+  const evening = [{ ...HEARST, at: at('18:15') }, { ...off(HEARST, 3000, -3000), at: at('18:20') }, { ...off(HEARST, 6000, -6000), at: at('18:25') }];
+  for (const p of evening) await logEvent(k.store, k.trip, { type: 'location', data: { lat: p.lat, lng: p.lng } }, p.at);
+  await logEvent(k.store, k.trip, { type: 'trigger.fired', data: { type: 'plan', event: 'arrived', place: { name: 'Cambria Pines Lodge', ...off(HEARST, 6000, -6000) } } }, at('18:27'));
+  const open = await readJourney({ store: k.store, ws: k.ws, trip: k.trip });
+  const arrived = /** @type {any} */ (open.entries.find((e) => e.kind === 'stay'));
+  assert.deepEqual([arrived?.name, arrived?.at, arrived?.to, arrived?.stamp?.name], ['Cambria Pines Lodge', at('18:27'), at('18:27'), 'Cambria Pines Lodge']);
+  await logEvent(k.store, k.trip, { type: 'state', data: { live: 'off' } }, at('19:30'));
+  const closed = await readJourney({ store: k.store, ws: k.ws, trip: k.trip });
+  const stays = closed.entries.filter((e) => e.kind === 'stay');
+  assert.equal(stays.length, 1);
+  assert.deepEqual([/** @type {any} */ (stays[0]).name, stays[0].at, /** @type {any} */ (stays[0]).to], ['Cambria Pines Lodge', at('18:25'), at('19:30')]);
+});

@@ -27,13 +27,13 @@ import { GATE_OPTIONS, gatePrompt } from '../voice/gate.js';
  * role, runs the tool calls in order (sleep last), appends the results and calls again, until she
  * sleeps, calls no tool, or something stops her. She reaches the user only through output tools
  * (§7.1); everything else she writes stays in the trace.
- * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live'} WakeKind
- *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on
+ * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap'} WakeKind
+ *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on; recap: the user asked to hear the trip's recap (spec §13)
  * @typedef {{ watch: string, text: string }} Reminder  a watch's fallback (spec §11.3)
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
- * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[] }} Wake
+ * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
- *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3)
+ *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13)
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -395,7 +395,7 @@ export class Agent {
     // A wake for another conversation than the one open (files added to another trip) is written
     // into it now, and answered when it opens (spec §6.1, §7.3).
     if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
-    if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file' || w.kind === 'live') {
+    if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file' || w.kind === 'live' || w.kind === 'recap') {
       this.#push(w);
       this.#drain();
       return Promise.resolve();
@@ -748,7 +748,7 @@ export class Agent {
     const wakeId = newId('w');
     const abort = new AbortController();
     this.#abort = abort;
-    this.#voiceNow = await this.#voiceOn();
+    this.#voiceNow = await this.#voiceOn(wakes.some((w) => w.aloud));
     this.#heardBy = null;
     let ok = false;
     try {
@@ -1231,11 +1231,15 @@ export class Agent {
     if (p) p.listening = false; // a wait for an answer goes on, for typing
   }
 
-  /** Whether voice is on for this turn (spec §10.5): it is on, and speak isn't switched off (§7.2). */
-  async #voiceOn() {
+  /**
+   * Whether voice is on for this turn (spec §10.5): it is on, and speak isn't switched off (§7.2). A
+   * wake that asks for her voice (the recap told aloud) has it whatever the mode (choice 6).
+   * @param {boolean} [asked]
+   */
+  async #voiceOn(asked = false) {
     if (!this.voice) return false;
     await this.voice.refresh();
-    return this.voice.on && (await toolSwitches(this.ws)).speak !== false;
+    return (this.voice.on || asked) && (await toolSwitches(this.ws)).speak !== false;
   }
 
   /** How long her first words may take with voice on (spec §9.6: tighter for voice); the main role's own limit when lower. */

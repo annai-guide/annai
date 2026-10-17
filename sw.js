@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '299cddc8ea02';
+const BUILD = 'cfd1e15455fe';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -26,6 +26,7 @@ const SHELL = [
   '/assets/personalities/shiori.md',
   '/assets/personalities/storyteller.md',
   '/assets/shiori.svg',
+  '/assets/simulations/big-sur.json',
   '/src/app/main.js',
   '/src/app/version.js',
   '/src/core/after/journey.js',

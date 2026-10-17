@@ -99,3 +99,11 @@ test('no photos go to a model that takes none; a model that answers nothing, or 
   const none = await agentKit([]);
   await assert.rejects(writeRecap({ store: none.store, ws: none.ws, llm: none.llm, trip: none.trip }), /No model is set up to write the recap\. Add one in Settings → Models\./);
 });
+
+test('an arrival whose stay the road doesn\'t show is "arrived" in the recap, not a stay of no time', async () => {
+  const k = await aTrip();
+  await logEvent(k.store, k.trip, { type: 'location', data: { lat: 35.5641, lng: -121.0807 } }, at('18:40'));
+  await logEvent(k.store, k.trip, { type: 'trigger.fired', data: { type: 'plan', event: 'arrived', place: { name: 'Cambria Pines Lodge', lat: 35.5641, lng: -121.0807 } } }, at('18:42'));
+  const text = recapText(await readJourney({ store: k.store, ws: k.ws, trip: k.trip }));
+  assert.match(text, /2026-11-27\t18:42\t18:42\tarrived\tCambria Pines Lodge\t\tyes/);
+});
