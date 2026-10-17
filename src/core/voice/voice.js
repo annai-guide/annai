@@ -41,8 +41,10 @@ export class Voice {
   dictationFailed = false;
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'auto', on: false, why: 'not sure' };
-  /** @type {Set<(m: import('./mode.js').VoiceMode) => void>} */
+  /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
   #changes = new Set();
+  /** The mode has been read once: the first reading, as annai starts, is no change of mode. */
+  #read = false;
   #watching = false;
   /** @type {Set<LevelListener>} */
   #levels = new Set();
@@ -228,7 +230,8 @@ export class Voice {
 
   /**
    * Works out the voice mode (spec §10.5): the setting; for Auto, the activity sensor and the
-   * audio devices' names; and, where it can't tell, the last explicit choice. Listeners hear a change.
+   * audio devices' names; and, where it can't tell, the last explicit choice. Listeners hear a change,
+   * and whether it is the first reading (as annai starts, nothing changed: the log doesn't record it).
    * @returns {Promise<boolean>} whether voice is on
    */
   async refresh() {
@@ -236,11 +239,13 @@ export class Voice {
     const route = s.mode === 'auto' ? await this.route() : 'unknown';
     const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices });
     this.#watch();
+    const first = !this.#read;
+    this.#read = true;
     if (next.on !== this.mode.on || next.why !== this.mode.why || next.setting !== this.mode.setting) {
       this.mode = next;
       for (const fn of this.#changes) {
         try {
-          fn(next);
+          fn(next, first);
         } catch (e) {
           console.warn('a voice listener failed', e);
         }
@@ -281,7 +286,7 @@ export class Voice {
     await this.refresh();
   }
 
-  /** Hears when the voice mode changes. @param {(m: import('./mode.js').VoiceMode) => void} fn @returns {() => void} */
+  /** Hears when the voice mode changes; first: it was the first reading. @param {(m: import('./mode.js').VoiceMode, first: boolean) => void} fn @returns {() => void} */
   onChange(fn) {
     this.#changes.add(fn);
     return () => this.#changes.delete(fn);
