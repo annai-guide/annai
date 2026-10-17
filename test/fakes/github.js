@@ -59,6 +59,8 @@ export async function startGitHub({ token = TOKEN, repos = {} } = {}) {
   /** @type {(() => void) | null} */
   let beforeRef = null;
   let tamper = false;
+  /** @type {{ method: string, part: string, body: string, status?: number } | null} */
+  let garble = null;
   let origin = '';
 
   /** @param {Repo} repo @param {GitObject} o */
@@ -166,6 +168,11 @@ export async function startGitHub({ token = TOKEN, repos = {} } = {}) {
     }
     const auth = String(headers.authorization ?? '');
     if (auth !== `Bearer ${token}` && auth !== `token ${token}`) return { status: 401, json: { message: 'Bad credentials', documentation_url: DOCS } };
+    if (garble && method === garble.method && url.pathname.includes(garble.part)) {
+      const g = garble;
+      garble = null;
+      return { status: g.status ?? 200, raw: Buffer.from(g.body), headers: { 'content-type': 'text/html; charset=utf-8' } };
+    }
     const m = /^\/repos\/([^/]+\/[^/]+?)(\/.*)?$/.exec(url.pathname);
     const repo = m ? all.get(decodeURIComponent(m[1])) : undefined;
     if (!m || !repo) return NOT_FOUND;
@@ -377,6 +384,10 @@ export async function startGitHub({ token = TOKEN, repos = {} } = {}) {
     /** Runs fn just before the next branch update is handled, as another device moving the branch then would. @param {() => void} fn */
     beforeRefUpdate(fn) {
       beforeRef = fn;
+    },
+    /** The next request with this method to a path holding part gets this body instead: a broken or hostile answer. @param {{ method: string, part: string, body: string, status?: number }} g */
+    garbleNext(g) {
+      garble = g;
     },
     /** The next tree made holds one file more than it was sent: a stored tree that differs. */
     breakNextTree() {

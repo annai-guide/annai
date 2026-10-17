@@ -14,6 +14,7 @@ import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
+import { secretFreeLog } from '../core/agent/net.js';
 import { offerPluginUpdates } from '../ui/plugin-updates.js';
 import { Agent } from '../core/agent/loop.js';
 import { codec } from '../ui/photo-codec.js';
@@ -50,7 +51,8 @@ async function boot() {
 
   const store = await createIdbStore();
   running = { store };
-  const registry = new Registry({ log: (ev) => logEvent(store, SYS, ev) });
+  // What plugins say when they fail can echo a key: the log keeps none (spec §9.9).
+  const registry = new Registry({ log: secretFreeLog(store, SYS) });
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
   // What a late request wrote into a removed trip goes now; if this fails, it goes at the next start (spec §4.9).

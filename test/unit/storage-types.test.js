@@ -6,7 +6,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js';
 import { Registry, PluginError } from '../../src/core/registry.js';
 import { PluginHost, isPluginBug } from '../../src/core/plugins.js';
-import { TargetError, NEEDS_YOU, storageTypes } from '../../src/core/storage-types.js';
+import { TargetError, NEEDS_YOU, storageTypes, readAnswer, TEXT_MAX } from '../../src/core/storage-types.js';
 import { ensureProvided, offeredTypes } from '../../src/core/llm/official.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -98,4 +98,18 @@ test('choosing a kind of backup place installs the official plugin that provides
   assert.equal(storageTypes(k.registry).get('probe')?.pluginId, 'storage-probe');
   assert.equal((await k.host.installed())['storage-probe']?.source, 'official');
   await assert.rejects(ensureProvided(k.host, 'storage-type', 'nope', { fetch: get }), /isn't a kind of backup place annai knows/);
+});
+
+test("a server's answer is read, or refused in plain words: never a crash in the plugin (spec §5.5)", async () => {
+  assert.deepEqual(await readAnswer(new Response('{"a":1}'), 'json', 'GitHub'), { a: 1 });
+  assert.equal(await readAnswer(new Response('<x/>'), 'text', 'the bucket'), '<x/>');
+  assert.equal((await readAnswer(new Response('abc'), 'blob', 'the bucket')).size, 3);
+  assert.equal((await readAnswer(new Response('abcd'), 'arrayBuffer', 'the bucket')).byteLength, 4);
+  await assert.rejects(readAnswer(new Response('<html>Unicorn!</html>'), 'json', 'GitHub'),
+    (e) => e instanceof TargetError && e.kind === 'other' && /GitHub answered something annai can't read/.test(e.message) && !isPluginBug(e));
+  await assert.rejects(readAnswer(new Response('x'.repeat(2000)), 'text', 'the bucket', { max: 1000 }), (e) => e instanceof TargetError && /larger than annai reads/.test(e.message));
+  await assert.rejects(readAnswer(new Response('x', { headers: { 'content-length': String(TEXT_MAX + 1) } }), 'text', 'the bucket'), /larger than annai reads \(8 MB\)/);
+  const cut = new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('part')); c.error(new TypeError('terminated')); } }));
+  await assert.rejects(readAnswer(cut, 'text', 'the bucket'), (e) => e instanceof TargetError && /connection to the bucket broke/.test(e.message) && !isPluginBug(e));
+  assert.equal(TEXT_MAX, 8 * 1024 * 1024);
 });

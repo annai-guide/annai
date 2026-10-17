@@ -7,7 +7,9 @@ import { blobId, treeId, GitPathError } from './git.js';
  * but annai's backups (a README and the like stay). The token is a fine-grained personal access
  * token with Contents: Read and write for that repository.
  * @typedef {{ base: string, repo: string, token: string, device: { id: string, label: string }, app: string,
- *   TargetError: any, zip: any, net: (url: string, init?: RequestInit) => Promise<Response>, seen: Set<string> }} G
+ *   TargetError: any, zip: any, read: (res: Response, how: string, where: string) => Promise<any>,
+ *   net: (url: string, init?: RequestInit) => Promise<Response>, seen: Set<string> }} G
+ *   read: annai's reader of a server's answer: whatever is wrong with an answer is GitHub's doing (a TargetError), never a bug here
  *   seen: blob ids GitHub confirmed in this session, so a later try sends nothing twice
  * @typedef {{ sha: string, size: number, mode: string }} RemoteFile
  */
@@ -34,7 +36,7 @@ const confirmed = new Map();
 
 /** @param {any} annai */
 export function activate(annai) {
-  const { TargetError, zip } = annai.helpers;
+  const { TargetError, zip, readAnswer } = annai.helpers;
   /** @param {any} c @returns {G} */
   const client = (c) => {
     const base = String(c.config.api || API).trim().replace(/\/+$/, '');
@@ -42,7 +44,7 @@ export function activate(annai) {
     const key = `${base} ${repo}`;
     const seen = confirmed.get(key) ?? new Set();
     confirmed.set(key, seen);
-    return { base, repo, token: String(c.secret.token ?? '').trim(), device: c.device, app: c.app, TargetError, zip, net: annai.net.fetch, seen };
+    return { base, repo, token: String(c.secret.token ?? '').trim(), device: c.device, app: c.app, TargetError, zip, read: readAnswer, net: annai.net.fetch, seen };
   };
   return annai.storage.register({
     type: 'github',
@@ -81,6 +83,16 @@ const minutes = (ms) => {
   const m = Math.max(1, Math.round(ms / 60_000));
   return `${m} ${m === 1 ? 'minute' : 'minutes'}`;
 };
+/** An answer from GitHub annai can't use: GitHub's doing, never a bug here (spec §5.5). @param {G} g */
+const unreadable = (g) => new g.TargetError('other', "GitHub answered something annai can't read. annai tries again later.");
+/** A git object id from an answer, or unreadable. @param {G} g @param {unknown} v @returns {string} */
+const shaOf = (g, v) => {
+  if (typeof v === 'string' && /^[0-9a-f]{40}$/.test(v)) return v;
+  throw unreadable(g);
+};
+/** @param {unknown} v @returns {v is Record<string, any>} */
+const isObject = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+
 /** @param {string} branch */
 const refPath = (branch) => branch.split('/').map(encodeURIComponent).join('/');
 
@@ -159,7 +171,7 @@ async function failure(g, res) {
 async function json(g, method, path, body, ok = [200]) {
   const res = await call(g, method, path, { body });
   if (!ok.includes(res.status)) throw await failure(g, res);
-  return res.json();
+  return g.read(res, 'json', 'GitHub');
 }
 
 /** What can be told without asking GitHub. @param {G} g */
@@ -175,6 +187,7 @@ async function repoInfo(g) {
   ready(g);
   const E = g.TargetError;
   const r = await json(g, 'GET', '');
+  if (!isObject(r) || typeof r.full_name !== 'string' || typeof r.default_branch !== 'string') throw unreadable(g);
   if (!r.private) {
     throw new E('refused', `${r.full_name} is public, so anyone could read your trips there. Make it private on GitHub (the repository's Settings, then Change visibility), or choose a private repository.`);
   }
@@ -194,25 +207,29 @@ async function headOf(g, branch) {
   if (res.status === 404) return null;
   if (res.status === 409) return 'empty';
   if (!res.ok) throw await failure(g, res);
-  return /** @type {string} */ ((await res.json()).object.sha);
+  return shaOf(g, (await g.read(res, 'json', 'GitHub'))?.object?.sha);
 }
 
 /** A commit and its files, by path. @param {G} g @param {string} sha */
 async function snapshot(g, sha) {
   const commit = await json(g, 'GET', `/git/commits/${sha}`);
-  const tree = await json(g, 'GET', `/git/trees/${commit.tree.sha}?recursive=1`);
+  const tree = await json(g, 'GET', `/git/trees/${shaOf(g, commit?.tree?.sha)}?recursive=1`);
+  if (!isObject(tree) || !Array.isArray(tree.tree)) throw unreadable(g);
   if (tree.truncated) throw new g.TargetError('refused', `${g.repo} holds more files than GitHub lists at once, so annai can't use it. Choose a new private repository.`);
   /** @type {Map<string, RemoteFile>} */
   const files = new Map();
-  for (const e of tree.tree) if (e.type === 'blob') files.set(e.path, { sha: e.sha, size: e.size ?? 0, mode: e.mode });
+  for (const e of tree.tree) {
+    if (isObject(e) && e.type === 'blob' && typeof e.path === 'string' && typeof e.sha === 'string') files.set(e.path, { sha: e.sha, size: Number(e.size) || 0, mode: String(e.mode ?? '100644') });
+  }
   return { commit, files };
 }
 
 /** A commit as a backup annai lists. @param {{ sha: string, message: string, author?: { date?: string }, committer?: { date?: string } }} c */
 function describe(c) {
-  const device = /^Device: (\S+)$/m.exec(c.message)?.[1];
-  const label = /^annai backup from (.+)$/m.exec(c.message)?.[1];
-  return { id: c.sha, at: Date.parse(c.author?.date ?? c.committer?.date ?? '') || 0, ...(device ? { device } : {}), ...(label ? { label } : {}) };
+  const said = typeof c?.message === 'string' ? c.message : '';
+  const device = /^Device: (\S+)$/m.exec(said)?.[1];
+  const label = /^annai backup from (.+)$/m.exec(said)?.[1];
+  return { id: String(c?.sha ?? ''), at: Date.parse(String(c?.author?.date ?? c?.committer?.date ?? '')) || 0, ...(device ? { device } : {}), ...(label ? { label } : {}) };
 }
 
 /** @param {G} g */
@@ -222,7 +239,7 @@ const message = (g) => `annai backup from ${g.device.label}\n\nDevice: ${g.devic
 async function start(g) {
   const res = await call(g, 'PUT', '/contents/README.md', { body: { message: 'Start annai backups', content: base64(enc.encode(README)) } });
   if (res.status !== 201 && res.status !== 200) throw await failure(g, res);
-  return (await res.json()).commit.sha;
+  return shaOf(g, (await g.read(res, 'json', 'GitHub'))?.commit?.sha);
 }
 
 /**
@@ -297,18 +314,19 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     ...extras.map((e) => ({ path: e.path, mode: e.mode, type: 'blob', sha: e.sha })),
   ];
   const made = await json(g, 'POST', '/git/trees', { tree }, [201]);
-  if (made.sha !== want) throw new E('other', "GitHub stored this backup differently from what annai sent, so annai didn't keep it. annai tries again later.");
+  if (made?.sha !== want) throw new E('other', "GitHub stored this backup differently from what annai sent, so annai didn't keep it. annai tries again later.");
   for (const sha of inline.keys()) g.seen.add(sha);
-  const commit = await json(g, 'POST', '/git/commits', { message: message(g), tree: made.sha, parents: parent ? [parent] : [] }, [201]);
+  const commit = await json(g, 'POST', '/git/commits', { message: message(g), tree: want, parents: parent ? [parent] : [] }, [201]);
+  const commitSha = shaOf(g, commit?.sha);
   const moved = parent
-    ? await call(g, 'PATCH', `/git/refs/heads/${refPath(branch)}`, { body: { sha: commit.sha, force: false } })
-    : await call(g, 'POST', '/git/refs', { body: { ref: `refs/heads/${branch}`, sha: commit.sha } });
+    ? await call(g, 'PATCH', `/git/refs/heads/${refPath(branch)}`, { body: { sha: commitSha, force: false } })
+    : await call(g, 'POST', '/git/refs', { body: { ref: `refs/heads/${branch}`, sha: commitSha } });
   if (moved.status === 422) {
     const [remote] = await list(g).catch(() => []);
     throw new E('newer', `Another device backed up to ${g.repo} at the same moment.`, { remote: remote ?? { id: '', at: Date.now() } });
   }
   if (!moved.ok) throw await failure(g, moved);
-  return { id: commit.sha, at: Date.parse(commit.author?.date ?? '') || Date.now(), uploaded: bytes, files: send.length };
+  return { id: commitSha, at: Date.parse(String(commit?.author?.date ?? '')) || Date.now(), uploaded: bytes, files: send.length };
 }
 
 /** Sends one file as a blob, unless GitHub has it already (an unfinished try may have left it). @param {G} g @param {{ path: string, sha: string }} e @param {Uint8Array} bytes @param {AbortSignal} [signal] */
@@ -318,7 +336,7 @@ async function upload(g, e, bytes, signal) {
   if (there.status !== 200) {
     const res = await call(g, 'POST', '/git/blobs', { body: { content: base64(bytes), encoding: 'base64' }, signal });
     if (res.status !== 201) throw await failure(g, res);
-    if ((await res.json()).sha !== e.sha) throw new g.TargetError('other', `GitHub stored ${shown(e.path)} differently from what annai sent. annai tries again later.`);
+    if ((await g.read(res, 'json', 'GitHub'))?.sha !== e.sha) throw new g.TargetError('other', `GitHub stored ${shown(e.path)} differently from what annai sent. annai tries again later.`);
   }
   g.seen.add(e.sha);
 }
@@ -330,8 +348,9 @@ async function list(g) {
   if (res.status === 409) return [];
   if (!res.ok) throw await failure(g, res);
   /** @type {any[]} */
-  const commits = await res.json();
-  return commits.filter((c) => /^annai backup\b/.test(c.commit?.message ?? ''))
+  const commits = await g.read(res, 'json', 'GitHub');
+  if (!Array.isArray(commits)) throw unreadable(g);
+  return commits.filter((c) => isObject(c) && typeof c.sha === 'string' && /^annai backup\b/.test(String(c.commit?.message ?? '')))
     .map((c) => describe({ sha: c.sha, message: c.commit.message, author: c.commit.author, committer: c.commit.committer }));
 }
 
@@ -354,7 +373,8 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
   } catch {
     throw new E('other', 'This backup is damaged: its annai-archive.json is not readable.');
   }
-  const named = [...(manifest?.files ?? []), ...(manifest?.blobs ?? []), ...(manifest?.extras ?? [])].map((x) => x?.name);
+  const lists = [manifest?.files, manifest?.blobs, manifest?.extras].map((l) => (Array.isArray(l) ? l : []));
+  const named = lists.flat().map((x) => x?.name);
   const names = [...new Set(named.filter((n) => typeof n === 'string' && n !== MANIFEST))];
   const out = new g.zip.ZipWriter();
   for (const [i, name] of names.entries()) {
@@ -371,5 +391,5 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
 async function blob(g, sha, signal) {
   const res = await call(g, 'GET', `/git/blobs/${sha}`, { raw: true, signal });
   if (!res.ok) throw await failure(g, res);
-  return new Uint8Array(await res.arrayBuffer());
+  return new Uint8Array(await g.read(res, 'arrayBuffer', 'GitHub'));
 }

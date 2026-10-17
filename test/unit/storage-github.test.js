@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { activate } from '../../plugins-official/storage-github/index.js';
 import { blobId, treeId, nest, GitPathError } from '../../plugins-official/storage-github/git.js';
-import { TargetError } from '../../src/core/storage-types.js';
+import { TargetError, readAnswer } from '../../src/core/storage-types.js';
 import { ZipReader, ZipWriter, readZip } from '../../src/core/zip.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -22,7 +22,7 @@ function github(mod = { activate }) {
   /** @type {any} */
   let type = null;
   mod.activate({
-    helpers: { TargetError, zip: { ZipReader, ZipWriter } },
+    helpers: { TargetError, readAnswer, zip: { ZipReader, ZipWriter } },
     net: { fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => { sent.push({ url, init }); return fetch(url, init); } },
     storage: { register: (/** @type {any} */ t) => { type = t; return () => {}; } },
   });
@@ -247,6 +247,39 @@ test("what GitHub can't hold stops the backup with its name; a backup too large 
     gh.breakNextTree();
     await assert.rejects(type.put(ctx(gh), await archive(await device()), opts()), refused('other', /differently/));
     assert.deepEqual(gh.commits(REPO).map((c) => c.message), ['Start annai backups']);
+  } finally {
+    await gh.stop();
+  }
+});
+
+test("a broken or hostile answer from GitHub is GitHub's answer, never a crash in the plugin (spec §5.5)", async () => {
+  const gh = await startGitHub({ repos: { [REPO]: { files: { 'README.md': 'x' } } } });
+  try {
+    const { type } = github();
+    const a = await archive(await device());
+    /** @type {[string, string, string][]} method, a part of the path, the answer */
+    const cases = [
+      ['GET', `/repos/${REPO}`, '<html>Unicorn!</html>'],
+      ['GET', `/repos/${REPO}`, 'null'],
+      ['GET', '/git/ref/heads/main', '{}'],
+      ['GET', '/git/ref/heads/main', '{"object":5}'],
+      ['GET', '/git/commits/', '{"tree":5}'],
+      ['GET', '/git/trees/', '{"tree":"x","truncated":false}'],
+      ['POST', '/git/trees', '[]'],
+      ['POST', '/git/commits', '{}'],
+    ];
+    for (const [method, part, body] of cases) {
+      gh.garbleNext({ method, part, body });
+      await assert.rejects(type.put(ctx(gh), a, opts()), (/** @type {any} */ e) => e instanceof TargetError && e.kind === 'other', `${method} ${part} ${body}`);
+    }
+    gh.garbleNext({ method: 'GET', part: '/commits', body: '{"not":"a list"}' });
+    await assert.rejects(type.list(ctx(gh)), refused('other', /can't read/));
+    const put = await type.put(ctx(gh), a, opts());
+    gh.garbleNext({ method: 'GET', part: '/git/trees/', body: '{"tree":[null,5,"x"]}' });
+    await assert.rejects(type.get(ctx(gh), put.id, { onProgress: () => {} }), refused('missing', /isn't an annai backup/));
+    gh.garbleNext({ method: 'GET', part: '/git/blobs/', body: '<html>Unicorn!</html>' });
+    await assert.rejects(type.get(ctx(gh), put.id, { onProgress: () => {} }), refused('other', /damaged/));
+    assert.ok((await type.get(ctx(gh), put.id, { onProgress: () => {} })).size > 0, 'and the next answer is read as usual');
   } finally {
     await gh.stop();
   }

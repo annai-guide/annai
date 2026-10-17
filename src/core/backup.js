@@ -1,7 +1,7 @@
 import { exportArchive, PRESETS } from './archive.js';
 import { recordBackup, SYS } from './scopes.js';
 import { logEvent } from './events.js';
-import { withoutSecrets } from './agent/net.js';
+import { withoutSecrets, withoutSecretsIn } from './agent/net.js';
 import { isPluginBug } from './plugins.js';
 import { storageTypes, TargetError, NEEDS_YOU, backupFileName } from './storage-types.js';
 import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret } from './backup-targets.js';
@@ -81,6 +81,19 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   const stopped = (e) => /** @type {any} */ (e)?.name === 'AbortError';
 
   /**
+   * A backup a place listed, as annai keeps and shows it: only what it needs, and no secret, since
+   * its words come from the place (a commit message, a file name).
+   * @param {any} r @returns {Promise<RemoteBackup>}
+   */
+  async function keptRemote(r) {
+    return withoutSecretsIn(store, {
+      id: String(r?.id ?? ''), at: Number.isFinite(r?.at) ? r.at : 0,
+      ...(typeof r?.device === 'string' ? { device: r.device.slice(0, 64) } : {}),
+      ...(typeof r?.label === 'string' ? { label: r.label.slice(0, 40) } : {}),
+    });
+  }
+
+  /**
    * Calls a place's type. A bug in its code counts against its plugin (spec §5.5); every other
    * error comes back clean.
    * @template T @param {Target} rec @param {string} what @param {(t: StorageType, c: TargetContext) => Promise<T>} fn @returns {Promise<T>}
@@ -91,9 +104,12 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     try {
       return await fn(type, { config: { ...rec.config }, secret: await targetSecret(store, rec.id), device: { id: await deviceId(ws), label }, app });
     } catch (e) {
-      if (stopped(e)) throw e;
-      if (isPluginBug(e)) registry.fail(type.pluginId, `backup ${what}`, e);
-      throw await clean(e);
+      // A stop is a stop, in annai's own words: whatever the plugin's error said may hold a secret.
+      if (stopped(e)) throw new DOMException('The backup was stopped.', 'AbortError');
+      const cleaned = await clean(e);
+      // A bug counts against the plugin (spec §5.5), told without any secret its message echoed.
+      if (isPluginBug(e)) registry.fail(type.pluginId, `backup ${what}`, cleaned);
+      throw cleaned;
     }
   }
 
@@ -102,7 +118,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     const at = now();
     /** @type {Hold} */
     let h;
-    if (e.kind === 'newer') h = { kind: 'newer', remote: e.remote ?? { id: '', at } };
+    if (e.kind === 'newer') h = { kind: 'newer', remote: await keptRemote(e.remote ?? { id: '', at }) };
     else if (e.kind === 'large') h = { kind: 'large', bytes: e.bytes ?? 0, at };
     else {
       const count = rec.hold?.kind === 'error' ? rec.hold.count + 1 : 1;
@@ -139,7 +155,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         await log('backup.prune', { target: rec.id, type: rec.type, backup: b.id });
       }
     } catch (e) {
-      await log('backup.error', { target: rec.id, type: rec.type, kind: 'prune', message: String(/** @type {any} */ (e)?.message ?? e) });
+      await log('backup.error', { target: rec.id, type: rec.type, kind: 'prune', message: (await clean(e)).message });
     }
   }
 
@@ -169,10 +185,11 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
           emit();
         },
       }));
-      const at = Number.isFinite(result.at) ? result.at : now();
+      const at = Number.isFinite(result?.at) ? result.at : now();
+      const made = await keptRemote({ id: result?.id, at });
       await recordBackup(store, built.seqs, at);
-      await setTarget(ws, id, { last: { id: result.id, at, seqs: Object.fromEntries(built.seqs), bytes: built.blob.size }, hold: null });
-      await log('backup', { target: id, type: rec.type, reason, backup: result.id, files: result.files ?? null, uploaded: result.uploaded ?? built.blob.size, ms: now() - started });
+      await setTarget(ws, id, { last: { id: made.id, at, seqs: Object.fromEntries(built.seqs), bytes: built.blob.size }, hold: null });
+      await log('backup', { target: id, type: rec.type, reason, backup: made.id, files: Number.isFinite(result?.files) ? result.files : null, uploaded: Number.isFinite(result?.uploaded) ? result.uploaded : built.blob.size, ms: now() - started });
       if (file) await keepLast(rec, me);
       return result;
     } catch (e) {
@@ -217,6 +234,17 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
      */
     async update(id, { config, secret, auto, mobileData, encrypt, keys, keep, passphrase }) {
       const rec = await target(id);
+      // An address with a user name and password in it would keep them in the place's record.
+      for (const v of Object.values(config ?? {})) {
+        /** @type {URL | null} */
+        let u = null;
+        try {
+          u = new URL(String(v));
+        } catch {
+          // not an address
+        }
+        if (u && (u.username || u.password)) throw new TargetError('setup', 'Put the user name and the password in their own fields, not in the address.');
+      }
       const signIn = Boolean(secret && Object.keys(secret).length);
       if (signIn) await setTargetSecret(store, id, /** @type {Record<string, string>} */ (secret));
       if (passphrase !== undefined) await setTargetSecret(store, id, { passphrase });
@@ -264,15 +292,17 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
      */
     async check(id) {
       const rec = await target(id);
-      const { note } = await call(rec, 'check', (t, c) => t.check(c));
-      const [remote] = await call(rec, 'list', (t, c) => t.list(c));
+      const said = (await call(rec, 'check', (t, c) => t.check(c)))?.note;
+      const note = await withoutSecrets(store, String(said ?? 'Works.'));
+      const listed = await call(rec, 'list', (t, c) => t.list(c));
+      const remote = Array.isArray(listed) && listed[0] ? await keptRemote(listed[0]) : null;
       const me = await deviceId(ws);
-      const unseen = Boolean(remote) && remote.id !== rec.last?.id;
-      const newer = unseen && remote.device !== me ? remote : null;
+      const unseen = remote !== null && remote.id !== rec.last?.id ? remote : null;
+      const newer = unseen && unseen.device !== me ? unseen : null;
       await setTarget(ws, id, {
         checked: now(),
         // A backup this device made but didn't get to note is the one to build on.
-        ...(unseen && !newer ? { last: { id: remote.id, at: remote.at, seqs: {}, bytes: 0 } } : {}),
+        ...(unseen && !newer ? { last: { id: unseen.id, at: unseen.at, seqs: {}, bytes: 0 } } : {}),
         // The user is looking at the place's screen, which shows the newer backup: no card for it.
         hold: newer ? { kind: 'newer', remote: newer, seen: true } : rec.hold?.kind === 'large' ? rec.hold : null,
       });
@@ -290,7 +320,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     /** The backups at a place, newest first. @param {string} id */
     async remote(id) {
       const rec = await target(id);
-      return call(rec, 'list', (t, c) => t.list(c));
+      const listed = await call(rec, 'list', (t, c) => t.list(c));
+      return Promise.all((Array.isArray(listed) ? listed : []).map(keptRemote));
     },
 
     /** Downloads one backup from a place, as an archive file for the import screen (spec §12.3). @param {string} id @param {string} backupId */
