@@ -121,6 +121,46 @@ export default function (test, assert) {
     await eraseDatabase(name);
   });
 
+  test('idb: a version-3 database gains the type index, and a query by type reads only entries of those types (A6)', async () => {
+    const name = `annai-test-v3-${Date.now()}`;
+    await eraseDatabase(name);
+    const v3 = await openDatabase(name, 3);
+    await new Promise((resolve, reject) => {
+      const tx = v3.transaction(['events'], 'readwrite');
+      const events = tx.objectStore('events');
+      for (let i = 1; i <= 200; i++) events.put({ scope: 'trip-1', seq: i, ts: i, type: i % 50 === 0 ? 'trigger.fired' : 'location', actor: 'system', data: { i } });
+      events.put({ scope: 'trip-2', seq: 1, ts: 1, type: 'trigger.fired', actor: 'system' });
+      tx.oncomplete = () => resolve(undefined);
+      tx.onerror = () => reject(tx.error);
+    });
+    v3.close();
+    const s = await createIdbStore(name);
+    const read = { store: 0, index: 0 };
+    const storeCursor = IDBObjectStore.prototype.openCursor;
+    const indexCursor = IDBIndex.prototype.openCursor;
+    IDBObjectStore.prototype.openCursor = /** @type {any} */ (/** @this {any} */ function (/** @type {any[]} */ ...a) {
+      read.store++;
+      return storeCursor.apply(this, /** @type {any} */ (a));
+    });
+    IDBIndex.prototype.openCursor = /** @type {any} */ (/** @this {any} */ function (/** @type {any[]} */ ...a) {
+      read.index++;
+      return indexCursor.apply(this, /** @type {any} */ (a));
+    });
+    try {
+      const fired = await s.tx(['events'], 'readonly', (t) => t.listEvents('trip-1', { types: ['trigger.fired'] }));
+      assert.deepEqual(fired.map((e) => e.seq), [50, 100, 150, 200]);
+      const last = await s.tx(['events'], 'readonly', (t) => t.listEvents('trip-1', { types: ['trigger.fired', 'nothing'], reverse: true, limit: 2, before: 200 }));
+      assert.deepEqual(last.map((e) => e.seq), [150, 100]);
+      assert.equal(read.store, 0, 'no walk through the whole log');
+      assert.ok(read.index >= 2);
+    } finally {
+      IDBObjectStore.prototype.openCursor = storeCursor;
+      IDBIndex.prototype.openCursor = indexCursor;
+    }
+    s.close();
+    await eraseDatabase(name);
+  });
+
   test('idb: a closed store never opens the database again (a tab that stopped must not write)', async () => {
     const name = `annai-test-closed-${Date.now()}`;
     /** @type {IDBDatabase[]} */

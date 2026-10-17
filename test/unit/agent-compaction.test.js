@@ -155,3 +155,16 @@ test('with uploads, a big photo makes no housekeeping due (spec §6.5, review I7
     assert.equal(timers.some(Boolean), !uploading, uploading ? 'uploaded: counted as its id' : 'sent as bytes: due');
   }
 });
+
+test('housekeeping reads the conversation by type: location points and the like are not walked (A6)', async () => {
+  const { noteQueries } = await import('./store-spy.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
+  for (let i = 0; i < 5; i++) {
+    k.agent.send(`Message ${i}`);
+    await k.agent.idle();
+  }
+  const queries = noteQueries(k.store);
+  assert.equal(await k.agent.compact('cold'), true);
+  const untyped = queries.filter((q) => !(Array.isArray(q.types) && q.types.length));
+  assert.deepEqual(untyped, []);
+});

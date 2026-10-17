@@ -2,7 +2,7 @@
 import { storeError, StoppedError } from './errors.js';
 
 export const DB_NAME = 'annai';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 /**
  * Opens the database, creating or upgrading it. An upgrade that another connection
@@ -41,6 +41,9 @@ function upgrade(db, tx, from, to) {
     events.createIndex('old', 'data.old');
     events.createIndex('new', 'data.new');
   }
+  // 4: log entries by type, so a query by type reads only those entries, not a day's location points (A6).
+  // The records stay as they are, so exports and Backups are unchanged.
+  if (from < 4 && to >= 4) tx.objectStore('events').createIndex('type', ['scope', 'type', 'seq']);
 }
 
 /** Deletes a whole database (used by "Erase everything" and by tests). @param {string} [name] */
@@ -240,6 +243,30 @@ function makeTx(t) {
       const limit = q.limit ?? Infinity;
       if (lo > hi || limit <= 0) {
         res([]);
+        return;
+      }
+      if (q.types) {
+        // By type: each type's entries through the type index, merged in order (DB version 4).
+        const kinds = [...new Set(q.types)].filter((k) => !q.notTypes?.includes(k));
+        const index = os('events').index('type');
+        Promise.all(kinds.map((k) => new Promise((done, fail) => {
+          /** @type {any[]} */
+          const got = [];
+          const r = index.openCursor(IDBKeyRange.bound([scope, k, lo], [scope, k, hi]), q.reverse ? 'prev' : 'next');
+          r.onsuccess = () => {
+            const c = r.result;
+            if (!c || got.length >= limit) {
+              done(got);
+              return;
+            }
+            got.push(c.value);
+            c.continue();
+          };
+          r.onerror = () => fail(r.error);
+        }))).then((lists) => {
+          const all = /** @type {any[]} */ (lists.flat()).sort((a, b) => (q.reverse ? b.seq - a.seq : a.seq - b.seq));
+          res(all.slice(0, limit));
+        }, rej);
         return;
       }
       /** @type {any[]} */
