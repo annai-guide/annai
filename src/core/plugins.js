@@ -6,7 +6,8 @@ import { tracedFetch } from './agent/net.js';
 import { record } from './agent/log.js';
 import { readAppSettings } from './settings.js';
 import { logEvent } from './events.js';
-import { readZip } from './zip.js';
+import { readZip, ZipReader, ZipWriter } from './zip.js';
+import { TargetError, checkStorageType } from './storage-types.js';
 import { PluginError } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
@@ -31,7 +32,18 @@ const STATE = '/installed.json';
 /** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
-const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch });
+const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }) });
+
+/**
+ * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the
+ * browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer (§17).
+ * @param {unknown} e
+ */
+export function isPluginBug(e) {
+  if (!(e instanceof Error)) return true;
+  const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
+  return !offline && BUGS.some((B) => e instanceof B);
+}
 
 export const PLUGIN_MANIFEST_SCHEMA = {
   type: 'object',
@@ -398,8 +410,7 @@ export class PluginHost {
                 // A tool's own error is its answer: Shiori sees it and adapts (spec §6.7). Only a crash counts
                 // against the plugin, which is switched off when it keeps crashing (§5.5).
                 // A fetch the browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer too (§17).
-                const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
-                if (e instanceof Error && (offline || !BUGS.some((B) => e instanceof B))) throw e;
+                if (!isPluginBug(e)) throw e;
                 registry.fail(id, `tool ${tool.name}`, e);
                 throw new PluginError(id, `the tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, e);
               }
@@ -442,6 +453,14 @@ export class PluginHost {
             throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run()`);
           }
           return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
+        },
+      }),
+      storage: Object.freeze({
+        /** A kind of place to back up to (spec §12.4); storage-types.js says what it must have. */
+        register: (/** @type {any} */ type) => {
+          const wrong = checkStorageType(type);
+          if (wrong) throw new PluginError(id, wrong);
+          return registry.add(id, 'storage-type', Object.freeze({ ...type, name: String(type.name).trim(), fields: type.fields ?? [], secret: type.secret ?? [], pluginId: id }));
         },
       }),
       helpers: HELPERS,
