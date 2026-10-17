@@ -263,7 +263,10 @@ const fileName = (name) => plainPath(name);
 /**
  * A package's files from an address (choice 6): a zip, whatever the address ends with; an
  * annai-plugin.json and the files it names; or a SKILL.md and the files it links to inside its folder.
- * Nothing is stored. Every error is a plain Error that says what to do.
+ * Nothing is stored. Every error is a plain Error that says what to do. Each file is asked for with
+ * the browser's cache revalidated (minors 17): the browser sends the ETag or date it kept, so an update
+ * check downloads only what changed, never a stale copy. annai sends no such header itself: GitHub's
+ * raw files refuse the CORS preflight one would need.
  * @param {string} address
  * @param {{ fetch: (url: string, init?: RequestInit) => Promise<Response>, max?: number }} o
  * @returns {Promise<Map<string, Uint8Array>>} files by name inside the package (a zip's as it has them)
@@ -283,7 +286,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     /** @type {Response} */
     let res;
     try {
-      res = await get(u.href);
+      res = await get(u.href, { cache: 'no-cache' });
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
       throw new Error(`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`);
