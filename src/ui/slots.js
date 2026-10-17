@@ -65,7 +65,8 @@ const cleanups = { screen: [], dock: [] };
  * Runs a plugin's drawing into el. A cleanup it returns (a function, or a promise of one) runs when
  * that group is drawn again; anything it throws, or a promise of it that rejects, is its plugin's
  * failure (counted), el is left empty and hidden, and onFail runs, so annai can draw its own instead
- * (fix pass 8b-3). Returns false when it failed at once.
+ * (fix pass 8b-3). A drawing that returns, or whose promise resolves, ends its plugin's run of failures
+ * (fix pass 8b-4). Returns false when it failed at once.
  * @param {any} ctx @param {Entry} entry @param {HTMLElement} el @param {(ui: any) => any} call
  * @param {{ group?: 'screen' | 'dock', what?: string, onFail?: () => void }} [o]
  */
@@ -79,17 +80,60 @@ export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing'
     ctx.registry?.fail(entry.pluginId, what, e);
     onFail?.();
   };
+  const worked = () => ctx.registry?.succeeded(entry.pluginId);
   try {
     const r = call(pluginUi(ctx, entry.pluginId));
     if (r && typeof r.then === 'function') {
-      r.then((/** @type {unknown} */ x) => { if (typeof x === 'function') cleanups[group].push(/** @type {() => void} */ (x)); }, fail);
-    } else if (typeof r === 'function') {
-      cleanups[group].push(r);
+      r.then((/** @type {unknown} */ x) => {
+        if (typeof x === 'function') cleanups[group].push(/** @type {() => void} */ (x));
+        worked();
+      }, fail);
+    } else {
+      if (typeof r === 'function') cleanups[group].push(r);
+      worked();
     }
   } catch (e) {
     fail(e);
   }
   return !failed;
+}
+
+/**
+ * Runs a plugin's dock action (spec §16.4: dock-action). What it throws, or a promise of it that rejects,
+ * is its plugin's failure; a run that returns, or whose promise resolves, ends its run of failures (fix pass 8b-4).
+ * @param {any} ctx @param {Entry} entry
+ */
+export function runAction(ctx, entry) {
+  const fail = (/** @type {unknown} */ e) => ctx.registry?.fail(entry.pluginId, `dock action ${entry.item.id}`, e);
+  try {
+    const worked = () => ctx.registry?.succeeded(entry.pluginId);
+    const r = entry.item.run(pluginUi(ctx, entry.pluginId));
+    if (r && typeof r.then === 'function') r.then(worked, fail);
+    else worked();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+/**
+ * A component a plugin makes (an avatar or a dock, spec §16.4): what create() returns when wrong(it) has
+ * nothing to say, which ends its plugin's run of failures (fix pass 8b-4); else null, and its plugin's
+ * failure is counted.
+ * @template T
+ * @param {any} ctx @param {Entry} entry @param {string} what @param {() => T} create @param {(made: T) => string | null} wrong
+ * @returns {T | null}
+ */
+export function made(ctx, entry, what, create, wrong) {
+  try {
+    const x = create();
+    const why = wrong(x);
+    if (why) throw new Error(why);
+    ctx.registry?.succeeded(entry.pluginId);
+    return x;
+  } catch (e) {
+    ctx.registry?.fail(entry.pluginId, what, e);
+    return null;
+  }
 }
 
 /** Runs and forgets the cleanups of what was drawn on the screen or the dock. @param {'screen' | 'dock'} group */
