@@ -57,7 +57,8 @@ export function activate(annai) {
 | `annai.events.append(scope, type, data, keep?)` | appends an entry to a scope's log, signed `plugin:<id>`. `keep = { texts: [[name, text]], blobs: [{ bytes, type }] }` stores content and names it in the entry's refs; long texts are kept that way, short ones go in `data`. Returns the entry. |
 | `annai.files` | the files of every scope: `read`, `readText`, `readJSON`, `list`, `write`, `patch`, `delete`, `history`, `restore` |
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Endpoint types" below |
-| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch` |
+| `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key. Never put them in files or log entries. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
 | `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
@@ -143,6 +144,41 @@ export function activate(annai) {
   - `classify(status, body)` can give a sharper kind for an error response.
   - `listRequest()` and `readList()` make "Fetch model list" work.
   - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the endpoint's page (the `uploads` tunable).
+
+## Backup places
+
+A backup place keeps annai's backups somewhere else: a git repository, a bucket, a folder on a server. annai builds each backup (a Backup of everything, spec §12.2) and decides when; your type only moves it. annai's own GitHub type is a plugin too: see `plugins-official/storage-github/`.
+
+```js
+export function activate(annai) {
+  const { TargetError } = annai.helpers;
+  return annai.storage.register({
+    type: 'my-place',                    // lowercase letters, digits and dashes
+    name: 'My place',
+    stores: 'file',                      // "tree": the archive's files, unpacked; "file": the archive file itself
+    fields: [{ key: 'url', label: 'Address', placeholder: 'https://…' }],
+    secret: [{ key: 'password', label: 'Password' }],
+    where: (config) => config.url,
+    async check(c) { return { note: 'Works.' }; },
+    async list(c) { return [/* { id, at, device?, label? }, newest first */]; },
+    async put(c, archive, o) { /* … */ return { id, at }; },
+    async get(c, id, o) { /* … */ return blob; },
+  });
+}
+```
+
+- **`c`** is `{ config, secret, device: { id, label }, app }`. `secret` holds what the user typed in your `secret` fields. annai keeps it in its secrets store, never in files, backups or the trace.
+- **`put(c, archive, o)`** gets `archive = { blob, name, manifest }` and `o = { base, maxUpload, signal, onProgress }`.
+  - **Single writer:** refuse with `new TargetError('newer', words, { remote })` when the place's newest backup is neither `o.base` nor one this device made (`c.device.id`). annai then asks the user.
+  - **Size:** refuse with `TargetError('large', words, { bytes })`, before uploading anything, when you would send more than `o.maxUpload` bytes.
+  - **Progress:** call `o.onProgress({ phase: 'uploading', done, total })` as you go, and stop when `o.signal` aborts.
+- **`get(c, id, o)`** returns the backup as an annai archive file (a `Blob`), which annai opens on its import screen.
+- **`delete(c, id)`**, optional, removes one backup.
+- **Errors are answers:** throw a `TargetError` with a kind and plain words:
+  - `auth`, `refused`, `missing` and `setup` need the user, so annai shows a card once.
+  - `rate` (with `retryAt`) and `other` are tried again later.
+  - A `TypeError` and the like count as a bug in your plugin.
+- **Send every request through `annai.net.fetch`,** so the trace shows it.
 
 ## Rules
 
