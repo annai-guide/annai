@@ -10,7 +10,10 @@ import { PluginHost } from '../../src/core/plugins.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { ensureType, officialUpdates, updateOfficial } from '../../src/core/llm/official.js';
-import { offerPluginUpdates, applyUpdates } from '../../src/ui/plugin-updates.js';
+import { offerPluginUpdates, applyUpdates, pluginUpdates } from '../../src/ui/plugin-updates.js';
+import { addressUpdates, updateFromAddress } from '../../src/core/package-updates.js';
+import { fetchPackage } from '../../src/core/packages.js';
+import { SKILL, hostKit } from './package-kit.js';
 
 const root = new URL('../../', import.meta.url);
 
@@ -107,4 +110,55 @@ test('the card offers updates, applies them on Update, and offers a restart; off
   assert.equal(reloaded, true);
   assert.deepEqual(await offerPluginUpdates(ctx, { fetch: async () => { throw new TypeError('offline'); } }), []);
   assert.equal(cards.length, 2);
+});
+
+const ADDR = 'https://trails.example/tide-pools/SKILL.md';
+
+test('a package from an address is checked there, offered when it changed, and changes only on Update (spec §5.3)', async () => {
+  let served = SKILL;
+  const get = async (/** @type {string} */ url) => (url === ADDR ? new Response(served) : new Response('', { status: 404 }));
+  const { host, registry } = await hostKit();
+  await host.install(await fetchPackage(ADDR, { fetch: get }), { source: 'url', url: ADDR });
+  await host.start('tide-pools');
+  assert.deepEqual(await addressUpdates(host, { fetch: get }), []);
+  served = SKILL.replace('version: "1.2"', 'version: "1.3"').replace('# Tide pools', '# Tide pools, new');
+  const offers = await pluginUpdates(host, { addressFetch: get, fetch: async () => new Response(JSON.stringify({ plugins: [] })) });
+  assert.deepEqual(offers.map((u) => [u.id, u.installed, u.available, u.url]), [['tide-pools', '1.2.0', '1.3.0', ADDR]]);
+  const skill = () => registry.list('skill').find((s) => s.name === 'tide-pools');
+  assert.match(await skill().text(), /^# Tide pools\n/);
+  /** @type {any[]} */
+  const said = [];
+  await applyUpdates({ plugins: host, notices: { card: (/** @type {any} */ c) => said.push(c.title), toast: (/** @type {string} */ t) => said.push(t) } }, offers, { addressFetch: get });
+  assert.deepEqual(said, ['Plugins updated.']);
+  assert.match(await skill().text(), /^# Tide pools, new/);
+  assert.equal((await host.installed())['tide-pools'].version, '1.3.0');
+});
+
+test('a changed skill with the same version is offered as changed', async () => {
+  let served = SKILL;
+  const get = async () => new Response(served);
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(ADDR, { fetch: get }), { source: 'url', url: ADDR });
+  served = SKILL.replace('# Tide pools', '# Tide pools, reworded');
+  const [u] = await addressUpdates(host, { fetch: get });
+  assert.deepEqual([u.installed, u.available, u.changed], ['1.2.0', '1.2.0', true]);
+});
+
+test('an address that is offline, broken or now holds another package offers nothing; Update says why; an off package stays off', async () => {
+  let answer = /** @type {() => Promise<Response>} */ (async () => new Response(SKILL));
+  const get = () => answer();
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(ADDR, { fetch: get }), { source: 'url', url: ADDR });
+  answer = async () => { throw new TypeError('Failed to fetch'); };
+  assert.deepEqual(await addressUpdates(host, { fetch: get }), []);
+  answer = async () => new Response('---\nbroken');
+  assert.deepEqual(await addressUpdates(host, { fetch: get }), []);
+  answer = async () => new Response(SKILL.replace('name: tide-pools', 'name: other-skill'));
+  assert.deepEqual(await addressUpdates(host, { fetch: get }), []);
+  await assert.rejects(updateFromAddress(host, 'tide-pools', { fetch: get }), /now holds another package \(other-skill\)/);
+  answer = async () => new Response(SKILL.replace('version: "1.2"', 'version: "2"'));
+  await host.setEnabled('tide-pools', false);
+  assert.equal(await updateFromAddress(host, 'tide-pools', { fetch: get }), 'started');
+  const s = (await host.installed())['tide-pools'];
+  assert.deepEqual([s.version, s.enabled], ['2.0.0', false]);
 });

@@ -1,0 +1,54 @@
+import { fetchPackage } from './packages.js';
+import { PluginError } from './registry.js';
+
+/**
+ * Updates for packages installed from an address (spec §5.3: "those installed from a URL get the
+ * same check"). A package changed when its fingerprint did (choice 7), so a skill without a version
+ * is offered too. Nothing changes until the user accepts.
+ * @typedef {import('./plugins.js').PluginHost} PluginHost
+ * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
+ * @typedef {{ id: string, name: string, installed: string, available: string, url: string, kind: string, changed: boolean }} AddressUpdate
+ */
+
+/**
+ * The packages installed from an address that have changed there. One that can't be checked now
+ * (offline, broken, now another package) is left out quietly.
+ * @param {PluginHost} host @param {{ fetch: Fetch }} o @returns {Promise<AddressUpdate[]>}
+ */
+export async function addressUpdates(host, { fetch }) {
+  /** @type {AddressUpdate[]} */
+  const out = [];
+  for (const [id, s] of Object.entries(await host.installed())) {
+    if (s.source !== 'url' || typeof s.url !== 'string') continue;
+    try {
+      const pkg = await host.inspect(await fetchPackage(s.url, { fetch }));
+      if (pkg.id !== id || pkg.fingerprint === s.fingerprint) continue;
+      out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: s.url, kind: pkg.kind, changed: pkg.version === s.version });
+    } catch {
+      // not now: the next check asks again
+    }
+  }
+  return out;
+}
+
+/**
+ * Installs what the address holds now, keeping the package off if it was off. Code that already ran
+ * this session runs from the next start, as for annai's own plugins.
+ * @param {PluginHost} host @param {string} id @param {{ fetch: Fetch }} o @returns {Promise<'started' | 'restart'>}
+ */
+export async function updateFromAddress(host, id, { fetch }) {
+  const s = (await host.installed())[id];
+  if (s?.source !== 'url' || typeof s.url !== 'string') throw new PluginError(id, "wasn't installed from an address, so annai has nowhere to look for an update");
+  const files = await fetchPackage(s.url, { fetch });
+  const pkg = await host.inspect(files);
+  if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`);
+  const wasOn = s.enabled !== false;
+  await host.install(files, { source: 'url', url: s.url });
+  if (!wasOn) {
+    await host.setEnabled(id, false);
+    return 'started';
+  }
+  if (host.needsRestart(id)) return 'restart';
+  await host.start(id);
+  return 'started';
+}
