@@ -11,7 +11,7 @@ export const ANSWER_MAX = 8 * 1024 * 1024;
  * @returns {Promise<any>}
  */
 export async function answerJSON(res, where, max = ANSWER_MAX) {
-  if (!res.ok) throw new Error(`${where} answered ${res.status}.`);
+  if (!res.ok) throw Object.assign(new Error(`${where} answered ${res.status}.`), { status: res.status });
   /** @type {string} */
   let text;
   try {

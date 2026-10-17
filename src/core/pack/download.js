@@ -42,6 +42,8 @@ export const STALE_MS = 30 * 86_400_000;
 const GIVE_UP = 3;
 /** How long one answer may take: Overpass runs a query for up to a minute, after waiting for a free slot. */
 export const ANSWER_MS = 120_000;
+/** How long annai waits when Overpass says it has had too many requests (429). */
+export const BUSY_MS = 30_000;
 /** Overpass gives at most this many places for each part. */
 const OSM_LIMIT = 3000;
 const TITLES_PER_ASK = 50;
@@ -86,7 +88,7 @@ function pause(ms, signal) {
 
 /**
  * @param {{ ws: Workspace, scope: string, fetch: Fetch, version: string, signal?: AbortSignal,
- *   onProgress?: (p: Progress) => void, gapMs?: number, now?: () => number, maxBytes?: number, answerMs?: number }} o
+ *   onProgress?: (p: Progress) => void, gapMs?: number, now?: () => number, maxBytes?: number, answerMs?: number, busyMs?: number }} o
  * @returns {Promise<Manifest>}
  */
 export async function downloadPack(o) {
@@ -164,7 +166,7 @@ export async function downloadPack(o) {
     const label = `${p.kind === 'osm' ? 'OpenStreetMap' : 'Wikipedia'} ${p.label}`;
     progress(label);
     try {
-      const got = p.kind === 'osm' ? await osm(p, ask) : await wikipedia(p, ask, headers);
+      const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal)) : await wikipedia(p, ask, headers);
       if (!(await save({ id: p.id, kind: p.kind, path: pathOf(p), items: got.count }, got.content))) break;
       fails = 0;
     } catch (e) {
@@ -239,32 +241,40 @@ async function counted(ws, scope, files) {
   return { places: places.size, summaries: summaries.size };
 }
 
-/** OpenStreetMap places for a part: every kind nearby knows, from the first Overpass server that answers. @param {import('./plan.js').OsmPart} p @param {Ask} ask */
-async function osm(p, ask) {
+/**
+ * OpenStreetMap places for a part: every kind nearby knows, from the first Overpass server that answers.
+ * @param {import('./plan.js').OsmPart} p @param {Ask} ask @param {() => Promise<unknown>} busy waits after a 429
+ */
+async function osm(p, ask, busy) {
   const around = `around:${p.radius},${p.points.map((q) => q.join(',')).join(',')}`;
   const query = `[out:json][timeout:60];(${overpassFilters(KIND_NAMES).map((f) => `nwr(${around})${f};`).join('')});out center tags ${OSM_LIMIT};`;
   /** @type {unknown} */
   let last = null;
   for (const server of OVERPASS) {
     const host = new URL(server).hostname;
-    try {
-      const data = await ask(server, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` }, host);
-      if (!Array.isArray(data?.elements)) throw new Error(`${host} sent an answer annai can't read.`);
-      if (typeof data.remark === 'string' && /error/i.test(data.remark)) throw new Error(`${host} stopped early: ${data.remark.trim().replace(/\.$/, '')}.`);
-      const seen = new Set();
-      /** @type {import('./osm.js').OsmRow[]} */
-      const rows = [];
-      for (const e of data.elements) {
-        const r = osmRow(e);
-        if (r && !seen.has(r[0])) {
-          seen.add(r[0]);
-          rows.push(r);
+    for (let tries = 0; tries < 2; tries++) {
+      try {
+        const data = await ask(server, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` }, host);
+        if (!Array.isArray(data?.elements)) throw new Error(`${host} sent an answer annai can't read.`);
+        if (typeof data.remark === 'string' && /error/i.test(data.remark)) throw new Error(`${host} stopped early: ${data.remark.trim().replace(/\.$/, '')}.`);
+        const seen = new Set();
+        /** @type {import('./osm.js').OsmRow[]} */
+        const rows = [];
+        for (const e of data.elements) {
+          const r = osmRow(e);
+          if (r && !seen.has(r[0])) {
+            seen.add(r[0]);
+            rows.push(r);
+          }
         }
+        return { count: rows.length, content: { area: { points: p.points, radius: p.radius }, rows } };
+      } catch (e) {
+        if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+        last = e;
+        // Too many requests: Overpass asks for a pause (its usage policy), so annai waits once and asks again.
+        if (/** @type {any} */ (e)?.status !== 429 || tries > 0) break;
+        await busy();
       }
-      return { count: rows.length, content: { area: { points: p.points, radius: p.radius }, rows } };
-    } catch (e) {
-      if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      last = e;
     }
   }
   throw new Error(`OpenStreetMap didn't answer (${String(/** @type {any} */ (last)?.message ?? last).replace(/\.$/, '')}).`);
