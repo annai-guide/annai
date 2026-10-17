@@ -6,17 +6,19 @@ const DOING = /** @type {Record<string, string>} */ ({ 'moving-fast': 'moving fa
 
 /**
  * Where the user is, when annai knows: a place they said, or a GPS position that is current. One from
- * before the GPS was lost (refused, a tunnel) or older than ten minutes isn't where they are now.
- * @param {{ on: boolean, gps: string, fix: any }} live @param {number} [now]
+ * before the GPS was lost (refused, a tunnel) or older than ten minutes isn't where they are now, by
+ * live mode's own clock: a simulation's, while one runs (spec §13).
+ * @param {{ on: boolean, gps: string, fix: any, clock?: { now: () => number } }} live @param {number} [now]
  */
-export function knownFix(live, now = Date.now()) {
+export function knownFix(live, now = live.clock?.now() ?? Date.now()) {
   const f = live.fix;
   if (!live.on || !f) return null;
   return f.source === 'manual' || (live.gps === 'ok' && now - f.at <= FRESH_MS) ? f : null;
 }
 
-/** The live chip's words. @param {{ on: boolean, gps: string, activity: string, fix: any }} live */
+/** The live chip's words; during a simulation, it says so (7b choice 10). @param {{ on: boolean, gps: string, activity: string, fix: any, simulating?: boolean, clock?: { now: () => number } }} live */
 export function liveText(live) {
+  if (live.simulating) return `Simulation · ${DOING[live.activity] ?? 'on'}`;
   if (!live.on) return 'Live off';
   if (!knownFix(live)) return live.gps === 'denied' ? 'Live · no location' : live.gps === 'unavailable' ? 'Live · no GPS' : 'Live · finding you';
   return DOING[live.activity] ? `Live · ${DOING[live.activity]}` : 'Live on';
@@ -43,6 +45,17 @@ export function liveChip(ctx) {
     chip.setAttribute('aria-expanded', 'false');
   };
   const open = async () => {
+    const sim = ctx.sim;
+    if (sim?.running) {
+      // A simulation has live mode: the chip pauses or stops it (7b choice 10).
+      menu.replaceChildren(
+        h('button', { class: 'btn', type: 'button', onclick: () => { close(); if (sim.state?.paused) sim.resume(); else sim.pause(); } }, sim.state?.paused ? 'Resume the simulation' : 'Pause the simulation'),
+        h('button', { class: 'btn', type: 'button', onclick: () => { close(); sim.stop(); } }, 'Stop the simulation'),
+        h('a', { class: 'btn', href: '#/simulate', onclick: () => close() }, 'Simulate a trip'));
+      menu.hidden = false;
+      chip.setAttribute('aria-expanded', 'true');
+      return;
+    }
     const items = [h('button', {
       class: 'btn', type: 'button', 'aria-pressed': String(live.on),
       onclick: async () => {
@@ -87,6 +100,7 @@ export function liveChip(ctx) {
     chip.classList.toggle('on', live.on);
   };
   live.onChange(show);
+  ctx.sim?.onChange(show);
   show();
   const el = h('div', { class: 'voice-chip-wrap' }, chip, menu);
   // Escape closes it, from the chip or from inside the menu.
