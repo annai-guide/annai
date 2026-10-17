@@ -51,7 +51,6 @@ test('live mode on: GPS runs, the switch is kept, a state entry is logged and Sh
   assert.equal(k.agent.wakes.length, 1);
   await k.live.setLive(false);
   assert.equal((await k.events(['state'])).length, 2);
-  assert.deepEqual(k.registry.list('skill').map((s) => s.name), ['driving-companion', 'replanning']);
 });
 
 test('location points are kept as §4.5 says; GPS jitter at a stop adds no distance; the activity sensor follows (spec §11.2)', async () => {

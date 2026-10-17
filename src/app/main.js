@@ -75,6 +75,7 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/web/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/places/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/go/index.js', import.meta.url).href);
+  await plugins.addBuiltin(new URL('../plugins/skills/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/voice-browser/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/sensors/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
