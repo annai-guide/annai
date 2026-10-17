@@ -112,3 +112,12 @@ test("Nominatim is told who is asking: the app's origin as the referrer", async 
   await run('geocode', { query: 'Big Sur' }, () => []);
   assert.equal(asked[0].init.referrerPolicy, 'origin');
 });
+
+test('weather without a connection: no forecast, but the sun, worked out on the phone (spec §11.5)', async () => {
+  const { run } = await setup();
+  const out = await run('weather', { lat: 36.27, lng: -121.807, when: '2026-11-27' }, () => { throw new TypeError('Failed to fetch'); });
+  assert.match(out, /^Open-Meteo didn't answer \(Failed to fetch\), so there is no forecast\. Worked out on the phone, in this phone's time zone \([^)]+\): /);
+  assert.match(out, /sunrise \d\d:\d\d, sunset \d\d:\d\d, golden hour until \d\d:\d\d in the morning and from \d\d:\d\d in the evening\.$/);
+  const far = await run('weather', { lat: 69.6492, lng: 18.9553, when: '2026-12-21' }, () => { throw new TypeError('Load failed'); });
+  assert.match(far, /the sun doesn't rise that day; twilight from \d\d:\d\d to \d\d:\d\d\.$/);
+});

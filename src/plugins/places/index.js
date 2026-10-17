@@ -1,4 +1,6 @@
 import { VERSION } from '../../app/version.js';
+import { sunTimes } from '../../core/sun.js';
+import { deviceZone, timeIn } from '../../core/time.js';
 
 export const manifest = {
   id: 'places',
@@ -38,6 +40,26 @@ function meters(lat1, lng1, lat2, lng2) {
   const r = (/** @type {number} */ d) => (d * Math.PI) / 180;
   const a = Math.sin(r(lat2 - lat1) / 2) ** 2 + Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(r(lng2 - lng1) / 2) ** 2;
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * No forecast without Open-Meteo, but the sun's times, worked out on the phone (spec §11.5), in this
+ * phone's time zone (the place's isn't known without the forecast).
+ * @param {{ lat: number, lng: number, when?: string }} i @param {unknown} e
+ */
+function sunOnly(i, e) {
+  const tz = deviceZone();
+  const day = /^\d{4}-\d{2}-\d{2}/.exec(String(i.when ?? ''))?.[0];
+  const noon = day ? Date.parse(`${day}T12:00:00Z`) - (i.lng / 15) * 3_600_000 : Date.now();
+  const t = sunTimes(noon, i.lat, i.lng);
+  const hm = (/** @type {number | null} */ x) => (x === null ? '' : timeIn(x, tz));
+  const head = `Open-Meteo didn't answer (${String(/** @type {any} */ (e)?.message ?? e).replace(/\.$/, '')}), so there is no forecast. Worked out on the phone, in this phone's time zone (${tz}): `;
+  if (t.polar === 'day') return `${head}the sun doesn't set that day.`;
+  if (t.polar === 'night') return `${head}the sun doesn't rise that day${t.dawn !== null ? `; twilight from ${hm(t.dawn)} to ${hm(t.dusk)}` : ''}.`;
+  const golden = t.goldenMorningEnd === null || t.goldenEveningStart === null
+    ? 'the sun stays low, golden light all day'
+    : `golden hour until ${hm(t.goldenMorningEnd)} in the morning and from ${hm(t.goldenEveningStart)} in the evening`;
+  return `${head}sunrise ${hm(t.sunrise)}, sunset ${hm(t.sunset)}, ${golden}.`;
 }
 
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
@@ -140,9 +162,16 @@ export function activate(annai) {
       input: { type: 'object', properties: { ...POINT, when: { type: 'string' } }, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number, when?: string }} i @param {any} call */
       async run(i, call) {
-        const w = await json(`https://api.open-meteo.com/v1/forecast?latitude=${round(i.lat)}&longitude=${round(i.lng)}`
-          + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m'
-          + '&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16', call);
+        /** @type {any} */
+        let w;
+        try {
+          w = await json(`https://api.open-meteo.com/v1/forecast?latitude=${round(i.lat)}&longitude=${round(i.lng)}`
+            + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m'
+            + '&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16', call);
+        } catch (e) {
+          if (call.signal.aborted) throw e;
+          return sunOnly(i, e); // spec §11.5: the sun is worked out on the phone
+        }
         const day = i.when ? String(i.when).slice(0, 10) : null;
         const h = w.hourly ?? {};
         const times = /** @type {string[]} */ (h.time ?? []);
