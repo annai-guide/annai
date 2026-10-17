@@ -1098,14 +1098,25 @@ export class Live {
     await this.#follow();
     const m = this.#moment(o);
     const open = this.#scope();
-    const types = this.types();
     /** @type {Fired[]} */
     const fired = [];
+    try {
+      await this.#look(m, open, fired);
+    } finally {
+      this.#schedule(m); // whatever failed, the clock goes on (L1)
+    }
+    // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
+    this.#tellReminders(fired.length ? 'urgent' : 'calm');
+  }
+
+  /** The watches and the plan looked at (#check), and what fired fired. @param {Moment} m @param {string} open @param {Fired[]} fired */
+  async #look(m, open, fired) {
+    const types = this.types();
     for (const [scope, list] of [...this.#watches]) {
       if (!this.#inPlay(scope)) continue; // the user's own watches aren't due, or expired, on a simulation's clock (review 1)
       for (const w of [...list]) {
         if (expired(w, m.now)) {
-          await this.#drop(scope, w);
+          await this.#drop(scope, w).catch((e) => this.#fail(e)); // gone from live mode, if not from its file
           continue;
         }
         const type = types.get(w.when?.type);
@@ -1120,9 +1131,6 @@ export class Live {
       if (f) fired.push(this.#firedOf(open, w, PLAN, f, m.now));
     }
     if (fired.length) await this.#fire(fired, m.now);
-    this.#schedule(m);
-    // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
-    this.#tellReminders(fired.length ? 'urgent' : 'calm');
   }
 
   /** @param {string} scope @param {Watch} watch @param {TriggerType} type @param {Firing} firing @param {number} now @returns {Fired} */
@@ -1161,8 +1169,9 @@ export class Live {
         mem.km0 = this.odometer;
         if (f.place) mem.lastPlace = f.place;
       }
-      if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch);
       done.push(x);
+      // A one-time watch goes; a watch file that can't be removed is told, and the reminder still comes (L1).
+      if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
       // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
       if (this.shown) {
         this.#said.add(this.#keyOf(x.scope, x.watch));

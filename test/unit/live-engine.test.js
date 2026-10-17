@@ -401,12 +401,13 @@ test("a log write that fails doesn't hold a reminder back or make it fire again:
   await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Call Mia.' });
   await k.fix(at('09:56'), MONTEREY);
   await k.live.setWatch(k.trip, { when: { type: 'every', minutes: 5 }, fallback: 'Stretch.' });
-  // From now on the log takes no firing and no point (the disk is full, say).
+  // From now on nothing more is written: no firing, no point, and no watch file removed (the disk is full, say).
   const tx = k.store.tx.bind(k.store);
   k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
     get(o, key) {
       const v = o[key];
-      if (key === 'appendEvent') return (/** @type {string} */ scope, /** @type {any} */ e) => (['trigger.fired', 'location'].includes(e.type) ? Promise.reject(new Error('The disk is full.')) : o.appendEvent(scope, e));
+      if (key === 'appendEvent') return (/** @type {string} */ scope, /** @type {any} */ e) => (['trigger.fired', 'location', 'file.write', 'file.delete'].includes(e.type) ? Promise.reject(new Error('The disk is full.')) : o.appendEvent(scope, e));
+      if (key === 'deleteFile' || key === 'putFile') return () => Promise.reject(new Error('The disk is full.'));
       return typeof v === 'function' ? v.bind(o) : v;
     },
   })));
