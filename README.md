@@ -31,7 +31,7 @@ memories afterwards.
 
 - Tap Shiori and talk. With voice on she answers aloud, sentence by sentence as she writes, then listens for your answer; tap her while she speaks to cut her off.
 - Voices and transcription are lists you order in Settings → Models: OpenAI-compatible voices and transcription (OpenAI, Groq, local servers), "Send audio to the model" for models that take audio, phone dictation, and the browser's own voice.
-- The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it.
+- The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it. To keep your voice on the phone, type with your keyboard's microphone key instead: iPhone and most Android keyboards can dictate on the phone itself.
 
 ## Principles
 
