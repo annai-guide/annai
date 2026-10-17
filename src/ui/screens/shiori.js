@@ -2,9 +2,27 @@ import { h, field, checkbox } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { ME } from '../../core/scopes.js';
 import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core/agent/personalities.js';
+import { LABELS } from '../../core/agent/loop.js';
+import { createAvatar } from '../avatar.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
+
+/** Her states as spec §16.3 names them, in its order. */
+const LOOKS = /** @type {const} */ ([['sleeping', 'Asleep'], ['listening', 'Listening'], ['hearing', 'Hearing you'], ['thinking', 'Thinking'],
+  ['speaking', 'Talking'], ['waiting', 'Your turn'], ['away', 'Working'], ['offline', 'Offline']]);
+
+/** Every way she can look, side by side, to check her art (the user, 2026-10-18). */
+function looks() {
+  return h('div', { class: 'looks' }, ...LOOKS.map(([state, name]) => {
+    const a = createAvatar({ size: 'md', label: `Shiori, ${name.toLowerCase()}` });
+    a.setState(state);
+    if (state === 'speaking') a.setLevel(0.6, 'her');
+    if (state === 'hearing') a.setLevel(0.6, 'you');
+    return h('figure', { class: 'look', dataset: { state } }, a.el,
+      h('figcaption', {}, h('strong', { text: name }), h('span', { class: 'sub', text: LABELS[state] })));
+  }));
+}
 
 /** Settings → Shiori (spec §14.1, §6.6, §6.5). @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderShiori(ctx, route) {
@@ -32,6 +50,9 @@ export async function renderShiori(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Shiori' }),
+    section('How she looks',
+      h('p', { class: 'sub', text: 'Each state, as the dock shows her, with the words under her.' }),
+      looks()),
     section('Personality',
       h('p', { class: 'sub', text: 'How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it.' }),
       h('ul', { class: 'file-list' }, ...names.map((n) => h('li', {},

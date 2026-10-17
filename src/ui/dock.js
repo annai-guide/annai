@@ -5,6 +5,22 @@ import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 
+const SVG = 'http://www.w3.org/2000/svg';
+/** A line icon the dock's buttons show, drawn in the text colour. @param {string} d @param {string} [extra] the shapes beyond the path */
+function icon(d, extra = '') {
+  const svg = document.createElementNS(SVG, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', width: '24', height: '24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', class: 'ib-svg' })) svg.setAttribute(k, v);
+  for (const part of [d, extra].filter(Boolean)) {
+    const path = document.createElementNS(SVG, 'path');
+    path.setAttribute('d', part);
+    svg.append(path);
+  }
+  return svg;
+}
+/** A camera, and a keyboard: what the side buttons do, at a glance (the user, 2026-10-18). */
+const cameraIcon = () => icon('M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z', 'M12 9.8a3.4 3.4 0 1 0 0 6.8a3.4 3.4 0 1 0 0-6.8z');
+const keyboardIcon = () => icon('M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 16V8A1.5 1.5 0 0 1 4 6.5z', 'M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.5h.01M17 13.5h.01M9.5 13.8h5');
+
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
  * her while she works or speaks (§6.7, §10.4), and starts listening while she rests with voice on; with voice off it opens typing.
@@ -99,15 +115,17 @@ export function createDock(ctx) {
   // Plugins' status chips and dock actions (spec §16.4), drawn again whenever they change (refreshSlots).
   const pluginChips = h('span', { class: 'plugin-chips' });
   const pluginActions = h('span', { class: 'plugin-actions' });
+  // The buttons used most sit above; the states line, used less, at the very bottom, which is harder to reach (the user, 2026-10-18).
   const el = h('nav', { class: 'dock', 'aria-label': 'Shiori' },
-    h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords, pluginChips), caption,
+    caption,
     sheet,
     h('div', { class: 'dock-row' },
-      h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: '◉' })), camera,
+      h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, cameraIcon()), camera,
       talk,
       h('span', { class: 'dock-end' },
-        h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: '⌨' })),
-        pluginActions)));
+        h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, keyboardIcon()),
+        pluginActions)),
+    h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords, pluginChips));
   const refreshSlots = () => {
     cleanUp('dock');
     pluginChips.replaceChildren(...slotEntries(ctx, 'ui:status-chip').map((e) => {
