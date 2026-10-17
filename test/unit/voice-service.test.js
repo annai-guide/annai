@@ -15,12 +15,12 @@ import { clip, quiet, cat } from './voice-kit.js';
 
 const enc = new TextEncoder();
 
-/** A Voice over a fake llm: one API voice (v1), one transcription model (t1), and the stand-ins. @param {{ failing?: boolean, retryAfter?: number }} [o] */
-async function voiceKit({ failing = false, retryAfter } = {}) {
+/** A Voice over a fake llm: one API voice (v1), one transcription model (t1), and the stand-ins. @param {{ failing?: boolean, retryAfter?: number, micFails?: string }} [o] */
+async function voiceKit({ failing = false, retryAfter, micFails } = {}) {
   const registry = new Registry();
   const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
-  const platform = fakePlatform();
+  const platform = fakePlatform({ micFails });
   registry.add('voice-browser', 'voice-platform', platform);
   const bench = new Bench();
   /** @type {string[]} */
@@ -97,4 +97,10 @@ test('Settings → Voice: defaults, and values outside their range fall back', a
   await updateAppSettings(k.ws, { voice: { browserVoice: 'v-en', rate: 0.9 } });
   await k.voice.say('Hi.');
   assert.ok(k.platform.log.includes('play v1:Hi.'));
+});
+
+test('a microphone that fails to open sets the audio session back to playback, and the error goes on (spec §10.1)', async () => {
+  const k = await voiceKit({ micFails: 'NotAllowedError' });
+  await assert.rejects(k.voice.open({ kind: 'record', onSegment: () => {}, onError: () => {} }), /Permission denied/);
+  assert.deepEqual(k.platform.sessions, ['play-and-record', 'playback'], "the car's music leaves the call-quality route");
 });

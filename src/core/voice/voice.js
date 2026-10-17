@@ -289,15 +289,20 @@ export class Voice {
     if (!platform) throw new Error("This browser can't use the microphone here.");
     const { pauseMs } = await this.settings();
     platform.session('play-and-record');
-    return listen({
-      platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError,
-      onLevel: (x) => this.#level(x, 'you'),
-      onSegment: (h) => {
-        this.memory.keep(h);
-        onSegment(h);
-      },
-      onSwitch: () => { this.dictationFailed = true; },
-    });
+    try {
+      return await listen({
+        platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError,
+        onLevel: (x) => this.#level(x, 'you'),
+        onSegment: (h) => {
+          this.memory.keep(h);
+          onSegment(h);
+        },
+        onSwitch: () => { this.dictationFailed = true; },
+      });
+    } catch (e) {
+      platform.session('playback'); // the microphone didn't open: full-quality Bluetooth audio again (spec §10.1)
+      throw e;
+    }
   }
 
   /**
