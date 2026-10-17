@@ -9,7 +9,7 @@ import { exportArchive, openArchive, importArchive, PRESETS, MANIFEST_NAME } fro
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8, text } from '../../src/core/bytes.js';
-import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret, secretId } from '../../src/core/backup-targets.js';
+import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret, secretId, BACKUP_SECRET_PREFIX } from '../../src/core/backup-targets.js';
 
 async function device() {
   const store = createMemoryStore();
@@ -82,4 +82,24 @@ test('a place keeps its settings and its last backup apart, changed one at a tim
   assert.equal(await getTarget(a.ws, id), undefined);
   assert.deepEqual(await targetSecret(a.store, id), {});
   assert.deepEqual(await a.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
+});
+
+test("an archive's API keys never bring in a backup place's sign-in, even one an older annai put there", async () => {
+  const a = await device();
+  const { blob } = await exportArchive(a.store, { kind: 'everything', include: { ...PRESETS.backup }, app: 'test' });
+  const entries = await readZip(blob);
+  const manifest = JSON.parse(text(/** @type {Uint8Array} */ (entries.get(MANIFEST_NAME))));
+  const body = utf8(JSON.stringify([{ id: 'backup:bt-old', value: { token: 'ghp_from_another_device_01' } }, { id: 'endpoint:y', value: 'sk-model-key-0002' }]));
+  manifest.extras.push({ name: 'system/secrets.json', hash: await sha256Hex(body) });
+  manifest.secrets = 'system/secrets.json';
+  const zip = new ZipWriter();
+  for (const [name, bytes] of entries) if (name !== MANIFEST_NAME) await zip.add(name, bytes);
+  await zip.add('system/secrets.json', body);
+  await zip.add(MANIFEST_NAME, utf8(JSON.stringify(manifest)));
+  const b = await device();
+  const result = await importArchive(b.store, await openArchive(zip.finish()), { secrets: true });
+  assert.equal(result.secrets, 1);
+  assert.deepEqual(await b.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), ['endpoint:y']);
+  assert.equal(BACKUP_SECRET_PREFIX, 'backup:');
+  assert.equal(secretId('bt-1'), 'backup:bt-1');
 });
