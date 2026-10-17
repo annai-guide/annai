@@ -260,3 +260,35 @@ test('8c-3: a Remove that fails partway can be done again, and nothing comes bac
     await s.stop();
   }
 });
+
+test("8c-5: a tool's input schema reaches the model without $schema, $id or $comment, at any depth, and its description is 1,024 characters at most", async () => {
+  const schema = {
+    $schema: 'https://json-schema.org/draft/2020-12/schema', $id: 'https://trails.example/find', $comment: 'internal',
+    type: 'object',
+    properties: {
+      $id: { type: 'string', description: 'A property that is called $id stays.' },
+      where: { type: 'object', $comment: 'nested', properties: { near: { $id: '#near', type: 'string' } } },
+      tags: { type: 'array', items: [{ $schema: 'x', type: 'string' }] },
+    },
+    required: ['where'],
+  };
+  const s = await startMcpServer({ tools: [{ name: 'find', description: 'Finds a trail. '.repeat(200), inputSchema: schema }] });
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url });
+    const tool = k.registry.list('tool').find((t) => t.name === 'mcp_trail_find');
+    assert.deepEqual(tool.input, {
+      type: 'object',
+      properties: {
+        $id: { type: 'string', description: 'A property that is called $id stays.' },
+        where: { type: 'object', properties: { near: { type: 'string' } } },
+        tags: { type: 'array', items: [{ type: 'string' }] },
+      },
+      required: ['where'],
+    });
+    assert.ok(tool.description.length <= 1024, `${tool.description.length} characters`);
+    assert.match(tool.description, /^Finds a trail\. .*… \(from the MCP server trail\)$/s);
+  } finally {
+    await s.stop();
+  }
+});
