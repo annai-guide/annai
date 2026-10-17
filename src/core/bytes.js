@@ -68,3 +68,16 @@ export function fromBase64(s) {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+
+/** Base64url without padding (RFC 4648 §5), the way Web Push writes keys and messages. @param {Uint8Array} b */
+export function toBase64Url(b) {
+  return toBase64(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** The bytes of base64url (padding optional), or null when s isn't base64url. @param {string} s @returns {Uint8Array | null} */
+export function fromBase64Url(s) {
+  if (typeof s !== 'string' || !/^[A-Za-z0-9_-]*={0,2}$/.test(s)) return null;
+  const t = s.replace(/=+$/, '');
+  if (t.length % 4 === 1 || (t.length < s.length && s.length % 4 !== 0)) return null; // padding only to a multiple of 4
+  return fromBase64(t.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (t.length % 4)) % 4));
+}
