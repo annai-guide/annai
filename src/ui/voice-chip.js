@@ -36,6 +36,6 @@ export function voiceChip(ctx) {
       chip.focus();
     }
   });
-  voice.onChange((/** @type {import('../core/voice/mode.js').VoiceMode} */ m) => { chip.textContent = chipText(m); });
-  return { el: h('div', { class: 'voice-chip-wrap' }, chip, menu) };
+  const dispose = voice.onChange((/** @type {import('../core/voice/mode.js').VoiceMode} */ m) => { chip.textContent = chipText(m); });
+  return { el: h('div', { class: 'voice-chip-wrap' }, chip, menu), dispose };
 }
