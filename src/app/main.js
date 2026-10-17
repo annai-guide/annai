@@ -135,7 +135,11 @@ async function boot() {
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
-  live.start().then(() => push?.start()).catch((e) => console.warn('Live mode could not start', e));
+  // Notifications start once live mode has loaded (their reminders are live mode's); each failure says whose it is.
+  live.start().then(
+    () => push?.start().catch((e) => console.warn('Notifications could not start', e)),
+    (e) => console.warn('Live mode could not start', e),
+  );
   // Backups to the places this device backs up to (spec §12.4). Choosing a kind of place installs its
   // plugin (§5.3), whose files load through the service worker.
   const device = deviceName();
