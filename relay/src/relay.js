@@ -51,9 +51,11 @@ const BEARER = /^Bearer ([A-Za-z0-9_-]{22,128})$/;
 const PUSH_SERVICES = [
   [/^fcm\.googleapis\.com$/, (u) => /^\/(?:fcm\/send|wp)\/[^/]+$/.test(u.pathname)],
   [/^android\.googleapis\.com$/, (u) => /^\/gcm\/send\/[^/]+$/.test(u.pathname)],
-  [/(?:^|\.)push\.apple\.com$/, (u) => /^\/[^/]+/.test(u.pathname)],
+  // Apple asks servers to allow any *.push.apple.com host; a web push endpoint there is one token, with no deeper path (APNs's /3/device/…) and no query.
+  [/(?:^|\.)push\.apple\.com$/, (u) => /^\/[^/]+$/.test(u.pathname) && !u.search],
   [/(?:^|\.)push\.services\.mozilla\.com$/, (u) => /^\/wpush\/v\d+\/[^/]+$/.test(u.pathname)],
-  [/(?:^|\.)notify\.windows\.com$/, (u) => u.pathname === '/w/' && Boolean(u.searchParams.get('token'))],
+  // WNS answers on one regional label, such as wns2-par02p.notify.windows.com.
+  [/^[a-z0-9-]+\.notify\.windows\.com$/, (u) => u.pathname === '/w/' && Boolean(u.searchParams.get('token'))],
 ];
 const MISSING = 'There is no such reminder at the relay: it was sent, or cancelled.';
 
