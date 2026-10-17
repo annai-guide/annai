@@ -23,16 +23,40 @@ export function gpsProblem(where, installed = false) {
   };
 }
 
+/** Whether the card was shown, kept in this browser across starts (where storage is blocked, until the page closes). */
+const KEY = 'annai.locationRefusedTold';
+let session = false;
+const kept = {
+  told: () => {
+    try {
+      return localStorage.getItem(KEY) === '1';
+    } catch {
+      return session;
+    }
+  },
+  /** @param {boolean} v */
+  set: (v) => {
+    session = v;
+    try {
+      if (v) localStorage.setItem(KEY, '1');
+      else localStorage.removeItem(KEY);
+    } catch {
+      // storage blocked: this session remembers
+    }
+  },
+};
+
 /**
- * Shows that card once when live mode's GPS is refused; again only if it worked in between.
- * @param {{ live: { on: boolean, gps: string, onChange: (fn: () => void) => () => void }, notices: { card: (c: any) => unknown }, where?: 'ios' | 'android' | 'desktop', installed?: boolean }} c
+ * Shows that card once when live mode's GPS is refused, not again at each start while it stays
+ * refused; again only once something changed: location worked, or live mode was turned off.
+ * @param {{ live: { on: boolean, gps: string, onChange: (fn: () => void) => () => void }, notices: { card: (c: any) => unknown }, where?: 'ios' | 'android' | 'desktop', installed?: boolean,
+ *   memo?: { told: () => boolean, set: (v: boolean) => void } }} c  memo: where it is remembered (this browser's storage)
  */
-export function tellGps({ live, notices, where = platform(), installed = where === 'ios' && isStandalone() }) {
-  let told = false;
+export function tellGps({ live, notices, where = platform(), installed = where === 'ios' && isStandalone(), memo = kept }) {
   return live.onChange(() => {
     if (live.on && live.gps === 'denied') {
-      if (!told) notices.card({ tone: 'warn', ...gpsProblem(where, installed) });
-      told = true;
-    } else if (live.gps === 'ok') told = false;
+      if (!memo.told()) notices.card({ tone: 'warn', ...gpsProblem(where, installed) });
+      memo.set(true);
+    } else if ((live.gps === 'ok' || !live.on) && memo.told()) memo.set(false);
   });
 }
