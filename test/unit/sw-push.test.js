@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const root = new URL('../../', import.meta.url);
 
 /** The service worker in a context of its own, with a fake registration, clients and caches. */
-async function swKit({ windows = 0 } = {}) {
+async function swKit({ windows = 0, focusFails = false } = {}) {
   const source = await readFile(new URL('sw.js', root), 'utf8');
   /** @type {Record<string, (e: any) => void>} */
   const handlers = {};
@@ -21,7 +21,14 @@ async function swKit({ windows = 0 } = {}) {
   /** @type {any[]} */
   const posted = [];
   let focused = 0;
-  const clients = Array.from({ length: windows }, () => ({ url: 'https://annai.guide/#/now', focus: async () => { focused++; }, postMessage: (/** @type {any} */ m) => posted.push(m) }));
+  const clients = Array.from({ length: windows }, () => ({
+    url: 'https://annai.guide/#/now',
+    focus: async () => {
+      if (focusFails) throw new DOMException('Not allowed to focus a window.', 'InvalidAccessError');
+      focused++;
+    },
+    postMessage: (/** @type {any} */ m) => posted.push(m),
+  }));
   const self = {
     location: new URL('https://annai.guide/sw.js'),
     addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; },
@@ -105,4 +112,10 @@ test('a renewed subscription: subscribed again with the old key, and annai sends
   await given.fire('pushsubscriptionchange', { oldSubscription: { options: { applicationServerKey: key } }, newSubscription: {} });
   assert.equal(given.subscribed.length, 0, 'the browser made the new one itself');
   assert.equal(given.news()[0].kind, 'changed');
+});
+
+test("an open annai that can't be brought forward (focus refused): annai is opened instead, so the tap always leads somewhere", async () => {
+  const k = await swKit({ windows: 1, focusFails: true });
+  await k.fire('notificationclick', { notification: { title: 'Big Sur', body: 'Tea time.', data: { key: 'trip-1|w-1', scope: 'trip-1', watch: 'w-1', at: 1 }, close: () => {} } });
+  assert.deepEqual(k.opened, ['/']);
 });

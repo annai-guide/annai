@@ -438,10 +438,8 @@ async function openReminder(n) {
   await keepNews({ kind: 'opened', ...info, title: String(n.title ?? ''), body: String(n.body ?? ''), t: Date.now() });
   const windows = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
   const open = windows.find((c) => new URL(c.url).origin === sw.location.origin);
-  if (open) {
-    await open.focus().catch(() => {});
-    return;
-  }
+  // An open annai comes forward; where the browser won't allow that, annai is opened, so the tap always leads somewhere.
+  if (open && (await open.focus().then(() => true, () => false))) return;
   await sw.clients.openWindow('/');
 }
 
