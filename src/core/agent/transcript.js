@@ -14,6 +14,11 @@ import { toBase64 } from '../bytes.js';
 export const RESTARTED = 'interrupted by app restart';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
+/**
+ * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
+ * read by type: a day of location points is never walked (A6). A type apply() learns goes here too.
+ */
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result']);
 
 export class Transcript {
   /** @type {Message[]} */
@@ -148,7 +153,7 @@ export class Transcript {
   static async load(store, scope, o = {}) {
     const [latest] = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true, limit: 1, ...(o.before ? { before: o.before } : {}) }));
     const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, {
-      ...(latest ? { after: latest.data.to } : {}), ...(o.before ? { before: o.before } : {}),
+      types: [...SAID], ...(latest ? { after: latest.data.to } : {}), ...(o.before ? { before: o.before } : {}),
     }));
     const t = new Transcript();
     if (latest) t.apply(latest, await resolveEvent(store, latest));

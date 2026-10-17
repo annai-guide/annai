@@ -7,7 +7,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, NOT_SAID } from './transcript.js';
+import { Transcript, resolveEvent, repair, NOT_SAID, SAID } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
 import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
@@ -559,7 +559,8 @@ export class Agent {
       ? (settings.compaction.threshold * window) / 3
       : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3;
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
-    const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, latest ? { after: latest.data.to } : {}))).filter((e) => e.type !== 'compaction' && !NOT_SAID.has(e.type));
+    // The conversation only, by type (A6): what the summary is made of, and what the cut is measured on.
+    const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) }))).filter((e) => !NOT_SAID.has(e.type));
     const items = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);

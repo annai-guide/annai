@@ -115,6 +115,23 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual((await q({ after: 5, before: 3 })).map((e) => e.seq), []);
   });
 
+  test('events: listEvents by several types merges them in order, with after, before, limit, reverse and notTypes', async () => {
+    const s = await makeStore();
+    await s.tx(['events'], 'readwrite', async (t) => {
+      const kinds = ['a', 'b', 'c'];
+      for (let i = 1; i <= 9; i++) await t.appendEvent('x', { ts: i, type: kinds[i % 3], actor: 'user' }); // 1 b, 2 c, 3 a, 4 b, 5 c, 6 a, 7 b, 8 c, 9 a
+      await t.appendEvent('y', { ts: 1, type: 'a', actor: 'user' });
+    });
+    const q = (/** @type {any} */ query) => s.tx(['events'], 'readonly', (t) => t.listEvents('x', query));
+    assert.deepEqual((await q({ types: ['a', 'b'] })).map((e) => e.seq), [1, 3, 4, 6, 7, 9]);
+    assert.deepEqual((await q({ types: ['b', 'a'], reverse: true, limit: 3 })).map((e) => e.seq), [9, 7, 6]);
+    assert.deepEqual((await q({ types: ['a', 'b'], after: 3, before: 9 })).map((e) => e.seq), [4, 6, 7]);
+    assert.deepEqual((await q({ types: ['a', 'b'], notTypes: ['b'] })).map((e) => e.seq), [3, 6, 9]);
+    assert.deepEqual((await q({ types: ['a', 'a'], limit: 2 })).map((e) => e.seq), [3, 6]);
+    assert.deepEqual((await q({ types: ['none'] })).map((e) => e.seq), []);
+    assert.deepEqual((await q({ types: [] })).map((e) => e.seq), []);
+  });
+
   test('events: putEvent keeps its seq and appendEvent continues after it', async () => {
     const s = await makeStore();
     await s.tx(['events'], 'readwrite', (t) => t.putEvent({ scope: 'a', seq: 41, ts: 1, type: 'x', actor: 'user' }));

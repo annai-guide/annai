@@ -96,10 +96,11 @@ export function selfTools(agent) {
  * @param {import('./loop.js').Agent} agent @param {{ query?: string, from?: number, to?: number, start?: number }} i
  */
 async function recall(agent, i) {
-  const all = await agent.store.tx(['events'], 'readonly', (t) => t.listEvents(agent.scope, {
-    ...(i.from ? { after: i.from - 1 } : {}), ...(i.to ? { before: i.to + 1 } : {}),
-  }));
   const shown = ['wake', 'msg.user', 'heard', 'out.speak', 'out.show', 'out.ask', 'tool.call', 'tool.result'];
+  // By type (A6): a day of location points isn't walked.
+  const all = await agent.store.tx(['events'], 'readonly', (t) => t.listEvents(agent.scope, {
+    types: [...shown, 'heard.text'], ...(i.from ? { after: i.from - 1 } : {}), ...(i.to ? { before: i.to + 1 } : {}),
+  }));
   const events = all.filter((e) => shown.includes(e.type) && !e.data?.task);
   /** @type {any[][]} exchanges: from a wake that isn't "meanwhile" to the next */
   const exchanges = [];

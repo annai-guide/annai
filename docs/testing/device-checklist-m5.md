@@ -50,5 +50,6 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 - [ ] An hour of live mode with the screen on (on the charger, and once off it): note the battery used, and whether the phone got warm. Compare with an hour of Maps navigation.
 
 ## Afterwards
+- [ ] After a day of live mode (thousands of location points in the trip), close annai and open the trip again: the trip, Talk, Plan and Trace → Live each open within about 2 seconds (time them on both phones).
 - [ ] Trace → Live: the road is there as location points, about one a second while moving, few while stopped; the firings and reminders match what happened.
 - [ ] Export the trip as a Backup and remove it: no location points or watches are left behind (Trips is empty of it).

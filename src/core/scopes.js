@@ -186,8 +186,9 @@ export async function backupState(store, id) {
     const backup = (await t.getScope(id))?.backup;
     if (!backup) return { at: null, changed: true };
     if ((await t.lastSeq(id)) <= backup.seq) return { at: backup.at, changed: false }; // the usual case: one key read
-    const later = await t.listEvents(id, { after: backup.seq });
-    return { at: backup.at, changed: later.some((e) => !STATUS_ONLY.has(e.type)) };
+    // The first entry after the backup that is a change is enough to know (A6: not every one after it).
+    const [change] = await t.listEvents(id, { after: backup.seq, notTypes: [...STATUS_ONLY], limit: 1 });
+    return { at: backup.at, changed: Boolean(change) };
   });
 }
 
