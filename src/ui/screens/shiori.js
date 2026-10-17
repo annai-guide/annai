@@ -39,6 +39,7 @@ export async function renderShiori(ctx, route) {
           h('input', { type: 'radio', name: 'personality', value: n, checked: n === active, onchange: async () => { await updateAppSettings(ctx.ws, { shiori: { personality: n } }); ctx.notices.toast(`Shiori is now "${n}". It applies at her next wake.`); ctx.render(); } }),
           h('span', { text: n })),
         h('a', { href: `#/shiori?edit=${encodeURIComponent(n)}`, text: 'Edit' })))),
+      fromPlugins(ctx, names),
       compare && ctx.presets?.[compare] ? h('div', { class: 'compare' },
         h('h3', { text: `The new original of "${compare}"` }), h('pre', { class: 'mono', text: ctx.presets[compare] }),
         h('div', { class: 'acts' },
@@ -84,4 +85,30 @@ export async function renderShiori(ctx, route) {
       h('fieldset', {}, h('legend', { text: 'Keep it for' }), ...[['5m', '5 minutes'], ['1h', '1 hour']].map(([v, label]) => h('label', { class: 'check' },
         h('input', { type: 'radio', name: 'cache-ttl', value: v, checked: (app.shiori?.cacheTtl ?? '5m') === v, onchange: () => updateAppSettings(ctx.ws, { shiori: { cacheTtl: v } }) }),
         h('span', { text: label }))))));
+}
+
+/**
+ * Personalities that installed packages bring (spec §5.2), not yet among the user's: Add copies one
+ * into /me/personalities/, where it is the user's own file (milestone 8a, choice 12).
+ * @param {any} ctx @param {string[]} names the user's personalities
+ */
+function fromPlugins(ctx, names) {
+  const offered = (ctx.registry?.list('personality') ?? []).filter((/** @type {any} */ p) => typeof p?.name === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(p.name) && !names.includes(p.name));
+  if (!offered.length) return null;
+  return h('div', {},
+    h('h3', { text: 'From plugins' }),
+    h('ul', { class: 'file-list' }, ...offered.map((/** @type {any} */ p) => h('li', {},
+      h('span', { text: `${p.name} (from ${p.plugin ?? 'a plugin'})` }),
+      h('button', {
+        class: 'btn', type: 'button',
+        onclick: async () => {
+          if (await ctx.ws.read(ME, `/personalities/${p.name}.md`)) {
+            ctx.notices.toast(`You already have a personality called "${p.name}".`);
+            return;
+          }
+          await ctx.ws.write(ME, `/personalities/${p.name}.md`, String(p.text ?? ''), { author: 'user' });
+          ctx.notices.toast(`Added the personality "${p.name}". Choose it above.`);
+          ctx.render();
+        },
+      }, 'Add')))));
 }

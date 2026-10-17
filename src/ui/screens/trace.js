@@ -16,6 +16,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Live: ['trigger.fired', 'state', 'reminder'],
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
+  Plugins: ['plugin.install', 'plugin.update', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
   Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
   Notifications: ['push.sync', 'push.shown', 'push.opened'],
 });

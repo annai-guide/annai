@@ -1,4 +1,4 @@
-import { fetchPackage } from './packages.js';
+import { fetchPackage, addedParts, addsAnything, agreedTo, addedWords } from './packages.js';
 import { PluginError } from './registry.js';
 
 /**
@@ -7,7 +7,8 @@ import { PluginError } from './registry.js';
  * is offered too. Nothing changes until the user accepts.
  * @typedef {import('./plugins.js').PluginHost} PluginHost
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
- * @typedef {{ id: string, name: string, installed: string, available: string, url: string, kind: string, changed: boolean }} AddressUpdate
+ * @typedef {{ id: string, name: string, installed: string, available: string, url: string, kind: string, changed: boolean,
+ *   added: import('./packages.js').Added }} AddressUpdate  added: what it brings that the installed one doesn't; anything there asks first
  */
 
 /**
@@ -23,7 +24,8 @@ export async function addressUpdates(host, { fetch }) {
     try {
       const pkg = await host.inspect(await fetchPackage(s.url, { fetch }));
       if (pkg.id !== id || pkg.fingerprint === s.fingerprint) continue;
-      out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: s.url, kind: pkg.kind, changed: pkg.version === s.version });
+      const added = pkg.replaces?.added ?? addedParts(await host.installedParts(id), pkg);
+      out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added });
     } catch {
       // not now: the next check asks again
     }
@@ -33,15 +35,18 @@ export async function addressUpdates(host, { fetch }) {
 
 /**
  * Installs what the address holds now, keeping the package off if it was off. Code that already ran
- * this session runs from the next start, as for annai's own plugins.
- * @param {PluginHost} host @param {string} id @param {{ fetch: Fetch }} o @returns {Promise<'started' | 'restart'>}
+ * this session runs from the next start, as for annai's own plugins. What it brings that the installed
+ * one didn't (code, skills, personalities, templates) must be what the user agreed to (agreed).
+ * @param {PluginHost} host @param {string} id @param {{ fetch: Fetch, agreed?: import('./packages.js').Added }} o @returns {Promise<'started' | 'restart'>}
  */
-export async function updateFromAddress(host, id, { fetch }) {
+export async function updateFromAddress(host, id, { fetch, agreed }) {
   const s = (await host.installed())[id];
   if (s?.source !== 'url' || typeof s.url !== 'string') throw new PluginError(id, "wasn't installed from an address, so annai has nowhere to look for an update");
   const files = await fetchPackage(s.url, { fetch });
   const pkg = await host.inspect(files);
   if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`);
+  const added = pkg.replaces?.added ?? addedParts(await host.installedParts(id), pkg);
+  if (!agreedTo(agreed, added)) throw new PluginError(id, `this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.`);
   const wasOn = s.enabled !== false;
   await host.install(files, { source: 'url', url: s.url });
   if (!wasOn) {

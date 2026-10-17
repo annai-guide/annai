@@ -4,7 +4,7 @@ import { SYS_PLUGINS, SYS_SETTINGS, createTrip } from '../../src/core/scopes.js'
 import { setToolSwitch } from '../../src/core/agent/tools.js';
 import { readAppSettings } from '../../src/core/settings.js';
 import { PluginError } from '../../src/core/registry.js';
-import { text } from '../../src/core/bytes.js';
+import { text, utf8 } from '../../src/core/bytes.js';
 import { files, SKILL, KIT, hostKit } from './package-kit.js';
 
 test('host: a bare skill installs as a package; at start Shiori has it, its text and files read from storage', async () => {
@@ -192,4 +192,15 @@ test('host: removing a skill takes it from Shiori and frees its files', async ()
   await host.uninstall('tide-pools');
   assert.deepEqual(registry.list('skill'), []);
   assert.deepEqual(await ws.list(SYS_PLUGINS, '/tide-pools/'), []);
+});
+
+test('host: what a new version of an installed package adds is known before it is installed', async () => {
+  const { host } = await hostKit();
+  await host.install(KIT());
+  const next = KIT({ version: '1.1.0', entry: 'index.js', skills: ['skills/trail-safety', 'skills/trail-maps'] });
+  next.set('index.js', utf8('export function activate() {}'));
+  next.set('skills/trail-maps/SKILL.md', utf8('---\nname: trail-maps\ndescription: Reading a trail map.\n---\nNorth is up.'));
+  const added = (await host.inspect(next)).replaces?.added;
+  assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.templates], [true, ['trail-maps'], [], []]);
+  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], templates: [] });
 });

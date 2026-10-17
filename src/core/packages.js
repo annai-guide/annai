@@ -354,3 +354,43 @@ function asManifest(url, body) {
   }
   return null;
 }
+
+/**
+ * What a package brings that an installed one didn't (the coordinator's second finding): code where
+ * there was none, and skills, personalities and endpoint templates it didn't have. An update that
+ * adds any of them asks the user first.
+ * @typedef {{ code: boolean, skills: string[], personalities: string[], templates: string[] }} Parts what an installed package has, by name
+ * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], templates: any[] }} Added
+ * @param {Parts} before @param {Package} pkg @returns {Added}
+ */
+export function addedParts(before, pkg) {
+  return {
+    code: !before.code && pkg.code,
+    skills: pkg.skills.filter((s) => !before.skills.includes(s.name)),
+    personalities: pkg.personalities.filter((p) => !before.personalities.includes(p.name)),
+    templates: pkg.templates.filter((t) => !before.templates.includes(t.id)),
+  };
+}
+
+/** Whether anything was added. @param {Added | null | undefined} a */
+export const addsAnything = (a) => Boolean(a && (a.code || a.skills.length || a.personalities.length || a.templates.length));
+
+/** Whether what the user agreed to covers what is added now. @param {Added | null | undefined} agreed @param {Added} added */
+export function agreedTo(agreed, added) {
+  if (!addsAnything(added)) return true;
+  if (!agreed) return false;
+  return (!added.code || agreed.code)
+    && added.skills.every((s) => agreed.skills.some((x) => x.name === s.name))
+    && added.personalities.every((p) => agreed.personalities.some((x) => x.name === p.name))
+    && added.templates.every((t) => agreed.templates.some((x) => x.id === t.id));
+}
+
+/** What was added, in words. @param {Added} a */
+export function addedWords(a) {
+  return [
+    ...(a.code ? ['code that runs in annai'] : []),
+    ...a.skills.map((s) => `the skill ${s.name}`),
+    ...a.personalities.map((p) => `the personality ${p.name}`),
+    ...a.templates.map((t) => `the endpoint template ${t.name ?? t.id}`),
+  ].join(', ');
+}

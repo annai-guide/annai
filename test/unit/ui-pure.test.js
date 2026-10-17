@@ -418,3 +418,15 @@ test('Settings → Notifications offers what each state needs; when the phone to
   assert.deepEqual(buttonsFor({ ...fine, problem: { needsYou: false } }), ['off', 'test'], 'a passing problem needs nothing');
   assert.deepEqual(buttonsFor({ ...fine, supported: 'install' }), []);
 });
+
+test('the install screen says what a package brings and where it came from', async () => {
+  const { whatItBrings, sourceLine } = await import('../../src/ui/screens/plugin-install.js');
+  assert.deepEqual(whatItBrings({ code: true, skills: [{ name: 'trail-safety', description: 'Before a hike.' }], personalities: [{ name: 'ranger' }], templates: [{ name: 'Trail LLM' }, { name: 'Trail mini' }] }),
+    ['Code that runs in annai', 'Skill "trail-safety": Before a hike.', 'Personality "ranger"', 'Endpoint templates: Trail LLM, Trail mini']);
+  assert.deepEqual(whatItBrings({ code: false, skills: [], personalities: [], templates: [] }), ['Nothing annai uses yet']);
+  assert.equal(sourceLine({ source: 'url', url: 'https://trails.example/kits/SKILL.md?token=abc' }), 'From trails.example/kits/SKILL.md?token=«key»');
+  assert.equal(sourceLine({ source: 'file', file: 'tides.zip' }), 'From a file: tides.zip');
+  assert.equal(sourceLine({ source: 'file' }), 'From a file');
+  assert.equal(sourceLine({ source: 'official' }), 'From annai');
+  assert.equal(sourceLine({ source: 'builtin' }), 'From annai');
+});
