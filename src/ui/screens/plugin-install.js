@@ -14,7 +14,7 @@ export function whatItBrings(pkg) {
   if (pkg.code) out.push('Code that runs in annai');
   for (const s of pkg.skills ?? []) out.push(`Skill "${s.name}": ${s.description}`);
   for (const p of pkg.personalities ?? []) out.push(`Personality "${p.name}"`);
-  if (pkg.templates?.length) out.push(`Endpoint templates: ${pkg.templates.map((t) => t.name).join(', ')}`);
+  if (pkg.templates?.length) out.push(`Endpoint templates: ${pkg.templates.map((t) => t.name).join(', ')}. An endpoint template decides where a key you give it is sent.`);
   return out.length ? out : ['Nothing annai uses yet'];
 }
 

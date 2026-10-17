@@ -220,3 +220,23 @@ test('a package without code brings a skill and a personality; Settings → Shio
     await llm.stop();
   }
 });
+
+test("8a-3: a package's endpoint template: the install screen says where a key goes, and the model picker names the package", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.goto('/#/plugins');
+    const kit = {
+      'annai-plugin.json': Buffer.from(JSON.stringify({ id: 'trail-llm-kit', name: 'Trail LLM kit', version: '1.0.0', api: 1, templates: ['templates.json'] })),
+      'templates.json': Buffer.from(JSON.stringify({ endpoints: [{ id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM', baseUrl: 'https://llm.trails.example/v1' }] })),
+    };
+    await page.getByLabel('Install from a file').setInputFiles({ name: 'trail-llm-kit.zip', mimeType: 'application/zip', buffer: await zipOf(kit) });
+    await expect(page.getByText('Endpoint templates: Trail LLM. An endpoint template decides where a key you give it is sent.')).toBeVisible();
+    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(page.getByText('Trail LLM kit 1.0.0', { exact: true })).toBeVisible();
+    await page.goto('/#/models');
+    await expect(page.locator('#endpoint-template option', { hasText: 'Trail LLM (from Trail LLM kit)' })).toHaveCount(1);
+  } finally {
+    await llm.stop();
+  }
+});

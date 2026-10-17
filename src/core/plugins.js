@@ -573,7 +573,8 @@ export class PluginHost {
         json = null;
       }
       if (!Array.isArray(json?.endpoints)) throw new PluginError(id, `its template file ${t} isn't valid`);
-      for (const tpl of json.endpoints) this.registry.add(id, 'template', tpl);
+      // Named by the package it came from, so the model picker never shows it as annai's own (fix pass 8a-3).
+      for (const tpl of json.endpoints) this.registry.add(id, 'template', { ...tpl, from: String(manifest.name ?? id) });
     }
   }
 

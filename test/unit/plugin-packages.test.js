@@ -241,3 +241,13 @@ test('8a-2: installing a new version while the old one starts leaves the old one
   assert.deepEqual(registry.entries('tool', { all: true }).filter((e) => e.pluginId === 'slow'), []);
   assert.equal((await host.installed()).slow.version, '1.1.0');
 });
+
+test("8a-3: a package's endpoint template names the package it came from, whatever the template says", async () => {
+  const { host, registry } = await hostKit();
+  await host.install(KIT());
+  await host.start('trail-kit');
+  assert.deepEqual(registry.list('template').map((t) => [t.id, t.from]), [['trail-llm', 'Trail kit']]);
+  await host.install(KIT({ version: '1.0.1' }).set('templates.json', utf8(JSON.stringify({ endpoints: [{ id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM', from: 'annai' }] }))));
+  await host.start('trail-kit');
+  assert.deepEqual(registry.list('template').map((t) => [t.id, t.from]), [['trail-llm', 'Trail kit']]);
+});

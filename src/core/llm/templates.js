@@ -9,7 +9,8 @@ import { readConfig, newEndpoint, newModel, saveEndpoint, saveModel, saveRoles, 
  * @typedef {import('./config.js').ModelValues & { providerId: string }} TemplateModel
  * @typedef {{ id: string, version: number, type: string, name: string, baseUrl?: string, headers?: Record<string, string>,
  *   tunables?: Record<string, any>, extraBody?: Record<string, any>, keyUrl?: string, note?: string, signIn?: string,
- *   models?: TemplateModel[], roles?: Record<string, Record<string, string[]>> }} EndpointTemplate
+ *   models?: TemplateModel[], roles?: Record<string, Record<string, string[]>>, from?: string }} EndpointTemplate
+ *   from: the name of the package a template came from; none for annai's own (fix pass 8a-3)
  * @typedef {{ format: number, endpoints: EndpointTemplate[] }} TemplateCatalog
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {import('../types.js').Store} Store
