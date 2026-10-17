@@ -214,6 +214,8 @@ export class McpClient {
       res = await fetch(await this.#address(), { method: 'POST', headers, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
     } catch (e) {
       if (stopOf(e, signal)) throw stopOf(e, signal);
+      // A browser says no more than that a request failed; offline, it is no use to suggest CORS (minors 8).
+      if (globalThis.navigator?.onLine === false) throw new McpError('network', `annai couldn't reach the MCP server ${this.server}: this device is offline. Try again once it is online.`);
       throw new McpError('cors', `annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`);
     }
     if (res.status === 401 || res.status === 403) {

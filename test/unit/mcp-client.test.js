@@ -233,3 +233,14 @@ test("minors 5: a 400's words are read no further than their start; the rest is 
     assert.ok(sent <= 3 * 1024 * 1024, `read ${sent} bytes`);
   }
 });
+
+test("minors 8: a server that can't be reached while the device is offline is a network error that says so, not CORS", async () => {
+  const down = async () => { throw new TypeError('Failed to fetch'); };
+  Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
+  try {
+    await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: down }), (e) => e instanceof McpError && e.kind === 'network' && /this device is offline/.test(e.message) && !/CORS/.test(e.message));
+  } finally {
+    delete (/** @type {any} */ (globalThis.navigator)).onLine;
+  }
+  await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: down }), (e) => e instanceof McpError && e.kind === 'cors');
+});
