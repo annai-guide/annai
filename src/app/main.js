@@ -33,6 +33,8 @@ import { PackKeeper } from '../core/pack/keeper.js';
 import { createBackups } from '../core/backup.js';
 import { ensureProvided } from '../core/llm/official.js';
 import { startBackups } from '../ui/auto-backup.js';
+import { PushMirror } from '../core/push/mirror.js';
+import { browserSource, takeNews, onPushMessage, closeNotifications } from '../ui/push.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -89,7 +91,20 @@ async function boot() {
   mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent));
   // Live mode (spec §11): watches, the plan's own reminders, catch-up. The phone's sensors come in a plugin.
-  const live = new Live({ store, ws, registry, agent });
+  // Notifications for a closed annai (spec §11.6): what the service worker saw is read at each
+  // catch-up; the mirror keeps the push relay in step with live mode.
+  /** @type {PushMirror | null} */
+  let push = null;
+  const news = async () => {
+    const list = await takeNews().catch(() => []);
+    push?.delivered(list);
+    return list;
+  };
+  const live = new Live({ store, ws, registry, agent, news });
+  /** @type {any[]} cards from before the shell is up */
+  const early = [];
+  let pushCard = (/** @type {any} */ n) => { early.push(n); };
+  push = new PushMirror({ store, ws, live, source: browserSource(), notice: (n) => pushCard(n) });
   agent.addLoopTools(watchTools(live));
   agent.sense = () => live.nowInfo();
   const awake = keepAwake({ live, ws });
@@ -104,7 +119,7 @@ async function boot() {
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
-  live.start().catch((e) => console.warn('Live mode could not start', e));
+  live.start().then(() => push?.start()).catch((e) => console.warn('Live mode could not start', e));
   // Backups to the places this device backs up to (spec §12.4). Choosing a kind of place installs its
   // plugin (§5.3), whose files load through the service worker.
   const device = deviceName();
@@ -115,7 +130,18 @@ async function boot() {
       await ensureProvided(plugins, 'storage-type', type);
     },
   });
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, push, version: VERSION });
+  pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: 'Notifications', run: () => { location.hash = '#/notifications'; } }] });
+  for (const n of early.splice(0)) pushCard(n);
+  // Open and on screen: the service worker's news now (a notification annai already said is closed).
+  onPushMessage(async () => {
+    if (document.visibilityState !== 'visible') return; // read at the catch-up
+    const list = await takeNews().catch(() => []);
+    if (!list.length) return;
+    push?.delivered(list);
+    closeNotifications(await live.pushNews(list)).catch(() => {});
+  });
+  addEventListener('online', () => { push?.sync().catch(() => {}); });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   tellGps({ live, notices: shell.notices });

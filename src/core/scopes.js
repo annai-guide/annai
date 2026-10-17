@@ -10,6 +10,8 @@ export const SYS_SETTINGS = 'sys:settings';
 export const SYS_PLUGINS = 'sys:plugins';
 /** This device's own scope: never exported, never imported (see ensureDeviceScope). */
 export const SYS_DEVICE = 'sys:device';
+/** Secrets that belong to this device alone: backup places' sign-ins and the push relay's cancel tokens. No archive holds them. @param {string} id */
+export const isDeviceSecret = (id) => id.startsWith('backup:') || id.startsWith('push:');
 
 /** @param {string} scope @returns {'me'|'trip'|'sys'|'other'} */
 export function kindOf(scope) {

@@ -4,11 +4,10 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId, isDeviceSecret } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf } from './events.js';
-import { BACKUP_SECRET_PREFIX } from './backup-targets.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -235,8 +234,8 @@ export async function exportArchive(store, opts) {
   if (opts.secrets) {
     const secrets = await store.tx(['secrets'], 'readonly', async (t) => {
       const out = [];
-      // A backup place's sign-in stays on this device (spec §12.4): its screen promises so.
-      for (const id of await t.listSecretIds()) if (!id.startsWith(BACKUP_SECRET_PREFIX)) out.push({ id, value: await t.getSecret(id) });
+      // This device's own sign-ins and tokens stay on it (spec §12.4, §11.6): their screens promise so.
+      for (const id of await t.listSecretIds()) if (!isDeviceSecret(id)) out.push({ id, value: await t.getSecret(id) });
       return out;
     });
     const name = 'system/secrets.json';
@@ -505,8 +504,8 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
   }
   /** @type {{ id: string, value: any }[]} */
   const secrets = (choices.secrets && manifest.secrets ? JSON.parse(text(await readEntry(zip, manifest.secrets))) : [])
-    // Never a backup place's sign-in, even from an archive made before annai left them out.
-    .filter((/** @type {any} */ s) => typeof s?.id === 'string' && !s.id.startsWith(BACKUP_SECRET_PREFIX));
+    // Never this device's own secrets, even from an archive made before annai left them out.
+    .filter((/** @type {any} */ s) => typeof s?.id === 'string' && !isDeviceSecret(s.id));
 
   const result = {
     trips: /** @type {string[]} */ ([]), archived: /** @type {string[]} */ ([]), me: false, settings: false, plugins: false, secrets: 0,
