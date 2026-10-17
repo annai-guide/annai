@@ -128,6 +128,8 @@ export class Live {
   #reminderChanges = new Set();
   /** The watches and the plan are loaded (start). */
   #loaded = false;
+  /** start() is starting the sensors: what they say at once is so before its catch-up (fix pass L3). */
+  #starting = false;
   /** @type {Map<string, number>} reminders whose notification the phone showed, by key: when (spec §11.6) */
   #notified = new Map();
   /** @type {{ scope: string, text: string }[]} notifications the user opened, for the next catch-up wake */
@@ -181,7 +183,12 @@ export class Live {
       await this.#follow();
       this.#loaded = true;
       const last = await this.#lastSeen();
-      this.#sensors();
+      this.#starting = true;
+      try {
+        this.#sensors();
+      } finally {
+        this.#starting = false;
+      }
       await this.#catchUp({ ...last, how: 'start' });
     });
   }
@@ -716,7 +723,8 @@ export class Live {
       try {
         const off = s.start((/** @type {any} */ v) => {
           if (!this.#heeds(pluginId)) return;
-          if (s.kind === 'visibility') this.visible(Boolean(v));
+          if (this.#starting) this.#first(s.kind, Boolean(v));
+          else if (s.kind === 'visibility') this.visible(Boolean(v));
           else this.connected(Boolean(v));
         });
         if (typeof off === 'function') this.#offs.push(off);
@@ -725,6 +733,19 @@ export class Live {
       }
     }
     if (this.on && this.shown) this.#gpsStart();
+  }
+
+  /**
+   * What a sensor says as annai starts is so at once, before the start's catch-up: started off screen,
+   * nothing is said on screen (its firings aren't marked said); started offline, annai says the reminders itself.
+   * @param {'visibility' | 'connectivity'} kind @param {boolean} v
+   */
+  #first(kind, v) {
+    if (kind === 'visibility') this.shown = v;
+    else if (v !== this.online) {
+      this.online = v;
+      this.#offlineSince = v ? null : this.clock.now();
+    }
   }
 
   /** While a simulation runs, only its sensors are heard (choice 10). @param {string} pluginId */
