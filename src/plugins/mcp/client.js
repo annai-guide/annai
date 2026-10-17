@@ -12,7 +12,9 @@ import { sse } from '../../core/llm/sse.js';
 /** The protocol versions annai speaks (milestone 8c, choice 2), and the one it asks for. */
 export const SUPPORTED = Object.freeze(['2025-11-25', '2025-06-18', '2025-03-26']);
 export const ASKED = '2025-06-18';
-const MAX_PAGES = 10;
+/** Pages of tools annai asks for, and the most tools it keeps reading. */
+const MAX_PAGES = 100;
+const MAX_LISTED = 500;
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const IMAGE_MAX = 5 * 1024 * 1024;
 
@@ -52,7 +54,7 @@ export class McpClient {
     await this.#post({ jsonrpc: '2.0', method: 'notifications/initialized' }, null, o);
   }
 
-  /** Every tool the server has, page by page. @param {{ fetch: Fetch, signal?: AbortSignal }} o @returns {Promise<any[]>} */
+  /** Every tool the server has (up to 500), page by page. @param {{ fetch: Fetch, signal?: AbortSignal }} o @returns {Promise<any[]>} */
   async listTools(o) {
     return this.#inSession(o, async () => {
       /** @type {any[]} */
@@ -63,7 +65,7 @@ export class McpClient {
         const result = await this.#request('tools/list', cursor ? { cursor } : {}, o);
         if (Array.isArray(result?.tools)) tools.push(...result.tools.filter((/** @type {any} */ t) => t && typeof t.name === 'string'));
         cursor = typeof result?.nextCursor === 'string' && result.nextCursor ? result.nextCursor : undefined;
-        if (!cursor) break;
+        if (!cursor || tools.length >= MAX_LISTED) break;
       }
       return tools;
     });

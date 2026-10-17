@@ -86,6 +86,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
       }
       const sid = typeof req.headers['mcp-session-id'] === 'string' ? req.headers['mcp-session-id'] : undefined;
       if (req.method === 'DELETE') {
+        requests.push({ method: 'DELETE', rpc: null, headers: { 'mcp-session-id': sid } });
         if (sid) live.delete(sid);
         return send(204);
       }
