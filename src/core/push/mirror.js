@@ -23,7 +23,8 @@ import { realClock } from '../live/clock.js';
  *   a reminder at the relay; sending: written down before it was sent, not yet known to have arrived
  * @typedef {{ m: Mirrored, sendAt: number, title: string, body: string, hash: string, reuse?: boolean }} Want
  * @typedef {{ on: boolean, relay: string, key: string | null, endpoint: string | null, hello: { endpoint: string, at: number } | null,
- *   items: Record<string, Item>, cancels: { id: string, relay: string }[], problem: { message: string, at: number, needsYou: boolean } | null }} State
+ *   items: Record<string, Item>, cancels: Cancel[], problem: { message: string, at: number, needsYou: boolean } | null }} State
+ * @typedef {{ id: string, relay: string, sendAt: number }} Cancel  a reminder to call off at a relay; sendAt: when that relay would send it
  *   key, endpoint: what the phone subscribed with; hello: the "notifications are on" sent for that endpoint
  */
 
@@ -114,7 +115,9 @@ function stateOf(v) {
     endpoint: typeof o.endpoint === 'string' ? o.endpoint : null,
     hello: o.hello && typeof o.hello.endpoint === 'string' && Number.isFinite(o.hello.at) ? { endpoint: o.hello.endpoint, at: o.hello.at } : null,
     items: Object.fromEntries(Object.entries(items).filter(([, i]) => i && typeof i.id === 'string' && Number.isFinite(i.sendAt) && Number.isFinite(i.due))),
-    cancels: Array.isArray(o.cancels) ? o.cancels.filter((/** @type {any} */ c) => c && typeof c.id === 'string' && typeof c.relay === 'string') : [],
+    cancels: Array.isArray(o.cancels)
+      ? o.cancels.filter((/** @type {any} */ c) => c && typeof c.id === 'string' && typeof c.relay === 'string').map((/** @type {any} */ c) => ({ id: c.id, relay: c.relay, sendAt: Number(c.sendAt) || 0 }))
+      : [],
     problem: o.problem && typeof o.problem.message === 'string' ? { message: o.problem.message, at: Number(o.problem.at) || 0, needsYou: o.problem.needsYou === true } : null,
   };
 }
@@ -240,12 +243,7 @@ export class PushMirror {
       st.problem = null;
       st.hello = null;
       await this.#save(st, tokens);
-      try {
-        await this.#callOff(st, tokens);
-      } catch (e) {
-        if (!(e instanceof RelayError)) throw e;
-        // The rest wait, and go at the next sync.
-      }
+      await this.#callOff(st, tokens); // what fails waits, and goes at the next sync
       await this.source.unsubscribe().catch(() => {});
       st.endpoint = null;
       st.key = null;
@@ -339,8 +337,10 @@ export class PushMirror {
           send = p.send;
         }
       }
-      calledOff = await this.#callOff(st, tokens);
+      const off = await this.#callOff(st, tokens);
+      calledOff = off.n;
       if (sub && send.length) sent = await this.#send(st, tokens, sub, send);
+      if (off.failed) throw this.#offFailure(st, off.failed); // noted, and tried again later, after the sends
       if (st.problem && st.problem === before && !before.needsYou) st.problem = null;
       this.#retries = 0;
     } catch (e) {
@@ -447,30 +447,65 @@ export class PushMirror {
       delete tokens[item.id];
       return;
     }
-    st.cancels.push({ id: item.id, relay: st.relay });
+    st.cancels.push({ id: item.id, relay: st.relay, sendAt: item.sendAt });
   }
 
   /** Every reminder at the relay is to be called off. @param {State} st */
   #moveAll(st) {
-    for (const item of Object.values(st.items)) st.cancels.push({ id: item.id, relay: st.relay });
+    for (const item of Object.values(st.items)) st.cancels.push({ id: item.id, relay: st.relay, sendAt: item.sendAt });
     st.items = {};
   }
 
-  /** Calls off what waits to be (first, before anything is sent: choice 3). @param {State} st @param {Record<string, string>} tokens */
+  /**
+   * Calls off what waits to be, before anything is sent (choice 3). A failure never holds up the sends
+   * (fix pass N1): it stays queued and is tried again, and a relay that failed isn't asked again this
+   * time. Once its reminder's time is long past, a cancel goes without a request: it was sent, or never
+   * will be. @param {State} st @param {Record<string, string>} tokens
+   * @returns {Promise<{ n: number, failed: { relay: string, error: RelayError, count: number } | null }>}
+   */
   async #callOff(st, tokens) {
+    const now = this.clock.now();
     let n = 0;
-    while (st.cancels.length) {
-      const c = st.cancels[0];
+    /** @type {Map<string, RelayError>} */
+    const down = new Map();
+    /** @type {Cancel[]} */
+    const keep = [];
+    for (const c of st.cancels) {
       const token = tokens[c.id];
       const base = relayAddress(c.relay);
-      if (token && base) {
+      if (!token || !base || c.sendAt + LONG_SENT_MS < now) {
+        delete tokens[c.id];
+        continue;
+      }
+      if (down.has(c.relay)) {
+        keep.push(c);
+        continue;
+      }
+      try {
         await this.#client(base).cancel(c.id, token);
         n++;
+        delete tokens[c.id];
+      } catch (e) {
+        if (!(e instanceof RelayError)) throw e;
+        down.set(c.relay, e);
+        keep.push(c);
       }
-      st.cancels.shift();
-      delete tokens[c.id];
     }
-    return n;
+    st.cancels = keep;
+    if (!down.size) return { n, failed: null };
+    const relay = down.has(st.relay) ? st.relay : [...down.keys()][0];
+    return { n, failed: { relay, error: /** @type {RelayError} */ (down.get(relay)), count: keep.filter((c) => c.relay === relay).length } };
+  }
+
+  /**
+   * What a cancel that failed means for the user: at this relay, its own words; at an old one, that
+   * the new relay works meanwhile (fix pass N1). @param {State} st @param {{ relay: string, error: RelayError, count: number }} f
+   */
+  #offFailure(st, f) {
+    if (f.relay === st.relay) return f.error;
+    const host = new URL(f.relay).host;
+    const what = f.count === 1 ? 'A reminder' : `${f.count} reminders`;
+    return new RelayError(`${what} at the old relay, ${host}, couldn't be called off yet (${f.error.message.replace(/[.\s]+$/, '')}). annai keeps trying until ${f.count === 1 ? 'its time has' : 'their times have'} passed; the new relay works meanwhile.`, { code: 'relay' });
   }
 
   /**
