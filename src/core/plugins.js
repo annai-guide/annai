@@ -419,7 +419,7 @@ export class PluginHost {
     for (const m of this.builtins.values()) {
       rows.push({
         id: m.id, name: m.name, version: m.version, shownVersion: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id),
-        failing: this.registry.isDisabled(m.id), problem: null, restart: false, kind: 'plugin', source: 'builtin', skills: skillsOf(m.id),
+        failing: this.registry.isDisabled(m.id), problem: null, restart: false, kind: 'plugin', source: 'builtin', skills: skillsOf(m.id), code: true, settings: null,
       });
     }
     for (const [id, s] of Object.entries(await this.installed())) {
@@ -444,7 +444,7 @@ export class PluginHost {
       rows.push({
         id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
         enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
-        kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage,
+        kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: m?.settings ?? null,
         skills: active ? skillsOf(id) : kindOfState(s) === 'skill' ? [id] : [],
       });
     }

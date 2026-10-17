@@ -178,6 +178,8 @@ async function pluginPackage(files, checkNames) {
   if (manifest.entry && !files.has(manifest.entry)) throw new PluginError(id, `its entry file ${manifest.entry} is missing`);
   checkNames(id);
   for (const f of manifest.files ?? []) if (!files.has(f)) throw new PluginError(id, `its file ${f}, listed in files, is missing`);
+  const props = manifest.settings?.properties;
+  if (manifest.settings !== undefined && (!props || typeof props !== 'object' || Array.isArray(props))) throw new PluginError(id, 'its settings must be a JSON Schema object with properties');
   /** @type {SkillInfo[]} */
   const skills = [];
   for (const f of manifest.skills ?? []) {
