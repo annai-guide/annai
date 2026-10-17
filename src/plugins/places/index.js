@@ -1,6 +1,10 @@
 import { VERSION } from '../../app/version.js';
 import { sunTimes } from '../../core/sun.js';
 import { deviceZone, timeIn } from '../../core/time.js';
+import { answerJSON } from '../../core/answer.js';
+import { OVERPASS, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../../core/pack/osm.js';
+
+export { KINDS };
 
 export const manifest = {
   id: 'places',
@@ -10,24 +14,9 @@ export const manifest = {
   description: 'nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.',
 };
 
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 /** Nominatim allows one request a second (spec §7.2); the gap is a little more. */
 export const NOMINATIM_GAP = { ms: 1100 };
-
-/** OpenStreetMap tags for each kind of place nearby knows; patterns match whole values ("pub", not "public_bookcase"). */
-export const KINDS = Object.freeze({
-  sights: ['tourism~"^(attraction|viewpoint|museum|gallery|artwork|zoo|aquarium)$"', 'historic', 'natural~"^(waterfall|peak|beach|cave_entrance|arch)$"'],
-  food: ['amenity~"^(restaurant|cafe|fast_food|bar|pub|ice_cream)$"'],
-  fuel: ['amenity~"^(fuel|charging_station)$"'],
-  parking: ['amenity=parking'],
-  toilets: ['amenity=toilets'],
-  lodging: ['tourism~"^(hotel|motel|guest_house|hostel|camp_site)$"'],
-  shops: ['shop~"^(supermarket|convenience|bakery)$"'],
-  parks: ['leisure~"^(park|nature_reserve)$"', 'boundary=national_park'],
-});
-/** Kinds that are useful without a name: most toilets and car parks have none. The other kinds are asked for with one. */
-const UNNAMED = new Set(['fuel', 'parking', 'toilets']);
 
 const WEATHER = /** @type {Record<number, string>} */ ({
   0: 'clear', 1: 'mainly clear', 2: 'partly cloudy', 3: 'overcast', 45: 'fog', 48: 'fog', 51: 'drizzle', 53: 'drizzle', 55: 'drizzle', 56: 'freezing drizzle', 57: 'freezing drizzle',
@@ -77,27 +66,21 @@ export function activate(annai) {
     // Nominatim's usage policy asks apps to say who they are. The app's own policy sends no
     // Referer, so this request sends the origin, which its Origin header shows anyway.
     const res = await call.fetch(url, { signal: call.signal, headers: { accept: 'application/json' }, referrerPolicy: 'origin' });
-    if (!res.ok) throw new Error(`Nominatim answered ${res.status}.`);
-    return res.json();
+    return answerJSON(res, 'Nominatim');
   };
   /** @param {string} url @param {any} call */
-  const json = async (url, call, init = {}) => {
-    const res = await call.fetch(url, { signal: call.signal, ...init });
-    if (!res.ok) throw new Error(`${new URL(url).hostname} answered ${res.status}.`);
-    return res.json();
-  };
+  const json = async (url, call, init = {}) => answerJSON(await call.fetch(url, { signal: call.signal, ...init }), new URL(url).hostname);
 
   const tools = [
     {
       name: 'nearby', group: 'Places',
-      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note. kinds: ${Object.keys(KINDS).join(', ')} (default sights and food).`,
-      input: { type: 'object', properties: { ...POINT, radius: { type: 'number', minimum: 50, maximum: 20000, description: 'Meters, default 1000.' }, kinds: { type: 'array', items: { enum: Object.keys(KINDS) } } }, required: ['lat', 'lng'] },
+      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note. kinds: ${KIND_NAMES.join(', ')} (default sights and food).`,
+      input: { type: 'object', properties: { ...POINT, radius: { type: 'number', minimum: 50, maximum: 20000, description: 'Meters, default 1000.' }, kinds: { type: 'array', items: { enum: KIND_NAMES } } }, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number, radius?: number, kinds?: string[] }} i @param {any} call */
       async run(i, call) {
         const radius = Math.round(Math.min(20000, Math.max(50, i.radius ?? 1000)));
         const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
-        const filters = (i.kinds?.length ? i.kinds : ['sights', 'food'])
-          .flatMap((k) => (/** @type {any} */ (KINDS)[k] ?? []).map((/** @type {string} */ f) => `[${f}]${UNNAMED.has(k) ? '' : '[name]'}`));
+        const filters = overpassFilters(i.kinds?.length ? i.kinds : ['sights', 'food']);
         // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
         const query = `[out:json][timeout:20];(${filters.map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
         /** @type {any[]} */
@@ -106,13 +89,9 @@ export function activate(annai) {
         for (const server of OVERPASS) {
           try {
             const data = await json(server, call, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` });
-            for (const e of data.elements ?? []) {
-              const lat = e.lat ?? e.center?.lat;
-              const lng = e.lon ?? e.center?.lon;
-              if (lat === undefined) continue;
-              const t = e.tags ?? {};
-              const kind = t.tourism ?? t.amenity ?? t.natural ?? t.leisure ?? t.shop ?? (t.historic ? `historic ${t.historic}` : t.boundary ?? '');
-              rows.push([t.name ?? t.brand ?? t.operator ?? '', kind, Math.round(meters(i.lat, i.lng, lat, lng)), round(lat), round(lng), 'osm', t.website ?? t.wikipedia ?? '']);
+            for (const e of Array.isArray(data?.elements) ? data.elements : []) {
+              const r = osmRow(e);
+              if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', r[5]]);
             }
             osm = true;
             break;
@@ -202,7 +181,7 @@ export function activate(annai) {
       async run(i, call) {
         const base = 'https://en.wikivoyage.org/w/api.php';
         const r = await json(`${base}?action=query&prop=extracts&explaintext=1&exsectionformat=wiki&redirects=1&titles=${encodeURIComponent(i.place)}&format=json&origin=*`, call);
-        const page = /** @type {any} */ (Object.values(r.query?.pages ?? {})[0]);
+        const page = /** @type {any} */ (Object.values(r?.query?.pages ?? {})[0]);
         if (!page || page.missing !== undefined || !page.extract) {
           const s = await json(`${base}?action=opensearch&search=${encodeURIComponent(i.place)}&limit=5&namespace=0&format=json&origin=*`, call).catch(() => null);
           const close = Array.isArray(s?.[1]) ? s[1] : [];
