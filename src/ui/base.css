@@ -161,6 +161,14 @@ a.chip { min-height: 44px; }
 .now-place { font-family: var(--f-display); font-weight: 700; font-size: 20px; overflow-wrap: anywhere; }
 .shiori-card { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
 .shiori-card p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.route-strip { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 3px solid var(--ai); display: flex; flex-direction: column; gap: 10px; }
+.route-strip li { display: flex; flex-direction: column; }
+.route-strip .name { font-family: var(--f-display); font-weight: 700; font-size: 18px; }
+.route-strip .you { color: var(--ai); font-weight: 700; }
+.maps-card { display: flex; flex-direction: column; gap: 8px; }
+.maps-card:empty, .drive-latest:empty { display: none; }
+.quick-ask { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn.big { min-height: 64px; font-size: 18px; border-radius: 18px; }
 .sub.warn { color: var(--risk); }
 .file-names { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; margin: 0; }
