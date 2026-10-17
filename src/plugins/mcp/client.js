@@ -147,6 +147,7 @@ export class McpClient {
     }
   }
 
+  /** What a call to a closed client says. */
   #removed() {
     return new McpError('session', `The MCP server ${this.server} was removed.`);
   }
