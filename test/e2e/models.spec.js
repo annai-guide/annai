@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint, filterTrace } from './helpers.js';
 
 test('endpoints, models and roles are set in Settings → Models, survive a reload, and the key is never shown', async ({ page }) => {
   await openApp(page, '#/models');
@@ -65,13 +65,13 @@ test('a conversation falls back from one provider to another, and the trace show
     }
     await expect(page.getByText('2. b-model')).toBeVisible();
     await page.getByLabel('Message', { exact: true }).fill('Hello');
-    await page.getByRole('button', { name: 'Send' }).click();
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.locator('.talk-text').last()).toHaveText('Hello from B.');
     await expect(page.getByText(/^b-model · .* after 1 failed attempt \(a-model: out of credit\)$/)).toBeVisible();
     await page.getByRole('link', { name: 'Trace' }).click();
     await page.getByLabel('Type contains').fill('model.turn');
     await expect(page.getByText(/main: b-model · 2 attempts/)).toBeVisible();
-    await page.getByLabel('Type contains').fill('net.request');
+    await filterTrace(page, { type: 'net.request' });
     await expect(page.locator('ol.trace > li')).toHaveCount(2);
     await expect(page.getByText(/a-model · credit \(402\)/)).toBeVisible();
     await expect(page.getByText(/b-model · ok \(200\)/)).toBeVisible();

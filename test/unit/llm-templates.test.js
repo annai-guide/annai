@@ -41,7 +41,11 @@ test("catalog/templates.json: types annai can install, ids that are unique, sugg
     assert.ok(!ids.has(t.id), `${t.id} twice`);
     ids.add(t.id);
     const providers = new Set((t.models ?? []).map((/** @type {any} */ m) => m.providerId));
-    for (const m of t.models ?? []) assert.ok(typeof m.prices?.input === 'number' && typeof m.prices?.output === 'number', `${t.id}/${m.providerId}: prices`);
+    for (const m of t.models ?? []) {
+      const chat = typeof m.prices?.input === 'number' && typeof m.prices?.output === 'number';
+      const speech = typeof m.prices?.perMinute === 'number' || typeof m.prices?.perMillionChars === 'number';
+      assert.ok(chat || speech, `${t.id}/${m.providerId}: prices`);
+    }
     for (const suggestion of Object.values(t.roles ?? {})) {
       for (const list of Object.values(/** @type {Record<string, string[]>} */ (suggestion))) for (const p of list) assert.ok(providers.has(p), `${t.id}: suggests ${p}`);
     }
