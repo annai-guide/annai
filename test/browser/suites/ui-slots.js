@@ -7,6 +7,13 @@ import { createDock } from '../../../src/ui/dock.js';
 /** A tick, for drawings whose promise settles. */
 const tick = () => new Promise((done) => setTimeout(done, 0));
 
+/** Something the dock listens to, counting who listens. */
+function listened() {
+  /** @type {Set<Function>} */
+  const fns = new Set();
+  return { fns, on: (/** @type {Function} */ fn) => { fns.add(fn); return () => { fns.delete(fn); }; } };
+}
+
 /** Shiori as the dock follows her: her state, and who listens to what. */
 function fakeAgent() {
   /** @type {Record<string, Set<(x: any) => void>>} */
@@ -154,5 +161,22 @@ export default function (test, assert) {
     dock.avatar.setLevel(0.5);
     assert.equal(errors.length, 3, "annai's own avatar is used from then on");
     assert.equal(/** @type {HTMLElement} */ (dock.el.querySelector('.talk .av')).dataset.state, 'speaking');
+  });
+
+  test('minors 13: a dock made again leaves nothing listening: dispose() lets go of Shiori, voice, live mode and the simulation', () => {
+    const { registry } = kit();
+    const agent = fakeAgent();
+    const [levels, voiceChanges, liveChanges, simChanges] = [listened(), listened(), listened(), listened()];
+    const ctx = {
+      registry, agent, notices: { card() {}, toast() {} }, go() {},
+      voice: { mode: { on: false, setting: 'auto' }, on: false, onLevel: levels.on, onChange: voiceChanges.on, choose: async () => {} },
+      live: { on: false, gps: 'ok', activity: 'still', fix: null, onChange: liveChanges.on },
+      sim: { running: false, onChange: simChanges.on },
+    };
+    const dock = createDock(ctx);
+    const all = () => [agent.listening(), levels.fns.size, voiceChanges.fns.size, liveChanges.fns.size, simChanges.fns.size];
+    assert.ok(all().every((n) => n > 0), JSON.stringify(all()));
+    dock.dispose();
+    assert.deepEqual(all(), [0, 0, 0, 0, 0]);
   });
 }

@@ -99,8 +99,7 @@ export function liveChip(ctx) {
     chip.textContent = liveText(live);
     chip.classList.toggle('on', live.on);
   };
-  live.onChange(show);
-  ctx.sim?.onChange(show);
+  const offs = [live.onChange(show), ctx.sim?.onChange(show)];
   show();
   const el = h('div', { class: 'voice-chip-wrap' }, chip, menu);
   // Escape closes it, from the chip or from inside the menu.
@@ -109,7 +108,7 @@ export function liveChip(ctx) {
     close();
     chip.focus();
   });
-  return { el };
+  return { el, dispose: () => offs.forEach((off) => off?.()) };
 }
 
 /** The open trip's plan places, for "Where are you?". @param {any} ctx @returns {Promise<{ name: string, lat: number, lng: number }[]>} */

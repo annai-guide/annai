@@ -77,6 +77,7 @@ export function startShell(root, core) {
     if (!dock || dockKey(ctx) === dockMadeFor) return false;
     dockMadeFor = dockKey(ctx);
     cleanUp('dock');
+    /** @type {any} */ (dock).dispose?.(); // what the old one listened to (minors 13)
     const made = makeDock();
     dock.el.replaceWith(made.el);
     dock = made;
