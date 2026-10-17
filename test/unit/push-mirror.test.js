@@ -401,3 +401,44 @@ test("a relay's message holding a cancel token is blanked before annai keeps or 
     await k.stop();
   }
 });
+
+test("the phone's subscription can't be read yet (annai's offline service is starting): no card, and tried again later", async () => {
+  const k = await pushKit({ live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.flush();
+    const get = k.source.get;
+    k.source.get = async () => { throw new Error("annai's offline service isn't running yet. Try again in a moment."); };
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+    await k.flush();
+    assert.equal(k.notices.length, 0, 'not "notifications are off"');
+    const st = await k.mirror.status();
+    assert.equal(st.problem?.needsYou, false);
+    assert.match(String(st.problem?.message), /isn't running yet/);
+    assert.equal(k.source.made, 1, 'not subscribed again');
+    k.source.get = get;
+    await k.flush(2 * MIN);
+    assert.equal((await k.waiting()).length, 1);
+  } finally {
+    await k.stop();
+  }
+});
+
+test('a new relay address, even one with the same key, gets everything, and the old one has it called off (choice 13)', async () => {
+  const k = await pushKit({ live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+    await k.flush();
+    const from = k.net.calls.length;
+    await k.mirror.setRelay('https://relay.example');
+    await k.flush();
+    const calls = k.net.calls.slice(from).map((c) => `${c.method} ${new URL(c.url).host}`);
+    assert.ok(calls.includes('DELETE push.annai.guide'), calls.join(', '));
+    assert.ok(calls.includes('POST relay.example'), calls.join(', '));
+    assert.equal((await k.mirror.status()).relay, 'https://relay.example');
+    assert.equal((await k.waiting()).length, 1);
+  } finally {
+    await k.stop();
+  }
+});
