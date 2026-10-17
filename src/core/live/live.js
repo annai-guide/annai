@@ -497,6 +497,19 @@ export class Live {
   }
 
   /**
+   * A trip was archived or unarchived: an archived trip's watches and plan remind of nothing, so they
+   * leave live mode, and the push relay, at once; an unarchived one's come back.
+   */
+  tripsChanged() {
+    return this.#run(async () => {
+      await this.#loadAll();
+      await this.#loadPlan();
+      await this.#check();
+      this.#tellReminders('urgent');
+    });
+  }
+
+  /**
    * The service worker says something happened while annai is on screen: its news is read in live
    * mode's own queue, after any catch-up that read it first, so a tap is told once (fix pass N2).
    * @returns {Promise<string[]>} the doubles, as pushNews
@@ -983,6 +996,8 @@ export class Live {
     if (sim?.simulation === true) this.#still.add(trip);
     else this.#still.delete(trip);
     if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run (review 4)
+    // An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
+    if ((await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status === 'archived') return;
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
