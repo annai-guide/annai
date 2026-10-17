@@ -8,8 +8,9 @@ import { utf8, ownBuffer } from '../bytes.js';
  * in refs, written in the same transaction (§4.9). Keys never reach the trace; any a provider echoes back in an
  * error are blanked out. Writing to the trace never breaks a call, not even on a full device.
  * @typedef {import('../types.js').Store} Store
- * @typedef {{ endpoint: string, model: string, providerModel: string, url: string, status: number, ms: number, firstMs: number | null,
- *   outcome: string, error?: string, usage: any, cost?: number }} RequestInfo
+ * @typedef {{ kind?: string, endpoint: string, model: string, providerModel: string, url: string, status: number, ms: number, firstMs: number | null,
+ *   outcome: string, error?: string, usage: any, cost?: number, wake?: string, seconds?: number, chars?: number }} RequestInfo
+ *   kind: "model" unless given ("speech-in", "speech-out"); seconds or chars: how much speech was sent
  * @typedef {{ model: string, name: string, outcome: string, ms: number, cost?: number, error?: string }} Attempt
  * @typedef {{ role: string, level: string, answeredBy: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string,
  *   tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, citations?: { url: string, title?: string }[] }} TurnInfo

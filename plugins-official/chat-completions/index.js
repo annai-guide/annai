@@ -1,7 +1,8 @@
 /**
  * The Chat Completions endpoint type (spec §9.1): annai's request in, an OpenAI-style streamed
  * chat completion out. Used by OpenAI, OpenRouter, Gemini's OpenAI-compatible endpoint, Groq,
- * DeepSeek, Mistral and local servers; their differences are tunables (spec §9.2).
+ * DeepSeek, Mistral and local servers; their differences are tunables (spec §9.2). Audio a model takes goes as
+ * input_audio (OpenRouter, Gemini, OpenAI's audio models).
  */
 const TUNABLES = Object.freeze({
   path: '/chat/completions',
@@ -13,6 +14,7 @@ const TUNABLES = Object.freeze({
 });
 const STOP = /** @type {Record<string, string>} */ ({ stop: 'end', tool_calls: 'tool', function_call: 'tool', length: 'length', content_filter: 'refusal' });
 const CODES = /** @type {Record<string, string>} */ ({ context_length_exceeded: 'context', insufficient_quota: 'credit', invalid_api_key: 'auth', model_not_found: 'not-found' });
+const AUDIO = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/flac': 'flac', 'audio/ogg': 'ogg', 'audio/aac': 'aac' });
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -86,13 +88,14 @@ function wire(m, t) {
     return [out];
   }
   const results = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => ({ role: 'tool', tool_call_id: p.id, content: p.content }));
-  const rest = m.parts.filter((/** @type {any} */ p) => p.type === 'text' || p.type === 'image' || p.type === 'document');
+  const rest = m.parts.filter((/** @type {any} */ p) => p.type === 'text' || p.type === 'image' || p.type === 'document' || p.type === 'audio');
   if (!rest.length) return results;
   const content = rest.every((/** @type {any} */ p) => p.type === 'text')
     ? rest.map((/** @type {any} */ p) => p.text).join('\n')
     : rest.map((/** @type {any} */ p) => {
       if (p.type === 'text') return { type: 'text', text: p.text };
       if (p.type === 'document') return { type: 'file', file: { filename: p.name ?? 'document.pdf', file_data: `data:${p.mediaType};base64,${p.data}` } };
+      if (p.type === 'audio') return { type: 'input_audio', input_audio: { data: p.data, format: AUDIO[p.mediaType] ?? 'wav' } };
       return { type: 'image_url', image_url: { url: `data:${p.mediaType};base64,${p.data}`, ...(t.imageDetail ? { detail: t.imageDetail } : {}) } };
     });
   return [...results, { role: 'user', content }];
@@ -241,7 +244,7 @@ function readList(json) {
     if (window) out.contextWindow = window;
     if (m.top_provider?.max_completion_tokens) out.maxOutput = m.top_provider.max_completion_tokens;
     const kinds = m.architecture?.input_modalities;
-    if (Array.isArray(kinds)) out.input = ['text', 'image'].filter((k) => kinds.includes(k));
+    if (Array.isArray(kinds)) out.input = ['text', 'image', 'audio'].filter((k) => kinds.includes(k));
     if (Array.isArray(m.supported_parameters)) out.tools = m.supported_parameters.includes('tools');
     const prices = pricesOf(m.pricing);
     if (prices) out.prices = prices;

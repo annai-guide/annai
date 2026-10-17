@@ -9,6 +9,7 @@ import { loadTemplates } from './templates.js';
 import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
+import { speechCall } from './speech.js';
 
 /**
  * Everything the UI needs to talk to models (spec §9): settings, endpoint types installed on
@@ -45,6 +46,16 @@ export function createLlm({
     const type = /** @type {import('./contract.js').EndpointType} */ (types().get(epRec.type));
     return { rec, type, endpoint: endpointOf(epRec, type.tunables), model: modelOf(rec), key: await getKey(store, epRec.id) };
   };
+  /**
+   * A speech model with what calling it needs, and its role's time limit (spec §9.6: configurable).
+   * @param {string} modelId @param {'in' | 'out'} dir
+   */
+  const speechOf = async (modelId, dir) => {
+    const { type, endpoint, model, key } = await resolve(modelId);
+    if (type.speech !== dir) throw new ProviderError('bad-request', dir === 'in' ? `${model.name} isn't a transcription model.` : `${model.name} isn't a voice.`);
+    const role = (await readConfig(ws)).roles[dir === 'in' ? 'speech-in' : 'speech-out'];
+    return { type, endpoint, model, key, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
+  };
   const service = {
     bench,
     ready,
@@ -58,14 +69,15 @@ export function createLlm({
      * A role call with fallback, traced in scope (spec §9.6).
      * @param {{ role?: string, request: import('./contract.js').Request, level?: string, onEvent?: (e: import('./contract.js').StreamEvent) => void,
      *   signal?: AbortSignal, scope?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
-     *   prefer?: string, repairImages?: Parameters<typeof callRole>[0]['repairImages'] }} c
-     *   prefer: the model whose cache is warm, tried first; repairImages: fixes a refused photo (spec §9.6, §9.9)
+     *   prefer?: string, repairImages?: Parameters<typeof callRole>[0]['repairImages'], speech?: Parameters<typeof callRole>[0]['speech'], firstOutputMs?: number }} c
+     *   prefer: the model whose cache is warm, tried first; repairImages: fixes a refused photo (spec §9.6, §9.9); speech: resolves heard
+     *   speech for each attempt (§10.3); firstOutputMs: how long the first words may take, when not the role's own setting
      */
-    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, repairImages }) {
+    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, repairImages, speech, firstOutputMs }) {
       await ready;
       return callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs,
       });
     },
     /**
@@ -82,6 +94,35 @@ export function createLlm({
       const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs) });
       await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by } }).catch(() => {});
       return r.probabilities;
+    },
+    /**
+     * Speech to text with one transcription model (spec §10.2), traced in scope.
+     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string }} c
+     */
+    async transcribe({ modelId, audio, scope = SYS, signal, wake }) {
+      return speechCall({ ...(await speechOf(modelId, 'in')), audio, fetch: get, signal, trace: modelTrace(store, scope), registry: plugins.registry, wake });
+    },
+    /**
+     * A voice clip of one text from one voice (spec §10.1), traced in scope.
+     * @param {{ modelId: string, text: string, scope?: string, signal?: AbortSignal, wake?: string }} c
+     */
+    async synthesize({ modelId, text, scope = SYS, signal, wake }) {
+      return speechCall({ ...(await speechOf(modelId, 'out')), text, fetch: get, signal, trace: modelTrace(store, scope), registry: plugins.registry, wake });
+    },
+    /**
+     * The quick-decision gate (spec §10.4): one decision whose question may carry heard speech,
+     * and no fallback to the main model: below the threshold the answer is 'unsure'.
+     * @param {{ prompt: string, options: { id: string, label: string }[], parts?: import('./contract.js').Part[], speech?: Parameters<typeof callRole>[0]['speech'],
+     *   scope?: string, threshold?: number }} c
+     */
+    async gate({ prompt, options, parts, speech, scope = SYS, threshold }) {
+      const cfg = await readConfig(ws);
+      const firstId = cfg.roles.decide?.models?.[0];
+      const first = firstId && cfg.models[firstId] ? modelOf(cfg.models[firstId]) : null;
+      const call = (/** @type {string} */ role, /** @type {any} */ request) => service.call({ role, request, scope, speech, record: { tag: 'gate' } });
+      const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs), parts, fallback: false });
+      await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by, gate: true } }).catch(() => {});
+      return r;
     },
     /** Whether photos go to this model's provider by upload, so a request carries only their ids (spec §4.8, §6.5). @param {string} modelId */
     async uploading(modelId) {

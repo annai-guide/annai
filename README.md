@@ -7,7 +7,7 @@ open-source, local-first travel agent that runs entirely in your browser:
 plan a trip before you go, get woken-up help while you travel, and keep the
 memories afterwards.
 
-> **Status:** milestones 1, 2 and 4 are built: trips with
+> **Status:** milestones 1 to 4 are built: trips with
 > versioned files, export and import (optionally encrypted), plugins, offline use and the trace;
 > photos; removing trips; and models (endpoints from templates or Sign in with OpenRouter, roles
 > with fallback, the Test button, and every request in the trace); and Shiori herself: the dock and
@@ -16,7 +16,9 @@ memories afterwards.
 > photos: request copies within each model's limits, closer looks at a part, repair when a model refuses a
 > photo, and uploads to the provider where it can store files. And planning: bookings brought in from
 > confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
-> search and directions links. Voice (milestone 3) is next. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> search and directions links. And voice: Shiori speaks (OpenAI-compatible voices, or the phone's own) and listens
+> (recording with an end-of-sentence detector, a transcription model or the model itself, or phone dictation), with interruptions,
+> a quick check that talk is meant for her, and Auto, On and Off. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Plan and bookings
@@ -24,6 +26,12 @@ memories afterwards.
 - Add confirmations to a trip: PDFs, Apple Wallet passes, screenshots, calendar files, or text shared from another app (Android). annai keeps the files; Shiori reads them and writes each booking as unverified.
 - The Plan shows the trip day by day: ● fixed, ○ flexible, the distance between stops with directions, and "Check this" on every booking you haven't confirmed. "Add to calendar" saves the plan as an .ics file.
 - Shiori researches and hands you search links for flights, hotels and cars. You book; annai never books for you.
+
+## Voice
+
+- Tap Shiori and talk. With voice on she answers aloud, sentence by sentence as she writes, then listens for your answer; tap her while she speaks to cut her off.
+- Voices and transcription are lists you order in Settings → Models: OpenAI-compatible voices and transcription (OpenAI, Groq, local servers), "Send audio to the model" for models that take audio, phone dictation, and the browser's own voice.
+- The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it.
 
 ## Principles
 
@@ -76,6 +84,6 @@ ImageMagick 7 with HEIC and WebP support. They're committed; rebuild them only t
 changes. CI fails when the stamp is stale; the Cloudflare Pages build command should be
 `node scripts/stamp.mjs`, so the deployed `sw.js` is always current.
 
-`docs/testing/device-checklist-m1.md`, `-m1b.md` and `-m1c.md` list what to verify by hand on real phones.
+`docs/testing/device-checklist-m1.md`, `-m1b.md`, `-m1c.md` and `-m3.md` list what to verify by hand on real phones.
 
 **Plugins.** [docs/plugins.md](docs/plugins.md) is the guide to writing one.

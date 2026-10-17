@@ -16,6 +16,11 @@ import { selfTools } from '../../src/core/agent/self-tools.js';
 import { readFile } from 'node:fs/promises';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { Voice } from '../../src/core/voice/voice.js';
+import { decide } from '../../src/core/llm/decide.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+import { fakePlatform } from './voice-fakes.js';
+import { clip, quiet, cat } from './voice-kit.js';
 
 /**
  * A codec that "decodes" a source written as "WxH" and reports what it was asked.
@@ -46,11 +51,14 @@ export function fakeCodec(formats) {
  * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean }} [opts]
+ * @param {any[][]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
+ *   voice?: { mode?: 'on' | 'off', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string } }} [opts]
  *   uploading: whether the main model's endpoint takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
+ *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
+ *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -77,9 +85,30 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.models['m-u'] = { id: 'm-u', endpoint: 'ep-u', template: null, user: { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] }, created: 0 };
     config.roles.utility.models = ['m-u'];
   }
+  if (v) {
+    config.endpoints['ep-say'] = { id: 'ep-say', type: 'say', template: null, user: { name: 'Say' }, created: 0 };
+    config.models['m-say'] = { id: 'm-say', endpoint: 'ep-say', template: null, user: { providerId: 'voice' }, created: 0 };
+    config.endpoints['ep-hear'] = { id: 'ep-hear', type: 'hear', template: null, user: { name: 'Hear' }, created: 0 };
+    config.models['m-hear'] = { id: 'm-hear', endpoint: 'ep-hear', template: null, user: { providerId: 'ears' }, created: 0 };
+    config.roles['speech-out'] = { models: ['m-say'], level: 'off' };
+    config.roles['speech-in'] = { models: v.speechIn ?? ['send-audio', 'm-hear', 'dictation'], level: 'off' };
+    if (v.decide) {
+      config.endpoints['ep-d'] = { id: 'ep-d', type: 'scripted', template: null, user: { name: 'ED', tunables: { script: v.decide } }, created: 0 };
+      config.models['m-d'] = { id: 'm-d', endpoint: 'ep-d', template: null, user: { providerId: 'model-d', prices: { input: 1, output: 1 }, input: ['text'] }, created: 0 };
+      config.roles.decide.models = ['m-d'];
+    }
+  }
+
   // Kept in the workspace like the app's, so what the Agent saves on a model (a photo limit) is what the next call reads.
   for (const id of Object.keys(config.endpoints)) await saveEndpoint(ws, config.endpoints[id], Object.values(config.models).filter((/** @type {any} */ m) => m.endpoint === id));
   await saveRoles(ws, config.roles);
+  /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
+  const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);
+  /** @type {string[]} what the voice was asked to say */
+  const said = [];
+  /** @type {string[]} the transcription models asked, in turn */
+  const transcribed = [];
+  const hears = [...(v?.hears ?? ['what was said'])];
   const bench = new Bench();
   const llm = {
     bench,
@@ -87,14 +116,40 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     uploading: async () => uploading,
     /** @param {any} c */
     call: async (c) => callRole({
-      role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types: new Map([['scripted', watched]]), keyFor: async () => null, bench,
+      role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types, keyFor: async () => null, bench,
       signal: c.signal, onEvent: c.onEvent, prefer: c.prefer, record: c.record, repairImages: c.repairImages, sleep: async () => {}, trace: modelTrace(store, c.scope ?? SYS),
+      speech: c.speech, firstOutputMs: c.firstOutputMs,
     }),
+    types: () => types,
+    /** @param {{ modelId: string, text: string }} c */
+    synthesize: async (c) => {
+      said.push(c.text);
+      return { clip: { data: utf8(`${c.modelId}:${c.text}`), mediaType: 'audio/mpeg' }, cost: 0, ms: 1 };
+    },
+    /** @param {{ modelId: string }} c */
+    transcribe: async (c) => {
+      transcribed.push(c.modelId);
+      if (v?.failing?.includes(c.modelId)) throw new ProviderError('server', `${c.modelId} is down`);
+      return { text: hears.length > 1 ? hears.shift() : hears[0], cost: 0, ms: 1 };
+    },
+    /** @param {any} c */
+    gate: async (c) => decide({ prompt: c.prompt, options: c.options, parts: c.parts, fallback: false, call: (role, request) => llm.call({ role, request, speech: c.speech, scope: c.scope, record: { tag: 'gate' } }) }),
   };
   /** @type {any[]} */
   const notices = [];
   const codec = fakeCodec(codecFormats);
-  const agent = new Agent({ store, ws, llm, registry, codec, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
+  /** @type {Voice | null} */
+  let voice = null;
+  /** @type {ReturnType<typeof fakePlatform> | null} */
+  let platform = null;
+  if (v) {
+    platform = fakePlatform({ playMs: v.playMs ?? 5, dictation: v.dictation, micFails: v.micFails });
+    registry.add('voice-browser', 'voice-platform', platform);
+    await updateAppSettings(ws, { voice: { mode: v.mode ?? 'on', keepClips: Boolean(v.keepClips) } });
+    voice = new Voice({ llm, ws, registry, store, locale: 'en', where: 'ios' });
+    await voice.refresh(); // as the app does when it starts
+  }
+  const agent = new Agent({ store, ws, llm, registry, codec, voice, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
   agent.addLoopTools(selfTools(agent));
   agent.on('notice', (n) => notices.push(n));
   /** @type {Record<string, string>} annai's own personalities, as shipped */
@@ -103,5 +158,19 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */
   const events = (types) => store.tx(['events'], 'readonly', (t) => t.listEvents(trip, types ? { types } : {}));
-  return { store, ws, trip, registry, host, agent, llm, requests, events, notices, presets, codec };
+  return { store, ws, trip, registry, host, agent, llm, requests, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed };
+}
+
+/** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */
+export async function until(fn, ms = 2000) {
+  const end = Date.now() + ms;
+  while (!fn()) {
+    if (Date.now() > end) throw new Error(`still waiting after ${ms} ms`);
+    await new Promise((r) => setTimeout(r, 2));
+  }
+}
+
+/** The microphone hears one of the speech clips, then a pause: one segment. @param {any} k @param {string} name */
+export async function hear(k, name) {
+  k.platform.mic.feed(cat(quiet(0.3), await clip(name), quiet(1)), 16_000);
 }

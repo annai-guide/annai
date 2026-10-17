@@ -438,8 +438,11 @@ export class PluginHost {
           if (typeof type?.type !== 'string' || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(type.type)) {
             throw new PluginError(id, 'an endpoint type needs a "type" id of lowercase letters, digits and dashes');
           }
-          if (typeof type.run !== 'function' && (typeof type.build !== 'function' || typeof type.read !== 'function')) {
-            throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run()`);
+          const chat = typeof type.run === 'function' || (typeof type.build === 'function' && typeof type.read === 'function');
+          const hears = type.speech === 'in' && typeof type.transcribeRequest === 'function' && typeof type.readTranscript === 'function';
+          const speaks = type.speech === 'out' && typeof type.speechRequest === 'function' && typeof type.readSpeech === 'function';
+          if (!chat && !hears && !speaks) {
+            throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech()`);
           }
           return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
         },

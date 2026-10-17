@@ -2,6 +2,7 @@ import { h, field, twoStep, jsonField, checkbox } from '../dom.js';
 import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer } from '../../core/llm/config.js';
 import { templateUpdates, applyTemplate, addListedModel, useSuggestion } from '../../core/llm/templates.js';
 import { testPanel } from '../model-check.js';
+import { speechTestPanel } from '../speech-check.js';
 
 /** An error in plain words; for a ValidationError, its own words without the field path. @param {any} e */
 export function messageOf(e) {
@@ -14,9 +15,11 @@ function gone(text) {
   return h('div', { class: 'screen' }, h('h1', { class: 'title', text }), h('p', {}, h('a', { href: '#/models' }, 'Back to Models')));
 }
 
-/** @param {import('../../core/llm/cost.js').Prices | null} prices */
-function priceLine(prices) {
+/** A model's prices in a line: tokens, minutes of speech, or characters. @param {import('../../core/llm/cost.js').Prices | null} prices */
+export function priceLine(prices) {
   if (!prices) return null;
+  if (typeof prices.perMinute === 'number') return `$${prices.perMinute} a minute of speech`;
+  if (typeof prices.perMillionChars === 'number') return `$${prices.perMillionChars} per million characters`;
   if (!prices.input && !prices.output) return 'free';
   return `$${prices.input ?? '?'} in, $${prices.output ?? '?'} out per million tokens`;
 }
@@ -81,7 +84,8 @@ export async function renderEndpoint(ctx, id) {
       status),
     from?.roles ? suggestionsPanel(ctx, id, from) : null,
     modelsSection(ctx, id, models),
-    models[0] ? testPanel(ctx, models[0].id, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
+    models[0] && type?.speech ? speechTestPanel(ctx, models[0], type.speech, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
+    models[0] && !type?.speech ? testPanel(ctx, models[0].id, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
     h('div', { class: 'acts' }, twoStep('Remove endpoint', 'Tap again to remove it', async () => {
       await removeEndpoint(ctx.ws, ctx.store, id);
       ctx.go('#/models');

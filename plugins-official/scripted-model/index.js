@@ -6,6 +6,7 @@
  *   { error: kind, message, status, retryAfter }                        a failure (spec §9.9 kinds)
  *   { text, cut: true }                                                 says text, then the connection drops
  *   logprobs: [{ token, logprob }] reports the first token's alternatives; stop: the stop reason (default "tool" or "end").
+ *   stream: true gives each tool call's arguments as tool_input events first, pieceMs apart; breakAt: n drops the connection after n of them.
  * It reads no messages, so it takes the request as built, tail included (tail: true).
  * @param {any} annai
  */
@@ -31,7 +32,20 @@ export function activate(annai) {
       for (const piece of pieces(step.text ?? '')) yield { type: 'text', text: piece };
       if (step.cut) throw new ProviderError('network', 'The scripted connection dropped.');
       const toolCalls = Array.isArray(step.toolCalls) ? step.toolCalls : [];
-      for (const [i, c] of toolCalls.entries()) yield { type: 'tool_call', id: `scripted_${n}_${i}`, name: c.name, input: c.input ?? {} };
+      for (const [i, c] of toolCalls.entries()) {
+        const id = `scripted_${n}_${i}`;
+        if (step.stream) {
+          // The arguments as they would stream, 8 characters more each time.
+          const json = JSON.stringify(c.input ?? {});
+          let pieces = 0;
+          for (let at = 8; at < json.length + 8; at += 8) {
+            if (step.pieceMs) await sleep(step.pieceMs, signal);
+            if (step.breakAt !== undefined && pieces++ >= step.breakAt) throw new ProviderError('network', 'The scripted connection dropped.');
+            yield { type: 'tool_input', id, name: c.name, partial: json.slice(0, at) };
+          }
+        }
+        yield { type: 'tool_call', id, name: c.name, input: c.input ?? {} };
+      }
       yield { type: 'usage', usage: step.usage ?? { input: 12, output: 6 } };
       yield { type: 'stop', reason: step.stop ?? (toolCalls.length ? 'tool' : 'end') };
     },

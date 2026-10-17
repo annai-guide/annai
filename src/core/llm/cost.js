@@ -3,7 +3,8 @@
  * when the prompt is longer than its `above` tokens, as some providers charge more for long prompts.
  * @typedef {import('./contract.js').Usage} Usage
  * @typedef {{ input?: number, output?: number, cacheRead?: number, cacheWrite?: number, cacheWrite1h?: number }} PriceSet
- * @typedef {PriceSet & { tiers?: (PriceSet & { above: number })[] }} Prices
+ * @typedef {PriceSet & { tiers?: (PriceSet & { above: number })[], perMinute?: number, perMillionChars?: number, minSeconds?: number }} Prices
+ *   perMinute: USD per minute of audio transcribed (at least minSeconds a request); perMillionChars: USD per million characters a voice says
  */
 
 /** @type {Readonly<Usage>} */
@@ -60,4 +61,16 @@ export function costOf(usage, prices, providerTools = []) {
 /** Two costs added up; unknown only when both are. @param {number | undefined} a @param {number | undefined} b */
 export function addCost(a, b) {
   return a === undefined && b === undefined ? undefined : (a ?? 0) + (b ?? 0);
+}
+
+/**
+ * The cost of one speech call in USD (spec §9.9): a transcription by the minute of audio, a voice
+ * by the character. Undefined when the model has no such price.
+ * @param {Prices | null | undefined} prices @param {{ seconds?: number, chars?: number }} amount
+ */
+export function speechCost(prices, { seconds, chars }) {
+  if (!prices) return undefined;
+  if (seconds !== undefined && typeof prices.perMinute === 'number') return (Math.max(seconds, prices.minSeconds ?? 0) * prices.perMinute) / 60;
+  if (chars !== undefined && typeof prices.perMillionChars === 'number') return (chars * prices.perMillionChars) / 1e6;
+  return undefined;
 }

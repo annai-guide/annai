@@ -2,6 +2,7 @@ import { h, field, checkbox, twoStep, jsonField } from '../dom.js';
 import { modelOf, modelBase, endpointOf, saveModel, removeModel, diffLayer } from '../../core/llm/config.js';
 import { messageOf } from './endpoint.js';
 import { testPanel } from '../model-check.js';
+import { speechTestPanel } from '../speech-check.js';
 
 /** A positive whole number from an input, or null when it's empty. @param {string} v */
 function num(v) {
@@ -23,6 +24,8 @@ export async function renderModel(ctx, id) {
   const epRec = cfg.endpoints[rec.endpoint];
   const ep = endpointOf(epRec, ctx.llm.types().get(epRec.type)?.tunables);
   const back = `#/models/endpoint?id=${encodeURIComponent(rec.endpoint)}`;
+  const speech = ctx.llm.types().get(epRec.type)?.speech;
+  if (speech === 'in' || speech === 'out') return renderSpeechModel(ctx, rec, speech, ep, back);
   const status = h('p', { class: 'sub', role: 'status' });
   const name = h('input', { id: 'model-name', autocomplete: 'off', value: m.name });
   const providerId = h('input', { id: 'model-provider-id', autocomplete: 'off', autocapitalize: 'off', value: m.providerId });
@@ -78,6 +81,54 @@ export async function renderModel(ctx, id) {
     testPanel(ctx, id, rec.verified),
     h('div', { class: 'acts' }, twoStep('Remove model', 'Tap again to remove it', async () => {
       await removeModel(ctx.ws, id);
+      ctx.go(back);
+    })));
+}
+
+/**
+ * A transcription model or a voice (spec §9.2, §10): its name, id, voice, prices and Test.
+ * @param {any} ctx @param {import('../../core/llm/config.js').ModelRecord} rec @param {'in' | 'out'} kind
+ * @param {import('../../core/llm/config.js').Endpoint} ep @param {string} back
+ */
+function renderSpeechModel(ctx, rec, kind, ep, back) {
+  const m = modelOf(rec);
+  const base = modelBase(rec);
+  const status = h('p', { class: 'sub', role: 'status' });
+  const name = h('input', { id: 'model-name', autocomplete: 'off', value: m.name });
+  const providerId = h('input', { id: 'model-provider-id', autocomplete: 'off', autocapitalize: 'off', value: m.providerId });
+  const { voice: voiceId, ...otherTunables } = m.tunables;
+  const voice = kind === 'out' ? h('input', { id: 'model-voice', autocomplete: 'off', autocapitalize: 'off', value: String(voiceId ?? ''), placeholder: String(ep.tunables.voice ?? '') }) : null;
+  const prices = jsonField(kind === 'in' ? 'Prices, USD (JSON: perMinute, minSeconds)' : 'Prices, USD (JSON: perMillionChars)', 'model-prices', m.prices ?? {});
+  const tunables = jsonField('Tunables (JSON)', 'model-tunables', otherTunables);
+  const extra = jsonField('Extra request fields (JSON)', 'model-extra', m.extraBody);
+  const save = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async () => {
+      try {
+        const pid = providerId.value.trim();
+        const p = prices.read();
+        const t = tunables.read();
+        if (voice?.value.trim()) t.voice = voice.value.trim();
+        const edited = { name: name.value.trim() === pid ? base.name : name.value.trim(), providerId: pid, prices: Object.keys(p).length ? p : null, tunables: t, extraBody: extra.read() };
+        await saveModel(ctx.ws, { ...rec, user: diffLayer(edited, base) });
+        ctx.llm.bench.clear(rec.id);
+        ctx.notices.toast('Saved');
+        ctx.render();
+      } catch (err) {
+        status.textContent = messageOf(err);
+      }
+    },
+  }, 'Save');
+  return h('div', { class: 'screen' },
+    h('p', { class: 'crumbs' }, h('a', { href: back }, `← ${ep.name}`)),
+    h('h1', { class: 'title', text: m.name }),
+    h('p', { class: 'sub', text: kind === 'in' ? 'A transcription model: it turns what you say into text.' : 'A voice: Shiori speaks with it.' }),
+    h('section', { class: 'panel', 'aria-label': 'Model' },
+      field('Name', name), field('Provider model id', providerId), voice ? field('Voice', voice) : null,
+      prices.el, tunables.el, extra.el, h('div', { class: 'acts' }, save), status),
+    speechTestPanel(ctx, m, kind, rec.verified),
+    h('div', { class: 'acts' }, twoStep('Remove model', 'Tap again to remove it', async () => {
+      await removeModel(ctx.ws, rec.id);
       ctx.go(back);
     })));
 }
