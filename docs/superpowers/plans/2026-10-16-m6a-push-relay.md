@@ -45,7 +45,7 @@ Milestone 6 is done when "a reminder arrives on a locked iPhone and opens a catc
    - a reminder's encrypted payload: at most 4,096 bytes, the most push services must take (RFC 8030 §7.2), and Apple's limit;
    - 200 waiting per subscription;
    - `sendAt` from 5 minutes ago (sent at once) to 30 days ahead;
-   - 300 requests a minute from one IP. On Cloudflare this is the rate-limit binding, which counts per Cloudflare location and approximately; in Node, an exact counter. A preflight (`OPTIONS`) isn't counted;
+   - 60 requests a minute from one IP, an IPv6 address counted by its /64 (the review's fix pass lowered it from 300: one address stays under the Free plan's 100,000 requests a day). On Cloudflare this is the rate-limit binding, which counts per Cloudflare location and approximately; in Node, an exact counter. A preflight (`OPTIONS`) isn't counted;
    - a schedule request's body: at most 8 KB; an endpoint, at most 2,048 characters.
 6. **Sending:**
    - **Headers:** `TTL` (the page's; by default an hour), `Urgency: high` (Apple: "to attempt to deliver the notification immediately, specify high"), `Content-Encoding: aes128gcm`.

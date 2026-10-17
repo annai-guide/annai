@@ -64,6 +64,29 @@ export function pushEndpointAllowed(endpoint, extra = []) {
   return u.protocol === 'https:' && u.port === '' && PUSH_HOSTS.some((re) => re.test(u.hostname));
 }
 
+/** Requests a minute from one address (choice 5): 60 × 1,440 = 86,400 a day, under the Free plan's 100,000. */
+export const PER_MINUTE = 60;
+
+/**
+ * The address the rate limit counts: an IPv4 address as it is; an IPv6 one by its /64, the block one
+ * home or phone gets, so per address means something there too.
+ * @param {string | null | undefined} ip
+ */
+export function addressKey(ip) {
+  const s = String(ip ?? '').trim().toLowerCase();
+  if (!s) return 'unknown';
+  const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/.exec(s);
+  if (v4) return v4[1];
+  if (!s.includes(':')) return s;
+  const double = s.includes('::');
+  const [head, tail = ''] = s.split('::');
+  const a = head ? head.split(':') : [];
+  const b = double && tail ? tail.split(':') : [];
+  const groups = double ? [...a, ...Array(Math.max(0, 8 - a.length - b.length)).fill('0'), ...b] : a;
+  if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return s;
+  return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(':')}::/64`;
+}
+
 /** The name of a subscription's object: the SHA-256 of its endpoint, base64url (choice 1). @param {string} endpoint */
 export async function subscriptionName(endpoint) {
   return toB64u(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint))));
@@ -146,7 +169,7 @@ function vapid(env) {
  * the relay never runs without one (spec §11.6: "rate limits per IP"). It counts per isolate, as
  * the binding counts per Cloudflare location. @param {() => number} now
  */
-function ownLimiter(now, limit = 300, period = 60_000) {
+function ownLimiter(now, limit = PER_MINUTE, period = 60_000) {
   /** @type {Map<string, number[]>} */
   const seen = new Map();
   return {
@@ -177,7 +200,7 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       return reply(204, null, { 'Access-Control-Allow-Methods': 'GET, POST, DELETE', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400' });
     }
     // On Cloudflare, CF-Connecting-IP is the client's address, set by Cloudflare itself; relay/serve.mjs sets it too.
-    const { success } = await (env.LIMIT ?? fallback).limit({ key: `ip:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}` });
+    const { success } = await (env.LIMIT ?? fallback).limit({ key: `ip:${addressKey(req.headers.get('CF-Connecting-IP'))}` });
     if (!success) return fail(429, 'rate', 'Too many requests from this address. annai tries again in a minute.', { 'Retry-After': '60' });
     if (pathname === '/v1/vapid') {
       if (req.method !== 'GET') return fail(405, 'method', 'Ask for the key with GET.');
