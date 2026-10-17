@@ -5,6 +5,7 @@ import { makeSchemaFor } from '../core/schema.js';
 import { kindOf, ensureBaseScopes, syncTripTitles, removeLeftovers, SYS } from '../core/scopes.js';
 import { Registry } from '../core/registry.js';
 import { PluginHost } from '../core/plugins.js';
+import { watchAppends, deliverHooks } from '../core/hooks.js';
 import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
@@ -60,10 +61,13 @@ async function boot() {
   });
   if (!held) return;
 
-  const store = await createIdbStore();
+  // Every committed log append goes to plugins' hooks (spec §5.4), once the registry exists.
+  let deliver = (/** @type {any[]} */ _evs) => {};
+  const store = watchAppends(await createIdbStore(), (evs) => deliver(evs));
   running = { store };
   // What plugins say when they fail can echo a key: the log keeps none (spec §9.9).
   const registry = new Registry({ log: secretFreeLog(store, SYS) });
+  deliver = (evs) => deliverHooks(registry, evs);
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
   // What a late request wrote into a removed trip goes now; if this fails, it goes at the next start (spec §4.9).

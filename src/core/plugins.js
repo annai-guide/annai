@@ -643,6 +643,13 @@ export class PluginHost {
         append: (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data, /** @type {any} */ keep = {}) =>
           record(this.ws.store, scope, { type, actor: `plugin:${id}`, data: data ?? {}, texts: keep.texts ?? [], blobs: keep.blobs ?? [] }),
       }),
+      /** Log appends, as frozen copies, never this plugin's own (spec §5.4: read-only in v1). */
+      hooks: Object.freeze({
+        on: (/** @type {any} */ fn, /** @type {{ types?: string[] }} */ o = {}) => {
+          if (typeof fn !== 'function') throw new PluginError(id, 'hooks.on needs a function');
+          return registry.add(id, 'hook', { fn, ...(Array.isArray(o?.types) ? { types: o.types.map(String) } : {}) });
+        },
+      }),
       llm,
       wake: (/** @type {string} */ reason) => need('agent').wake({ kind: 'plugin', plugin: id, text: String(reason) }),
       net: Object.freeze({

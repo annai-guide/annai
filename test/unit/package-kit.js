@@ -5,6 +5,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, SYS, SYS_PLUGINS } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
+import { watchAppends, deliverHooks } from '../../src/core/hooks.js';
 
 /** A package's files from texts, by name. @param {Record<string, string>} o */
 export const files = (o) => new Map(Object.entries(o).map(([k, v]) => [k, utf8(v)]));
@@ -20,10 +21,10 @@ export const KIT = (more = {}) => files({
   'templates.json': JSON.stringify({ endpoints: [{ id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM' }] }),
 });
 
-/** A host on memory storage that loads installed modules from storage as data: URLs (as plugins.test.js does). */
+/** A host on memory storage, its log appends handed to plugins' hooks, that loads installed modules from storage as data: URLs (as plugins.test.js does). */
 export async function hostKit() {
   const registry = new Registry();
-  const store = createMemoryStore();
+  const store = watchAppends(createMemoryStore(), (evs) => deliverHooks(registry, evs));
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
   const importModule = async (/** @type {string} */ url) => {
