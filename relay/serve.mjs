@@ -8,6 +8,7 @@
  */
 import http from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -107,7 +108,8 @@ export async function startRelay({ port = 0, host = '127.0.0.1', origins = [], j
   };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Run as a script, also through a link (a release behind a "current" link): Node names this module by its real path.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const one = (/** @type {string} */ name) => {
     const i = args.indexOf(name);
