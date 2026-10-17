@@ -171,3 +171,37 @@ test('minors 25: a change that fails its checks keeps nothing of itself: no new 
   await assert.rejects(d.backups.update(fresh, { secret: { token: 'new-token-0002' }, passphrase: 'cedar bark', keys: true }), /only in encrypted backups/);
   assert.equal(await d.store.tx(['secrets'], 'readonly', (t) => t.getSecret(`backup:${fresh}`)), undefined);
 });
+
+test('fix pass R1: "Back up over it" covers the place as the user saw it, every device listed then; a backup made after still gets its own decision', async () => {
+  const place = memoryFilePlace();
+  const phone = await device(place, 'iPhone');
+  /** Another device's backup, made now. @param {string} label @param {string} id */
+  const other = (label, id) => {
+    const name = backupFileName({ at: Date.now(), label, device: id, encrypted: false });
+    place.files.set(name, new Blob(['a backup']));
+    return name;
+  };
+  const a = await filePlaceOn(phone);
+  await phone.backups.backUp(a);
+  await later();
+  other('Android phone', 'k3j2h4l1abcd');
+  await later();
+  const ipad = other('iPad', 'q8w7e6r5t4y3');
+  await later();
+  await assert.rejects(phone.backups.backUp(a), (e) => e instanceof TargetError && e.kind === 'newer' && e.remote?.id === ipad);
+  // One tap goes over both: the Android's backup was there when the user saw the iPad's.
+  await later();
+  await phone.backups.backUp(a, { over: true });
+  assert.equal((await phone.backups.get(a))?.hold, null);
+  // Held again, found on the place's screen; the Android backs up before the user taps.
+  await later();
+  other('iPad', 'q8w7e6r5t4y3');
+  assert.ok((await phone.backups.check(a)).newer);
+  await later();
+  const after = other('Android phone', 'k3j2h4l1abcd');
+  await later();
+  await assert.rejects(phone.backups.backUp(a, { over: true }), (e) => e instanceof TargetError && e.kind === 'newer' && e.remote?.id === after);
+  await later();
+  await phone.backups.backUp(a, { over: true });
+  assert.equal((await phone.backups.get(a))?.hold, null);
+});

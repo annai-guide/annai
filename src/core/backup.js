@@ -33,19 +33,18 @@ function knownOf(listed) {
 }
 
 /**
- * The newest backup at a place that another device made after the one this device builds on, or null
- * (single writer). Every listed backup counts, each against the newest of its own device's that this
- * device had seen (last.known), never against this device's clock: a device whose clock is behind is
- * still seen, and one never seen is newer (minors 23). A record from before then knows only when its
- * base was made.
+ * The newest backup another device made after the one this device builds on, or null (single writer).
+ * Each listed is checked against the newest of its device's seen here (last.known), by that device's
+ * clock: one behind is still seen, one never seen is newer (minors 23). An older record knows its base's time.
  * @param {RemoteBackup[]} listed newest first @param {import('./backup-targets.js').LastBackup | null | undefined} last
- * @param {string} me @param {RemoteBackup | null} [over] the newer backup the user chose to back up over
+ * @param {string} me @param {{ remote: RemoteBackup, known?: Record<string, number> } | null} [over] the hold the user backs
+ *   up over, which covers every device listed with it (fix pass R1)
  */
 function newerOf(listed, last, me, over = null) {
-  const on = over ?? last;
+  const on = over?.remote ?? last;
   /** @type {Record<string, number>} */
   const known = Object.assign(Object.create(null), last?.known);
-  if (over) known[over.device ?? ''] = Math.max(known[over.device ?? ''] ?? 0, over.at);
+  if (over) for (const [d, at] of [...Object.entries(over.known ?? {}), [over.remote.device ?? '', over.remote.at]]) known[d] = Math.max(known[d] ?? 0, Number(at) || 0);
   const unknown = last && !last.known ? on?.at ?? -1 : -1;
   return listed.find((b) => b.device !== me && b.id !== on?.id && b.at > (known[b.device ?? ''] ?? unknown)) ?? null;
 }
@@ -88,6 +87,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   const log = (type, data) => logEvent(store, SYS, { type, actor: 'system', data }).catch(() => {});
   /** @param {string} type */
   const typeOf = (type) => storageTypes(registry).get(type);
+  /** Whether a place keeps whole archive files. @param {Target} rec */
+  const whole = (rec) => typeOf(rec.type)?.stores === 'file';
 
   /** @param {string} id */
   async function target(id) {
@@ -145,7 +146,10 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     const at = now();
     /** @type {Hold} */
     let h;
-    if (e.kind === 'newer') h = { kind: 'newer', remote: await keptRemote(e.remote ?? { id: '', at }) };
+    if (e.kind === 'newer') {
+      const known = /** @type {any} */ (e).known;
+      h = { kind: 'newer', remote: await keptRemote(e.remote ?? { id: '', at }), ...(known ? { known } : {}) };
+    }
     else if (e.kind === 'large') h = { kind: 'large', bytes: e.bytes ?? 0, at };
     else {
       const count = rec.hold?.kind === 'error' ? rec.hold.count + 1 : 1;
@@ -165,14 +169,15 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
 
   /**
    * Before a whole file is sent: its size against what may go without asking, and every backup the
-   * place lists (single writer); what it lists, for the record. A git place checks both in its own put.
-   * @param {Target} rec @param {number} bytes @param {RemoteBackup | null} over @param {number} maxUpload @param {string} me
+   * place lists (single writer); what it lists, for the record. A newer one is held with what was listed
+   * with it. A git place checks both in its own put.
+   * @param {Target} rec @param {number} bytes @param {Extract<Hold, { kind: 'newer' }> | null} over @param {number} maxUpload @param {string} me
    */
   async function beforeFile(rec, bytes, over, maxUpload, me) {
     if (bytes > maxUpload) throw new TargetError('large', `This backup would upload ${Math.ceil(bytes / 1_000_000)} MB.`, { bytes });
     const there = await listed(rec);
     const newer = newerOf(there, rec.last, me, over);
-    if (newer) throw new TargetError('newer', `There is a newer backup at ${rec.name}.`, { remote: newer });
+    if (newer) throw Object.assign(new TargetError('newer', `There is a newer backup at ${rec.name}.`, { remote: newer }), { known: knownOf(there) });
     return there;
   }
 
@@ -202,9 +207,9 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     emit();
     const started = now();
     try {
-      const overR = over && rec.hold?.kind === 'newer' ? rec.hold.remote : null;
-      const base = overR?.id ?? rec.last?.id ?? null;
-      const file = typeOf(rec.type)?.stores === 'file';
+      const overHold = over && rec.hold?.kind === 'newer' ? rec.hold : null;
+      const base = overHold?.remote.id ?? rec.last?.id ?? null;
+      const file = whole(rec);
       const me = await deviceId(ws);
       // A whole-file place may keep its backups encrypted, with the API keys when the user chose (spec §12.2).
       const passphrase = file && rec.encrypt ? (await targetSecret(store, id)).passphrase : undefined;
@@ -213,7 +218,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         kind: 'everything', include: { ...PRESETS.backup }, app, now: Date.now(), ...(passphrase ? { passphrase, secrets: Boolean(rec.keys) } : {}),
       });
       const name = file ? backupFileName({ at: built.manifest.created, label, device: me, encrypted: Boolean(passphrase) }) : built.filename;
-      const there = file ? await beforeFile(rec, built.blob.size, overR, maxUpload, me) : null;
+      const there = file ? await beforeFile(rec, built.blob.size, overHold, maxUpload, me) : null;
       const result = await call(rec, 'put', (t, c) => t.put(c, { blob: built.blob, name, manifest: built.manifest }, {
         base, maxUpload, signal: stop.signal,
         onProgress: (p) => {
@@ -343,12 +348,13 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const [remote] = there;
       // A backup this device made but didn't get to note is the one to build on.
       const mine = !newer && remote && remote.id !== rec.last?.id && remote.device === me ? remote : null;
+      // What is there, seen: kept as the base's, or with the hold (fix pass R1); a git place keeps none.
+      const known = whole(rec) ? { known: knownOf(there) } : {};
       await setTarget(ws, id, {
         checked: now(),
-        // With none newer, every backup there is one this device has seen (minors 23).
-        ...(mine ? { last: { id: mine.id, at: mine.at, seqs: {}, bytes: 0, known: knownOf(there) } } : !newer && rec.last ? { last: { ...rec.last, known: knownOf(there) } } : {}),
+        ...(mine ? { last: { id: mine.id, at: mine.at, seqs: {}, bytes: 0, ...known } } : !newer && rec.last ? { last: { ...rec.last, ...known } } : {}),
         // The user is looking at the place's screen, which shows the newer backup: no card for it.
-        hold: newer ? { kind: 'newer', remote: newer, seen: true } : rec.hold?.kind === 'large' ? rec.hold : null,
+        hold: newer ? { kind: 'newer', remote: newer, seen: true, ...known } : rec.hold?.kind === 'large' ? rec.hold : null,
       });
       emit();
       return { note, newer };
@@ -394,8 +400,10 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
 
     /** This device took in a backup from a place: its next backup there builds on that one. @param {string} id @param {RemoteBackup} remote */
     async accept(id, remote) {
-      const known = (await target(id)).last?.known;
-      await setTarget(ws, id, { last: { id: remote.id, at: remote.at, seqs: {}, bytes: 0, known: { ...known, [remote.device ?? '']: Math.max(known?.[remote.device ?? ''] ?? 0, remote.at) } }, hold: null });
+      const rec = await target(id);
+      const had = rec.last?.known ?? {};
+      const known = whole(rec) ? { known: { ...had, [remote.device ?? '']: Math.max(had[remote.device ?? ''] ?? 0, remote.at) } } : {};
+      await setTarget(ws, id, { last: { id: remote.id, at: remote.at, seqs: {}, bytes: 0, ...known }, hold: null });
       emit();
     },
 
