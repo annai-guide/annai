@@ -161,3 +161,11 @@ test('WebDAV through annai: whole files kept and pruned, every request traced, t
     await dav.stop();
   }
 });
+
+test('a folder address that is no web address is a setup problem in plain words, never a bug in the plugin', async () => {
+  const { type } = davType();
+  for (const url of ['https://dav .example.com/annai/', 'https://dav.example.com (my folder)/annai/', 'https://', 'https://ex\u0000ample.com/', 'https://[::1/annai']) {
+    const c = ctx({ origin: '' }, { url });
+    for (const step of [() => type.check(c), () => type.list(c), () => type.get(c, 'x', opts)]) await assert.rejects(step(), refused('setup', /address/), url);
+  }
+});

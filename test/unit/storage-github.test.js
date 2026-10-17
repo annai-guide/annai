@@ -284,3 +284,13 @@ test("a broken or hostile answer from GitHub is GitHub's answer, never a crash i
     await gh.stop();
   }
 });
+
+test("a GitHub API address that is no web address is a setup problem in plain words, never a bug in the plugin", async () => {
+  const { type } = github();
+  for (const api of ['https://api .github.com', 'https://api.github.com (enterprise)', 'https://', 'https://ex\u0000ample.com', 'https://[::1']) {
+    const c = ctx({ origin: api, token: 'ghp_x' });
+    for (const step of [() => type.check(c), () => type.list(c), () => type.get(c, '0'.repeat(40), { onProgress: () => {} })]) {
+      await assert.rejects(step(), refused('setup', /address/), api);
+    }
+  }
+});

@@ -174,10 +174,20 @@ async function json(g, method, path, body, ok = [200]) {
   return g.read(res, 'json', 'GitHub');
 }
 
+/** Whether text is a web address annai may use: https, or http on this computer (for testing). @param {string} u */
+function webAddress(u) {
+  try {
+    const x = new URL(u);
+    return x.protocol === 'https:' || (x.protocol === 'http:' && (x.hostname === 'localhost' || x.hostname === '127.0.0.1'));
+  } catch {
+    return false;
+  }
+}
+
 /** What can be told without asking GitHub. @param {G} g */
 function ready(g) {
   const E = g.TargetError;
-  if (!/^https:\/\/[^/]|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(g.base)) throw new E('setup', "GitHub's API address must start with https://.");
+  if (!webAddress(g.base)) throw new E('setup', "Check GitHub's API address: it must be a web address that starts with https://.");
   if (!/^[\w.-]+\/[\w.-]+$/.test(g.repo)) throw new E('setup', 'Write the repository as owner/name, for example you/annai-backup.');
   if (!g.token) throw new E('setup', 'Paste an access token for the repository, then save.');
 }

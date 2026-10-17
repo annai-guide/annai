@@ -65,10 +65,20 @@ export function activate(annai) {
   });
 }
 
+/** Whether text is a web address annai may use: https, or http on this computer (for testing). @param {string} u */
+function webAddress(u) {
+  try {
+    const x = new URL(u);
+    return x.protocol === 'https:' || (x.protocol === 'http:' && (x.hostname === 'localhost' || x.hostname === '127.0.0.1'));
+  } catch {
+    return false;
+  }
+}
+
 /** What can be told without asking the server. @param {W} w */
 function ready(w) {
   const E = w.TargetError;
-  if (!/^https:\/\/[^/]|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(w.url)) throw new E('setup', "The folder's address must start with https://.");
+  if (!webAddress(w.url)) throw new E('setup', "Check the folder's address: it must be a web address that starts with https://.");
   if (!w.user || !w.password) throw new E('setup', 'Type the user name and the password, then save.');
 }
 

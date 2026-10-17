@@ -67,10 +67,20 @@ export function activate(annai) {
   });
 }
 
+/** Whether text is a web address annai may use: https, or http on this computer (for testing). @param {string} u */
+function webAddress(u) {
+  try {
+    const x = new URL(u);
+    return x.protocol === 'https:' || (x.protocol === 'http:' && (x.hostname === 'localhost' || x.hostname === '127.0.0.1'));
+  } catch {
+    return false;
+  }
+}
+
 /** What can be told without asking the bucket. @param {S} s */
 function ready(s) {
   const E = s.TargetError;
-  if (!/^https:\/\/[^/]|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(s.endpoint)) throw new E('setup', 'The S3 address must start with https://.');
+  if (!webAddress(s.endpoint)) throw new E('setup', 'Check the S3 address: it must be a web address that starts with https://.');
   if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(s.bucket)) throw new E('setup', "Check the bucket's name: lowercase letters, digits, dots and dashes.");
   if (!s.key || !s.secret) throw new E('setup', 'Paste the access key ID and the secret access key, then save.');
 }
@@ -130,7 +140,7 @@ async function check(s) {
   try {
     res = await call(s, 'GET', '', { query: [['list-type', '2'], ['max-keys', '1'], ['prefix', s.prefix]] });
   } catch (e) {
-    if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+    if (/** @type {any} */ (e)?.name === 'AbortError' || e instanceof s.TargetError) throw e;
     // To a web page, a bucket without CORS rules looks like no answer at all.
     throw new s.TargetError('setup', `annai couldn't reach ${s.bucket}. If this device is online, the bucket doesn't allow browser access yet: paste the rules below into its CORS settings, then test again.`);
   }
