@@ -384,3 +384,9 @@ test('the trace says what each offline pack download did', () => {
   assert.equal(traceSummary(/** @type {any} */ ({ type: 'pack.download', data: { files: 7, bytes: 120_000, guides: 2, failed: 1, stopped: false, full: false, auto: true } })),
     '7 files · 117 KB · 2 guides · 1 failed · by itself on Wi-Fi');
 });
+
+test('parseHash: the recap and replay screens of a trip, with a day', () => {
+  assert.deepEqual(parseHash('#/trip/t1/recap'), { name: 'recap', parts: ['trip', 't1', 'recap'], params: {} });
+  assert.deepEqual(parseHash('#/trip/t1/replay?day=2026-11-27'), { name: 'replay', parts: ['trip', 't1', 'replay'], params: { day: '2026-11-27' } });
+  assert.equal(parseHash('#/simulate').name, 'simulate');
+});

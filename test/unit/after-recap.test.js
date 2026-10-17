@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recapText, recapPhotos, writeRecap, RECAP_SYSTEM, RECAP_CHARS } from '../../src/core/after/recap.js';
+import { recapText, recapPhotos, writeRecap, recapError, RECAP_SYSTEM, RECAP_CHARS } from '../../src/core/after/recap.js';
+import { AllFailedError } from '../../src/core/llm/fallback.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
 import { readJourney } from '../../src/core/after/journey.js';
 import { logEvent } from '../../src/core/events.js';
 import { agentKit, fakeCodec } from './agent-kit.js';
@@ -106,4 +108,11 @@ test('an arrival whose stay the road doesn\'t show is "arrived" in the recap, no
   await logEvent(k.store, k.trip, { type: 'trigger.fired', data: { type: 'plan', event: 'arrived', place: { name: 'Cambria Pines Lodge', lat: 35.5641, lng: -121.0807 } } }, at('18:42'));
   const text = recapText(await readJourney({ store: k.store, ws: k.ws, trip: k.trip }));
   assert.match(text, /2026-11-27\t18:42\t18:42\tarrived\tCambria Pines Lodge\t\tyes/);
+});
+
+test("why a recap wasn't written, in plain words with what to do next", () => {
+  assert.equal(recapError(new AllFailedError([{ model: 'm', name: 'Haiku', outcome: 'auth', ms: 1, error: 'invalid x-api-key' }])), 'No model could write it: Haiku: invalid x-api-key. Check Settings → Models, then try again.');
+  assert.equal(recapError(new AllFailedError([])), 'No model is set for the utility or main role. Add one in Settings → Models.');
+  assert.equal(recapError(new ProviderError('rate', 'slow down')), 'The provider says too many requests for now. Try again in a while.');
+  assert.equal(recapError(new Error('The model sent back an empty recap.')), 'The model sent back an empty recap.');
 });

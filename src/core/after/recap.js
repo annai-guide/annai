@@ -10,6 +10,8 @@ import { photoSettings } from '../photos.js';
 import { readAppSettings } from '../settings.js';
 import { toBase64, fromBase64 } from '../bytes.js';
 import { ME } from '../scopes.js';
+import { AllFailedError } from '../llm/fallback.js';
+import { ProviderError, explain } from '../llm/contract.js';
 
 /**
  * The recap (spec §13): the utility model writes /trip/recap.md from the trip as it went (the
@@ -134,6 +136,17 @@ export function recapText(j, { profile = '', memory = '', notes = [] } = {}) {
     text = build(pick(lo), rows.length - lo);
   }
   return text.length > RECAP_CHARS ? `${text.slice(0, RECAP_CHARS - 1)}…` : text;
+}
+
+/** Why the recap wasn't written, in plain words with what to do next. @param {unknown} e */
+export function recapError(e) {
+  if (e instanceof AllFailedError) {
+    return e.attempts.length
+      ? `No model could write it: ${e.attempts.map((a) => `${a.name}: ${a.error ?? a.outcome}`).join('; ')}. Check Settings → Models, then try again.`
+      : 'No model is set for the utility or main role. Add one in Settings → Models.';
+  }
+  if (e instanceof ProviderError) return `${explain(e).replace(/[.!?]?$/, '.')} Try again in a while.`;
+  return String(/** @type {any} */ (e)?.message ?? e);
 }
 
 /** @param {import('../types.js').Store} store @param {string} hash */
