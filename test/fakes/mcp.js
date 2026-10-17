@@ -36,6 +36,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
   const live = new Set();
   let n = 0;
   let listDelay = 0;
+  let hangDeletes = false;
   const list = tools ?? STAND_IN_TOOLS;
   const filesRoot = files ? resolve(files) : null;
 
@@ -89,6 +90,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
       const sid = typeof req.headers['mcp-session-id'] === 'string' ? req.headers['mcp-session-id'] : undefined;
       if (req.method === 'DELETE') {
         requests.push({ method: 'DELETE', rpc: null, headers: { 'mcp-session-id': sid } });
+        if (hangDeletes) return undefined; // never answered: stop() ends it
         if (sid) live.delete(sid);
         return send(204);
       }
@@ -163,6 +165,8 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
     endSessions: () => live.clear(),
     /** Answers tools/list only after ms from now on, as a slow server would. @param {number} ms */
     slowList: (ms) => { listDelay = ms; },
+    /** Never answers a DELETE from now on, as a server that hangs would. */
+    hangDeletes: () => { hangDeletes = true; },
     stop: () => new Promise((done) => {
       server.closeAllConnections?.();
       server.close(() => done(undefined));

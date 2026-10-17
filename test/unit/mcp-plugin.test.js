@@ -196,3 +196,67 @@ test('two adds of one name at once leave exactly one server', async () => {
     await s.stop();
   }
 });
+
+// Fix pass 8c-3: Remove forgets everything here first, and never waits long on the server.
+test('8c-3: Remove forgets the server here before it ends the session, gives up on a server that never answers after 5 seconds, and keeps no key in the trace', { timeout: 20_000 }, async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    const k = await kit();
+    const key = 'zap1a2b3c4d5e6f7g8h9';
+    await k.servers.add({ name: 'trail', url: `${s.origin}/s/${key}/mcp`, token: TOKEN });
+    await k.servers.refresh('trail');
+    await setToolSwitch(k.ws, 'mcp_trail_echo', false);
+    s.hangDeletes();
+    const started = Date.now();
+    const removing = k.servers.remove('trail');
+    while (!s.requests.some((r) => r.method === 'DELETE')) await new Promise((done) => setTimeout(done, 10));
+    assert.equal(k.registry.list('tool').filter((t) => t.name.startsWith('mcp_')).length, 0);
+    assert.deepEqual(await k.servers.list(), []);
+    assert.equal(await k.ws.read(SYS_SETTINGS, '/mcp/trail.json'), undefined);
+    assert.equal((await readAppSettings(k.ws)).tools?.mcp_trail_echo, undefined);
+    await removing;
+    const took = Date.now() - started;
+    assert.ok(took >= 4_500 && took < 9_000, `gave up after ${took} ms`);
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), undefined);
+    const all = await k.everything();
+    assert.doesNotMatch(all, new RegExp(key));
+    assert.doesNotMatch(all, new RegExp(TOKEN));
+  } finally {
+    await s.stop();
+  }
+});
+
+test('8c-3: a Remove that fails partway can be done again, and nothing comes back at the next start', async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url, token: TOKEN });
+    const tx = k.store.tx.bind(k.store);
+    /** Makes the next write to this store fail once, as a full disk would. @param {string} store */
+    const failNext = (store) => {
+      k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => {
+        if (mode !== 'readwrite' || !stores.includes(store)) return tx(stores, mode, fn);
+        k.store.tx = tx;
+        return Promise.reject(new Error('The disk is full.'));
+      });
+    };
+    failNext('files');
+    await assert.rejects(k.servers.remove('trail'), /disk is full/);
+    await k.servers.remove('trail');
+    assert.equal(await k.ws.read(SYS_SETTINGS, '/mcp/trail.json'), undefined);
+    assert.deepEqual(await k.ws.history(SYS_SETTINGS, '/mcp/trail.json'), []);
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), undefined);
+    assert.equal(k.registry.list('tool').filter((t) => t.name.startsWith('mcp_')).length, 0);
+    // The secret last: when that fails and annai closes, the next start forgets it.
+    await k.servers.add({ name: 'tides', url: s.url, token: TOKEN });
+    failNext('secrets');
+    await assert.rejects(k.servers.remove('tides'), /disk is full/);
+    const next = k.relaunch();
+    await next.addBuiltin(new URL('../../src/plugins/mcp/index.js', import.meta.url).href);
+    assert.equal(next.registry.list('tool').filter((t) => t.name.startsWith('mcp_')).length, 0);
+    assert.deepEqual(await next.registry.list('mcp-servers')[0].list(), []);
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:tides')), undefined);
+  } finally {
+    await s.stop();
+  }
+});

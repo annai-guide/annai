@@ -26,6 +26,8 @@ const NAME = /^[a-z0-9][a-z0-9-]{0,19}$/;
 export const MAX_TOOLS = 100;
 const LIST_MS = 30_000;
 const CALL_MS = 120_000;
+/** How long Remove waits for a server to end its session (fix pass 8c-3). */
+const END_MS = 5_000;
 const HEADER = /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):\s*(.*\S)\s*$/;
 
 /**
@@ -247,27 +249,49 @@ export async function activate(annai) {
       }
     },
     refresh,
-    /** Removes a server and everything it stored (choice 10). @param {string} name */
+    /**
+     * Removes a server and everything it stored (choice 10). Everything here goes first; then its session
+     * is ended on the server, best-effort and for 5 seconds at most, and its secret goes last, so the
+     * trace still blanks the address's keys in that request. A remove that failed partway can be done
+     * again, and a secret left by one is forgotten at the next start (fix pass 8c-3).
+     * @param {string} name
+     */
     remove: async (name) => {
       const s = servers.get(name);
-      if (!s) return;
+      if (!s) {
+        // What a remove that failed partway left.
+        if (NAME.test(name) && !adding.has(name)) {
+          await forgetFile(name);
+          await annai.secrets.set(name, null);
+        }
+        return;
+      }
       s.life.removed = true; // first: a refresh waiting on the server now stops (the coordinator's fourth finding)
       s.offs.forEach((off) => off());
-      servers.delete(name);
-      await s.client.close({ fetch: annai.net.fetch }).catch(() => {});
+      const end = await s.client.ending().catch(() => null);
       await forgetFile(name);
-      await annai.secrets.set(name, null);
       const switches = (await readAppSettings(ws)).tools ?? {};
       const off = s.names.filter((t) => Object.hasOwn(switches, t));
       if (off.length) await updateAppSettings(ws, { tools: Object.fromEntries(off.map((t) => [t, null])) });
+      servers.delete(name);
       await annai.events.append('sys', 'mcp.remove', { server: name });
+      await end?.({ fetch: annai.net.fetch, signal: AbortSignal.timeout(END_MS) });
+      await annai.secrets.set(name, null);
     },
   });
 
-  for (const f of await ws.list(SYS_SETTINGS, DIR)) {
+  const stored = await ws.list(SYS_SETTINGS, DIR);
+  for (const f of stored) {
     if (!f.path.endsWith('.json')) continue;
     const config = await ws.readJSON(SYS_SETTINGS, f.path).catch(() => null);
     if (config && typeof config.name === 'string' && NAME.test(config.name) && typeof config.shown === 'string' && Array.isArray(config.tools)) register(config);
+  }
+  // A secret whose server has no file: what a remove that failed at its end left (fix pass 8c-3).
+  const files = new Set(stored.map((f) => f.path));
+  const ids = await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.listSecretIds()).catch(() => []);
+  for (const id of ids) {
+    const name = String(id).startsWith('plugin:mcp:') ? String(id).slice('plugin:mcp:'.length) : null;
+    if (name && !files.has(fileOf(name))) await annai.secrets.set(name, null).catch(() => {});
   }
   const offService = annai.register('mcp-servers', service);
   return () => {
