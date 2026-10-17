@@ -173,5 +173,7 @@ export async function renderVoice(ctx) {
     section('Where your voice goes',
       h('p', { class: 'sub' }, 'What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to ', h('a', { href: '#/models' }, 'Settings → Models'), '.'),
       h('h3', { class: 'section', text: 'What you say' }), heardWhere,
+      // A page can't start keyboard dictation, but what it types arrives as a typed message.
+      h('p', { class: 'sub', text: "To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself." }),
       h('h3', { class: 'section', text: 'What she says' }), saidWhere));
 }
