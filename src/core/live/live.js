@@ -487,6 +487,19 @@ export class Live {
   }
 
   /**
+   * The service worker says something happened while annai is on screen: its news is read in live
+   * mode's own queue, after any catch-up that read it first, so a tap is told once (fix pass N2).
+   * @returns {Promise<string[]>} the doubles, as pushNews
+   */
+  newsArrived() {
+    return this.#run(async () => {
+      const doubles = await this.#hear(await this.#readNews());
+      if (!this.#catch) await this.#deliverOpened();
+      return doubles;
+    });
+  }
+
+  /**
    * What the service worker saw while annai is on screen (spec §11.6): opened notifications become a
    * catch-up wake now, or join the one running. Returns the keys of shown notifications for reminders
    * annai had already said itself on screen, for the page to close (6b choice 3).

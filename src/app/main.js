@@ -141,10 +141,8 @@ async function boot() {
   // Open and on screen: the service worker's news now (a notification annai already said is closed).
   onPushMessage(async () => {
     if (document.visibilityState !== 'visible') return; // read at the catch-up
-    const list = await takeNews().catch(() => []);
-    if (!list.length) return;
-    push?.delivered(list);
-    closeNotifications(await live.pushNews(list)).catch(() => {});
+    // In live mode's own queue (news() above reads it, and tells the mirror), so a catch-up starting now reads it once (fix pass N2).
+    closeNotifications(await live.newsArrived()).catch(() => {});
   });
   addEventListener('online', () => { push?.sync().catch(() => {}); });
   plugins.connect({ llm, agent, notices: shell.notices });
