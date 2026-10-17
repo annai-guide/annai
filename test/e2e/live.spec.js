@@ -136,6 +136,10 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   await page.locator('.live-chip').click();
   await page.getByRole('group', { name: 'Live mode' }).getByRole('button', { name: 'Bixby Creek Bridge' }).click();
   await expect(page.locator('.now-place')).toHaveText('At Bixby Creek Bridge');
+  // annai starts again with location still refused: the card isn't shown again.
+  await page.reload();
+  await expect(page.locator('.live-chip')).toHaveText('Live · no location');
+  await expect(page.locator('.notice', { hasText: "annai can't see where you are" })).toHaveCount(0);
 });
 
 test('a plan item Shiori changed can be put back with one tap (spec §11.5)', async ({ page }) => {

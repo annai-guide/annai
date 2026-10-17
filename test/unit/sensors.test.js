@@ -122,3 +122,38 @@ test('a refused location gets one card, with steps for this phone (spec §17 rul
   tick();
   assert.equal(cards.length, 2);
 });
+
+test('the location-refused card is shown once, not again at each start while location stays refused; working location, or live mode turned off, starts over', () => {
+  let kept = false;
+  const memo = { told: () => kept, set: (/** @type {boolean} */ v) => { kept = v; } };
+  /** @type {any[]} */
+  const cards = [];
+  const start = () => {
+    /** @type {Set<() => void>} */
+    const fns = new Set();
+    const live = { on: true, gps: 'waiting', onChange: (/** @type {() => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };
+    tellGps({ live, notices: { card: (/** @type {any} */ c) => cards.push(c) }, where: 'android', memo });
+    return { live, tick: () => { for (const fn of fns) fn(); } };
+  };
+  let a = start();
+  a.live.gps = 'denied';
+  a.tick();
+  assert.equal(cards.length, 1);
+  a = start(); // annai starts again, location still refused
+  a.live.gps = 'denied';
+  a.tick();
+  assert.equal(cards.length, 1);
+  a.live.on = false; // the user turns live mode off, and on again
+  a.live.gps = 'off';
+  a.tick();
+  a.live.on = true;
+  a.live.gps = 'denied';
+  a.tick();
+  assert.equal(cards.length, 2);
+  a.live.gps = 'ok';
+  a.tick();
+  a = start();
+  a.live.gps = 'denied';
+  a.tick();
+  assert.equal(cards.length, 3);
+});
