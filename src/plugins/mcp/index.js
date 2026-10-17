@@ -274,7 +274,8 @@ export async function activate(annai) {
       const own = [...keys, ...(auth?.token ? [auth.token] : Object.values(auth?.headers ?? {}))];
       adding.add(n);
       try {
-        if (keeps) await annai.secrets.set(n, record);
+        // Nothing to keep: a secret a failed remove left this session goes, so the check sends what was typed (fix pass R2).
+        await annai.secrets.set(n, keeps ? record : null);
         const forgetSecret = () => (keeps ? annai.secrets.set(n, null).catch(() => {}) : Promise.resolve());
         // The client that checks the server is the one its tools use: one session, not one left behind (minors 2).
         const client = clientFor({ name: n, shown });

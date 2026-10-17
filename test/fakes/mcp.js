@@ -33,7 +33,7 @@ const TYPES = { '.md': 'text/markdown; charset=utf-8', '.json': 'application/jso
  *   tools?: { name: string, description?: string, inputSchema?: any }[], origins?: string[] }} [o]
  */
 export async function startMcpServer({ token, sse = false, sessions = true, exposeSession = true, cors = true, port = 0, host = '127.0.0.1', files, tools, origins } = {}) {
-  /** @type {{ method: string, rpc: any, headers: Record<string, string | undefined> }[]} */
+  /** @type {{ method: string, rpc: any, headers: Record<string, string | undefined>, path?: string }[]} */
   const requests = [];
   /** @type {Set<string>} */
   const live = new Set();
@@ -113,7 +113,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
       } catch {
         return send(400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
       }
-      requests.push({ method: 'POST', rpc: msg, headers: { ...Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : v])) } });
+      requests.push({ method: 'POST', rpc: msg, path, headers: { ...Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : v])) } });
       if (msg?.method === 'initialize') {
         const asked = String(msg.params?.protocolVersion ?? '');
         const id = sessions ? `s-${++n}-${Math.random().toString(36).slice(2, 10)}` : null;
