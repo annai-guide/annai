@@ -7,12 +7,13 @@ the Home Screen and served over HTTPS, and a model set up (a cheap one is fine).
 ## The stand-in, on the machine that serves annai
 
 annai's own stand-in MCP server, which also serves the test packages (never an outside service).
-The main session gives the port; it is never 8765, 8790–8792, 8796, 8797 or 18010–18014.
+Here it listens on 8798 and `tailscale serve` gives it 8799, as the relay has 8796 and 8797 in the
+milestone 6 checklist; other free ports work too, never 8765, 8790–8797 or 18010–18014.
 
-    node scripts/mcp-stand-in.mjs --port <port> --token <a long random token> --files test/fixtures/extensions
-    tailscale serve --bg --https=<port + 1> http://127.0.0.1:<port>
+    node scripts/mcp-stand-in.mjs --port 8798 --token <a long random token> --files test/fixtures/extensions
+    tailscale serve --bg --https=8799 http://127.0.0.1:8798
 
-Below, `<stand-in>` is `https://<machine>.<tailnet>.ts.net:<port + 1>`. Keep the token at hand to
+Below, `<stand-in>` is `https://<machine>.<tailnet>.ts.net:8799`. Keep the token at hand to
 type or paste on each phone.
 
 ## A skill (both phones)
@@ -60,4 +61,4 @@ type or paste on each phone.
 - [ ] Android: share a plugin's `.zip` to annai from the Files app, and note what happens (it goes to the import screen, which is for annai's own files; plugins are installed from Settings → Plugins). If the words there would confuse someone, note them.
 
 ## Afterwards
-- [ ] `tailscale serve --https=<port + 1> off`, and stop the stand-in.
+- [ ] `tailscale serve --https=8799 off`, and stop the stand-in.
