@@ -184,3 +184,13 @@ test('opening a conversation tells live mode, so it follows the open trip (spec 
   await k.agent.open(null);
   assert.deepEqual(opened, [{ trip: k.trip, scope: k.trip }, { trip: null, scope: 'me' }]);
 });
+
+test("a reminder for a conversation that isn't open is said aloud too, with voice on (choice 3)", async () => {
+  const k = await liveAgent([], { voice: { mode: 'on' } });
+  await k.live.setWatch('me', { when: { type: 'time', at: iso('18:00') }, fallback: 'Call Grandma.' });
+  await k.to(at('18:00'));
+  await until(() => k.said.includes('Call Grandma.'));
+  const [r] = await k.store.tx(['events'], 'readonly', (t) => t.listEvents('me', { types: ['reminder'] }));
+  assert.equal(r.data.aloud, true);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body]), [['Reminder', 'Call Grandma.']]);
+});

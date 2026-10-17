@@ -664,7 +664,8 @@ export class Agent {
     for (const r of list) {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
-      const aloud = open && Boolean(this.voice?.on); // after whatever is being said (the speaker queues)
+      // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues).
+      const aloud = Boolean(this.voice?.on);
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
       else await record(this.store, scope, ev);
