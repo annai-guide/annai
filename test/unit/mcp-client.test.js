@@ -84,3 +84,9 @@ test('an address and its keys: shown with each part that may be a key blanked, a
   assert.equal(fullAddress(shown, keys), a);
   assert.deepEqual(addressParts('http://127.0.0.1:8080/mcp'), { shown: 'http://127.0.0.1:8080/mcp', keys: [] });
 });
+
+test("a short value under a credential name annai's trace blanks (appid, app_id) is blanked in the shown address too, and goes to secrets", () => {
+  const { shown, keys } = addressParts('https://mcp.example.com/mcp?appid=abc123&app_id=x9&v=2');
+  assert.equal(shown, 'https://mcp.example.com/mcp?appid=«key»&app_id=«key»&v=2');
+  assert.deepEqual(keys, ['abc123', 'x9']);
+});
