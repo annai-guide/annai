@@ -26,6 +26,7 @@ import { mediaKeys } from '../ui/media-keys.js';
 import { armUnlock } from '../ui/unlock.js';
 import { Live } from '../core/live/live.js';
 import { watchTools } from '../core/live/watch-tools.js';
+import { tellGps } from '../ui/live-help.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -65,6 +66,7 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/places/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/go/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/voice-browser/index.js', import.meta.url).href);
+  await plugins.addBuiltin(new URL('../plugins/sensors/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
   let pluginsStarted = () => {};
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
@@ -92,6 +94,7 @@ async function boot() {
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, presets, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
+  tellGps({ live, notices: shell.notices });
   // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.
   // A beforeunload that leads nowhere (the page stays) is forgotten after a few seconds.
   addEventListener('beforeunload', () => {
