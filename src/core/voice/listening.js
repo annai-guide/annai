@@ -7,10 +7,10 @@ import { newId } from '../scopes.js';
  * gives the words itself. They can't run together. When dictation fails, the session records from
  * the next segment on (§10.3). A session never decides to stop listening: its owner does.
  * @typedef {import('./resolve.js').Heard} Heard
- * @param {{ platform: import('./platform.js').VoicePlatform, kind: 'record' | 'dictation', pauseMs: number, lang?: string, now?: () => number,
+ * @param {{ platform: import('./platform.js').VoicePlatform, kind: 'record' | 'dictation', pauseMs: number, lang?: string, now?: () => number, local?: boolean,
  *   onSegment: (h: Heard) => void, onSpeech?: () => void, onQuiet?: () => void, onLevel?: (x: number) => void,
  *   onError: (e: Error) => void, onSwitch?: (e: Error) => void }} c
- *   onQuiet: what began like speech wasn't (a click); onSwitch: dictation failed and recording took over
+ *   onQuiet: what began like speech wasn't (a click); onSwitch: dictation failed and recording took over; local: dictation stays on the phone
  * @returns {Promise<{ readonly kind: 'record' | 'dictation', stop(): void }>}
  */
 export async function listen(c) {
@@ -32,6 +32,7 @@ export async function listen(c) {
   if (kind === 'dictation') {
     running = c.platform.dictation.open({
       lang: c.lang,
+      local: Boolean(c.local),
       onSpeech: c.onSpeech,
       onQuiet: c.onQuiet,
       onSegment: (text) => c.onSegment({ id: newId('s'), source: 'dictation', text, ms: 0, at: now() }),

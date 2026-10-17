@@ -4,7 +4,7 @@
  *   lastChoices: Record<string, 'on' | 'off'> }} VoiceSettings
  *   mode: voice Auto, On or Off (§10.5); pauseMs: the pause that ends a sentence (§10.2); silenceSeconds: how long speak listens for an
  *   answer (§7.1); firstWordsSeconds: how long her first words may take with voice on (§9.6); keepClips: keep what the microphone heard
- *   (§10.2); browserVoice: the system voice's id ('' for the browser's choice); rate: its speed; lastChoices: an explicit On or Off where
+ *   (§10.2); browserVoice: the system voice's id ('' for automatic: one on this phone when there is one, §11.7); rate: its speed; lastChoices: an explicit On or Off where
  *   annai couldn't tell what audio is connected, by activity (§10.5)
  */
 export const VOICE_DEFAULTS = Object.freeze({ mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, lastChoices: Object.freeze({}) });

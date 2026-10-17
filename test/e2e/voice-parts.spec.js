@@ -15,13 +15,13 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Stand-in voice', url: `${speech.origin}/v1`, key: 'sk-voice-test', model: 'tts-test' });
-    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. Browser voice (works offline)']);
-    await expect(roleItems(page, 'Speech in: how Shiori hears you')).toHaveText(['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own, where it has one)"]);
+    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)"]);
+    await expect(roleItems(page, 'Speech in: how Shiori hears you')).toHaveText(['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; usually goes to Google or Apple)"]);
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'tts-test' })).toHaveCount(0);
     await page.getByLabel('Add a model to speech-out').selectOption({ label: 'tts-test' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();
     // A voice goes ahead of the browser voice, which stays last.
-    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. tts-test', '2. Browser voice (works offline)']);
+    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. tts-test', "2. Browser voice (the browser's own; some voices go online)"]);
     await page.getByRole('link', { name: /Stand-in voice/ }).click();
     await page.getByRole('link', { name: /^tts-test/ }).click();
     await page.getByRole('button', { name: 'Play a sample' }).click();
@@ -78,7 +78,7 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     }
     await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
     await page.getByRole('button', { name: 'Add to speech-in' }).click();
-    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. voice-a', '2. voice-b', '3. Browser voice (works offline)']);
+    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. voice-a', '2. voice-b', "3. Browser voice (the browser's own; some voices go online)"]);
     await page.goto('/#/settings');
     await page.getByRole('link', { name: 'Voice', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Voice', exact: true })).toBeVisible();
@@ -98,4 +98,20 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
   } finally {
     await server.stop();
   }
+});
+
+test('Settings → Voice says where your voice goes: each speech-in entry, phone dictation included, and her voice (spec §11.7)', async ({ page }) => {
+  // A dictation like Chrome's or Safari's, with no on-device recognition: the browser's own service hears it.
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    w.SpeechRecognition = w.webkitSpeechRecognition = class { start() {} abort() {} };
+  });
+  await openApp(page, '#/voice');
+  const where = page.getByRole('region', { name: 'Where your voice goes' });
+  await expect(where.getByText('Phone dictation', { exact: true })).toBeVisible();
+  await expect(where.getByText(/^Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's/)).toBeVisible();
+  await expect(where.getByText('Send audio to the model', { exact: true })).toBeVisible();
+  await expect(where.getByText('Browser voice', { exact: true })).toBeVisible();
+  await where.getByRole('link', { name: 'Settings → Models' }).click();
+  await expect(page.getByRole('heading', { name: 'Speech in: how Shiori hears you' })).toBeVisible();
 });

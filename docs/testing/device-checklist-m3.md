@@ -23,6 +23,7 @@ On a real iPhone (Safari, and the installed app) and a real Android phone (Chrom
 - [ ] **Send audio to the model.** With an audio model (Gemini through OpenRouter, say) as main and "Send audio to the model" first: a spoken exchange works without a transcription model; in the conversation your words appear after her reply.
 - [ ] **No way to hear.** With a text-only main model and only "Send audio to the model" in Speech in, tap Shiori: a card says what to add.
 - [ ] **Silent switch.** Silent switch on, API voice: is she heard?
+- [ ] **Where your voice goes.** On Android Chrome and on iPhone, open Settings → Voice → Where your voice goes. Write down what it says for Phone dictation and for the browser voice. With airplane mode on, does phone dictation still write down what you say (that means it runs on the phone)? Does the browser voice still speak?
 - [ ] **Music after she speaks.** Play music in a music app, then have a spoken exchange (the music pauses while she talks, §10.1). After the exchange, does the music app resume by itself, or does it stay paused?
 
 ## Voice modes and the car (milestone 3c)

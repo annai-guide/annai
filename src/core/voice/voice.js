@@ -11,7 +11,8 @@ import { record } from './recorder.js';
 import { HeardMemory, listenKind, resolveSpeech, textVersion } from './resolve.js';
 import { listen } from './listening.js';
 import { micProblem } from './mic.js';
-import { blobBytes } from '../agent/log.js';
+import { browserVoiceFor } from './where.js';
+import { blobBytes, record as logEvent } from '../agent/log.js';
 import { toBase64 } from '../bytes.js';
 
 /**
@@ -68,10 +69,43 @@ export class Voice {
       bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
       browserOptions: async () => {
         const s = voiceSettings(await readAppSettings(this.ws));
-        return { voice: s.browserVoice || undefined, rate: s.rate, lang: this.locale };
+        const system = this.browserVoice(s.browserVoice);
+        return { voice: system?.id, rate: s.rate, lang: this.locale, system };
       },
       onLevel: (x) => this.#level(x, 'her'),
+      onVoice: (entry, system) => {
+        if (entry.kind !== 'browser' || system?.local) return;
+        // The browser sends her words to the voice's service itself: the trace says so (spec §11.7), without the words.
+        const named = system ? `The browser voice ${system.name} spoke` : "The browser voice spoke, with the browser's choice of voice";
+        this.#trace(this.scope, { kind: 'voice', voice: system?.name ?? null, local: false, message: `${named}: the browser sends her words to that voice's service; annai can't see that request.` });
+      },
     });
+  }
+
+  /**
+   * The browser voice she speaks with (spec §10.1, §11.7): the one chosen; else one on this phone
+   * for the language; else the browser's default. @param {string} [chosen] @returns {import('./platform.js').SystemVoice | null}
+   */
+  browserVoice(chosen = '') {
+    try {
+      return browserVoiceFor(this.platform?.synth.voices() ?? [], { chosen, lang: this.locale });
+    } catch {
+      return null;
+    }
+  }
+
+  /** Whether phone dictation recognizes speech on this phone, for this language, now (spec §11.7). @returns {Promise<boolean>} */
+  async dictationLocal() {
+    try {
+      return Boolean(await this.platform?.dictation.local?.(this.locale));
+    } catch {
+      return false;
+    }
+  }
+
+  /** A trace line about speech the browser handles itself (spec §11.7): never audio or words. @param {string} scope @param {Record<string, any>} data */
+  #trace(scope, data) {
+    if (this.store) logEvent(this.store, scope, { type: 'speech.browser', actor: 'system', data }).catch(() => {});
   }
 
   get platform() {
@@ -282,16 +316,19 @@ export class Voice {
   /**
    * Opens a listening session (spec §10.2): what it hears is kept in memory and handed on; the
    * audio session is play-and-record while it listens (§10.1).
-   * @param {{ kind: 'record' | 'dictation', onSegment: (h: import('./resolve.js').Heard) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error) => void }} o
+   * Phone dictation stays on the phone where it can; the trace notes it either way (spec §11.7).
+   * @param {{ kind: 'record' | 'dictation', onSegment: (h: import('./resolve.js').Heard) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error) => void, scope?: string }} o
+   *   scope: the conversation it listens for, for the trace
    */
-  async open({ kind, onSegment, onSpeech, onQuiet, onError }) {
+  async open({ kind, onSegment, onSpeech, onQuiet, onError, scope = this.scope }) {
     const platform = this.platform;
     if (!platform) throw new Error("This browser can't use the microphone here.");
     const { pauseMs } = await this.settings();
+    const local = kind === 'dictation' && (await this.dictationLocal());
     platform.session('play-and-record');
     try {
-      return await listen({
-        platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError,
+      const session = await listen({
+        platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError, local,
         onLevel: (x) => this.#level(x, 'you'),
         onSegment: (h) => {
           this.memory.keep(h);
@@ -299,6 +336,10 @@ export class Voice {
         },
         onSwitch: () => { this.dictationFailed = true; },
       });
+      if (session.kind === 'dictation') {
+        this.#trace(scope, { kind: 'dictation', local, message: local ? 'Phone dictation listened, on this phone only.' : "Phone dictation listened: the browser sends the audio to its own speech service; annai can't see that request." });
+      }
+      return session;
     } catch (e) {
       platform.session('playback'); // the microphone didn't open: full-quality Bluetooth audio again (spec §10.1)
       throw e;

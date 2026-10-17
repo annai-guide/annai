@@ -569,7 +569,7 @@ Privacy:
 Entries:
 - each configured transcription model
 - one stand-in entry, **"Send audio to the model"**
-- phone dictation, where available
+- phone dictation, where available. The browser's own speech service hears it (Google on Chrome, Apple on Safari), unless it recognizes speech on the device (§11.7).
 
 The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template. With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
 
@@ -695,6 +695,7 @@ When the app becomes visible:
 
 - The Places tools send coordinates to OpenStreetMap, Wikipedia and Open-Meteo.
 - Location otherwise goes only to the user's own model provider.
+- Speech goes only to the entries in the speech-in list. Phone dictation and the browser voice go to the browser's own speech service (Google on Chrome, Apple on Safari) unless they run on the device. Settings → Voice says where each one goes, and the trace notes it.
 
 ## 12. Import, export and backup
 

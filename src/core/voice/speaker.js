@@ -16,7 +16,9 @@ import { modelOf, SPEECH_DEFAULTS } from '../llm/config.js';
  *   failed: no voice could speak ('no-voice'), or the page may not play sound yet ('blocked', an iPhone before the first tap)
  * @typedef {{ entries: () => Promise<VoiceEntry[]>, synthesize: (entry: VoiceEntry, text: string, signal: AbortSignal) => Promise<Clip>,
  *   platform: () => VoicePlatform | null, bench: (id: string, error: unknown) => void,
- *   browserOptions?: () => Promise<{ voice?: string, rate?: number, lang?: string }>, onLevel?: (x: number) => void, locale?: string }} SpeakerDeps
+ *   browserOptions?: () => Promise<{ voice?: string, rate?: number, lang?: string, system?: import('./platform.js').SystemVoice | null }>, onLevel?: (x: number) => void, locale?: string,
+ *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void }} SpeakerDeps
+ *   browserOptions' system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone)
  * @typedef {{ ended: boolean, at: number, failed?: 'no-voice' | 'blocked' }} Said
  */
 
@@ -212,8 +214,8 @@ export class Utterance {
       tried.add(entry.id);
       try {
         if (entry.kind === 'browser') {
-          const o = (await this.#deps.browserOptions?.()) ?? {};
-          this.#spoke(entry);
+          const { system = null, ...o } = (await this.#deps.browserOptions?.()) ?? {};
+          this.#spoke(entry, system);
           const r = await platform.synth.say(text, { ...o, signal: this.#abort.signal, onLevel: this.#deps.onLevel });
           return { ended: r.ended, at: r.ended ? text.length : r.charIndex };
         }
@@ -234,9 +236,11 @@ export class Utterance {
     }
   }
 
-  /** @param {VoiceEntry} entry */
-  #spoke(entry) {
-    if (this.#voices.at(-1) !== entry.name) this.#voices.push(entry.name);
+  /** @param {VoiceEntry} entry @param {import('./platform.js').SystemVoice | null} [system] */
+  #spoke(entry, system = null) {
+    if (this.#voices.at(-1) === entry.name) return;
+    this.#voices.push(entry.name);
+    this.#deps.onVoice?.(entry, system);
   }
 
   /** Sentence i's clip: fetched ahead by the same voice, or now. @param {number} i @param {VoiceEntry} entry @param {string} text */
