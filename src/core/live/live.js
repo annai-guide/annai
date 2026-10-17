@@ -199,6 +199,11 @@ export class Live {
     }
   }
 
+  /** What live mode remembers of watches, their memories and last firings, by scope and id: only for watches there are. */
+  get held() {
+    return [...new Set([...this.#mem.keys(), ...this.#fired.keys()])];
+  }
+
   /** A simulation has live mode now (spec §13). */
   get simulating() {
     return this.#sim !== null;
@@ -914,6 +919,7 @@ export class Live {
     if (WATCH_FILE.test(c.path)) {
       this.#bg(async () => {
         await this.#loadScope(c.scope);
+        this.#prune();
         await this.#check();
         this.#tellReminders('prompt');
       });
@@ -997,6 +1003,14 @@ export class Live {
       const p = item.place;
       if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? 'a plan place'), lat: p.lat, lng: p.lng });
     }
+    this.#prune();
+  }
+
+  /** Forgets the memories and firings of watches that are gone: hers that fired or were cancelled, plan items no longer planned, other trips' plans. */
+  #prune() {
+    const keep = new Set(this.#plan.map((w) => this.#key(this.#scope(), w.id)));
+    for (const [scope, list] of this.#watches) for (const w of list) keep.add(this.#key(scope, w.id));
+    for (const map of [this.#mem, this.#fired]) for (const k of [...map.keys()]) if (!keep.has(k)) map.delete(k);
   }
 
   /** The moment checks see. @param {{ newFix?: boolean, change?: { from: string, to: string } | null, past?: boolean }} [o] @returns {Moment} */

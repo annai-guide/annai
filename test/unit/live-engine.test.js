@@ -418,3 +418,18 @@ test("a log write that fails doesn't hold a reminder back or make it fire again:
   assert.equal(problems.length, 1);
   assert.match(String(/** @type {any} */ (problems[0])?.message), /disk is full/);
 });
+
+test("live mode keeps memories and firings only for the watches there are: a watch that is gone, or a plan item removed, leaves nothing behind", async () => {
+  const k = await liveKit({ plan: { bixby: BIX, nepenthe: NEP } });
+  const tea = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:00') }, fallback: 'Tea.' });
+  const cambria = await k.live.setWatch(k.trip, { when: { type: 'enter', lat: CAMBRIA.lat, lng: CAMBRIA.lng, name: 'Cambria' }, fallback: 'Cambria.' });
+  await k.fix(at('08:31'), MONTEREY);
+  await k.to(at('09:01')); // tea fired, and is gone
+  assert.ok(k.live.held.some((key) => key.includes('plan:bixby:')));
+  await k.ws.delete(k.trip, '/plan/bixby.json', { author: 'user' });
+  await k.settle();
+  const held = k.live.held;
+  assert.ok(!held.some((key) => key.includes(tea.id) || key.includes('plan:bixby:')), held.join(', '));
+  assert.ok(held.some((key) => key.includes(cambria.id)));
+  assert.ok(held.some((key) => key.includes('plan:nepenthe:')));
+});
