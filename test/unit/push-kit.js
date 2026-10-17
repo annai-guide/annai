@@ -69,7 +69,7 @@ export async function pushKit(o) {
   const source = fakeSource(service);
   /** @type {any[]} */
   const notices = [];
-  const mirror = new PushMirror({ store: k.store, ws: k.ws, live: k.live, source, fetch: tracedFetch(k.store, SYS_DEVICE, { tool: 'push relay' }, relayFetch), clock: k.clock, notice: (n) => notices.push(n) });
+  const mirror = new PushMirror({ store: k.store, ws: k.ws, live: k.live, source, fetch: tracedFetch(k.store, SYS_DEVICE, { tool: 'push relay' }, relayFetch), clock: k.clock, notice: (n) => notices.push(n), online: () => net.online });
   await mirror.start();
   const kit = {
     ...k, service, env, net, source, mirror, notices,

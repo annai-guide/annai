@@ -105,7 +105,7 @@ async function boot() {
   /** @type {any[]} cards from before the shell is up */
   const early = [];
   let pushCard = (/** @type {any} */ n) => { early.push(n); };
-  push = new PushMirror({ store, ws, live, source: browserSource(), notice: (n) => pushCard(n) });
+  push = new PushMirror({ store, ws, live, source: browserSource(), notice: (n) => pushCard(n), online: () => navigator.onLine !== false });
   agent.addLoopTools(watchTools(live));
   agent.sense = () => live.nowInfo();
   const awake = keepAwake({ live, ws });

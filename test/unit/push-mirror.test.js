@@ -490,3 +490,44 @@ test('a DELETE the relay fails (5xx) holds up no other send; it is tried again u
     await k.stop();
   }
 });
+
+test('with no connection, annai waits for it to come back rather than trying every half minute (fix pass N4)', async () => {
+  const k = await pushKit();
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.flush();
+    k.net.online = false;
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('12:00') }, fallback: 'Lunch.' });
+    const from = k.net.calls.length;
+    for (let i = 0; i < 30; i++) await k.fix(at('08:31') + i * 10_000, { lat: 36.6036, lng: -121.8916 }); // calm news, every 10 s for 5 min
+    await k.flush(CALM_MS + 1000);
+    assert.equal(k.net.calls.length, from, 'not one request without a connection');
+    assert.match(String((await k.mirror.status()).problem?.message), /no connection/i);
+    k.net.online = true;
+    await k.mirror.sync(); // the browser's online event
+    assert.equal((await k.waiting()).length, 1);
+  } finally {
+    await k.stop();
+  }
+});
+
+test("a relay that can't be reached is tried again after 1, 2, 4… minutes: calm news meanwhile doesn't cut the wait short (fix pass N4)", async () => {
+  const k = await pushKit();
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.flush();
+    k.net.offline = true; // the browser says online, but nothing gets through
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('12:00') }, fallback: 'Lunch.' });
+    const failed = () => k.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS_DEVICE, { types: ['net.request'] })).then((l) => l.filter((e) => e.data.status === 0).length);
+    const before = await failed();
+    for (let i = 0; i < 36; i++) { // 6 minutes of fixes, each looked at as it comes
+      await k.fix(at('08:31') + i * 10_000, { lat: 36.6036, lng: -121.8916 });
+      await k.mirror.settled();
+    }
+    await k.flush(1000);
+    const tries = (await failed()) - before;
+    assert.ok(tries >= 2 && tries <= 4, `${tries} failed requests in 6 minutes`);
+  } finally {
+    await k.stop();
+  }
+});
