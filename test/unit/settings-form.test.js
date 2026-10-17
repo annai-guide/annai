@@ -33,3 +33,15 @@ test('reading the form: values checked against the schema, secrets apart, empty 
   assert.match(readForm(SCHEMA, { station: 'x', units: 'ft', days: '9', alerts: false, key: '' }).errors.join(' '), /days/);
   assert.match(readForm(SCHEMA, { station: 'x', units: 'ft', days: 'two', alerts: false, key: '' }).errors.join(' '), /Days ahead is a whole number/);
 });
+
+test('8b-5: a writeOnly field is a secret only when it is a string; any other writeOnly field is one annai can\'t show, and never goes to a file', () => {
+  const schema = { type: 'object', properties: {
+    pin: { type: 'integer', writeOnly: true, title: 'PIN' },
+    hush: { type: 'boolean', writeOnly: true },
+    code: { type: 'string', enum: ['a', 'b'], writeOnly: true },
+    note: { type: 'string' },
+  } };
+  assert.deepEqual(formFields(schema).map((f) => [f.key, f.kind]), [['pin', 'unsupported'], ['hush', 'unsupported'], ['code', 'secret'], ['note', 'text']]);
+  assert.deepEqual(readForm(schema, { pin: '1234', hush: true, code: 'a', note: 'hi' }),
+    { values: { note: 'hi' }, secrets: { code: 'a' }, errors: [] });
+});

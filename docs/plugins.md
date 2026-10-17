@@ -169,7 +169,7 @@ A manifest's `settings` is a JSON Schema object. annai draws a form from its top
 - `number` and `integer` (with `minimum` and `maximum`), `boolean` as a switch;
 - `title` labels a field, `description` explains it, `default` fills it when nothing is saved.
 
-What the user saves is checked against the schema and comes back from `annai.settings.get()`. A `writeOnly` field goes to your secrets instead, never into a file: read it with `annai.secrets.get(key)`. Other kinds of property are listed as ones annai can't show; draw a settings page of your own for them.
+What the user saves is checked against the schema and comes back from `annai.settings.get()`. A `writeOnly` string goes to your secrets instead, never into a file: read it with `annai.secrets.get(key)`. A `writeOnly` field of any other type is one annai can't show, and it never goes into a file either. Other kinds of property are listed as ones annai can't show; draw a settings page of your own for them.
 
 ## Tools Shiori uses
 
