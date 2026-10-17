@@ -1,4 +1,4 @@
-import { answerJSON } from '../../core/answer.js';
+import { answerJSON, ANSWER_MAX } from '../../core/answer.js';
 import { sse } from '../../core/llm/sse.js';
 import { CREDENTIAL } from '../../core/agent/net.js';
 import { isBase64 } from '../../core/bytes.js';
@@ -189,8 +189,20 @@ export class McpClient {
     const unreadable = () => new McpError('answer', `The MCP server ${this.server} sent an answer annai can't read.`);
     if ((res.headers.get('content-type') ?? '').includes('text/event-stream')) {
       if (!res.body) throw unreadable();
+      // Read no further than ANSWER_MAX, as a JSON answer is (fix pass 8c-4).
+      const tooMuch = () => new McpError('answer', `The MCP server ${this.server} sent more than annai reads (${ANSWER_MAX / 1_048_576} MB).`);
+      let read = 0;
+      let over = false;
+      const counted = res.body.pipeThrough(new TransformStream({
+        transform(chunk, c) {
+          read += chunk.byteLength;
+          if (read <= ANSWER_MAX) return c.enqueue(chunk);
+          over = true;
+          c.error(tooMuch());
+        },
+      }));
       try {
-        for await (const ev of sse(res.body)) {
+        for await (const ev of sse(counted)) {
           /** @type {any} */
           let m;
           try {
@@ -203,6 +215,7 @@ export class McpClient {
         }
       } catch (e) {
         if (isStop(e)) throw e;
+        if (over) throw tooMuch();
       }
       throw unreadable();
     }

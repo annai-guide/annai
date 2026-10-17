@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { McpClient, McpError, mcpToolName, toolOutput, addressParts, fullAddress } from '../../src/plugins/mcp/client.js';
 import { startMcpServer } from '../fakes/mcp.js';
+import { ANSWER_MAX } from '../../src/core/answer.js';
 
 const TOKEN = 'mcp-token-0123456789';
 const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => fetch(url, init);
@@ -50,6 +51,19 @@ test('what goes wrong is a plain McpError in words: a refused token, an unknown 
   await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: cut }), (e) => e instanceof McpError && e.kind === 'answer');
   const old = async () => new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { protocolVersion: '2024-11-05', capabilities: {} } }), { headers: { 'Content-Type': 'application/json' } });
   await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: old }), /speaks MCP 2024-11-05/);
+});
+
+test("8c-4: an SSE answer is read no further than 8 MB: more is the server's error, and the rest is never read", async () => {
+  let sent = 0;
+  const endless = async () => new Response(new ReadableStream({
+    pull(c) {
+      if (sent >= 24 * 1024 * 1024) return c.close();
+      sent += 1024 * 1024;
+      c.enqueue(new Uint8Array(1024 * 1024).fill(120)); // "xxx…", no line end
+    },
+  }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: endless }), (e) => e instanceof McpError && e.kind === 'answer' && /sent more than annai reads \(8 MB\)/.test(e.message));
+  assert.ok(sent <= ANSWER_MAX + 3 * 1024 * 1024, `read ${sent} bytes`);
 });
 
 test("tool names: mcp_<server>_<tool>, safe for every provider, short enough, and never two the same (choice 1)", () => {
