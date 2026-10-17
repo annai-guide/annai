@@ -166,7 +166,9 @@ async function boot() {
   // Plugin updates are looked for at start and once a day, and only offered (spec §5.3).
   // Packages installed from an address are checked there too, each request in the trace (milestone 8a).
   const addressFetch = tracedFetch(store, SYS, { tool: 'plugin updates' });
-  const lookForUpdates = () => controllerReady().then(() => offerPluginUpdates({ plugins, notices: shell.notices }, { addressFetch }));
+  const lookForUpdates = () => controllerReady().then(() => offerPluginUpdates({ plugins, notices: shell.notices }, { addressFetch })).then((found) => {
+    if (found.length && location.hash.startsWith('#/plugins')) shell.render(); // its Update buttons
+  });
   startPlugins(plugins, shell).finally(() => {
     pluginsStarted();
     lookForUpdates();

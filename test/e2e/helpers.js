@@ -2,7 +2,8 @@ import { expect } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
+import { ZipWriter } from '../../src/core/zip.js';
 
 /**
  * Changes a Trace screen filter and waits until the list has redrawn for it (the list is aria-busy while it reloads),
@@ -249,4 +250,42 @@ export async function writeEvent(page, scope, ev) {
     await logEvent(store, scope, { type: ev.type, actor: 'system', data: ev.data });
     store.close();
   }, { scope, ev });
+}
+
+/**
+ * Every file of a package under test/fixtures/extensions/<dir>/, by its path inside the package.
+ * @param {string} dir @returns {Promise<Record<string, Buffer>>}
+ */
+export async function fixtureFiles(dir) {
+  const root = new URL(`../fixtures/extensions/${dir}/`, import.meta.url);
+  /** @type {Record<string, Buffer>} */
+  const out = {};
+  for (const name of await readdir(root, { recursive: true })) {
+    const url = new URL(name, root);
+    if ((await stat(url)).isFile()) out[name.split('\\').join('/')] = await readFile(url);
+  }
+  return out;
+}
+
+/** A zip of a package's files, inside one top folder when top is given. @param {Record<string, Buffer>} files @param {string} [top] */
+export async function zipOf(files, top) {
+  const z = new ZipWriter();
+  for (const [name, bytes] of Object.entries(files)) await z.add(top ? `${top}/${name}` : name, new Uint8Array(bytes));
+  return Buffer.from(await z.finish().arrayBuffer());
+}
+
+/**
+ * Shiori's main model on a stand-in Anthropic endpoint at origin (/b), and a trip, from a fresh start.
+ * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip]
+ */
+export async function modelSetUp(page, origin, trip = 'Big Sur') {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+  await page.getByRole('button', { name: 'Add to main' }).click();
+  await page.goto('/#/trips');
+  await page.getByLabel('Trip name').fill(trip);
+  await page.getByRole('button', { name: 'Start trip' }).click();
+  await expect(page.getByRole('heading', { name: trip })).toBeVisible();
 }
