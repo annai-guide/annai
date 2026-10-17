@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { PackKeeper } from '../../src/core/pack/keeper.js';
 import { STALE_MS } from '../../src/core/pack/download.js';
 import { packTrip, services, fakeAgent, STOPS } from './pack-kit.js';
+import { packWords } from '../../src/ui/offline-pack.js';
 
 /** @param {() => boolean | Promise<boolean>} ok */
 async function until(ok, ms = 2000) {
@@ -144,5 +145,54 @@ test("live mode's names come from the open trip's pack", async () => {
   assert.equal(keeper.name(here)?.name, 'Bixby Creek Bridge');
   agent.open(null);
   await until(() => keeper.name(here) === null);
+  keeper.dispose();
+});
+
+test('a plan change while a download runs is kept: once it ends, annai brings the pack up to date by itself on Wi-Fi', async () => {
+  const t = await packTrip();
+  const agent = fakeAgent(t.trip);
+  /** @type {(v?: unknown) => void} */
+  let open = () => {};
+  const gate = new Promise((r) => { open = r; });
+  let calls = 0;
+  let waiting = false;
+  const net = services({ overpass: async () => {
+    if (++calls === 2) {
+      waiting = true;
+      await gate;
+    }
+    return { elements: [] };
+  } });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  const running = keeper.download(t.trip);
+  await until(() => waiting);
+  // The plan changes while the second Overpass part waits for its answer.
+  await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
+  await new Promise((r) => setTimeout(r, 40)); // the plan is quiet: annai would update, but a download runs
+  open();
+  await running;
+  await until(async () => (await keeper.status(t.trip)).why === null, 3000);
+  const log = await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }));
+  assert.deepEqual(log.map((e) => e.data.auto), [false, true]);
+  keeper.dispose();
+});
+
+test('a pack at its size limit is complete for its plan: no "Download the rest", and nothing asked again by itself every hour', async () => {
+  let now = Date.now();
+  const t = await packTrip();
+  const agent = fakeAgent(t.trip);
+  const net = services();
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now, maxBytes: 600 });
+  const m = await keeper.download(t.trip);
+  assert.equal(m.full, true);
+  const s = await keeper.status(t.trip);
+  assert.equal(s.why, null);
+  assert.equal(packWords(s, 'wifi').button, null);
+  assert.ok(packWords(s, 'wifi').lines.some((l) => /stopped at its .* limit/.test(l)));
+  const asked = net.asked.length;
+  now += 2 * 3_600_000;
+  keeper.poke();
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(net.asked.length, asked);
   keeper.dispose();
 });
