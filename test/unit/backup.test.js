@@ -248,3 +248,16 @@ test('a restore stops an automatic backup that is uploading; behind one the user
   await later;
   assert.equal(done, true);
 });
+
+test("how much a place uploads without asking, on a connection annai can't name, is the user's to choose", async () => {
+  const d = await device(memoryPlace());
+  const id = await placeOn(d);
+  await d.backups.check(id);
+  assert.equal((await d.backups.get(id))?.askAbove, undefined, "unset: annai's 25 MB");
+  await d.backups.update(id, { askAbove: 100 * 1024 * 1024 });
+  assert.equal((await d.backups.get(id))?.askAbove, 100 * 1024 * 1024);
+  await d.backups.update(id, { askAbove: null });
+  assert.equal((await d.backups.get(id))?.askAbove, null, 'no limit');
+  assert.notEqual((await d.backups.get(id))?.checked, null, 'no new test needed');
+  for (const bad of [-1, Number.NaN, Infinity]) await assert.rejects(d.backups.update(id, { askAbove: bad }), (e) => e instanceof TargetError && e.kind === 'setup');
+});

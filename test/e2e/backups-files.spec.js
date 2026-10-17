@@ -104,3 +104,25 @@ test('WebDAV: automatic backups go to a folder annai makes, and any of them open
     await dav.stop();
   }
 });
+
+test("the limit for connections annai can't name is yours: at 0 MB, each automatic backup waits for your OK", async ({ page }) => {
+  const dav = await startWebDAV({ folders: ['/dav/'] });
+  try {
+    await fastBackups(page);
+    await openApp(page);
+    await tripWithNote(page, 'Kyoto', '/notes/fushimi.md', 'Fushimi Inari at dawn');
+    await addPlace(page, 'WebDAV', { 'Folder address': `${dav.origin}/dav/annai`, 'User name': USER, Password: PASSWORD });
+    const limit = page.getByLabel('Upload without asking up to, MB');
+    await expect(limit).toHaveValue('25');
+    await limit.fill('0');
+    await limit.blur();
+    await expect(page.getByText(/larger than 0 B wait for your OK/)).toBeVisible();
+    await page.getByRole('button', { name: 'Save and test' }).click();
+    await expect(page.getByText('A large backup is waiting')).toBeVisible({ timeout: 30_000 });
+    expect(dav.files().size).toBe(0);
+    await page.locator('.notices').getByRole('button', { name: 'Back up now' }).click();
+    await expect.poll(() => dav.files().size, { timeout: 30_000 }).toBe(1);
+  } finally {
+    await dav.stop();
+  }
+});

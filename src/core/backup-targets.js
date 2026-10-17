@@ -18,9 +18,11 @@ import { NotFoundError } from './workspace.js';
  * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number }} LastBackup
  *   the backup at the place this device builds on, one it made or took in; seqs: each scope's last log entry in it
  * @typedef {{ id: string, type: string, name: string, config: Record<string, string>, auto: Auto, mobileData: boolean,
- *   created: number, checked: number | null, last: LastBackup | null, hold: Hold | null, encrypt?: boolean, keys?: boolean, keep?: number }} Target
+ *   created: number, checked: number | null, last: LastBackup | null, hold: Hold | null, encrypt?: boolean, keys?: boolean, keep?: number, askAbove?: number | null }} Target
  *   checked: when it last passed a test; automatic backups wait for one. For whole-file places: encrypt, the backups are
- *   encrypted with the passphrase in its secret; keys, and hold the API keys; keep, how many of this device's backups stay there
+ *   encrypted with the passphrase in its secret; keys, and hold the API keys; keep, how many of this device's backups stay there.
+ *   askAbove: the bytes an automatic backup may upload without asking on a connection the browser doesn't name
+ *   (Safari on iPhone): unset, annai's own limit; null, no limit
  * @typedef {{ device: string | null, targets: Record<string, Target> }} State
  */
 
