@@ -81,17 +81,30 @@ export class McpClient {
     return this.#inSession(o, () => this.#request('tools/call', { name, arguments: args ?? {} }, o));
   }
 
-  /** Ends the session, when the server can be reached (milestone 8c, choice 6). @param {{ fetch: Fetch }} o */
-  async close({ fetch }) {
+  /** Ends the session, when the server can be reached (milestone 8c, choice 6). @param {{ fetch: Fetch, signal?: AbortSignal }} o */
+  async close(o) {
+    await (await this.ending())?.(o);
+  }
+
+  /**
+   * Leaves the session, and gives what ends it on the server: the address and headers read now, so it
+   * can be sent after its secret is gone (fix pass 8c-3), or null when there is no session.
+   * @returns {Promise<((o: { fetch: Fetch, signal?: AbortSignal }) => Promise<void>) | null>}
+   */
+  async ending() {
     const session = this.#session;
     this.#session = null;
     this.#version = null;
-    if (!session) return;
-    try {
-      await fetch(await this.#address(), { method: 'DELETE', headers: { ...(await this.auth()), 'Mcp-Session-Id': session } });
-    } catch {
-      // gone already: nothing to end
-    }
+    if (!session) return null;
+    const address = await this.#address();
+    const headers = { ...(await this.auth()), 'Mcp-Session-Id': session };
+    return async ({ fetch, signal }) => {
+      try {
+        await fetch(address, { method: 'DELETE', headers, ...(signal ? { signal } : {}) });
+      } catch {
+        // gone already, or too slow: nothing more to do
+      }
+    };
   }
 
   /**
