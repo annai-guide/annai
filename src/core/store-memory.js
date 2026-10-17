@@ -99,6 +99,7 @@ function makeTx(d, mode, allowed) {
       return structuredClone(rec);
     },
     async putEvent(rec) { use('events', true).set(ekey(rec.scope, rec.seq), structuredClone(rec)); },
+    async deleteEvent(scope, seq) { use('events', true).delete(ekey(scope, seq)); },
     async listEvents(scope, q = {}) {
       let list = eventsOf(scope).filter((e) => e.seq > (q.after ?? 0) && (q.before === undefined || e.seq < q.before));
       if (q.types) list = list.filter((e) => q.types?.includes(e.type));

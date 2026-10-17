@@ -237,6 +237,7 @@ function makeTx(t) {
       return rec;
     },
     putEvent: async (rec) => { await req(os('events').put(rec)); },
+    deleteEvent: async (scope, seq) => { await req(os('events').delete([scope, seq])); },
     listEvents: (scope, q = {}) => new Promise((res, rej) => {
       const lo = (q.after ?? 0) + 1;
       const hi = q.before === undefined ? Infinity : q.before - 1;
