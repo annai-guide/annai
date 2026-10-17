@@ -77,7 +77,7 @@ test('a skill from an address, with the file it links to', async ({ page }) => {
   }
 });
 
-test('a code plugin from a zip and from an address, behind the full-trust screen: Cancel installs nothing; Install works and survives a reload', async ({ page }) => {
+test('a code plugin from a zip and from an address, behind the full-trust screen: Cancel installs nothing; installed, its tool and its status chip work and survive a reload', async ({ page }) => {
   const tides = await fixtureFiles('tides');
   const site = await startModelServer(Object.fromEntries(Object.entries(tides).map(([n, b]) => [`/kits/tides/${n}`, file(b, n.endsWith('.js') ? 'text/javascript' : 'application/json')])));
   const llm = await startModelServer({ '/b/v1/messages': [
@@ -93,14 +93,27 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
     await expect(page.getByText('Code that runs in annai')).toBeVisible();
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toHaveCount(0);
+    const chips = page.getByRole('navigation', { name: 'Shiori' });
+    await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
+    // From a zip, installed: its status chip appears (spec §16.4); then removed.
+    await page.getByLabel('Install from a file').setInputFiles({ name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
+    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
+    await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Remove' }).click();
+    await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Tap again to remove' }).click();
+    await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
+    await expect(page.getByText('Tides 1.0.0', { exact: true })).toHaveCount(0); // the list drawn again: its field is the new one
+    // From an address: its code ran this session already, so it runs from the next start.
     await page.getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/tides/annai-plugin.json`);
     await page.getByRole('button', { name: 'Get it' }).click();
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
     await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(page.getByText('Restart annai to run the new version of Tides.')).toBeVisible();
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toBeVisible();
     await page.reload();
     // Installed plugins start after the first screen; the Plugins screen redraws once they have.
     await expect(page.locator('.card', { hasText: 'Tides 1.0.0' }).getByText('On', { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
     await page.goto('/#/tools');
     await expect(page.getByRole('checkbox', { name: 'tide_times', exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Type' }).click();
@@ -133,12 +146,16 @@ test('an update from an address is offered after a reload and changes nothing un
     await expect(page.getByText('Plugin updates are ready')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('Tides 1.0.0 → 1.1.0')).toBeVisible();
     // Offered on the card and on Plugins (where the page is); nothing has changed yet.
+    const chips = page.getByRole('navigation', { name: 'Shiori' });
+    await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Update to 1.1.0' })).toBeVisible();
     await page.getByRole('status').getByRole('button', { name: 'Update', exact: true }).first().click();
     await expect(page.getByText('Restart annai to use the new versions')).toBeVisible();
     await page.getByRole('status').getByRole('button', { name: 'Restart now' }).click();
     await expect(page.getByText('Tides 1.1.0', { exact: true })).toBeVisible();
+    await expect(chips.getByText('Tide 1.1.0')).toBeVisible();
+    await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Tides today?');
     await page.getByRole('button', { name: 'Send' }).click();
