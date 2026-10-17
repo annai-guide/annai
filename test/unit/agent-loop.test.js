@@ -345,7 +345,9 @@ test('a photo sent with no words says "(a photo)"; one sent while Shiori waits f
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.send('Hi');
-  await new Promise((r) => setTimeout(r, 20));
+  // Until she waits for the answer to her question, however busy the machine is (a fixed 20 ms flaked under load).
+  for (let i = 0; i < 200 && k.agent.state.name !== 'waiting'; i++) await new Promise((r) => setTimeout(r, 10));
+  assert.equal(k.agent.state.name, 'waiting');
   k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
   await k.agent.idle();
   const msgs = await k.events(['msg.user']);
