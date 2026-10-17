@@ -393,3 +393,23 @@ test('a wake for the open trip, named by its scope, runs there as before', async
   await k.agent.idle();
   assert.equal(k.requests.length, 1);
 });
+
+test("show: a plugin's card type joins the tool's card, its data is checked, and an unknown type is refused (spec §16.4)", async () => {
+  const k = await agentKit([[{ toolCalls: [
+    { name: 'show', input: { card: { type: 'tides', data: { low: '05:40' } } } },
+    { name: 'show', input: { card: { type: 'tides', data: { low: 540 } } } },
+    { name: 'show', input: { card: { type: 'ferries', data: {} } } },
+    { name: 'sleep', input: {} },
+  ] }]]);
+  k.registry.add('tides', 'ui:card-type', { type: 'tides', name: 'Tides', description: 'Low and high tides.', schema: { type: 'object', required: ['low'], properties: { low: { type: 'string' } } }, render: () => {} });
+  k.agent.send('Tides?');
+  await k.agent.idle();
+  const show = k.requests[0].tools.find((/** @type {any} */ t) => t.name === 'show');
+  assert.deepEqual(show.input.properties.card.properties.type.enum, ['tides']);
+  assert.match(show.description, /Card types plugins add: tides \(Tides\): Low and high tides\./);
+  const results = (await k.events(['tool.result'])).filter((e) => e.data.name === 'show').map((e) => e.data.content);
+  assert.equal(results[0], 'shown');
+  assert.match(results[1], /^Error: the tides card's data isn't valid: .*low/);
+  assert.equal(results[2], 'Error: there is no card type ferries. Types: tides.');
+  assert.equal((await k.events(['out.show'])).length, 1);
+});

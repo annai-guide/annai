@@ -2,6 +2,7 @@ import { h } from './dom.js';
 import { renderMarkdown } from './markdown.js';
 import { platform } from './platform.js';
 import { bookingHref } from './format.js';
+import { mount } from './slots.js';
 
 /**
  * Shiori's cards (spec §7.1 show): text, a place, links, a booking, a photo, or a choice. Every
@@ -32,8 +33,24 @@ const httpUrl = (url) => {
   }
 };
 
+/** The running plugin's type a card names, or null. @param {any} ctx @param {any} card */
+const typeOf = (ctx, card) => (typeof card?.type === 'string' ? (ctx?.registry?.entries('ui:card-type') ?? []).find((/** @type {any} */ e) => e.item?.type === card.type) ?? null : null);
+
+/** The label over a card: SHIORI, or SHIORI · <KIND> for a plugin's kind of card (spec §16.4). @param {any} ctx @param {any} card */
+export function cardWho(ctx, card) {
+  const t = typeOf(ctx, card);
+  return t ? `SHIORI · ${String(t.item.name).toUpperCase()}` : 'SHIORI';
+}
+
 /** @param {any} card @param {{ ctx: any, onChoice?: (option: string) => void }} o */
 export function renderCard(card, { ctx, onChoice }) {
+  // A plugin's kind of card is drawn by its plugin (full trust, its own UI); annai draws the title as text.
+  const typed = typeOf(ctx, card);
+  if (typed) {
+    const body = h('div', { class: 'card-body' });
+    mount(ctx, typed, body, (ui) => typed.item.render(card.data && typeof card.data === 'object' ? card.data : {}, body, ui), { what: `card type ${card.type}` });
+    return h('div', { class: 'card card-typed' }, card.title ? h('strong', { class: 'card-title', text: String(card.title) }) : null, body);
+  }
   const parts = [];
   if (card.title) parts.push(h('strong', { class: 'card-title', text: String(card.title) }));
   if (card.text) parts.push(renderMarkdown(String(card.text)));
@@ -61,5 +78,6 @@ export function renderCard(card, { ctx, onChoice }) {
   if (Array.isArray(card.choice) && card.choice.length) {
     parts.push(h('div', { class: 'acts' }, ...card.choice.slice(0, 6).map((/** @type {any} */ c) => h('button', { class: 'btn', type: 'button', onclick: () => onChoice?.(String(c)) }, String(c)))));
   }
+  if (typeof card.type === 'string') parts.push(h('p', { class: 'sub', text: `This card's kind (${card.type}) comes from a plugin that isn't on.` }));
   return h('div', { class: 'card' }, ...parts);
 }

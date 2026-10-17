@@ -470,3 +470,13 @@ test('Now hands over to the screen a plugin offers for an activity, else to Driv
   assert.equal(handover('moving-fast', 'still', [hike, car]), '#/ext/road/road');
   assert.equal(handover('still', 'walking', [hike]), null);
 });
+
+test("a typed card's label names its kind; an unknown one is plain SHIORI", async () => {
+  const { cardWho } = await import('../../src/ui/cards.js');
+  const { Registry } = await import('../../src/core/registry.js');
+  const registry = new Registry();
+  registry.add('tides', 'ui:card-type', { type: 'tides', name: 'Tides', description: 'x', render: () => {} });
+  assert.equal(cardWho({ registry }, { type: 'tides' }), 'SHIORI · TIDES');
+  assert.equal(cardWho({ registry }, { type: 'ferries' }), 'SHIORI');
+  assert.equal(cardWho({ registry }, { title: 'Hi' }), 'SHIORI');
+});
