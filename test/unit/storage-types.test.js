@@ -114,6 +114,8 @@ test("a server's answer is read, or refused in plain words: never a crash in the
   const cut = new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('part')); c.error(new TypeError('terminated')); } }));
   await assert.rejects(readAnswer(cut, 'text', 'the bucket'), (e) => e instanceof TargetError && /connection to the bucket broke/.test(e.message) && !isPluginBug(e));
   assert.equal(TEXT_MAX, 8 * 1024 * 1024);
+  assert.deepEqual(await readAnswer(new Response('abc'), 'bytes', 'GitHub'), new TextEncoder().encode('abc'));
+  await assert.rejects(readAnswer(new Response('x'.repeat(2000)), 'bytes', 'GitHub', { max: 1000 }), /larger than annai reads/);
 });
 
 /** annai's catalog with one official storage plugin, served as annai's own origin serves it. */

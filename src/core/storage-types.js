@@ -107,9 +107,10 @@ export const TEXT_MAX = 8 * 1024 * 1024;
  * JSON, too large) is the server's doing, so it is a TargetError, never a crash in the plugin's code:
  * only real bugs count against a plugin (spec §5.5), and a broken or hostile server mustn't switch
  * backups off.
- * @param {Response} res @param {'json' | 'text' | 'blob' | 'arrayBuffer'} how
+ * @param {Response} res @param {'json' | 'text' | 'bytes' | 'blob' | 'arrayBuffer'} how
+ *   bytes: a Uint8Array, at most max of them; blob and arrayBuffer: a whole download, such as an archive
  * @param {string} where the server, in a few words ("GitHub", "the bucket")
- * @param {{ max?: number }} [o] max: the most bytes read as text or JSON
+ * @param {{ max?: number }} [o] max: the most bytes read as text, JSON or bytes
  * @returns {Promise<any>}
  */
 export async function readAnswer(res, how, where, { max = TEXT_MAX } = {}) {
@@ -141,6 +142,7 @@ export async function readAnswer(res, how, where, { max = TEXT_MAX } = {}) {
       bytes.set(c, at);
       at += c.byteLength;
     }
+    if (how === 'bytes') return bytes;
     const text = new TextDecoder().decode(bytes);
     if (how === 'text') return text;
     try {

@@ -294,3 +294,21 @@ test("a GitHub API address that is no web address is a setup problem in plain wo
     }
   }
 });
+
+test('what GitHub sends is read only up to a limit: an error, a manifest, a file (a hostile repository mustn\'t freeze the page)', { timeout: 20_000 }, async () => {
+  const gh = await startGitHub({ repos: { [REPO]: {} } });
+  try {
+    const { type } = github();
+    const put = await type.put(ctx(gh), await archive(await device()), opts());
+    // An error body far larger than any GitHub sends, which says "rate limit" only at its end: not read that far.
+    gh.garbleNext({ method: 'GET', part: `/repos/${REPO}`, status: 403, body: `{"message":"${'x'.repeat(100_000)} rate limit"}` });
+    const started = Date.now();
+    await assert.rejects(type.check(ctx(gh)), refused('refused'));
+    assert.ok(Date.now() - started < 5000, 'no minute-long wait for a "rate limit" past the limit');
+    // A manifest larger than annai reads.
+    gh.garbleNext({ method: 'GET', part: '/git/blobs/', body: `{"files":"${'x'.repeat(9 * 1024 * 1024)}"}` });
+    await assert.rejects(type.get(ctx(gh), put.id, { onProgress: () => {} }), refused('other', /larger than annai reads/));
+  } finally {
+    await gh.stop();
+  }
+});
