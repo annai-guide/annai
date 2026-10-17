@@ -135,9 +135,17 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
     kind = 'skill';
     root = rootOf(names, SKILL_FILE);
     if (root === null) {
-      if (names.filter((n) => n === SKILL_FILE || n.endsWith(`/${SKILL_FILE}`)).length > 1) {
+      // Deeper than annai reads (minors 20): the shallowest annai-plugin.json, else the one SKILL.md.
+      const deep = (/** @type {string} */ file) => names.filter((n) => n.endsWith(`/${file}`)).sort((a, b) => a.split('/').length - b.split('/').length);
+      const [plugin] = deep(MANIFEST_FILE);
+      const skills = deep(SKILL_FILE);
+      if (!plugin && skills.length > 1) {
         throw new PluginError('skill', 'this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.');
       }
+      const file = plugin ? MANIFEST_FILE : SKILL_FILE;
+      const at = plugin ?? skills[0];
+      const why = at?.split('/').length > 2 ? 'nested too deep' : 'beside other files';
+      if (at) throw new PluginError(plugin ? 'plugin' : 'skill', `its ${file} is in ${at.slice(0, -file.length)}, ${why}: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`);
       throw new PluginError('plugin', `there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`);
     }
   }
