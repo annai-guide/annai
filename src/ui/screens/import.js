@@ -128,6 +128,8 @@ function preview(ctx, body, opened, desc, from, fresh) {
         });
         // This device has taken in that backup: its next backup there builds on it (spec §12.4).
         if (from) await ctx.backups?.accept(from.target, from.remote).catch(() => {});
+        // Live mode takes in the trips that came and lets go of those archived (their reminders leave the relay).
+        if (result.trips.length || result.archived.length) await ctx.live?.tripsChanged().catch(() => {});
         const titles = desc.trips.map((/** @type {any} */ t) => t.title);
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: 'Imported.' }),

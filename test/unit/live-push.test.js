@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { liveKit, at, iso, LA, MONTEREY, RIVER_INN, NEPENTHE } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
-import { createTrip } from '../../src/core/scopes.js';
+import { createTrip, setTripStatus } from '../../src/core/scopes.js';
 
 const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
 const TEA = { title: 'Tea at the inn', fixed: true, start: { at: iso('16:00'), tz: LA } };
@@ -171,4 +171,22 @@ test('a reminder said in a catch-up counts as said: its notification arriving la
   assert.equal(k.agent.wakes.at(-1)?.kind, 'catch-up');
   const later = await k.live.pushNews([{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:20:10') }]);
   assert.deepEqual(later, [`${k.trip}|${w.id}`]);
+});
+
+test("archiving a trip takes its reminders out of what a closed annai can say at once; unarchiving brings them back", async () => {
+  const k = await liveKit({ plan: { tea: TEA } });
+  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  /** @type {string[]} */
+  const told = [];
+  k.live.onReminders((level) => told.push(level));
+  const scopes = async () => [...new Set(((await k.live.reminders()) ?? []).map((r) => r.watch))];
+  assert.deepEqual(await scopes(), [w.id, 'plan:tea:coming-up']);
+  await setTripStatus(k.store, k.trip, 'archived');
+  await k.live.tripsChanged();
+  assert.deepEqual(await scopes(), []);
+  assert.ok(told.includes('urgent'));
+  await setTripStatus(k.store, k.trip, 'active');
+  await k.live.tripsChanged();
+  assert.deepEqual(await scopes(), [w.id, 'plan:tea:coming-up']);
+  k.live.dispose();
 });

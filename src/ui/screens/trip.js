@@ -45,8 +45,9 @@ export async function renderTrip(ctx, route) {
       ...slotEntries(ctx, 'ui:trip-tab').map((e) => h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) })),
       ...tripActions(ctx, id, scope, extra),
       archived
-        ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); ctx.render(); } }, 'Unarchive')
-        : twoStep('Archive trip', 'Tap again to archive', async () => { await setTripStatus(ctx.store, id, 'archived'); ctx.go('#/trips'); }),
+        ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); await ctx.live?.tripsChanged(); ctx.render(); } }, 'Unarchive')
+        // Archived, its reminders leave live mode and the push relay at once.
+        : twoStep('Archive trip', 'Tap again to archive', async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.live?.tripsChanged(); ctx.go('#/trips'); }),
       h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, 'Remove trip')),
     extra,
     await packPanel(ctx, id),
