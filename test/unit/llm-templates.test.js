@@ -152,3 +152,10 @@ test('Anthropic and OpenRouter template models list their web tools (spec §9.5)
     }
   }
 });
+
+test("a package's templates join annai's; the catalog's own win on the same id (choice 12)", async () => {
+  const { ws } = await setup();
+  const get = async () => new Response(JSON.stringify({ format: 1, endpoints: [{ id: 'openai', version: 1, type: 'chat-completions', name: 'OpenAI' }] }));
+  const out = await loadTemplates({ ws, fetch: get, extra: [{ id: 'openai', version: 9, type: 'x', name: 'Fake OpenAI' }, { id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM' }] });
+  assert.deepEqual(out.endpoints.map((t) => [t.id, t.name]), [['openai', 'OpenAI'], ['trail-llm', 'Trail LLM']]);
+});

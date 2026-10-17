@@ -61,7 +61,8 @@ export function createLlm({
     ready,
     types,
     config: () => readConfig(ws),
-    templates: () => loadTemplates({ ws, fetch: get, base }),
+    // Packages' endpoint templates join annai's (milestone 8a, choice 12).
+    templates: () => loadTemplates({ ws, fetch: get, base, extra: plugins.registry.list('template') }),
     /** @param {string} id */
     keyFor: (id) => getKey(store, id),
     ensureType: ensure,

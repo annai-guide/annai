@@ -27,11 +27,26 @@ function valid(json) {
 }
 
 /**
- * annai's templates, fetched when online and kept for offline use (spec §9.8).
- * @param {{ ws: Workspace, fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string }} c
+ * annai's templates, fetched when online and kept for offline use (spec §9.8), then extra ones (a package's, §5.2)
+ * whose id annai's catalog lacks.
+ * @param {{ ws: Workspace, fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, extra?: EndpointTemplate[] }} c
  * @returns {Promise<TemplateCatalog>}
  */
-export async function loadTemplates({ ws, fetch: get = (url, init) => fetch(url, init), base = '' }) {
+export async function loadTemplates({ ws, fetch: get = (url, init) => fetch(url, init), base = '', extra = [] }) {
+  const catalog = await catalogTemplates({ ws, get, base });
+  const ids = new Set(catalog.endpoints.map((t) => t.id));
+  /** @type {EndpointTemplate[]} */
+  const more = [];
+  for (const t of extra) {
+    if (!t || typeof t.id !== 'string' || ids.has(t.id)) continue;
+    ids.add(t.id);
+    more.push(t);
+  }
+  return more.length ? { ...catalog, endpoints: [...catalog.endpoints, ...more] } : catalog;
+}
+
+/** annai's own catalog of templates, or the copy from last time. @param {{ ws: Workspace, get: (url: string, init?: RequestInit) => Promise<Response>, base: string }} c @returns {Promise<TemplateCatalog>} */
+async function catalogTemplates({ ws, get, base }) {
   try {
     const res = await get(`${base}/catalog/templates.json`, { cache: 'no-cache' });
     if (res.ok) {

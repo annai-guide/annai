@@ -4,6 +4,8 @@ import { record, storedTexts } from './log.js';
 import { photoStub } from './compaction.js';
 import { tracedFetch } from './net.js';
 import { newId } from '../scopes.js';
+import { isTextType } from '../paths.js';
+import { text, toBase64 } from '../bytes.js';
 
 /** The most model calls a helper may make. */
 export const TASK_STEPS = 25;
@@ -72,14 +74,12 @@ export function selfTools(agent) {
     },
     {
       name: 'skill', pluginId: 'core', group: 'Self',
-      description: 'Load a skill: instructions for a kind of situation, listed under Skills in your context.',
-      input: { type: 'object', properties: { name: { type: 'string', minLength: 1 } }, required: ['name'] },
-      run: async (/** @type {{ name: string }} */ i) => {
-        const skills = agent.registry.list('skill').filter((s) => s?.name);
-        const s = skills.find((x) => x.name === i.name);
-        if (s) return String(typeof s.text === 'function' ? await s.text() : s.text ?? '');
-        return `There is no skill called "${i.name}". Skills: ${skills.map((x) => x.name).join(', ') || 'none yet'}.`;
+      description: 'Load a skill: instructions for a kind of situation, listed under Skills in your context. With file, one of the skill\'s own files, as listed after its text.',
+      input: {
+        type: 'object', required: ['name'],
+        properties: { name: { type: 'string', minLength: 1 }, file: { type: 'string', description: 'A file of the skill, such as references/safety.md, as listed after its text.' } },
       },
+      run: async (/** @type {{ name: string, file?: string }} */ i) => loadSkill(agent, i),
     },
     {
       name: 'recall', pluginId: 'core', group: 'Self',
@@ -141,4 +141,39 @@ async function recall(agent, i) {
   const piece = text.slice(start, start + 20_000);
   const rest = text.length - start - piece.length;
   return rest > 0 ? `${piece}\n… ${rest} more characters; recall again with start: ${start + piece.length}` : piece || 'Nothing there.';
+}
+
+/** Kinds of file a skill's scripts and notes come as, read as text whatever their type says. */
+const TEXT_FILE = /\.(py|sh|js|mjs|ts|yaml|yml|toml|ini|cfg|txt|md|csv|json)$/i;
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+/** The largest image of a skill's that Shiori is sent. */
+const SKILL_IMAGE_MAX = 5 * 1024 * 1024;
+
+/**
+ * The skill tool (spec §7.2): a skill's text, with a line naming its other files; or one of them
+ * (choice 9): text as text (scripts too: annai never runs them), a photo as a photo, else said what it is.
+ * The first skill with a name wins, as in her context.
+ * @param {import('./loop.js').Agent} agent @param {{ name: string, file?: string }} i
+ */
+async function loadSkill(agent, i) {
+  /** @type {any[]} */
+  const skills = [];
+  for (const s of agent.registry.list('skill')) if (s?.name && !skills.some((x) => x.name === s.name)) skills.push(s);
+  const s = skills.find((x) => x.name === i.name);
+  if (!s) return `There is no skill called "${i.name}". Skills: ${skills.map((x) => x.name).join(', ') || 'none yet'}.`;
+  const files = typeof s.files === 'function' ? /** @type {string[]} */ (await s.files()) : [];
+  if (i.file === undefined || i.file === '') {
+    const body = String(typeof s.text === 'function' ? await s.text() : s.text ?? '');
+    return files.length ? `${body}\n\nFiles in this skill (read one with skill({ name: "${s.name}", file })): ${files.join(', ')}` : body;
+  }
+  if (typeof s.read !== 'function') return `The skill ${s.name} has no files.`;
+  const file = String(i.file).replace(/^(\.\/)+/, '');
+  const got = await s.read(file);
+  if (!got) return `There is no file ${file} in the skill ${s.name}. Its files: ${files.join(', ') || 'none'}.`;
+  const type = String(got.type ?? 'application/octet-stream');
+  if (isTextType(type) || TEXT_FILE.test(file)) return text(got.bytes);
+  if (IMAGE_TYPES.includes(type) && got.bytes.byteLength <= SKILL_IMAGE_MAX) {
+    return { content: `${file}, an image from the skill ${s.name}.`, images: [{ mediaType: type, data: toBase64(got.bytes) }] };
+  }
+  return `${file} is ${type}, ${got.bytes.byteLength} bytes: annai can't show this kind of file.`;
 }
