@@ -15,7 +15,8 @@ import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
-import { secretFreeLog, tracedFetch } from '../core/agent/net.js';
+import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
+import { disabledCard } from '../ui/plugin-cards.js';
 import { offerPluginUpdates } from '../ui/plugin-updates.js';
 import { Agent } from '../core/agent/loop.js';
 import { codec } from '../ui/photo-codec.js';
@@ -143,6 +144,14 @@ async function boot() {
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, version: VERSION });
   pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: 'Notifications', run: () => { location.hash = '#/notifications'; } }] });
   for (const n of early.splice(0)) pushCard(n);
+  // A plugin switched off after repeated errors gets a card saying why (spec §5.5), with no key in it.
+  registry.onDisabled(async (d) => {
+    const row = (await plugins.describe().catch(() => [])).find((/** @type {any} */ r) => r.id === d.pluginId);
+    shell.notices.card({
+      ...disabledCard({ name: row?.name ?? d.pluginId, reason: d.reason, message: await withoutSecrets(store, d.message) }),
+      actions: [{ label: 'Plugins', run: () => { location.hash = '#/plugins'; } }],
+    });
+  });
   // Open and on screen: the service worker's news now (a notification annai already said is closed).
   onPushMessage(async () => {
     if (document.visibilityState !== 'visible') return; // read at the catch-up

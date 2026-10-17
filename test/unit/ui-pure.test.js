@@ -430,3 +430,11 @@ test('the install screen says what a package brings and where it came from', asy
   assert.equal(sourceLine({ source: 'official' }), 'From annai');
   assert.equal(sourceLine({ source: 'builtin' }), 'From annai');
 });
+
+test('the card when a plugin is switched off says which, why and where to turn it back on', async () => {
+  const { disabledCard } = await import('../../src/ui/plugin-cards.js');
+  assert.deepEqual(disabledCard({ name: 'Tides', reason: 'failed 3 times in a row', message: 'boom' }), {
+    tone: 'warn', title: 'The plugin "Tides" was turned off',
+    body: 'It failed 3 times in a row. The last error: boom You can turn it back on in Settings → Plugins.',
+  });
+});

@@ -293,3 +293,13 @@ test("host: a fetch that fails because the device is offline is the tool's answe
   }
   assert.equal(registry.isDisabled('online'), false);
 });
+
+test('registry: switching a plugin off after repeated errors is told once, with its last error (spec §5.5)', async () => {
+  const r = new Registry();
+  /** @type {any[]} */
+  const told = [];
+  r.onDisabled((d) => told.push(d));
+  const f = r.guard('flaky', 'tool x', () => { throw new TypeError('boom 3'); });
+  for (let i = 0; i < 4; i++) await f().catch(() => {});
+  assert.deepEqual(told, [{ pluginId: 'flaky', reason: 'failed 3 times in a row', message: 'boom 3' }]);
+});
