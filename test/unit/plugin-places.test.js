@@ -235,3 +235,22 @@ test('a pack whose manifest has no download time says the day of its newest part
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack\.$/);
   assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\)\n/);
 });
+
+test("nearby online takes an Overpass answer that says \"runtime error\" as no answer: the next server, then the pack, as for any failure", async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  await mcwayPack(ws, /** @type {string} */ (trip));
+  const timedOut = { elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 21 seconds.' };
+  const wiki = { query: { geosearch: [] } };
+  let first = true;
+  const second = await run('nearby', { ...McWay, radius: 8000, kinds: ['sights'] }, (url) => {
+    if (!url.includes('overpass')) return wiki;
+    if (first) {
+      first = false;
+      return timedOut;
+    }
+    return { elements: [{ type: 'node', lat: 36.1585, lon: -121.6722, tags: { name: 'McWay Falls Overlook', tourism: 'viewpoint' } }] };
+  });
+  assert.match(second, /McWay Falls Overlook\tviewpoint/);
+  const both = await run('nearby', { ...McWay, radius: 8000, kinds: ['sights'] }, (url) => (url.includes('overpass') ? timedOut : wiki));
+  assert.match(both, /\nOpenStreetMap didn't answer, so its places come from the offline pack \(downloaded 2026-10-16\)\.$/);
+});

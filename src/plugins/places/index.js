@@ -110,6 +110,8 @@ export function activate(annai) {
         for (const server of OVERPASS) {
           try {
             const data = await json(server, call, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` });
+            // "runtime error: Query timed out": Overpass stopped early, and its places are cut off: no answer, as the pack takes it.
+            if (typeof data?.remark === 'string' && /error/i.test(data.remark)) continue;
             /** @type {any[][]} */
             const rows = [];
             for (const e of Array.isArray(data?.elements) ? data.elements : []) {
