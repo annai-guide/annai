@@ -62,8 +62,14 @@ details.archived summary { cursor: pointer; color: var(--ink-2); padding: 6px 0;
 .field-label { font-size: 14px; font-weight: 500; color: var(--ink-2); }
 input, textarea, select {
   font: inherit; font-size: 16px; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
-  border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%;
+  border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; min-width: 0; max-width: 100%;
 }
+/* iPhone draws date and time boxes at a width of their own, which can push them out of a row. */
+input[type='date'], input[type='time'], input[type='datetime-local'] { -webkit-appearance: none; appearance: none; display: block; text-align: left; }
+input::-webkit-date-and-time-value { text-align: left; }
+/* WebKit counts a drop-down's longest choice as overflow of its label, which widens the page: clip it there, and draw its focus ring inside. */
+.field:has(select) { overflow-x: clip; }
+.field select:focus-visible { outline-offset: -2px; }
 input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; min-height: 0; accent-color: var(--ai); }
 .row { display: flex; flex-wrap: wrap; gap: 12px; }
 /* A field shares a row; in a column it keeps its own height. */
@@ -144,8 +150,9 @@ textarea.mono { font-family: var(--f-mono); font-size: 13px; }
 .checks-result { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .checks-result .bad { color: var(--risk); }
 .shared-text { margin: 4px 0 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
-/* The top bar scrolls rather than pushing the page wider on a phone. */
+/* The top bar scrolls rather than pushing the page wider on a phone, and fades where there is more of it. */
 .topnav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.topnav.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
 .topnav::-webkit-scrollbar { display: none; }
 .topnav a { white-space: nowrap; }
 /* The Plan (spec §16.2): a trip booklet's schedule page. */

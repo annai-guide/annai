@@ -9,7 +9,8 @@ addEventListener('beforeinstallprompt', (e) => {
 });
 
 const STEPS = {
-  ios: ['Tap the Share button in Safari.', 'Choose "Add to Home Screen".', 'Open annai from your Home Screen.'],
+  ios: ['Tap the Share button in Safari.', 'Choose "Add to Home Screen".', 'Open annai from your Home Screen.',
+    'Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".'],
   android: ['Open the browser menu (⋮).', 'Choose "Install app" or "Add to Home screen".', 'Open annai from your Home screen.'],
   desktop: ['Use your browser menu to install annai as an app.'],
 };
@@ -33,7 +34,7 @@ export function installBanner() {
   return h('section', { class: 'risk', 'aria-label': 'Install annai' },
     h('p', {}, h('strong', { text: "annai isn't installed yet." }), ' ',
       p === 'ios'
-        ? 'Safari can erase your trips after 7 days without a visit. Add annai to your Home Screen to keep them.'
+        ? "Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it."
         : 'Your browser may clear your trips when space runs low. Install annai to keep them safe.'),
     h('div', { class: 'acts' }, install, h('button', { class: 'btn', type: 'button', onclick: () => { how.hidden = !how.hidden; } }, 'Show me how')),
     how);

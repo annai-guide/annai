@@ -17,6 +17,15 @@ test('the install warning shows in a browser tab and explains how', async ({ pag
   await expect(banner.getByRole('listitem').first()).toBeVisible();
 });
 
+test("on iPhone the install warning says the Home Screen app keeps trips of its own, and how to bring them over", async ({ page, browserName }) => {
+  test.skip(browserName !== 'webkit', 'the iPhone wording');
+  await openApp(page);
+  const banner = page.getByRole('region', { name: 'Install annai' });
+  await expect(banner).toContainText("the Home Screen app keeps trips of its own: what you start here won't be there");
+  await banner.getByRole('button', { name: 'Show me how' }).click();
+  await expect(banner.getByRole('listitem').last()).toContainText('Open a trip someone sent you');
+});
+
 test('only one tab runs annai at a time', async ({ page, context }) => {
   await openApp(page);
   const second = await context.newPage();

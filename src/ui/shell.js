@@ -52,7 +52,12 @@ export function startShell(root, core) {
       .map((e) => h('a', { href: `#/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) }));
     links = [...builtIn, ...tabs];
     nav.replaceChildren(...links);
+    showMore();
   };
+  /** The top bar fades at its end while there is more of it to scroll to. */
+  const showMore = () => nav.classList.toggle('more', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+  nav.addEventListener('scroll', showMore, { passive: true });
+  addEventListener('resize', showMore);
   drawTabs();
 
   const update = { ready: false, apply: () => {} };
@@ -95,6 +100,10 @@ export function startShell(root, core) {
       if (a.getAttribute('href') === current) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     }
+    // The screen you are on stays in view in the top bar, however far along it is.
+    const on = links.find((a) => a.hasAttribute('aria-current'));
+    if (on) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth);
+    showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once (minors 15).
