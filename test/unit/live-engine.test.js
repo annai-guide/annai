@@ -264,5 +264,7 @@ test('off screen nothing runs: GPS stops and the clock waits; back on screen bot
   k.sensors.visible(true);
   await k.settle();
   assert.equal(k.sensors.gpsOn(), true);
-  assert.equal(k.agent.wakes.length, 1);
+  assert.equal(k.agent.wakes.length, 0); // the catch-up waits for a fix, at most 15 s
+  await k.to(at('10:05:15'));
+  assert.deepEqual(k.agent.wakes.map((w) => w.kind), ['catch-up']);
 });
