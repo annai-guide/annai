@@ -41,6 +41,15 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('Where is the next fuel station or charger?');
     await page.getByRole('link', { name: '← Now' }).click();
     await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/); // voice is still on: the dock stays big for it
+    // Back on Now while still moving fast: the next fixes keep Now on screen (B2).
+    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    for (let i = 11; i <= 13; i++) {
+      await context.setGeolocation({ latitude: 36.60 - i * 0.0011, longitude: -121.89, accuracy: 10 });
+      await page.clock.fastForward(5000);
+    }
+    await expect(page.locator('.live-chip')).toHaveText('Live · moving fast');
+    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
   } finally {
     await llm.stop();
   }

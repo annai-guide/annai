@@ -37,17 +37,18 @@ export async function renderNow(ctx) {
     start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Turn on live mode')] : []));
   };
   draw();
-  let handed = false;
+  // Hands over when moving fast begins while Now is on screen: not on every fix of a drive already
+  // going, so "← Now" from Driving stays on Now (choice 4).
+  let was = live?.activity;
   const off = live?.onChange(() => {
     if (!place.isConnected) {
       off?.();
       return;
     }
     draw();
-    if (!handed && live.on && live.activity === 'moving-fast' && location.hash.startsWith('#/now')) {
-      handed = true;
-      ctx.go('#/drive');
-    }
+    const began = live.activity === 'moving-fast' && was !== 'moving-fast';
+    was = live.activity;
+    if (began && live.on && location.hash.startsWith('#/now')) ctx.go('#/drive');
   });
   const next = upcoming(rows, Date.now(), 4);
   const latest = await latestCard(ctx, id);
