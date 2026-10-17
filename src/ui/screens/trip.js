@@ -9,6 +9,8 @@ import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
 import { packPanel } from '../offline-pack.js';
+import { tripStamps, stampMarks } from '../stamps.js';
+import { stampCount } from '../../core/after/stamps.js';
 
 export { fileHref };
 
@@ -27,13 +29,17 @@ export async function renderTrip(ctx, route) {
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
   const files = (await ctx.ws.list(id, '/')).filter((/** @type {any} */ f) => !f.path.startsWith('/offline/')); // the pack has its own panel
   const archived = scope.status === 'archived';
+  const stamps = await tripStamps(ctx, id);
   const extra = h('div', {}); // the export panel opens here
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/trips' }, '← Trips')),
     h('h1', { class: 'title', text: scope.title }),
-    h('p', { class: 'sub', text: [trip?.start ? dateRange(trip.start, trip.end) : null, archived ? 'Archived' : null, `${files.length} files`].filter(Boolean).join(' · ') }),
+    h('p', { class: 'sub', text: [trip?.start ? dateRange(trip.start, trip.end) : null, archived ? 'Archived' : null, `${files.length} files`, stamps.length ? stampCount(stamps.length) : null].filter(Boolean).join(' · ') }),
+    stampMarks(stamps, { max: 24, big: true }),
     h('div', { class: 'acts' },
       h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, 'Plan'),
+      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, 'Recap'),
+      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, 'Replay'),
       ...tripActions(ctx, id, scope, extra),
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); ctx.render(); } }, 'Unarchive')

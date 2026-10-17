@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, buildAndSave } from './helpers.js';
+import { openApp, buildAndSave, writeEvent } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -254,4 +254,20 @@ test('removing a trip that is already gone says so', async ({ page }) => {
   await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
   await expect(page.getByText('That trip was already removed.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+});
+
+test('a trip card shows the stamps its arrivals earned, and the trip page all of them (spec §13, §16.2)', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Kyoto in spring');
+  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  for (const [name, lat, lng] of /** @type {const} */ ([['伏見稲荷大社', 34.967, 135.773], ['Arashiyama', 35.009, 135.667], ['Kiyomizu-dera', 34.995, 135.785]])) {
+    await writeEvent(page, id, { type: 'trigger.fired', data: { type: 'plan', event: 'arrived', place: { name, lat, lng } } });
+  }
+  await page.goto('/#/trips');
+  const card = page.getByRole('link', { name: /Kyoto in spring/ });
+  await expect(card).toContainText('3 stamps');
+  await expect(card.getByRole('img', { name: '3 stamps: 伏見稲荷大社, Arashiyama, Kiyomizu-dera' })).toBeVisible();
+  await expect(card.locator('.stamp')).toHaveText(['伏見', 'Arashiyama', 'Kiyomizu']);
+  await card.click();
+  await expect(page.getByRole('img', { name: /^3 stamps:/ })).toBeVisible();
 });

@@ -20,15 +20,18 @@ import { renderVoice } from './screens/voice.js';
 import { renderNow } from './screens/now.js';
 import { renderDrive } from './screens/drive.js';
 import { renderBackups } from './screens/backups.js';
+import { renderRecap } from './screens/recap.js';
+import { renderReplay } from './screens/replay.js';
+import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, notifications: renderNotifications };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications };
 
 /**
  * @param {HTMLElement} root
- * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, push?: any, version: string }} core
+ * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any, version: string }} core
  */
 export function startShell(root, core) {
   const notices = createNotices();
@@ -52,7 +55,7 @@ export function startShell(root, core) {
   async function render() {
     const my = ++seq;
     const route = parseHash(location.hash);
-    const section = route.name === 'plan' ? 'plan' : route.name === 'drive' ? 'now' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
+    const section = route.name === 'simulate' ? 'settings' : route.name === 'plan' ? 'plan' : route.name === 'drive' ? 'now' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
     for (const a of links) {
       if (a.getAttribute('href') === `#/${section}`) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');

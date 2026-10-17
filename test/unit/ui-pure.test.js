@@ -16,6 +16,7 @@ import { priceLine } from '../../src/ui/screens/endpoint.js';
 import { mediaKeys } from '../../src/ui/media-keys.js';
 import { restoreFrom } from '../../src/ui/auto-backup.js';
 import { packWords } from '../../src/ui/offline-pack.js';
+import { liveText, knownFix } from '../../src/ui/live-chip.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -390,4 +391,19 @@ test('Trace lines for notifications', () => {
   assert.equal(traceSummary({ type: 'push.sync', data: { relay: 'push.annai.guide', sent: 0, calledOff: 0, waiting: 5, error: "annai couldn't reach the relay." } }), "push.annai.guide · 0 sent, 0 called off · 5 waiting · annai couldn't reach the relay.");
   assert.equal(traceSummary({ type: 'push.shown', data: { watch: 'w-1', at: 1 } }), 'notification shown · w-1');
   assert.equal(traceSummary({ type: 'push.opened', data: { watch: 'plan:tea:coming-up', at: 1 } }), 'notification opened · plan:tea:coming-up');
+});
+
+test('parseHash: the recap and replay screens of a trip, with a day', () => {
+  assert.deepEqual(parseHash('#/trip/t1/recap'), { name: 'recap', parts: ['trip', 't1', 'recap'], params: {} });
+  assert.deepEqual(parseHash('#/trip/t1/replay?day=2026-11-27'), { name: 'replay', parts: ['trip', 't1', 'replay'], params: { day: '2026-11-27' } });
+  assert.equal(parseHash('#/simulate').name, 'simulate');
+});
+
+test("the live chip during a simulation, and where the user is by live mode's own clock", () => {
+  const fix = { lat: 36, lng: -121, at: Date.parse('2026-11-27T12:00:00-08:00'), source: 'sim' };
+  const live = { on: true, gps: 'ok', activity: 'moving-fast', fix, simulating: true, clock: { now: () => fix.at + 5000 } };
+  assert.equal(liveText(live), 'Simulation · moving fast');
+  assert.equal(knownFix(live), fix); // fresh by the simulation's clock, weeks from today
+  assert.equal(liveText({ ...live, simulating: false, activity: 'still' }), 'Live · stopped');
+  assert.equal(knownFix({ ...live, clock: { now: () => fix.at + 3_600_000 } }), null);
 });

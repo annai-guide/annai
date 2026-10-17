@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '7d0ce6eb45ff';
+const BUILD = 'e306316d410d';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -27,8 +27,14 @@ const SHELL = [
   '/assets/personalities/shiori.md',
   '/assets/personalities/storyteller.md',
   '/assets/shiori.svg',
+  '/assets/simulations/big-sur.json',
   '/src/app/main.js',
   '/src/app/version.js',
+  '/src/core/after/journey.js',
+  '/src/core/after/recap.js',
+  '/src/core/after/replay.js',
+  '/src/core/after/route.js',
+  '/src/core/after/stamps.js',
   '/src/core/archive-crypto.js',
   '/src/core/agent/budgets.js',
   '/src/core/agent/compaction.js',
@@ -79,6 +85,7 @@ const SHELL = [
   '/src/core/live/geo.js',
   '/src/core/live/live.js',
   '/src/core/live/plan-watches.js',
+  '/src/core/live/sim-run.js',
   '/src/core/live/simulate.js',
   '/src/core/live/skills.js',
   '/src/core/live/triggers.js',
@@ -184,7 +191,10 @@ const SHELL = [
   '/src/ui/screens/now.js',
   '/src/ui/screens/plan.js',
   '/src/ui/screens/plugins.js',
+  '/src/ui/screens/recap.js',
+  '/src/ui/screens/replay.js',
   '/src/ui/screens/settings.js',
+  '/src/ui/screens/simulate.js',
   '/src/ui/screens/shiori.js',
   '/src/ui/screens/talk.js',
   '/src/ui/screens/tools.js',
@@ -193,6 +203,7 @@ const SHELL = [
   '/src/ui/screens/trips.js',
   '/src/ui/screens/voice.js',
   '/src/ui/shell.js',
+  '/src/ui/stamps.js',
   '/src/ui/shiori.css',
   '/src/ui/speech-check.js',
   '/src/ui/storage-full.js',

@@ -13,6 +13,8 @@ import { validZone, deviceZone, isoInZone, timeIn } from '../time.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 import { isPluginBug } from '../plugins.js';
+import { isArrival } from '../after/stamps.js';
+import { SIMULATION } from './simulate.js';
 
 /**
  * Live mode (spec §11): where the user is and what they are doing, the watches and the plan's own
@@ -50,6 +52,10 @@ export const MAX_WAIT_MS = 86_400_000;
 export const FIX_WAIT_MS = 15_000;
 /** A firing this long after it came due is labelled late (spec §11.4: "late by N min"). */
 export const LATE_MS = 2 * 60_000;
+/** An arrival's place is named for its stamp (spec §13) by a plan place this close… */
+export const STAMP_PLAN_M = 300;
+/** …or by a place a namer (the offline pack) knows this close (choice 1). */
+export const STAMP_POI_M = 500;
 const NEAR_M = 2000;
 const MIN = 60_000;
 /** @param {number} x */
@@ -127,6 +133,10 @@ export class Live {
   #openedNews = [];
   /** @type {Set<string>} reminders annai said itself on screen, by key: a notification for one is a double (6b choice 3) */
   #said = new Set();
+  /** @type {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string } | null} while a simulation runs: the device's clock and zone, and the simulation's trip */
+  #sim = null;
+  /** @type {Set<string>} simulations' trips (trip.json "simulation": true), still outside their run */
+  #still = new Set();
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
@@ -188,6 +198,85 @@ export class Live {
     }
   }
 
+  /** A simulation has live mode now (spec §13). */
+  get simulating() {
+    return this.#sim !== null;
+  }
+
+  /**
+   * A simulation takes live mode over (spec §13: "feeds a … GPS track and clock through the same
+   * machinery", choice 10): its clock and zone, and only its own sensors (the phone's GPS stops; the
+   * phone's visibility and connection aren't heard), from nothing known; live mode is then on for it
+   * through setLive without saving the switch, and does nothing while another trip is open. The
+   * function returned gives live mode back as it was.
+   * @param {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string }} s trip: the simulation's own
+   * @returns {Promise<() => Promise<void>>}
+   */
+  async simulate({ clock, timeZone, trip }) {
+    await this.#run(async () => {
+      if (this.#sim) throw new Error('A simulation is already running.');
+      this.#gpsStop();
+      this.#quiet();
+      this.#sim = { clock: this.clock, timeZone: this.timeZone, trip };
+      this.clock = clock;
+      this.timeZone = timeZone;
+      this.#fresh(false);
+      // Its trip's plan and watches are in play now (they were still while it was being opened).
+      await this.#loadScope(trip);
+      if (this.#trip === trip) await this.#loadPlan();
+      await this.#check();
+    });
+    let given = false;
+    return async () => {
+      if (given) return;
+      given = true;
+      await this.#run(async () => {
+        const was = this.#sim;
+        if (!was) return;
+        this.#gpsStop();
+        this.#quiet();
+        this.#sim = null;
+        this.clock = was.clock;
+        this.timeZone = was.timeZone;
+        this.#fresh(Boolean((await readAppSettings(this.ws)).live?.on));
+        // Its trip is still again: its watches and plan wait for no real clock.
+        await this.#loadScope(was.trip);
+        await this.#loadPlan();
+        if (this.on && this.shown) this.#gpsStart();
+        await this.#check();
+      });
+    };
+  }
+
+  /** Stops the timer and any catch-up, on the clock they were set on. */
+  #quiet() {
+    this.#clearTimer();
+    if (this.#catch && this.#catch.timer !== null) this.clock.clear(this.#catch.timer);
+    this.#catch = null;
+  }
+
+  /** Nothing known of where the user is or has been, as a simulation starts or ends. @param {boolean} on */
+  #fresh(on) {
+    this.on = on;
+    this.fix = null;
+    this.activity = 'unknown';
+    this.odometer = 0;
+    this.stop = null;
+    this.gps = 'off';
+    this.gpsMessage = '';
+    this.shown = true;
+    this.online = true;
+    this.#tracker.reset();
+    this.#kept = null;
+    this.#odo = null;
+    this.#away = null;
+    this.#held = [];
+    this.#offlineSince = null;
+    this.#mem.clear();
+    this.#tell();
+    this.#tellActivity();
+  }
+
   /**
    * The live mode switch (spec §11.1). Turning it on wakes Shiori once, so the driving-companion
    * skill can set its watches (choice 10).
@@ -197,7 +286,7 @@ export class Live {
     const changed = await this.#run(async () => {
       if (on === this.on) return false;
       this.on = on;
-      await updateAppSettings(this.ws, { live: { on } });
+      if (!this.#sim) await updateAppSettings(this.ws, { live: { on } }); // a simulation's switch isn't the user's (choice 10)
       await logEvent(this.store, this.#scope(), { type: 'state', actor: 'user', data: { live: on ? 'on' : 'off' } }, this.clock.now());
       if (on) {
         if (this.shown) this.#gpsStart();
@@ -570,11 +659,15 @@ export class Live {
 
   /** Starts the visibility and connectivity sensors once each, and the location ones while live and on screen. */
   #sensors() {
-    for (const s of this.registry.list('sensor')) {
+    for (const { pluginId, item: s } of this.registry.entries('sensor')) {
       if (this.#sensorsOn.has(s) || (s?.kind !== 'visibility' && s?.kind !== 'connectivity') || typeof s.start !== 'function') continue;
       this.#sensorsOn.add(s);
       try {
-        const off = s.start((/** @type {any} */ v) => (s.kind === 'visibility' ? this.visible(Boolean(v)) : this.connected(Boolean(v))));
+        const off = s.start((/** @type {any} */ v) => {
+          if (!this.#heeds(pluginId)) return;
+          if (s.kind === 'visibility') this.visible(Boolean(v));
+          else this.connected(Boolean(v));
+        });
         if (typeof off === 'function') this.#offs.push(off);
       } catch (e) {
         console.warn('a sensor did not start', e);
@@ -583,12 +676,36 @@ export class Live {
     if (this.on && this.shown) this.#gpsStart();
   }
 
+  /** While a simulation runs, only its sensors are heard (choice 10). @param {string} pluginId */
+  #heeds(pluginId) {
+    return !this.#sim || pluginId === SIMULATION;
+  }
+
+  /**
+   * Whether live mode looks at a conversation's watches and plan, and records the road into it: during a
+   * simulation only its own trip (the user's watches wait for the real clock); otherwise any but a
+   * simulation's trip, which keeps what its run did (review 1, 4).
+   * @param {string} scope
+   */
+  #inPlay(scope) {
+    return this.#sim ? scope === this.#sim.trip : !this.#still.has(scope);
+  }
+
+  /** A simulation runs, and the open trip isn't its own: nothing of it may go there (choice 10). */
+  #elsewhere() {
+    return this.#sim !== null && this.agent.target !== this.#sim.trip;
+  }
+
   #gpsStart() {
-    for (const s of this.registry.list('sensor')) {
-      if (s?.kind !== 'location' || this.#gpsOn.has(s) || typeof s.start !== 'function') continue;
+    for (const { pluginId, item: s } of this.registry.entries('sensor')) {
+      if (s?.kind !== 'location' || this.#gpsOn.has(s) || typeof s.start !== 'function' || !this.#heeds(pluginId)) continue;
       if (this.gps !== 'ok') this.gps = 'waiting';
       try {
-        const off = s.start((/** @type {any} */ x) => (x && typeof x === 'object' && 'error' in x ? this.#bg(async () => this.#gpsFailed(x)) : this.fixed(x)));
+        const off = s.start((/** @type {any} */ x) => {
+          if (!this.#heeds(pluginId)) return;
+          if (x && typeof x === 'object' && 'error' in x) this.#bg(async () => this.#gpsFailed(x));
+          else this.fixed(x);
+        });
         this.#gpsOn.set(s, typeof off === 'function' ? off : () => {});
       } catch (e) {
         this.#gpsFailed({ error: 'unavailable', message: String(/** @type {any} */ (e)?.message ?? e) });
@@ -616,7 +733,7 @@ export class Live {
 
   /** @param {any} raw */
   async #onFix(raw) {
-    if (!this.on || !this.shown) return;
+    if (!this.on || !this.shown || this.#elsewhere()) return;
     const fix = fixOf(raw, this.clock.now());
     if (!fix) return;
     await this.#follow();
@@ -637,7 +754,7 @@ export class Live {
     const goes = moving || (fix.speed ?? 0) >= STILL_BELOW;
     if (goes ? keep(this.#kept, fix, moving) : !this.#kept || meters(this.#kept, fix) >= Math.max(STOP_M, 2 * fix.accuracy)) {
       this.#kept = fix;
-      if (this.#trip) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at);
+      if (this.#trip && this.#inPlay(this.#trip)) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at);
     }
     // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
     // only steps longer than twice the accuracy, which jitter doesn't make.
@@ -801,6 +918,14 @@ export class Live {
 
   /** @param {string} scope */
   async #loadScope(scope) {
+    // A simulation's trip: its watches are its run's alone.
+    const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(() => null);
+    if (info?.simulation === true) this.#still.add(scope);
+    else this.#still.delete(scope);
+    if (this.#still.has(scope) && this.#sim?.trip !== scope) {
+      this.#watches.delete(scope);
+      return;
+    }
     const { watches } = await readWatches(this.ws, scope);
     if (watches.length) this.#watches.set(scope, watches);
     else this.#watches.delete(scope);
@@ -812,6 +937,10 @@ export class Live {
     this.#plan = [];
     this.#places = [];
     if (!trip) return;
+    const sim = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
+    if (sim?.simulation === true) this.#still.add(trip);
+    else this.#still.delete(trip);
+    if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run (review 4)
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
@@ -895,11 +1024,12 @@ export class Live {
 
   /** Whether a watch is looked at now: its conversation's, live mode for GPS, and time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
   #looked(type, scope) {
-    return Boolean(type) && !(type?.gps && !this.on) && (scope === this.#scope() || type?.type === 'time');
+    return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#scope() || type?.type === 'time');
   }
 
   /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: { from: string, to: string } | null, past?: boolean }} [o] */
   async #check(o = {}) {
+    if (this.#elsewhere()) return;
     await this.#follow();
     const m = this.#moment(o);
     const open = this.#scope();
@@ -907,6 +1037,7 @@ export class Live {
     /** @type {Fired[]} */
     const fired = [];
     for (const [scope, list] of [...this.#watches]) {
+      if (!this.#inPlay(scope)) continue; // the user's own watches aren't due, or expired, on a simulation's clock (review 1)
       for (const w of [...list]) {
         if (expired(w, m.now)) {
           await this.#drop(scope, w);
@@ -946,7 +1077,7 @@ export class Live {
         continue;
       }
       const key = this.#key(x.scope, x.watch.id);
-      const f = x.firing;
+      const f = { ...x.firing, place: this.#stampPlace(x.watch, x.firing.place) };
       await logEvent(this.store, x.scope, {
         type: 'trigger.fired', actor: 'system',
         data: {
@@ -1022,6 +1153,32 @@ export class Live {
     return `${whose} ${x.watch.id} (${this.#describe(x.type, x.watch)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
   }
 
+  /**
+   * An arrival's place, named when it is at a plan place or a place a namer knows, so its stamp
+   * comes from the log alone (spec §13, choice 1). Other places are as they came.
+   * @param {Watch} w @param {import('./triggers.js').Place | undefined} p
+   */
+  #stampPlace(w, p) {
+    if (!p || p.name || !isArrival({ type: w.when?.type, event: /** @type {any} */ (w.when)?.event })) return p;
+    /** @type {{ name: string, m: number } | null} */
+    let best = null;
+    for (const q of this.#places) {
+      const d = meters(p, q);
+      if (d <= STAMP_PLAN_M && (!best || d < best.m)) best = { name: q.name, m: d };
+    }
+    if (!best) {
+      for (const n of this.namers) {
+        try {
+          const r = n(p);
+          if (r && r.m <= STAMP_POI_M && (!best || r.m < best.m)) best = r;
+        } catch {
+          // a namer that fails names nothing
+        }
+      }
+    }
+    return best ? { name: best.name, ...p } : p;
+  }
+
   /** @param {string} scope */
   async #exists(scope) {
     return scope === ME || Boolean(await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)));
@@ -1081,6 +1238,7 @@ export class Live {
     const types = this.types();
     const open = this.#scope();
     for (const [scope, list] of this.#watches) {
+      if (!this.#inPlay(scope)) continue;
       for (const w of list) {
         if (w.expires) consider(Date.parse(w.expires));
         const type = types.get(w.when?.type);
