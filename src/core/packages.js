@@ -281,6 +281,8 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(NOT_AN_ADDRESS);
   refuseUserinfo(url);
+  // github.com's pages can't be read by web apps; its raw files can (minors 19).
+  const hint = url.hostname === 'github.com' ? ' For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.' : '';
   let used = 0;
   const download = async (/** @type {URL} */ u) => {
     /** @type {Response} */
@@ -289,7 +291,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       res = await get(u.href, { cache: 'no-cache' });
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw new Error(`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`);
+      throw new Error(`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.${hint}`);
     }
     const bytes = await answerBytes(res, u.host, max - used);
     used += bytes.byteLength;
@@ -374,7 +376,6 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     await linked('', first);
     return files;
   }
-  const hint = url.hostname === 'github.com' ? ' For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.' : '';
   throw new Error(`There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.${hint}`);
 }
 

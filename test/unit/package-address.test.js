@@ -130,3 +130,11 @@ test("minors 17: every file of a package is asked for with the browser's cache r
   // No header of annai's own: one would make the browser ask the site first (CORS), which GitHub's raw files refuse.
   assert.ok(inits.every((i) => i?.headers === undefined));
 });
+
+test("minors 19: a GitHub folder's address, which web apps can't read, says to use the address of its SKILL.md or annai-plugin.json", async () => {
+  const { fetch } = web({ 'https://github.com/o/r/tree/main/skills/tide-pools': new TypeError('Failed to fetch') });
+  await assert.rejects(fetchPackage('https://github.com/o/r/tree/main/skills/tide-pools', { fetch }),
+    /^Error: annai couldn't reach github\.com\. .* For a folder on GitHub, use the address of its SKILL\.md or annai-plugin\.json\.$/);
+  const other = web({ [`${T}/x`]: new TypeError('Failed to fetch') });
+  await assert.rejects(fetchPackage(`${T}/x`, { fetch: other.fetch }), (e) => !/GitHub/.test(/** @type {Error} */ (e).message));
+});
