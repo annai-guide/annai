@@ -18,6 +18,7 @@ export class Registry {
   /** @type {Map<string, number>} */ #failures = new Map();
   /** @type {Set<string>} */ #disabled = new Set();
   /** @type {Set<() => void>} */ #listeners = new Set();
+  /** @type {Set<(info: { pluginId: string, reason: string, message: string }) => void>} */ #offs = new Set();
 
   /** @param {{ log?: (ev: { type: string, actor: string, data: any }) => unknown, maxFailures?: number }} [opts] */
   constructor(opts = {}) {
@@ -110,6 +111,12 @@ export class Registry {
     };
   }
 
+  /** Told each time a plugin is switched off after repeated errors (spec §5.5: "with a card saying why"). @param {(info: { pluginId: string, reason: string, message: string }) => void} fn */
+  onDisabled(fn) {
+    this.#offs.add(fn);
+    return () => this.#offs.delete(fn);
+  }
+
   /** @param {() => void} fn */
   onChange(fn) {
     this.#listeners.add(fn);
@@ -124,6 +131,13 @@ export class Registry {
     if (n >= this.maxFailures && !this.#disabled.has(pluginId)) {
       this.#disabled.add(pluginId);
       this.#safeLog({ type: 'plugin.disabled', actor: 'system', data: { plugin: pluginId, reason: `failed ${n} times in a row` } });
+      for (const fn of this.#offs) {
+        try {
+          fn({ pluginId, reason: `failed ${n} times in a row`, message: String(e?.message ?? e) });
+        } catch (err) {
+          console.warn('a registry listener failed', err);
+        }
+      }
       this.#emit();
     }
   }
