@@ -8,7 +8,7 @@ import { NotFoundError } from './workspace.js';
  * @typedef {import('./workspace.js').Workspace} Workspace
  * @typedef {import('./types.js').Store} Store
  * @typedef {'off'|'changes'|'daily'} Auto
- * @typedef {{ id: string, at: number, device?: string, label?: string }} RemoteBackup
+ * @typedef {{ id: string, at: number, device?: string, label?: string, encrypted?: boolean }} RemoteBackup
  *   a backup at a place: its id there, when it was made, and the device that made it, when known
  * @typedef {{ kind: 'newer', remote: RemoteBackup, seen?: boolean } | { kind: 'large', bytes: number, at: number }
  *   | { kind: 'error', message: string, at: number, count: number, retryAt: number, needsYou: boolean }} Hold

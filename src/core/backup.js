@@ -90,6 +90,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       id: String(r?.id ?? ''), at: Number.isFinite(r?.at) ? r.at : 0,
       ...(typeof r?.device === 'string' ? { device: r.device.slice(0, 64) } : {}),
       ...(typeof r?.label === 'string' ? { label: r.label.slice(0, 40) } : {}),
+      ...(typeof r?.encrypted === 'boolean' ? { encrypted: r.encrypted } : {}),
     });
   }
 

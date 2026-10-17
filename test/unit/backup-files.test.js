@@ -54,6 +54,7 @@ test('encrypted with the passphrase annai keeps for the place; API keys only whe
   assert.deepEqual(await d.backups.savedSecrets(id), ['passphrase']);
   const first = await d.backups.backUp(id);
   assert.match(first.id, /\.annai$/);
+  assert.deepEqual((await d.backups.remote(id)).map((b) => b.encrypted), [true], 'the listing says which backups are encrypted');
   const blob = await d.backups.download(id, first.id);
   await assert.rejects(openArchive(blob), NeedsPassphraseError);
   assert.equal((await openArchive(blob, 'pine needle')).manifest.secrets, undefined);

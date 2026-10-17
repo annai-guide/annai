@@ -12,7 +12,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Models: ['model.turn', 'net.request', 'decide'],
   Housekeeping: ['compaction'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
-  Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download'],
+  Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
 });
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
@@ -106,6 +106,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'backup.newer') return `${d.type} · a newer backup from ${d.remote?.label ? withArticle(d.remote.label) : 'another device'} is there`;
   if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;
   if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}`;
+  if (e.type === 'backup.prune') return `${d.type} · deleted an older backup, ${d.backup}`;
   return d.message ?? d.title ?? '';
 }
 
