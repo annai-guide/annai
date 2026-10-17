@@ -108,6 +108,14 @@ export function component(ctx, name) {
   return list[list.length - 1] ?? null;
 }
 
+/** Which plugins' dock and avatar replace annai's now: when it changes, the dock is made again (choice 9). @param {any} ctx */
+export function dockKey(ctx) {
+  return JSON.stringify(['dock', 'avatar'].map((n) => {
+    const c = component(ctx, n);
+    return c ? [c.pluginId, serial(c.item)] : null;
+  }));
+}
+
 /** One stylesheet link per plugin theme, added and removed as they come and go (choice 6). @param {import('../core/registry.js').Registry} registry @param {HTMLElement} head */
 export function syncThemes(registry, head) {
   const want = new Map(registry.entries('ui:theme').map((e) => [`${e.pluginId}|${e.item.href}`, e.item.href]));

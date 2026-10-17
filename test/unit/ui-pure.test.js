@@ -459,3 +459,14 @@ test('what plugins add to the UI has a signature that changes only when they do'
   off();
   assert.equal(uiSignature(r), empty);
 });
+
+test('Now hands over to the screen a plugin offers for an activity, else to Driving when moving fast (choice 5)', async () => {
+  const { handover } = await import('../../src/ui/screens/now.js');
+  const hike = { pluginId: 'trail-ui', item: { id: 'hike', homeFor: 'walking' } };
+  const car = { pluginId: 'road', item: { id: 'road', homeFor: 'moving-fast' } };
+  assert.equal(handover('walking', 'still', [hike]), '#/ext/trail-ui/hike');
+  assert.equal(handover('walking', 'walking', [hike]), null);
+  assert.equal(handover('moving-fast', 'walking', [hike]), '#/drive');
+  assert.equal(handover('moving-fast', 'still', [hike, car]), '#/ext/road/road');
+  assert.equal(handover('still', 'walking', [hike]), null);
+});

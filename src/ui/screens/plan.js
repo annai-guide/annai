@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { planRowOf } from './now.js';
 import { planRows, planDays, legKm, distanceText, dayLabel, shioriUndos, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
@@ -116,6 +117,8 @@ function row(ctx, id, r, undo) {
   // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so.
   const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
   const when = it.kind === 'all-day' ? 'All day' : r.end ? [`${r.time}–${r.end}`, later, r.endZone].filter(Boolean).join(' ') : r.time;
+  const theirs = planRowOf(ctx, id, r, when); // a plugin's row (spec §16.4: plan-row)
+  if (theirs) return theirs;
   return h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: when }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),

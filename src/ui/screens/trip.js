@@ -11,6 +11,7 @@ import { updateAppSettings } from '../../core/settings.js';
 import { packPanel } from '../offline-pack.js';
 import { tripStamps, stampMarks } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
+import { slotEntries } from '../slots.js';
 
 export { fileHref };
 
@@ -40,6 +41,8 @@ export async function renderTrip(ctx, route) {
       h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, 'Plan'),
       h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, 'Recap'),
       h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, 'Replay'),
+      // Plugins' trip tabs (spec §16.4), each a page of its own.
+      ...slotEntries(ctx, 'ui:trip-tab').map((e) => h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) })),
       ...tripActions(ctx, id, scope, extra),
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); ctx.render(); } }, 'Unarchive')
