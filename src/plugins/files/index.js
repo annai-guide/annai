@@ -65,14 +65,20 @@ export function activate(annai) {
   const listed = async (scope, prefix, shown) => (await ws.list(scope, prefix)).map((/** @type {any} */ f) => ({ ...f, shown: `${shown}${f.path}` }));
   /** @param {string} path @param {any} call */
   const filesUnder = async (path, call) => {
-    if (path === '/' || path === '') return [...(call.trip ? await listed(call.trip, '/', '/trip') : []), ...(await listed('me', '/', '/me'))];
-    const { scope, path: inner } = where(path, call);
-    return listed(scope, inner.endsWith('/') ? inner : `${inner}/`, path.startsWith('/trip') ? '/trip' : '/me');
+    /** @type {any[]} */
+    let all;
+    if (path === '/' || path === '') all = [...(call.trip ? await listed(call.trip, '/', '/trip') : []), ...(await listed('me', '/', '/me'))];
+    else {
+      const { scope, path: inner } = where(path, call);
+      all = await listed(scope, inner.endsWith('/') ? inner : `${inner}/`, path.startsWith('/trip') ? '/trip' : '/me');
+    }
+    // The offline pack is for the places tools (spec §11.5): it stays out unless asked for.
+    return /^\/?trip\/offline(\/|$)/.test(path) ? all : all.filter((f) => !f.shown.startsWith('/trip/offline/'));
   };
   const tools = [
     {
       name: 'list', group: 'Files',
-      description: 'List files under a folder, as TSV: path, type, size in bytes, modified, author.',
+      description: "List files under a folder, as TSV: path, type, size in bytes, modified, author. The trip's offline pack (/trip/offline/) is left out unless asked for.",
       input: { type: 'object', properties: { path: { ...PATH, default: '/' } } },
       /** @param {{ path?: string }} i @param {any} call */
       run: async (i, call) => tsv(['path', 'type', 'size', 'modified', 'author'],
