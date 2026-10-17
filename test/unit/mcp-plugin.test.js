@@ -48,7 +48,7 @@ test('a server added with a bearer token: its tools registered as mcp_<server>_<
     const img = await k.call('mcp_trail_map', {});
     assert.equal(img.images[0].mediaType, 'image/png');
     const web = (await k.store.tx(['events'], 'readonly', (t) => t.listEvents(k.trip, { types: ['net.request'] })));
-    assert.ok(web.length >= 5 && web.every((e) => e.data.url.startsWith(s.origin)), 'every MCP request of a call is in the trip\'s trace');
+    assert.ok(web.length >= 4 && web.every((e) => e.data.url.startsWith(s.origin)), 'every MCP request of a call is in the trip\'s trace');
     assert.ok(web.some((e) => e.data.tool === 'mcp_trail_echo'));
     assert.doesNotMatch(await k.everything(), new RegExp(TOKEN));
     assert.deepEqual(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), { token: TOKEN });
@@ -288,6 +288,37 @@ test("8c-5: a tool's input schema reaches the model without $schema, $id or $com
     });
     assert.ok(tool.description.length <= 1024, `${tool.description.length} characters`);
     assert.match(tool.description, /^Finds a trail\. .*… \(from the MCP server trail\)$/s);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('minors 2: adding a server starts one session, and its tools are called in that session', async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url, token: TOKEN });
+    assert.equal(await k.call('mcp_trail_echo', { text: 'tide' }), 'tide');
+    const inits = s.requests.filter((r) => r.rpc?.method === 'initialize');
+    assert.equal(inits.length, 1, 'no session is left behind by the check');
+    const sessions = new Set(s.requests.filter((r) => r.rpc && r.rpc.method !== 'initialize').map((r) => r.headers['mcp-session-id']));
+    assert.equal(sessions.size, 1);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('minors 2: an add that fails after the server started a session ends that session', async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    // The server starts a session, then fails its tools/list.
+    k.host.connect({ fetch: async (/** @type {string} */ url, /** @type {RequestInit} */ init) => (String(init?.body ?? '').includes('tools/list') ? new Response('broken', { status: 500 }) : fetch(url, init)) });
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url }), /answered 500/);
+    const [init] = s.requests.filter((r) => r.rpc?.method === 'initialize');
+    assert.ok(init);
+    assert.ok(s.requests.some((r) => r.method === 'DELETE' && r.headers['mcp-session-id']), 'its session was ended');
+    assert.deepEqual(await k.servers.list(), []);
   } finally {
     await s.stop();
   }

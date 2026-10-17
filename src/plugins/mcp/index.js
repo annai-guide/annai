@@ -117,7 +117,7 @@ export async function activate(annai) {
     return withoutSecrets(store, t);
   };
   const fileOf = (/** @type {string} */ name) => `${DIR}${name}.json`;
-  /** A server's client: its full address and its auth read from its secret, each time. @param {Server} config */
+  /** A server's client: its full address and its auth read from its secret, each time. @param {{ name: string, shown: string }} config */
   const clientFor = (config) => new McpClient({
     url: async () => fullAddress(config.shown, (await annai.secrets.get(config.name))?.keys ?? []),
     server: config.name,
@@ -255,11 +255,15 @@ export async function activate(annai) {
       try {
         if (keeps) await annai.secrets.set(n, record);
         const forgetSecret = () => (keeps ? annai.secrets.set(n, null).catch(() => {}) : Promise.resolve());
+        // The client that checks the server is the one its tools use: one session, not one left behind (minors 2).
+        const client = clientFor({ name: n, shown });
         /** @type {any[]} */
         let tools;
         try {
-          tools = await listTools(new McpClient({ url: address, server: n, auth: async () => headersOf(auth) }), own);
+          tools = await listTools(client, own);
         } catch (e) {
+          const end = await client.ending().catch(() => null);
+          await end?.({ fetch: annai.net.fetch, signal: AbortSignal.timeout(END_MS) });
           await forgetSecret();
           throw e;
         }
@@ -272,7 +276,7 @@ export async function activate(annai) {
           await forgetSecret();
           throw e;
         }
-        register(config, clientFor(config), { removed: false });
+        register(config, client, { removed: false });
         return { tools: config.tools.length };
       } finally {
         adding.delete(n);
