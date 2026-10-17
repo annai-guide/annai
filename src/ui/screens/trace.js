@@ -11,7 +11,10 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Web: ['net.request', 'pack.download'],
   Models: ['model.turn', 'net.request', 'decide', 'speech.browser'],
   Housekeeping: ['compaction'],
-  Live: ['location', 'trigger.fired', 'state', 'reminder'],
+  // Live is what live mode did; its location points (about one a second on a drive) are a kind of their own,
+  // so they never crowd the firings out of the newest 300 (B5).
+  Live: ['trigger.fired', 'state', 'reminder'],
+  Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
   Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
 });
@@ -35,8 +38,10 @@ export async function renderTrace(ctx, route) {
     const ids = select.value ? [select.value] : scopes.map((/** @type {any} */ s) => s.id);
     const f = filter.value.trim();
     const types = KINDS[kind.value];
-    // A drive logs a location point about every second: "Everything" leaves them to the Live kind (choice 10).
-    const query = types ? { types } : f && 'location'.includes(f) ? {} : { notTypes: ['location'] };
+    // A drive logs a location point about every second: "Everything" leaves them to the Location kind (choice 10).
+    // With a kind, "Type contains" narrows the query itself, so the newest 300 are all of what is asked for.
+    const wanted = types ? types.filter((t) => !f || t.includes(f)) : null;
+    const query = wanted ? { types: wanted } : f && 'location'.includes(f) ? {} : { notTypes: ['location'] };
     const all = (await Promise.all(ids.map((/** @type {string} */ id) => ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { reverse: true, limit: 300, ...query }))))).flat();
     if (my !== pending) return;
     /** @type {Map<string, number>} the cost of each wake shown (spec §6.6: cost is always visible) */

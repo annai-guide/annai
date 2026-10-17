@@ -51,5 +51,5 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 
 ## Afterwards
 - [ ] After a day of live mode (thousands of location points in the trip), close annai and open the trip again: the trip, Talk, Plan and Trace → Live each open within about 2 seconds (time them on both phones).
-- [ ] Trace → Live: the road is there as location points, about one a second while moving, few while stopped; the firings and reminders match what happened.
+- [ ] Trace → Location: the road is there as location points, about one a second while moving, few while stopped. Trace → Live: the firings, reminders and switches match what happened.
 - [ ] Export the trip as a Backup and remove it: no location points or watches are left behind (Trips is empty of it).
