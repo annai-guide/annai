@@ -35,6 +35,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
   /** @type {Set<string>} */
   const live = new Set();
   let n = 0;
+  let listDelay = 0;
   const list = tools ?? STAND_IN_TOOLS;
   const filesRoot = files ? resolve(files) : null;
 
@@ -80,7 +81,8 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
         res.writeHead(200, { ...allow, 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-cache' }).end(body);
         return;
       }
-      if (path !== '/mcp') return send(404, 'not found');
+      // Any path ending in /mcp, as hosted servers that put a key in it have ("/api/mcp/s/<key>/mcp").
+      if (path !== '/mcp' && !path.endsWith('/mcp')) return send(404, 'not found');
       if (token && req.headers.authorization !== `Bearer ${token}`) {
         return send(401, { jsonrpc: '2.0', id: null, error: { code: -32001, message: 'This server needs its token.' } }, { 'www-authenticate': 'Bearer' });
       }
@@ -123,6 +125,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
       };
       const fail = (/** @type {number} */ code, /** @type {string} */ message) => send(200, { jsonrpc: '2.0', id: msg.id, error: { code, message } });
       if (msg.method === 'tools/list') {
+        if (listDelay) await new Promise((done) => setTimeout(done, listDelay));
         const from = Number(msg.params?.cursor ?? 0) || 0;
         const page = list.slice(from, from + PAGE);
         return answer({ tools: page, ...(from + PAGE < list.length ? { nextCursor: String(from + PAGE) } : {}) });
@@ -158,6 +161,8 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
     requests,
     /** Ends every session, as a server that restarted would: the next request with one gets 404. */
     endSessions: () => live.clear(),
+    /** Answers tools/list only after ms from now on, as a slow server would. @param {number} ms */
+    slowList: (ms) => { listDelay = ms; },
     stop: () => new Promise((done) => {
       server.closeAllConnections?.();
       server.close(() => done(undefined));
