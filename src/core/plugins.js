@@ -44,7 +44,9 @@ const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromR
 export function isPluginBug(e) {
   if (!(e instanceof Error)) return true;
   const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
-  return !offline && BUGS.some((B) => e instanceof B);
+  // An address the user typed that isn't one is the user's to fix, not a bug.
+  const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
+  return !offline && !address && BUGS.some((B) => e instanceof B);
 }
 
 export const PLUGIN_MANIFEST_SCHEMA = {

@@ -192,3 +192,13 @@ test('S3 through annai: whole files kept and pruned, every request traced, no ke
     await s3.stop();
   }
 });
+
+test('an S3 address that is no web address is a setup problem in plain words, never a bug in the plugin', async () => {
+  const { type } = s3type();
+  for (const endpoint of ['https://s3 .amazonaws.com', 'https://s3.us-east-1.amazonaws.com (us-east-1)', 'https://', 'https://ex\u0000ample.com', 'https://[::1']) {
+    const c = ctx({ origin: endpoint });
+    for (const step of [() => type.check(c), () => type.list(c), () => type.put(c, { blob: new Blob(['x']), name: named(1, 'phone0000a'), manifest: {} }, opts)]) {
+      await assert.rejects(step(), refused('setup', /address/), endpoint);
+    }
+  }
+});

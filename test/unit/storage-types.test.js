@@ -75,6 +75,8 @@ test('TargetError carries what annai needs to act on it; a bug in a plugin is to
   assert.equal(isPluginBug(new TargetError('auth', 'no')), false);
   assert.equal(isPluginBug(new DOMException('stopped', 'AbortError')), false);
   assert.equal(isPluginBug('a string'), true);
+  assert.equal(isPluginBug(new TypeError('Invalid URL')), false, 'an address the user typed, not a bug');
+  assert.equal(isPluginBug(new TypeError('Failed to parse URL from https://a b')), false);
 });
 
 test('choosing a kind of backup place installs the official plugin that provides it (spec §5.3)', async () => {

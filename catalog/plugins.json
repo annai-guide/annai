@@ -55,7 +55,7 @@
       "files": {
         "annai-plugin.json": "96814acea2add6697b0bc967f129deb7b4cfa13fc351efabd8fffd80570c3939",
         "git.js": "fe62d15bd1b8679ba15cbadd43cea1741c4df1b65a6500a803ceef737660ce80",
-        "index.js": "bae997efe3c037006cb180e812740aff759ae12428ed4e98384da679ec92f6d4"
+        "index.js": "f2f523eea4c0bcb47b287f13fc19adf4fad434f5c08a23ebcd134e1eb32104b6"
       }
     },
     {
@@ -69,7 +69,7 @@
       },
       "files": {
         "annai-plugin.json": "149cfca2f71b4e04b6d7d8c7ef962c82ba9b853264e51644dfa4f899078c6c5e",
-        "index.js": "a9e0849400702d2c6617b589a3834da1ac0dfda4c57af0134ab94baa0ac07644",
+        "index.js": "875669a9b8d2c8fb712dd81015ab1521da673d516f046a53d24d972729357e84",
         "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
       }
     },
@@ -84,7 +84,7 @@
       },
       "files": {
         "annai-plugin.json": "75888749b25d4b7fdb188dd3b94b1236d6dec357b738389fe2d8a635e6966171",
-        "index.js": "0e681bf3792d34b0df7c3734f62d5f2fed38a3a022acf6bf5712d794cbfbe5fb"
+        "index.js": "495d3c27c4e4ef4a132d75ea57f2ff30046f19389cfafc9cc44b9c665740481a"
       }
     }
   ]
