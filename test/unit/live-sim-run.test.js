@@ -151,3 +151,14 @@ test('a broken itinerary is a plain error, and no trip is made; one already runn
   run.stop();
   await run.finished;
 });
+
+test("the simulation's trip opens with live mode already on the simulation's clock: no check of it on the real clock first", async () => {
+  const { k, live, run } = await anApp();
+  /** @type {boolean[]} */
+  const simulating = [];
+  k.agent.on('open', (/** @type {{ trip: string | null }} */ o) => { if (o.trip !== k.trip) simulating.push(live.simulating); });
+  await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
+  await run.finished;
+  assert.deepEqual(simulating, [true]);
+  assert.equal(run.state?.error, null);
+});

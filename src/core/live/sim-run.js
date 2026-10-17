@@ -91,10 +91,17 @@ export class SimRun {
     const before = agent.target;
     // Remembered until it ends, so a reload in the middle (iOS lets a page go in the background) opens the trip before again (review 3).
     await updateAppSettings(ws, { activeTrip: trip, simulation: { trip, before } });
-    await agent.open(trip);
     const clock = speed === 'fast' ? new ManualClock(p.track[0].at) : new PlayClock(p.track[0].at, { speed, base: this.c.base ?? realClock() });
     this.#clock = clock;
+    // Live mode is on the simulation's clock before its trip opens, so the trip is never looked at on the real clock.
     const giveBack = await live.simulate({ clock, timeZone: () => p.tz, trip });
+    try {
+      await agent.open(trip);
+    } catch (e) {
+      await giveBack();
+      this.#clock = null;
+      throw e;
+    }
     const sim = new Simulation({ registry, track: p.track });
     const restore = agent.useClock({ now: clock.now, online: () => sim.online, timeZone: () => p.tz, scope: trip });
     this.state = { trip, title: p.title, tz: p.tz, from: p.track[0].at, to: p.track[p.track.length - 1].at, speed, paused: false, done: false, stopped: false, error: null };
