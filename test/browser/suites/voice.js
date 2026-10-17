@@ -70,4 +70,22 @@ export default function (test, assert) {
     p.session('playback');
     assert.ok(Array.isArray(p.synth.voices()));
   });
+
+  test('the audio devices by name, and word when they change (spec §10.5)', async () => {
+    const real = MediaDevices.prototype.enumerateDevices;
+    MediaDevices.prototype.enumerateDevices = async () => /** @type {any} */ ([
+      { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'a', groupId: 'g' },
+      { kind: 'videoinput', label: 'Back camera', deviceId: 'v', groupId: 'h' },
+    ]);
+    try {
+      const p = browserPlatform();
+      assert.deepEqual(await /** @type {any} */ (p).devices(), [{ kind: 'audioinput', label: 'AirPods Pro' }, { kind: 'videoinput', label: 'Back camera' }]);
+      let told = 0;
+      /** @type {any} */ (p).onDeviceChange(() => { told++; });
+      navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
+      assert.equal(told, 1);
+    } finally {
+      MediaDevices.prototype.enumerateDevices = real;
+    }
+  });
 }
