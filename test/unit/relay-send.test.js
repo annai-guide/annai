@@ -185,3 +185,28 @@ test("the relay's own failure in an alarm: tried again a minute later, then two,
   assert.deepEqual(await k.waiting(), []);
   assert.equal((await k.stored()).includes('fails'), false, 'the count of failures is forgotten');
 });
+
+test('a reminder due now, being sent within its request, is not sent again by an alarm that runs meanwhile', async () => {
+  /** @type {() => void} */
+  let release = () => {};
+  /** @type {number[]} */
+  const sends = [];
+  const k = await relayKit({
+    send: async (_url, init) => {
+      sends.push(init.body[0]);
+      if (sends.length === 1) await new Promise((r) => { release = () => r(undefined); });
+      return new Response(null, { status: 201 });
+    },
+  });
+  await k.confirm();
+  const inflight = k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now(), payload: toB64u(new Uint8Array(200).fill(2)) }), token: token() });
+  for (let i = 0; i < 100 && !sends.length; i++) await new Promise((r) => setTimeout(r, 5));
+  assert.deepEqual(sends, [2], 'being sent');
+  const o = /** @type {any} */ (await k.object(ENDPOINT));
+  await o.obj.alarm(); // Cloudflare lets the alarm run while the request awaits the push service
+  assert.deepEqual(sends, [2], 'not sent a second time');
+  release();
+  assert.equal((await inflight).status, 201);
+  assert.deepEqual(sends, [2]);
+  assert.deepEqual(await k.waiting(), []);
+});
