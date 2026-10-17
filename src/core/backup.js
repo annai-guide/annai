@@ -38,7 +38,7 @@ export function retryDelay(count) {
 export function createBackups({ store, ws, registry, app, label, noun = 'device', ensure = async () => {}, now = () => Date.now() }) {
   /** @type {Set<() => void>} */
   const listeners = new Set();
-  /** @type {Map<string, Progress & { stop: AbortController }>} */
+  /** @type {Map<string, Progress & { stop: AbortController, reason: 'auto' | 'user' | 'download' }>} */
   const running = new Map();
   /** @type {Promise<unknown>} */
   let queue = Promise.resolve();
@@ -164,7 +164,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   async function backUpNow(id, { over = false, maxUpload = Infinity, reason = 'user' }) {
     const rec = await target(id);
     const stop = new AbortController();
-    running.set(id, { phase: 'building', done: 0, total: 0, stop });
+    running.set(id, { phase: 'building', done: 0, total: 0, stop, reason });
     emit();
     const started = now();
     try {
@@ -182,7 +182,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const result = await call(rec, 'put', (t, c) => t.put(c, { blob: built.blob, name, manifest: built.manifest }, {
         base, maxUpload, signal: stop.signal,
         onProgress: (p) => {
-          running.set(id, { ...p, stop });
+          running.set(id, { ...p, stop, reason });
           emit();
         },
       }));
@@ -326,26 +326,30 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     },
 
     /** Downloads one backup from a place, as an archive file for the import screen (spec §12.3). @param {string} id @param {string} backupId */
-    download: (id, backupId) => serial(async () => {
-      const rec = await target(id);
-      const stop = new AbortController();
-      running.set(id, { phase: 'downloading', done: 0, total: 0, stop });
-      emit();
-      try {
-        const blob = await call(rec, 'get', (t, c) => t.get(c, backupId, {
-          signal: stop.signal,
-          onProgress: (p) => {
-            running.set(id, { ...p, stop });
-            emit();
-          },
-        }));
-        await log('backup.download', { target: id, type: rec.type, backup: backupId, bytes: blob.size });
-        return blob;
-      } finally {
-        running.delete(id);
+    download: (id, backupId) => {
+      // The user is waiting for this: an automatic backup in its way stops, and carries on later as usual.
+      for (const p of running.values()) if (p.reason === 'auto') p.stop.abort();
+      return serial(async () => {
+        const rec = await target(id);
+        const stop = new AbortController();
+        running.set(id, { phase: 'downloading', done: 0, total: 0, stop, reason: 'download' });
         emit();
-      }
-    }),
+        try {
+          const blob = await call(rec, 'get', (t, c) => t.get(c, backupId, {
+            signal: stop.signal,
+            onProgress: (p) => {
+              running.set(id, { ...p, stop, reason: 'download' });
+              emit();
+            },
+          }));
+          await log('backup.download', { target: id, type: rec.type, backup: backupId, bytes: blob.size });
+          return blob;
+        } finally {
+          running.delete(id);
+          emit();
+        }
+      });
+    },
 
     /** This device took in a backup from a place: its next backup there builds on that one. @param {string} id @param {RemoteBackup} remote */
     async accept(id, remote) {
@@ -357,6 +361,9 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     stop(id) {
       running.get(id)?.stop.abort();
     },
+
+    /** What runs now: a backup (automatic or the user's) or a download, by place. */
+    running: () => [...running].map(([id, p]) => ({ id, reason: p.reason, phase: p.phase })),
 
     /** @param {string} id @returns {Progress | null} */
     progress(id) {

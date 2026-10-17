@@ -98,13 +98,15 @@ function backUpFromCard(ctx, id, o) {
  * @param {Ctx} ctx @param {Target} t @param {RemoteBackup} remote @param {(status: string) => void} say
  */
 export async function restoreFrom(ctx, t, remote, say) {
-  say('Downloading the backup…');
   const off = ctx.backups.on(() => {
     const p = ctx.backups.progress(t.id);
-    if (p?.phase === 'downloading' && p.total) say(`Downloading ${p.done} of ${p.total} files…`);
+    if (p?.phase === 'downloading') say(p.total ? `Downloading ${p.done} of ${p.total} files…` : 'Downloading the backup…');
   });
   try {
-    const blob = await ctx.backups.download(t.id, remote.id);
+    // An automatic backup in the way stops; one the user started is waited for, and the user is told.
+    const downloading = ctx.backups.download(t.id, remote.id);
+    say(ctx.backups.running().some((r) => r.reason === 'user') ? "Waiting for the backup that's running to finish…" : 'Downloading the backup…');
+    const blob = await downloading;
     const day = new Date(remote.at || Date.now()).toISOString().slice(0, 10);
     setPendingImport([new File([blob], `annai-backup-${day}.annai.zip`, { type: 'application/zip' })], { archive: true, from: { target: t.id, remote } });
     ctx.go('#/import');

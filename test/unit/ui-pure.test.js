@@ -11,6 +11,7 @@ import { mapsUrl, tripPath } from '../../src/ui/cards.js';
 import { follow } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary } from '../../src/ui/screens/trace.js';
+import { restoreFrom } from '../../src/ui/auto-backup.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -249,4 +250,32 @@ test('the trace says what each backup did (spec §15)', () => {
   assert.equal(traceSummary({ type: 'backup.error', data: { type: 'github', kind: 'auth', message: 'GitHub refused the token.' } }), 'github · auth: GitHub refused the token.');
   assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096 } }), 'github · downloaded c2, 4.0 KB');
   assert.equal(traceSummary({ type: 'backup.prune', data: { type: 's3', backup: 'annai-backup-1.annai.zip' } }), 's3 · deleted an older backup, annai-backup-1.annai.zip');
+});
+
+test('a restore behind a backup the user started says it waits; then it says it downloads', async () => {
+  /** @type {string[]} */
+  const said = [];
+  /** @type {() => void} */
+  let changed = () => {};
+  /** @type {(b: Blob) => void} */
+  let finish = () => {};
+  let progress = /** @type {any} */ (null);
+  const backups = {
+    running: () => [{ id: 'bt-1', reason: 'user', phase: 'uploading' }],
+    progress: () => progress,
+    on: (/** @type {() => void} */ fn) => { changed = fn; return () => {}; },
+    download: () => new Promise((resolve) => { finish = resolve; }),
+  };
+  /** @type {string[]} */
+  const went = [];
+  const done = restoreFrom(/** @type {any} */ ({ backups, store: null, notices: null, go: (/** @type {string} */ h) => went.push(h) }), /** @type {any} */ ({ id: 'bt-1' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual(said, ["Waiting for the backup that's running to finish…"]);
+  progress = { phase: 'downloading', done: 0, total: 0 };
+  changed();
+  progress = { phase: 'downloading', done: 2, total: 9 };
+  changed();
+  finish(new Blob(['zip']));
+  await done;
+  assert.deepEqual(said.slice(1), ['Downloading the backup…', 'Downloading 2 of 9 files…']);
+  assert.deepEqual(went, ['#/import']);
 });

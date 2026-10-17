@@ -221,3 +221,30 @@ test('GitHub through annai: every request is in the trace, and the token is in n
     await gh.stop();
   }
 });
+
+test('a restore stops an automatic backup that is uploading; behind one the user started, it waits and says so', { timeout: 5000 }, async () => {
+  const place = memoryPlace();
+  const d = await device(place);
+  const id = await placeOn(d);
+  await d.backups.backUp(id);
+  const release = place.pause();
+  const auto = d.backups.backUp(id, { reason: 'auto' });
+  await until(() => place.waiting() > 0);
+  assert.deepEqual(d.backups.running().map((r) => [r.id, r.reason]), [[id, 'auto']]);
+  const blob = await d.backups.download(id, 'b1');
+  assert.ok(blob.size > 0);
+  await assert.rejects(auto, (/** @type {any} */ e) => e?.name === 'AbortError');
+  assert.equal((await d.backups.get(id))?.hold, null, 'no failure: it carries on later');
+  // Behind a backup the user started, a restore waits for it.
+  const mine = d.backups.backUp(id);
+  await until(() => place.waiting() > 1);
+  assert.deepEqual(d.backups.running().map((r) => r.reason), ['user']);
+  let done = false;
+  const later = d.backups.download(id, 'b1').then(() => { done = true; });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(done, false);
+  release();
+  await mine;
+  await later;
+  assert.equal(done, true);
+});
