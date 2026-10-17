@@ -19,15 +19,26 @@ const NAMED = new Set(['sights', 'parks', 'lodging']);
 const isNum = (/** @type {unknown} */ x) => typeof x === 'number' && Number.isFinite(x);
 const norm = (/** @type {string} */ s) => s.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 
-/** Meters from a point to an area's line, or to its one point (flat near the point, which is plenty for 40 km). @param {Point} p @param {[number, number][]} pts */
+/**
+ * Meters from a point to an area's line, or to its one point (flat near the point, which is plenty for
+ * 40 km). Longitudes count the short way round, so a line across the date line is where it is.
+ * @param {Point} p @param {[number, number][]} pts
+ */
 export function toLine(p, pts) {
   if (pts.length === 1) return meters(p, { lat: pts[0][0], lng: pts[0][1] });
   const k = Math.cos((p.lat * Math.PI) / 180);
-  const xy = (/** @type {[number, number]} */ q) => [(q[1] - p.lng) * 111_320 * k, (q[0] - p.lat) * 110_574];
+  /** Degrees from a to b the short way, -180 to 180. @param {number} a @param {number} b */
+  const east = (a, b) => ((((b - a) % 360) + 540) % 360) - 180;
+  // Each point's longitude follows on from the one before (the line goes the short way), the first from p's.
+  let lng = p.lng + east(p.lng, pts[0][1]);
+  const xy = pts.map((q, i) => {
+    if (i) lng += east(pts[i - 1][1], q[1]);
+    return [(lng - p.lng) * 111_320 * k, (q[0] - p.lat) * 110_574];
+  });
   let best = Infinity;
   for (let i = 1; i < pts.length; i++) {
-    const [ax, ay] = xy(pts[i - 1]);
-    const [bx, by] = xy(pts[i]);
+    const [ax, ay] = xy[i - 1];
+    const [bx, by] = xy[i];
     const dx = bx - ax;
     const dy = by - ay;
     const len = dx * dx + dy * dy;

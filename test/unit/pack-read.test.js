@@ -70,3 +70,11 @@ test("a part Overpass cut off at its 3000 places doesn't count as covering: near
   assert.equal(pack.touches(bixby), true);
   assert.equal(pack.covers({ lat: 36.2213, lng: -121.7567 }, 1000), true); // Nepenthe's part is whole
 });
+
+test('meters to a line across the date line: the short way, as the plan joins the stops', () => {
+  const line = /** @type {[number, number][]} */ ([[-17, 179.8], [-17, -179.8]]); // Fiji's 180th meridian, 0.4° wide
+  assert.ok(toLine({ lat: -17, lng: 179.99 }, line) < 50);
+  assert.ok(toLine({ lat: -17, lng: -179.95 }, line) < 50);
+  assert.ok(Math.abs(toLine({ lat: -16.99, lng: 180 }, line) - 1106) < 20);
+  assert.ok(toLine({ lat: -17, lng: 0 }, line) > 10_000_000);
+});
