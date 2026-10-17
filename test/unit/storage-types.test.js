@@ -7,7 +7,7 @@ import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js'
 import { Registry, PluginError } from '../../src/core/registry.js';
 import { PluginHost, isPluginBug } from '../../src/core/plugins.js';
 import { TargetError, NEEDS_YOU, storageTypes, readAnswer, TEXT_MAX } from '../../src/core/storage-types.js';
-import { ensureProvided, offeredTypes } from '../../src/core/llm/official.js';
+import { ensureProvided, offeredTypes, officialUpdates } from '../../src/core/llm/official.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -112,4 +112,63 @@ test("a server's answer is read, or refused in plain words: never a crash in the
   const cut = new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('part')); c.error(new TypeError('terminated')); } }));
   await assert.rejects(readAnswer(cut, 'text', 'the bucket'), (e) => e instanceof TargetError && /connection to the bucket broke/.test(e.message) && !isPluginBug(e));
   assert.equal(TEXT_MAX, 8 * 1024 * 1024);
+});
+
+/** annai's catalog with one official storage plugin, served as annai's own origin serves it. */
+async function probeCatalog() {
+  const code = utf8(`export function activate(a) {
+    return a.storage.register({ type: 'probe', name: 'Probe', stores: 'file', where: () => '', check: async () => ({ note: '' }),
+      list: async () => [], put: async () => ({ id: '', at: 0 }), get: async () => new Blob([]) });
+  }`);
+  const manifest = utf8(JSON.stringify({ id: 'storage-probe', name: 'Probe storage', version: '1.0.0', api: 1, entry: 'index.js', provides: { 'storage-type': ['probe'] } }));
+  const entry = { id: 'storage-probe', name: 'Probe storage', version: '1.0.0', provides: { 'storage-type': ['probe'] },
+    files: { 'annai-plugin.json': await sha256Hex(manifest), 'index.js': await sha256Hex(code) } };
+  /** @type {Record<string, Uint8Array>} */
+  const served = { '/catalog/plugins.json': utf8(JSON.stringify({ format: 1, plugins: [entry] })), '/plugins-official/storage-probe/annai-plugin.json': manifest, '/plugins-official/storage-probe/index.js': code };
+  const get = async (/** @type {any} */ url) => {
+    const body = served[new URL(String(url), 'http://annai.test').pathname];
+    return body ? new Response(/** @type {any} */ (body)) : new Response('not found', { status: 404 });
+  };
+  // The same plugin, changed by someone else: what a restored backup could carry under the official id.
+  const tampered = utf8(`export function activate(a) {
+    globalThis.__tamperedRan = true;
+    return a.storage.register({ type: 'probe', name: 'Probe', stores: 'file', where: () => '', check: async () => ({ note: '' }),
+      list: async () => [], put: async () => ({ id: '', at: 0 }), get: async () => new Blob([]) });
+  }`);
+  return { code, manifest, entry, get, tampered };
+}
+
+test("an installed plugin that claims an official id runs only when its files match annai's catalog (spec §5.3)", async () => {
+  const k = await setup();
+  const p = await probeCatalog();
+  // A backup restored with "Replace my plugins" brought a changed copy, switched off, under the official id and version.
+  await k.host.install(new Map([['annai-plugin.json', p.manifest], ['index.js', p.tampered]]), { source: 'official' });
+  await k.host.setEnabled('storage-probe', false);
+  assert.equal(await k.host.verifyOfficial('storage-probe', p.entry), false);
+  await ensureProvided(k.host, 'storage-type', 'probe', { fetch: p.get });
+  assert.equal(/** @type {any} */ (globalThis).__tamperedRan, undefined, 'the changed code never ran');
+  assert.deepEqual((await k.ws.read(SYS_PLUGINS, '/storage-probe/index.js'))?.bytes, p.code);
+  assert.equal(await k.host.verifyOfficial('storage-probe', p.entry), true);
+  assert.equal(storageTypes(k.registry).get('probe')?.pluginId, 'storage-probe');
+});
+
+test('a changed official plugin is offered the catalog\'s files as an update, even at the same version', async () => {
+  const k = await setup();
+  const p = await probeCatalog();
+  await k.host.install(new Map([['annai-plugin.json', p.manifest], ['index.js', p.tampered]]), { source: 'official' });
+  const offered = await officialUpdates(k.host, { fetch: p.get });
+  assert.deepEqual(offered.map((u) => [u.id, u.installed, u.available]), [['storage-probe', '1.0.0', '1.0.0']]);
+  await k.host.install(new Map([['annai-plugin.json', p.manifest], ['index.js', p.code]]), { source: 'official' });
+  assert.deepEqual(await officialUpdates(k.host, { fetch: p.get }), []);
+});
+
+test('"Turn it on" brings back a plugin annai switched off after repeated errors (spec §5.5)', async () => {
+  const k = await setup();
+  const p = await probeCatalog();
+  await ensureProvided(k.host, 'storage-type', 'probe', { fetch: p.get });
+  for (let i = 0; i < 3; i++) k.registry.fail('storage-probe', 'backup put', new TypeError('x is not a function'));
+  assert.equal(storageTypes(k.registry).has('probe'), false);
+  await ensureProvided(k.host, 'storage-type', 'probe', { fetch: p.get });
+  assert.equal(storageTypes(k.registry).get('probe')?.pluginId, 'storage-probe');
+  assert.equal(k.registry.isDisabled('storage-probe'), false);
 });
