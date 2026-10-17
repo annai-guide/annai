@@ -4,6 +4,10 @@ import { agentKit } from './agent-kit.js';
 import { inQuiet, quietEnds, spentToday, costs } from '../../src/core/agent/budgets.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
+import { createMemoryStore } from '../../src/core/store-memory.js';
+import { Workspace } from '../../src/core/workspace.js';
+import { ensureBaseScopes, ME } from '../../src/core/scopes.js';
+import { logEvent } from '../../src/core/events.js';
 
 const at = (/** @type {string} */ iso) => Date.parse(iso);
 const loop = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
@@ -80,4 +84,16 @@ test('costs: per wake and for the whole trip', async () => {
   const c = await costs(k.store, k.trip);
   assert.equal(c.byWake.size, 2);
   assert.equal(Number(c.total.toFixed(6)), 0.002);
+});
+
+test("today's spending is all counted, however many web requests the day made (spec §6.6)", async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store, { schemaFor: () => null });
+  await ensureBaseScopes(ws);
+  const now = at('2026-11-27T20:00:00Z');
+  await logEvent(store, ME, { type: 'model.turn', data: { cost: 1 } }, at('2026-11-26T23:00:00Z')); // yesterday's
+  await logEvent(store, ME, { type: 'model.turn', data: { cost: 0.5 } }, at('2026-11-27T08:00:00Z'));
+  await logEvent(store, ME, { type: 'net.request', data: { kind: 'speech-out', cost: 0.25 } }, at('2026-11-27T08:01:00Z'));
+  for (let i = 0; i < 4500; i++) await logEvent(store, ME, { type: 'net.request', data: { kind: 'web', tool: 'fetch' } }, at('2026-11-27T09:00:00Z') + i * 1000);
+  assert.equal(await spentToday(store, now, 'UTC'), 0.75);
 });

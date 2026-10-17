@@ -40,15 +40,27 @@ function midnight(now, timeZone) {
   return Math.floor(now / 60_000) * 60_000 - minutes(now, timeZone) * 60_000;
 }
 
-/** USD of every model call since local midnight, in every scope. @param {Store} store @param {number} now @param {string} timeZone */
+/** How many log entries spentToday reads at a time, newest first. */
+const PAGE = 1000;
+
+/**
+ * USD of every model call since local midnight, in every scope. Read a page at a time back to
+ * midnight, so a day of web requests (net.request too) can't hide what was spent.
+ * @param {Store} store @param {number} now @param {string} timeZone
+ */
 export async function spentToday(store, now, timeZone) {
   const since = midnight(now, timeZone);
   return store.tx(['scopes', 'events'], 'readonly', async (t) => {
     let sum = 0;
     for (const s of await t.listScopes()) {
-      for (const e of await t.listEvents(s.id, { types: ['model.turn', 'net.request'], reverse: true, limit: 4000 })) {
-        if (e.ts < since) break;
-        if (priced(e)) sum += typeof e.data?.cost === 'number' ? e.data.cost : 0;
+      /** @type {number | undefined} */
+      let before;
+      for (;;) {
+        const page = await t.listEvents(s.id, { types: ['model.turn', 'net.request'], reverse: true, limit: PAGE, ...(before ? { before } : {}) });
+        const today = page.filter((e) => e.ts >= since);
+        for (const e of today) if (priced(e)) sum += typeof e.data?.cost === 'number' ? e.data.cost : 0;
+        if (page.length < PAGE || today.length < page.length) break;
+        before = page[page.length - 1].seq;
       }
     }
     return sum;
