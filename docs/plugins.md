@@ -1,6 +1,6 @@
 # Writing an annai plugin
 
-This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8b (plugins in the UI). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
+This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8 (extensions). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
 
 A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1).
 
@@ -280,6 +280,15 @@ export function activate(annai) {
   - `rate` (with `retryAt`) and `other` are tried again later.
   - A `TypeError` and the like count as a bug in your plugin.
 - **Send every request through `annai.net.fetch`,** so the trace shows it.
+
+## MCP servers
+
+annai's own MCP client (a built-in plugin) gives Shiori the tools of the MCP servers a user adds in Settings → Tools → MCP servers; a plugin doesn't need code for that. What annai needs from a server:
+
+- **The Streamable HTTP transport** (MCP 2025-03-26 or later; annai asks for 2025-06-18): one JSON-RPC message per POST, answered as JSON or as an SSE stream. annai doesn't open the GET stream, and skips the server's own requests and notifications.
+- **Browser access (CORS):** allow annai's address (or `*`), the methods POST, DELETE and OPTIONS, the headers `Content-Type`, `Accept`, `Authorization`, `Mcp-Session-Id`, `MCP-Protocol-Version` and any header the user adds, and list `Mcp-Session-Id` in `Access-Control-Expose-Headers`.
+- **Auth:** a bearer token, or headers; annai keeps them in its secrets and never in a file, the log or the trace. A key in the address itself (a path segment or a query value that looks like one) is kept in secrets too, and the address is shown with it blanked; an address with a name and password before an `@` is refused. OAuth isn't there yet.
+- **Tools** come as `mcp_<server>_<tool>` (letters, digits, `_` and `-`); the first 100 of a server are used. Text, images (PNG, JPEG, WebP, GIF up to 5 MB) and embedded text resources reach Shiori; `isError` is an error she sees.
 
 ## Rules
 

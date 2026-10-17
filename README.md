@@ -22,7 +22,7 @@ memories afterwards.
 > (milestone 9). And live mode (milestone 5; its real-drive checklist is next): watches Shiori sets, the
 > plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode, the Live chip (the screen kept on as
-> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. And after the trip (milestone 7): stamps for the places you arrived at, shown on trip cards; a recap written by your utility model from the trip, which Shiori can tell aloud; a replay of the timeline and the route on a flat map; and Settings → Developer → Simulate a trip. And notifications (milestone 6; its device checklist is next): reminders reach a closed annai through a small push relay, encrypted on the phone, and opening one starts a catch-up. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. And after the trip (milestone 7): stamps for the places you arrived at, shown on trip cards; a recap written by your utility model from the trip, which Shiori can tell aloud; a replay of the timeline and the route on a flat map; and Settings → Developer → Simulate a trip. And notifications (milestone 6; its device checklist is next): reminders reach a closed annai through a small push relay, encrypted on the phone, and opening one starts a catch-up. And extensions (milestone 8; its device checklist is next): skills, MCP servers and code plugins, installed from a file, an address or annai's catalog, and what plugins add to annai's screens. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Plan and bookings
@@ -56,6 +56,13 @@ memories afterwards.
 - Turn on Settings → Notifications, and Shiori's reminders for a time, and the plan's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.
 - They go through a small relay, `push.annai.guide` (its code is in [`relay/`](relay/README.md), to run your own). annai encrypts each reminder on the phone and pads it to one size: the relay learns only the phone's push address, when each reminder is due and how many are waiting. Reminders about places never leave the phone.
 - With annai open on screen, annai says a reminder itself and the relay's copy is called off, so it never comes twice.
+
+## Skills, MCP servers and plugins
+
+- **Skills** in the open [Agent Skills](https://agentskills.io/specification) format teach Shiori a kind of situation: install one from a zip, a `SKILL.md` file or its address in Settings → Plugins. Only its name and description sit in her context until she loads it; annai never runs anything in it. annai's own skills (`skills/`) are in the same format.
+- **MCP servers** give Shiori tools of their own: Settings → Tools → MCP servers takes a name, the server's address and a bearer token or headers, which stay on this device. Each tool can be switched off, and every request to the server is in the trace. The server must let web apps call it (CORS). For testing, `node scripts/mcp-stand-in.mjs --port <port>` runs annai's own stand-in server.
+- **Code plugins** run with full access to your trips and keys, and the install screen says so. They can add tools, endpoint types, backup places, status chips, Now sections, dock actions, trip tabs, settings pages, card types, screens and themes ([docs/plugins.md](docs/plugins.md)).
+- A package installed from an address is checked there for updates, which change nothing until you tap Update; one that would bring new code or skills says so first. Removing a plugin, skill or server removes everything it stored.
 
 ## Principles
 
