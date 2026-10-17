@@ -3,7 +3,9 @@ import { text, utf8 } from './bytes.js';
 import { normPath } from './paths.js';
 import { sha256Hex } from './hash.js';
 import { PluginError } from './registry.js';
-import { parseSkill, skillVersion, SkillError, SKILL_FILE } from './skills.js';
+import { parseSkill, skillVersion, skillLinks, frontMatter, SkillError, SKILL_FILE } from './skills.js';
+import { answerBytes } from './answer.js';
+import { readZip } from './zip.js';
 
 /**
  * A package as annai reads it before installing (spec §5.2): a folder, zip or address holding
@@ -222,4 +224,133 @@ async function pluginPackage(files, checkNames) {
     ...(manifest.author ? { author: manifest.author } : {}), ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
     fingerprint: await fingerprint(files),
   };
+}
+
+/** The most files a package installed from an address may have (choice 6). */
+export const ADDRESS_MAX_FILES = 200;
+/** The most files a SKILL.md's links bring along from an address. */
+export const SKILL_MAX_LINKS = 50;
+const NOT_AN_ADDRESS = "That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.";
+
+/** A GitHub page's address as GitHub's raw files serve it, which web apps may read; any other as it is. @param {string} address */
+export function rawAddress(address) {
+  const m = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/.exec(address);
+  return m ? `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}` : address;
+}
+
+/** Whether a name stays inside the package. @param {string} name */
+const fileName = (name) => {
+  try {
+    return normPath(`/${name}`) === `/${name}`;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * A package's files from an address (choice 6): a zip, whatever the address ends with; an
+ * annai-plugin.json and the files it names; or a SKILL.md and the files it links to inside its folder.
+ * Nothing is stored. Every error is a plain Error that says what to do.
+ * @param {string} address
+ * @param {{ fetch: (url: string, init?: RequestInit) => Promise<Response>, max?: number }} o
+ * @returns {Promise<Map<string, Uint8Array>>} files by name inside the package (a zip's as it has them)
+ */
+export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES }) {
+  /** @type {URL} */
+  let url;
+  try {
+    url = new URL(rawAddress(String(address ?? '').trim()));
+  } catch {
+    throw new Error(NOT_AN_ADDRESS);
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(NOT_AN_ADDRESS);
+  let used = 0;
+  const download = async (/** @type {URL} */ u) => {
+    /** @type {Response} */
+    let res;
+    try {
+      res = await get(u.href);
+    } catch (e) {
+      if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+      throw new Error(`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`);
+    }
+    const bytes = await answerBytes(res, u.host, max - used);
+    used += bytes.byteLength;
+    return bytes;
+  };
+  const first = await download(url);
+  if (first[0] === 0x50 && first[1] === 0x4b && first[2] === 0x03 && first[3] === 0x04) {
+    try {
+      return await readZip(first, { maxTotal: max });
+    } catch (e) {
+      throw new Error(`${url.host} sent a zip annai can't open: ${/** @type {any} */ (e)?.message ?? e}`);
+    }
+  }
+  const body = text(first).replace(/^﻿/, '');
+  const base = url;
+  const tooMany = () => new Error(`That package has more than ${ADDRESS_MAX_FILES} files; annai installs packages of up to ${ADDRESS_MAX_FILES} from an address. Use a zip instead.`);
+  /** @type {Map<string, Uint8Array>} */
+  const files = new Map();
+  /** The files a SKILL.md links to, in its folder; one that can't be downloaded is left out. @param {string} folder '' or "skills/x/" @param {Uint8Array} skill */
+  const linked = async (folder, skill) => {
+    let links = skillLinks(text(skill));
+    try {
+      links = skillLinks(frontMatter(text(skill)).body);
+    } catch {
+      // not front matter annai reads: inspecting it says so later
+    }
+    for (const link of links.slice(0, SKILL_MAX_LINKS)) {
+      const name = `${folder}${link}`;
+      if (files.has(name) || !fileName(name)) continue;
+      if (files.size >= ADDRESS_MAX_FILES) throw tooMany();
+      try {
+        files.set(name, await download(new URL(name, base)));
+      } catch (e) {
+        if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+      }
+    }
+  };
+  const manifest = asManifest(url, body);
+  if (manifest) {
+    files.set(MANIFEST_FILE, first);
+    /** @type {Set<string>} */
+    const names = new Set();
+    const add = (/** @type {unknown} */ f) => { if (typeof f === 'string' && f) names.add(f); };
+    for (const f of Array.isArray(manifest.files) ? manifest.files : []) add(f);
+    add(manifest.entry);
+    /** @type {string[]} */
+    const skillFiles = [];
+    for (const f of Array.isArray(manifest.skills) ? manifest.skills : []) {
+      if (typeof f !== 'string') continue;
+      const folder = f === '.' ? '' : `${f.replace(/\/+$/, '')}/`;
+      skillFiles.push(`${folder}${SKILL_FILE}`);
+      add(`${folder}${SKILL_FILE}`);
+    }
+    for (const f of [...(Array.isArray(manifest.personalities) ? manifest.personalities : []), ...(Array.isArray(manifest.templates) ? manifest.templates : [])]) add(f);
+    names.delete(MANIFEST_FILE);
+    if (names.size + 1 > ADDRESS_MAX_FILES) throw tooMany();
+    for (const name of names) if (!fileName(name)) throw new Error(`The file name "${name}" isn't allowed.`);
+    for (const name of names) files.set(name, await download(new URL(name, base)));
+    for (const s of skillFiles) await linked(s.slice(0, -SKILL_FILE.length), /** @type {Uint8Array} */ (files.get(s)));
+    return files;
+  }
+  if (body.startsWith('---') || url.pathname.endsWith(`/${SKILL_FILE}`)) {
+    files.set(SKILL_FILE, first);
+    await linked('', first);
+    return files;
+  }
+  const hint = url.hostname === 'github.com' ? ' For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.' : '';
+  throw new Error(`There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.${hint}`);
+}
+
+/** The manifest an address holds: a path ending in annai-plugin.json, or a JSON object with an api. @param {URL} url @param {string} body */
+function asManifest(url, body) {
+  if (!url.pathname.endsWith(`/${MANIFEST_FILE}`) && !/^\s*\{/.test(body)) return null;
+  try {
+    const json = JSON.parse(body);
+    if (json && typeof json === 'object' && !Array.isArray(json) && ('api' in json || url.pathname.endsWith(`/${MANIFEST_FILE}`))) return json;
+  } catch {
+    if (url.pathname.endsWith(`/${MANIFEST_FILE}`)) throw new Error(`The ${MANIFEST_FILE} at ${url.host} isn't valid JSON.`);
+  }
+  return null;
 }

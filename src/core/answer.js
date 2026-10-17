@@ -27,3 +27,47 @@ export async function answerJSON(res, where, max = ANSWER_MAX) {
     throw new Error(`${where} sent an answer annai can't read.`);
   }
 }
+
+/**
+ * A server's answer, as bytes, read no further than max. Whatever is wrong with it (an error status,
+ * cut off, too large) is a plain Error that says so; a stopped request stays an AbortError.
+ * @param {Response} res @param {string} where the server, as the user knows it @param {number} [max] the most bytes read
+ * @returns {Promise<Uint8Array>}
+ */
+export async function answerBytes(res, where, max = ANSWER_MAX) {
+  if (!res.ok) throw Object.assign(new Error(`${where} answered ${res.status}.`), { status: res.status });
+  const tooMuch = () => new Error(`${where} sent more than annai reads (${Math.max(1, Math.round(max / 1_048_576))} MB).`);
+  if (Number(res.headers.get('content-length')) > max) {
+    res.body?.cancel().catch(() => {});
+    throw tooMuch();
+  }
+  /** @type {Uint8Array[]} */
+  const chunks = [];
+  let n = 0;
+  let over = false;
+  try {
+    const reader = res.body?.getReader();
+    for (;;) {
+      const step = reader ? await reader.read() : { done: true, value: undefined };
+      if (step.done || !step.value) break;
+      n += step.value.byteLength;
+      if (n > max) {
+        over = true;
+        await reader?.cancel().catch(() => {});
+        break;
+      }
+      chunks.push(step.value);
+    }
+  } catch (e) {
+    if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+    throw new Error(`${where}'s answer was cut off.`);
+  }
+  if (over) throw tooMuch();
+  const out = new Uint8Array(n);
+  let at = 0;
+  for (const c of chunks) {
+    out.set(c, at);
+    at += c.byteLength;
+  }
+  return out;
+}
