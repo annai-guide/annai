@@ -105,3 +105,8 @@ test('8b-4: a drawing, a dock action or a component that works ends its plugin\'
   await twoFailures();
   assert.equal(registry.isDisabled('flaky'), true);
 });
+
+test("8b-6: the show tool's type is a string as well as one of the plugins' types", () => {
+  const s = cardSchema([{ type: 'tides', name: 'Tides', description: 'Low and high tides.' }]);
+  assert.equal(s.properties.type.type, 'string');
+});

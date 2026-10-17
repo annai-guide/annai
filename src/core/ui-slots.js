@@ -89,7 +89,7 @@ export function cardSchema(types) {
     type: 'object',
     properties: {
       ...CARD_PROPERTIES,
-      type: { enum: types.map((t) => t.type), description: `A kind of card a plugin draws, with its data: ${types.map((t) => `${t.type}: ${t.description}`).join(' ')}` },
+      type: { type: 'string', enum: types.map((t) => t.type), description: `A kind of card a plugin draws, with its data: ${types.map((t) => `${t.type}: ${t.description}`).join(' ')}` },
       data: { type: 'object', description: 'What a typed card shows, as its type asks.' },
     },
   };
