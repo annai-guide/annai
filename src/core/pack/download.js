@@ -40,6 +40,8 @@ export const MAX_BYTES = 20 * 1024 * 1024;
 export const STALE_MS = 30 * 86_400_000;
 /** After this many failures in a row the download stops: the connection or the services are down. */
 const GIVE_UP = 3;
+/** How long one answer may take: Overpass runs a query for up to a minute, after waiting for a free slot. */
+export const ANSWER_MS = 120_000;
 /** Overpass gives at most this many places for each part. */
 const OSM_LIMIT = 3000;
 const TITLES_PER_ASK = 50;
@@ -84,7 +86,7 @@ function pause(ms, signal) {
 
 /**
  * @param {{ ws: Workspace, scope: string, fetch: Fetch, version: string, signal?: AbortSignal,
- *   onProgress?: (p: Progress) => void, gapMs?: number, now?: () => number, maxBytes?: number }} o
+ *   onProgress?: (p: Progress) => void, gapMs?: number, now?: () => number, maxBytes?: number, answerMs?: number }} o
  * @returns {Promise<Manifest>}
  */
 export async function downloadPack(o) {
@@ -113,7 +115,17 @@ export async function downloadPack(o) {
   const ask = async (url, init, where) => {
     if (asked++) await pause(o.gapMs ?? GAP_MS, signal);
     if (signal.aborted) throw new DOMException('The download was stopped.', 'AbortError');
-    return answerJSON(await o.fetch(url, { ...init, signal }), where);
+    // A request that never answers would hold the download forever: each has its time.
+    const late = new AbortController();
+    const t = setTimeout(() => late.abort(new DOMException('No answer in time.', 'TimeoutError')), o.answerMs ?? ANSWER_MS);
+    try {
+      return await answerJSON(await o.fetch(url, { ...init, signal: AbortSignal.any([signal, late.signal]) }), where);
+    } catch (e) {
+      if (late.signal.aborted && !signal.aborted) throw new Error(`${where} didn't answer in time.`);
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
   };
   /** What the pack already has stays, as it is. @param {Omit<PackFile, 'bytes' | 'at' | 'items'>} f @param {number} [count] */
   const keepOld = (f, count) => {
