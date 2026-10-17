@@ -57,3 +57,16 @@ test('a broken pack is no pack, and a broken part is left out: never an error', 
   await ws.write(trip, m.guides.find((/** @type {any} */ g) => g.title === 'Big Sur').path, 'not json', { author: 'user', type: 'text/plain' });
   assert.equal(await pack.guide('Big Sur'), null);
 });
+
+test("a part Overpass cut off at its 3000 places doesn't count as covering: nearby asks online there, and uses it only when offline (C1)", async () => {
+  const { ws, trip } = await packTrip();
+  const many = Array.from({ length: 3000 }, (_, i) => ({ type: 'node', id: 1000 + i, lat: 36.3715 + (i % 50) / 1e4, lon: -121.9017 + Math.floor(i / 50) / 1e4, tags: { name: `Place ${i}`, amenity: 'cafe' } }));
+  // Every part that reaches Bixby is cut off there: the stop's and the way's.
+  await downloadPack({ ws, scope: trip, ...services({ overpass: (url, init) => (decodeURIComponent(String(init?.body)).includes('36.3715') ? { elements: many } : { elements: [] }) }), version: '1.0.0', gapMs: 0 });
+  const pack = await loadPack(ws, trip);
+  assert.ok(pack);
+  const bixby = { lat: 36.3715, lng: -121.9017 };
+  assert.equal(pack.covers(bixby, 1000), false);
+  assert.equal(pack.touches(bixby), true);
+  assert.equal(pack.covers({ lat: 36.2213, lng: -121.7567 }, 1000), true); // Nepenthe's part is whole
+});
