@@ -267,7 +267,9 @@ async function osm(p, ask, busy) {
             rows.push(r);
           }
         }
-        return { count: rows.length, content: { area: { points: p.points, radius: p.radius }, rows } };
+        // At Overpass's limit, the part holds only some of what is there: it can't answer for its whole area (C1).
+        const cut = data.elements.length >= OSM_LIMIT;
+        return { count: rows.length, content: { area: { points: p.points, radius: p.radius }, rows, ...(cut ? { cut: true } : {}) } };
       } catch (e) {
         if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
         last = e;

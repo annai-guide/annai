@@ -197,3 +197,17 @@ test('a broken pack is no pack: the tools go online', async () => {
   await run('nearby', McWay, (url) => (url.includes('overpass') ? { elements: [] } : { query: { geosearch: [] } }));
   assert.ok(asked.some((a) => a.url.includes('overpass')));
 });
+
+test('nearby asks online where the pack holds only the first of more places than Overpass gave, and uses that part offline (C1)', async () => {
+  const { run, ws, trip, asked } = await setup({ trip: true });
+  await mcwayPack(ws, /** @type {string} */ (trip));
+  const part = JSON.parse(String(await ws.readText(/** @type {string} */ (trip), '/offline/osm/o1.json')));
+  await ws.write(/** @type {string} */ (trip), '/offline/osm/o1.json', JSON.stringify({ ...part, cut: true }), { author: 'system' });
+  await ws.patch(/** @type {string} */ (trip), '/offline/pack.json', { bytes: 1001 }, { author: 'system' });
+  const online = await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, (url) => (url.includes('overpass') ? { elements: [] } : { query: { geosearch: [] } }));
+  assert.ok(asked.some((a) => a.url.includes('overpass')));
+  assert.doesNotMatch(online, /offline pack/);
+  const offline = await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, () => { throw new Error('offline'); });
+  assert.match(offline, /McWay Falls Overlook/);
+  assert.match(offline, /from the offline pack/);
+});

@@ -44,7 +44,7 @@ function short(s) {
 }
 
 export class Pack {
-  /** @type {{ area: Area, rows: OsmRow[] }[]} */
+  /** @type {{ area: Area, rows: OsmRow[], cut?: boolean }[]} cut: Overpass stopped at its limit there, so the part has only some of the places */
   #osm;
   /** @type {WikiPage[]} */
   #wiki;
@@ -53,7 +53,7 @@ export class Pack {
   /** @type {(path: string) => Promise<any>} */
   #read;
 
-  /** @param {Manifest} manifest @param {{ area: Area, rows: OsmRow[] }[]} osm @param {WikiPage[]} wiki @param {(path: string) => Promise<any>} read */
+  /** @param {Manifest} manifest @param {{ area: Area, rows: OsmRow[], cut?: boolean }[]} osm @param {WikiPage[]} wiki @param {(path: string) => Promise<any>} read */
   constructor(manifest, osm, wiki, read) {
     this.manifest = manifest;
     this.#osm = osm;
@@ -68,9 +68,9 @@ export class Pack {
     return this.manifest.at.slice(0, 10);
   }
 
-  /** Whether one of its OpenStreetMap areas holds the whole circle. @param {Point} p @param {number} radius */
+  /** Whether one of its OpenStreetMap areas holds the whole circle, with all its places (not one Overpass cut off). @param {Point} p @param {number} radius */
   covers(p, radius) {
-    return this.#osm.some((o) => toLine(p, o.area.points) + radius <= o.area.radius);
+    return this.#osm.some((o) => !o.cut && toLine(p, o.area.points) + radius <= o.area.radius);
   }
 
   /** Whether the point is inside one of its areas. @param {Point} p */
@@ -156,14 +156,14 @@ export async function loadPack(ws, scope) {
   if (hit && hit.hash === got.entry.hash) return hit.pack;
   const manifest = await readManifest(ws, scope);
   if (!manifest) return null;
-  /** @type {{ area: Area, rows: OsmRow[] }[]} */
+  /** @type {{ area: Area, rows: OsmRow[], cut?: boolean }[]} */
   const osm = [];
   /** @type {WikiPage[]} */
   const wiki = [];
   for (const f of manifest.files) {
     if (f.kind === 'wikivoyage') continue;
     const v = await ws.readJSON(scope, f.path).catch(() => null);
-    if (f.kind === 'osm' && goodArea(v?.area) && Array.isArray(v.rows)) osm.push({ area: v.area, rows: v.rows.filter(goodRow) });
+    if (f.kind === 'osm' && goodArea(v?.area) && Array.isArray(v.rows)) osm.push({ area: v.area, rows: v.rows.filter(goodRow), cut: v.cut === true });
     else if (f.kind === 'wikipedia' && Array.isArray(v?.pages)) wiki.push(...v.pages.filter(goodPage));
   }
   const pack = new Pack(manifest, osm, wiki, (path) => ws.readJSON(scope, path));
