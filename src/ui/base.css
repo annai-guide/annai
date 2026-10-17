@@ -99,6 +99,10 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .risk strong { color: var(--risk); }
 .steps { padding-left: 20px; }
 .risk-note { padding: 12px 14px; border-radius: 12px; background: var(--amber-wash); color: var(--ink); font-size: 14px; }
+.risk-note p { margin: 0; }
+.risk-note p + p { margin-top: 6px; }
+.skill-note { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); color: var(--ink); font-size: 14px; }
+.brings { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
 .notices { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; flex-direction: column; gap: 8px; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); pointer-events: none; align-items: center; }
 .notice, .toast { pointer-events: auto; width: min(100%, 560px); padding: 14px 16px; border-radius: var(--radius); background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 12px 30px -16px var(--shadow); display: flex; flex-direction: column; gap: 8px; }
 .notice-warn { border-color: var(--amber); }

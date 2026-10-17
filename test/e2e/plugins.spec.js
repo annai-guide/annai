@@ -23,7 +23,10 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
   await page.goto('/#/plugins');
   await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   await expect(page.getByText('Trip record checks')).toBeVisible();
-  await page.getByLabel('Install a plugin from a file').setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await page.getByLabel('Install from a file').setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await expect(page.getByRole('heading', { name: 'Install Hello checks?' })).toBeVisible();
+  await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
   await expect(page.getByText('Hello checks 1.0.0')).toBeVisible();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
 
@@ -41,16 +44,16 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
   await expect(page.getByRole('heading', { name: '/hello/a.json' })).toBeVisible();
 
   await page.goto('/#/plugins');
-  await page.getByRole('button', { name: 'Uninstall' }).click();
-  await page.getByRole('button', { name: 'Tap again to uninstall' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await page.getByRole('button', { name: 'Tap again to remove' }).click();
   await expect(page.getByText('Hello checks 1.0.0')).toHaveCount(0);
 });
 
 test('a bad plugin file is refused with a reason', async ({ page }) => {
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
-  await page.getByLabel('Install a plugin from a file').setInputFiles({ name: 'junk.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') });
-  await expect(page.getByText("That plugin wasn't installed")).toBeVisible();
+  await page.getByLabel('Install from a file').setInputFiles({ name: 'junk.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') });
+  await expect(page.getByText("That file isn't something annai can install")).toBeVisible();
 });
 
 test("a plugin that never finishes starting doesn't keep annai from opening", async ({ page }) => {
@@ -75,10 +78,14 @@ test("a plugin that never finishes starting doesn't keep annai from opening", as
 test('reinstalling a plugin that is running asks for a restart, which runs the new version', async ({ page }) => {
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
-  const input = page.getByLabel('Install a plugin from a file');
+  const input = page.getByLabel('Install from a file');
   await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
   await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await expect(page.getByText('Version 1.0.0 is installed now. Installing replaces it.')).toBeVisible();
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
+
   await expect(page.getByText('Restart annai to run the new version of Hello checks.')).toBeVisible();
   await page.getByRole('status').getByRole('button', { name: 'Restart annai' }).click();
   await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
@@ -88,7 +95,8 @@ test('reinstalling a plugin that is running asks for a restart, which runs the n
 test("a plugin that installs but won't start says so, and stays installed", async ({ page }) => {
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
-  await page.getByLabel('Install a plugin from a file').setInputFiles({ name: 'broken.zip', mimeType: 'application/zip', buffer: await fixtureZip('broken') });
+  await page.getByLabel('Install from a file').setInputFiles({ name: 'broken.zip', mimeType: 'application/zip', buffer: await fixtureZip('broken') });
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
   await expect(page.getByText("Broken was installed, but it didn't start")).toBeVisible();
   await expect(page.getByText('Broken 0.0.1')).toBeVisible();
 });

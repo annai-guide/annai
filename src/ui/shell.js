@@ -10,6 +10,7 @@ import { renderSettings } from './screens/settings.js';
 import { renderImport } from './screens/import.js';
 import { renderTrace } from './screens/trace.js';
 import { renderPlugins } from './screens/plugins.js';
+import { renderPluginInstall } from './screens/plugin-install.js';
 import { renderModels } from './screens/models.js';
 import { renderShiori } from './screens/shiori.js';
 import { renderTalk } from './screens/talk.js';
@@ -27,7 +28,7 @@ import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications };
 
 /**
  * @param {HTMLElement} root

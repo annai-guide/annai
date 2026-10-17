@@ -1,4 +1,4 @@
-import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest } from './packages.js';
+import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts } from './packages.js';
 import { parseSkill, SKILL_FILE } from './skills.js';
 import { forget } from './forget.js';
 import { normPath, typeForPath } from './paths.js';
@@ -128,7 +128,7 @@ export class PluginHost {
    * annai's own names, not a package of the other kind, no skill name Shiori already has from
    * elsewhere. replaces: the installed version this package would replace.
    * @param {Map<string, Uint8Array>} files
-   * @returns {Promise<import('./packages.js').Package & { replaces: { version: string, kind: string } | null }>}
+   * @returns {Promise<import('./packages.js').Package & { replaces: { version: string, kind: string, added: import('./packages.js').Added } | null }>}
    */
   async inspect(files) {
     const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
@@ -147,7 +147,35 @@ export class PluginHost {
       const holder = running?.pluginId ?? [...claims].find(([other, names]) => other !== id && names.includes(s.name))?.[0];
       if (holder) throw new PluginError(id, `Shiori already has a skill called ${s.name}, from ${state[holder]?.name ?? holder}. Remove that one first.`);
     }
-    return { ...pkg, replaces: had ? { version: String(had.version ?? ''), kind: kindOfState(had) } : null };
+    return { ...pkg, replaces: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg) } : null };
+  }
+
+  /**
+   * What an installed package has, read from its stored files (its record may be older than this):
+   * code or not, and its skills', personalities' and endpoint templates' names. A package that can't be
+   * read has nothing, so anything a new version brings counts as new.
+   * @param {string} id @returns {Promise<import('./packages.js').Parts>}
+   */
+  async installedParts(id) {
+    /** @type {import('./packages.js').Parts} */
+    const none = { code: false, skills: [], personalities: [], templates: [] };
+    const s = (await this.installed())[id];
+    if (!s) return none;
+    if (kindOfState(s) === 'skill') return { ...none, skills: [id] };
+    try {
+      const m = await this.#stored(id);
+      const skills = (await this.#claims({ [id]: { kind: 'plugin' } })).get(id) ?? [];
+      /** @type {string[]} */
+      const templates = [];
+      for (const t of Array.isArray(m.templates) ? m.templates : []) {
+        const json = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${t}`).catch(() => null);
+        for (const e of Array.isArray(json?.endpoints) ? json.endpoints : []) if (typeof e?.id === 'string') templates.push(e.id);
+      }
+      const personalities = (Array.isArray(m.personalities) ? m.personalities : []).map((p) => String(p).split('/').pop()?.replace(/\.md$/, '') ?? '');
+      return { code: Boolean(m.entry), skills, personalities, templates };
+    } catch {
+      return none;
+    }
   }
 
   /** Whether a skill name is annai's own: one its built-in plugins provide or have registered. @param {string} name */

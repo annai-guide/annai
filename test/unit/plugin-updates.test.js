@@ -162,3 +162,71 @@ test('an address that is offline, broken or now holds another package offers not
   const s = (await host.installed())['tide-pools'];
   assert.deepEqual([s.version, s.enabled], ['2.0.0', false]);
 });
+
+// The coordinator's second security finding (milestone 8a): an update from an address that brings
+// new parts asks first, listing them; new code asks with the install screen's full-trust words.
+const KIT_ADDR = 'https://trails.example/kit/annai-plugin.json';
+/** A served package: its manifest, plus each file it names, at KIT_ADDR's folder. @param {any} manifest @param {Record<string, string>} more */
+const kitSite = (manifest, more) => async (/** @type {string} */ url) => {
+  if (url === KIT_ADDR) return new Response(JSON.stringify(manifest));
+  const name = url.slice(KIT_ADDR.length - 'annai-plugin.json'.length);
+  return name in more ? new Response(more[name]) : new Response('', { status: 404 });
+};
+const KIT_V1 = { id: 'kit', name: 'Kit', version: '1.0.0', api: 1, skills: ['skills/trail-safety'] };
+const SAFETY = { 'skills/trail-safety/SKILL.md': '---\nname: trail-safety\ndescription: Before a hike, what to check.\n---\nCarry water.' };
+const fakeNotices = () => {
+  /** @type {any[]} */
+  const cards = [];
+  /** @type {string[]} */
+  const toasts = [];
+  return { cards, toasts, card: (/** @type {any} */ c) => { cards.push(c); return () => {}; }, toast: (/** @type {string} */ t) => toasts.push(t) };
+};
+
+test('a package without code whose update adds code asks with the full-trust words, and changes nothing until the user agrees', async () => {
+  let site = kitSite(KIT_V1, SAFETY);
+  const get = (/** @type {string} */ url) => site(url);
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(KIT_ADDR, { fetch: get }), { source: 'url', url: KIT_ADDR });
+  await host.start('kit');
+  site = kitSite({ ...KIT_V1, version: '1.1.0', entry: 'index.js' }, { ...SAFETY, 'index.js': 'export function activate() {}' });
+  const offers = await pluginUpdates(host, { addressFetch: get, fetch: async () => new Response(JSON.stringify({ plugins: [] })) });
+  assert.equal(offers[0].added?.code, true);
+  const notices = fakeNotices();
+  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get });
+  assert.equal((await host.installed()).kit.version, '1.0.0');
+  assert.deepEqual(notices.toasts, []);
+  const [ask] = notices.cards;
+  assert.match(ask.body, /Code that runs in annai/);
+  assert.match(ask.body, /This plugin gets full access to your trips and API keys\./);
+  assert.deepEqual(ask.actions.map((/** @type {any} */ a) => a.label), ['Update', 'Not now']);
+  await ask.actions[0].run();
+  assert.equal((await host.installed()).kit.version, '1.1.0');
+});
+
+test('an update from an address that adds a skill lists it before anything changes', async () => {
+  let site = kitSite(KIT_V1, SAFETY);
+  const get = (/** @type {string} */ url) => site(url);
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(KIT_ADDR, { fetch: get }), { source: 'url', url: KIT_ADDR });
+  site = kitSite({ ...KIT_V1, version: '1.1.0', skills: ['skills/trail-safety', 'skills/trail-maps'] },
+    { ...SAFETY, 'skills/trail-maps/SKILL.md': '---\nname: trail-maps\ndescription: Reading a trail map.\n---\nNorth is up.' });
+  const offers = await addressUpdates(host, { fetch: get });
+  const notices = fakeNotices();
+  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get });
+  assert.equal((await host.installed()).kit.version, '1.0.0');
+  assert.match(notices.cards[0].body, /Skill "trail-maps": Reading a trail map\./);
+  assert.doesNotMatch(notices.cards[0].body, /full access/);
+  await assert.rejects(updateFromAddress(host, 'kit', { fetch: get }), /adds parts you haven't agreed to/);
+});
+
+test('an update from an address with nothing new is applied as before', async () => {
+  let site = kitSite(KIT_V1, SAFETY);
+  const get = (/** @type {string} */ url) => site(url);
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(KIT_ADDR, { fetch: get }), { source: 'url', url: KIT_ADDR });
+  site = kitSite({ ...KIT_V1, version: '1.0.1' }, { 'skills/trail-safety/SKILL.md': SAFETY['skills/trail-safety/SKILL.md'].replace('Carry water.', 'Carry more water.') });
+  const notices = fakeNotices();
+  await applyUpdates({ plugins: host, notices }, await addressUpdates(host, { fetch: get }), { addressFetch: get });
+  assert.deepEqual([notices.cards.length, notices.toasts], [0, ['Plugins updated.']]);
+  assert.equal((await host.installed()).kit.version, '1.0.1');
+});

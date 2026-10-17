@@ -1,7 +1,7 @@
 /**
  * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
  * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate",
- * "#/plugins", "#/models", "#/voice", "#/shiori" (?edit=, ?compare=), "#/talk", "#/tools", "#/models/endpoint?id=…", "#/models/model?id=…", "#/trace", "#/notifications", "#/import?inbox=1". "#import=<url>" (spec §12.3)
+ * "#/plugins", "#/plugin-install" (the package picked on Plugins), "#/models", "#/voice", "#/shiori" (?edit=, ?compare=), "#/talk", "#/tools", "#/models/endpoint?id=…", "#/models/model?id=…", "#/trace", "#/notifications", "#/import?inbox=1". "#import=<url>" (spec §12.3)
  * becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash
  * @returns {{ name: string, parts: string[], params: Record<string, string> }}
