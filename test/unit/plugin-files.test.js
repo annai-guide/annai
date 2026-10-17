@@ -161,3 +161,17 @@ test('plan items and bookings go directly in their folders: Shiori writing one i
   // Other files may sit in subfolders.
   await run('write', { path: '/trip/bookings/scans/note.md', content: 'scanned' });
 });
+
+test('list and search leave the offline pack out unless asked for it (choice 8)', async () => {
+  const { ws, trip, run } = await setup();
+  await ws.write(trip, '/notes/lunch.md', 'Nepenthe at noon\n', { author: 'user' });
+  await ws.write(trip, '/offline/pack.json', '{"format":1}', { author: 'system' });
+  await ws.write(trip, '/offline/osm/o1.json', '{"rows":[["n1","Nepenthe","restaurant"]]}', { author: 'system' });
+  const all = await run('list', { path: '/' });
+  assert.doesNotMatch(all, /\/trip\/offline\//);
+  assert.match(all, /\/trip\/notes\/lunch\.md/);
+  assert.doesNotMatch(await run('list', { path: '/trip' }), /offline/);
+  assert.deepEqual((await run('search', { query: 'nepenthe' })).split('\n').slice(1).map((r) => r.split('\t')[0]), ['/trip/notes/lunch.md']);
+  assert.match(await run('list', { path: '/trip/offline/' }), /\/trip\/offline\/osm\/o1\.json/);
+  assert.match(await run('search', { query: 'nepenthe', path: '/trip/offline' }), /\/trip\/offline\/osm\/o1\.json/);
+});
