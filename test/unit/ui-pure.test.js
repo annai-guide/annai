@@ -407,3 +407,14 @@ test("the live chip during a simulation, and where the user is by live mode's ow
   assert.equal(liveText({ ...live, simulating: false, activity: 'still' }), 'Live · stopped');
   assert.equal(knownFix({ ...live, clock: { now: () => fix.at + 3_600_000 } }), null);
 });
+
+test('Settings → Notifications offers what each state needs; when the phone took them away, Turn on notifications again (fix pass N3, spec §17 rule 3)', async () => {
+  const { buttonsFor } = await import('../../src/ui/screens/notifications.js');
+  const fine = { on: true, supported: 'yes', permission: 'granted', problem: null };
+  assert.deepEqual(buttonsFor(fine), ['off', 'test']);
+  assert.deepEqual(buttonsFor({ ...fine, on: false }), ['on']);
+  assert.deepEqual(buttonsFor({ ...fine, problem: { needsYou: true } }), ['on', 'off'], 'the phone dropped the subscription');
+  assert.deepEqual(buttonsFor({ ...fine, permission: 'denied' }), ['on', 'off'], 'notifications turned off in the phone\'s settings');
+  assert.deepEqual(buttonsFor({ ...fine, problem: { needsYou: false } }), ['off', 'test'], 'a passing problem needs nothing');
+  assert.deepEqual(buttonsFor({ ...fine, supported: 'install' }), []);
+});

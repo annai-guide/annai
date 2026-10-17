@@ -56,7 +56,7 @@ export const CALM_MS = 30_000;
 const HELLO = 'Notifications are on. Reminders come like this while annai is closed.';
 const AGAIN = 'Notifications are on again: reminders come like this while annai is closed.';
 const NO_CONNECTION = "This phone has no connection: annai sends its reminders to the relay once it's back.";
-const OFF_BY_PHONE = "The phone turned annai's notifications off, or they were turned off in its settings, so reminders don't reach a closed annai. Turn them on again in Settings → Notifications.";
+const OFF_BY_PHONE = "The phone turned annai's notifications off, or they were turned off in its settings, so reminders don't reach a closed annai. In Settings → Notifications, tap Turn on notifications.";
 
 /**
  * Whether a reminder's time moved enough to move it at the relay (choice 2): 5 minutes earlier (a

@@ -277,6 +277,7 @@ test('the phone dropped the subscription: with permission, annai subscribes agai
     await k.mirror.sync();
     assert.equal(k.notices.length, 1);
     assert.match(k.notices[0].body, /Settings → Notifications/);
+    assert.match(k.notices[0].body, /tap Turn on notifications/, 'the button that screen offers then (fix pass N3)');
     const st = await k.mirror.status();
     assert.equal(st.problem?.needsYou, true);
   } finally {
