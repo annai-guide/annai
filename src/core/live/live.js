@@ -117,7 +117,7 @@ export class Live {
   #held = [];
   /** @type {number | null} when the connection went */
   #offlineSince = null;
-  /** @type {Set<() => void>} */
+  /** @type {Set<(level: 'calm' | 'prompt' | 'urgent') => void>} */
   #reminderChanges = new Set();
   /** The watches and the plan are loaded (start). */
   #loaded = false;
@@ -159,7 +159,10 @@ export class Live {
       this.ws.onChange((c) => this.#changed(c)),
       this.agent.on('event', (e) => this.#heard(e)),
       // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3).
-      this.agent.on('open', () => this.#bg(() => this.#check())),
+      this.agent.on('open', () => this.#bg(async () => {
+        await this.#check();
+        this.#tellReminders('prompt');
+      })),
       this.registry.onChange(() => this.#sensors()),
     );
     await this.#run(async () => {
@@ -301,7 +304,7 @@ export class Live {
       const m = this.#moment();
       this.#memFor(type, stored, scope, m); // it starts from where the user is now: set while inside, enter doesn't fire
       this.#schedule(m);
-      this.#tellReminders();
+      this.#tellReminders('prompt');
       return w;
     });
   }
@@ -377,7 +380,7 @@ export class Live {
     });
   }
 
-  /** Hears when what reminders() says may have changed. @param {() => void} fn @returns {() => void} */
+  /** Hears when what reminders() says may have changed, and how much (#tellReminders). @param {(level: 'calm' | 'prompt' | 'urgent') => void} fn @returns {() => void} */
   onReminders(fn) {
     this.#reminderChanges.add(fn);
     return () => { this.#reminderChanges.delete(fn); };
@@ -390,7 +393,7 @@ export class Live {
       const prefix = `${scope}\n`;
       for (const k of [...this.#mem.keys()]) if (k.startsWith(prefix)) this.#mem.delete(k);
       for (const k of [...this.#fired.keys()]) if (k.startsWith(prefix)) this.#fired.delete(k);
-      this.#tellReminders();
+      this.#tellReminders('urgent');
     });
   }
 
@@ -497,10 +500,14 @@ export class Live {
     }
   }
 
-  #tellReminders() {
+  /**
+   * Tells what may have changed in reminders(): calm, times may have moved; prompt, a reminder came or
+   * changed; urgent, one went (said, cancelled, its trip removed). @param {'calm' | 'prompt' | 'urgent'} level
+   */
+  #tellReminders(level) {
     for (const fn of this.#reminderChanges) {
       try {
-        fn();
+        fn(level);
       } catch (e) {
         console.warn('a reminders listener failed', e);
       }
@@ -756,11 +763,13 @@ export class Live {
       this.#bg(async () => {
         await this.#loadScope(c.scope);
         await this.#check();
+        this.#tellReminders('prompt');
       });
     } else if (c.scope === this.#trip && (PLAN_FILE.test(c.path) || BOOKING_FILE.test(c.path))) {
       this.#bg(async () => {
         await this.#loadPlan();
         await this.#check();
+        this.#tellReminders('prompt');
       });
     }
   }
@@ -916,7 +925,8 @@ export class Live {
     }
     if (fired.length) await this.#fire(fired, m.now);
     this.#schedule(m);
-    this.#tellReminders();
+    // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
+    this.#tellReminders(fired.length ? 'urgent' : 'calm');
   }
 
   /** @param {string} scope @param {Watch} watch @param {TriggerType} type @param {Firing} firing @param {number} now @returns {Fired} */
@@ -1057,7 +1067,7 @@ export class Live {
     this.#watches.set(scope, (this.#watches.get(scope) ?? []).filter((x) => x.id !== w.id));
     this.#mem.delete(this.#key(scope, w.id));
     if (await this.#exists(scope)) await removeWatch(this.ws, scope, w, author);
-    this.#tellReminders();
+    this.#tellReminders('urgent');
   }
 
   /** One timer, for the next due watch (spec §11.2); while live, at least once a minute. Off screen, none. @param {Moment} m */
