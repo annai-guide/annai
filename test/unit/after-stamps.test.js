@@ -62,3 +62,24 @@ test("stamps in words, and a trip's stamps read from its log for its card (spec 
   const { tripStamps } = await import('../../src/ui/stamps.js');
   assert.deepEqual((await tripStamps({ store: k.store, ws: k.ws }, k.trip)).map((s) => s.name), ['Nepenthe']);
 });
+
+test("each stamp's day is the day where it was earned: its arrival names its zone, and the trip's first zone is only for entries that don't", async () => {
+  const TOKYO = 'Asia/Tokyo';
+  const kyoto = place('Kiyomizu-dera', { lat: 34.9949, lng: 135.785 });
+  // Two visits in Kyoto, at 07:00 and 23:30 on Dec 1, Tokyo time: one day there, two days in Los Angeles (the trip's first zone).
+  const log = [
+    { ts: Date.parse('2026-12-01T07:00:00+09:00'), data: { type: 'plan', event: 'arrived', place: kyoto, tz: TOKYO } },
+    { ts: Date.parse('2026-12-01T23:30:00+09:00'), data: { type: 'arrived', place: kyoto, tz: TOKYO } },
+  ];
+  assert.equal(stampsOf(log, LA).length, 1);
+  assert.equal(stampsOf(log.map((e) => ({ ...e, data: { ...e.data, tz: undefined } })), LA).length, 2, 'without its zone, the trip\'s first');
+});
+
+test("live mode writes an arrival's zone as it fires: the plan item's, else the phone's", async () => {
+  const k = await liveKit({ plan: { nepenthe: { title: 'Dinner at Nepenthe', fixed: false, start: { at: iso('10:00'), tz: 'America/Denver' }, place: { name: 'Nepenthe', ...NEPENTHE } } } });
+  await k.live.setWatch(k.trip, { when: { type: 'arrived', minutes: 5 }, repeat: true, fallback: 'Here.' });
+  await k.drive(RIVER_INN, NEPENTHE, at('09:50'), at('10:00'));
+  await k.stay(NEPENTHE, at('10:00'), at('10:10'));
+  const zones = (await k.events(['trigger.fired'])).filter((e) => isArrival(e.data)).map((e) => [e.data.type, e.data.tz]);
+  assert.deepEqual(zones, [['plan', 'America/Denver'], ['arrived', LA]]);
+});
