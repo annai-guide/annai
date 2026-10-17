@@ -260,12 +260,15 @@ export function toolOutput(result) {
 
 /** The blank a key's place shows. */
 export const KEY_BLANK = '«key»';
+/** Lowercase words, joined by - _ or .: model-context-protocol, internationalization. */
+const WORDS = /^[a-z]+(?:[-_.][a-z]+)*$/;
 /**
- * A part of an address that may be a key (the coordinator's third finding): 8 characters or more mixing
- * letters and digits, or 32 or more, so ordinary words such as model-context-protocol stay (fix pass 8c-2).
+ * A part of an address that may be a key (the coordinator's third finding; fix pass 8c-2): 12 or more
+ * digits, or a part that isn't words and is 16 or more characters, or 8 or more mixing letters and
+ * digits. Words stay at any length.
  * @param {string} v
  */
-const keyLike = (v) => v.length >= 32 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v));
+const keyLike = (v) => /^\d{12,}$/.test(v) || (!WORDS.test(v) && (v.length >= 16 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v))));
 
 /**
  * An address as annai shows and keeps it, and the keys in it (the coordinator's third finding): every
