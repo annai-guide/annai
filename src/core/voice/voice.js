@@ -138,7 +138,7 @@ export class Voice {
   async sample(modelId, text) {
     const platform = this.platform;
     if (!platform) throw new Error("This browser can't play sound here.");
-    platform.session('transient');
+    platform.session('playback');
     const { clip } = await this.llm.synthesize({ modelId, text, scope: this.scope });
     return platform.player.play(clip, { signal: new AbortController().signal, onLevel: (x) => this.#level(x, 'her') });
   }

@@ -33,7 +33,7 @@ test('speak plays as the reply streams in, sentence by sentence, then listens; t
   assert.deepEqual(k.transcribed, ['m-hear']);
   assert.equal(k.agent.state.name, 'sleeping');
   assert.equal(mics(k).at(-1), 'mic close');
-  assert.deepEqual(k.platform.sessions, ['transient', 'play-and-record', 'transient', 'playback']);
+  assert.deepEqual(k.platform.sessions, ['playback', 'play-and-record', 'playback', 'playback']);
 });
 
 test('sleep in the same reply: she speaks and does not listen; the microphone never opens (spec §7.1)', async () => {
