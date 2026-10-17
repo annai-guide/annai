@@ -8,6 +8,7 @@ import { fetchPackage, PLUGIN_MAX_BYTES } from '../../core/packages.js';
 import { readZip } from '../../core/zip.js';
 import { tracedFetch } from '../../core/agent/net.js';
 import { SYS } from '../../core/scopes.js';
+import { renderPlugin } from './plugin.js';
 
 const message = (/** @type {any} */ e) => String(e?.message ?? e);
 const NOT_INSTALLABLE = "That file isn't something annai can install";
@@ -15,9 +16,11 @@ const NOT_INSTALLABLE = "That file isn't something annai can install";
 /**
  * Settings → Plugins (spec §5.3): what is installed, with updates; installing from a file, an
  * address or annai's catalog. A file or an address goes to the install screen first (choice 8).
- * @param {any} ctx
+ * A plugin's own page is #/plugins/<id> (milestone 8b, choice 11).
+ * @param {any} ctx @param {{ parts?: string[] }} [route]
  */
-export async function renderPlugins(ctx) {
+export async function renderPlugins(ctx, route) {
+  if (route?.parts?.[1]) return renderPlugin(ctx, route.parts[1]);
   const rows = await ctx.plugins.describe();
   const updates = [...await officialUpdates(ctx.plugins).catch(() => []), ...await knownAddressUpdates(ctx.plugins).catch(() => [])];
   const catalog = await officialPlugins().catch(() => null);
@@ -125,8 +128,14 @@ function catalogRow(ctx, entry) {
     }, 'Install')));
 }
 
+/** The update offered for a plugin now, if any. @param {any} ctx @param {string} id */
+export async function updateFor(ctx, id) {
+  const all = [...await officialUpdates(ctx.plugins).catch(() => []), ...await knownAddressUpdates(ctx.plugins).catch(() => [])];
+  return all.find((u) => u.id === id);
+}
+
 /** @param {any} r */
-function stateOf(r) {
+export function stateOf(r) {
   if (r.builtin) return 'Built in';
   if (r.restart) return 'Restart annai to run the new version';
   if (r.problem) return `Can't start: ${r.problem}`;
@@ -137,13 +146,18 @@ function stateOf(r) {
 
 /** @param {any} ctx @param {any} r @param {any} [update] */
 function row(ctx, r, update) {
-  const on = r.enabled && !r.failing;
   return h('li', { class: 'card' },
-    h('span', { class: 'name', text: [r.name, r.shownVersion].filter(Boolean).join(' ') }),
+    h('a', { class: 'name', href: `#/plugins/${encodeURIComponent(r.id)}`, text: [r.name, r.shownVersion].filter(Boolean).join(' ') }),
     h('span', { class: 'sub', text: stateOf(r) }),
     r.builtin ? null : h('span', { class: 'sub', text: [r.kind === 'skill' ? 'Skill' : null, sourceLine(r)].filter(Boolean).join(' · ') }),
     r.description ? h('p', { class: 'sub', text: r.description }) : null,
-    r.builtin ? null : h('div', { class: 'acts' },
+    r.builtin ? null : pluginActions(ctx, r, update));
+}
+
+/** Update, Restart, Turn off or on, and Remove, for an installed plugin. @param {any} ctx @param {any} r @param {any} [update] */
+export function pluginActions(ctx, r, update) {
+  const on = r.enabled && !r.failing;
+  return h('div', { class: 'acts' },
       update ? h('button', {
         class: 'btn pri', type: 'button',
         onclick: async () => {
@@ -169,6 +183,6 @@ function row(ctx, r, update) {
         } catch (e) {
           if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name} wasn't removed`, body: `${message(e)} Try again.` });
         }
-        ctx.render();
-      })));
+        ctx.go('#/plugins');
+      }));
 }

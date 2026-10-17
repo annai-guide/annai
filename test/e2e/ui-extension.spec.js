@@ -108,3 +108,36 @@ test("Shiori shows a plugin's kind of card: the plugin draws it, and its label n
     await llm.stop();
   }
 });
+
+test("a plugin's page saves the settings its schema asks for; a secret is kept as one and never shown", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
+    await page.getByRole('link', { name: 'Trail UI' }).click();
+    await expect(page.getByRole('heading', { name: 'Trail UI' })).toBeVisible();
+    await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
+    await page.getByLabel('Trailhead').fill('Pfeiffer Big Sur');
+    await page.getByLabel('Token').fill('trail-secret-123456');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Saved.')).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel('Trailhead')).toHaveValue('Pfeiffer Big Sur');
+    await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
+    expect(await page.content()).not.toContain('trail-secret-123456');
+    const stored = await page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const store = await createIdbStore();
+      const out = { file: await new Workspace(store).readText('sys:settings', '/plugin-settings/trail-ui.json'), secret: await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret('plugin:trail-ui:token')) };
+      store.close();
+      return out;
+    });
+    expect(stored.file).toContain('Pfeiffer Big Sur');
+    expect(stored.file).not.toContain('trail-secret-123456');
+    expect(stored.secret).toBe('trail-secret-123456');
+  } finally {
+    await llm.stop();
+  }
+});

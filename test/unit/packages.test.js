@@ -50,6 +50,7 @@ test('packages annai refuses, each with the reason', async () => {
     [{ 'annai-plugin.json': MANIFEST({ files: ['gone.js'] }) }, /gone\.js.*missing/],
     [{ 'annai-plugin.json': MANIFEST(), 'a\\b.js': 'x' }, /"a\\b\.js" isn't allowed/],
     [{ 'annai-plugin.json': MANIFEST({ entry: 'index.js' }) }, /entry file index\.js is missing/],
+    [{ 'annai-plugin.json': MANIFEST({ settings: { type: 'object' } }) }, /settings must be a JSON Schema object with properties/],
   ];
   for (const [f, why] of cases) await assert.rejects(inspectPackage(files(f)), (e) => e instanceof PluginError && why.test(/** @type {Error} */ (e).message), String(why));
   await assert.rejects(inspectPackage(files({ 'SKILL.md': SKILL, 'big.txt': 'x'.repeat(5000) }), { maxBytes: 4000 }), /too large/);
