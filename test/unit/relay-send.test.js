@@ -43,16 +43,16 @@ test('several reminders, each at its own time; the alarm moves on to the next', 
   assert.deepEqual(await k.stored(), ['confirmed', 'jwt']);
 });
 
-test('a subscription that is gone (410 or 404): everything waiting for it goes at once, and nothing is tried again', async () => {
+test('a subscription that is gone (410 or 404): everything waiting for it goes at once, however many (Cloudflare takes 128 keys a call), and nothing is tried again', async () => {
   for (const status of [410, 404]) {
     const k = await relayKit({ statuses: [status] });
     await k.confirm();
     await k.confirm('https://fcm.googleapis.com/fcm/send/other');
-    for (const m of [10, 11, 12]) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + m * MIN }), token: token() });
+    for (let i = 0; i < 70; i++) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + 10 * MIN + i * 1000, payload: toB64u(new Uint8Array(200)) }), token: token() });
     await k.call('POST', '/v1/schedule', { body: k.reminder({ endpoint: 'https://fcm.googleapis.com/fcm/send/other', sendAt: k.now() + 11 * MIN }), token: token() });
     await k.after(10 * MIN);
     assert.equal(k.sent.length, 1, String(status));
-    assert.deepEqual(await k.stored(), [], 'all three of its reminders deleted, and its confirmation');
+    assert.deepEqual(await k.stored(), [], 'all 70 of its reminders deleted, and its confirmation');
     assert.equal(await k.alarm(), null);
     await k.after(2 * MIN);
     assert.equal(k.sent.length, 2, "another subscription's reminder still goes");
@@ -149,4 +149,39 @@ test('the whole way in Node: the page encrypts, the relay keeps it, and at its t
   } finally {
     await service.stop();
   }
+});
+
+test('a reminder due now for a gone subscription with many waiting: 410 in plain words, never a 500, and nothing left', async () => {
+  const k = await relayKit({ statuses: [201, 410] });
+  await k.confirm();
+  for (let i = 0; i < 70; i++) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + 10 * MIN + i * 1000, payload: toB64u(new Uint8Array(200)) }), token: token() });
+  assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() }), token: token() })).status, 201);
+  const gone = await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() }), token: token() });
+  assert.equal(gone.status, 410);
+  assert.deepEqual(await k.stored(), []);
+  assert.equal(await k.alarm(), null);
+});
+
+test("the relay's own failure in an alarm: tried again a minute later, then two, four… at most an hour apart, and calm again once it works", async () => {
+  const k = await relayKit();
+  await k.confirm();
+  await k.call('POST', '/v1/schedule', { body: k.reminder(), token: token() });
+  const o = /** @type {any} */ (await k.object(ENDPOINT));
+  const list = o.storage.list.bind(o.storage);
+  let broken = true;
+  o.storage.list = async (/** @type {any} */ x) => { if (broken) throw new Error('storage is down'); return list(x); };
+  /** @type {number[]} */
+  const waits = [];
+  await k.after(10 * MIN);
+  for (let i = 0; i < 9; i++) {
+    waits.push((await k.alarm()) - k.now());
+    await k.after(/** @type {number} */ (await k.alarm()) - k.now());
+  }
+  assert.deepEqual(waits.map((w) => w / MIN), [1, 2, 4, 8, 16, 32, 60, 60, 60]);
+  broken = false;
+  await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + MIN }), token: token() });
+  await k.after(MIN);
+  assert.equal(k.sent.length, 1, 'once the relay works again, a reminder goes (the first expired meanwhile, and was dropped)');
+  assert.deepEqual(await k.waiting(), []);
+  assert.equal((await k.stored()).includes('fails'), false, 'the count of failures is forgotten');
 });
