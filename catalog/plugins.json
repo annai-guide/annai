@@ -57,6 +57,20 @@
         "git.js": "fe62d15bd1b8679ba15cbadd43cea1741c4df1b65a6500a803ceef737660ce80",
         "index.js": "22e98d24063e0fa0b88b209aae0c571df97d7db8fe6cc9fdbdf8469850d7dce0"
       }
+    },
+    {
+      "id": "storage-s3",
+      "name": "S3-compatible storage",
+      "version": "0.1.0",
+      "provides": {
+        "storage-type": [
+          "s3"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "149cfca2f71b4e04b6d7d8c7ef962c82ba9b853264e51644dfa4f899078c6c5e",
+        "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
+      }
     }
   ]
 }
