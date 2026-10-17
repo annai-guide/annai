@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { liveKit, at, iso, LA, MONTEREY, RIVER_INN, NEPENTHE } from './live-kit.js';
+import { liveKit, fakeAgent, at, iso, LA, MONTEREY, RIVER_INN, NEPENTHE } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { createTrip, setTripStatus } from '../../src/core/scopes.js';
+import { ManualClock } from '../../src/core/live/clock.js';
+import { Registry } from '../../src/core/registry.js';
 
 const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
 const TEA = { title: 'Tea at the inn', fixed: true, start: { at: iso('16:00'), tz: LA } };
@@ -189,4 +191,23 @@ test("archiving a trip takes its reminders out of what a closed annai can say at
   await k.live.tripsChanged();
   assert.deepEqual(await scopes(), [w.id, 'plan:tea:coming-up']);
   k.live.dispose();
+});
+
+test('annai starting off screen says nothing on screen: its catch-up firings are not said, so their notifications are no doubles (fix pass L3)', async () => {
+  const k = await liveKit({ live: false });
+  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  k.live.dispose();
+  // annai starts again at 10:30 in the background (a notification tap that hasn't brought it forward yet).
+  const clock = new ManualClock(at('10:30'));
+  const agent = fakeAgent(k.trip);
+  const registry = new Registry();
+  registry.add('test', 'sensor', { kind: 'visibility', start: (/** @type {(v: boolean) => void} */ emit) => { emit(false); return () => {}; } });
+  const live = new Live({ store: k.store, ws: k.ws, registry, agent, clock, timeZone: () => LA });
+  await live.start();
+  await live.settled();
+  assert.equal(live.shown, false);
+  assert.ok(agent.wakes.some((x) => x.kind === 'catch-up'), 'the catch-up still tells Shiori');
+  const doubles = await live.pushNews([{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:30:20') }]);
+  assert.deepEqual(doubles, []);
+  live.dispose();
 });
