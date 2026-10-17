@@ -26,8 +26,10 @@ export async function renderVoice(ctx) {
   };
   const modeStatus = h('p', { class: 'sub', role: 'status', text: voice.on ? 'Voice is on.' : 'Voice is off.' });
   const mode = radios('Voice', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], s.mode, async (m) => {
-    await save({ mode: m });
+    // A choice here teaches Auto, as one on the chip does (spec §10.5).
+    await voice.choose(m);
     modeStatus.textContent = voice.on ? 'Voice is on.' : 'Voice is off.';
+    ctx.notices.toast('Saved');
   });
   const silence = h('input', { id: 'voice-silence', type: 'number', min: '2', max: '60', step: '1', value: String(s.silenceSeconds) });
   silence.addEventListener('change', () => {
@@ -140,7 +142,7 @@ export async function renderVoice(ctx) {
     h('h1', { class: 'title', text: 'Voice' }),
     h('p', { class: 'sub', text: 'How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.' }),
     section('On or off',
-      h('p', { class: 'sub', text: 'On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. Auto works out which (in the car, with headphones) in the next version; until then it is Off.' }),
+      h('p', { class: 'sub', text: 'Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. The chip on the dock changes it too.' }),
       mode, modeStatus,
       h('div', { class: 'row' }, field('Listen for an answer (seconds)', silence), field('Wait for her first words (seconds)', firstWords))),
     section("Shiori's voice",

@@ -1,6 +1,7 @@
 import { h } from './dom.js';
 import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
+import { voiceChip } from './voice-chip.js';
 
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
@@ -71,11 +72,37 @@ export function createDock(ctx) {
     if ((who === 'her' && s === 'speaking') || (who === 'you' && s === 'hearing')) avatar.setLevel(x, who);
   });
   avatar.setState(ctx.agent.state.name);
+  // Voice (spec §10.5, §16.2): the chip, "Show what she's saying", and a larger dock while voice is on.
+  const chip = ctx.voice ? voiceChip(ctx) : null;
+  const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true });
+  let lastSaid = '';
+  const showWords = h('button', {
+    class: 'chip', type: 'button', 'aria-expanded': 'false', hidden: !ctx.voice?.on,
+    onclick: () => {
+      caption.hidden = !caption.hidden;
+      caption.textContent = lastSaid || 'She hasn’t said anything yet.';
+      showWords.setAttribute('aria-expanded', String(!caption.hidden));
+    },
+  }, "Show what she's saying");
+  ctx.agent.on('event', (/** @type {any} */ e) => {
+    if (e.type !== 'out.speak' || !e.data?.voice) return;
+    lastSaid = String(e.data.text ?? '');
+    if (!caption.hidden) caption.textContent = lastSaid;
+  });
   const el = h('nav', { class: 'dock', 'aria-label': 'Shiori' },
+    chip ? h('div', { class: 'voice-row' }, chip.el, showWords) : null, caption,
     sheet,
     h('div', { class: 'dock-row' },
       h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: '◉' })), camera,
       talk,
       h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: '⌨' }))));
+  /** @param {{ on: boolean }} m */
+  const layout = (m) => {
+    el.classList.toggle('voice', m.on);
+    showWords.hidden = !m.on;
+    if (!m.on) caption.hidden = true;
+  };
+  ctx.voice?.onChange(layout);
+  if (ctx.voice) layout(ctx.voice.mode);
   return { el, avatar };
 }
