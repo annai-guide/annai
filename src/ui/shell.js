@@ -17,10 +17,11 @@ import { renderTools } from './screens/tools.js';
 import { renderPlan } from './screens/plan.js';
 import { renderBooking } from './screens/booking.js';
 import { renderVoice } from './screens/voice.js';
+import { renderNow } from './screens/now.js';
 import { createDock } from './dock.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow };
 
 /**
  * @param {HTMLElement} root
@@ -29,7 +30,7 @@ const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settin
 export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
-  const links = [['#/trips', 'Trips'], ['#/plan', 'Plan'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
+  const links = [['#/now', 'Now'], ['#/trips', 'Trips'], ['#/plan', 'Plan'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
   const header = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
     h('nav', { class: 'topnav', 'aria-label': 'Main' }, ...links));
@@ -48,7 +49,7 @@ export function startShell(root, core) {
   async function render() {
     const my = ++seq;
     const route = parseHash(location.hash);
-    const section = route.name === 'plan' ? 'plan' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
+    const section = route.name === 'plan' ? 'plan' : route.name === 'drive' ? 'now' : route.parts[0] === 'trip' ? 'trips' : route.parts[0];
     for (const a of links) {
       if (a.getAttribute('href') === `#/${section}`) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');

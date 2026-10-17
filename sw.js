@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '194b2f8e9690';
+const BUILD = '84431552ab64';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -83,6 +83,7 @@ const SHELL = [
   '/src/core/imports.js',
   '/src/core/links.js',
   '/src/core/lock.js',
+  '/src/core/now.js',
   '/src/core/patch.js',
   '/src/core/photo-meta.js',
   '/src/core/pkpass.js',
@@ -159,6 +160,7 @@ const SHELL = [
   '/src/ui/screens/import.js',
   '/src/ui/screens/model.js',
   '/src/ui/screens/models.js',
+  '/src/ui/screens/now.js',
   '/src/ui/screens/plan.js',
   '/src/ui/screens/plugins.js',
   '/src/ui/screens/settings.js',
@@ -174,6 +176,7 @@ const SHELL = [
   '/src/ui/speech-check.js',
   '/src/ui/storage-full.js',
   '/src/ui/talk-panel.js',
+  '/src/ui/trip-rows.js',
   '/src/ui/tokens.css',
   '/src/ui/unlock.js',
   '/src/ui/voice-chip.js',

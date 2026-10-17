@@ -209,3 +209,44 @@ export async function fakeMicrophone(page, clips) {
     };
   }, data);
 }
+
+/** Starts a trip from the Trips screen and returns its id. @param {import('@playwright/test').Page} page @param {string} title */
+export async function startTrip(page, title) {
+  await page.getByLabel('Trip name').fill(title);
+  await page.getByRole('button', { name: 'Start trip' }).click();
+  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  return decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+}
+
+/**
+ * Writes trip records through annai's own modules in the page, with no format check (so a broken
+ * file can be written too); patches merge into existing JSON. author: who wrote them (the user's by default).
+ * @param {import('@playwright/test').Page} page @param {string} trip
+ * @param {{ write?: Record<string, any>, text?: Record<string, string>, patch?: Record<string, any>, author?: string }} c
+ */
+export async function writeRecords(page, trip, c) {
+  await page.evaluate(async ({ trip, c }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const author = c.author ?? 'user';
+    for (const [path, value] of Object.entries(c.write ?? {})) await ws.write(trip, path, value, { author });
+    for (const [path, value] of Object.entries(c.text ?? {})) await ws.write(trip, path, value, { author, type: 'text/plain' });
+    for (const [path, value] of Object.entries(c.patch ?? {})) await ws.patch(trip, path, value, { author });
+    store.close();
+  }, { trip, c });
+}
+
+/** Appends an entry to a scope's log through annai's own modules in the page. @param {import('@playwright/test').Page} page @param {string} scope @param {{ type: string, data: any }} ev */
+export async function writeEvent(page, scope, ev) {
+  await page.evaluate(async ({ scope, ev }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { logEvent } = await load('/src/core/events.js');
+    const store = await createIdbStore();
+    await logEvent(store, scope, { type: ev.type, actor: 'system', data: ev.data });
+    store.close();
+  }, { scope, ev });
+}
