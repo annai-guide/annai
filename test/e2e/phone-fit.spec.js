@@ -12,8 +12,10 @@ for (const width of [320, 420]) {
     /** @type {string[]} */
     const wide = [];
     for (const s of SCREENS) {
-      await page.evaluate((hash) => { location.hash = hash; }, s);
-      await page.waitForTimeout(300);
+      // Wait for this screen to be drawn, not a fixed time: a slow screen would pass without being looked at.
+      await page.evaluate((hash) => { document.querySelector('main')?.firstElementChild?.setAttribute('data-old', ''); location.hash = hash; }, s);
+      await page.waitForFunction(() => document.querySelector('main')?.firstElementChild && !document.querySelector('main > [data-old]'));
+      await page.waitForTimeout(100);
       const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (over > 0) wide.push(`${s} by ${over}px`);
     }
@@ -109,4 +111,45 @@ test('Settings → Shiori shows every way she can look, with the words the dock 
     .toEqual(['sleeping', 'listening', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline'].map((s) => `${s}=${s}`));
   await expect(page.getByRole('img', { name: 'Shiori, thinking' })).toBeVisible();
   await expect(looks.nth(0)).toContainText('Tap to talk');
+});
+
+test("a code block in Shiori's words wraps instead of widening the page", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await openApp(page, '#/talk');
+  const over = await page.evaluate(async () => {
+    const url = '/src/ui/markdown.js'; // the app's own module, in the page
+    const { renderMarkdown } = await import(url);
+    document.querySelector('main .screen')?.append(renderMarkdown(`Your stops:\n\n\`\`\`\n${'Big Sur Station -> Pfeiffer Beach -> McWay Falls -> '.repeat(4)}\n\`\`\``));
+    return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+  });
+  expect(over).toBe(0);
+});
+
+test('where you were survives a reload: Back after one still brings you there', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/settings');
+  await page.evaluate(() => scrollTo(0, 900));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(600);
+  const was = await page.evaluate(() => scrollY);
+  await page.evaluate(() => { location.hash = '#/models'; });
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(was - 3);
+});
+
+test('a Settings page belongs to the Settings tab, and swiping from it moves along the top bar', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/models');
+  const current = page.locator('.topnav a[aria-current="page"]');
+  await expect(current).toHaveText('Settings');
+  await page.evaluate(() => {
+    const main = /** @type {HTMLElement} */ (document.querySelector('main'));
+    const opts = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: 300, pointerId: 7 });
+    main.dispatchEvent(new PointerEvent('pointerdown', opts(100)));
+    main.dispatchEvent(new PointerEvent('pointerup', opts(280)));
+  });
+  await expect(current).toHaveText('Trace');
 });

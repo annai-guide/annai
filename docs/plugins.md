@@ -142,6 +142,8 @@ Every drawing function gets an element annai made, and a `ui` object:
 
 A drawing may return a cleanup function, which annai calls when it draws that place again. A drawing that throws counts against your plugin as a tool's crash does; its element stays empty, and the rest of the screen draws.
 
+Swiping sideways on a screen moves along annai's top bar. Something of yours that scrolls sideways keeps its swipes; for any other sideways gesture of your own (a slider you draw, a map), give its element the class `no-swipe`.
+
 To change what a chip or a section shows, keep the element it was given and change it in place from your own code (a timer, `ui.live.onChange`, a hook), until its cleanup runs. Don't register it again for that: each registration, and each removal, makes annai draw the screen and the dock again.
 
 - **Slots,** `annai.ui.slot(slot, item)`; every item has an `id` (lowercase letters, digits and dashes):
