@@ -343,3 +343,32 @@ test("minors 6 and 7: headers annai sets itself are refused, and so is a token o
     await s.stop();
   }
 });
+
+test("fix pass R2: a server added again with no key never gets the key a failed remove left this session", async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    const KEY = 'zap1a2b3c4d5e6f7g8h9';
+    await k.servers.add({ name: 'trail', url: `${s.origin}/api/s/${KEY}/mcp`, token: TOKEN });
+    // The remove fails at its last step, forgetting the secret: it stays until the next start.
+    const tx = k.store.tx.bind(k.store);
+    k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => {
+      if (mode !== 'readwrite' || !stores.includes('secrets')) return tx(stores, mode, fn);
+      k.store.tx = tx;
+      return Promise.reject(new Error('The disk is full.'));
+    });
+    await assert.rejects(k.servers.remove('trail'), /disk is full/);
+    assert.ok(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), 'the stale secret is there');
+    const asked = s.requests.length;
+    await k.servers.add({ name: 'trail', url: s.url });
+    const sent = s.requests.slice(asked);
+    assert.ok(sent.length > 0);
+    assert.ok(sent.every((r) => r.headers.authorization === undefined), 'no Authorization header');
+    assert.ok(sent.every((r) => r.path === '/mcp'), 'the address as typed, no old key in it');
+    assert.doesNotMatch(JSON.stringify(sent), new RegExp(`${KEY}|${TOKEN}`));
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), undefined);
+    assert.equal(await k.call('mcp_trail_whoami', {}), 'You sent: nothing');
+  } finally {
+    await s.stop();
+  }
+});
