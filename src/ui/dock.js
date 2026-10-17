@@ -8,6 +8,7 @@ import { component, mount, cleanUp, slotEntries, runAction, made } from './slots
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
  * her while she works or speaks (§6.7, §10.4), and starts listening while she rests with voice on; with voice off it opens typing.
+ * dispose() lets go of everything it listens to, for a dock made again (minors 13).
  * @param {any} ctx
  */
 export function createDock(ctx) {
@@ -64,19 +65,22 @@ export function createDock(ctx) {
       if (ctx.agent.tap() === 'typing') openTyping();
     },
   }, avatar.el, label);
-  ctx.agent.on('state', (/** @type {any} */ s) => {
+  /** @type {((() => void) | undefined)[]} what it listens to, let go of by dispose() */
+  const offs = [];
+  offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
     avatar.setState(s.name);
     label.textContent = s.label;
-  });
+  }));
   // The glow follows the sound (spec §16.3): her voice while she speaks, yours while she hears you.
-  ctx.voice?.onLevel((/** @type {number} */ x, /** @type {'her' | 'you'} */ who) => {
+  offs.push(ctx.voice?.onLevel((/** @type {number} */ x, /** @type {'her' | 'you'} */ who) => {
     const s = ctx.agent.state.name;
     if ((who === 'her' && s === 'speaking') || (who === 'you' && s === 'hearing')) avatar.setLevel(x, who);
-  });
+  }));
   avatar.setState(ctx.agent.state.name);
   // Voice (spec §10.5, §16.2): the chip, "Show what she's saying", and a larger dock while voice is on.
   const chip = ctx.voice ? voiceChip(ctx) : null;
   const live = ctx.live ? liveChip(ctx) : null;
+  offs.push(chip?.dispose, live?.dispose);
   const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true });
   let lastSaid = '';
   const showWords = h('button', {
@@ -87,11 +91,11 @@ export function createDock(ctx) {
       showWords.setAttribute('aria-expanded', String(!caption.hidden));
     },
   }, "Show what she's saying");
-  ctx.agent.on('event', (/** @type {any} */ e) => {
+  offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
     if (e.type !== 'out.speak' || !e.data?.voice) return;
     lastSaid = String(e.data.text ?? '');
     if (!caption.hidden) caption.textContent = lastSaid;
-  });
+  }));
   // Plugins' status chips and dock actions (spec §16.4), drawn again whenever they change (refreshSlots).
   const pluginChips = h('span', { class: 'plugin-chips' });
   const pluginActions = h('span', { class: 'plugin-actions' });
@@ -125,10 +129,11 @@ export function createDock(ctx) {
     showWords.hidden = !m.on;
     if (!m.on) caption.hidden = true;
   };
-  ctx.voice?.onChange(layout);
+  offs.push(ctx.voice?.onChange(layout));
   if (ctx.voice) layout(ctx.voice.mode);
   return {
     el, avatar, refreshSlots,
+    dispose: () => { for (const off of offs.splice(0)) off?.(); },
     /** @param {boolean} on */
     setLarge(on) {
       large = on;
@@ -139,12 +144,30 @@ export function createDock(ctx) {
 
 /**
  * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art),
- * else annai's own. A plugin's that fails counts against it.
+ * else annai's own. A plugin's that fails counts against it: made, and each call after (minors 12),
+ * where three throws give annai's own back in its place.
  * @param {any} ctx
  */
 function dockAvatar(ctx) {
   const c = component(ctx, 'avatar');
   const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
     a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : 'its avatar create() must return el, setState and setLevel');
-  return a ? { glance() {}, blink() {}, ...a } : createAvatar({ size: 'dock' });
+  if (!a) return createAvatar({ size: 'dock' });
+  /** @type {any} annai's own, once theirs threw three times */
+  let own = null;
+  let throws = 0;
+  const call = (/** @type {string} */ name) => (/** @type {any[]} */ ...args) => {
+    if (own) return own[name](...args);
+    try {
+      if (typeof a[name] === 'function') a[name](...args);
+    } catch (e) {
+      ctx.registry?.fail(c.pluginId, `avatar ${name}`, e);
+      if (++throws < 3) return;
+      own = createAvatar({ size: 'dock' });
+      own.setState(ctx.agent.state.name);
+      own[name](...args);
+      /** @type {any} */ (a.el).replaceWith?.(own.el);
+    }
+  };
+  return { get el() { return own?.el ?? a.el; }, setState: call('setState'), setLevel: call('setLevel'), glance: call('glance'), blink: call('blink') };
 }

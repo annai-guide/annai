@@ -44,3 +44,25 @@ test('the stand-in can answer a call as an SSE stream, with a notification first
     await s.stop();
   }
 });
+
+test("minors 9: the stand-in checks what the reference SDK checks: Accept (406), MCP-Protocol-Version (400) and, when given its origins, Origin (403)", async () => {
+  const s = await startMcpServer({ origins: ['http://127.0.0.1:8790'] });
+  try {
+    const hello = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } };
+    const post = (/** @type {any} */ msg, /** @type {Record<string, string>} */ headers) => fetch(s.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(msg) });
+    assert.equal((await post(hello, { Accept: 'application/json' })).status, 406);
+    assert.equal((await post(hello, { Accept: 'text/event-stream' })).status, 406);
+    assert.equal((await post(hello, { Accept: 'application/json, text/event-stream', Origin: 'https://evil.example' })).status, 403);
+    const init = await post(hello, { Accept: 'application/json, text/event-stream', Origin: 'http://127.0.0.1:8790' });
+    assert.equal(init.status, 200);
+    const session = String(init.headers.get('mcp-session-id'));
+    const list = { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} };
+    const h = { Accept: 'application/json, text/event-stream', 'Mcp-Session-Id': session };
+    assert.equal((await post(list, { ...h, 'MCP-Protocol-Version': '2024-01-01' })).status, 400);
+    assert.equal((await post(list, { ...h, 'MCP-Protocol-Version': '2025-06-18' })).status, 200);
+    assert.equal((await post(list, h)).status, 200, 'none is taken as 2025-03-26, as the SDK does');
+    assert.equal((await fetch(s.url, { method: 'DELETE', headers: { 'Mcp-Session-Id': session, Origin: 'https://evil.example' } })).status, 403);
+  } finally {
+    await s.stop();
+  }
+});

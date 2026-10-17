@@ -246,6 +246,9 @@ function describe(c) {
   return { id: String(c?.sha ?? ''), at: Date.parse(String(c?.author?.date ?? c?.committer?.date ?? '')) || 0, ...(device ? { device } : {}), ...(label ? { label } : {}) };
 }
 
+/** A commit annai made: a backup. */
+const BACKUP = /^annai backup\b/;
+
 /** @param {G} g */
 const message = (g) => `annai backup from ${g.device.label}\n\nDevice: ${g.device.id}\nannai ${g.app}\n`;
 
@@ -272,8 +275,9 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
   if (parent) {
     const snap = await snapshot(g, parent);
     old = snap.files;
-    const remote = describe(snap.commit);
-    if (old.has(MANIFEST) && parent !== base && remote.device !== g.device.id) throw new E('newer', `There is a newer backup in ${g.repo}.`, { remote });
+    // A commit made by hand (a README edited on github.com) is no device's backup: the newest backup before it counts (minors 24).
+    const remote = BACKUP.test(String(snap.commit?.message ?? '')) ? describe(snap.commit) : (await list(g))[0] ?? describe(snap.commit);
+    if (old.has(MANIFEST) && remote.id !== base && remote.device !== g.device.id) throw new E('newer', `There is a newer backup in ${g.repo}.`, { remote });
     const foreign = [...new Set([...old.keys()].map(top))].filter((t) => !OURS.has(t) && !EXTRAS.test(t));
     if (foreign.length) {
       throw new E('refused', `${g.repo} holds other files (${foreign.slice(0, 3).join(', ')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
@@ -364,7 +368,7 @@ async function list(g) {
   /** @type {any[]} */
   const commits = await g.read(res, 'json', 'GitHub');
   if (!Array.isArray(commits)) throw unreadable(g);
-  return commits.filter((c) => isObject(c) && typeof c.sha === 'string' && /^annai backup\b/.test(String(c.commit?.message ?? '')))
+  return commits.filter((c) => isObject(c) && typeof c.sha === 'string' && BACKUP.test(String(c.commit?.message ?? '')))
     .map((c) => describe({ sha: c.sha, message: c.commit.message, author: c.commit.author, committer: c.commit.committer }));
 }
 

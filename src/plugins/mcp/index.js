@@ -30,6 +30,23 @@ const CALL_MS = 120_000;
 /** How long Remove waits for a server to end its session (fix pass 8c-3). */
 const END_MS = 5_000;
 const HEADER = /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):\s*(.*\S)\s*$/;
+/** Headers annai sends itself: one of the user's would break its answers, SSE ones first (minors 6). */
+const OWN = ['content-type', 'accept', 'mcp-protocol-version', 'mcp-session-id'];
+
+/** 1st, 2nd, 3rd, 4th, 11th, 21st. @param {number} n */
+const nth = (n) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+
+/**
+ * Refuses a value a web request can't carry in a header (minors 7), in words that say what is wrong:
+ * fetch refuses any character past U+00FF, and NUL, CR and LF, and annai would only say it couldn't reach the server.
+ * @param {string} value @param {string} what "The token"
+ */
+function sendable(value, what) {
+  const at = value.search(/[^\x01-\x09\x0b\x0c\x0e-\xff]/);
+  if (at < 0) return;
+  const code = /** @type {number} */ (value.codePointAt(at)).toString(16).toUpperCase().padStart(4, '0');
+  throw new Error(`${what} has a character a web request can't carry: U+${code}, its ${nth([...value.slice(0, at)].length + 1)}. Copy it again without it.`);
+}
 
 /**
  * @typedef {{ name: string, shown: string, auth: 'none' | 'token' | 'headers', tools: any[], more: number, added: number, refreshed: number }} Server
@@ -62,6 +79,8 @@ function readHeaders(text) {
     if (!line.trim()) continue;
     const m = HEADER.exec(line.trim());
     if (!m) throw new Error('Each header is one line: Name: value.');
+    if (OWN.includes(m[1].toLowerCase())) throw new Error(`annai sends ${m[1]} itself, so it can't be one of these headers. Leave that line out.`);
+    sendable(m[2], `The header ${m[1]}`);
     out[m[1]] = m[2];
   }
   return out;
@@ -117,7 +136,7 @@ export async function activate(annai) {
     return withoutSecrets(store, t);
   };
   const fileOf = (/** @type {string} */ name) => `${DIR}${name}.json`;
-  /** A server's client: its full address and its auth read from its secret, each time. @param {Server} config */
+  /** A server's client: its full address and its auth read from its secret, each time. @param {{ name: string, shown: string }} config */
   const clientFor = (config) => new McpClient({
     url: async () => fullAddress(config.shown, (await annai.secrets.get(config.name))?.keys ?? []),
     server: config.name,
@@ -243,8 +262,10 @@ export async function activate(annai) {
       const address = checkAddress(url);
       /** @type {Auth | null} */
       let auth = null;
-      if (token && String(token).trim()) auth = { token: String(token).trim() };
-      else if (headers && String(headers).trim()) auth = { headers: readHeaders(String(headers)) };
+      if (token && String(token).trim()) {
+        sendable(String(token).trim(), 'The token');
+        auth = { token: String(token).trim() };
+      } else if (headers && String(headers).trim()) auth = { headers: readHeaders(String(headers)) };
       // A key in the address goes to secrets with the auth, before any request, so the trace blanks it too.
       const { shown, keys } = addressParts(address);
       /** @type {ServerSecret} */
@@ -253,13 +274,18 @@ export async function activate(annai) {
       const own = [...keys, ...(auth?.token ? [auth.token] : Object.values(auth?.headers ?? {}))];
       adding.add(n);
       try {
-        if (keeps) await annai.secrets.set(n, record);
+        // Nothing to keep: a secret a failed remove left this session goes, so the check sends what was typed (fix pass R2).
+        await annai.secrets.set(n, keeps ? record : null);
         const forgetSecret = () => (keeps ? annai.secrets.set(n, null).catch(() => {}) : Promise.resolve());
+        // The client that checks the server is the one its tools use: one session, not one left behind (minors 2).
+        const client = clientFor({ name: n, shown });
         /** @type {any[]} */
         let tools;
         try {
-          tools = await listTools(new McpClient({ url: address, server: n, auth: async () => headersOf(auth) }), own);
+          tools = await listTools(client, own);
         } catch (e) {
+          const end = await client.ending().catch(() => null);
+          await end?.({ fetch: annai.net.fetch, signal: AbortSignal.timeout(END_MS) });
           await forgetSecret();
           throw e;
         }
@@ -272,7 +298,7 @@ export async function activate(annai) {
           await forgetSecret();
           throw e;
         }
-        register(config, clientFor(config), { removed: false });
+        register(config, client, { removed: false });
         return { tools: config.tools.length };
       } finally {
         adding.delete(n);

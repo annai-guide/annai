@@ -24,6 +24,31 @@ import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, t
  * @typedef {ReturnType<typeof createBackups>} Backups
  */
 
+/** The newest time of each device's backups in a listing, by that device's own clock (minors 23). @param {RemoteBackup[]} listed @returns {Record<string, number>} */
+function knownOf(listed) {
+  /** @type {Record<string, number>} */
+  const out = Object.create(null);
+  for (const b of listed) out[b.device ?? ''] = Math.max(out[b.device ?? ''] ?? 0, b.at);
+  return out;
+}
+
+/**
+ * The newest backup another device made after the one this device builds on, or null (single writer).
+ * Each listed is checked against the newest of its device's seen here (last.known), by that device's
+ * clock: one behind is still seen, one never seen is newer (minors 23). An older record knows its base's time.
+ * @param {RemoteBackup[]} listed newest first @param {import('./backup-targets.js').LastBackup | null | undefined} last
+ * @param {string} me @param {{ remote: RemoteBackup, known?: Record<string, number> } | null} [over] the hold the user backs
+ *   up over, which covers every device listed with it (fix pass R1)
+ */
+function newerOf(listed, last, me, over = null) {
+  const on = over?.remote ?? last;
+  /** @type {Record<string, number>} */
+  const known = Object.assign(Object.create(null), last?.known);
+  if (over) for (const [d, at] of [...Object.entries(over.known ?? {}), [over.remote.device ?? '', over.remote.at]]) known[d] = Math.max(known[d] ?? 0, Number(at) || 0);
+  const unknown = last && !last.known ? on?.at ?? -1 : -1;
+  return listed.find((b) => b.device !== me && b.id !== on?.id && b.at > (known[b.device ?? ''] ?? unknown)) ?? null;
+}
+
 /** How long annai waits after the count-th failure in a row before trying a place again: 15 minutes, doubling up to 6 hours. @param {number} count */
 export function retryDelay(count) {
   return Math.min(15 * 60_000 * 2 ** Math.max(0, count - 1), 6 * 3_600_000);
@@ -62,6 +87,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   const log = (type, data) => logEvent(store, SYS, { type, actor: 'system', data }).catch(() => {});
   /** @param {string} type */
   const typeOf = (type) => storageTypes(registry).get(type);
+  /** Whether a place keeps whole archive files. @param {Target} rec */
+  const whole = (rec) => typeOf(rec.type)?.stores === 'file';
 
   /** @param {string} id */
   async function target(id) {
@@ -119,7 +146,10 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     const at = now();
     /** @type {Hold} */
     let h;
-    if (e.kind === 'newer') h = { kind: 'newer', remote: await keptRemote(e.remote ?? { id: '', at }) };
+    if (e.kind === 'newer') {
+      const known = /** @type {any} */ (e).known;
+      h = { kind: 'newer', remote: await keptRemote(e.remote ?? { id: '', at }), ...(known ? { known } : {}) };
+    }
     else if (e.kind === 'large') h = { kind: 'large', bytes: e.bytes ?? 0, at };
     else {
       const count = rec.hold?.kind === 'error' ? rec.hold.count + 1 : 1;
@@ -131,15 +161,24 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     return e;
   }
 
+  /** What a place lists, as annai keeps it. @param {Target} rec */
+  async function listed(rec) {
+    const got = await call(rec, 'list', (t, c) => t.list(c));
+    return Promise.all((Array.isArray(got) ? got : []).map(keptRemote));
+  }
+
   /**
-   * Before a whole file is sent: its size against what may go without asking, and the place's
-   * newest backup (single writer). A git place checks both in its own put.
-   * @param {Target} rec @param {number} bytes @param {string | null} base @param {number} maxUpload @param {string} me
+   * Before a whole file is sent: its size against what may go without asking, and every backup the
+   * place lists (single writer); what it lists, for the record. A newer one is held with what was listed
+   * with it. A git place checks both in its own put.
+   * @param {Target} rec @param {number} bytes @param {Extract<Hold, { kind: 'newer' }> | null} over @param {number} maxUpload @param {string} me
    */
-  async function beforeFile(rec, bytes, base, maxUpload, me) {
+  async function beforeFile(rec, bytes, over, maxUpload, me) {
     if (bytes > maxUpload) throw new TargetError('large', `This backup would upload ${Math.ceil(bytes / 1_000_000)} MB.`, { bytes });
-    const [newest] = await call(rec, 'list', (t, c) => t.list(c));
-    if (newest && newest.id !== base && newest.device !== me) throw new TargetError('newer', `There is a newer backup at ${rec.name}.`, { remote: newest });
+    const there = await listed(rec);
+    const newer = newerOf(there, rec.last, me, over);
+    if (newer) throw Object.assign(new TargetError('newer', `There is a newer backup at ${rec.name}.`, { remote: newer }), { known: knownOf(there) });
+    return there;
   }
 
   /**
@@ -168,8 +207,9 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     emit();
     const started = now();
     try {
-      const base = over && rec.hold?.kind === 'newer' ? rec.hold.remote.id : rec.last?.id ?? null;
-      const file = typeOf(rec.type)?.stores === 'file';
+      const overHold = over && rec.hold?.kind === 'newer' ? rec.hold : null;
+      const base = overHold?.remote.id ?? rec.last?.id ?? null;
+      const file = whole(rec);
       const me = await deviceId(ws);
       // A whole-file place may keep its backups encrypted, with the API keys when the user chose (spec §12.2).
       const passphrase = file && rec.encrypt ? (await targetSecret(store, id)).passphrase : undefined;
@@ -178,7 +218,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         kind: 'everything', include: { ...PRESETS.backup }, app, now: Date.now(), ...(passphrase ? { passphrase, secrets: Boolean(rec.keys) } : {}),
       });
       const name = file ? backupFileName({ at: built.manifest.created, label, device: me, encrypted: Boolean(passphrase) }) : built.filename;
-      if (file) await beforeFile(rec, built.blob.size, base, maxUpload, me);
+      const there = file ? await beforeFile(rec, built.blob.size, overHold, maxUpload, me) : null;
       const result = await call(rec, 'put', (t, c) => t.put(c, { blob: built.blob, name, manifest: built.manifest }, {
         base, maxUpload, signal: stop.signal,
         onProgress: (p) => {
@@ -189,7 +229,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const at = Number.isFinite(result?.at) ? result.at : now();
       const made = await keptRemote({ id: result?.id, at });
       await recordBackup(store, built.seqs, at);
-      await setTarget(ws, id, { last: { id: made.id, at, seqs: Object.fromEntries(built.seqs), bytes: built.blob.size }, hold: null });
+      await setTarget(ws, id, { last: { id: made.id, at, seqs: Object.fromEntries(built.seqs), bytes: built.blob.size, ...(there ? { known: knownOf(there) } : {}) }, hold: null });
       await log('backup', { target: id, type: rec.type, reason, backup: made.id, files: Number.isFinite(result?.files) ? result.files : null, uploaded: Number.isFinite(result?.uploaded) ? result.uploaded : built.blob.size, ms: now() - started });
       if (file) await keepLast(rec, me);
       return result;
@@ -251,14 +291,16 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         if (u && (u.username || u.password)) throw new TargetError('setup', 'Put the user name and the password in their own fields, not in the address.');
       }
       const signIn = Boolean(secret && Object.keys(secret).length);
-      if (signIn) await setTargetSecret(store, id, /** @type {Record<string, string>} */ (secret));
-      if (passphrase !== undefined) await setTargetSecret(store, id, { passphrase });
       const encrypting = encrypt ?? rec.encrypt ?? false;
       const withKeys = encrypt === false ? false : keys ?? rec.keys ?? false;
+      // Checked before anything is kept: a change that fails keeps no new sign-in or passphrase (minors 25).
       if (encrypt !== undefined || keys !== undefined || passphrase !== undefined) {
-        if (encrypting && !(await targetSecret(store, id)).passphrase) throw new TargetError('setup', 'Type a passphrase for the encrypted backups, then save.');
+        const hasPassphrase = passphrase !== undefined ? Boolean(passphrase) : Boolean((await targetSecret(store, id)).passphrase);
+        if (encrypting && !hasPassphrase) throw new TargetError('setup', 'Type a passphrase for the encrypted backups, then save.');
         if (withKeys && !encrypting) throw new TargetError('setup', 'API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.');
       }
+      if (signIn) await setTargetSecret(store, id, /** @type {Record<string, string>} */ (secret));
+      if (passphrase !== undefined) await setTargetSecret(store, id, { passphrase });
       await setTarget(ws, id, {
         ...(config ? { config: { ...rec.config, ...config } } : {}),
         ...(auto ? { auto } : {}),
@@ -300,17 +342,19 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const rec = await target(id);
       const said = (await call(rec, 'check', (t, c) => t.check(c)))?.note;
       const note = await withoutSecrets(store, String(said ?? 'Works.'));
-      const listed = await call(rec, 'list', (t, c) => t.list(c));
-      const remote = Array.isArray(listed) && listed[0] ? await keptRemote(listed[0]) : null;
+      const there = await listed(rec);
       const me = await deviceId(ws);
-      const unseen = remote !== null && remote.id !== rec.last?.id ? remote : null;
-      const newer = unseen && unseen.device !== me ? unseen : null;
+      const newer = newerOf(there, rec.last, me);
+      const [remote] = there;
+      // A backup this device made but didn't get to note is the one to build on.
+      const mine = !newer && remote && remote.id !== rec.last?.id && remote.device === me ? remote : null;
+      // What is there, seen: kept as the base's, or with the hold (fix pass R1); a git place keeps none.
+      const known = whole(rec) ? { known: knownOf(there) } : {};
       await setTarget(ws, id, {
         checked: now(),
-        // A backup this device made but didn't get to note is the one to build on.
-        ...(unseen && !newer ? { last: { id: unseen.id, at: unseen.at, seqs: {}, bytes: 0 } } : {}),
+        ...(mine ? { last: { id: mine.id, at: mine.at, seqs: {}, bytes: 0, ...known } } : !newer && rec.last ? { last: { ...rec.last, ...known } } : {}),
         // The user is looking at the place's screen, which shows the newer backup: no card for it.
-        hold: newer ? { kind: 'newer', remote: newer, seen: true } : rec.hold?.kind === 'large' ? rec.hold : null,
+        hold: newer ? { kind: 'newer', remote: newer, seen: true, ...known } : rec.hold?.kind === 'large' ? rec.hold : null,
       });
       emit();
       return { note, newer };
@@ -325,9 +369,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
 
     /** The backups at a place, newest first. @param {string} id */
     async remote(id) {
-      const rec = await target(id);
-      const listed = await call(rec, 'list', (t, c) => t.list(c));
-      return Promise.all((Array.isArray(listed) ? listed : []).map(keptRemote));
+      return listed(await target(id));
     },
 
     /** Downloads one backup from a place, as an archive file for the import screen (spec §12.3). @param {string} id @param {string} backupId */
@@ -358,7 +400,10 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
 
     /** This device took in a backup from a place: its next backup there builds on that one. @param {string} id @param {RemoteBackup} remote */
     async accept(id, remote) {
-      await setTarget(ws, id, { last: { id: remote.id, at: remote.at, seqs: {}, bytes: 0 }, hold: null });
+      const rec = await target(id);
+      const had = rec.last?.known ?? {};
+      const known = whole(rec) ? { known: { ...had, [remote.device ?? '']: Math.max(had[remote.device ?? ''] ?? 0, remote.at) } } : {};
+      await setTarget(ws, id, { last: { id: remote.id, at: remote.at, seqs: {}, bytes: 0, ...known }, hold: null });
       emit();
     },
 

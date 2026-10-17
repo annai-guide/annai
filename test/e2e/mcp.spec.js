@@ -83,3 +83,31 @@ test("a server that doesn't let web apps call it, or refuses the token, isn't ad
     await closed.stop();
   }
 });
+
+test('minors 9: a tool call answered as an SSE stream, by a server that checks Accept, Origin and the protocol version as the reference SDK does', async ({ page, baseURL }) => {
+  const mcp = await startMcpServer({ sse: true, origins: [new URL(String(baseURL)).origin] });
+  const llm = await startModelServer({ '/b/v1/messages': [
+    sse(anthropicToolReply([{ name: 'mcp_tides_add', input: { a: 2, b: 3 } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'Five.' } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.goto('/#/mcp');
+    await page.getByLabel('Name', { exact: true }).fill('tides');
+    await page.getByLabel('Address').fill(mcp.url);
+    await page.getByRole('button', { name: 'Add server' }).click();
+    await expect(page.getByText('mcp_tides_add')).toBeVisible();
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('What is 2 and 3?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.convo .shiori p')).toHaveText('Five.');
+    expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('"5"');
+    const call = mcp.requests.find((r) => r.rpc?.method === 'tools/call');
+    expect(call?.headers.accept).toContain('text/event-stream');
+    expect(call?.headers['mcp-protocol-version']).toBe('2025-06-18');
+    expect(call?.headers.origin).toBe(new URL(String(baseURL)).origin);
+  } finally {
+    await llm.stop();
+    await mcp.stop();
+  }
+});

@@ -10,13 +10,16 @@ import { NotFoundError } from './workspace.js';
  * @typedef {'off'|'changes'|'daily'} Auto
  * @typedef {{ id: string, at: number, device?: string, label?: string, encrypted?: boolean }} RemoteBackup
  *   a backup at a place: its id there, when it was made, and the device that made it, when known
- * @typedef {{ kind: 'newer', remote: RemoteBackup, seen?: boolean } | { kind: 'large', bytes: number, at: number }
+ * @typedef {{ kind: 'newer', remote: RemoteBackup, seen?: boolean, known?: Record<string, number> } | { kind: 'large', bytes: number, at: number }
  *   | { kind: 'error', message: string, at: number, count: number, retryAt: number, needsYou: boolean }} Hold
  *   why automatic backups to a place wait: a backup there this device hasn't taken in; an upload too
  *   large to make without asking; or a failure, tried again at retryAt (needsYou: only the user can fix it).
- *   seen: the user found the newer backup themselves, testing the place on its screen
- * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number }} LastBackup
- *   the backup at the place this device builds on, one it made or took in; seqs: each scope's last log entry in it
+ *   seen: the user found the newer backup themselves, testing the place on its screen; known: as LastBackup's, what
+ *   "Back up over it" covers
+ * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number, known?: Record<string, number> }} LastBackup
+ *   the backup at the place this device builds on, one it made or took in; seqs: each scope's last log entry in it;
+ *   known (whole-file places): the newest time of each device's backups there seen then, by its clock. A git place keeps
+ *   none: its put decides by its history, timed by its own clock
  * @typedef {{ id: string, type: string, name: string, config: Record<string, string>, auto: Auto, mobileData: boolean,
  *   created: number, checked: number | null, last: LastBackup | null, hold: Hold | null, encrypt?: boolean, keys?: boolean, keep?: number, askAbove?: number | null }} Target
  *   checked: when it last passed a test; automatic backups wait for one. For whole-file places: encrypt, the backups are

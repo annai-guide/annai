@@ -30,12 +30,21 @@ export class McpError extends Error {
 
 /** A stop by the user or a time limit stays what it is. @param {unknown} e */
 const isStop = (e) => /** @type {any} */ (e)?.name === 'AbortError' || /** @type {any} */ (e)?.name === 'TimeoutError';
+/**
+ * The stop behind a failure, or null: the request's own reason once it was stopped, however the fetch
+ * or the read said so (a body read cut by the time limit, a traced fetch's words), else e when it is one.
+ * @param {unknown} e @param {AbortSignal} [signal]
+ */
+const stopOf = (e, signal) => (signal?.aborted ? signal.reason : isStop(e) ? e : null);
 
 export class McpClient {
   /** @type {string | null} */ #session = null;
   /** @type {string | null} the protocol version agreed on: set once connected */ #version = null;
   #id = 0;
-  /** @type {Promise<void> | null} */ #connecting = null;
+  /** @type {{ done: Promise<void>, stop: AbortController, waiting: number } | null} the session being started, and how many calls wait for it */
+  #connecting = null;
+  /** Set once the session is ended for good (close, ending): no other starts, and every call says the server was removed (minors 3). */
+  #closed = false;
 
   /**
    * @param {{ url: string | (() => Promise<string>), server: string, auth: () => Promise<Record<string, string>> }} o
@@ -52,6 +61,11 @@ export class McpClient {
     this.#session = null;
     this.#version = null;
     const result = await this.#request('initialize', { protocolVersion: ASKED, capabilities: {}, clientInfo: { name: 'annai', version: '1' } }, o, true);
+    if (this.#closed) {
+      // Closed while it started: the session it got is ended too.
+      await this.close(o);
+      throw this.#removed();
+    }
     const v = String(result?.protocolVersion ?? '');
     if (!SUPPORTED.includes(v)) throw new McpError('server', `The MCP server ${this.server} speaks MCP ${v || 'an unknown version'}; annai speaks 2025-03-26 to 2025-11-25.`);
     this.#version = v;
@@ -97,6 +111,7 @@ export class McpClient {
    * @returns {Promise<((o: { fetch: Fetch, signal?: AbortSignal }) => Promise<void>) | null>}
    */
   async ending() {
+    this.#closed = true;
     const session = this.#session;
     this.#session = null;
     this.#version = null;
@@ -122,6 +137,8 @@ export class McpClient {
     try {
       return await work();
     } catch (e) {
+      // A request the removal overtook (its session gone, its server's answer cut) was for a server that is gone.
+      if (this.#closed && !stopOf(e, o.signal)) throw this.#removed();
       if (!(e instanceof McpError) || e.kind !== 'session') throw e;
       this.#version = null;
       this.#session = null;
@@ -130,16 +147,49 @@ export class McpClient {
     }
   }
 
+  /** What a call to a closed client says. */
+  #removed() {
+    return new McpError('session', `The MCP server ${this.server} was removed.`);
+  }
+
   /** The server's full address. */
   async #address() {
     return typeof this.url === 'function' ? this.url() : this.url;
   }
 
-  /** @param {{ fetch: Fetch, signal?: AbortSignal }} o */
+  /**
+   * Waits for a session, starting one when none is being started. Calls that come meanwhile wait for
+   * the same start, each until its own signal: the start stops only once every one of them stopped (minors 4).
+   * @param {{ fetch: Fetch, signal?: AbortSignal }} o
+   */
   async #ready(o) {
+    if (this.#closed) throw this.#removed();
     if (this.#version) return;
-    if (!this.#connecting) this.#connecting = this.connect(o).finally(() => { this.#connecting = null; });
-    await this.#connecting;
+    let c = this.#connecting;
+    if (!c) {
+      const stop = new AbortController();
+      const done = this.connect({ fetch: o.fetch, signal: stop.signal }).finally(() => { if (this.#connecting === c) this.#connecting = null; });
+      c = this.#connecting = { done, stop, waiting: 0 };
+    }
+    const start = c;
+    start.waiting++;
+    const { signal } = o;
+    if (!signal) return start.done;
+    /** @type {() => void} */
+    let leave = () => {};
+    const left = new Promise((_, fail) => {
+      leave = () => {
+        if (--start.waiting === 0) start.stop.abort(signal.reason);
+        fail(signal.reason);
+      };
+    });
+    if (signal.aborted) leave();
+    else signal.addEventListener('abort', leave, { once: true });
+    try {
+      await Promise.race([start.done, left]);
+    } finally {
+      signal.removeEventListener('abort', leave);
+    }
   }
 
   /** One request, its result; a JSON-RPC error is the server's words. @param {string} method @param {any} params @param {{ fetch: Fetch, signal?: AbortSignal }} o @param {boolean} [init] */
@@ -164,7 +214,9 @@ export class McpClient {
     try {
       res = await fetch(await this.#address(), { method: 'POST', headers, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
     } catch (e) {
-      if (isStop(e)) throw e;
+      if (stopOf(e, signal)) throw stopOf(e, signal);
+      // A browser says no more than that a request failed; offline, it is no use to suggest CORS (minors 8).
+      if (globalThis.navigator?.onLine === false) throw new McpError('network', `annai couldn't reach the MCP server ${this.server}: this device is offline. Try again once it is online.`);
       throw new McpError('cors', `annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`);
     }
     if (res.status === 401 || res.status === 403) {
@@ -177,7 +229,7 @@ export class McpClient {
     }
     if (res.status === 400 && !this.#session && this.#version && !init) {
       // Asked for a session the browser kept from annai: the server didn't expose its header (CORS).
-      const said = await res.text().then((t) => t.slice(0, 2000), () => '');
+      const said = await startOf(res, 2000);
       if (/session/i.test(said)) throw new McpError('cors', `The MCP server ${this.server} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.`);
       throw new McpError('server', `The MCP server ${this.server} answered 400.`);
     }
@@ -219,7 +271,7 @@ export class McpClient {
           if (m && typeof m === 'object' && m.id === id && ('result' in m || 'error' in m)) return m;
         }
       } catch (e) {
-        if (isStop(e)) throw e;
+        if (stopOf(e, signal)) throw stopOf(e, signal);
         if (over) throw tooMuch();
       }
       throw unreadable();
@@ -229,13 +281,33 @@ export class McpClient {
     try {
       m = await answerJSON(res, this.server);
     } catch (e) {
-      if (isStop(e)) throw e;
+      if (stopOf(e, signal)) throw stopOf(e, signal);
       throw unreadable();
     }
     if (Array.isArray(m)) m = m.find((x) => x && x.id === id);
     if (!m || typeof m !== 'object' || m.id !== id) throw unreadable();
     return m;
   }
+}
+
+/** The start of an answer's body, as text: no more than max bytes are read (minors 5). @param {Response} res @param {number} max */
+async function startOf(res, max) {
+  const reader = res.body?.getReader();
+  const decoder = new TextDecoder();
+  let out = '';
+  let n = 0;
+  try {
+    while (reader && n < max) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      out += decoder.decode(value.subarray(0, max - n), { stream: true });
+      n += value.byteLength;
+    }
+  } catch {
+    // cut off: what came is enough
+  }
+  reader?.cancel().catch(() => {});
+  return out;
 }
 
 /** FNV-1a of a text, as 6 base-36 characters. @param {string} s */

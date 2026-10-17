@@ -261,3 +261,23 @@ test("how much a place uploads without asking, on a connection annai can't name,
   assert.notEqual((await d.backups.get(id))?.checked, null, 'no new test needed');
   for (const bad of [-1, Number.NaN, Infinity]) await assert.rejects(d.backups.update(id, { askAbove: bad }), (e) => e instanceof TargetError && e.kind === 'setup');
 });
+
+test("fix pass R1 (minor 5): a git-like place keeps no record of devices seen; its own history and clock decide, so a backup older than the one taken in isn't newer", async () => {
+  const place = memoryPlace();
+  const [phone, android, ipad] = [await device(place, 'iPhone'), await device(place, 'Android phone'), await device(place, 'iPad')];
+  const b = await placeOn(android);
+  await android.backups.check(b);
+  await android.backups.backUp(b);
+  const c = await placeOn(ipad);
+  await ipad.backups.check(c);
+  await ipad.backups.backUp(c, { over: true });
+  const a = await placeOn(phone);
+  const seen = await phone.backups.check(a);
+  assert.equal(seen.newer?.label, 'iPad');
+  assert.equal(/** @type {any} */ ((await phone.backups.get(a))?.hold)?.known, undefined);
+  await phone.backups.accept(a, /** @type {any} */ (seen.newer));
+  assert.equal((await phone.backups.check(a)).newer, null, "the Android's backup, older than the iPad's, isn't newer");
+  assert.equal((await phone.backups.get(a))?.last?.known, undefined);
+  await phone.backups.backUp(a);
+  assert.equal((await phone.backups.get(a))?.last?.known, undefined);
+});
