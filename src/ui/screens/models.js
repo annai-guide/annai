@@ -49,7 +49,7 @@ function endpointsSection(ctx, cfg, catalog) {
       h('span', { class: 'sub', text: sub.filter(Boolean).join(' · ') })));
   });
   const status = h('p', { class: 'sub', role: 'status' });
-  const pick = h('select', { id: 'endpoint-template' }, ...catalog.endpoints.map((t) => h('option', { value: t.id, text: t.name })));
+  const pick = h('select', { id: 'endpoint-template' }, ...catalog.endpoints.map((t) => h('option', { value: t.id, text: t.from ? `${t.name} (from ${t.from})` : t.name })));
   const add = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
