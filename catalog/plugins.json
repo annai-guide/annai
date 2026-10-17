@@ -69,6 +69,7 @@
       },
       "files": {
         "annai-plugin.json": "149cfca2f71b4e04b6d7d8c7ef962c82ba9b853264e51644dfa4f899078c6c5e",
+        "index.js": "a9e0849400702d2c6617b589a3834da1ac0dfda4c57af0134ab94baa0ac07644",
         "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
       }
     }

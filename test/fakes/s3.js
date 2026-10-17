@@ -31,6 +31,8 @@ export async function startS3({ buckets = ['trips'], region = 'us-east-1', pageS
   const log = [];
   /** @type {string | null} */
   let deny = null;
+  /** @type {{ method: string, body: string, status?: number } | null} */
+  let garble = null;
 
   /**
    * Why a request's signature doesn't hold, or null when it does.
@@ -92,6 +94,11 @@ export async function startS3({ buckets = ['trips'], region = 'us-east-1', pageS
       }
       const why = refuse(req, body);
       if (why) return error(why.code === 'AuthorizationHeaderMalformed' || why.code === 'InvalidRequest' ? 400 : 403, why);
+      if (garble && req.method === garble.method) {
+        const g = garble;
+        garble = null;
+        return reply(g.status ?? 200, g.body, { 'content-type': 'application/xml' });
+      }
       if (deny) {
         const code = deny;
         deny = null;
@@ -138,6 +145,8 @@ export async function startS3({ buckets = ['trips'], region = 'us-east-1', pageS
     objects: (bucket) => new Map([...(all.get(bucket) ?? new Map())].map(([k, o]) => [k, o.data])),
     /** Another device's file. @param {string} bucket @param {string} key @param {string | Buffer} data */
     putAs: (bucket, key, data) => { all.get(bucket)?.set(key, { data: Buffer.from(data), modified: new Date() }); },
+    /** The next signed request with this method gets this answer instead: a broken or hostile server. @param {{ method: string, body: string, status?: number }} g */
+    garbleNext: (g) => { garble = g; },
     /** The next signed request is refused with this code. @param {string} code */
     denyNext: (code) => { deny = code; },
     stop: () => new Promise((resolve) => {
