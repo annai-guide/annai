@@ -523,8 +523,15 @@ export class PluginHost {
       for (const s of had.secrets) await t.deleteSecret(`plugin:${id}:${s}`);
     });
     if (had.file || had.secrets.length) {
-      const name = this.builtins.get(id)?.name ?? (await this.installed())[id]?.name ?? id;
-      await logEvent(this.ws.store, SYS, { type: 'plugin.reset', actor: 'user', data: { plugin: id, name, settings: had.keys, secrets: had.secrets, bytes } }).catch(() => {});
+      const m = this.builtins.get(id) ?? (await this.#stored(id).catch(() => null));
+      const props = m?.settings?.properties && typeof m.settings.properties === 'object' ? m.settings.properties : {};
+      // Only names its schema gives; others are counted, since a plugin could name one after the user's data (M6).
+      const settings = had.keys.filter((k) => Object.hasOwn(props, k));
+      const secrets = had.secrets.filter((k) => Object.hasOwn(props, k) && props[k]?.writeOnly);
+      await logEvent(this.ws.store, SYS, { type: 'plugin.reset', actor: 'user', data: {
+        plugin: id, name: m?.name ?? (await this.installed())[id]?.name ?? id,
+        settings, otherSettings: had.keys.length - settings.length, secrets, otherSecrets: had.secrets.length - secrets.length, bytes,
+      } }).catch(() => {});
     }
     return { ...had, bytes };
   }
