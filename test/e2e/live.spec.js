@@ -150,3 +150,23 @@ test('a plan item Shiori changed can be put back with one tap (spec §11.5)', as
   await expect(page.locator('.plan-row')).toContainText('21:45');
   await expect(page.getByRole('button', { name: 'Changed by Shiori · Undo' })).toHaveCount(0);
 });
+
+test('Undo puts back the item as it was before all of Shiori\'s changes in a row, and removes one she added, after asking (B3)', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Big Sur');
+  await writeRecords(page, trip, { write: { '/plan/mcway.json': { id: 'mcway', title: 'McWay Falls', fixed: false, start: { at: '2026-11-27T21:45:00Z', tz: 'UTC' } } } });
+  await writeRecords(page, trip, { author: 'shiori', patch: { '/plan/mcway.json': { start: { at: '2026-11-27T22:00:00Z', tz: 'UTC' } } } });
+  await writeRecords(page, trip, { author: 'shiori', patch: { '/plan/mcway.json': { notes: 'Later, for the light.' } } });
+  await writeRecords(page, trip, { author: 'shiori', write: { '/plan/pfeiffer.json': { id: 'pfeiffer', title: 'Pfeiffer Beach', fixed: false, start: { at: '2026-11-27T23:00:00Z', tz: 'UTC' } } } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab').first().click();
+  const mcway = page.locator('.plan-row', { hasText: 'McWay Falls' });
+  await expect(mcway).toContainText('22:00');
+  await mcway.getByRole('button', { name: 'Changed by Shiori · Undo' }).click();
+  await expect(mcway).toContainText('21:45');
+  await expect(mcway.getByRole('button', { name: /Undo/ })).toHaveCount(0);
+  await page.locator('.plan-row', { hasText: 'Pfeiffer Beach' }).getByRole('button', { name: 'Added by Shiori · Undo' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+  await expect(page.locator('.plan-row', { hasText: 'Pfeiffer Beach' })).toHaveCount(0);
+  await expect(mcway).toBeVisible();
+});

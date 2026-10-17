@@ -6,6 +6,7 @@ import { readAppSettings } from '../../core/settings.js';
 import { validZone, deviceZone, dayIn } from '../../core/time.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
+import { ask } from '../ask.js';
 import { fileHref, bookingHref, dateRange } from '../format.js';
 
 const KINDS = /** @type {Record<string, string>} */ ({ flight: 'Flight', lodging: 'Stay', car: 'Car', rail: 'Train', event: 'Event', restaurant: 'Restaurant', other: 'Booking' });
@@ -28,7 +29,7 @@ export async function renderPlan(ctx, route) {
   const locale = navigator.language || 'en-US';
   const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz, locale });
   const { days, untimed } = planDays(rows, trip);
-  /** @type {Map<string, string>} plan files Shiori changed last, and the version before (choice 9) */
+  /** @type {Map<string, { restore: string } | { remove: true }>} plan files Shiori changed last, and what Undo does (choice 9) */
   const undo = new Map();
   for (const x of plan.list) {
     if (x.author !== 'shiori') continue;
@@ -102,7 +103,7 @@ async function records(ctx, id, prefix, shape) {
   return { list, broken };
 }
 
-/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {string} locale @param {Map<string, string>} undo */
+/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {string} locale @param {Map<string, { restore: string } | { remove: true }>} undo */
 function timetable(ctx, id, rows, links, locale, undo) {
   /** @type {HTMLElement[]} */
   const out = [];
@@ -114,7 +115,7 @@ function timetable(ctx, id, rows, links, locale, undo) {
   return h('ol', { class: 'timetable' }, ...out);
 }
 
-/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {Map<string, string>} undo */
+/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {Map<string, { restore: string } | { remove: true }>} undo */
 function row(ctx, id, r, undo) {
   const it = r.item;
   // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so.
@@ -130,15 +131,37 @@ function row(ctx, id, r, undo) {
     r.check || r.missing || undo.has(r.path) ? h('span', { class: 'chips' },
       r.check && r.bookingPath ? h('a', { class: 'chip check', href: bookingHref(id, r.bookingPath) }, 'Check this') : null,
       r.missing ? h('span', { class: 'chip warn', text: 'Booking missing' }) : null,
-      undo.has(r.path) ? h('button', {
-        class: 'chip undo', type: 'button',
-        onclick: async () => {
-          await ctx.ws.restore(id, r.path, /** @type {string} */ (undo.get(r.path)), { author: 'user' });
-          ctx.notices.toast(`Undone: ${String(it.title ?? r.path)} is back as it was before Shiori changed it.`);
-          ctx.render();
-        },
-      }, 'Changed by Shiori · Undo') : null) : null,
+      undoChip(ctx, id, r, undo.get(r.path))) : null,
     r.note ? h('span', { class: 'note sub warn', text: r.note }) : null);
+}
+
+/**
+ * Undo for an item Shiori changed: back as it was before her changes, or, one she added, removed
+ * after asking (its history keeps it, spec §4.9).
+ * @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {{ restore: string } | { remove: true } | undefined} u
+ */
+function undoChip(ctx, id, r, u) {
+  if (!u) return null;
+  const title = String(r.item.title ?? r.path);
+  if ('remove' in u) {
+    return h('button', {
+      class: 'chip undo', type: 'button',
+      onclick: async () => {
+        if (!(await ask({ title, body: 'Shiori added this to the plan. Remove it?', yes: 'Remove' }))) return;
+        await ctx.ws.delete(id, r.path, { author: 'user' });
+        ctx.notices.toast(`Undone: ${title} is off the plan.`);
+        ctx.render();
+      },
+    }, 'Added by Shiori · Undo');
+  }
+  return h('button', {
+    class: 'chip undo', type: 'button',
+    onclick: async () => {
+      await ctx.ws.restore(id, r.path, u.restore, { author: 'user' });
+      ctx.notices.toast(`Undone: ${title} is back as it was before Shiori changed it.`);
+      ctx.render();
+    },
+  }, 'Changed by Shiori · Undo');
 }
 
 /** The leg between two stops: how far apart, and directions in the phone's maps app. */

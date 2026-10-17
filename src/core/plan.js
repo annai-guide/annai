@@ -141,11 +141,17 @@ export function dayLabel(key, locale) {
 }
 
 /**
- * The version a file had before Shiori's last change, when the last change is hers and there was a
- * version before (spec §11.5: "every replan is a set of patches to the plan files, so it can be
- * undone"). @param {{ actor: string, type: string, old: string | null }[]} history oldest first
+ * What Undo does for a file whose last changes are Shiori's (spec §11.5: "every replan is a set of
+ * patches to the plan files, so it can be undone"): brings back the version from before all her
+ * writes in a row, or, when those began by adding it, removes it. Null when the user changed it
+ * last, or her last change was a delete.
+ * @param {{ actor: string, type: string, old: string | null }[]} history oldest first
+ * @returns {{ restore: string } | { remove: true } | null}
  */
 export function beforeShiori(history) {
-  const last = history.at(-1);
-  return last && last.actor === 'shiori' && last.type === 'file.write' && last.old ? last.old : null;
+  let k = history.length;
+  while (k > 0 && history[k - 1].actor === 'shiori' && history[k - 1].type === 'file.write') k--;
+  if (k === history.length) return null;
+  const first = history[k].old;
+  return first ? { restore: first } : { remove: true };
 }
