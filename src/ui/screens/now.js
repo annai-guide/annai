@@ -62,7 +62,10 @@ export async function renderNow(ctx) {
   const top = h('div', { class: 'now-card' });
   if (card) {
     const words = [live ? liveText(live) : null, live && !live.online ? 'Offline · reminders still work' : null].filter(Boolean);
-    mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live, locale), chips: words, liveOn: Boolean(live?.on) }), { what: 'now-card' });
+    // When the plugin's Now card fails, annai's own is drawn (fix pass 8b-3).
+    mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live, locale), chips: words, liveOn: Boolean(live?.on) }), {
+      what: 'now-card', onFail: () => { top.hidden = false; top.replaceChildren(place, chips, start); },
+    });
   } else {
     top.append(place, chips, start);
   }
@@ -76,7 +79,7 @@ export async function renderNow(ctx) {
     top, ...sections,
     h('section', { 'aria-label': 'Next' },
       h('h2', { class: 'section', text: 'Next' }),
-      next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time) ?? nowRow(id, r))) : h('p', { class: 'empty', text: 'Nothing more is planned.' }),
+      next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time, () => nowRow(id, r)))) : h('p', { class: 'empty', text: 'Nothing more is planned.' }),
       h('p', {}, h('a', { href: '#/plan' }, 'The whole plan'))),
     await packLine(ctx, id),
     latest ? h('section', { 'aria-label': 'Latest' }, h('h2', { class: 'section', text: 'Latest' }), latest) : null,
@@ -96,17 +99,26 @@ export function handover(activity, was, screens) {
 }
 
 /**
- * A timetable row a plugin draws (spec §16.4: plan-row), or null for annai's own.
- * @param {any} ctx @param {string} trip @param {import('../../core/plan.js').PlanRow} r @param {string} when
+ * A timetable row: a plugin's (spec §16.4: plan-row) when one replaces annai's, else annai's own, which
+ * also takes the place of a plugin's that fails, at once or later (fix pass 8b-3).
+ * @param {any} ctx @param {string} trip @param {import('../../core/plan.js').PlanRow} r @param {string} when @param {() => HTMLElement} own
  */
-export function planRowOf(ctx, trip, r, when) {
+export function planRowOf(ctx, trip, r, when, own) {
   const c = component(ctx, 'plan-row');
-  if (!c) return null;
+  if (!c) return own();
   const it = r.item;
   const li = h('li', { class: ['plan-row', 'plugin-row', it.fixed ? 'fixed' : 'flexible'] });
   const row = { trip, path: r.path, when, title: String(it.title ?? r.path), fixed: Boolean(it.fixed), place: it.place?.name ? String(it.place.name) : '', kind: String(it.kind ?? '') };
-  mount(ctx, c, li, (ui) => c.item.render(li, row, ui), { what: 'plan-row' });
-  return li;
+  /** @type {HTMLElement | null} */
+  let instead = null;
+  mount(ctx, c, li, (ui) => c.item.render(li, row, ui), {
+    what: 'plan-row',
+    onFail: () => {
+      instead = own();
+      li.parentNode?.replaceChild(instead, li); // a later failure: the row is already in its list
+    },
+  });
+  return instead ?? li;
 }
 
 /** Where the user is, in words for them (Shiori's are in the now block). @param {any} live @param {string} locale */
