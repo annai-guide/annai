@@ -7,6 +7,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
+import { loadBuiltinSkills } from '../../src/plugins/skills/index.js';
 
 async function setup() {
   const registry = new Registry();
@@ -25,14 +26,17 @@ async function setup() {
   return { registry, tools, run };
 }
 
-test('maps_link and search_link give links to show, in the Go group; the planning skill is there', async () => {
+/** The planning skill, from skills/plan-a-trip/SKILL.md. */
+const planning = async () => (await loadBuiltinSkills(async (p) => readFile(new URL(`../..${p}`, import.meta.url), 'utf8').catch(() => null))).find((s) => s.name === 'plan-a-trip');
+
+test('maps_link and search_link give links to show, in the Go group', async () => {
   const { registry, tools, run } = await setup();
   assert.equal(tools.maps_link.group, 'Go');
   assert.equal(tools.search_link.group, 'Go');
   assert.deepEqual((await run('maps_link', { destination: 'Nepenthe' })).links.map((/** @type {any} */ l) => l.label), ['Apple Maps', 'Google Maps']);
   const { links } = await run('search_link', { kind: 'hotel', params: { place: 'Hoboken', checkin: '2026-11-25', checkout: '2026-11-29', adults: 2 } });
   assert.match(links[0].url, /^https:\/\/www\.booking\.com\/searchresults\.html\?ss=Hoboken&checkin=2026-11-25&checkout=2026-11-29&group_adults=2$/);
-  const skill = registry.list('skill').find((s) => s.name === 'plan-a-trip');
+  const skill = await planning();
   assert.match(skill.text, /getting there, getting around, where to stay, then the rest/);
 });
 
@@ -47,12 +51,12 @@ test('the Go tools and the planning skill teach a show call that works: show({ c
     assert.match(t.description, /show\(\{ card: \{ links \} \}\)/);
     assert.doesNotMatch(t.description, /show\(\{ links \}\)/);
   }
-  assert.match(registry.list('skill').find((s) => s.name === 'plan-a-trip').text, /show\(\{ card: \{ title, text, links \} \}\)/);
+  assert.match((await planning()).text, /show\(\{ card: \{ title, text, links \} \}\)/);
 });
 
 test('the planning skill says how to write a whole-day item: kind "all-day", starting at 00:00 where it is', async () => {
   const { registry } = await setup();
-  const text = registry.list('skill').find((s) => s.name === 'plan-a-trip').text;
+  const text = (await planning()).text;
   assert.match(text, /"kind": "all-day"/);
   assert.match(text, /00:00/);
   assert.match(text, /"All day"/);

@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'bbdb60509a40';
+const BUILD = '0a16b60d9697';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -28,6 +28,9 @@ const SHELL = [
   '/assets/personalities/storyteller.md',
   '/assets/shiori.svg',
   '/assets/simulations/big-sur.json',
+  '/skills/driving-companion/SKILL.md',
+  '/skills/plan-a-trip/SKILL.md',
+  '/skills/replanning/SKILL.md',
   '/src/app/main.js',
   '/src/app/version.js',
   '/src/core/after/journey.js',
@@ -88,7 +91,6 @@ const SHELL = [
   '/src/core/live/plan-watches.js',
   '/src/core/live/sim-run.js',
   '/src/core/live/simulate.js',
-  '/src/core/live/skills.js',
   '/src/core/live/triggers.js',
   '/src/core/live/watch-tools.js',
   '/src/core/live/watches.js',
@@ -148,6 +150,7 @@ const SHELL = [
   '/src/plugins/go/index.js',
   '/src/plugins/places/index.js',
   '/src/plugins/sensors/index.js',
+  '/src/plugins/skills/index.js',
   '/src/plugins/voice-browser/capture-worklet.js',
   '/src/plugins/voice-browser/index.js',
   '/src/plugins/web/index.js',

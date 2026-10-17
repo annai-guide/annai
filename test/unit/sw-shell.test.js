@@ -22,7 +22,7 @@ test('the service worker caches exactly the files the app ships', async () => {
   const sw = await readFile(new URL('sw.js', root), 'utf8');
   const block = /const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '';
   const shell = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
-  const expected = ['/', '/index.html', '/manifest.webmanifest', ...(await walk('src')), ...(await walk('assets'))].sort();
+  const expected = ['/', '/index.html', '/manifest.webmanifest', ...(await walk('src')), ...(await walk('assets')), ...(await walk('skills'))].sort();
   assert.deepEqual(shell, expected);
 });
 

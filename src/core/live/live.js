@@ -3,7 +3,6 @@ import { ActivityTracker, STILL_BELOW } from './activity.js';
 import { TRIGGERS } from './triggers.js';
 import { PLAN, planWatches } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
-import { DRIVING, REPLANNING } from './skills.js';
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { logEvent } from '../events.js';
@@ -164,8 +163,6 @@ export class Live {
           return () => { this.#activityChanges.delete(fn); };
         },
       }),
-      this.registry.add('live', 'skill', DRIVING),
-      this.registry.add('live', 'skill', REPLANNING),
       this.ws.onChange((c) => this.#changed(c)),
       this.agent.on('event', (e) => this.#heard(e)),
       // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3).
