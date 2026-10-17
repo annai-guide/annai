@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingRef, planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE } from '../../src/core/plan.js';
+import { bookingRef, planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE, beforeShiori } from '../../src/core/plan.js';
 
 const LA = 'America/Los_Angeles';
 const NY = 'America/New_York';
@@ -113,4 +113,13 @@ test('PLAN_FILE and BOOKING_FILE: records sit directly in their folder, as the f
   assert.equal(BOOKING_FILE.test('/bookings/hotel.json'), true);
   assert.equal(BOOKING_FILE.test('/bookings/2026/hotel.json'), false);
   assert.equal(BOOKING_FILE.test('/bookings/hotel.pdf'), false);
+});
+
+test("a plan item Shiori changed last can go back to the version before (spec §11.5: every replan can be undone)", () => {
+  const w = (/** @type {string} */ actor, /** @type {string | null} */ old, /** @type {string | null} */ next, type = 'file.write') => ({ seq: 1, ts: 1, actor, type, old, new: next });
+  assert.equal(beforeShiori([w('user', null, 'a'), w('shiori', 'a', 'b')]), 'a');
+  assert.equal(beforeShiori([w('user', null, 'a'), w('shiori', 'a', 'b'), w('user', 'b', 'c')]), null); // the user changed it since
+  assert.equal(beforeShiori([w('shiori', null, 'a')]), null); // she added it: nothing to go back to
+  assert.equal(beforeShiori([w('user', null, 'a'), w('shiori', 'a', null, 'file.delete')]), null);
+  assert.equal(beforeShiori([]), null);
 });

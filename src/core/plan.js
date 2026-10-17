@@ -139,3 +139,13 @@ export function distanceText(km, locale) {
 export function dayLabel(key, locale) {
   return new Intl.DateTimeFormat(safe(locale), { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(Date.parse(`${key}T00:00:00Z`));
 }
+
+/**
+ * The version a file had before Shiori's last change, when the last change is hers and there was a
+ * version before (spec §11.5: "every replan is a set of patches to the plan files, so it can be
+ * undone"). @param {{ actor: string, type: string, old: string | null }[]} history oldest first
+ */
+export function beforeShiori(history) {
+  const last = history.at(-1);
+  return last && last.actor === 'shiori' && last.type === 'file.write' && last.old ? last.old : null;
+}

@@ -6,7 +6,7 @@ import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
 
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error', 'reminder'];
 
 /**
  * The copy a photo ended up as, following its replacements (each refused copy names the next).
@@ -132,9 +132,12 @@ export async function renderTalk(ctx) {
       asks.delete(d.id);
       return null;
     }
+    if (e.type === 'reminder') return h('li', { class: 'system-line', text: `Reminder${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
     if (e.type === 'wake') {
+      // A watch's wake says a lot, for Shiori: the line is cut.
       const others = (d.reasons ?? []).filter((/** @type {any} */ r) => r.kind !== 'user' && r.kind !== 'choice');
-      return others.length ? h('li', { class: 'system-line', text: `Shiori woke: ${others.map((/** @type {any} */ r) => r.text).join('; ')}` }) : null;
+      const why = others.map((/** @type {any} */ r) => r.text).join('; ');
+      return others.length ? h('li', { class: 'system-line', text: `Shiori woke: ${why.length > 160 ? `${why.slice(0, 160)}…` : why}` }) : null;
     }
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
     if (e.type === 'error') return h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? "Shiori couldn't reach her model" : d.kind === 'budget' ? 'A budget ended her turn' : 'Her turn ended' }), h('p', { text: String(d.message ?? '') }));

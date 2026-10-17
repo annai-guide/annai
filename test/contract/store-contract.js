@@ -109,6 +109,8 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual((await q({ after: 2, before: 6 })).map((e) => e.seq), [3, 4, 5]);
     assert.deepEqual((await q({ reverse: true, limit: 2 })).map((e) => e.seq), [6, 5]);
     assert.deepEqual((await q({ types: ['even'], reverse: true, limit: 2 })).map((e) => e.seq), [6, 4]);
+    assert.deepEqual((await q({ notTypes: ['odd'], reverse: true, limit: 2 })).map((e) => e.seq), [6, 4]);
+    assert.deepEqual((await q({ notTypes: ['odd', 'even'] })).map((e) => e.seq), []);
     assert.deepEqual((await q({ after: 6 })).map((e) => e.seq), []);
     assert.deepEqual((await q({ after: 5, before: 3 })).map((e) => e.seq), []);
   });

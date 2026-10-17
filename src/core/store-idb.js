@@ -251,7 +251,7 @@ function makeTx(t) {
           res(out);
           return;
         }
-        if (!q.types || q.types.includes(c.value.type)) out.push(c.value);
+        if ((!q.types || q.types.includes(c.value.type)) && (!q.notTypes || !q.notTypes.includes(c.value.type))) out.push(c.value);
         if (out.length >= limit) {
           res(out);
           return;

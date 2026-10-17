@@ -102,6 +102,7 @@ function makeTx(d, mode, allowed) {
     async listEvents(scope, q = {}) {
       let list = eventsOf(scope).filter((e) => e.seq > (q.after ?? 0) && (q.before === undefined || e.seq < q.before));
       if (q.types) list = list.filter((e) => q.types?.includes(e.type));
+      if (q.notTypes) list = list.filter((e) => !q.notTypes?.includes(e.type));
       if (q.reverse) list.reverse();
       return list.slice(0, q.limit ?? Infinity).map(out);
     },
