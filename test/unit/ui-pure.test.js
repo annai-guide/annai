@@ -438,3 +438,24 @@ test('the card when a plugin is switched off says which, why and where to turn i
     body: 'It failed 3 times in a row. The last error: boom You can turn it back on in Settings → Plugins.',
   });
 });
+
+test("routes for plugins' screens, settings pages and trip tabs", () => {
+  assert.deepEqual(parseHash('#/ext/tides/today'), { name: 'ext', parts: ['ext', 'tides', 'today'], params: {} });
+  assert.deepEqual(parseHash('#/plugin-page/tides/station'), { name: 'plugin-page', parts: ['plugin-page', 'tides', 'station'], params: {} });
+  assert.equal(parseHash('#/trip/trip-1/ext/tides/table').name, 'trip-ext');
+  assert.equal(parseHash('#/plugins/tides').name, 'plugins');
+});
+
+test('what plugins add to the UI has a signature that changes only when they do', async () => {
+  const { uiSignature } = await import('../../src/ui/slots.js');
+  const { Registry } = await import('../../src/core/registry.js');
+  const r = new Registry();
+  const empty = uiSignature(r);
+  r.add('tides', 'tool', { name: 'x' });
+  assert.equal(uiSignature(r), empty);
+  const off = r.add('tides', 'ui:status-chip', { id: 'tide', render: () => {} });
+  const one = uiSignature(r);
+  assert.notEqual(one, empty);
+  off();
+  assert.equal(uiSignature(r), empty);
+});
