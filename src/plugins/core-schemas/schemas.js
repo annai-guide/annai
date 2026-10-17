@@ -21,6 +21,8 @@ export const TRIP_SCHEMA = {
     title: { type: 'string', minLength: 1, maxLength: 200 },
     start: { type: 'string', format: 'date' },
     end: { type: 'string', format: 'date' },
+    // A trip a simulation made (spec §13): outside its run, live mode leaves it as it is.
+    simulation: { type: 'boolean' },
     places: { type: 'array', items: { type: 'string' } },
     timezones: { type: 'array', items: { type: 'string' } },
     party: {

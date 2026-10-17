@@ -41,6 +41,18 @@ export const RECAP_SYSTEM = 'You write the recap of a trip for the traveler who 
   + 'Use only what the record says, and leave out what you don\'t know rather than guess. Shiori may read the recap aloud, so write sentences that are easy to say. '
   + 'Write in the traveler\'s language (their profile says which). Reply with the recap only.';
 
+/**
+ * What goes to the model, as the Recap screen says it (spec §11.7: it must be true). Photos go as Shiori's
+ * own photos do: a copy made smaller has no metadata, but a photo kept as taken that fits goes as it is (review 6).
+ */
+export const RECAP_SENDS = Object.freeze([
+  'Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.',
+  'How far you drove or walked between, the stamps, and the plan.',
+  "Shiori's cards and your words, typed or spoken, each shortened.",
+  "The trip's notes and memory, and your profile.",
+  `Up to ${RECAP_PHOTOS} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.`,
+]);
+
 /** What Shiori is woken with when the user asks to hear the recap (choice 6). */
 export const TELL_RECAP = "The user asked to hear the trip's recap. Read /trip/recap.md and tell it to them with speak, a few sentences at a time, in your own words.";
 

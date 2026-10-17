@@ -121,6 +121,8 @@ export class Live {
   #offlineSince = null;
   /** @type {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string } | null} while a simulation runs: the device's clock and zone, and the simulation's trip */
   #sim = null;
+  /** @type {Set<string>} simulations' trips (trip.json "simulation": true), still outside their run */
+  #still = new Set();
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
@@ -199,6 +201,9 @@ export class Live {
       this.clock = clock;
       this.timeZone = timeZone;
       this.#fresh(false);
+      // Its trip's plan and watches are in play now (they were still while it was being opened).
+      await this.#loadScope(trip);
+      if (this.#trip === trip) await this.#loadPlan();
       await this.#check();
     });
     let given = false;
@@ -214,6 +219,9 @@ export class Live {
         this.clock = was.clock;
         this.timeZone = was.timeZone;
         this.#fresh(Boolean((await readAppSettings(this.ws)).live?.on));
+        // Its trip is still again: its watches and plan wait for no real clock.
+        await this.#loadScope(was.trip);
+        await this.#loadPlan();
         if (this.on && this.shown) this.#gpsStart();
         await this.#check();
       });
@@ -515,6 +523,16 @@ export class Live {
     return !this.#sim || pluginId === SIMULATION;
   }
 
+  /**
+   * Whether live mode looks at a conversation's watches and plan, and records the road into it: during a
+   * simulation only its own trip (the user's watches wait for the real clock); otherwise any but a
+   * simulation's trip, which keeps what its run did (review 1, 4).
+   * @param {string} scope
+   */
+  #inPlay(scope) {
+    return this.#sim ? scope === this.#sim.trip : !this.#still.has(scope);
+  }
+
   /** A simulation runs, and the open trip isn't its own: nothing of it may go there (choice 10). */
   #elsewhere() {
     return this.#sim !== null && this.agent.target !== this.#sim.trip;
@@ -578,7 +596,7 @@ export class Live {
     const goes = moving || (fix.speed ?? 0) >= STILL_BELOW;
     if (goes ? keep(this.#kept, fix, moving) : !this.#kept || meters(this.#kept, fix) >= Math.max(STOP_M, 2 * fix.accuracy)) {
       this.#kept = fix;
-      if (this.#trip) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at);
+      if (this.#trip && this.#inPlay(this.#trip)) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at);
     }
     // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
     // only steps longer than twice the accuracy, which jitter doesn't make.
@@ -737,6 +755,14 @@ export class Live {
 
   /** @param {string} scope */
   async #loadScope(scope) {
+    // A simulation's trip: its watches are its run's alone.
+    const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(() => null);
+    if (info?.simulation === true) this.#still.add(scope);
+    else this.#still.delete(scope);
+    if (this.#still.has(scope) && this.#sim?.trip !== scope) {
+      this.#watches.delete(scope);
+      return;
+    }
     const { watches } = await readWatches(this.ws, scope);
     if (watches.length) this.#watches.set(scope, watches);
     else this.#watches.delete(scope);
@@ -748,6 +774,10 @@ export class Live {
     this.#plan = [];
     this.#places = [];
     if (!trip) return;
+    const sim = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
+    if (sim?.simulation === true) this.#still.add(trip);
+    else this.#still.delete(trip);
+    if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run (review 4)
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
@@ -831,7 +861,7 @@ export class Live {
 
   /** Whether a watch is looked at now: its conversation's, live mode for GPS, and time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
   #looked(type, scope) {
-    return Boolean(type) && !(type?.gps && !this.on) && (scope === this.#scope() || type?.type === 'time');
+    return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#scope() || type?.type === 'time');
   }
 
   /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: { from: string, to: string } | null, past?: boolean }} [o] */
@@ -844,6 +874,7 @@ export class Live {
     /** @type {Fired[]} */
     const fired = [];
     for (const [scope, list] of [...this.#watches]) {
+      if (!this.#inPlay(scope)) continue; // the user's own watches aren't due, or expired, on a simulation's clock (review 1)
       for (const w of [...list]) {
         if (expired(w, m.now)) {
           await this.#drop(scope, w);
@@ -1024,6 +1055,7 @@ export class Live {
     const types = this.types();
     const open = this.#scope();
     for (const [scope, list] of this.#watches) {
+      if (!this.#inPlay(scope)) continue;
       for (const w of list) {
         if (w.expires) consider(Date.parse(w.expires));
         const type = types.get(w.when?.type);

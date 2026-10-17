@@ -1,7 +1,7 @@
 import { trackFrom, trackFromLog, Simulation } from './simulate.js';
 import { ManualClock, PlayClock, realClock } from './clock.js';
 import { createTrip, removeTrip } from '../scopes.js';
-import { updateAppSettings } from '../settings.js';
+import { readAppSettings, updateAppSettings } from '../settings.js';
 import { validZone, deviceZone, dayIn } from '../time.js';
 import { pointsOf } from '../after/route.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
@@ -20,6 +20,20 @@ import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
 
 /** The speeds a simulation can play at, besides as fast as it can go (choice 13). */
 export const SPEEDS = Object.freeze([10, 60, 600]);
+
+/**
+ * At a start: a simulation that was running when the page went away (a reload, or iOS letting it go in
+ * the background) is over. The trip open before it opens again, if it is still here, so live mode
+ * goes on into the user's own trip (review 3). Returns that trip, or null when nothing was running.
+ * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace }} c @returns {Promise<string | null>}
+ */
+export async function recoverSimulation({ store, ws }) {
+  const s = (await readAppSettings(ws)).simulation;
+  if (!s || typeof s !== 'object') return null;
+  const before = typeof s.before === 'string' && (await store.tx(['scopes'], 'readonly', (t) => t.getScope(s.before))) ? s.before : null;
+  await updateAppSettings(ws, { activeTrip: before, simulation: null });
+  return before;
+}
 
 /** A file name from an itinerary's key. @param {string} name */
 const fileName = (name) => String(name).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'item';
@@ -75,13 +89,14 @@ export class SimRun {
     const p = source.kind === 'trip' ? await this.#fromTrip(source.trip) : this.#fromItinerary(source.itinerary);
     const trip = await p.make();
     const before = agent.target;
-    await updateAppSettings(ws, { activeTrip: trip });
+    // Remembered until it ends, so a reload in the middle (iOS lets a page go in the background) opens the trip before again (review 3).
+    await updateAppSettings(ws, { activeTrip: trip, simulation: { trip, before } });
     await agent.open(trip);
     const clock = speed === 'fast' ? new ManualClock(p.track[0].at) : new PlayClock(p.track[0].at, { speed, base: this.c.base ?? realClock() });
     this.#clock = clock;
     const giveBack = await live.simulate({ clock, timeZone: () => p.tz, trip });
     const sim = new Simulation({ registry, track: p.track });
-    const restore = agent.useClock({ now: clock.now, online: () => sim.online, timeZone: () => p.tz });
+    const restore = agent.useClock({ now: clock.now, online: () => sim.online, timeZone: () => p.tz, scope: trip });
     this.state = { trip, title: p.title, tz: p.tz, from: p.track[0].at, to: p.track[p.track.length - 1].at, speed, paused: false, done: false, stopped: false, error: null };
     this.#abort = new AbortController();
     this.#emit();
@@ -125,8 +140,10 @@ export class SimRun {
         // The trip open before opens again, so the phone's own GPS goes on into it (choice 9), unless the user opened another.
         if (agent.target === trip) {
           const back = before && before !== trip && (await store.tx(['scopes'], 'readonly', (t) => t.getScope(before))) ? before : null;
-          await updateAppSettings(ws, { activeTrip: back }).catch(() => {});
+          await updateAppSettings(ws, { activeTrip: back, simulation: null }).catch(() => {});
           await agent.open(back).catch(() => {});
+        } else {
+          await updateAppSettings(ws, { simulation: null }).catch(() => {});
         }
         this.#clock = null;
         this.#held = null;
@@ -218,7 +235,8 @@ export class SimRun {
           ...Object.entries(it.bookings ?? {}).map(([n, v]) => /** @type {[string, string, any]} */ ([`booking "${n}"`, `/bookings/${fileName(n)}.json`, v])),
         ];
         try {
-          await ws.patch(id, '/trip.json', { timezones: [tz] }, { author: 'user' });
+          // Marked a simulation's: outside its run, live mode leaves it as it is (review 4).
+          await ws.patch(id, '/trip.json', { timezones: [tz], simulation: true }, { author: 'user' });
           for (const [what, path, value] of files) {
             try {
               await ws.write(id, path, value, { author: 'user' });
@@ -261,7 +279,7 @@ export class SimRun {
       track, tz, title,
       make: async () => {
         const t = await createTrip(ws, { title, start: /** @type {string} */ (dayIn(track[0].at, tz)), end: /** @type {string} */ (dayIn(track[track.length - 1].at, tz)) });
-        await ws.patch(t, '/trip.json', { timezones: [tz], ...(Array.isArray(info.party) ? { party: info.party } : {}), ...(Array.isArray(info.places) ? { places: info.places } : {}) }, { author: 'user' });
+        await ws.patch(t, '/trip.json', { timezones: [tz], simulation: true, ...(Array.isArray(info.party) ? { party: info.party } : {}), ...(Array.isArray(info.places) ? { places: info.places } : {}) }, { author: 'user' });
         for (const [path, v] of copies) await ws.write(t, path, v, { author: 'user' }).catch(() => {}); // one annai no longer accepts stays out
         return t;
       },

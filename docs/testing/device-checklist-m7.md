@@ -9,6 +9,8 @@ wrong.
 - [ ] Settings → Developer → Simulate a trip → Big Sur sample, 600 times. The live chip says "Simulation · …"; Now and Driving follow the simulated day (Now hands over to Driving when the drive begins); Shiori wakes (Trace → Live).
 - [ ] Pause, then Resume from the live chip; change the speed on the screen. Stop it. The chip says "Live off", and live mode is as you left it (on or off).
 - [ ] Simulate it again as fast as it can go: it ends in about a minute. Replay it and Recap it from the screen. Remove that trip afterwards (Trips → it → Remove trip).
+- [ ] Set a real time reminder for a few days ahead (ask Shiori: "remind me on Friday at 8 to pack the camera batteries"), then simulate the sample as fast as it can go. The reminder doesn't fire during the simulation and is still there afterwards (Trace → Live has nothing new in your trip); it fires on Friday at 8.
+- [ ] Reload annai in the middle of a simulation (or switch away on iPhone until iOS closes it, then open it again). annai opens the trip that was open before, not the simulation's; with live mode on, Trace → Location of that trip gets the new points, and the simulation's trip gets none.
 - [ ] With a trip of your own that has a recorded track (a local drive from milestone 5), simulate "The recorded track of a trip on this device": the replay of the new trip looks like the drive did.
 
 ## Stamps
@@ -20,7 +22,7 @@ wrong.
 - [ ] The trip → Recap → Write the recap. It takes about a minute (note how long on each phone). The text has a section for each day, in order, and names the places you were.
 - [ ] Open "What goes to …": it matches what the trace shows was sent (Trace → Models: the recap call; no GPS track in it).
 - [ ] Write it again: the new one replaces it; Edit → the file's history has the old one.
-- [ ] Hear Shiori tell it, with voice off and in a quiet room: she reads it aloud, a few sentences at a time, then listens. Interrupt her by tapping her. Try it again in the car over Bluetooth.
+- [ ] Hear Shiori tell it, with voice Off and in a quiet room: she reads it aloud, a few sentences at a time, and the microphone stays off (the dock never says Listening; any question comes as buttons). Interrupt her by tapping her. Try it again with voice On in the car over Bluetooth: there she listens after each part.
 
 ## Replay, on both phones
 - [ ] The trip → Replay opens within a few seconds even with five days of points (time it). The day tabs show each day; the whole trip shows the whole road.
