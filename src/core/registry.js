@@ -47,9 +47,13 @@ export class Registry {
     return (this.#items.get(kind) ?? []).filter((e) => !this.#disabled.has(e.pluginId)).map((e) => e.item);
   }
 
-  /** Contributions of a kind with the plugin each came from. @param {string} kind @returns {{ pluginId: string, item: any }[]} */
-  entries(kind) {
-    return (this.#items.get(kind) ?? []).filter((e) => !this.#disabled.has(e.pluginId)).map((e) => ({ pluginId: e.pluginId, item: e.item }));
+  /**
+   * Contributions of a kind with the plugin each came from. all: also those of plugins switched off after
+   * repeated errors (they still hold the names they registered).
+   * @param {string} kind @param {{ all?: boolean }} [o] @returns {{ pluginId: string, item: any }[]}
+   */
+  entries(kind, { all = false } = {}) {
+    return (this.#items.get(kind) ?? []).filter((e) => all || !this.#disabled.has(e.pluginId)).map((e) => ({ pluginId: e.pluginId, item: e.item }));
   }
 
   /** @param {string} pluginId */

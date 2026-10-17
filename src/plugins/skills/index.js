@@ -6,15 +6,17 @@ import { parseSkill } from '../../core/skills.js';
  * SKILL.md each, cached by the service worker for offline use. Only their names and descriptions
  * sit in her context; she loads a text with the skill tool.
  */
+export const BUILT_IN = Object.freeze(['driving-companion', 'replanning', 'plan-a-trip']);
+
+/** provides.skill: the names are annai's even when a file didn't load, so no package can take one. */
 export const manifest = {
   id: 'skills',
   name: 'Built-in skills',
   version: VERSION,
   api: 1,
   description: "Shiori's own skills: the driving companion, replanning, and planning a trip.",
+  provides: { skill: [...BUILT_IN] },
 };
-
-export const BUILT_IN = Object.freeze(['driving-companion', 'replanning', 'plan-a-trip']);
 
 /**
  * annai's own skills, read from /skills/<name>/SKILL.md; one that is missing or unreadable is left out.
