@@ -79,6 +79,8 @@ export class PluginHost {
   #services = {};
   /** @type {Map<string, Promise<void>>} plugins starting now, so a second start waits instead of activating twice */
   #starting = new Map();
+  /** @type {Set<string>} ids being removed: their start's later writes are skipped, and they don't start again (fix pass 8a-2) */
+  #removing = new Set();
   /** @type {{ state: Record<string, any>, names: Map<string, string[]> }} the installed packages and the skill names they claim, as of the last start */
   #claimed = { state: {}, names: new Map() };
 
@@ -268,6 +270,8 @@ export class PluginHost {
     const id = pkg.id;
     /** @type {Map<string, Uint8Array>} */
     const toWrite = new Map([...pkg.files].map(([rel, bytes]) => [`/${id}/${rel}`, bytes]));
+    await this.#settled(id);
+    this.#removing.delete(id);
     await this.stop(id);
     const state = await this.installed();
     const before = state[id];
@@ -391,6 +395,7 @@ export class PluginHost {
   /** @param {string} id */
   async #startNow(id) {
     if (this.active.has(id)) return;
+    if (this.#removing.has(id)) throw new PluginError(id, 'is being removed');
     if (this.#stale.has(id)) throw new PluginError(id, 'was updated. Restart annai to run the new version.');
     const manifest = await this.#stored(id);
     const state = await this.installed();
@@ -437,6 +442,8 @@ export class PluginHost {
    * @param {string} id @returns {Promise<{ bytes: number }>}
    */
   async uninstall(id) {
+    this.#removing.add(id);
+    await this.#settled(id);
     const tools = new Set(this.registry.entries('tool', { all: true }).filter((e) => e.pluginId === id).map((e) => String(e.item?.name)));
     await this.stop(id);
     const state = await this.installed();
@@ -791,8 +798,14 @@ export class PluginHost {
     }
   }
 
-  /** @param {string} id @param {Record<string, any>} changes */
+  /** A plugin's start, when one is under way, over (whether it worked or not). @param {string} id */
+  async #settled(id) {
+    await this.#starting.get(id)?.catch(() => {});
+  }
+
+  /** Changes a plugin's record; one removed meanwhile gets none back (fix pass 8a-2). @param {string} id @param {Record<string, any>} changes */
   async #updateState(id, changes) {
+    if (this.#removing.has(id) || !(await this.installed())[id]) return;
     await this.ws.patch(SYS_PLUGINS, STATE, { [id]: changes }, { author: 'system', create: true });
   }
 }

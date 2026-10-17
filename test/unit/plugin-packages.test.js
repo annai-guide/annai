@@ -204,3 +204,40 @@ test('host: what a new version of an installed package adds is known before it i
   assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.templates], [true, ['trail-maps'], [], []]);
   assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], templates: [] });
 });
+
+// Fix pass 8a-2: a remove or an install while the plugin is starting.
+/** A code plugin whose start takes a moment, and fails when fail is set. @param {{ version?: string, fail?: boolean }} [o] */
+const slow = ({ version = '1.0.0', fail = false } = {}) => files({
+  'annai-plugin.json': JSON.stringify({ id: 'slow', name: 'Slow', version, api: 1, entry: 'index.js' }),
+  'index.js': `export async function activate(annai) {
+    await new Promise((r) => setTimeout(r, 100));
+    ${fail ? "throw new Error('not today');" : ''}
+    return annai.tools.register({ name: 'slow_tool', description: 'Slow.', input: { type: 'object' }, run: () => 'ok' });
+  }`,
+});
+
+test('8a-2: removing a plugin while it starts leaves nothing behind: no record, no tools, nothing running; also when its start fails', async () => {
+  for (const fail of [false, true]) {
+    const { host, registry } = await hostKit();
+    await host.install(slow({ fail }));
+    const starting = fail ? host.startInstalled() : host.start('slow');
+    await new Promise((r) => setTimeout(r, 20));
+    await host.uninstall('slow');
+    await Promise.resolve(starting).catch(() => {});
+    assert.equal((await host.installed()).slow, undefined, `fail: ${fail}`);
+    assert.equal(host.active.has('slow'), false);
+    assert.deepEqual(registry.entries('tool', { all: true }).filter((e) => e.pluginId === 'slow'), []);
+  }
+});
+
+test('8a-2: installing a new version while the old one starts leaves the old one stopped', async () => {
+  const { host, registry } = await hostKit();
+  await host.install(slow());
+  const starting = host.start('slow');
+  await new Promise((r) => setTimeout(r, 20));
+  await host.install(slow({ version: '1.1.0' }));
+  await starting.catch(() => {});
+  assert.equal(host.active.has('slow'), false);
+  assert.deepEqual(registry.entries('tool', { all: true }).filter((e) => e.pluginId === 'slow'), []);
+  assert.equal((await host.installed()).slow.version, '1.1.0');
+});
