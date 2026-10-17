@@ -32,6 +32,10 @@ import { isPluginBug } from '../plugins.js';
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
+ * @typedef {{ key: string, scope: string, watch: string, due: number, text: string }} Mirrored
+ *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time
+ * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, t?: number }} PushNews
+ *   what the service worker saw: a notification shown or opened, or the subscription renewed; t, when
  */
 
 /** A stop: staying within this many meters of where it began. */
@@ -113,18 +117,30 @@ export class Live {
   #held = [];
   /** @type {number | null} when the connection went */
   #offlineSince = null;
+  /** @type {Set<() => void>} */
+  #reminderChanges = new Set();
+  /** The watches and the plan are loaded (start). */
+  #loaded = false;
+  /** @type {Map<string, number>} reminders whose notification the phone showed, by key: when (spec §11.6) */
+  #notified = new Map();
+  /** @type {{ scope: string, text: string }[]} notifications the user opened, for the next catch-up wake */
+  #openedNews = [];
+  /** @type {Set<string>} reminders annai said itself on screen, by key: a notification for one is a double (6b choice 3) */
+  #said = new Set();
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
-   *   agent: AgentLike, clock?: import('./clock.js').Clock, timeZone?: () => string }} c
+   *   agent: AgentLike, clock?: import('./clock.js').Clock, timeZone?: () => string, news?: () => Promise<PushNews[]> }} c
+   *   news: what the service worker saw while annai was away, read at each catch-up (spec §11.6)
    */
-  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone }) {
+  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone, news = async () => [] }) {
     this.store = store;
     this.ws = ws;
     this.registry = registry;
     this.agent = agent;
     this.clock = clock;
     this.timeZone = timeZone;
+    this.news = news;
   }
 
   /** Follows the sensors, the watches and the plan, from the switch as it was left (choice 11). */
@@ -149,6 +165,7 @@ export class Live {
     await this.#run(async () => {
       await this.#loadAll();
       await this.#follow();
+      this.#loaded = true;
       const last = await this.#lastSeen();
       this.#sensors();
       await this.#catchUp({ ...last, how: 'start' });
@@ -284,6 +301,7 @@ export class Live {
       const m = this.#moment();
       this.#memFor(type, stored, scope, m); // it starts from where the user is now: set while inside, enter doesn't fire
       this.#schedule(m);
+      this.#tellReminders();
       return w;
     });
   }
@@ -318,6 +336,75 @@ export class Live {
       if (!w) throw new Error(`There is no watch ${id} here. watch_list shows them.`);
       await this.#drop(scope, w, 'shiori');
       return `Cancelled ${id}.`;
+    });
+  }
+
+  /**
+   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time
+   * watches in every conversation, and the open trip's "coming up" and "leave soon", each at the time
+   * the phone itself would say it. Null until live mode has loaded; read in its own queue, so never
+   * half of a list being reloaded.
+   * @returns {Promise<Mirrored[] | null>}
+   */
+  reminders() {
+    return this.#run(async () => {
+      if (!this.#loaded) return null;
+      const m = this.#moment();
+      const time = this.types().get('time');
+      /** @type {Mirrored[]} */
+      const out = [];
+      for (const [scope, list] of this.#watches) {
+        for (const w of list) {
+          if (w.when?.type !== 'time' || !time || this.#broken(time, w)) continue;
+          const due = Date.parse(w.when.at);
+          if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback });
+        }
+      }
+      const open = this.#scope();
+      for (const w of this.#plan) {
+        const event = /** @type {any} */ (w.when).event;
+        if ((event !== 'coming-up' && event !== 'leave') || this.#spent(open, w)) continue;
+        /** @type {number | null} */
+        let due = null;
+        try {
+          due = PLAN.next?.(w.when, m, this.#mem.get(this.#key(open, w.id)) ?? {}) ?? null;
+        } catch {
+          due = null;
+        }
+        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: w.fallback });
+      }
+      return out.sort((a, b) => a.due - b.due);
+    });
+  }
+
+  /** Hears when what reminders() says may have changed. @param {() => void} fn @returns {() => void} */
+  onReminders(fn) {
+    this.#reminderChanges.add(fn);
+    return () => { this.#reminderChanges.delete(fn); };
+  }
+
+  /** A trip was removed (spec §4.9): its watches, memory and firings leave live mode at once. @param {string} scope */
+  forget(scope) {
+    return this.#run(async () => {
+      this.#watches.delete(scope);
+      const prefix = `${scope}\n`;
+      for (const k of [...this.#mem.keys()]) if (k.startsWith(prefix)) this.#mem.delete(k);
+      for (const k of [...this.#fired.keys()]) if (k.startsWith(prefix)) this.#fired.delete(k);
+      this.#tellReminders();
+    });
+  }
+
+  /**
+   * What the service worker saw while annai is on screen (spec §11.6): opened notifications become a
+   * catch-up wake now, or join the one running. Returns the keys of shown notifications for reminders
+   * annai had already said itself on screen, for the page to close (6b choice 3).
+   * @param {PushNews[]} list @returns {Promise<string[]>}
+   */
+  pushNews(list) {
+    return this.#run(async () => {
+      const doubles = await this.#hear(list);
+      if (!this.#catch) await this.#deliverOpened();
+      return doubles;
     });
   }
 
@@ -407,6 +494,70 @@ export class Live {
       } catch (e) {
         console.warn('an activity listener failed', e);
       }
+    }
+  }
+
+  #tellReminders() {
+    for (const fn of this.#reminderChanges) {
+      try {
+        fn();
+      } catch (e) {
+        console.warn('a reminders listener failed', e);
+      }
+    }
+  }
+
+  /** A reminder's name at the relay: its conversation, its watch, and for the plan's, the item's time. @param {string} scope @param {Watch} w */
+  #keyOf(scope, w) {
+    const f = forAt(w);
+    return f === null ? `${scope}|${w.id}` : `${scope}|${w.id}|${f}`;
+  }
+
+  /** The service worker's news, never failing. @returns {Promise<PushNews[]>} */
+  async #readNews() {
+    try {
+      const list = await this.news();
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Takes in the service worker's news: shown ones are told with the firing they were for, opened
+   * ones wait for a wake. A removed trip's, and annai's own test notifications, are dropped.
+   * @param {PushNews[]} list @returns {Promise<string[]>} the doubles
+   */
+  async #hear(list) {
+    const now = this.clock.now();
+    for (const [k, t] of this.#notified) if (now - t > 86_400_000) this.#notified.delete(k);
+    /** @type {string[]} */
+    const doubles = [];
+    for (const n of Array.isArray(list) ? list : []) {
+      if (!n || typeof n !== 'object' || n.test || typeof n.key !== 'string' || typeof n.scope !== 'string' || !n.scope) continue;
+      if (n.kind !== 'shown' && n.kind !== 'opened') continue;
+      if (!(await this.#exists(n.scope))) continue;
+      const t = typeof n.t === 'number' && Number.isFinite(n.t) ? n.t : now;
+      if (n.kind === 'shown') {
+        this.#notified.set(n.key, t);
+        if (this.#said.has(n.key)) doubles.push(n.key);
+      } else {
+        const words = String(n.body ?? '').trim().slice(0, 300);
+        this.#openedNews.push({ scope: n.scope, text: `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? 'a watch')}`} from its notification at ${timeIn(t, this.timeZone())}.` });
+      }
+      await logEvent(this.store, n.scope, { type: n.kind === 'shown' ? 'push.shown' : 'push.opened', actor: 'system', data: { key: n.key, watch: String(n.watch ?? ''), at: t } }, now);
+    }
+    return doubles;
+  }
+
+  /** Opened notifications with no catch-up running: a catch-up wake of their own, in each one's conversation. */
+  async #deliverOpened() {
+    /** @type {Map<string, string[]>} */
+    const by = new Map();
+    for (const o of this.#openedNews.splice(0)) by.set(o.scope, [...(by.get(o.scope) ?? []), o.text]);
+    for (const [scope, lines] of by) {
+      const text = `Catch-up: ${lines.join(' ').replace(/^The user/, 'the user')}`;
+      await this.agent.wake({ kind: 'catch-up', text, ...(scope === this.#scope() ? {} : { scope }) });
     }
   }
 
@@ -557,6 +708,8 @@ export class Live {
     if (this.#catch) await this.#endCatchUp();
     const c = { ...gap, fired: /** @type {Fired[]} */ ([]), timer: /** @type {any} */ (null) };
     this.#catch = c;
+    // What the phone's notifications did meanwhile, before the firings that may be theirs (spec §11.6).
+    await this.#hear(await this.#readNews());
     await this.#check({ past: true });
     if (this.on && this.shown && this.#gpsOn.size && this.gps !== 'denied') {
       c.timer = this.clock.set(() => {
@@ -574,7 +727,8 @@ export class Live {
     if (!c) return;
     this.#catch = null;
     if (c.timer !== null) this.clock.clear(c.timer);
-    if (c.fired.length) await this.#deliver(c.fired, 'catch-up', this.#catchUpHeader(c));
+    const opened = this.#openedNews.splice(0);
+    if (c.fired.length || opened.length) await this.#deliver(c.fired, 'catch-up', this.#catchUpHeader(c), opened);
   }
 
   /** "Catch-up: annai was off screen for 47 min (since 15:18), and the user moved 17.0 km from near … to near …." @param {{ how: 'start' | 'shown', since: number | null, from: Fix | null }} c */
@@ -762,6 +916,7 @@ export class Live {
     }
     if (fired.length) await this.#fire(fired, m.now);
     this.#schedule(m);
+    this.#tellReminders();
   }
 
   /** @param {string} scope @param {Watch} watch @param {TriggerType} type @param {Firing} firing @param {number} now @returns {Fired} */
@@ -798,6 +953,10 @@ export class Live {
       }
       if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch);
       done.push(x);
+      if (!this.#catch && this.shown) {
+        this.#said.add(this.#keyOf(x.scope, x.watch));
+        if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.values().next().value));
+      }
     }
     if (this.#catch) this.#catch.fired.push(...done);
     else if (done.length) await this.#deliver(done);
@@ -807,24 +966,30 @@ export class Live {
    * Wakes Shiori for what fired. In another conversation (a time watch of a trip that isn't open):
    * its reminders now, and the wake written into it for when it opens (choice 3).
    * @param {Fired[]} list @param {'trigger' | 'catch-up'} [kind] @param {string} [header]
+   * @param {{ scope: string, text: string }[]} [opened] notifications the user opened (spec §11.6)
    */
-  async #deliver(list, kind = 'trigger', header = '') {
+  async #deliver(list, kind = 'trigger', header = '', opened = []) {
     const open = this.#scope();
     /** @type {Map<string, Fired[]>} */
     const by = new Map();
     for (const x of list) by.set(x.scope, [...(by.get(x.scope) ?? []), x]);
+    /** @type {Map<string, string[]>} */
+    const notes = new Map();
+    for (const o of opened) notes.set(o.scope, [...(notes.get(o.scope) ?? []), o.text]);
+    for (const scope of notes.keys()) if (!by.has(scope)) by.set(scope, []);
     for (const [scope, xs] of by) {
       const reasons = xs.map((x) => this.#reason(x));
       const fallbacks = xs.map((x) => ({ watch: x.watch.id, text: x.fallback }));
+      const lines = notes.get(scope) ?? [];
       if (scope !== open) {
-        await this.agent.remind(fallbacks, scope);
-        await this.agent.wake({ kind, text: reasons.join(' '), scope });
+        if (fallbacks.length) await this.agent.remind(fallbacks, scope);
+        await this.agent.wake({ kind, text: [...lines, ...reasons].join(' '), scope });
         continue;
       }
-      const text = [header, ...reasons].filter(Boolean).join(' ');
+      const text = [header, ...lines, ...reasons].filter(Boolean).join(' ');
       if (!this.online) {
         // No connection: annai says the reminders itself now; Shiori hears of them when it is back (spec §17, choice 8).
-        await this.agent.remind(fallbacks);
+        if (fallbacks.length) await this.agent.remind(fallbacks);
         this.#held.push({ scope, text });
         continue;
       }
@@ -832,9 +997,16 @@ export class Live {
     }
   }
 
-  /** What fired, in words for Shiori's wake. @param {Fired} x */
+  /** What fired, in words for Shiori's wake; with when its notification was shown, if it was (spec §11.6). @param {Fired} x */
   #reason(x) {
-    const late = x.late ? ` (late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : 'off screen'})` : '';
+    const key = this.#keyOf(x.scope, x.watch);
+    const shown = this.#notified.get(key);
+    this.#notified.delete(key);
+    const notes = [
+      x.late ? `late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : 'off screen'}` : '',
+      shown !== undefined ? `its notification was shown at ${timeIn(shown, this.timeZone())}` : '',
+    ].filter(Boolean);
+    const late = notes.length ? ` (${notes.join('; ')})` : '';
     if (x.watch.owner === 'system') return `${x.firing.text}${late}.`;
     const whose = x.watch.owner === 'shiori' ? 'Your watch' : `The watch of ${x.watch.owner}`;
     return `${whose} ${x.watch.id} (${this.#describe(x.type, x.watch)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
@@ -885,6 +1057,7 @@ export class Live {
     this.#watches.set(scope, (this.#watches.get(scope) ?? []).filter((x) => x.id !== w.id));
     this.#mem.delete(this.#key(scope, w.id));
     if (await this.#exists(scope)) await removeWatch(this.ws, scope, w, author);
+    this.#tellReminders();
   }
 
   /** One timer, for the next due watch (spec §11.2); while live, at least once a minute. Off screen, none. @param {Moment} m */
