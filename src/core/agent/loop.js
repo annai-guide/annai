@@ -554,6 +554,10 @@ export class Agent {
     }
     const cut = cutAt(items, { keepTokens, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
     if (cut === null) return false;
+    // What was heard in the part summarized is written down first, the last time its sound is at hand (spec §10.3): the
+    // summary and the log both have the words. While it can't be, housekeeping waits, unless the next request would overflow.
+    const unwritten = (await Transcript.load(this.store, this.scope, { before: cut })).unwritten();
+    if (unwritten.length && (await this.#writeDown('housekeeping', unwritten, { final: Boolean(o.forced) })).length) return false;
     const after = events.filter((e) => e.seq >= cut);
     const first = after.find((e) => e.type === 'msg.user')?.data?.text ?? after.find((e) => e.type === 'wake')?.data?.reasons?.[0]?.text ?? '';
     const marker = first ? `the exchange that begins "${first.slice(0, 80)}"` : `event ${cut}`;
@@ -597,6 +601,8 @@ export class Agent {
   /** Cold: the utility model, from the older part as text. @param {number} cut */
   async #coldSummary(cut) {
     const old = await Transcript.load(this.store, this.scope, { before: cut });
+    // Words written down since (by housekeeping, just now) count for the part summarized.
+    for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['heard.text'], after: cut - 1 }))) old.apply(e, { texts: {}, images: [] });
     // Half the utility model's window, in characters, leaves room for the instructions and the summary.
     const window = (await this.#roleModel('utility'))?.contextWindow;
     const text = renderForSummary(old.messages, window ? Math.floor(window * 3.5 * 0.5) : SUMMARY_MAX_CHARS);
@@ -1572,24 +1578,44 @@ export class Agent {
    * The words of what was heard are written down, and the sound is let go (spec §10.3: each
    * segment stays in memory until the turn that used it succeeds; text versions are made then, the
    * last time the sound is at hand). When nothing could write it down, the sound stays for the next
-   * turn that works; after WRITE_TRIES of them it is written as not transcribed. @param {string} wakeId
+   * turn that works; after WRITE_TRIES of them it is written as not transcribed. final: this is the last chance (housekeeping
+   * that must summarize them now). @param {string} wakeId @param {string[]} [ids] @param {{ final?: boolean }} [o]
+   * @returns {Promise<string[]>} the segments still not written down, whose sound is kept
    */
-  async #writeDown(wakeId) {
+  async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false } = {}) {
     const voice = this.voice;
-    if (!voice) return;
-    for (const id of this.transcript.unwritten()) {
+    if (!voice) return [];
+    const hearer = await this.#hearer();
+    /** @type {string[]} */
+    const left = [];
+    for (const id of ids) {
       if (!voice.memory.get(id)) continue;
-      const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(this.#heardBy ? { hearer: this.#heardBy } : {}) }).catch(() => null);
-      if (!r) {
+      const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}) }).catch(() => null);
+      if (!r && !final) {
         // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again.
         const tries = (this.#writeTries.get(id) ?? 0) + 1;
         this.#writeTries.set(id, tries);
-        if (tries < WRITE_TRIES) continue;
+        if (tries < WRITE_TRIES) {
+          left.push(id);
+          continue;
+        }
       }
       this.#writeTries.delete(id);
       await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null } });
       voice.memory.drop(id);
     }
+    return left;
+  }
+
+  /**
+   * Who writes heard sound down for "Send audio to the model" (spec §10.3): the model that heard it
+   * in this turn, else (housekeeping) the main role's first model that takes audio.
+   * @returns {Promise<string | undefined>}
+   */
+  async #hearer() {
+    if (this.#heardBy) return this.#heardBy;
+    const cfg = await this.llm.config();
+    return (cfg.roles?.main?.models ?? []).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
   }
 
   /**
