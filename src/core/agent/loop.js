@@ -117,7 +117,7 @@ export class Agent {
   /** The wake whose photo couldn't be sent: its card already says why. */
   #photoCard = '';
   /** @type {Record<string, Set<(x: any) => void>>} */
-  #on = { state: new Set(), event: new Set(), notice: new Set() };
+  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set() };
   /** Speaking and hearing (spec §10); null: no voice here. @type {import('../voice/voice.js').Voice | null} */
   voice = null;
   /** Where the user is and what they are doing, for the now block (spec §6.3): live mode's. @type {(() => { place?: string, activity?: string }) | null} */
@@ -208,7 +208,7 @@ export class Agent {
     return this.#photos.copy(source, await this.#limits(), crop);
   }
 
-  /** @param {'state' | 'event' | 'notice'} kind @param {(x: any) => void} fn */
+  /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11). @param {'state' | 'event' | 'notice' | 'open'} kind @param {(x: any) => void} fn */
   on(kind, fn) {
     this.#on[kind].add(fn);
     return () => this.#on[kind].delete(fn);
@@ -219,7 +219,7 @@ export class Agent {
     this.#emit('notice', { ...n, title: await withoutSecrets(this.store, n.title), body: await withoutSecrets(this.store, n.body) });
   }
 
-  /** @param {'state' | 'event' | 'notice'} kind @param {any} x */
+  /** @param {'state' | 'event' | 'notice' | 'open'} kind @param {any} x */
   #emit(kind, x) {
     for (const fn of this.#on[kind]) {
       try {
@@ -303,6 +303,7 @@ export class Agent {
           : 'The conversation closed before you answered (annai restarted, or another one was opened).';
       this.#queue.push({ kind: 'restart', text, scope }); // it runs once the open is done
     }
+    this.#emit('open', { trip, scope });
   }
 
   /**

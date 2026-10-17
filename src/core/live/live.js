@@ -27,7 +27,7 @@ import { tsv } from '../tsv.js';
  *   late: minutes after it came due, in a catch-up; away: how annai was away then
  * @typedef {{ watch: string, text: string }} Reminder
  * @typedef {{ target: string | null, wake: (w: any) => Promise<void>, remind: (list: Reminder[], scope?: string) => Promise<void>,
- *   on: (kind: 'event', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
+ *   on: (kind: 'event' | 'open', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
@@ -137,6 +137,8 @@ export class Live {
       this.registry.add('live', 'skill', REPLANNING),
       this.ws.onChange((c) => this.#changed(c)),
       this.agent.on('event', (e) => this.#heard(e)),
+      // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3).
+      this.agent.on('open', () => this.#bg(() => this.#check())),
       this.registry.onChange(() => this.#sensors()),
     );
     await this.#run(async () => {

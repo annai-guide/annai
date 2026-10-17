@@ -27,10 +27,10 @@ export const at = (hhmm, day = '2026-11-27') => Date.parse(`${day}T${hhmm.length
 /** The same moment as ISO 8601 with its offset, as plan items and watches write it. @param {string} hhmm */
 export const iso = (hhmm, day = '2026-11-27') => `${day}T${hhmm.length === 5 ? `${hhmm}:00` : hhmm}-08:00`;
 
-/** The Agent as live mode sees it: it records wakes and reminders, and can say she woke. @param {string | null} target */
+/** The Agent as live mode sees it: it records wakes and reminders, and can say she woke or another conversation opened. @param {string | null} target */
 export function fakeAgent(target) {
-  /** @type {Set<(e: any) => void>} */
-  const listeners = new Set();
+  /** @type {Record<string, Set<(e: any) => void>>} */
+  const listeners = { event: new Set(), open: new Set() };
   const agent = {
     /** @type {string | null} */
     target,
@@ -47,14 +47,19 @@ export function fakeAgent(target) {
     async remind(list, scope) {
       for (const r of list) agent.reminders.push({ ...r, scope: scope ?? agent.target ?? 'me' });
     },
-    /** @param {'event'} kind @param {(e: any) => void} fn */
+    /** @param {'event' | 'open'} kind @param {(e: any) => void} fn */
     on(kind, fn) {
-      listeners.add(fn);
-      return () => { listeners.delete(fn); };
+      listeners[kind].add(fn);
+      return () => { listeners[kind].delete(fn); };
     },
     /** She woke, as the Agent logs it. @param {string | null} [scope] */
     woke(scope) {
-      for (const fn of listeners) fn({ type: 'wake', scope: scope ?? agent.target, data: {} });
+      for (const fn of listeners.event) fn({ type: 'wake', scope: scope ?? agent.target, data: {} });
+    },
+    /** Another conversation was opened (a trip, or none). @param {string | null} trip */
+    opened(trip) {
+      agent.target = trip;
+      for (const fn of listeners.open) fn({ trip, scope: trip ?? 'me' });
     },
   };
   return agent;

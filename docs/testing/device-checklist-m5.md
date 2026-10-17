@@ -1,0 +1,46 @@
+# Device checklist: milestone 5 (live mode)
+
+The real local drive, on an iPhone and an Android phone, with annai installed to the Home Screen.
+Milestone 5's "Done when" is "a real local drive works": this is that drive. Before it, plan a short
+trip with three stops in annai (one fixed, two flexible, with places), and have a model set up.
+Note what you see in the trip's Trace (kind: Live) after each part.
+
+## Live mode on both phones
+- [ ] Open the trip, tap the Live chip on the dock, and turn live mode on. The phone asks for location once; allow it "While Using". The chip says "Live · finding you", then "Live · stopped" (or on).
+- [ ] Shiori is woken once ("The user turned live mode on"); she sets an activity watch (Trace → Live: no; Trace → Tools: watch_set).
+- [ ] Now shows "At …" or "Near …" a plan stop, the sun chips, what's next and the latest card.
+- [ ] Close annai fully and open it again: live mode is still on, and nothing is asked again.
+
+## Refused location
+- [ ] On one phone, refuse location (or turn it off in Settings). A card says "annai can't see where you are" with steps for this phone; the steps are right for iOS / Android.
+- [ ] Live → Where are you? lists the plan's places; choosing one makes Now say "At …".
+- [ ] Allow location again, turn live mode off and on: the GPS works.
+
+## The drive
+- [ ] Drive off: within a minute the chip says "Live · moving fast", voice Auto turns on ("Voice on · moving") and Now hands over to Driving.
+- [ ] Driving shows You, the next stops with distances and minutes, Directions in Apple or Google Maps, and the quick-ask buttons; each button gets an answer, aloud.
+- [ ] Shiori narrates: a moved watch fires every 10–20 km and she says something worth hearing, or nothing.
+- [ ] Arriving at a plan stop: after about two minutes stopped, she knows you arrived.
+- [ ] A fixed stop's "leave in about 15 min" reminder comes before you need to leave; "running late" comes if you dawdle.
+- [ ] Stop somewhere not on the plan for 20 minutes: she welcomes the detour, says what it costs, and moves flexible items; the Plan shows "Changed by Shiori · Undo", and Undo puts an item back.
+
+## The screen kept on
+- [ ] On the car charger, Live → Keep the screen on while driving or riding. The screen stays on while driving.
+- [ ] Walk somewhere: the screen turns off as usual (the choice is per situation). Drive again: it stays on again.
+- [ ] Installed app on iPhone: the wake lock works there too (it didn't before iOS 18.4).
+
+## Locked and unlocked: catch-up
+- [ ] With a time watch due in 10 minutes (ask Shiori to remind you of something), lock the phone for 15 minutes while driving, then unlock.
+- [ ] One catch-up wake: she hears how long annai was off screen and how far you went, and the reminder came late, labelled. Nothing fires while locked.
+
+## No connection
+- [ ] Turn on airplane mode (or drive where there's no signal) with voice on, and let a watch or a plan reminder come due.
+- [ ] The reminder's fallback is said aloud by the phone's own voice and shown as a card; the dock says "Offline · reminders still work".
+- [ ] When the connection is back, Shiori hears what came while offline, once.
+
+## Battery
+- [ ] An hour of live mode with the screen on (on the charger, and once off it): note the battery used, and whether the phone got warm. Compare with an hour of Maps navigation.
+
+## Afterwards
+- [ ] Trace → Live: the road is there as location points, about one a second while moving, few while stopped; the firings and reminders match what happened.
+- [ ] Export the trip as a Backup and remove it: no location points or watches are left behind (Trips is empty of it).

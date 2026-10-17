@@ -268,3 +268,13 @@ test('off screen nothing runs: GPS stops and the clock waits; back on screen bot
   await k.to(at('10:05:15'));
   assert.deepEqual(k.agent.wakes.map((w) => w.kind), ['catch-up']);
 });
+
+test('opening another trip makes live mode look at its plan at once, even with nothing else to wake it', async () => {
+  const k = await liveKit({ live: false });
+  const second = await createTrip(k.ws, { title: 'Cambria' });
+  await k.ws.write(second, '/plan/tea.json', { id: 'tea', title: 'Tea at the inn', fixed: true, start: { at: iso('09:00'), tz: LA } }, { author: 'user' });
+  k.agent.opened(second);
+  await k.settle();
+  await k.to(at('08:45'));
+  assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: "Tea at the inn" (fixed) starts at 09:00, in 15 min.']);
+});
