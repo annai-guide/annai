@@ -212,3 +212,24 @@ test("minors 4: two calls wait for one session start; stopping one doesn't stop 
     await s.stop();
   }
 });
+
+test("minors 5: a 400's words are read no further than their start; the rest is never read", async () => {
+  for (const said of ['Bad Request: no session', 'Bad Request']) {
+    let sent = 0;
+    const fake = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+      const m = JSON.parse(String(init.body));
+      if (m.method === 'initialize') return Response.json({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2025-06-18', capabilities: {} } });
+      if (!('id' in m)) return new Response(null, { status: 202 });
+      // A session the browser couldn't see, refused with words that go on and on.
+      return new Response(new ReadableStream({
+        pull(c) {
+          if (sent >= 24 * 1024 * 1024) return c.close();
+          c.enqueue(new TextEncoder().encode(sent === 0 ? said.padEnd(1024 * 1024) : ' '.repeat(1024 * 1024)));
+          sent += 1024 * 1024;
+        },
+      }), { status: 400 });
+    };
+    await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: fake }), (e) => e instanceof McpError && (/session/.test(said) ? e.kind === 'cors' : /answered 400/.test(e.message)));
+    assert.ok(sent <= 3 * 1024 * 1024, `read ${sent} bytes`);
+  }
+});

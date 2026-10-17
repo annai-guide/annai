@@ -226,7 +226,7 @@ export class McpClient {
     }
     if (res.status === 400 && !this.#session && this.#version && !init) {
       // Asked for a session the browser kept from annai: the server didn't expose its header (CORS).
-      const said = await res.text().then((t) => t.slice(0, 2000), () => '');
+      const said = await startOf(res, 2000);
       if (/session/i.test(said)) throw new McpError('cors', `The MCP server ${this.server} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.`);
       throw new McpError('server', `The MCP server ${this.server} answered 400.`);
     }
@@ -285,6 +285,26 @@ export class McpClient {
     if (!m || typeof m !== 'object' || m.id !== id) throw unreadable();
     return m;
   }
+}
+
+/** The start of an answer's body, as text: no more than max bytes are read (minors 5). @param {Response} res @param {number} max */
+async function startOf(res, max) {
+  const reader = res.body?.getReader();
+  const decoder = new TextDecoder();
+  let out = '';
+  let n = 0;
+  try {
+    while (reader && n < max) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      out += decoder.decode(value.subarray(0, max - n), { stream: true });
+      n += value.byteLength;
+    }
+  } catch {
+    // cut off: what came is enough
+  }
+  reader?.cancel().catch(() => {});
+  return out;
 }
 
 /** FNV-1a of a text, as 6 base-36 characters. @param {string} s */
