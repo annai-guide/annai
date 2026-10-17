@@ -9,11 +9,12 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
-import { isStandalone, requestPersist, watchForUpdates, platform } from '../ui/platform.js';
+import { isStandalone, requestPersist, watchForUpdates, platform, deviceName } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
+import { secretFreeLog } from '../core/agent/net.js';
 import { offerPluginUpdates } from '../ui/plugin-updates.js';
 import { Agent } from '../core/agent/loop.js';
 import { codec } from '../ui/photo-codec.js';
@@ -28,6 +29,9 @@ import { Live } from '../core/live/live.js';
 import { watchTools } from '../core/live/watch-tools.js';
 import { tellGps } from '../ui/live-help.js';
 import { keepAwake } from '../ui/wake-lock.js';
+import { createBackups } from '../core/backup.js';
+import { ensureProvided } from '../core/llm/official.js';
+import { startBackups } from '../ui/auto-backup.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -54,7 +58,8 @@ async function boot() {
 
   const store = await createIdbStore();
   running = { store };
-  const registry = new Registry({ log: (ev) => logEvent(store, SYS, ev) });
+  // What plugins say when they fail can echo a key: the log keeps none (spec §9.9).
+  const registry = new Registry({ log: secretFreeLog(store, SYS) });
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
   // What a late request wrote into a removed trip goes now; if this fails, it goes at the next start (spec §4.9).
@@ -93,7 +98,17 @@ async function boot() {
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
   live.start().catch((e) => console.warn('Live mode could not start', e));
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, presets, version: VERSION });
+  // Backups to the places this device backs up to (spec §12.4). Choosing a kind of place installs its
+  // plugin (§5.3), whose files load through the service worker.
+  const device = deviceName();
+  const backups = createBackups({
+    store, ws, registry, app: VERSION, label: device.label, noun: device.noun,
+    ensure: async (type) => {
+      await controllerReady();
+      await ensureProvided(plugins, 'storage-type', type);
+    },
+  });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, presets, backups, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   tellGps({ live, notices: shell.notices });
@@ -118,6 +133,8 @@ async function boot() {
     lookForUpdates();
     // The link catalog is kept for offline use: fetched now, so it is there before the first offline moment (spec §7.2).
     loadLinks({ ws }).catch(() => {});
+    // Automatic backups start once installed plugins have: a place's kind comes from its plugin.
+    startBackups({ backups, store, notices: shell.notices, go: (hash) => { location.hash = hash; } });
   });
   setInterval(lookForUpdates, 24 * 60 * 60 * 1000);
   // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).

@@ -41,3 +41,29 @@ export function watchForUpdates(container, reg, announce) {
     });
   });
 }
+
+/**
+ * The connection, as far as the browser says (spec §12.4: automatic backups on Wi-Fi). Chrome on
+ * Android names it; Safari doesn't, which is "unknown". Data Saver counts as mobile data.
+ * @param {{ onLine?: boolean, connection?: { type?: string, saveData?: boolean } }} nav
+ * @returns {import('../core/backup-auto.js').Connection}
+ */
+export function connectionOf(nav) {
+  if (nav.onLine === false) return 'offline';
+  const c = nav.connection;
+  if (c?.type === 'none') return 'offline';
+  if (c?.saveData || c?.type === 'cellular' || c?.type === 'bluetooth' || c?.type === 'wimax') return 'cellular';
+  if (c?.type === 'wifi' || c?.type === 'ethernet') return 'wifi';
+  return 'unknown';
+}
+
+/**
+ * What this device is called in the backups it makes ("iPhone"), and what the user calls it ("phone").
+ * @param {string} [ua] @param {number} [touch] @returns {{ label: string, noun: string }}
+ */
+export function deviceName(ua = navigator.userAgent, touch = navigator.maxTouchPoints) {
+  if (/iPad/.test(ua) || (ua.includes('Macintosh') && touch > 1)) return { label: 'iPad', noun: 'iPad' };
+  if (/iPhone|iPod/.test(ua)) return { label: 'iPhone', noun: 'phone' };
+  if (/Android/.test(ua)) return { label: 'Android phone', noun: 'phone' };
+  return { label: 'computer', noun: 'computer' };
+}

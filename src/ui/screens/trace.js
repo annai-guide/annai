@@ -1,5 +1,5 @@
 import { h, field } from '../dom.js';
-import { formatCost } from '../format.js';
+import { formatCost, bytes, withArticle } from '../format.js';
 import { costs } from '../../core/agent/budgets.js';
 import { toolSwitchList } from './tools.js';
 
@@ -13,6 +13,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Housekeeping: ['compaction'],
   Live: ['location', 'trigger.fired', 'state', 'reminder'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
+  Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
 });
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
@@ -116,6 +117,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
     return `${d.role}: ${d.answeredBy ?? 'no answer'} · ${n} attempt${n === 1 ? '' : 's'}${d.cost !== undefined ? ` · ${formatCost(d.cost)}` : ''}`;
   }
   if (e.type === 'net.request') return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'backup') return `${d.type} · ${d.reason} · ${d.files ?? '?'} files sent, ${bytes(d.uploaded ?? 0)} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'backup.newer') return `${d.type} · a newer backup from ${d.remote?.label ? withArticle(d.remote.label) : 'another device'} is there`;
+  if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;
+  if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}`;
+  if (e.type === 'backup.prune') return `${d.type} · deleted an older backup, ${d.backup}`;
   return d.message ?? d.title ?? '';
 }
 

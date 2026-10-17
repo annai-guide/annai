@@ -11,6 +11,8 @@ import { openFileButton } from '../open-file.js';
 export async function renderTrips(ctx) {
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
+  const places = ctx.backups ? await ctx.backups.list() : [];
+  const latest = places.filter((/** @type {any} */ p) => p.last).sort((/** @type {any} */ a, /** @type {any} */ b) => b.last.at - a.last.at)[0];
   const cards = await Promise.all(active.map(async (s) => tripCard(s, await ctx.ws.readJSON(s.id, '/trip.json').catch(() => null), await backupState(ctx.store, s.id))));
   const archivedCards = await Promise.all(archived.map(async (s) => tripCard(s, null, await backupState(ctx.store, s.id))));
   return h('div', { class: 'screen' },
@@ -18,7 +20,8 @@ export async function renderTrips(ctx) {
     active.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: 'No trips yet. Start one below, or open a trip someone sent you.' }),
     newTripForm(ctx),
     openFileButton(ctx),
-    h('p', { class: 'sub', text: settings.lastExportAt ? `Last export ${relTime(settings.lastExportAt)}.` : 'No backup yet. You can export everything from Settings.' }),
+    h('p', { class: 'sub', text: latest ? `Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
+      : settings.lastExportAt ? `Last export ${relTime(settings.lastExportAt)}.` : 'No backup yet. Export everything from Settings, or set up automatic backups there.' }),
     archived.length
       ? h('details', { class: 'archived' }, h('summary', { text: `Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
       : null);

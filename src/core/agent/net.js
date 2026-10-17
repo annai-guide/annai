@@ -51,13 +51,59 @@ function scrub(text, secrets) {
 }
 
 /**
- * Text for the user's eyes (a card, an error in the log) with every secret annai keeps blanked; when
- * one might still show, a plain note instead (spec §9.9). @param {Store} store @param {string} text
+ * Credentials by their shape, whoever's they are, so that even one annai doesn't keep never shows:
+ * a SigV4 Authorization header, a Bearer value, a Basic value (when it looks like base64, so "Basic
+ * authentication" stays), and a presigned URL's signature, credential and token.
+ * @type {[RegExp, string][]}
+ */
+const SHAPES = [
+  [/\bAWS4-HMAC-SHA256\s+Credential=[^\s,]+(?:,\s*SignedHeaders=[^\s,]+)?(?:,\s*Signature=[0-9a-f]+)?/gi, `AWS4-HMAC-SHA256 ${BLANK}`],
+  [/\b(Bearer)\s+[A-Za-z0-9._~+/=-]{8,}/g, `$1 ${BLANK}`],
+  [/\b(Basic)\s+(?=[A-Za-z0-9+/]*[0-9+/=])[A-Za-z0-9+/]{6,}={0,2}/g, `$1 ${BLANK}`],
+  [/\b(Signature|X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token)=[^&\s"'<>]+/gi, `$1=${BLANK}`],
+];
+
+/** Every secret annai keeps, and every credential-shaped text, blanked. @param {string} text @param {string[]} secrets */
+function blankAll(text, secrets) {
+  return scrub(SHAPES.reduce((t, [re, to]) => t.replace(re, to), String(text ?? '')), secrets);
+}
+
+const HIDDEN = 'The message held a key, so it is not shown.';
+
+/**
+ * Text for the user's eyes (a card, an error in the log) with every secret annai keeps blanked, and
+ * anything shaped like a credential; when one might still show, a plain note instead (spec §9.9).
+ * @param {Store} store @param {string} text
  */
 export async function withoutSecrets(store, text) {
   const secrets = await knownSecrets(store);
-  const out = scrub(text, secrets);
-  return leaks(out, secrets) ? 'The message held a key, so it is not shown.' : out;
+  const out = blankAll(text, secrets);
+  return leaks(out, secrets) ? HIDDEN : out;
+}
+
+/** A value with every text in it as withoutSecrets would show it. @param {Store} store @param {any} value @returns {Promise<any>} */
+export async function withoutSecretsIn(store, value) {
+  const secrets = await knownSecrets(store);
+  /** @param {any} v @returns {any} */
+  const walk = (v) => {
+    if (typeof v === 'string') {
+      const out = blankAll(v, secrets);
+      return leaks(out, secrets) ? HIDDEN : out;
+    }
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(value);
+}
+
+/**
+ * A log whose every text holds no secret: for entries made from what plugins said, such as the
+ * registry's plugin.error (spec §5.5, §9.9), whichever plugin failed.
+ * @param {Store} store @param {string} scope @returns {(ev: { type: string, actor?: string, data?: any }) => Promise<unknown>}
+ */
+export function secretFreeLog(store, scope) {
+  return async (ev) => logEvent(store, scope, { ...ev, data: await withoutSecretsIn(store, ev.data ?? {}) });
 }
 
 /** Whether text, decoded, holds a secret. @param {string} text @param {string[]} secrets */
@@ -143,7 +189,7 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: res.status, ms: Date.now() - started, ...(bytes ? { bytes } : {}) } }).catch(() => {});
       return res;
     } catch (e) {
-      const said = scrub(String(/** @type {any} */ (e)?.message ?? e), secrets);
+      const said = blankAll(String(/** @type {any} */ (e)?.message ?? e), secrets);
       const held = leaks(said, secrets);
       const error = held ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: 0, ms: Date.now() - started, error } }).catch(() => {});

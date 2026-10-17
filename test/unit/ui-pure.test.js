@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines } from '../../src/ui/format.js';
+import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -14,6 +14,7 @@ import { traceSummary } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
 import { priceLine } from '../../src/ui/screens/endpoint.js';
 import { mediaKeys } from '../../src/ui/media-keys.js';
+import { restoreFrom } from '../../src/ui/auto-backup.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -216,6 +217,85 @@ test('bookingLines: what a booking says, with times in their own zone', () => {
   // Only what is required; a zone annai doesn't know leaves the time out rather than breaking.
   assert.deepEqual(bookingLines({ id: 'x', kind: 'other', status: 'unverified', source: '/files/x' }, 'en-US'), [['Kind', 'Other']]);
   assert.deepEqual(bookingLines({ kind: 'car', start: { at: '2026-11-25T08:00:00-08:00', tz: 'Nowhere' }, fields: 'not an object' }, 'en-US'), [['Kind', 'Car']]);
+});
+
+test('a backup place in a few words, and the newer backup at it (spec §12.4)', () => {
+  const now = Date.UTC(2026, 9, 16, 12);
+  /** @param {Record<string, any>} [o] @returns {any} */
+  const t = (o = {}) => ({ id: 'bt-1', type: 'github', name: 'GitHub', config: {}, auto: 'changes', mobileData: false, created: 0, checked: 1, last: null, hold: null, ...o });
+  const last = { id: 'c', at: now - 2 * 3_600_000, seqs: {}, bytes: 0 };
+  assert.equal(placeStatus(t({ checked: null }), null, now), 'Not set up yet: fill it in, then Save and test');
+  assert.equal(placeStatus(t(), null, now), 'Not backed up yet');
+  assert.equal(placeStatus(t({ last }), null, now), 'Last backup 2 hours ago');
+  assert.equal(placeStatus(t({ last, auto: 'off' }), null, now), 'Last backup 2 hours ago. Automatic backups are off');
+  assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'Android phone' } } }), null, now), 'Paused: there is a newer backup from an Android phone');
+  assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now } } }), null, now), 'Paused: there is a newer backup from another device');
+  assert.equal(placeStatus(t({ hold: { kind: 'large', bytes: 150 * 1024 * 1024, at: now } }), null, now), 'Not backed up yet. Waiting for your OK to upload 150 MB');
+  assert.equal(placeStatus(t({ last, hold: { kind: 'error', message: 'GitHub had a problem.', at: now, count: 1, retryAt: now, needsYou: false } }), null, now),
+    'Last backup 2 hours ago. The last try failed: GitHub had a problem.');
+  assert.equal(placeStatus(t(), { phase: 'uploading', done: 3, total: 12 }, now), 'Uploading 3 of 12…');
+  assert.equal(placeStatus(t(), { phase: 'checking', done: 1, total: 40 }, now), 'Comparing files 1 of 40…');
+  assert.equal(placeStatus(t(), { phase: 'building', done: 0, total: 0 }, now), 'Getting the backup ready…');
+  assert.deepEqual(['iPhone', 'iPad', 'Android phone', 'computer'].map(withArticle), ['an iPhone', 'an iPad', 'an Android phone', 'a computer']);
+  assert.equal(placeHref('bt-1 2'), '#/backups/place?id=bt-1%202');
+  const held = t({ last: { ...last, at: now - 86_400_000 }, hold: { kind: 'newer', remote: { id: 'x', at: now - 3_600_000, label: 'Android phone' } } });
+  assert.equal(newerText(held, { where: 'me/annai-backup', noun: 'phone', tree: true }, now),
+    "An Android phone backed up to me/annai-backup 1 hour ago, after this phone's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this phone over it (the other backup stays in its history).");
+  assert.equal(newerText(t({ hold: { kind: 'newer', remote: { id: 'x', at: now } } }), { where: 'x', noun: 'computer', tree: false }, now),
+    'Another device backed up to x just now. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this computer over it.');
+  assert.equal(newerText(t(), { where: 'x', noun: 'phone', tree: true }, now), '');
+  assert.deepEqual(parseHash('#/backups/place?id=bt-1'), { name: 'backups', parts: ['backups', 'place'], params: { id: 'bt-1' } });
+});
+
+test('the trace says what each backup did (spec §15)', () => {
+  assert.equal(traceSummary({ type: 'backup', data: { type: 'github', reason: 'auto', backup: 'c1', files: 3, uploaded: 2048, ms: 900 } }), 'github · auto · 3 files sent, 2.0 KB · 900 ms');
+  assert.equal(traceSummary({ type: 'backup.newer', data: { type: 'github', remote: { id: 'c2', at: 0, label: 'Android phone' } } }), 'github · a newer backup from an Android phone is there');
+  assert.equal(traceSummary({ type: 'backup.error', data: { type: 'github', kind: 'auth', message: 'GitHub refused the token.' } }), 'github · auth: GitHub refused the token.');
+  assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096 } }), 'github · downloaded c2, 4.0 KB');
+  assert.equal(traceSummary({ type: 'backup.prune', data: { type: 's3', backup: 'annai-backup-1.annai.zip' } }), 's3 · deleted an older backup, annai-backup-1.annai.zip');
+});
+
+test('a restore behind a backup the user started says it waits; then it says it downloads', async () => {
+  /** @type {string[]} */
+  const said = [];
+  /** @type {() => void} */
+  let changed = () => {};
+  /** @type {(b: Blob) => void} */
+  let finish = () => {};
+  let progress = /** @type {any} */ (null);
+  const backups = {
+    running: () => [{ id: 'bt-1', reason: 'user', phase: 'uploading' }],
+    progress: () => progress,
+    on: (/** @type {() => void} */ fn) => { changed = fn; return () => {}; },
+    download: () => new Promise((resolve) => { finish = resolve; }),
+  };
+  /** @type {string[]} */
+  const went = [];
+  const done = restoreFrom(/** @type {any} */ ({ backups, store: null, notices: null, go: (/** @type {string} */ h) => went.push(h) }), /** @type {any} */ ({ id: 'bt-1' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual(said, ["Waiting for the backup that's running to finish…"]);
+  progress = { phase: 'downloading', done: 0, total: 0 };
+  changed();
+  progress = { phase: 'downloading', done: 2, total: 9 };
+  changed();
+  finish(new Blob(['zip']));
+  await done;
+  assert.deepEqual(said.slice(1), ['Downloading the backup…', 'Downloading 2 of 9 files…']);
+  assert.deepEqual(went, ['#/import']);
+});
+
+test('the limit for an unnamed connection, as typed and as shown', () => {
+  assert.equal(limitFromField(''), null);
+  assert.equal(limitFromField('  '), null);
+  assert.equal(limitFromField('25'), 25 * 1024 * 1024);
+  assert.equal(limitFromField('0'), 0);
+  assert.equal(limitFromField('2.5'), Math.round(2.5 * 1024 * 1024));
+  for (const bad of ['-1', 'lots', '1e9999']) assert.equal(limitFromField(bad), undefined, bad);
+  assert.equal(limitField(undefined), '25');
+  assert.equal(limitField(null), '');
+  assert.equal(limitField(100 * 1024 * 1024), '100');
+  assert.equal(limitText(undefined), '25 MB');
+  assert.equal(limitText(null), 'no limit');
+  assert.equal(limitText(0), '0 B');
 });
 
 test('a microphone that fails says what happened and what to do, for this phone (spec §17 rule 3)', () => {

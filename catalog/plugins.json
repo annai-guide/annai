@@ -57,6 +57,50 @@
         "annai-plugin.json": "dbca4582d9573c785ee087c508bc49def4db52d9e970c93b089a2b0762656e31",
         "index.js": "782c91d77097a925391ef962c6f214aff9402c7a1128ea14a5b223c1d2f4e548"
       }
+    },
+    {
+      "id": "storage-github",
+      "name": "GitHub",
+      "version": "0.1.0",
+      "provides": {
+        "storage-type": [
+          "github"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "96814acea2add6697b0bc967f129deb7b4cfa13fc351efabd8fffd80570c3939",
+        "git.js": "fe62d15bd1b8679ba15cbadd43cea1741c4df1b65a6500a803ceef737660ce80",
+        "index.js": "77f58995993e0a74201911cf83628741c3e860335e69b514fa779437bfa28a11"
+      }
+    },
+    {
+      "id": "storage-s3",
+      "name": "S3-compatible storage",
+      "version": "0.1.0",
+      "provides": {
+        "storage-type": [
+          "s3"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "149cfca2f71b4e04b6d7d8c7ef962c82ba9b853264e51644dfa4f899078c6c5e",
+        "index.js": "875669a9b8d2c8fb712dd81015ab1521da673d516f046a53d24d972729357e84",
+        "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
+      }
+    },
+    {
+      "id": "storage-webdav",
+      "name": "WebDAV",
+      "version": "0.1.0",
+      "provides": {
+        "storage-type": [
+          "webdav"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "75888749b25d4b7fdb188dd3b94b1236d6dec357b738389fe2d8a635e6966171",
+        "index.js": "495d3c27c4e4ef4a132d75ea57f2ff30046f19389cfafc9cc44b9c665740481a"
+      }
     }
   ]
 }

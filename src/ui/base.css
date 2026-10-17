@@ -90,6 +90,8 @@ input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; min-hei
 .trace .k { color: var(--ai); font-weight: 500; }
 .trace .d { overflow-wrap: anywhere; }
 .trace pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--paper); padding: 10px; border-radius: 8px; margin: 6px 0 0; }
+/* text to copy (a place's browser-access rules): wrapped on screen, copied as it is */
+pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--paper); padding: 10px; border-radius: 8px; margin: 0; font-size: 13px; }
 
 /* the data-safety warning and notices */
 .risk { margin: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); max-width: 728px; padding: 14px 16px; border-radius: var(--radius); background: var(--risk-wash); display: flex; flex-direction: column; gap: 10px; }
