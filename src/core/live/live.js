@@ -244,6 +244,7 @@ export class Live {
         await this.#loadPlan();
         if (this.on && this.shown) this.#gpsStart();
         await this.#check();
+        this.#tellReminders('prompt'); // the relay follows real time again
       });
     };
   }
@@ -434,18 +435,20 @@ export class Live {
   /**
    * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time
    * watches in every conversation, and the open trip's "coming up" and "leave soon", each at the time
-   * the phone itself would say it. Null until live mode has loaded; read in its own queue, so never
-   * half of a list being reloaded.
+   * the phone itself would say it. Null until live mode has loaded, and while a simulation runs: its
+   * reminders are its own, on its clock, and the user's stay at the relay as they are (M6×M7). Read in
+   * its own queue, so never half of a list being reloaded.
    * @returns {Promise<Mirrored[] | null>}
    */
   reminders() {
     return this.#run(async () => {
-      if (!this.#loaded) return null;
+      if (!this.#loaded || this.#sim) return null;
       const m = this.#moment();
       const time = this.types().get('time');
       /** @type {Mirrored[]} */
       const out = [];
       for (const [scope, list] of this.#watches) {
+        if (!this.#inPlay(scope)) continue; // a simulation's own trip, outside its run
         for (const w of list) {
           if (w.when?.type !== 'time' || !time || this.#broken(time, w)) continue;
           const due = Date.parse(w.when.at);
@@ -453,7 +456,7 @@ export class Live {
         }
       }
       const open = this.#scope();
-      for (const w of this.#plan) {
+      for (const w of this.#inPlay(open) ? this.#plan : []) {
         const event = /** @type {any} */ (w.when).event;
         if ((event !== 'coming-up' && event !== 'leave') || this.#spent(open, w)) continue;
         /** @type {number | null} */
@@ -638,7 +641,9 @@ export class Live {
    * @param {PushNews[]} list @returns {Promise<string[]>} the doubles
    */
   async #hear(list) {
-    const now = this.clock.now();
+    // The phone's own notifications keep real time, whatever clock a simulation runs on.
+    const now = (this.#sim?.clock ?? this.clock).now();
+    const zone = this.#sim?.timeZone ?? this.timeZone;
     for (const [k, t] of this.#notified) if (now - t > 86_400_000) this.#notified.delete(k);
     /** @type {string[]} */
     const doubles = [];
@@ -652,7 +657,7 @@ export class Live {
         if (this.#said.has(n.key)) doubles.push(n.key);
       } else {
         const words = String(n.body ?? '').trim().slice(0, 300);
-        this.#openedNews.push({ scope: n.scope, text: `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? 'a watch')}`} from its notification at ${timeIn(t, this.timeZone())}.` });
+        this.#openedNews.push({ scope: n.scope, text: `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? 'a watch')}`} from its notification at ${timeIn(t, zone())}.` });
       }
       await logEvent(this.store, n.scope, { type: n.kind === 'shown' ? 'push.shown' : 'push.opened', actor: 'system', data: { key: n.key, watch: String(n.watch ?? ''), at: t } }, now);
     }
