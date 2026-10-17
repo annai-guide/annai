@@ -5,7 +5,7 @@ export function toB64u(b) {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** The bytes of base64url without padding, or null when s isn't that. @param {string} s @returns {Uint8Array | null} */
+/** The bytes of base64url without padding, or null when s isn't that. @param {string} s @returns {Uint8Array<ArrayBuffer> | null} */
 export function fromB64u(s) {
   if (typeof s !== 'string' || !/^[A-Za-z0-9_-]*$/.test(s) || s.length % 4 === 1) return null;
   const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4));
