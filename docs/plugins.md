@@ -70,7 +70,7 @@ export function activate(annai) {
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Endpoint types" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
 | `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
-| `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key. Never put them in files or log entries. |
+| `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
 | `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
 | `annai.wake(reason)` | wakes Shiori, with the reason she sees. Quiet hours and the per-hour limit apply (spec §6.6). |
@@ -79,7 +79,7 @@ export function activate(annai) {
 | `annai.ui.slot(slot, item)`, `annai.ui.cardType(item)`, `annai.ui.component(name, impl)`, `annai.ui.screen(item)`, `annai.ui.theme(file)` | what your plugin adds to annai's screens: see "The UI" below. Each returns a function that removes it. |
 | `annai.hooks.on(fn, { types? })` | follows the log: see "Following the log" below |
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
-| `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change) |
+| `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change); a key nothing is saved for has your schema's `default` |
 | `annai.searchProviders()` | the search providers, in the order the user set |
 | `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has is refused. Skills in a package's `skills` don't need this. |
 | `annai.register('search', { id, name, needsKey?, search(query, { key, fetch, signal }) })` | a search provider for `web_search`: returns `[{ title, url, snippet }]` |
@@ -171,7 +171,9 @@ A manifest's `settings` is a JSON Schema object. annai draws a form from its top
 - `number` and `integer` (with `minimum` and `maximum`), `boolean` as a switch;
 - `title` labels a field, `description` explains it, `default` fills it when nothing is saved.
 
-What the user saves is checked against the schema and comes back from `annai.settings.get()`. A `writeOnly` string goes to your secrets instead, never into a file: read it with `annai.secrets.get(key)`. A `writeOnly` field of any other type is one annai can't show, and it never goes into a file either. Other kinds of property are listed as ones annai can't show; draw a settings page of your own for them.
+What the user saves is checked against the schema and comes back from `annai.settings.get()`, over the schema's defaults. A `writeOnly` string goes to your secrets instead, never into a file: read it with `annai.secrets.get(key)`. A `writeOnly` field of any other type is one annai can't show, and it never goes into a file either. Other kinds of property are listed as ones annai can't show; draw a settings page of your own for them.
+
+**Reset settings** on your plugin's page clears its settings file, with that file's history, and all its secrets; it keeps the package, the address it was installed from, its on/off state, its tools' switches and what it wrote into trips. Your plugin keeps running, so read settings and secrets when you need them, and treat a missing setting as its default and a null secret as one not set.
 
 ## Tools Shiori uses
 
