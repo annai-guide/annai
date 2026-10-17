@@ -130,3 +130,15 @@ test('a request larger than the relay reads is refused as soon as it is, without
     await r.close();
   }
 });
+
+test('the runner starts when it is run through a link, as a release behind a "current" link is', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-relay-'));
+  try {
+    const { symlink } = await import('node:fs/promises');
+    await symlink(fileURLToPath(new URL('../../relay', import.meta.url)), join(dir, 'current'));
+    const run = spawnSync(process.execPath, [join(dir, 'current', 'serve.mjs'), '--port', '0', '--origin', 'https://x.example', '--keys', join(dir, 'vapid.json')], { encoding: 'utf8', timeout: 3000 });
+    assert.match(run.stdout, /annai push relay/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
