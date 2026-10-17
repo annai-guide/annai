@@ -65,6 +65,15 @@ test("no model can be reached: annai shows the watch's reminder, says it with vo
   assert.equal(t.unanswered, false); // a reminder isn't something for her to answer at the next start
 });
 
+test('a reminder that comes while another is being said is said after it, not dropped', async () => {
+  const k = await liveAgent([[{ error: 'credit', status: 402 }]], { voice: { mode: 'on', playMs: 50 } });
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:01') }, fallback: 'Then cake.' });
+  await k.to(at('10:01'));
+  await until(() => k.said.includes('Then cake.'));
+  assert.deepEqual((await k.events(['reminder'])).map((e) => [e.data.text, e.data.aloud]), [['Tea time.', true], ['Then cake.', true]]);
+});
+
 test('with no model set at all, the reminder still comes (spec §17 rule 2)', async () => {
   const k = await liveAgent([]);
   await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });

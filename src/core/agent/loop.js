@@ -663,7 +663,7 @@ export class Agent {
     for (const r of list) {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
-      const aloud = open && Boolean(this.voice?.on) && !this.voice?.speaker.speaking;
+      const aloud = open && Boolean(this.voice?.on); // after whatever is being said (the speaker queues)
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
       else await record(this.store, scope, ev);
