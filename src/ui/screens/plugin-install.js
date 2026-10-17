@@ -116,7 +116,10 @@ async function installPending(ctx, button) {
     return;
   }
   setPendingPackage(null);
-  if (ctx.plugins.needsRestart(pkg.id)) {
+  if ((await ctx.plugins.installed())[pkg.id]?.enabled === false) {
+    // A new version of one that is off stays off, and its code doesn't run (fix pass 8a-5).
+    ctx.notices.toast(`Updated ${pkg.name}. It stays off.`);
+  } else if (ctx.plugins.needsRestart(pkg.id)) {
     restartCard(ctx, pkg.name);
   } else {
     try {

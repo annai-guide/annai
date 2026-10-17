@@ -240,3 +240,27 @@ test("8a-3: a package's endpoint template: the install screen says where a key g
     await llm.stop();
   }
 });
+
+test("8a-5: a new version of a code plugin that is off stays off, and its code doesn't run", async ({ page }) => {
+  const tides = await fixtureFiles('tides');
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.goto('/#/plugins');
+    const chips = page.getByRole('navigation', { name: 'Shiori' });
+    await page.getByLabel('Install from a file').setInputFiles({ name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
+    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
+    await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Turn off' }).click();
+    await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
+    await page.reload(); // its code hasn't run since
+    await expect(page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Turn on' })).toBeVisible();
+    const next = { ...tides, 'annai-plugin.json': Buffer.from(JSON.stringify({ ...JSON.parse(tides['annai-plugin.json'].toString()), version: '1.0.1' })) };
+    await page.getByLabel('Install from a file').setInputFiles({ name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(next) });
+    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(page.locator('.card', { hasText: 'Tides 1.0.1' }).getByRole('button', { name: 'Turn on' })).toBeVisible();
+    await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
+  } finally {
+    await llm.stop();
+  }
+});

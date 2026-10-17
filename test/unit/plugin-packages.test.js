@@ -251,3 +251,25 @@ test("8a-3: a package's endpoint template names the package it came from, whatev
   await host.start('trail-kit');
   assert.deepEqual(registry.list('template').map((t) => [t.id, t.from]), [['trail-llm', 'Trail kit']]);
 });
+
+test('8a-5: a new version of a code plugin that is off stays off: its code runs neither during the update nor at the next start', async () => {
+  const k = await hostKit();
+  const code = (/** @type {string} */ version) => files({
+    'annai-plugin.json': JSON.stringify({ id: 'tides', name: 'Tides', version, api: 1, entry: 'index.js' }),
+    'index.js': "export function activate(annai) { return annai.tools.register({ name: 'tide_times', description: 'Tides.', input: { type: 'object' }, run: () => 'low 05:40' }); }",
+  });
+  await k.host.install(code('1.0.0'));
+  await k.host.setEnabled('tides', false);
+  await k.host.install(code('1.1.0'));
+  const s = (await k.host.installed()).tides;
+  assert.deepEqual([s.version, s.enabled], ['1.1.0', false]);
+  assert.equal(k.host.active.has('tides'), false);
+  const next = k.relaunch();
+  await next.startInstalled();
+  assert.equal(next.active.has('tides'), false);
+  assert.deepEqual(next.registry.list('tool').filter((t) => t.name === 'tide_times'), []);
+  // One that is on stays on.
+  await next.setEnabled('tides', true);
+  await next.install(code('1.2.0'));
+  assert.equal((await next.installed()).tides.enabled, true);
+});

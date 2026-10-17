@@ -278,7 +278,8 @@ export class PluginHost {
     // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
     const shown = await this.#keepAddress(id, url);
     state[id] = {
-      version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: true, installed: this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
+      // A new version of one that is off stays off (fix pass 8a-5).
+      version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
     const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
