@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Static dev server for annai: serves the repository root on 127.0.0.1 with
-// the _headers rules applied (so the CSP is enforced during development and tests).
+// Static server for annai: serves the folder above this script (the repository, or a release of it)
+// on 127.0.0.1 with the _headers rules applied, so the CSP is enforced during development and tests,
+// and behind an HTTPS reverse proxy when annai.guide is served from a machine of its own.
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, normalize, extname, sep } from 'node:path';

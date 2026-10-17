@@ -83,3 +83,62 @@ test('wrangler.toml: one SQLite-backed Durable Object class per subscription, th
   assert.deepEqual(Object.keys(pkg.devDependencies).sort(), ['@playwright/test', '@types/node', 'typescript'], 'no wrangler or miniflare');
   assert.equal(pkg.dependencies, undefined);
 });
+
+test('with a data file, the reminders waiting and their times survive a restart, in a file only its owner can read', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-relay-'));
+  const service = await startPushService();
+  try {
+    const jwk = await newVapidJwk();
+    const data = join(dir, 'state', 'relay.json');
+    const a = await startRelay({ jwk, data, extraPushOrigins: [service.origin] });
+    const sub = await service.subscribe(a.key);
+    const send = async (/** @type {string} */ origin, /** @type {string} */ text, /** @type {number} */ sendAt) => fetch(`${origin}/v1/schedule`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${toB64u(crypto.getRandomValues(new Uint8Array(32)))}` },
+      body: JSON.stringify({ endpoint: sub.endpoint, key: a.key, sendAt, payload: toB64u(await encryptPush(sub, utf8(text), { pad: 3072 })) }),
+    });
+    assert.equal((await send(a.origin, 'Hello.', Date.now())).status, 201, 'a reminder due now confirms the subscription');
+    for (let i = 0; i < 50 && service.received.length < 1; i++) await new Promise((done) => setTimeout(done, 50));
+    assert.equal((await send(a.origin, 'After the restart.', Date.now() + 1500)).status, 201);
+    await a.close();
+    assert.equal((await stat(data)).mode & 0o777, 0o600);
+    const b = await startRelay({ jwk, data, extraPushOrigins: [service.origin] });
+    try {
+      for (let i = 0; i < 60 && service.received.length < 2; i++) await new Promise((done) => setTimeout(done, 100));
+      assert.deepEqual(service.received.map((m) => m.plaintext), ['Hello.', 'After the restart.']);
+    } finally {
+      await b.close();
+    }
+  } finally {
+    await service.stop();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('a request larger than the relay reads is refused as soon as it is, without waiting for the rest', async () => {
+  const r = await startRelay({ jwk: await newVapidJwk() });
+  const { request } = await import('node:http');
+  try {
+    const url = new URL(`${r.origin}/v1/schedule`);
+    const status = await new Promise((resolve, reject) => {
+      const req = request({ host: url.hostname, port: url.port, path: url.pathname, method: 'POST', headers: { 'Content-Type': 'application/json' } }, (res) => resolve(res.statusCode));
+      req.on('error', (e) => (/** @type {any} */ (e).code === 'ECONNRESET' ? undefined : reject(e)));
+      req.write(Buffer.alloc(9000, 0x20)); // chunked, and never ended: a body of any length
+      setTimeout(() => resolve('no answer'), 2000);
+    });
+    assert.equal(status, 413);
+  } finally {
+    await r.close();
+  }
+});
+
+test('the runner starts when it is run through a link, as a release behind a "current" link is', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-relay-'));
+  try {
+    const { symlink } = await import('node:fs/promises');
+    await symlink(fileURLToPath(new URL('../../relay', import.meta.url)), join(dir, 'current'));
+    const run = spawnSync(process.execPath, [join(dir, 'current', 'serve.mjs'), '--port', '0', '--origin', 'https://x.example', '--keys', join(dir, 'vapid.json')], { encoding: 'utf8', timeout: 3000 });
+    assert.match(run.stdout, /annai push relay/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
