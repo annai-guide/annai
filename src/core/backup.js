@@ -286,14 +286,16 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         if (u && (u.username || u.password)) throw new TargetError('setup', 'Put the user name and the password in their own fields, not in the address.');
       }
       const signIn = Boolean(secret && Object.keys(secret).length);
-      if (signIn) await setTargetSecret(store, id, /** @type {Record<string, string>} */ (secret));
-      if (passphrase !== undefined) await setTargetSecret(store, id, { passphrase });
       const encrypting = encrypt ?? rec.encrypt ?? false;
       const withKeys = encrypt === false ? false : keys ?? rec.keys ?? false;
+      // Checked before anything is kept: a change that fails keeps no new sign-in or passphrase (minors 25).
       if (encrypt !== undefined || keys !== undefined || passphrase !== undefined) {
-        if (encrypting && !(await targetSecret(store, id)).passphrase) throw new TargetError('setup', 'Type a passphrase for the encrypted backups, then save.');
+        const hasPassphrase = passphrase !== undefined ? Boolean(passphrase) : Boolean((await targetSecret(store, id)).passphrase);
+        if (encrypting && !hasPassphrase) throw new TargetError('setup', 'Type a passphrase for the encrypted backups, then save.');
         if (withKeys && !encrypting) throw new TargetError('setup', 'API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.');
       }
+      if (signIn) await setTargetSecret(store, id, /** @type {Record<string, string>} */ (secret));
+      if (passphrase !== undefined) await setTargetSecret(store, id, { passphrase });
       await setTarget(ws, id, {
         ...(config ? { config: { ...rec.config, ...config } } : {}),
         ...(auto ? { auto } : {}),
