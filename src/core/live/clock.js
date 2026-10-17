@@ -79,3 +79,129 @@ export function scaledClock(start, speed, base = realClock()) {
   const t0 = base.now();
   return { now: () => start + (base.now() - t0) * speed, set: (fn, ms) => base.set(fn, Math.max(0, ms) / speed), clear: (h) => base.clear(h) };
 }
+
+/**
+ * A clock that plays time at a speed from a moment, and can pause, change speed or move (spec §13:
+ * the replay's playback at adjustable speed; §18: a simulation at 10×). Its timers are in its own
+ * time: when it pauses, changes speed or moves, they wait again from there, and one it moved past
+ * runs at once. Long waits are the base clock's to hold (the real one waits in steps).
+ */
+export class PlayClock {
+  /** @type {Clock} */
+  #base;
+  /** Its time when it last started, paused, moved or changed speed… */
+  #pos;
+  /** …and the base's time then. */
+  #t0;
+  #speed;
+  #playing;
+  /** @type {Map<number, { at: number, fn: () => void, h: any }>} */
+  #timers = new Map();
+  #seq = 0;
+  /** @type {Set<() => void>} */
+  #listeners = new Set();
+
+  /** @param {number} start @param {{ speed?: number, base?: Clock, playing?: boolean }} [o] */
+  constructor(start, { speed = 1, base = realClock(), playing = true } = {}) {
+    this.#base = base;
+    this.#pos = start;
+    this.#t0 = base.now();
+    this.#speed = speed;
+    this.#playing = playing;
+  }
+
+  now = () => (this.#playing ? this.#pos + (this.#base.now() - this.#t0) * this.#speed : this.#pos);
+
+  /** @param {() => void} fn @param {number} ms of its own time */
+  set = (fn, ms) => {
+    const id = ++this.#seq;
+    this.#timers.set(id, { at: this.now() + Math.max(0, ms), fn, h: null });
+    this.#arm(id);
+    return id;
+  };
+
+  /** @param {any} id */
+  clear = (id) => {
+    const t = this.#timers.get(id);
+    if (t && t.h !== null) this.#base.clear(t.h);
+    this.#timers.delete(id);
+  };
+
+  get speed() {
+    return this.#speed;
+  }
+
+  set speed(v) {
+    if (!(v > 0) || v === this.#speed) return;
+    this.#mark();
+    this.#speed = v;
+    this.#changed();
+  }
+
+  get playing() {
+    return this.#playing;
+  }
+
+  play() {
+    if (this.#playing) return;
+    this.#t0 = this.#base.now();
+    this.#playing = true;
+    this.#changed();
+  }
+
+  pause() {
+    if (!this.#playing) return;
+    this.#mark();
+    this.#playing = false;
+    this.#changed();
+  }
+
+  /** Moves to t. @param {number} t */
+  seek(t) {
+    this.#pos = t;
+    this.#t0 = this.#base.now();
+    this.#changed();
+  }
+
+  /** @param {() => void} fn @returns {() => void} */
+  onChange(fn) {
+    this.#listeners.add(fn);
+    return () => { this.#listeners.delete(fn); };
+  }
+
+  #mark() {
+    this.#pos = this.now();
+    this.#t0 = this.#base.now();
+  }
+
+  /** @param {number} id */
+  #arm(id) {
+    const t = this.#timers.get(id);
+    if (!t || !this.#playing) return;
+    t.h = this.#base.set(() => {
+      t.h = null;
+      if (!this.#timers.has(id)) return;
+      if (this.now() + 1 < t.at) {
+        this.#arm(id); // woken a little early: wait the rest
+        return;
+      }
+      this.#timers.delete(id);
+      t.fn();
+    }, Math.max(0, (t.at - this.now()) / this.#speed));
+  }
+
+  #changed() {
+    for (const [id, t] of this.#timers) {
+      if (t.h !== null) this.#base.clear(t.h);
+      t.h = null;
+      this.#arm(id);
+    }
+    for (const fn of this.#listeners) {
+      try {
+        fn();
+      } catch (e) {
+        console.warn('a clock listener failed', e);
+      }
+    }
+  }
+}
