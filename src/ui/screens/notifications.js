@@ -11,6 +11,20 @@ export function deniedHelp(where) {
   return "Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.";
 }
 
+/**
+ * Which buttons the screen shows (spec §17 rule 3): on and well, off and a test; on but the phone took
+ * notifications away, or they aren't allowed, Turn on notifications again (it asks, and subscribes
+ * again) and off; off, turn on.
+ * @param {{ on: boolean, supported: string, permission: string, problem: { needsYou: boolean } | null }} st
+ * @returns {('on' | 'off' | 'test')[]}
+ */
+export function buttonsFor(st) {
+  if (st.supported !== 'yes') return [];
+  if (!st.on) return ['on'];
+  if (st.problem?.needsYou || st.permission !== 'granted') return ['on', 'off'];
+  return ['off', 'test'];
+}
+
 /** @param {{ on: boolean, waiting: number }} st */
 const statusText = (st) => (st.on ? `On · ${st.waiting === 1 ? '1 reminder' : `${st.waiting} reminders`} waiting at the relay.` : 'Off.');
 
@@ -50,41 +64,13 @@ export async function renderNotifications(ctx) {
   const acts = [];
   /** @type {any} */
   let help = null;
+  const show = buttonsFor(st);
   if (st.supported === 'install') {
     help = h('p', { text: 'On iPhone, notifications work only in the Home Screen app. In Safari, tap Share, then Add to Home Screen, and open annai from your Home Screen.' });
   } else if (st.supported === 'no') {
     help = h('p', { text: "This browser can't show annai's notifications. On iPhone they need iOS 16.4 or later, in the Home Screen app." });
-  } else if (st.on) {
-    const off = h('button', {
-      class: 'btn', type: 'button',
-      onclick: async () => {
-        off.disabled = true;
-        try {
-          await push.turnOff();
-          ctx.notices.toast('Notifications are off.');
-          ctx.render();
-        } catch (e) {
-          fail(String(/** @type {any} */ (e)?.message ?? e));
-          off.disabled = false;
-        }
-      },
-    }, 'Turn off');
-    const trial = h('button', {
-      class: 'btn', type: 'button',
-      onclick: async () => {
-        trial.disabled = true;
-        try {
-          await push.test();
-          ctx.notices.toast('A test notification comes in about 15 seconds. Lock the phone to see it arrive.');
-        } catch (e) {
-          fail(String(/** @type {any} */ (e)?.message ?? e));
-        } finally {
-          trial.disabled = false;
-        }
-      },
-    }, 'Send a test notification');
-    acts.push(off, trial);
-  } else {
+  }
+  if (show.includes('on')) {
     const on = h('button', {
       class: 'btn pri', type: 'button',
       onclick: () => {
@@ -118,6 +104,40 @@ export async function renderNotifications(ctx) {
     }, 'Turn on notifications');
     acts.push(on);
     if (st.permission === 'denied') help = h('p', { class: 'sub', text: deniedHelp(where) });
+  }
+  if (show.includes('off')) {
+    const off = h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        off.disabled = true;
+        try {
+          await push.turnOff();
+          ctx.notices.toast('Notifications are off.');
+          ctx.render();
+        } catch (e) {
+          fail(String(/** @type {any} */ (e)?.message ?? e));
+          off.disabled = false;
+        }
+      },
+    }, 'Turn off');
+    acts.push(off);
+  }
+  if (show.includes('test')) {
+    const trial = h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        trial.disabled = true;
+        try {
+          await push.test();
+          ctx.notices.toast('A test notification comes in about 15 seconds. Lock the phone to see it arrive.');
+        } catch (e) {
+          fail(String(/** @type {any} */ (e)?.message ?? e));
+        } finally {
+          trial.disabled = false;
+        }
+      },
+    }, 'Send a test notification');
+    acts.push(trial);
   }
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
