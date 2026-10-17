@@ -1716,7 +1716,12 @@ export class Agent {
     /** @type {string[]} */
     const left = [];
     for (const id of ids) {
-      if (!voice.memory.get(id)) continue;
+      if (!voice.memory.get(id)) {
+        // Its sound went with an earlier start, and no clip was kept: it can never be written down (its bubble says so).
+        const clip = this.transcript.messages.some((m) => m.parts.some((p) => p.type === 'speech' && p.id === id && p.clip));
+        if (!clip) await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: NOT_TRANSCRIBED, by: null } });
+        continue;
+      }
       const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}) }).catch(() => null);
       if (!r && !final) {
         // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again.

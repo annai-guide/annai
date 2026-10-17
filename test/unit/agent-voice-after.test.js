@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { agentKit, until, hear } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { WRITE_DOWN } from '../../src/core/voice/voice.js';
+import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
+import { record } from '../../src/core/agent/log.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const speakOnly = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }] });
@@ -191,4 +193,16 @@ test('housekeeping waits while what was heard can\'t be written down, unless the
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /User \(spoke\): \[audio, not transcribed\]/);
   assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['[audio, not transcribed]']);
   assert.equal(k.voice.memory.size, 0);
+});
+
+test('heard sound that is no longer in memory (annai restarted) is written as not transcribed after the next turn that works, so its bubble gets words (spec §10.3)', async () => {
+  const k = await agentKit([[say('Hello again.')]], { voice: { speechIn: ['m-hear'] }, open: false });
+  // Heard before a restart: the event is in the log, its sound went with the page.
+  await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'h-gone', ms: 1200, source: 'mic' } });
+  await k.agent.open(k.trip);
+  k.agent.send('Are you there?');
+  await k.agent.idle();
+  const written = (await k.events(['heard.text'])).map((e) => [e.data.of, e.data.text]);
+  assert.deepEqual(written, [['h-gone', NOT_TRANSCRIBED]]);
+  assert.deepEqual(k.agent.transcript.unwritten(), []);
 });
