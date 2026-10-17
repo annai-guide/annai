@@ -105,15 +105,28 @@ async function renderPlace(ctx, id) {
   const saved = new Set(await ctx.backups.savedSecrets(id));
   const inputs = type.fields.map((/** @type {any} */ f) => ({ f, el: h('input', { id: `place-${f.key}`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', value: t.config[f.key] ?? '', placeholder: f.placeholder ?? '' }) }));
   const secrets = type.secret.map((/** @type {any} */ f) => ({ f, el: h('input', { id: `place-secret-${f.key}`, type: 'password', autocomplete: 'off', placeholder: saved.has(f.key) ? 'saved (type a new one to replace it)' : 'not set' }) }));
+  // A place that keeps whole files may encrypt them (spec §12.2), and keeps this device's last few.
+  const file = type.stores === 'file';
+  const encrypt = checkbox('Encrypt backups with a passphrase', Boolean(t.encrypt));
+  const pass1 = h('input', { id: 'place-passphrase', type: 'password', autocomplete: 'new-password', placeholder: saved.has('passphrase') ? 'saved (type a new one to replace it)' : 'not set' });
+  const pass2 = h('input', { id: 'place-passphrase2', type: 'password', autocomplete: 'new-password' });
+  const keys = checkbox('Include API keys (only in encrypted backups)', Boolean(t.keys));
+  const keep = h('input', { id: 'place-keep', type: 'number', min: '1', max: '30', step: '1', value: String(t.keep ?? 3) });
   const save = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
       save.disabled = true;
       say('Testing…');
+      if (file && pass1.value !== pass2.value) {
+        say("The passphrases don't match.");
+        save.disabled = false;
+        return;
+      }
       try {
         await ctx.backups.update(id, {
           config: Object.fromEntries(inputs.map((/** @type {any} */ i) => [i.f.key, i.el.value.trim()])),
           secret: Object.fromEntries(secrets.filter((/** @type {any} */ i) => i.el.value.trim()).map((/** @type {any} */ i) => [i.f.key, i.el.value.trim()])),
+          ...(file ? { encrypt: encrypt.input.checked, keys: encrypt.input.checked && keys.input.checked, keep: Number(keep.value) || 3, ...(pass1.value ? { passphrase: pass1.value } : {}) } : {}),
         });
         notes.set(id, (await ctx.backups.check(id)).note);
         ctx.render();
@@ -160,7 +173,7 @@ async function renderPlace(ctx, id) {
         say(all.length ? '' : 'There are no backups here yet.');
         list.replaceChildren(...all.slice(0, 10).map((/** @type {any} */ r) => h('li', { class: 'card' },
           h('span', { class: 'name', text: new Date(r.at).toLocaleString() }),
-          h('span', { class: 'sub', text: [r.label ? `From ${withArticle(r.label)}` : null, relTime(r.at)].filter(Boolean).join(' · ') }),
+          h('span', { class: 'sub', text: [r.label ? `From ${withArticle(r.label)}` : null, r.encrypted ? 'encrypted' : null, relTime(r.at)].filter(Boolean).join(' · ') }),
           h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, t, r, say) }, 'Open')))));
       } catch (e) {
         say(String(/** @type {any} */ (e)?.message ?? e));
@@ -179,8 +192,17 @@ async function renderPlace(ctx, id) {
       ...secrets.map((/** @type {any} */ i) => field(i.f.label, i.el)),
       more.length ? h('details', {}, h('summary', { text: 'More' }), ...more.map((/** @type {any} */ i) => field(i.f.label, i.el))) : null,
       help,
+      ...(file ? [
+        h('div', { class: 'checks' }, encrypt.el),
+        h('div', { class: 'row' }, field('Passphrase', pass1), field('Repeat passphrase', pass2)),
+        h('p', { class: 'sub', text: "Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself." }),
+        h('div', { class: 'checks' }, keys.el),
+        field("Keep this many of this device's backups here", keep),
+        h('p', { class: 'sub', text: "After each backup, older ones this device made here are deleted. Other devices' backups are never deleted." }),
+      ] : []),
       h('div', { class: 'acts' }, save),
       status),
+    accessPanel(ctx, type),
     h('section', { class: 'panel', 'aria-label': 'When' },
       auto, mobile.el,
       connectionOf(navigator) === 'unknown'
@@ -193,6 +215,40 @@ async function renderPlace(ctx, id) {
       h('div', { class: 'acts' }, show),
       list),
     removeSection(ctx, id));
+}
+
+/**
+ * What the place needs to answer browsers, from its kind (spec §12.4: for S3, "we show the exact JSON to paste").
+ * @param {any} ctx @param {any} type
+ */
+function accessPanel(ctx, type) {
+  if (typeof type.browserAccess !== 'function') return null;
+  /** @type {{ text: string, code: string } | null} */
+  let a = null;
+  try {
+    a = type.browserAccess(location.origin);
+  } catch {
+    return null;
+  }
+  if (!a?.code) return null;
+  const code = String(a.code);
+  const pre = h('pre', { class: 'mono', text: code });
+  return h('section', { class: 'panel', 'aria-label': 'Browser access' },
+    h('h2', { class: 'section', text: 'Browser access' }),
+    h('p', { class: 'sub', text: String(a.text ?? '') }),
+    pre,
+    h('div', { class: 'acts' }, h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        try {
+          await navigator.clipboard.writeText(code);
+          ctx.notices.toast('Copied');
+        } catch {
+          getSelection()?.selectAllChildren(pre);
+          ctx.notices.toast('Copying didn\'t work here: it is selected, so copy it yourself.');
+        }
+      },
+    }, 'Copy')));
 }
 
 /** @param {any} ctx @param {string} id */
