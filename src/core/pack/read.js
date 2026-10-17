@@ -74,9 +74,16 @@ export class Pack {
     for (const w of wiki) this.#names.push([w[0], w[1], w[2]]);
   }
 
-  /** The day it was downloaded: "2026-10-16". */
+  /** The day it was downloaded, "2026-10-16": its manifest's, else its newest part's; '' when nothing says. */
   get day() {
-    return this.manifest.at.slice(0, 10);
+    const at = Date.parse(this.manifest.at);
+    const t = Number.isFinite(at) ? at : Math.max(0, ...this.manifest.files.map((f) => f.at));
+    return t > 0 ? new Date(t).toISOString().slice(0, 10) : '';
+  }
+
+  /** " (downloaded 2026-10-16)", or nothing when the day isn't known. */
+  get downloaded() {
+    return this.day ? ` (downloaded ${this.day})` : '';
   }
 
   /** Whether one of its OpenStreetMap areas holds the whole circle, with all its places (not one Overpass cut off). @param {Point} p @param {number} radius */

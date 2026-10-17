@@ -101,7 +101,7 @@ export function activate(annai) {
         const answer = (/** @type {any[][]} */ rows) => tsv(['name', 'kind', 'distance_m', 'lat', 'lng', 'source', 'note'], rows.sort((a, b) => a[2] - b[2]).slice(0, 40));
         // The offline pack first (spec §8): where it holds the whole circle, nothing is asked.
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
-        if (pack?.covers(i, radius)) return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack (downloaded ${pack.day}).`;
+        if (pack?.covers(i, radius)) return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}.`;
         const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
         // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
         const query = `[out:json][timeout:20];(${overpassFilters(kinds).map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
@@ -135,7 +135,7 @@ export function activate(annai) {
         const missing = [osm === null ? 'OpenStreetMap' : '', wiki === null ? 'Wikipedia' : ''].filter(Boolean);
         if (missing.length && pack?.touches(i)) {
           const what = missing.length === 2 ? 'these come' : osm === null ? 'its places come' : 'its articles come';
-          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${missing.join(' and ')} didn't answer, so ${what} from the offline pack (downloaded ${pack.day}).`;
+          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${missing.join(' and ')} didn't answer, so ${what} from the offline pack${pack.downloaded}.`;
         }
         if (osm === null && wiki === null) throw new Error('Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.');
         const out = answer([...(osm ?? []), ...(wiki ?? [])]);
@@ -217,7 +217,7 @@ export function activate(annai) {
       async run(i, call) {
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
         const saved = pack ? await pack.guide(i.place).catch(() => null) : null;
-        if (pack && saved) return guideText(saved.title, saved.text, i.section, `Wikivoyage, offline pack of ${pack.day}`);
+        if (pack && saved) return guideText(saved.title, saved.text, i.section, `Wikivoyage, offline pack${pack.day ? ` of ${pack.day}` : ''}`);
         const base = 'https://en.wikivoyage.org/w/api.php';
         const r = await json(`${base}?action=query&prop=extracts&explaintext=1&exsectionformat=wiki&redirects=1&titles=${encodeURIComponent(i.place)}&format=json&origin=*`, call);
         const page = /** @type {any} */ (Object.values(r?.query?.pages ?? {})[0]);

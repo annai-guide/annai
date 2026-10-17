@@ -223,3 +223,15 @@ test("a JSON null, or an answer of the wrong shape, is the plain \"couldn't read
   const odd = await run('weather', { ...McWay, when: '2026-11-27' }, () => ({ timezone: 'America/Los_Angeles', hourly: { time: ['2026-11-27T10:00', 5] }, daily: { time: ['2026-11-27'] } }));
   assert.equal(typeof odd, 'string');
 });
+
+test('a pack whose manifest has no download time says the day of its newest part, or no day at all, never "(downloaded )"', async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  const id = /** @type {string} */ (trip);
+  await mcwayPack(ws, id);
+  const m = JSON.parse(String(await ws.readText(id, '/offline/pack.json')));
+  await ws.write(id, '/offline/pack.json', JSON.stringify({ ...m, at: '', files: m.files.map((/** @type {any} */ f, /** @type {number} */ i) => ({ ...f, at: Date.parse('2026-10-15T12:00:00Z') + i * 86_400_000 })) }), { author: 'system' });
+  assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack \(downloaded 2026-10-18\)\.$/);
+  await ws.write(id, '/offline/pack.json', JSON.stringify({ ...m, at: '' }), { author: 'system' });
+  assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack\.$/);
+  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\)\n/);
+});
