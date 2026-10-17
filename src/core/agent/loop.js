@@ -50,6 +50,8 @@ export const LABELS = Object.freeze({
 });
 export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen; the user may type.";
 export const STOPPED = 'Stopped by the user.';
+/** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
+export const WRITE_TRIES = 3;
 
 const CARD = {
   type: 'object',
@@ -140,6 +142,8 @@ export class Agent {
   #cut = false;
   /** The model that answered last in this turn: it heard any audio sent (spec §10.3). @type {string | null} */
   #heardBy = null;
+  /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
+  #writeTries = new Map();
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
@@ -1563,7 +1567,8 @@ export class Agent {
   /**
    * The words of what was heard are written down, and the sound is let go (spec §10.3: each
    * segment stays in memory until the turn that used it succeeds; text versions are made then, the
-   * last time the sound is at hand). @param {string} wakeId
+   * last time the sound is at hand). When nothing could write it down, the sound stays for the next
+   * turn that works; after WRITE_TRIES of them it is written as not transcribed. @param {string} wakeId
    */
   async #writeDown(wakeId) {
     const voice = this.voice;
@@ -1571,6 +1576,13 @@ export class Agent {
     for (const id of this.transcript.unwritten()) {
       if (!voice.memory.get(id)) continue;
       const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(this.#heardBy ? { hearer: this.#heardBy } : {}) }).catch(() => null);
+      if (!r) {
+        // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again.
+        const tries = (this.#writeTries.get(id) ?? 0) + 1;
+        this.#writeTries.set(id, tries);
+        if (tries < WRITE_TRIES) continue;
+      }
+      this.#writeTries.delete(id);
       await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null } });
       voice.memory.drop(id);
     }
