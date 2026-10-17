@@ -455,7 +455,7 @@ test("a cancel at an old relay that can't be reached never holds up the new one,
     await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('11:00') }, fallback: 'Walk.' });
     await k.flush();
     const posts = k.net.calls.filter((c) => c.method === 'POST' && new URL(c.url).host === 'relay.example');
-    assert.equal(posts.length, 2, 'both reminders reach the new relay');
+    assert.equal(posts.length, 3, 'its "on" notification, then both reminders, reach the new relay');
     const st = await k.mirror.status();
     assert.equal(st.waiting, 2);
     assert.match(String(st.problem?.message), /old relay/);
@@ -550,6 +550,22 @@ test('relay errors say what to do next (§17 rule 3): at turn-on, tap again; in 
     assert.match(bg, /annai tries again by itself/);
     const wrong = relayClient({ base: 'https://example.com', fetch: async () => new Response('<html>Not Found</html>', { status: 404 }) });
     await assert.rejects(wrong.vapid(), (e) => e instanceof RelayError && /no annai push relay at example\.com/.test(e.message) && /Check the relay address/.test(e.message));
+  } finally {
+    await k.stop();
+  }
+});
+
+test('a new relay address with the same subscription gets its own "on" notification at once, so it takes every reminder without a wait', async () => {
+  const k = await pushKit({ live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.flush();
+    assert.equal(k.pushed().filter((p) => p.test).length, 1);
+    await k.mirror.setRelay('https://relay.example');
+    await k.flush();
+    const hellos = k.pushed().filter((p) => p.test && String(p.key).startsWith('hello|'));
+    assert.equal(hellos.length, 2, 'one from each relay');
+    assert.equal(k.source.made, 1, 'the same subscription');
   } finally {
     await k.stop();
   }
