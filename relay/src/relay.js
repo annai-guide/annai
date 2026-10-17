@@ -410,8 +410,9 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       let res;
       try {
         const jwt = await this.#jwt(key, new URL(w.endpoint).origin, t);
+        // A redirect is never followed: the reminder goes to the push service's own address, or nowhere.
         res = await send(w.endpoint, {
-          method: 'POST', body, signal: AbortSignal.timeout(timeout),
+          method: 'POST', body, signal: AbortSignal.timeout(timeout), redirect: 'manual',
           headers: { TTL: String(w.ttl), Urgency: w.urgency, 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', Authorization: vapidAuthorization(jwt, key.publicKey) },
         });
       } catch {

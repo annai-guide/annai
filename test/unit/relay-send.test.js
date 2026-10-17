@@ -6,6 +6,7 @@ import { toB64u } from '../../relay/src/b64.js';
 import { verifyVapid, startPushService } from '../fakes/push-service.js';
 import { encryptPush } from '../../src/core/push/webpush.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { createServer } from 'node:http';
 
 test('at its time the relay sends the reminder to its push service, signed, and keeps nothing of it (spec §11.6)', async () => {
   const k = await relayKit();
@@ -209,4 +210,32 @@ test('a reminder due now, being sent within its request, is not sent again by an
   assert.equal((await inflight).status, 201);
   assert.deepEqual(sends, [2]);
   assert.deepEqual(await k.waiting(), []);
+});
+
+test('a push service that answers with a redirect is not followed: the reminder goes nowhere else, and is dropped', async () => {
+  /** @type {string[]} */
+  const hits = [];
+  const server = createServer((req, res) => {
+    hits.push(String(req.url));
+    if (req.url?.startsWith('/push/')) {
+      res.writeHead(307, { Location: '/elsewhere' });
+      res.end();
+      return;
+    }
+    res.writeHead(201);
+    res.end();
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', () => r(undefined)));
+  const origin = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  try {
+    const k = await relayKit({ send: (url, init) => fetch(url, init), extraPushOrigins: [origin] });
+    const endpoint = `${origin}/push/abc`;
+    await k.confirm(endpoint);
+    await k.call('POST', '/v1/schedule', { body: k.reminder({ endpoint }), token: token() });
+    await k.after(10 * MIN);
+    assert.deepEqual(hits, ['/push/abc']);
+    assert.deepEqual(await k.waiting(), []);
+  } finally {
+    server.close();
+  }
 });
