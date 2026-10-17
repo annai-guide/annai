@@ -195,7 +195,11 @@ test("endpoints must have each push service's own shape, not just its host: othe
     'https://wns2-par02p.notify.windows.com/w/?token=BQYAAA']) assert.equal(pushEndpointAllowed(ok), true, ok);
   for (const no of ['https://fcm.googleapis.com/', 'https://fcm.googleapis.com/v1/projects/p/messages:send', 'https://fcm.googleapis.com/fcm/send/', 'https://fcm.googleapis.com/fcm/other/x',
     'https://android.googleapis.com/x', 'https://web.push.apple.com/', 'https://updates.push.services.mozilla.com/other/x', 'https://wns2-par02p.notify.windows.com/x',
-    'https://fcm.googleаpis.com/fcm/send/x' /* a Cyrillic а */, 'https://web.push.аpple.com/abc']) assert.equal(pushEndpointAllowed(no), false, no);
+    'https://fcm.googleаpis.com/fcm/send/x' /* a Cyrillic а */, 'https://web.push.аpple.com/abc',
+    // Apple asks servers to allow any *.push.apple.com host, but a web push endpoint is one token there: no deeper path (APNs's /3/device/…), no query.
+    'https://api.push.apple.com/3/device/abc', 'https://web.push.apple.com/a/b', 'https://web.push.apple.com/abc?x=1',
+    // WNS answers on one regional label, such as wns2-par02p.
+    'https://a.b.notify.windows.com/w/?token=BQYAAA']) assert.equal(pushEndpointAllowed(no), false, no);
 });
 
 test('only a 201 confirms a subscription (RFC 8030 §5): another 2xx from its host takes the reminder, but confirms nothing', async () => {

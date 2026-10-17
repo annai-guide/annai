@@ -108,6 +108,11 @@ ImageMagick 7 with HEIC and WebP support. They're committed; rebuild them only t
 changes. CI fails when the stamp is stale; the Cloudflare Pages build command should be
 `node scripts/stamp.mjs`, so the deployed `sw.js` is always current.
 
+While annai is being tested, annai.guide is served from a machine of the author's: a release is
+`git archive <commit>` unpacked into a folder of its own, served by `node scripts/serve.mjs --port <port>`
+(which applies the `_headers` rules) behind an HTTPS reverse proxy, and a `current` link is switched
+to it. The push relay runs there too, as [relay/README.md](relay/README.md) describes.
+
 `docs/testing/device-checklist-*.md`, one for each milestone, list what to verify by hand on real phones.
 
 **Plugins.** [docs/plugins.md](docs/plugins.md) is the guide to writing one.
