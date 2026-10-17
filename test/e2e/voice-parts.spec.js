@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, fakeMicrophone } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint, fakeMicrophone, filterTrace } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 const clipPath = (/** @type {string} */ name) => fileURLToPath(new URL(`../fixtures/voice/${name}.wav`, import.meta.url));
@@ -93,7 +93,7 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await expect(page.getByText(/ears heard: "Is there a gas station nearby\?"/)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/^Heard \d\.\d seconds of speech\./)).toBeVisible();
     await page.goto('/#/trace');
-    await page.getByLabel('Kind').selectOption('Web');
+    await filterTrace(page, { kind: 'Web' });
     await expect(page.locator('.trace li').filter({ hasText: 'voice-a' }).first()).toBeVisible();
   } finally {
     await server.stop();

@@ -5,6 +5,18 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 
 /**
+ * Changes a Trace screen filter and waits until the list has redrawn for it (the list is aria-busy while it reloads),
+ * so what a test reads next is the new list, not the one before the change.
+ * @param {import('@playwright/test').Page} page
+ * @param {{ kind?: string, type?: string }} filters
+ */
+export async function filterTrace(page, { kind, type }) {
+  if (type !== undefined) await page.getByLabel('Type contains').fill(type);
+  if (kind !== undefined) await page.getByLabel('Kind').selectOption(kind);
+  await expect(page.locator('ol.trace')).toHaveAttribute('aria-busy', 'false');
+}
+
+/**
  * Starts a dev server of the test's own, so a test can take the network away for real by stopping it.
  * (Playwright's offline mode in WebKit also blocks requests the service worker answers itself.)
  * @param {number} port
