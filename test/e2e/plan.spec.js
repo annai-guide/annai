@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply, filterTrace } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -201,7 +201,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
 
     // The trace has the read of the pass and the refused confirmation, and no key.
     await page.getByRole('link', { name: 'Trace' }).click();
-    await page.getByLabel('Kind').selectOption('Tools');
+    await filterTrace(page, { kind: 'Tools' });
     await expect(page.getByText(/^read \{"path":"\/trip\/files\/flight\.pkpass"/)).toBeVisible();
     await expect(page.getByText(/^patch · error · .*Only the user confirms a booking/)).toBeVisible();
     for (const summary of await page.locator('ol.trace summary').all()) await summary.click();

@@ -24,10 +24,12 @@ export async function renderTrace(ctx, route) {
   const kind = h('select', { id: 'trace-kind' }, ...Object.keys(KINDS).map((k) => h('option', { value: k, text: k })));
   kind.value = route.params.kind && KINDS[route.params.kind] !== undefined ? route.params.kind : 'Everything';
   const filter = h('input', { id: 'trace-type', autocomplete: 'off', placeholder: 'file.write', value: route.params.type ?? '' });
-  const list = h('ol', { class: 'trace' });
+  // aria-busy while the list reloads after a filter changes, so a screen reader (or a test) knows the rows are not yet the new ones.
+  const list = h('ol', { class: 'trace', 'aria-busy': 'true' });
   let pending = 0;
   const load = async () => {
     const my = ++pending;
+    list.setAttribute('aria-busy', 'true');
     const ids = select.value ? [select.value] : scopes.map((/** @type {any} */ s) => s.id);
     const all = (await Promise.all(ids.map((/** @type {string} */ id) => ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { reverse: true, limit: 300 }))))).flat();
     if (my !== pending) return;
@@ -39,12 +41,13 @@ export async function renderTrace(ctx, route) {
     if (my !== pending) return;
     const rows = all.filter((e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))).sort((a, b) => b.ts - a.ts || b.seq - a.seq).slice(0, 300);
     list.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake)) : [h('li', { class: 'empty', text: 'Nothing here yet.' })]));
+    list.setAttribute('aria-busy', 'false');
   };
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   select.addEventListener('change', load);
   kind.addEventListener('change', load);
-  filter.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 150); });
+  filter.addEventListener('input', () => { list.setAttribute('aria-busy', 'true'); clearTimeout(timer); timer = setTimeout(load, 150); });
   await load();
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Trace' }),
