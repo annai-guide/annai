@@ -60,10 +60,22 @@ export function pluginUi(ctx, pluginId) {
 
 /** @type {Record<'screen' | 'dock', (() => void)[]>} cleanups plugins' drawings returned, by what they were drawn on */
 const cleanups = { screen: [], dock: [] };
+/** The shell's render whose drawings are the screen's now (minors 15). */
+let shown = 0;
+
+/** Runs a cleanup; one that fails changes nothing more. @param {() => void} fn */
+const run = (fn) => {
+  try {
+    fn();
+  } catch {
+    // a cleanup that fails changes nothing more
+  }
+};
 
 /**
  * Runs a plugin's drawing into el. A cleanup it returns (a function, or a promise of one) runs when
- * that group is drawn again; anything it throws, or a promise of it that rejects, is its plugin's
+ * that group is drawn again, or at once when it comes from a render the shell gave up on (ctx.seq,
+ * minors 15); anything it throws, or a promise of it that rejects, is its plugin's
  * failure (counted), el is left empty and hidden, and onFail runs, so annai can draw its own instead
  * (fix pass 8b-3). A drawing that returns, or whose promise resolves, ends its plugin's run of failures
  * (fix pass 8b-4). Returns false when it failed at once.
@@ -71,6 +83,12 @@ const cleanups = { screen: [], dock: [] };
  * @param {{ group?: 'screen' | 'dock', what?: string, onFail?: () => void }} [o]
  */
 export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing', onFail } = {}) {
+  const seq = group === 'screen' ? ctx.seq : undefined;
+  const keep = (/** @type {unknown} */ x) => {
+    if (typeof x !== 'function') return;
+    if (seq !== undefined && seq !== shown) run(/** @type {() => void} */ (x));
+    else cleanups[group].push(/** @type {() => void} */ (x));
+  };
   let failed = false;
   const fail = (/** @type {unknown} */ e) => {
     if (failed) return;
@@ -85,11 +103,11 @@ export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing'
     const r = call(pluginUi(ctx, entry.pluginId));
     if (r && typeof r.then === 'function') {
       r.then((/** @type {unknown} */ x) => {
-        if (typeof x === 'function') cleanups[group].push(/** @type {() => void} */ (x));
+        keep(x);
         worked();
       }, fail);
     } else {
-      if (typeof r === 'function') cleanups[group].push(r);
+      keep(r);
       worked();
     }
   } catch (e) {
@@ -136,15 +154,14 @@ export function made(ctx, entry, what, create, wrong) {
   }
 }
 
-/** Runs and forgets the cleanups of what was drawn on the screen or the dock. @param {'screen' | 'dock'} group */
-export function cleanUp(group) {
-  for (const fn of cleanups[group].splice(0)) {
-    try {
-      fn();
-    } catch {
-      // a cleanup that fails changes nothing more
-    }
-  }
+/**
+ * Runs and forgets the cleanups of what was drawn on the screen or the dock. seq: the shell's render
+ * that draws the screen from now on; what an earlier one draws later is cleaned up as it comes.
+ * @param {'screen' | 'dock'} group @param {number} [seq]
+ */
+export function cleanUp(group, seq) {
+  if (group === 'screen' && seq !== undefined) shown = seq;
+  cleanups[group].splice(0).forEach(run);
 }
 
 /** The running plugins' items of a kind ("ui:status-chip"), in the order they came. @param {any} ctx @param {string} kind @returns {Entry[]} */
