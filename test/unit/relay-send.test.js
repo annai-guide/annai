@@ -239,3 +239,20 @@ test('a push service that answers with a redirect is not followed: the reminder 
     server.close();
   }
 });
+
+test('a reminder due now, sent again after its answer was lost, is not sent twice: the relay remembers it a few minutes, then keeps nothing', async () => {
+  const k = await relayKit();
+  await k.confirm();
+  const tok = token();
+  const due = k.reminder({ id: 'BBBBBBBBBBBBBBBBBBBBBB', sendAt: k.now() });
+  const a = await k.call('POST', '/v1/schedule', { body: due, token: tok }); // sent in the request; the page never hears its answer
+  assert.equal(a.body.sent, true);
+  const b = await k.call('POST', '/v1/schedule', { body: due, token: tok }); // the page sends it again
+  assert.equal(b.status, 201);
+  assert.equal(b.body.sent, true);
+  assert.equal(k.sent.length, 1);
+  const c = await k.call('POST', '/v1/schedule', { body: due, token: token() });
+  assert.equal(c.status, 409, 'another token for that id');
+  await k.after(5 * MIN); // past when the relay would take its sendAt
+  assert.deepEqual((await k.stored()).filter((key) => !['confirmed', 'jwt'].includes(key)), [], 'nothing of them is left');
+});

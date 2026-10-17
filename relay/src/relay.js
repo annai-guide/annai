@@ -16,6 +16,8 @@ import { readVapidKey, vapidJwt, vapidAuthorization } from './vapid.js';
  *   LIMIT?: { limit: (o: { key: string }) => Promise<{ success: boolean }> } }} Env
  * @typedef {{ id: string, endpoint: string, sendAt: number, next: number, ttl: number, urgency: string, token: string, tries: number }} Waiting
  *   a reminder waiting: next is when it is tried (sendAt, or later after a failure); tries, the failures so far
+ * @typedef {{ token: string, sendAt: number, until: number }} Sent
+ *   a reminder sent, remembered (by its token alone) while the page may still send it again: its answer may have been lost
  */
 
 const MIN = 60_000;
@@ -296,6 +298,10 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       /** @type {Waiting | undefined} */
       const had = await this.storage.get(`m:${m.id}`);
       if (had) return same(had.token, m.token) ? reply(201, { id: m.id, sendAt: had.sendAt }) : fail(409, 'id', 'A reminder with that id is already waiting. annai picks another.');
+      // Sent already, and asked again (the page never heard the answer): never sent twice.
+      /** @type {Sent | undefined} */
+      const sent = await this.storage.get(`s:${m.id}`);
+      if (sent) return same(sent.token, m.token) ? reply(201, { id: m.id, sendAt: sent.sendAt, sent: true }) : fail(409, 'id', 'A reminder with that id was sent already. annai picks another.');
       const t = now();
       const waiting = (await this.storage.list({ prefix: 'm:' })).size;
       if (!(await this.storage.get('confirmed'))) {
@@ -313,7 +319,7 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       await this.storage.put({ [`m:${m.id}`]: w, [`p:${m.id}`]: m.payload });
       if (dueNow) {
         // Due now: sent in this request, so annai hears at once whether the phone's push service took it.
-        const r = await this.#settle(w, t);
+        const r = await this.#settle(w, t, true);
         await this.rewake();
         if (r === 'gone') return fail(410, 'gone', "The phone's push service says this subscription no longer exists. annai subscribes again.");
         if (r === 'drop') return fail(400, 'refused', "The phone's push service refused this reminder.");
@@ -352,6 +358,8 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
           if (!fresh || fresh.next > t) continue; // cancelled, or being sent by its own request meanwhile
           if ((await this.#settle(fresh, t)) === 'gone') break;
         }
+        const over = [...(await this.storage.list({ prefix: 's:' }))].filter(([, x]) => x.until <= t).map(([k]) => k);
+        for (let i = 0; i < over.length; i += 128) await this.storage.delete(over.slice(i, i + 128));
         const confirmed = await this.storage.get('confirmed');
         if (confirmed && confirmed.at + KEEP_CONFIRMED <= t && !(await this.storage.list({ prefix: 'm:' })).size) await this.storage.delete('confirmed');
         if (await this.storage.get('fails')) await this.storage.delete('fails');
@@ -372,9 +380,10 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
     /**
      * Sends one reminder and keeps what came of it (choice 6): a gone subscription forgets
      * everything; a delivered reminder confirms its subscription (choice 13).
-     * @param {Waiting} w @param {number} t @returns {Promise<'sent' | 'taken' | 'gone' | 'retry' | 'drop'>}
+     * @param {Waiting} w @param {number} t @param {boolean} [asked] it is sent in the request that scheduled it (due now)
+     * @returns {Promise<'sent' | 'taken' | 'gone' | 'retry' | 'drop'>}
      */
-    async #settle(w, t) {
+    async #settle(w, t, asked = false) {
       const r = await this.#deliver(w, t);
       if (r === 'gone') {
         // Everything this subscription's object keeps, however much (a delete takes at most 128 keys).
@@ -391,6 +400,8 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       } else {
         await this.storage.delete([`m:${w.id}`, `p:${w.id}`]); // sent, or never will be
         if (r === 'sent') await this.storage.put('confirmed', { at: t }); // only a push service's 201 confirms
+        // Sent in its own request: remembered while the page may send it again, its answer lost (its sendAt is taken until LIMITS.behind after it).
+        if (asked && (r === 'sent' || r === 'taken')) await this.storage.put(`s:${w.id}`, { token: w.token, sendAt: w.sendAt, until: Math.max(w.sendAt, t) + LIMITS.behind });
       }
       return r;
     }
@@ -441,14 +452,17 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
     }
 
     /**
-     * The alarm at the next reminder's time. With none left, a confirmed subscription keeps only
-     * that, and its VAPID token, until the confirmation runs out; otherwise nothing is stored.
+     * The alarm at the next reminder's time, or when a sent one is forgotten. With none left, a
+     * confirmed subscription keeps only that, and its VAPID token, until the confirmation runs out;
+     * otherwise nothing is stored.
      */
     async rewake() {
       /** @type {Waiting[]} */
       const waiting = [...(await this.storage.list({ prefix: 'm:' })).values()];
-      if (waiting.length) {
-        await this.storage.setAlarm(Math.min(...waiting.map((w) => w.next)));
+      /** @type {Sent[]} */
+      const sent = [...(await this.storage.list({ prefix: 's:' })).values()];
+      if (waiting.length || sent.length) {
+        await this.storage.setAlarm(Math.min(...waiting.map((w) => w.next), ...sent.map((x) => x.until)));
         return;
       }
       const confirmed = await this.storage.get('confirmed');

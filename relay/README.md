@@ -10,7 +10,7 @@ It is a Cloudflare Worker with one Durable Object per push subscription: the obj
 phone's reminders and wakes with its alarm at the next one's time. It has no dependencies.
 
 - `GET /v1/vapid`: the relay's public key, which phones subscribe with.
-- `POST /v1/schedule`: a reminder, `Authorization: Bearer <cancel token>` and JSON `{ endpoint, key, sendAt, ttl?, urgency?, payload, id? }`. Answers `201 { id, sendAt }`. A reminder due now is sent in the same request: `201 { id, sendAt, sent: true }`, or 410 when the phone's subscription no longer exists.
+- `POST /v1/schedule`: a reminder, `Authorization: Bearer <cancel token>` and JSON `{ endpoint, key, sendAt, ttl?, urgency?, payload, id? }`. Answers `201 { id, sendAt }`. A reminder due now is sent in the same request: `201 { id, sendAt, sent: true }`, or 410 when the phone's subscription no longer exists. Its id and token are remembered for 5 minutes after, so the same request sent again (its answer lost on the way) answers the same and sends nothing.
 - `DELETE /v1/schedule/:id`, with the same `Authorization`. Answers 204.
 
 Limits:
