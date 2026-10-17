@@ -58,7 +58,7 @@ dialog.ask .acts { justify-content: flex-end; }
 details.archived summary { cursor: pointer; color: var(--ink-2); padding: 6px 0; }
 
 /* forms */
-.field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 160px; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .field-label { font-size: 14px; font-weight: 500; color: var(--ink-2); }
 input, textarea, select {
   font: inherit; font-size: 16px; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
@@ -66,6 +66,8 @@ input, textarea, select {
 }
 input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; min-height: 0; accent-color: var(--ai); }
 .row { display: flex; flex-wrap: wrap; gap: 12px; }
+/* A field shares a row; in a column it keeps its own height. */
+.row > .field { flex: 1 1 160px; }
 .check { display: flex; gap: 10px; align-items: center; min-height: 44px; }
 .checks { display: flex; flex-direction: column; }
 .radios { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; }
@@ -225,8 +227,6 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .replay-figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .replay-figure figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .replay-controls { display: flex; flex-direction: column; gap: 10px; }
-/* A field fills a row; in a column it keeps its own height. */
-.replay-controls .field, .simulate .field { flex: none; }
 .replay-controls input[type='range'] { padding: 0; accent-color: var(--ai); }
 .timeline { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
 .replay-item { width: 100%; min-height: 44px; display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
