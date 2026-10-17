@@ -13,6 +13,7 @@ import { validZone, deviceZone, isoInZone, timeIn } from '../time.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 import { isPluginBug } from '../plugins.js';
+import { isArrival } from '../after/stamps.js';
 
 /**
  * Live mode (spec §11): where the user is and what they are doing, the watches and the plan's own
@@ -46,6 +47,10 @@ export const MAX_WAIT_MS = 86_400_000;
 export const FIX_WAIT_MS = 15_000;
 /** A firing this long after it came due is labelled late (spec §11.4: "late by N min"). */
 export const LATE_MS = 2 * 60_000;
+/** An arrival's place is named for its stamp (spec §13) by a plan place this close… */
+export const STAMP_PLAN_M = 300;
+/** …or by a place a namer (the offline pack) knows this close (choice 1). */
+export const STAMP_POI_M = 500;
 const NEAR_M = 2000;
 const MIN = 60_000;
 /** @param {number} x */
@@ -781,7 +786,7 @@ export class Live {
         continue;
       }
       const key = this.#key(x.scope, x.watch.id);
-      const f = x.firing;
+      const f = { ...x.firing, place: this.#stampPlace(x.watch, x.firing.place) };
       await logEvent(this.store, x.scope, {
         type: 'trigger.fired', actor: 'system',
         data: {
@@ -838,6 +843,32 @@ export class Live {
     if (x.watch.owner === 'system') return `${x.firing.text}${late}.`;
     const whose = x.watch.owner === 'shiori' ? 'Your watch' : `The watch of ${x.watch.owner}`;
     return `${whose} ${x.watch.id} (${this.#describe(x.type, x.watch)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
+  }
+
+  /**
+   * An arrival's place, named when it is at a plan place or a place a namer knows, so its stamp
+   * comes from the log alone (spec §13, choice 1). Other places are as they came.
+   * @param {Watch} w @param {import('./triggers.js').Place | undefined} p
+   */
+  #stampPlace(w, p) {
+    if (!p || p.name || !isArrival({ type: w.when?.type, event: /** @type {any} */ (w.when)?.event })) return p;
+    /** @type {{ name: string, m: number } | null} */
+    let best = null;
+    for (const q of this.#places) {
+      const d = meters(p, q);
+      if (d <= STAMP_PLAN_M && (!best || d < best.m)) best = { name: q.name, m: d };
+    }
+    if (!best) {
+      for (const n of this.namers) {
+        try {
+          const r = n(p);
+          if (r && r.m <= STAMP_POI_M && (!best || r.m < best.m)) best = r;
+        } catch {
+          // a namer that fails names nothing
+        }
+      }
+    }
+    return best ? { name: best.name, ...p } : p;
   }
 
   /** @param {string} scope */
