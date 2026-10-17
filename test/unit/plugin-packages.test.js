@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SYS_PLUGINS } from '../../src/core/scopes.js';
+import { SYS_PLUGINS, SYS_SETTINGS, createTrip } from '../../src/core/scopes.js';
+import { setToolSwitch } from '../../src/core/agent/tools.js';
+import { readAppSettings } from '../../src/core/settings.js';
 import { PluginError } from '../../src/core/registry.js';
 import { text } from '../../src/core/bytes.js';
 import { files, SKILL, KIT, hostKit } from './package-kit.js';
@@ -138,4 +140,56 @@ test("host: a code plugin can't register a skill whose name is taken", async () 
     'index.js': "export function activate(annai) { return annai.register('skill', { name: 'tide-pools', description: 'Mine now.', text: 'x' }); }",
   }));
   await assert.rejects(host.start('sneaky'), /its skill tide-pools can't be used: tide-pools has a skill by that name already/);
+});
+
+const TIDES = files({
+  'annai-plugin.json': JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js' }),
+  'index.js': `export async function activate(annai) {
+    await annai.settings.set({ station: 'Monterey' });
+    await annai.secrets.set('key', 'tide-secret-123456');
+    await annai.events.append('sys', 'tides.cache', {}, { texts: [['table', 'x'.repeat(3000)]] });
+    return annai.tools.register({ name: 'tide_times', description: 'Tides.', input: { type: 'object' }, run: () => 'low 05:40' });
+  }`,
+});
+
+test('host: removing a package removes everything it stored and gives the space back; what it wrote in a trip stays (choice 4)', async () => {
+  const { host, ws, store, registry, log } = await hostKit();
+  await host.install(TIDES);
+  await host.start('tides');
+  await setToolSwitch(ws, 'tide_times', false);
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(trip, '/notes/tides.md', 'from the plugin', { author: 'plugin:tides' });
+  const { bytes } = await host.uninstall('tides');
+  assert.ok(bytes >= 3000);
+  assert.equal((await host.installed()).tides, undefined);
+  assert.deepEqual(await ws.list(SYS_PLUGINS, '/tides/'), []);
+  assert.deepEqual(await ws.history(SYS_PLUGINS, '/tides/index.js'), []);
+  assert.equal(await ws.read(SYS_SETTINGS, '/plugin-settings/tides.json'), undefined);
+  assert.deepEqual(await ws.history(SYS_SETTINGS, '/plugin-settings/tides.json'), []);
+  assert.equal(await store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:tides:key')), undefined);
+  assert.equal((await readAppSettings(ws)).tools?.tide_times, undefined);
+  const sys = await log();
+  assert.equal(sys.filter((e) => e.type === 'tides.cache').length, 0);
+  assert.deepEqual(sys.filter((e) => e.type === 'plugin.remove').map((e) => [e.data.plugin, e.data.bytes]), [['tides', bytes]]);
+  assert.equal(await ws.readText(trip, '/notes/tides.md'), 'from the plugin');
+  assert.deepEqual(registry.list('tool'), []);
+});
+
+test('host: removing a package that is off still removes its tool switches', async () => {
+  const { host, ws } = await hostKit();
+  await host.install(TIDES);
+  await host.start('tides');
+  await setToolSwitch(ws, 'tide_times', false);
+  await host.setEnabled('tides', false);
+  await host.uninstall('tides');
+  assert.equal((await readAppSettings(ws)).tools?.tide_times, undefined);
+});
+
+test('host: removing a skill takes it from Shiori and frees its files', async () => {
+  const { host, registry, ws } = await hostKit();
+  await host.install(files({ 'SKILL.md': SKILL, 'references/safety.md': 'Watch the waves.' }));
+  await host.start('tide-pools');
+  await host.uninstall('tide-pools');
+  assert.deepEqual(registry.list('skill'), []);
+  assert.deepEqual(await ws.list(SYS_PLUGINS, '/tide-pools/'), []);
 });
