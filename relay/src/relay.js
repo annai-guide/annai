@@ -42,8 +42,19 @@ const URGENCY = ['very-low', 'low', 'normal', 'high'];
 const RAND = /^[A-Za-z0-9_-]{22}$/;
 const ID = /^([A-Za-z0-9_-]{43})\.([A-Za-z0-9_-]{22})$/;
 const BEARER = /^Bearer ([A-Za-z0-9_-]{22,128})$/;
-/** The push services browsers use (choice 3): Google's, Apple's, Mozilla's and Microsoft's. */
-const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(?:^|\.)push\.apple\.com$/, /(?:^|\.)push\.services\.mozilla\.com$/, /(?:^|\.)notify\.windows\.com$/];
+/**
+ * The push services browsers use (choice 3), each with the shape of its own endpoints, so no other
+ * address at those hosts can stand in for one: Google's (Chrome, Android, Samsung, Edge on Android),
+ * Apple's, Mozilla's and Microsoft's (Edge on Windows).
+ * @type {[RegExp, (u: URL) => boolean][]}
+ */
+const PUSH_SERVICES = [
+  [/^fcm\.googleapis\.com$/, (u) => /^\/(?:fcm\/send|wp)\/[^/]+$/.test(u.pathname)],
+  [/^android\.googleapis\.com$/, (u) => /^\/gcm\/send\/[^/]+$/.test(u.pathname)],
+  [/(?:^|\.)push\.apple\.com$/, (u) => /^\/[^/]+/.test(u.pathname)],
+  [/(?:^|\.)push\.services\.mozilla\.com$/, (u) => /^\/wpush\/v\d+\/[^/]+$/.test(u.pathname)],
+  [/(?:^|\.)notify\.windows\.com$/, (u) => u.pathname === '/w/' && Boolean(u.searchParams.get('token'))],
+];
 const MISSING = 'There is no such reminder at the relay: it was sent, or cancelled.';
 
 /**
@@ -61,7 +72,7 @@ export function pushEndpointAllowed(endpoint, extra = []) {
   }
   if (u.username || u.password) return false;
   if (extra.includes(u.origin)) return true;
-  return u.protocol === 'https:' && u.port === '' && PUSH_HOSTS.some((re) => re.test(u.hostname));
+  return u.protocol === 'https:' && u.port === '' && PUSH_SERVICES.some(([host, shape]) => host.test(u.hostname) && shape(u));
 }
 
 /** Requests a minute from one address (choice 5): 60 × 1,440 = 86,400 a day, under the Free plan's 100,000. */
@@ -301,7 +312,7 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
         await this.rewake();
         if (r === 'gone') return fail(410, 'gone', "The phone's push service says this subscription no longer exists. annai subscribes again.");
         if (r === 'drop') return fail(400, 'refused', "The phone's push service refused this reminder.");
-        return reply(201, { id: m.id, sendAt: m.sendAt, sent: r === 'sent' });
+        return reply(201, { id: m.id, sendAt: m.sendAt, sent: r === 'sent' || r === 'taken' });
       }
       const alarm = await this.storage.getAlarm();
       if (alarm === null || m.sendAt < alarm) await this.storage.setAlarm(m.sendAt);
@@ -355,7 +366,7 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
     /**
      * Sends one reminder and keeps what came of it (choice 6): a gone subscription forgets
      * everything; a delivered reminder confirms its subscription (choice 13).
-     * @param {Waiting} w @param {number} t @returns {Promise<'sent' | 'gone' | 'retry' | 'drop'>}
+     * @param {Waiting} w @param {number} t @returns {Promise<'sent' | 'taken' | 'gone' | 'retry' | 'drop'>}
      */
     async #settle(w, t) {
       const r = await this.#deliver(w, t);
@@ -373,14 +384,15 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
         }
       } else {
         await this.storage.delete([`m:${w.id}`, `p:${w.id}`]); // sent, or never will be
-        if (r === 'sent') await this.storage.put('confirmed', { at: t });
+        if (r === 'sent') await this.storage.put('confirmed', { at: t }); // only a push service's 201 confirms
       }
       return r;
     }
 
     /**
-     * Sends one reminder to its push service (RFC 8030, VAPID per RFC 8292), choice 6.
-     * @param {Waiting} w @param {number} t @returns {Promise<'sent' | 'gone' | 'retry' | 'drop'>}
+     * Sends one reminder to its push service (RFC 8030, VAPID per RFC 8292), choice 6. sent: the push
+     * service answered 201, as RFC 8030 §5 says it must; taken: another 2xx, which confirms nothing.
+     * @param {Waiting} w @param {number} t @returns {Promise<'sent' | 'taken' | 'gone' | 'retry' | 'drop'>}
      */
     async #deliver(w, t) {
       if (t > w.sendAt + RETRY_FOR) return 'drop'; // expired
@@ -400,7 +412,8 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
         return 'retry';
       }
       await res.arrayBuffer().catch(() => null);
-      if (res.ok) return 'sent';
+      if (res.status === 201) return 'sent';
+      if (res.ok) return 'taken';
       if (res.status === 404 || res.status === 410) return 'gone';
       if (res.status === 403 && w.tries === 0) {
         await this.storage.delete('jwt');
