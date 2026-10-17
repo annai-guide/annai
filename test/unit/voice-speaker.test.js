@@ -23,7 +23,7 @@ test('sentences play as they stream in, and the next is fetched while one plays 
   assert.equal(done.cut, null);
   assert.equal(done.failed, null);
   assert.equal(done.heard, 'Bixby Bridge is two miles ahead. When it opened in 1932, it was tall! Want a stop?');
-  assert.deepEqual(p.sessions, ['transient']);
+  assert.deepEqual(p.sessions, ['playback'], 'playback while she speaks: heard with the silent switch on (spec §10.1)');
 });
 
 test('the next clip is fetched while one plays: no gap waiting for it', async () => {

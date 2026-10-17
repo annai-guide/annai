@@ -176,8 +176,7 @@ export class Utterance {
       for (;; i++) {
         const text = await this.#sentence(i);
         if (text === null) break;
-        // Speaking: other audio ducks rather than stops (spec §10.1).
-        if (i === 0) this.#deps.platform()?.session('transient');
+        if (i === 0) this.#deps.platform()?.session('playback'); // speaking: heard with the iPhone's silent switch on; music pauses (spec §10.1)
         const r = await this.#say(i, text);
         if (r.failed) {
           failed = r.failed;

@@ -65,7 +65,6 @@ export default function (test, assert) {
     const p = browserPlatform();
     assert.equal(p.synth.available(), typeof speechSynthesis !== 'undefined');
     assert.equal(p.dictation.available(), Boolean(/** @type {any} */ (window).SpeechRecognition || /** @type {any} */ (window).webkitSpeechRecognition));
-    p.session('transient');
     p.session('play-and-record');
     p.session('playback');
     assert.ok(Array.isArray(p.synth.voices()));
