@@ -22,3 +22,17 @@ On a real iPhone (Safari, and the installed app) and a real Android phone (Chrom
 - [ ] **Send audio to the model.** With an audio model (Gemini through OpenRouter, say) as main and "Send audio to the model" first: a spoken exchange works without a transcription model; in the conversation your words appear after her reply.
 - [ ] **No way to hear.** With a text-only main model and only "Send audio to the model" in Speech in, tap Shiori: a card says what to add.
 - [ ] **Silent switch.** iPhone silent switch on: does she still speak? (§10.1's "transient" session is muted by it; write down what happens.)
+
+## Voice modes and the car (milestone 3c)
+
+- [ ] **Auto with headphones.** Voice chip on Auto. Connect AirPods (or any Bluetooth headphones), allow the microphone once (tap Shiori): the chip says "Voice on · headphones". Disconnect them: it says "Voice auto · off".
+- [ ] **Auto in the car.** Connect the phone to the car by Bluetooth: the chip says "Voice on · car audio" (or "headphones": note which). Note the name the car shows in Settings → Voice → Test the microphone's device list if it's neither.
+- [ ] **Auto can't tell.** Fresh install, microphone not allowed yet: the chip says "Voice auto · off". Choose On, then Auto: "Voice on · your last choice".
+- [ ] **A hands-free exchange in the car** (the milestone's "Done when"), on both phones, phone in its holder, music playing: tap Shiori once and talk; she answers aloud and listens; answer her; go on for three or four turns without touching the phone. Note: does the music duck or stop while she speaks? Does it come back? Is the car's microphone used (car Bluetooth quality while the microphone is open)? Is she loud enough over road noise? Does the end of your sentence get cut off, or does she wait too long (Settings → Voice → the pause)?
+- [ ] **CarPlay and Android Auto.** With Maps on the car's screen and annai on the phone: the exchange still works; directions keep speaking; note what the car shows while Shiori speaks (her clip as "now playing"?).
+- [ ] **Split screen with Maps (Android).** annai and Maps side by side: tap Shiori, talk, and she answers.
+- [ ] **Steering-wheel buttons (experiment).** With voice on and after she has spoken once, press play/pause (or next track) on the steering wheel or headset: does it tap Shiori (stop her, or start listening)? Note what each button does on each phone.
+- [ ] **The first tap on iPhone.** Close annai fully and open it from the Home Screen. Before tapping anything else, let a reply come without a tap (a reminder, once milestone 5 has them; for now, send a message with the keyboard's return key): does she speak, or does a card ask for a tap?
+- [ ] **Dictation in the installed app on iPhone.** Speech in: Phone dictation first, no transcription model. In Safari and in the installed app: does dictation hear you? If it fails, does recording take over (with a transcription model second)?
+- [ ] **Interrupting and chatter in the car,** as in 3b's list, with road noise.
+- [ ] **Show what she's saying.** While she speaks, a passenger taps "Show what she's saying": her words show above the dock.
