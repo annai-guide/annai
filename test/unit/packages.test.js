@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inspectPackage, fingerprint, isJunk } from '../../src/core/packages.js';
+import { inspectPackage, fingerprint, isJunk, checkManifest, insidePlugin } from '../../src/core/packages.js';
 import { PluginError } from '../../src/core/registry.js';
 import { files, SKILL } from './package-kit.js';
 
@@ -62,4 +62,13 @@ test('the fingerprint changes when any file or name does, and only then', async 
   assert.notEqual(await fingerprint(files({ 'SKILL.md': SKILL, 'b.md': 'c' })), a);
   assert.notEqual(await fingerprint(files({ 'SKILL.md': SKILL, 'c.md': 'b' })), a);
   assert.deepEqual(['__MACOSX/x', 'a/.DS_Store', 'Thumbs.db', 'a/desktop.ini', 'a/', 'a/b.md'].map(isJunk), [true, true, true, true, true, false]);
+});
+
+test('8a-4: an entry, or any path in a package, that starts with a scheme is refused', () => {
+  for (const entry of ['http:/evil.example/x.js', 'https://evil.example/x.js', 'javascript:alert(1).js', 'data:text/javascript,x.js']) {
+    assert.throws(() => checkManifest(JSON.parse(MANIFEST({ entry }))), (/** @type {any} */ e) => e instanceof PluginError && /isn't a file inside the plugin/.test(e.message), entry);
+    assert.equal(insidePlugin(entry), false, entry);
+  }
+  checkManifest(JSON.parse(MANIFEST({ entry: 'lib/index.js' })));
+  assert.equal(insidePlugin('lib/index.js'), true);
 });
