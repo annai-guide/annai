@@ -109,7 +109,10 @@ async function boot() {
     push?.delivered(list);
     return list;
   };
-  const live = new Live({ store, ws, registry, agent, news });
+  /** @type {unknown[]} live mode's problems from before the shell is up */
+  const liveEarly = [];
+  let liveProblem = (/** @type {unknown} */ e) => { liveEarly.push(e); };
+  const live = new Live({ store, ws, registry, agent, news, problem: (e) => liveProblem(e) });
   /** @type {any[]} cards from before the shell is up */
   const early = [];
   let pushCard = (/** @type {any} */ n) => { early.push(n); };
@@ -173,7 +176,9 @@ async function boot() {
   addEventListener('pagehide', () => agent.leaving());
   addEventListener('pageshow', (e) => { if (e.persisted) agent.leaving(false); });
   offerPersonalityUpdates({ ws, agent, presets, notices: shell.notices });
-  watchErrors(store, shell);
+  // Live mode's own failures (a log it can't write) are reported like any unexpected error (spec §17 rule 4).
+  liveProblem = watchErrors(store, shell);
+  for (const e of liveEarly.splice(0)) liveProblem(e);
   if (isStandalone()) requestPersist();
   registerServiceWorker(store, shell);
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
@@ -277,7 +282,7 @@ async function registerServiceWorker(store, shell) {
   }
 }
 
-/** Spec §17 rule 4: record unexpected errors, show a card, keep running. */
+/** Spec §17 rule 4: record unexpected errors, show a card, keep running. Returns how to report one. */
 function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof startShell>} */ shell) {
   const report = (/** @type {any} */ err) => {
     if (err instanceof StorageFullError) {
@@ -294,6 +299,7 @@ function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof star
   };
   addEventListener('error', (e) => report(e.error ?? e.message));
   addEventListener('unhandledrejection', (e) => report(e.reason));
+  return report;
 }
 
 boot().catch((e) => {
