@@ -61,3 +61,11 @@ test("the Now screen's sun chips through a day, in the place's own zone (spec §
   assert.deepEqual(sunChips(Date.parse('2026-06-21T12:00:00+02:00'), 69.6492, 18.9553, 'Europe/Oslo'), ['Midnight sun']);
   assert.deepEqual(sunChips(Date.parse('2026-12-21T12:00:00+01:00'), 69.6492, 18.9553, 'Europe/Oslo'), ['Polar night']);
 });
+
+test('on a day of golden light all day, after sunset the chips say dusk, then the next sunrise', () => {
+  const AK = 'America/Anchorage'; // Fairbanks in December: the sun never climbs past 6°
+  const chips = (/** @type {string} */ hhmm) => sunChips(Date.parse(`2026-12-10T${hhmm}:00-09:00`), 64.84, -147.72, AK);
+  assert.match(chips('12:00').join(' | '), /^Golden light all day \| Sunset 14:4\d$/);
+  assert.match(chips('15:30').join(' | '), /^Dusk 16:0\d$/);
+  assert.match(chips('22:30').join(' | '), /^Sunrise 10:4\d$/); // tomorrow's
+});

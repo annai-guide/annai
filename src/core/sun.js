@@ -79,9 +79,15 @@ export function sunChips(now, lat, lng, tz) {
   const sunrise = /** @type {number} */ (t.sunrise);
   const sunset = /** @type {number} */ (t.sunset);
   if (now < sunrise) return [`Sunrise ${hm(sunrise)}`];
-  if (t.goldenEveningStart === null || t.goldenMorningEnd === null) return now < sunset ? ['Golden light all day', `Sunset ${hm(sunset)}`] : [];
-  if (now < t.goldenMorningEnd) return [`Golden hour until ${hm(t.goldenMorningEnd)}`];
-  if (now < t.goldenEveningStart) return [`Golden hour ${hm(t.goldenEveningStart)}`, `Sunset ${hm(sunset)}`];
+  const { goldenMorningEnd: goldenEnd, goldenEveningStart: golden } = t;
+  // The sun never climbs past golden hour's 6° (high latitudes in winter): golden light until sunset, then dusk as any day.
+  if (golden === null || goldenEnd === null) {
+    if (now < sunset) return ['Golden light all day', `Sunset ${hm(sunset)}`];
+  } else if (now < goldenEnd) {
+    return [`Golden hour until ${hm(goldenEnd)}`];
+  } else if (now < golden) {
+    return [`Golden hour ${hm(golden)}`, `Sunset ${hm(sunset)}`];
+  }
   if (now < sunset) return ['Golden hour now', `Sunset ${hm(sunset)}`];
   if (t.dusk !== null && now < t.dusk) return [`Dusk ${hm(t.dusk)}`];
   const tomorrow = sunTimes(now + DAY / 2, lat, lng);
