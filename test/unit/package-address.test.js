@@ -81,3 +81,9 @@ test('addresses that hold no package, or fail, say what to do; nothing half-read
     await assert.rejects(fetchPackage(address, { fetch, ...(max ? { max } : {}) }), (e) => /** @type {any} */ (e).constructor === Error && why.test(/** @type {Error} */ (e).message), address);
   }
 });
+
+test('8a-1: an address with a name or password before an @ is refused before anything is fetched', async () => {
+  const w = web({});
+  await assert.rejects(fetchPackage('https://me:pw@trails.example/kits/tide-pools/SKILL.md', { fetch: w.fetch }), /name or password before an @\. Leave it out\./);
+  assert.deepEqual(w.asked, []);
+});

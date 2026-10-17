@@ -7,6 +7,7 @@ import { sourceLine } from './plugin-install.js';
 import { fetchPackage, PLUGIN_MAX_BYTES } from '../../core/packages.js';
 import { readZip } from '../../core/zip.js';
 import { tracedFetch } from '../../core/agent/net.js';
+import { addressParts } from '../../core/address.js';
 import { SYS } from '../../core/scopes.js';
 import { renderPlugin } from './plugin.js';
 
@@ -79,6 +80,15 @@ async function fromFile(ctx, f) {
   }
 }
 
+/** The keys an address may hold, or none when it isn't one. @param {string} url */
+function keysIn(url) {
+  try {
+    return addressParts(url).keys;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * An address given: the package is fetched (each request in the trace) and checked, then shown.
  * @param {any} ctx @param {string} value @param {HTMLButtonElement} button @param {HTMLElement} error
@@ -94,7 +104,8 @@ async function fromAddress(ctx, value, button, error) {
   button.disabled = true;
   button.textContent = 'Getting it…';
   try {
-    const files = await fetchPackage(url, { fetch: tracedFetch(ctx.store, SYS, { tool: 'plugins' }) });
+    // A key in the address isn't a secret yet: the trace blanks it all the same (fix pass 8a-1).
+    const files = await fetchPackage(url, { fetch: tracedFetch(ctx.store, SYS, { tool: 'plugins', blank: keysIn(url) }) });
     const pkg = await ctx.plugins.inspect(files);
     setPendingPackage({ files, pkg, from: { source: 'url', url } });
     ctx.go('#/plugin-install');

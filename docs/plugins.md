@@ -119,7 +119,7 @@ Pools are safest from an hour before low tide until low tide. Read [the safety n
   - an `annai-plugin.json`: annai fetches the files it names (`entry`, each skill's `SKILL.md`, `personalities`, `templates`, and `files`), relative to it;
   - a `SKILL.md`: annai fetches the files its links point to inside the skill's folder.
 
-  The site must let web apps read it (GitHub's raw files do; a `github.com/…/blob/…` page is read from there). At most 200 files and 64 MB.
+  The site must let web apps read it (GitHub's raw files do; a `github.com/…/blob/…` page is read from there). At most 200 files and 64 MB. A key in the address (a path segment or a query value that looks like one) is kept in the package's secrets, which annai uses to look for updates; the address is shown and kept everywhere else with `«key»` in its place. An address with a name and password before an `@` is refused.
 - **From annai's catalog:** Settings → Plugins lists annai's own plugins that aren't installed.
 - **The install screen** comes first, for a file or an address: what the package is, where it came from, and what it brings. A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys."
 - **Updates:** a package installed from an address is checked there when annai starts and once a day; a changed package (its files, not just its version) is offered on a card and in Settings → Plugins. Nothing changes until the user taps Update. An update that brings something new (code where there was none, or new skills, personalities or templates) lists it and asks again, with the full-trust words for new code. Code that already ran runs the new version from the next start.

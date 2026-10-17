@@ -22,10 +22,13 @@ export async function addressUpdates(host, { fetch }) {
   for (const [id, s] of Object.entries(await host.installed())) {
     if (s.source !== 'url' || typeof s.url !== 'string') continue;
     try {
-      const pkg = await host.inspect(await fetchPackage(s.url, { fetch }));
+      // The address with its keys, from the package's secret (fix pass 8a-1); s.url shows «key» in their places.
+      const address = await host.address(id);
+      if (!address) continue;
+      const pkg = await host.inspect(await fetchPackage(address, { fetch }));
       if (pkg.id !== id || pkg.fingerprint === s.fingerprint) continue;
       const added = pkg.replaces?.added ?? addedParts(await host.installedParts(id), pkg);
-      out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added });
+      out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added });
     } catch {
       // not now: the next check asks again
     }
@@ -41,14 +44,15 @@ export async function addressUpdates(host, { fetch }) {
  */
 export async function updateFromAddress(host, id, { fetch, agreed }) {
   const s = (await host.installed())[id];
-  if (s?.source !== 'url' || typeof s.url !== 'string') throw new PluginError(id, "wasn't installed from an address, so annai has nowhere to look for an update");
-  const files = await fetchPackage(s.url, { fetch });
+  const address = await host.address(id);
+  if (!s || !address) throw new PluginError(id, "wasn't installed from an address, so annai has nowhere to look for an update");
+  const files = await fetchPackage(address, { fetch });
   const pkg = await host.inspect(files);
   if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`);
   const added = pkg.replaces?.added ?? addedParts(await host.installedParts(id), pkg);
   if (!agreedTo(agreed, added)) throw new PluginError(id, `this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.`);
   const wasOn = s.enabled !== false;
-  await host.install(files, { source: 'url', url: s.url });
+  await host.install(files, { source: 'url', url: address });
   if (!wasOn) {
     await host.setEnabled(id, false);
     return 'started';

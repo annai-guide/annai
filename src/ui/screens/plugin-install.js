@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { pendingPackage, setPendingPackage } from '../plugin-pending.js';
 import { explainStorageFull } from '../storage-full.js';
-import { traceUrl } from '../../core/agent/net.js';
+import { addressParts } from '../../core/address.js';
 import { addsAnything } from '../../core/packages.js';
 
 /** The spec's own words for a package with code (§5.1). */
@@ -19,12 +19,18 @@ export function whatItBrings(pkg) {
 }
 
 /**
- * Where a package came from, in words: its address as the trace keeps it (no key in it), a file, or annai.
+ * Where a package came from, in words: its address as annai keeps it, with «key» for each key in it
+ * (fix pass 8a-1), a file, or annai.
  * @param {{ source?: string, url?: string, file?: string }} from
  */
 export function sourceLine(from) {
   if (from?.source === 'url' && from.url) {
-    const kept = traceUrl(from.url).replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+    let kept = '';
+    try {
+      kept = addressParts(from.url).shown.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+    } catch {
+      return 'From an address';
+    }
     let shown = kept;
     try {
       shown = decodeURI(kept);

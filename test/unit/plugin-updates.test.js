@@ -230,3 +230,58 @@ test('an update from an address with nothing new is applied as before', async ()
   assert.deepEqual([notices.cards.length, notices.toasts], [0, ['Plugins updated.']]);
   assert.equal((await host.installed()).kit.version, '1.0.1');
 });
+
+// Fix pass 8a-1: a key in a package's address lives in the package's secret, never in installed.json.
+const KEY = 'zap1a2b3c4d5e6f7g8h9';
+const KEYED = `https://trails.example/s/${KEY}/tide-pools/SKILL.md`;
+const SHOWN = 'https://trails.example/s/«key»/tide-pools/SKILL.md';
+/** Every text annai keeps: files, log entries and stored content. @param {any} store */
+const everything = (store) => store.tx(['files', 'events', 'blobs', 'scopes'], 'readonly', async (/** @type {any} */ t) => {
+  const out = [];
+  for (const s of await t.listScopes()) out.push(JSON.stringify(await t.listFiles(s.id)), JSON.stringify(await t.listEvents(s.id)));
+  for (const b of await t.listBlobs()) out.push(new TextDecoder().decode(new Uint8Array((await t.getBlob(b.hash))?.data ?? new ArrayBuffer(0))));
+  return out.join('\n');
+});
+const addressSecret = (/** @type {any} */ store, id = 'tide-pools') => store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${id}:address`));
+
+test("8a-1: a key in a package's address is kept in its secret: installed.json, its history and the log show «key»; updates still find it; Remove forgets it", async () => {
+  let served = SKILL;
+  const get = async (/** @type {string} */ url) => (url === KEYED ? new Response(served) : new Response('', { status: 404 }));
+  const { host, store } = await hostKit();
+  await host.install(await fetchPackage(KEYED, { fetch: get }), { source: 'url', url: KEYED });
+  assert.equal((await host.installed())['tide-pools'].url, SHOWN);
+  assert.deepEqual(await addressSecret(store), { address: KEYED, keys: [KEY] });
+  assert.equal(/** @type {any} */ ((await host.describe()).find((r) => r.id === 'tide-pools'))?.url, SHOWN);
+  served = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  const [u] = await addressUpdates(host, { fetch: get });
+  assert.deepEqual([u.available, u.url], ['1.3.0', SHOWN]);
+  await updateFromAddress(host, 'tide-pools', { fetch: get });
+  assert.equal((await host.installed())['tide-pools'].version, '1.3.0');
+  assert.doesNotMatch(await everything(store), new RegExp(KEY));
+  await host.uninstall('tide-pools');
+  assert.equal(await addressSecret(store), undefined);
+});
+
+test('8a-1: a plain address still works; a raw one kept before this fix moves into the secret at its next read, or at the next start', async () => {
+  const get = async (/** @type {string} */ url) => (url === KEYED || url === ADDR ? new Response(SKILL.replace('version: "1.2"', 'version: "1.3"')) : new Response('', { status: 404 }));
+  // A plain address: kept as it is, and no secret.
+  const plain = await hostKit();
+  await plain.host.install(await fetchPackage(ADDR, { fetch: async () => new Response(SKILL) }), { source: 'url', url: ADDR });
+  assert.equal((await plain.host.installed())['tide-pools'].url, ADDR);
+  assert.equal(await addressSecret(plain.store), undefined);
+  assert.equal((await addressUpdates(plain.host, { fetch: get }))[0]?.available, '1.3.0');
+  for (const when of ['read', 'start']) {
+    const k = await hostKit();
+    await k.host.install(await fetchPackage(ADDR, { fetch: async () => new Response(SKILL) }), { source: 'url', url: ADDR });
+    // As installed.json was before this fix: the address with its key, raw.
+    await k.ws.patch(SYS_PLUGINS, '/installed.json', { 'tide-pools': { url: KEYED } }, { author: 'system' });
+    const host = when === 'start' ? k.relaunch() : k.host;
+    if (when === 'start') await host.startInstalled();
+    else assert.equal((await addressUpdates(host, { fetch: get }))[0]?.available, '1.3.0', when);
+    assert.equal((await host.installed())['tide-pools'].url, SHOWN, when);
+    assert.deepEqual(await addressSecret(k.store), { address: KEYED, keys: [KEY] }, when);
+    assert.doesNotMatch(await everything(k.store), new RegExp(KEY), when);
+    assert.equal(await updateFromAddress(host, 'tide-pools', { fetch: get }), 'started', when);
+    assert.equal((await host.installed())['tide-pools'].version, '1.3.0', when);
+  }
+});

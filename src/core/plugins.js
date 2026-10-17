@@ -4,7 +4,8 @@ import { forget } from './forget.js';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme } from './ui-slots.js';
 import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
-import { tracedFetch, traceUrl } from './agent/net.js';
+import { tracedFetch } from './agent/net.js';
+import { addressParts } from './address.js';
 import { record } from './agent/log.js';
 import { readAppSettings, updateAppSettings } from './settings.js';
 import { logEvent } from './events.js';
@@ -28,6 +29,8 @@ export const START_TIMEOUT = 10_000;
 /** Launches in a row a plugin may fail to start on before annai turns it off. */
 export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
+/** A package's secret holding the address it came from, keys and all (fix pass 8a-1). @param {string} id */
+const ADDRESS = (id) => `plugin:${id}:address`;
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
 /** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
@@ -268,24 +271,69 @@ export class PluginHost {
     await this.stop(id);
     const state = await this.installed();
     const before = state[id];
+    // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
+    const shown = await this.#keepAddress(id, url);
     state[id] = {
       version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: true, installed: this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
-      ...(file ? { file } : {}), ...(url ? { url } : {}), ...(before?.tools ? { tools: before.tools } : {}),
+      ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
     const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
-    await this.ws.writeMany(SYS_PLUGINS, [
-      ...gone.map((f) => ({ path: f.path, content: null })),
-      ...[...toWrite].map(([path, bytes]) => ({ path, content: bytes, type: typeForPath(path) })),
-      { path: STATE, content: state },
-    ], { author: 'system' });
+    try {
+      await this.ws.writeMany(SYS_PLUGINS, [
+        ...gone.map((f) => ({ path: f.path, content: null })),
+        ...[...toWrite].map(([path, bytes]) => ({ path, content: bytes, type: typeForPath(path) })),
+        { path: STATE, content: state },
+      ], { author: 'system' });
+    } catch (e) {
+      if (!before) await this.#keepAddress(id, undefined).catch(() => {}); // nothing installed: nothing kept
+      throw e;
+    }
     // If this fails, the old versions only take space until the next install or removal.
     await forget(this.ws.store, SYS_PLUGINS, { history: (p) => p.startsWith(`/${id}/`) }).catch(() => {});
     await logEvent(this.ws.store, SYS, {
       type: before ? 'plugin.update' : 'plugin.install', actor: 'system',
-      data: { plugin: id, name: pkg.name, version: pkg.version, kind: pkg.kind, from: source, ...(url ? { url: traceUrl(url) } : {}) },
+      data: { plugin: id, name: pkg.name, version: pkg.version, kind: pkg.kind, from: source, ...(shown ? { url: shown } : {}) },
     }).catch(() => {});
     if (this.#loaded.has(id) && pkg.code) this.#stale.add(id);
     return pkg.manifest;
+  }
+
+  /**
+   * Keeps the address a package came from: in its secret when the address holds a key, so annai can
+   * look there for updates (fix pass 8a-1); none, without an address. Returns the address as
+   * installed.json and the log keep it.
+   * @param {string} id @param {string | undefined} url
+   */
+  async #keepAddress(id, url) {
+    /** @type {{ shown: string, keys: string[] }} */
+    let parts = { shown: url ?? '', keys: [] };
+    try {
+      if (url) parts = addressParts(url);
+    } catch {
+      // not an address annai can read: kept as it is
+    }
+    await this.ws.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => (parts.keys.length
+      ? t.putSecret(ADDRESS(id), { address: url, keys: parts.keys }) : t.deleteSecret(ADDRESS(id))));
+    return parts.keys.length ? parts.shown : url || undefined;
+  }
+
+  /**
+   * The address a package installed from one came from, keys and all, or null. One kept raw in
+   * installed.json before fix pass 8a-1 moves into its secret now, and the old versions of
+   * installed.json, which held it, are forgotten.
+   * @param {string} id @returns {Promise<string | null>}
+   */
+  async address(id) {
+    const s = (await this.installed())[id];
+    if (s?.source !== 'url' || typeof s.url !== 'string') return null;
+    const kept = await this.ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(ADDRESS(id)));
+    if (typeof kept?.address === 'string') return kept.address;
+    const shown = await this.#keepAddress(id, s.url);
+    if (shown !== s.url) {
+      await this.#updateState(id, { url: shown });
+      await forget(this.ws.store, SYS_PLUGINS, { history: (p) => p === STATE });
+    }
+    return s.url;
   }
 
   /**
@@ -313,6 +361,8 @@ export class PluginHost {
    */
   async startInstalled() {
     const failures = [];
+    // An address kept raw before fix pass 8a-1 moves into its package's secret.
+    for (const [id, s] of Object.entries(await this.installed())) if (s.source === 'url') await this.address(id).catch(() => {});
     for (const [id, s] of Object.entries(await this.installed())) {
       if (!s.enabled) continue;
       try {

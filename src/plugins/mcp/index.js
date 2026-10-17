@@ -1,5 +1,6 @@
 import { VERSION } from '../../app/version.js';
-import { McpClient, McpError, mcpToolName, toolOutput, addressParts, fullAddress } from './client.js';
+import { McpClient, McpError, mcpToolName, toolOutput } from './client.js';
+import { addressParts, fullAddress, refuseUserinfo } from '../../core/address.js';
 import { SYS_SETTINGS } from '../../core/scopes.js';
 import { forget } from '../../core/forget.js';
 import { withoutSecrets } from '../../core/agent/net.js';
@@ -49,7 +50,7 @@ function checkAddress(url) {
   }
   const local = u && u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
   if (!u || (u.protocol !== 'https:' && !local)) throw new Error('The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).');
-  if (u.username || u.password) throw new Error('This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.');
+  refuseUserinfo(u, ', and put the key in the Token or Headers field');
   return u.href;
 }
 
