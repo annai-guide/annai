@@ -64,15 +64,20 @@ const cleanups = { screen: [], dock: [] };
 /**
  * Runs a plugin's drawing into el. A cleanup it returns (a function, or a promise of one) runs when
  * that group is drawn again; anything it throws, or a promise of it that rejects, is its plugin's
- * failure (counted), and el is left empty and hidden.
+ * failure (counted), el is left empty and hidden, and onFail runs, so annai can draw its own instead
+ * (fix pass 8b-3). Returns false when it failed at once.
  * @param {any} ctx @param {Entry} entry @param {HTMLElement} el @param {(ui: any) => any} call
- * @param {{ group?: 'screen' | 'dock', what?: string }} [o]
+ * @param {{ group?: 'screen' | 'dock', what?: string, onFail?: () => void }} [o]
  */
-export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing' } = {}) {
+export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing', onFail } = {}) {
+  let failed = false;
   const fail = (/** @type {unknown} */ e) => {
+    if (failed) return;
+    failed = true;
     el.replaceChildren();
     el.hidden = true;
     ctx.registry?.fail(entry.pluginId, what, e);
+    onFail?.();
   };
   try {
     const r = call(pluginUi(ctx, entry.pluginId));
@@ -84,6 +89,7 @@ export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing'
   } catch (e) {
     fail(e);
   }
+  return !failed;
 }
 
 /** Runs and forgets the cleanups of what was drawn on the screen or the dock. @param {'screen' | 'dock'} group */

@@ -117,9 +117,8 @@ function row(ctx, id, r, undo) {
   // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so.
   const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
   const when = it.kind === 'all-day' ? 'All day' : r.end ? [`${r.time}–${r.end}`, later, r.endZone].filter(Boolean).join(' ') : r.time;
-  const theirs = planRowOf(ctx, id, r, when); // a plugin's row (spec §16.4: plan-row)
-  if (theirs) return theirs;
-  return h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
+  // A plugin's row (spec §16.4: plan-row), or annai's own, also when the plugin's fails.
+  return planRowOf(ctx, id, r, when, () => h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: when }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),
     h('a', { class: 'what', href: fileHref(id, r.path) },
@@ -130,7 +129,7 @@ function row(ctx, id, r, undo) {
       r.check && r.bookingPath ? h('a', { class: 'chip check', href: bookingHref(id, r.bookingPath) }, 'Check this') : null,
       r.missing ? h('span', { class: 'chip warn', text: 'Booking missing' }) : null,
       undoChip(ctx, id, r, undo.get(r.path))) : null,
-    r.note ? h('span', { class: 'note sub warn', text: r.note }) : null);
+    r.note ? h('span', { class: 'note sub warn', text: r.note }) : null));
 }
 
 /**

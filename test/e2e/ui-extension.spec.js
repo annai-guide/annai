@@ -158,3 +158,37 @@ test('8b-2: with a plugin\'s dock, the Conversation shows what Shiori says, and 
     await llm.stop();
   }
 });
+
+test("8b-3: a Now card or plan row that fails is drawn by annai instead, whether it throws or its promise fails", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.evaluate(async (trip) => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const store = await createIdbStore();
+      await new Workspace(store).write(trip, '/plan/falls.json', { id: 'falls', title: 'Pfeiffer Falls', kind: 'sight', fixed: false, priority: 1, start: { at: '2030-11-27T10:00:00-08:00', tz: 'America/Los_Angeles' } }, { author: 'user' });
+      store.close();
+    }, trip);
+    const broken = {
+      'annai-plugin.json': Buffer.from(JSON.stringify({ id: 'looks-break', name: 'Looks break', version: '1.0.0', api: 1, entry: 'index.js' })),
+      'index.js': Buffer.from(`export function activate(annai) {
+        const a = annai.ui.component('now-card', { render: () => { throw new TypeError('now card broke'); } });
+        const b = annai.ui.component('plan-row', { render: async () => { throw new TypeError('row broke'); } });
+        return () => { a(); b(); };
+      }`),
+    };
+    await install(page, await zipOf(broken), 'Looks break');
+    await page.goto('/#/now');
+    await expect(page.getByText("Live mode is off, so annai isn't following where you are.")).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Turn on live mode' })).toBeVisible();
+    await expect(page.locator('.timetable .plan-row').filter({ hasText: 'Pfeiffer Falls' })).toBeVisible();
+    await page.goto('/#/plan');
+    await expect(page.locator('.timetable .plan-row').filter({ hasText: 'Pfeiffer Falls' })).toBeVisible();
+    expect(await page.locator('.plan-row:not(:visible)').count()).toBe(0);
+  } finally {
+    await llm.stop();
+  }
+});
