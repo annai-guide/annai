@@ -23,3 +23,18 @@ test('answerBytes: the bytes, or a plain error for a bad status, too much, or a 
   const broken = new Response(new ReadableStream({ start(c) { c.enqueue(new Uint8Array([1])); c.error(new TypeError('network')); } }));
   await assert.rejects(answerBytes(broken, 'trails.example'), (e) => !(e instanceof TypeError) && /answer was cut off/.test(/** @type {Error} */ (e).message));
 });
+
+test('answerJSON reads no further than its limit: an answer that never ends is stopped there, not read whole first', async () => {
+  let pulled = 0;
+  const endless = new Response(new ReadableStream({
+    pull(c) {
+      pulled++;
+      c.enqueue(new TextEncoder().encode(`${' '.repeat(1023)}\n`));
+    },
+  }));
+  await assert.rejects(answerJSON(endless, 'mcp.example', 10 * 1024), /^Error: mcp\.example sent more than annai reads/);
+  assert.ok(pulled <= 12, `pulled ${pulled}`);
+  // A length said up front that is past the limit isn't read at all.
+  await assert.rejects(answerJSON(new Response('{}', { headers: { 'content-length': String(20 * 1024 * 1024) } }), 'mcp.example'), /sent more than annai reads/);
+  assert.deepEqual(await answerJSON(new Response('{"ok":"é"}'), 'x'), { ok: 'é' });
+});
