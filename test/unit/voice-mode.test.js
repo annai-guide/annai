@@ -106,4 +106,12 @@ test('Shiori hears about voice changes: a state event, the now block, and the mi
   const states = (await k.events(['state'])).map((/** @type {any} */ e) => [e.data.voice, e.data.setting, e.data.why]);
   assert.deepEqual(states.slice(-2), [['on', 'auto', 'car audio'], ['off', 'off', 'off']]);
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');
+  // Voice going off while a tap's window listens: the window closes, and the dock says she sleeps, so the next tap opens typing.
+  await k.voice.choose('on');
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await k.voice.choose('off');
+  assert.equal(k.agent.state.name, 'sleeping');
+  assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');
+  assert.equal(k.agent.tap(), 'typing');
 });
