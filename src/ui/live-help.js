@@ -1,13 +1,19 @@
-import { platform } from './platform.js';
+import { platform, isStandalone } from './platform.js';
 
 /**
  * A refused location, in plain words, with steps for this phone (spec §17 rule 3). Live mode keeps
  * its time reminders, and the user can say where they are (§17 rule 2: "a manual place").
- * @param {'ios' | 'android' | 'desktop'} where @returns {{ title: string, body: string }}
+ * On iPhone, "Don't Allow" in a Safari tab is Safari's setting for this site; annai on the Home
+ * Screen uses Safari's location setting for websites. Location Services must be on for either.
+ * @param {'ios' | 'android' | 'desktop'} where @param {boolean} [installed] annai runs from the Home Screen
+ * @returns {{ title: string, body: string }}
  */
-export function gpsProblem(where) {
+export function gpsProblem(where, installed = false) {
+  const services = 'Location Services must be on: Settings → Privacy & Security → Location Services.';
   const steps = where === 'ios'
-    ? 'On iPhone: open Settings → Privacy & Security → Location Services, turn it on, and set Safari Websites (or annai, once it is on your Home Screen) to While Using the App.'
+    ? installed
+      ? `On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow. ${services}`
+      : `On iPhone: tap aA in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow). ${services}`
     : where === 'android'
       ? 'On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.'
       : "Allow location for this site in your browser's site settings.";
@@ -19,13 +25,13 @@ export function gpsProblem(where) {
 
 /**
  * Shows that card once when live mode's GPS is refused; again only if it worked in between.
- * @param {{ live: { on: boolean, gps: string, onChange: (fn: () => void) => () => void }, notices: { card: (c: any) => unknown }, where?: 'ios' | 'android' | 'desktop' }} c
+ * @param {{ live: { on: boolean, gps: string, onChange: (fn: () => void) => () => void }, notices: { card: (c: any) => unknown }, where?: 'ios' | 'android' | 'desktop', installed?: boolean }} c
  */
-export function tellGps({ live, notices, where = platform() }) {
+export function tellGps({ live, notices, where = platform(), installed = where === 'ios' && isStandalone() }) {
   let told = false;
   return live.onChange(() => {
     if (live.on && live.gps === 'denied') {
-      if (!told) notices.card({ tone: 'warn', ...gpsProblem(where) });
+      if (!told) notices.card({ tone: 'warn', ...gpsProblem(where, installed) });
       told = true;
     } else if (live.gps === 'ok') told = false;
   });
