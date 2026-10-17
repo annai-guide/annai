@@ -157,6 +157,10 @@ a.chip { min-height: 44px; }
 .chip.warn { background: var(--risk-wash); color: var(--risk); }
 .chip.ok { background: var(--ok-wash); color: var(--ok); }
 .leg { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0 6px calc(6.5em + 1.2em + 16px); color: var(--ink-2); font-size: 14px; border-bottom: 1px dashed var(--line); }
+/* Now and Driving (spec §16.2) */
+.now-place { font-family: var(--f-display); font-weight: 700; font-size: 20px; overflow-wrap: anywhere; }
+.shiori-card { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
+.shiori-card p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 .sub.warn { color: var(--risk); }
 .file-names { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; margin: 0; }

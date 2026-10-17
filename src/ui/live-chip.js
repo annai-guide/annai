@@ -69,18 +69,21 @@ export function liveChip(ctx) {
     chip.setAttribute('aria-expanded', 'true');
   };
   chip.addEventListener('click', () => { if (menu.hidden) open(); else close(); });
-  menu.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
-    if (e.key !== 'Escape') return;
-    close();
-    chip.focus();
-  });
+
   const show = () => {
     chip.textContent = liveText(live);
     chip.classList.toggle('on', live.on);
   };
   live.onChange(show);
   show();
-  return { el: h('div', { class: 'voice-chip-wrap' }, chip, menu) };
+  const el = h('div', { class: 'voice-chip-wrap' }, chip, menu);
+  // Escape closes it, from the chip or from inside the menu.
+  el.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
+    if (e.key !== 'Escape' || menu.hidden) return;
+    close();
+    chip.focus();
+  });
+  return { el };
 }
 
 /** The open trip's plan places, for "Where are you?". @param {any} ctx @returns {Promise<{ name: string, lat: number, lng: number }[]>} */
