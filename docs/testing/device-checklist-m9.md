@@ -19,6 +19,7 @@ The done criterion is that automatic backup and restore to GitHub work on an iPh
 - [ ] Trips: each trip card says "backed up … ago".
 - [ ] Add a note, then wait about an hour with annai open: a new commit. On GitHub, its changed files are the note, the logs and `annai-archive.json`; no photo was sent again.
 - [ ] Add 10 or more photos away from Wi-Fi. Safari can't tell annai whether it is on Wi-Fi, so when the backup would upload more than 25 MB, a card says "A large backup is waiting". **Back up now** sends it.
+- [ ] The GitHub place's **Upload without asking up to, MB** shows 25. Set it to 0 and change something: the backup waits with the card. Empty it (no limit) and change something: it goes without asking. Set it back to 25.
 - [ ] Trace → Kind **Web**: each request to GitHub is a line `plugin:storage-github · …`. Kind **Backups**: a line for each backup. Settings → **Copy diagnostics**, paste it into a note, and search for your token: it isn't there.
 
 ## The second phone (Android)
