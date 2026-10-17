@@ -1173,6 +1173,7 @@ export class Agent {
     this.#voiceNow = false;
     this.#closeEar();
     this.voice?.speaker.stop();
+    if (!this.#busy) this.#setState(this.online() ? 'sleeping' : 'offline'); // a tap's window was listening: the dock says she sleeps again
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) p.listening = false; // a wait for an answer goes on, for typing
   }
