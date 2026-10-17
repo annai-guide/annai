@@ -104,3 +104,12 @@ test('a run stops when told, and waits at its gate', async () => {
   assert.equal(sent, 20); // stopped
   assert.equal(SIMULATION, 'simulation');
 });
+
+test('a recorded track that ends at a stop stays there until the record ends (live mode turned off), so the arrival comes again', () => {
+  const at = (/** @type {string} */ t) => Date.parse(`2026-11-27T${t}:00-08:00`);
+  const points = [{ lat: 35.6, lng: -121.1, at: at('18:20'), speed: 14 }, { lat: 35.5641, lng: -121.0807, at: at('18:32'), speed: 0 }];
+  assert.equal(trackFromLog(points).at(-1)?.at, at('18:32'));
+  const track = trackFromLog(points, { end: at('19:02') });
+  assert.equal(track.at(-1)?.at, at('19:02') - 10_000);
+  assert.ok(track.filter((e) => e.at > at('18:32')).every((e) => e.kind === 'fix' && e.fix.speed === 0 && e.fix.lat === 35.5641));
+});

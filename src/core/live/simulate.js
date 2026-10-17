@@ -103,10 +103,11 @@ export function trackFrom(it) {
  * a point only after moving (§4.5), so a stop between two points close together a minute or more
  * apart is filled with still fixes; where the track jumps (a kilometre or more after ten minutes or
  * more: the phone was locked, or annai closed) the phone is marked locked, so catch-up runs as it did.
+ * With end (when the record ends, such as live mode turned off there), the last stop lasts until then.
  * @param {{ lat: number, lng: number, at: number, accuracy?: number, speed?: number }[]} points in time order
- * @param {{ stillSec?: number }} [o] @returns {TrackEvent[]}
+ * @param {{ stillSec?: number, end?: number }} [o] @returns {TrackEvent[]}
  */
-export function trackFromLog(points, { stillSec = 10 } = {}) {
+export function trackFromLog(points, { stillSec = 10, end } = {}) {
   if (points.length < 2) throw new Error('That trip has no recorded track yet: live mode records one while it is on.');
   const still = stillSec * 1000;
   /** @type {TrackEvent[]} */
@@ -116,7 +117,10 @@ export function trackFromLog(points, { stillSec = 10 } = {}) {
     const accuracy = p.accuracy ?? 10;
     out.push({ at: p.at, kind: 'fix', fix: { lat: p.lat, lng: p.lng, accuracy, ...(typeof p.speed === 'number' ? { speed: p.speed } : {}) } });
     const q = points[k + 1];
-    if (!q) break;
+    if (!q) {
+      if (typeof end === 'number') for (let t = p.at + still; t < end; t += still) out.push({ at: t, kind: 'fix', fix: { lat: p.lat, lng: p.lng, accuracy, speed: 0 } });
+      break;
+    }
     const gap = q.at - p.at;
     const d = meters(p, q);
     if (gap > 60_000 && d < 150) {
