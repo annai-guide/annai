@@ -7,7 +7,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair } from './transcript.js';
+import { Transcript, resolveEvent, repair, NOT_SAID } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
 import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
@@ -27,10 +27,13 @@ import { GATE_OPTIONS, gatePrompt } from '../voice/gate.js';
  * role, runs the tool calls in order (sleep last), appends the results and calls again, until she
  * sleeps, calls no tool, or something stops her. She reaches the user only through output tools
  * (§7.1); everything else she writes stays in the trace.
- * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard'} WakeKind
+ * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live'} WakeKind
+ *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on
+ * @typedef {{ watch: string, text: string }} Reminder  a watch's fallback (spec §11.3)
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
- * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string }} Wake
- *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it
+ * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[] }} Wake
+ *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
+ *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3)
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -117,6 +120,8 @@ export class Agent {
   #on = { state: new Set(), event: new Set(), notice: new Set() };
   /** Speaking and hearing (spec §10); null: no voice here. @type {import('../voice/voice.js').Voice | null} */
   voice = null;
+  /** Where the user is and what they are doing, for the now block (spec §6.3): live mode's. @type {(() => { place?: string, activity?: string }) | null} */
+  sense = null;
   /** Speech streaming in, by speak call (spec §10.1). @type {Map<string, import('../voice/speaker.js').Utterance>} */
   #utterances = new Map();
   /**
@@ -389,7 +394,7 @@ export class Agent {
     // A wake for another conversation than the one open (files added to another trip) is written
     // into it now, and answered when it opens (spec §6.1, §7.3).
     if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
-    if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file') {
+    if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file' || w.kind === 'live') {
       this.#push(w);
       this.#drain();
       return Promise.resolve();
@@ -398,13 +403,17 @@ export class Agent {
     this.settings().then(({ budgets }) => {
       const now = this.now();
       if (budgets.quietHours && inQuiet(now, budgets.quietHours, this.timeZone())) {
-        const held = setTimeout(() => this.wake(w), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
+        // Quiet hours hold Shiori, not the reminders (spec §11.3).
+        if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
+        const later = { ...w, fallbacks: [] };
+        const held = setTimeout(() => this.wake(later), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
         /** @type {any} */ (held).unref?.(); // in Node (tests), a held wake must not keep the process alive
         return;
       }
       this.#recentWakes = this.#recentWakes.filter((t) => t > now - 3_600_000);
       if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
         this.#notice({ tone: 'info', title: 'Shiori skipped a wake', body: `${w.plugin ? `The plugin ${w.plugin}` : 'Something'} woke her more than the ${budgets.wakesPerHour} times an hour you allow: ${w.text}` });
+        if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
         return;
       }
       this.#recentWakes.push(now);
@@ -549,7 +558,7 @@ export class Agent {
       ? (settings.compaction.threshold * window) / 3
       : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3;
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
-    const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, latest ? { after: latest.data.to } : {}))).filter((e) => e.type !== 'compaction');
+    const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, latest ? { after: latest.data.to } : {}))).filter((e) => e.type !== 'compaction' && !NOT_SAID.has(e.type));
     const items = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
@@ -640,6 +649,27 @@ export class Agent {
   /** A system card (spec §16.1). @param {Notice} n */
   notify(n) {
     return this.#notice(n);
+  }
+
+  /**
+   * Reminders annai says or shows by itself (spec §11.3: when a watch fires and the model can't be
+   * reached, "the fallback is shown or spoken directly"; §17: with no connection, and no model): a
+   * card, the words aloud with voice on, and an entry in the conversation they belong to. They are
+   * never in Shiori's voice (§16.1).
+   * @param {Reminder[]} list @param {string} [scope] their conversation; the open one if not given
+   */
+  async remind(list, scope = this.#target ?? ME) {
+    const open = scope === (this.#target ?? ME);
+    for (const r of list) {
+      const text = String(r?.text ?? '').trim();
+      if (!text) continue;
+      const aloud = open && Boolean(this.voice?.on) && !this.voice?.speaker.speaking;
+      const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}) } };
+      if (open && scope === this.scope) await this.#log(ev);
+      else await record(this.store, scope, ev);
+      await this.#notice({ tone: 'info', title: 'Reminder', body: text });
+      if (aloud) this.voice?.say(text).catch(() => {});
+    }
   }
 
   /** Writes a conversation event, adds it to the transcript, and tells the screen. @param {Parameters<typeof record>[2]} ev */
@@ -739,6 +769,8 @@ export class Agent {
     // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
     if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
     const reasons = wakes.map((w) => this.#reason(w));
+    /** The reminders of the wakes no model has answered yet: annai says them itself if none does (spec §11.3). */
+    let owed = wakes.flatMap((w) => w.fallbacks ?? []);
     const stuck = new Stuck();
     let steps = 0;
     let triedCompacting = false;
@@ -758,7 +790,8 @@ export class Agent {
       const { tools, via, providerTools } = await this.#toolsNow();
       const plan = await nextPlanItems(this.ws, this.trip, this.now());
       const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
-      const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, plan });
+      const here = this.sense?.() ?? {};
+      const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, plan, place: here.place, activity: here.activity });
       const request = { ...buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }), ...providerTools };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
@@ -817,6 +850,7 @@ export class Agent {
       steps++;
       this.#heardBy = result.modelId;
       answered = true;
+      owed = [];
       this.#lastPrompt = promptTokens(result.usage);
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
@@ -848,8 +882,10 @@ export class Agent {
       if (more.length) {
         await this.#logWakes(more, wakeId, true);
         reasons.push(...more.map((w) => this.#reason(w)));
+        owed.push(...more.flatMap((w) => w.fallbacks ?? []));
       }
     }
+    if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed);
     return answered && !failed;
   }
 

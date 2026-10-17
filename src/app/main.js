@@ -24,6 +24,8 @@ import { readAppSettings } from '../core/settings.js';
 import { Voice } from '../core/voice/voice.js';
 import { mediaKeys } from '../ui/media-keys.js';
 import { armUnlock } from '../ui/unlock.js';
+import { Live } from '../core/live/live.js';
+import { watchTools } from '../core/live/watch-tools.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -77,12 +79,17 @@ async function boot() {
   // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
   mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent));
+  // Live mode (spec §11): watches, the plan's own reminders, catch-up. The phone's sensors come in a plugin.
+  const live = new Live({ store, ws, registry, agent });
+  agent.addLoopTools(watchTools(live));
+  agent.sense = () => live.nowInfo();
   const presets = await loadPresets();
   // The conversation starts opening before the first screen, which waits for it (agent.opening).
   const active = (await readAppSettings(ws)).activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, presets, version: VERSION });
+  live.start().catch((e) => console.warn('Live mode could not start', e));
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, presets, version: VERSION });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.

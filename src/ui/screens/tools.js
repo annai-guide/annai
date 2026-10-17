@@ -3,7 +3,7 @@ import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/age
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf } from '../../core/llm/config.js';
 
-const GROUPS = ['Talk', 'Files', 'Web', 'Places', 'Self'];
+const GROUPS = ['Talk', 'Files', 'Web', 'Places', 'Go', 'Time', 'Self'];
 
 /** A switch for every tool and provider-side tool (spec §7.2, §9.5); switches cover plugins' tools too. @param {any} ctx */
 export async function toolSwitchList(ctx) {
