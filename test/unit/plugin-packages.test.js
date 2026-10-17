@@ -338,14 +338,16 @@ test("Reset clears a plugin's settings file with its history, and its secrets; t
   assert.equal(await ws.readText(trip, '/notes/park.md'), 'from the plugin');
 });
 
-test('the plugin.reset entry in the system log names the settings and secrets Reset cleared, never their values, and the space it gave back', async () => {
+test('the plugin.reset entry in the system log names the settings and secrets Reset cleared, never their values, and the space it gave back; names its schema lacks are only counted (M6)', async () => {
   const { host, annai, log } = await parkKit();
-  await annai.settings.set({ station: 'Carmel Highlands' });
+  // A plugin could name a key after what the user gave it, such as an email address.
+  await annai.settings.set({ station: 'Carmel Highlands', 'jo@example.com': 1, seen: 2 });
   await annai.secrets.set('token', 'park-token-123456');
+  await annai.secrets.set('jo@example.com', 'mail-token-123456');
   const { bytes } = await host.reset('park');
   const entries = (await log()).filter((e) => e.type === 'plugin.reset');
-  assert.deepEqual(entries.map((e) => [e.actor, e.data]), [['user', { plugin: 'park', name: 'Park', settings: ['station'], secrets: ['token'], bytes }]]);
-  assert.doesNotMatch(JSON.stringify(entries), /Carmel Highlands|park-token-123456/);
+  assert.deepEqual(entries.map((e) => [e.actor, e.data]), [['user', { plugin: 'park', name: 'Park', settings: ['station'], otherSettings: 2, secrets: ['token'], otherSecrets: 1, bytes }]]);
+  assert.doesNotMatch(JSON.stringify(entries), /Carmel Highlands|park-token-123456|mail-token-123456|jo@example\.com/);
 });
 
 test("a running plugin reads its schema's defaults and null secrets after a Reset (choices 1 to 3); a key without a default is missing", async () => {
