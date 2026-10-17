@@ -64,11 +64,17 @@ export class McpClient {
     return this.#inSession(o, async () => {
       /** @type {any[]} */
       const tools = [];
+      /** @type {Set<string>} a tool listed twice is listed once, the first time (fix pass 8c-5) */
+      const seen = new Set();
       /** @type {string | undefined} */
       let cursor;
       for (let page = 0; page < MAX_PAGES; page++) {
         const result = await this.#request('tools/list', cursor ? { cursor } : {}, o);
-        if (Array.isArray(result?.tools)) tools.push(...result.tools.filter((/** @type {any} */ t) => t && typeof t.name === 'string'));
+        for (const t of Array.isArray(result?.tools) ? result.tools : []) {
+          if (!t || typeof t.name !== 'string' || seen.has(t.name)) continue;
+          seen.add(t.name);
+          tools.push(t);
+        }
         cursor = typeof result?.nextCursor === 'string' && result.nextCursor ? result.nextCursor : undefined;
         if (!cursor || tools.length >= MAX_LISTED) break;
       }

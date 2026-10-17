@@ -137,3 +137,13 @@ test("a short value under a credential name annai's trace blanks (appid, app_id)
   assert.equal(shown, 'https://mcp.example.com/mcp?appid=«key»&app_id=«key»&v=2');
   assert.deepEqual(keys, ['abc123', 'x9']);
 });
+
+test('8c-5: a tool a server lists twice is listed once, the first time', async () => {
+  const s = await startMcpServer({ tools: [{ name: 'echo', description: 'First.' }, { name: 'add' }, { name: 'echo', description: 'Again.' }] });
+  try {
+    const tools = await client(s.url, '').listTools({ fetch: get });
+    assert.deepEqual(tools.map((t) => [t.name, t.description]), [['echo', 'First.'], ['add', undefined]]);
+  } finally {
+    await s.stop();
+  }
+});

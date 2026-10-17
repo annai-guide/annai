@@ -69,8 +69,37 @@ function readHeaders(text) {
 /** The headers a server's auth sends. @param {Auth | null | undefined} auth */
 const headersOf = (auth) => (auth?.token ? { Authorization: `Bearer ${auth.token}` } : { ...(auth?.headers ?? {}) });
 
+/** Where a schema's keys are names (of properties, definitions), not keywords. */
+const NAMED = new Set(['properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas']);
+/** A schema without $schema, $id and $comment at any depth, which some providers refuse (fix pass 8c-5). @param {any} v @param {boolean} [names] */
+const plain = (v, names = false) => {
+  if (Array.isArray(v)) return v.map((x) => plain(x));
+  if (!v || typeof v !== 'object') return v;
+  /** @type {Record<string, any>} */
+  const out = {};
+  for (const [k, x] of Object.entries(v)) {
+    if (!names && (k === '$schema' || k === '$id' || k === '$comment')) continue;
+    out[k] = plain(x, !names && NAMED.has(k));
+  }
+  return out;
+};
 /** A tool's input schema as the providers take it: an object schema. @param {any} s */
-const inputOf = (s) => (s && typeof s === 'object' && !Array.isArray(s) && (s.type === 'object' || s.type === undefined) ? { ...s, type: 'object' } : { type: 'object' });
+const inputOf = (s) => {
+  if (!s || typeof s !== 'object' || Array.isArray(s) || (s.type !== 'object' && s.type !== undefined)) return { type: 'object' };
+  try {
+    return { ...plain(s), type: 'object' };
+  } catch {
+    return { type: 'object' }; // nested too deep to walk
+  }
+};
+/** The longest description a tool gives Shiori (fix pass 8c-5). */
+const DESCRIPTION_MAX = 1024;
+/** A tool's description: what its server says, cut to fit, and where it is from. @param {string} said @param {string} server */
+const describe = (said, server) => {
+  const from = ` (from the MCP server ${server})`;
+  const room = DESCRIPTION_MAX - from.length;
+  return `${said.length > room ? `${said.slice(0, room - 1).trimEnd()}…` : said}${from}`;
+};
 
 /** @param {any} annai */
 export async function activate(annai) {
@@ -114,7 +143,7 @@ export async function activate(annai) {
       const said = String(t.description ?? t.title ?? '').trim() || `The tool ${t.name}.`;
       offs.push(annai.tools.register({
         name, group: `MCP: ${config.name}`,
-        description: `${said} (from the MCP server ${config.name})`,
+        description: describe(said, config.name),
         input: inputOf(t.inputSchema),
         run: (/** @type {any} */ input, /** @type {any} */ call) => runTool(config.name, String(t.name), input, call),
       }));
