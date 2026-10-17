@@ -30,7 +30,7 @@ export async function takeSnapshot({ ws, registry, trip, personalityName }) {
     memory: await read(ME, '/memory.md'),
     tripInfo: tripJson ? JSON.stringify(tripJson, null, 2) : '',
     tripMemory: trip ? await read(trip, '/memory.md') : '',
-    skills: registry.list('skill').filter((s) => s?.name).map((s) => ({ name: String(s.name), description: String(s.description ?? '') })),
+    skills: skillIndex(registry),
   };
 }
 
@@ -42,8 +42,22 @@ export async function takeSnapshot({ ws, registry, trip, personalityName }) {
  */
 export function nextSnapshot(prev, fresh, { cold }) {
   if (!prev || cold || prev.trip !== fresh.trip) return fresh;
-  if (prev.personality === fresh.personality && prev.personalityName === fresh.personalityName) return prev;
-  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName };
+  const samePersonality = prev.personality === fresh.personality && prev.personalityName === fresh.personalityName;
+  // A skill installed or removed shows at once, as a new tool does (choice 10 of milestone 8a).
+  const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
+  if (samePersonality && sameSkills) return prev;
+  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills };
+}
+
+/** The skill index (spec §6.3): each skill's name and description, once per name (the first one wins). @param {import('../registry.js').Registry} registry */
+function skillIndex(registry) {
+  /** @type {{ name: string, description: string }[]} */
+  const out = [];
+  for (const s of registry.list('skill')) {
+    if (!s?.name || out.some((x) => x.name === String(s.name))) continue;
+    out.push({ name: String(s.name), description: String(s.description ?? '') });
+  }
+  return out;
 }
 
 /** The system text: core, personality, then the snapshot. @param {Snapshot} s */

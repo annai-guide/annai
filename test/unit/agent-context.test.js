@@ -109,3 +109,18 @@ test('warmth: warm within the lifetime of the same prefix; cold after it, or for
   assert.notEqual(fp, await prefixFingerprint({ system: 'S2', tools: [], messages: [] }, 7));
   assert.notEqual(fp, await prefixFingerprint({ system: 'S', tools: [], messages: [] }, 8));
 });
+
+test('a skill installed or removed shows at her next wake, warm cache or not; each name once (choice 10)', async () => {
+  const { ws, trip, registry } = await setup();
+  const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
+  const first = await take();
+  const off = registry.add('kit', 'skill', { name: 'tide-pools', description: 'Tide pools.', text: '' });
+  registry.add('other', 'skill', { name: 'tide-pools', description: 'A second one.', text: '' });
+  const warm = nextSnapshot(first, await take(), { cold: false });
+  assert.deepEqual(warm.skills.map((s) => [s.name, s.description]), [['driving', 'How to guide while the user drives.'], ['tide-pools', 'Tide pools.']]);
+  assert.equal(warm.memory, first.memory);
+  off();
+  assert.deepEqual(nextSnapshot(warm, await take(), { cold: false }).skills.map((s) => s.description), ['How to guide while the user drives.', 'A second one.']);
+  const same = await take();
+  assert.equal(nextSnapshot(same, await take(), { cold: false }), same); // nothing changed: the snapshot it had
+});
