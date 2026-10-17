@@ -49,3 +49,25 @@ test('a trip with nothing recorded has nothing to replay, and says why', async (
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/replay`);
   await expect(page.getByText(/^Nothing to replay yet\./)).toBeVisible();
 });
+
+test("leaving the replay while it is paused on a photo lets the photo's memory go", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Big Sur');
+  await seedMorning(page, trip);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/replay`);
+  await page.getByRole('list', { name: 'Timeline' }).getByRole('button', { name: /Photo 2026-11-27-0945\.jpg/ }).click();
+  const img = page.locator('.replay-shown img');
+  await expect(img).toHaveAttribute('src', /^blob:/);
+  const url = /** @type {string} */ (await img.getAttribute('src'));
+  /** Whether the photo at a blob: address can still be loaded. @param {string} u */
+  const loads = (u) => page.evaluate((src) => new Promise((resolve) => {
+    const i = new Image();
+    i.onload = () => resolve('kept');
+    i.onerror = () => resolve('gone');
+    i.src = src;
+  }), u);
+  expect(await loads(url)).toBe('kept');
+  await page.goto('/#/trips'); // paused: no playback loop to notice
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect.poll(() => loads(url)).toBe('gone');
+});

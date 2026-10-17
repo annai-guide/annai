@@ -170,11 +170,26 @@ export async function renderReplay(ctx, route) {
       field('Speed', speed)),
     h('section', { 'aria-label': 'The trip in order' }, h('h2', { class: 'section', text: 'Timeline' }), h('ol', { class: 'timeline', 'aria-label': 'Timeline' }, ...items)));
   const setPlaying = (/** @type {boolean} */ on) => { play.textContent = on ? 'Pause' : 'Play'; };
+  /** The screen is gone: playback stops with it, and the photo shown lets its memory go. */
+  const gone = () => {
+    clock.pause();
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    photoUrl = '';
+  };
+  // Paused, nothing else notices the screen leaving: its place on the page is watched once it has one.
+  requestAnimationFrame(() => {
+    const parent = root.parentNode;
+    if (!parent) return gone();
+    const seen = new MutationObserver(() => {
+      if (root.isConnected) return;
+      seen.disconnect();
+      gone();
+    });
+    seen.observe(parent, { childList: true });
+  });
   const tick = () => {
     if (!root.isConnected) {
-      // The screen is gone: playback stops with it.
-      clock.pause();
-      if (photoUrl) URL.revokeObjectURL(photoUrl);
+      gone();
       return;
     }
     if (clock.now() >= r.to) {
