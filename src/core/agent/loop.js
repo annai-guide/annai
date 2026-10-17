@@ -179,7 +179,8 @@ export class Agent {
     this.#photos = codec ? new PhotoCopies({ codec, read: (hash) => blobBytes(this.store, hash) }) : null;
     this.#loopTools = this.#talkTools();
     this.voice = voice ?? null;
-    this.voice?.onChange((m) => this.#voiceChanged(m));
+    // The mode read as annai starts is no change: only changes are logged (spec §4.5).
+    this.voice?.onChange((m, first) => { if (!first) this.#voiceChanged(m); });
   }
 
   /**

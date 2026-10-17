@@ -7,7 +7,9 @@ import { Registry } from '../../src/core/registry.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, ME } from '../../src/core/scopes.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+import { Agent } from '../../src/core/agent/loop.js';
 import { fakePlatform, fakeLlm } from './voice-fakes.js';
 import { agentKit, until } from './agent-kit.js';
 
@@ -114,4 +116,23 @@ test('Shiori hears about voice changes: a state event, the now block, and the mi
   assert.equal(k.agent.state.name, 'sleeping');
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');
   assert.equal(k.agent.tap(), 'typing');
+});
+
+test('the voice mode read as annai starts is no change: nothing is logged for it, and the next real change is (spec §4.5)', async () => {
+  // As the app starts: the Agent hears the Voice before its first reading lands.
+  const registry = new Registry();
+  const store = createMemoryStore();
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  registry.add('voice-browser', 'voice-platform', fakePlatform({ devices: [{ kind: 'audioinput', label: 'iPhone Microphone' }] }));
+  await updateAppSettings(ws, { voice: { mode: 'off' } });
+  const voice = new Voice({ llm: fakeLlm(), ws, registry, store, locale: 'en' });
+  new Agent({ store, ws, llm: fakeLlm(), registry, voice });
+  await voice.refresh();
+  const states = async () => (await store.tx(['events'], 'readonly', (t) => t.listEvents(ME, { types: ['state'] }))).map((e) => e.data.voice);
+  await tick();
+  assert.deepEqual(await states(), []);
+  await voice.choose('on');
+  await tick();
+  assert.deepEqual(await states(), ['on']);
 });
