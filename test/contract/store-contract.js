@@ -132,6 +132,21 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual((await q({ types: [] })).map((e) => e.seq), []);
   });
 
+  test('events: a type read without a limit gives every entry, in order, among many others', async () => {
+    const s = await makeStore();
+    await s.tx(['events'], 'readwrite', async (t) => {
+      for (let i = 1; i <= 1500; i++) await t.appendEvent('x', { ts: i, type: i % 3 ? 'location' : 'wake', actor: 'system', data: { i } });
+    });
+    const q = (/** @type {any} */ query) => s.tx(['events'], 'readonly', (t) => t.listEvents('x', query));
+    const points = await q({ types: ['location'] });
+    assert.equal(points.length, 1000);
+    assert.ok(points.every((e, i) => i === 0 || e.seq > points[i - 1].seq));
+    assert.equal(points[0].data.i, 1);
+    const back = await q({ types: ['location', 'wake'], reverse: true, after: 1400 });
+    assert.deepEqual(back.slice(0, 3).map((e) => e.seq), [1500, 1499, 1498]);
+    assert.equal(back.length, 100);
+  });
+
   test('events: putEvent keeps its seq and appendEvent continues after it', async () => {
     const s = await makeStore();
     await s.tx(['events'], 'readwrite', (t) => t.putEvent({ scope: 'a', seq: 41, ts: 1, type: 'x', actor: 'user' }));
