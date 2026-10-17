@@ -85,7 +85,7 @@ export function recapText(j, { profile = '', memory = '', notes = [] } = {}) {
     photos.filter((p) => day(p.at) === d).length, words.filter((w) => day(w.at) === d).length,
   ]));
   const way = tsv(['day', 'from', 'to', 'what', 'place', 'km', 'stamp'], j.entries.flatMap((e) => {
-    if (e.kind === 'stay') return [[day(e.at), time(e.at), time(e.to), 'stayed', e.name ?? `unnamed, near ${e.lat.toFixed(3)}, ${e.lng.toFixed(3)}`, '', e.stamp ? 'yes' : '']];
+    if (e.kind === 'stay') return [[day(e.at), time(e.at), time(e.to), e.to > e.at ? 'stayed' : 'arrived', e.name ?? `unnamed, near ${e.lat.toFixed(3)}, ${e.lng.toFixed(3)}`, '', e.stamp ? 'yes' : '']];
     if (e.kind === 'move') return [[day(e.at), time(e.at), time(e.to), `${e.mode === 'walk' ? 'walked' : 'drove'}${e.gap ? ' (partly unseen: the phone was locked or annai closed)' : ''}`, '', e.km, '']];
     return [];
   }));

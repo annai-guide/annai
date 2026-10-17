@@ -21,13 +21,14 @@ import { storedTexts } from '../agent/log.js';
  * @typedef {{ title: string, at: number | null, place: { name: string, lat: number, lng: number } | null, fixed: boolean, visited: boolean }} PlanLine
  * @typedef {{ trip: string, title: string, tz: string, info: any, points: Point[], legs: Leg[], stamps: Stamp[], entries: Entry[],
  *   plan: PlanLine[], from: number | null, to: number | null, days: string[] }} Journey
- *   info: trip.json; from, to: when the first and last thing happened; days: each day something did, in the trip's zone
+ *   info: trip.json; from, to: when the first and last thing happened; days: each day something did, in the trip's zone.
+ *   A stay whose to is its at is an arrival the road shows no stay for (the track ended there with live mode on).
  */
 
 /** A stay is named by an arrival or a plan place this close (the namer keeps its own reach: the offline pack's 500 m). */
 export const NAMED_M = 300;
 /** What the journey reads from the log, by type (A6: the log is never walked). */
-export const JOURNEY_TYPES = Object.freeze(['location', 'trigger.fired', 'out.show', 'msg.user', 'heard', 'heard.text']);
+export const JOURNEY_TYPES = Object.freeze(['location', 'trigger.fired', 'out.show', 'msg.user', 'heard', 'heard.text', 'state']);
 const MIN = 60_000;
 
 /** @param {any} p @returns {p is { lat: number, lng: number }} */
@@ -87,7 +88,10 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
       return null;
     }
   };
-  const legs = legsOf(points);
+  // Live mode turned off after the last point: the last stay lasts until then.
+  const lastAt = points.length ? points[points.length - 1].at : Infinity;
+  const end = events.find((e) => e.type === 'state' && e.data?.live === 'off' && e.ts > lastAt)?.ts;
+  const legs = legsOf(points, end === undefined ? {} : { end });
   /** @type {Entry[]} */
   const entries = [];
   for (const l of legs) {
@@ -99,6 +103,15 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
     const day = dayIn(l.from, tz);
     const stamp = name ? stamps.find((x) => x.name.toLowerCase() === name.toLowerCase() && dayIn(x.at, tz) === day) ?? null : null;
     entries.push({ kind: 'stay', at: l.from, to: l.to, lat: l.lat, lng: l.lng, name, stamp });
+  }
+  // An arrival the road shows no stay for (the track ended there, live mode still on) is still a place of the trip.
+  for (const a of arrivals) {
+    const covered = entries.some((e) => e.kind === 'stay' && a.ts >= e.at - 15 * MIN && a.ts <= e.to + MIN && meters(a.data.place, e) <= NAMED_M);
+    if (covered) continue;
+    const name = String(a.data.place.name).trim();
+    const day = dayIn(a.ts, tz);
+    const stamp = stamps.find((x) => x.name.toLowerCase() === name.toLowerCase() && dayIn(x.at, tz) === day) ?? null;
+    entries.push({ kind: 'stay', at: a.ts, to: a.ts, lat: a.data.place.lat, lng: a.data.place.lng, name, stamp });
   }
   /** @type {Map<string, { text: string }>} heard segments whose words come later */
   const waiting = new Map();

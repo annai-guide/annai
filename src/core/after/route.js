@@ -71,20 +71,26 @@ export function segmentsOf(points) {
 /**
  * Where the user stayed and how they moved between (choice 7): a stay is STAY_MIN minutes or more
  * within STAY_M of where it began, placed at the point that waited longest for the next; a move is
- * what lies between, from a stay's last point to the next one's first.
- * @param {Point[]} points in time order @returns {Leg[]}
+ * what lies between, from a stay's last point to the next one's first. The track's last stay has no
+ * point after it to say when it ended: with end (when the record ends, such as live mode turned off
+ * there) it lasts until then.
+ * @param {Point[]} points in time order @param {{ end?: number }} [o] @returns {Leg[]}
  */
-export function legsOf(points) {
+export function legsOf(points, { end } = {}) {
   const n = points.length;
-  /** @type {{ i: number, j: number, best: number }[]} */
+  /** @type {{ i: number, j: number, best: number, to: number }[]} */
   const runs = [];
   for (let i = 0; i < n;) {
     let j = i;
     while (j + 1 < n && meters(points[i], points[j + 1]) <= STAY_M) j++;
-    if (j > i && points[j].at - points[i].at >= STAY_MIN * MIN) {
+    // The track ends in this run: with end, it lasts until then.
+    const last = j === n - 1 && typeof end === 'number' && end > points[j].at ? end : points[j].at;
+    if (last - points[i].at >= STAY_MIN * MIN && (j > i || last > points[j].at)) {
+      /** How long point k waited for the next (the last one, for the end). @param {number} k */
+      const wait = (k) => (k < j ? points[k + 1].at - points[k].at : last - points[j].at);
       let best = i;
-      for (let k = i; k < j; k++) if (points[k + 1].at - points[k].at > points[best + 1].at - points[best].at) best = k;
-      runs.push({ i, j, best });
+      for (let k = i + 1; k <= j; k++) if (wait(k) > wait(best)) best = k;
+      runs.push({ i, j, best, to: last });
       i = j + 1;
     } else i++;
   }
@@ -110,7 +116,7 @@ export function legsOf(points) {
   for (const r of runs) {
     move(last, r.i);
     const p = points[r.best];
-    legs.push({ kind: 'stay', lat: p.lat, lng: p.lng, from: points[r.i].at, to: points[r.j].at });
+    legs.push({ kind: 'stay', lat: p.lat, lng: p.lng, from: points[r.i].at, to: r.to });
     last = r.j;
   }
   if (n) move(last, n - 1);
