@@ -36,7 +36,15 @@ test('a push for a reminder reaches the service worker while annai is away: a no
     }));
     await cdp.send('ServiceWorker.enable');
     await cdp.send('ServiceWorker.deliverPushMessage', { origin: APP, registrationId: /** @type {string} */ (await reg), data: JSON.stringify(reminder) });
-    await expect.poll(() => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => `${n.title}: ${n.body}`))).toContain('Big Sur: Call Grandma.');
+    // The service worker writes down that it showed it once showNotification has resolved; then the notification is there.
+    const news = () => page.evaluate(async () => {
+      const box = await caches.open('annai-push');
+      const kinds = [];
+      for (const k of await box.keys()) kinds.push(JSON.parse(await (await box.match(k))?.text() ?? '{}').kind);
+      return kinds;
+    });
+    await expect.poll(news, { timeout: 30_000 }).toContain('shown');
+    expect(await page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => `${n.title}: ${n.body}`))).toContain('Big Sur: Call Grandma.');
     expect(llm.bodies('/b/v1/messages').length, 'nothing said while away').toBe(1);
     await page.waitForTimeout(Math.max(0, Date.parse(due) - Date.now() + 1000));
     await away(page, false);
