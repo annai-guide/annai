@@ -16,14 +16,15 @@ import { renderTalk } from './screens/talk.js';
 import { renderTools } from './screens/tools.js';
 import { renderPlan } from './screens/plan.js';
 import { renderBooking } from './screens/booking.js';
+import { renderBackups } from './screens/backups.js';
 import { createDock } from './dock.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, backups: renderBackups };
 
 /**
  * @param {HTMLElement} root
- * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, presets?: Record<string, string>, version: string }} core
+ * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, presets?: Record<string, string>, backups?: any, version: string }} core
  */
 export function startShell(root, core) {
   const notices = createNotices();
