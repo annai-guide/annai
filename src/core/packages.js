@@ -1,3 +1,4 @@
+import { refuseUserinfo } from './address.js';
 import { validate } from './schema.js';
 import { text, utf8 } from './bytes.js';
 import { normPath } from './paths.js';
@@ -266,6 +267,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     throw new Error(NOT_AN_ADDRESS);
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(NOT_AN_ADDRESS);
+  refuseUserinfo(url);
   let used = 0;
   const download = async (/** @type {URL} */ u) => {
     /** @type {Response} */

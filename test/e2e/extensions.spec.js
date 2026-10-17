@@ -77,6 +77,40 @@ test('a skill from an address, with the file it links to', async ({ page }) => {
   }
 });
 
+test("8a-1: a key in a skill's address: the install screen shows «key», and nothing annai keeps holds the key", async ({ page }) => {
+  const key = 'zap1a2b3c4d5e6f7g8h9';
+  const skill = await fixtureFiles('tide-pools');
+  const site = await startModelServer({ [`/s/${key}/tide-pools/SKILL.md`]: file(skill['SKILL.md'], 'text/markdown'), [`/s/${key}/tide-pools/references/safety.md`]: file(skill['references/safety.md'], 'text/markdown') });
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.goto('/#/plugins');
+    await page.getByLabel('Address of a plugin or skill').fill(`${site.origin}/s/${key}/tide-pools/SKILL.md`);
+    await page.getByRole('button', { name: 'Get it' }).click();
+    await expect(page.getByText(`From 127.0.0.1:${new URL(site.origin).port}/s/«key»/tide-pools/SKILL.md`)).toBeVisible();
+    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(page.getByText('tide-pools 1.2')).toBeVisible();
+    const kept = await page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const store = await createIdbStore();
+      const out = await store.tx(['files', 'events', 'blobs', 'scopes'], 'readonly', async (/** @type {any} */ t) => {
+        const all = [];
+        for (const s of await t.listScopes()) all.push(JSON.stringify(await t.listFiles(s.id)), JSON.stringify(await t.listEvents(s.id)));
+        for (const b of await t.listBlobs()) all.push(new TextDecoder().decode(new Uint8Array((await t.getBlob(b.hash))?.data ?? new ArrayBuffer(0))));
+        return all.join('\n');
+      });
+      store.close();
+      return out;
+    });
+    expect(kept).toContain('tide-pools');
+    expect(kept).not.toContain(key);
+  } finally {
+    await site.stop();
+    await llm.stop();
+  }
+});
+
 test('a code plugin from a zip and from an address, behind the full-trust screen: Cancel installs nothing; installed, its tool and its status chip work and survive a reload', async ({ page }) => {
   const tides = await fixtureFiles('tides');
   const site = await startModelServer(Object.fromEntries(Object.entries(tides).map(([n, b]) => [`/kits/tides/${n}`, file(b, n.endsWith('.js') ? 'text/javascript' : 'application/json')])));

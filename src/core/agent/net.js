@@ -176,13 +176,15 @@ export function traceUrl(url, secrets = []) {
 }
 
 /**
- * @param {Store} store @param {string} scope @param {{ tool: string, wake?: string }} who
+ * @param {Store} store @param {string} scope
+ * @param {{ tool: string, wake?: string, blank?: string[] }} who blank: keys that aren't secrets yet, such as those
+ *   in an address being tried (fix pass 8a-1), blanked as secrets are
  * @param {Fetch} [get] @returns {Fetch}
  */
 export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, init)) {
   return async (url, init = {}) => {
     const started = Date.now();
-    const secrets = await knownSecrets(store);
+    const secrets = [...new Set([...await knownSecrets(store), ...(who.blank ?? []).filter((k) => typeof k === 'string' && k)])].sort((a, b) => b.length - a.length);
     const base = { kind: 'web', tool: who.tool, ...(who.wake ? { wake: who.wake } : {}), url: traceUrl(url, secrets), method: init.method ?? 'GET' };
     try {
       const res = await get(url, init);

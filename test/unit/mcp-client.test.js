@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { McpClient, McpError, mcpToolName, toolOutput, addressParts, fullAddress } from '../../src/plugins/mcp/client.js';
+import { McpClient, McpError, mcpToolName, toolOutput } from '../../src/plugins/mcp/client.js';
 import { startMcpServer } from '../fakes/mcp.js';
 import { ANSWER_MAX } from '../../src/core/answer.js';
 
@@ -97,45 +97,6 @@ test("8c-1: an image passes on only when its data is base64; a data: address, ba
   }
   assert.deepEqual(toolOutput({ content: [{ type: 'image', data: 'iVBORw0KGgo', mimeType: 'image/png' }] }).images, [{ mediaType: 'image/png', data: 'iVBORw0KGgo' }]);
   assert.deepEqual(toolOutput({ content: [{ type: 'image', data: 'iVBORw0KGgo+/A==', mimeType: 'image/png' }] }).images, [{ mediaType: 'image/png', data: 'iVBORw0KGgo+/A==' }]);
-});
-
-test('8c-2: words in an address stay; a key is 12 or more digits, 24 or more lowercase letters alone, or a part that is not words and is 16 or more characters or 8 or more mixing letters and digits', () => {
-  const words40 = 'trail-maps-and-parking-for-the-big-sur-co';
-  assert.equal(words40.length, 41);
-  for (const a of [
-    'https://mcp.example.com/model-context-protocol/mcp',
-    'https://mcp.example.com/my-company-name-here/mcp',
-    'https://mcp.example.com/internationalization/organizations/mcp?topic=organizations&v=2',
-    `https://mcp.example.com/${words40.slice(0, 40)}/mcp`,
-  ]) {
-    assert.deepEqual(addressParts(a), { shown: a, keys: [] }, a);
-  }
-  const { shown, keys } = addressParts('https://mcp.example.com/s/AbCdEfGhIjKlMnOpQr/123456789012345/Ab_Cd-EfGh_IjKl-MnOp/a1b2c3d4/mcp?q=AbCdEfGhIjKlMnOpQr&n=abcdefgh&token=x');
-  assert.equal(shown, 'https://mcp.example.com/s/«key»/«key»/«key»/«key»/mcp?q=«key»&n=abcdefgh&token=«key»');
-  assert.deepEqual(keys, ['AbCdEfGhIjKlMnOpQr', '123456789012345', 'Ab_Cd-EfGh_IjKl-MnOp', 'a1b2c3d4', 'AbCdEfGhIjKlMnOpQr', 'x']);
-  assert.equal(addressParts('https://mcp.example.com/123e4567-e89b-12d3-a456-426614174000/mcp').keys.length, 1, 'a UUID');
-  // The backstop: lowercase letters alone, 24 or more of them, are a key; joined words of any length are not.
-  const lower = 'qwhzkxvbnmplokijuhygtfrdeswa';
-  assert.equal(lower.length, 28);
-  assert.deepEqual(addressParts(`https://mcp.example.com/${lower}/mcp?k2=${lower}`), { shown: 'https://mcp.example.com/«key»/mcp?k2=«key»', keys: [lower, lower] });
-  for (const a of ['https://mcp.example.com/internationalization/mcp', 'https://mcp.example.com/model-context-protocol-server-for-weather/mcp']) {
-    assert.deepEqual(addressParts(a), { shown: a, keys: [] }, a);
-  }
-});
-
-test('an address and its keys: shown with each part that may be a key blanked, and put back whole (the third finding)', () => {
-  const a = 'https://mcp.example.com/api/mcp/s/zap1a2b3c4d5e6f7g8h9/mcp?v=2&key=q9w8e7r6t5y4&k=abc&api_key=short';
-  const { shown, keys } = addressParts(a);
-  assert.equal(shown, 'https://mcp.example.com/api/mcp/s/«key»/mcp?v=2&key=«key»&k=abc&api_key=«key»');
-  assert.deepEqual(keys, ['zap1a2b3c4d5e6f7g8h9', 'q9w8e7r6t5y4', 'short']);
-  assert.equal(fullAddress(shown, keys), a);
-  assert.deepEqual(addressParts('http://127.0.0.1:8080/mcp'), { shown: 'http://127.0.0.1:8080/mcp', keys: [] });
-});
-
-test("a short value under a credential name annai's trace blanks (appid, app_id) is blanked in the shown address too, and goes to secrets", () => {
-  const { shown, keys } = addressParts('https://mcp.example.com/mcp?appid=abc123&app_id=x9&v=2');
-  assert.equal(shown, 'https://mcp.example.com/mcp?appid=«key»&app_id=«key»&v=2');
-  assert.deepEqual(keys, ['abc123', 'x9']);
 });
 
 test('8c-5: a tool a server lists twice is listed once, the first time', async () => {
