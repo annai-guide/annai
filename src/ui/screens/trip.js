@@ -82,6 +82,8 @@ async function askAndRemove(ctx, id, scope) {
       await ctx.agent.open(null);
     }
     const { bytes: freed } = await removeTrip(ctx.store, id);
+    // Its reminders leave live mode, and so the push relay, at once (spec §4.9).
+    await ctx.live?.forget(id);
     ctx.notices.toast(`Removed ${scope.title}. ${bytes(freed)} freed.`);
     ctx.go('#/trips');
   } catch (e) {

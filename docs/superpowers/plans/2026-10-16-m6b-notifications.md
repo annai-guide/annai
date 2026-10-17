@@ -2156,7 +2156,7 @@ test("the relay's cancel tokens never leave this device: not even an encrypted B
   });
   const { blob } = await exportArchive(a.store, { kind: 'everything', include: { ...PRESETS.backup }, secrets: true, passphrase: 'correct horse battery', app: 'test' });
   const b = await device();
-  const result = await importArchive(b.store, await openArchive(blob, { passphrase: 'correct horse battery' }), { secrets: true });
+  const result = await importArchive(b.store, await openArchive(blob, 'correct horse battery'), { secrets: true });
   assert.equal(result.secrets, 1);
   assert.deepEqual(await b.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), ['endpoint:e']);
   assert.equal(isDeviceSecret('push:tokens'), true);
@@ -2192,8 +2192,6 @@ test('Trace lines for notifications', () => {
   assert.equal(traceSummary({ type: 'push.opened', data: { watch: 'plan:tea:coming-up', at: 1 } }), 'notification opened · plan:tea:coming-up');
 });
 ```
-
-(`openArchive`'s signature with a passphrase is as `test/unit/archive-crypto.test.js` uses it; check there and follow it.)
 
 - [ ] **Step 2: Run them to see them fail**
 
@@ -2232,7 +2230,7 @@ export const isDeviceSecret = (id) => id.startsWith('backup:') || id.startsWith(
 `src/ui/push.js`:
 
 ```js
-import { fromBase64Url } from '../core/bytes.js';
+import { fromBase64Url, ownBuffer } from '../core/bytes.js';
 import { platform, isStandalone } from './platform.js';
 
 /**
@@ -2309,7 +2307,7 @@ export function browserSource() {
       }
       const raw = fromBase64Url(key);
       if (!raw) throw new Error("The relay's key isn't one annai can use.");
-      return subOf(await (await registration()).pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw }));
+      return subOf(await (await registration()).pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: ownBuffer(raw) }));
     },
     async unsubscribe() {
       if (stand) {

@@ -17,6 +17,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
   Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
+  Notifications: ['push.sync', 'push.shown', 'push.opened'],
 });
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
@@ -112,6 +113,9 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'trigger.fired') return `${d.watch} · ${cut(d.text)}${d.late ? ` · late by ${d.late} min` : ''}${d.offline ? ' · no connection' : ''}`;
   if (e.type === 'reminder') return `${d.aloud ? 'said aloud' : 'shown'} · ${cut(d.text)}`;
   if (e.type === 'state') return d.live ? `live mode ${d.live}` : d.voice ? `voice ${d.voice}${d.why ? ` (${d.why})` : ''}` : '';
+  if (e.type === 'push.sync') return `${d.relay} · ${d.sent ?? 0} sent, ${d.calledOff ?? 0} called off · ${d.waiting ?? 0} waiting${d.error ? ` · ${cut(d.error)}` : ''}`;
+  if (e.type === 'push.shown') return `notification shown · ${d.watch}`;
+  if (e.type === 'push.opened') return `notification opened · ${d.watch}`;
   if (e.type === 'decide') {
     const [best, p] = Object.entries(d.result ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]))[0] ?? ['?', 0];
     return `${best} (${Math.round(Number(p) * 100)}%) · by ${d.by}`;

@@ -384,3 +384,10 @@ test('the trace says what each offline pack download did', () => {
   assert.equal(traceSummary(/** @type {any} */ ({ type: 'pack.download', data: { files: 7, bytes: 120_000, guides: 2, failed: 1, stopped: false, full: false, auto: true } })),
     '7 files · 117 KB · 2 guides · 1 failed · by itself on Wi-Fi');
 });
+
+test('Trace lines for notifications', () => {
+  assert.equal(traceSummary({ type: 'push.sync', data: { relay: 'push.annai.guide', sent: 2, calledOff: 1, waiting: 5 } }), 'push.annai.guide · 2 sent, 1 called off · 5 waiting');
+  assert.equal(traceSummary({ type: 'push.sync', data: { relay: 'push.annai.guide', sent: 0, calledOff: 0, waiting: 5, error: "annai couldn't reach the relay." } }), "push.annai.guide · 0 sent, 0 called off · 5 waiting · annai couldn't reach the relay.");
+  assert.equal(traceSummary({ type: 'push.shown', data: { watch: 'w-1', at: 1 } }), 'notification shown · w-1');
+  assert.equal(traceSummary({ type: 'push.opened', data: { watch: 'plan:tea:coming-up', at: 1 } }), 'notification opened · plan:tea:coming-up');
+});
