@@ -87,3 +87,15 @@ test('8a-1: an address with a name or password before an @ is refused before any
   await assert.rejects(fetchPackage('https://me:pw@trails.example/kits/tide-pools/SKILL.md', { fetch: w.fetch }), /name or password before an @\. Leave it out\./);
   assert.deepEqual(w.asked, []);
 });
+
+test('8a-4: a manifest naming a file with a scheme is refused before anything else is fetched, so nothing is read off its site', async () => {
+  for (const entry of ['http:/evil.example/x.js', 'https:evil.example/x.js']) {
+    const w = web({ [`${T}/tides/annai-plugin.json`]: JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry, files: ['lib.js'] }), [`${T}/tides/lib.js`]: '' });
+    await assert.rejects(fetchPackage(`${T}/tides/annai-plugin.json`, { fetch: w.fetch }), new RegExp(`The file name "${entry.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}" isn't allowed`));
+    assert.deepEqual(w.asked, [`${T}/tides/annai-plugin.json`]);
+  }
+  // A skill's link with a scheme is left out, as before.
+  const w = web({ [`${T}/s/SKILL.md`]: SKILL.replace('references/safety.md', 'http:/evil.example/x.md') });
+  assert.deepEqual(names(await fetchPackage(`${T}/s/SKILL.md`, { fetch: w.fetch })), ['SKILL.md']);
+  assert.ok(w.asked.every((u) => u.startsWith(T)));
+});

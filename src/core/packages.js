@@ -57,8 +57,12 @@ export function checkManifest(manifest) {
   }
 }
 
-/** A relative path that stays inside the plugin's folder. @param {string} rel */
+/** A path that starts with a scheme (http:, javascript:), which an address would read off the package's site, as skillLinks refuses (fix pass 8a-4). */
+const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+
+/** A relative path that stays inside the plugin's folder, with no scheme. @param {string} rel */
 export function insidePlugin(rel) {
+  if (SCHEME.test(rel)) return false;
   try {
     return normPath(`/p/${rel}`) === `/p/${rel}`;
   } catch {
@@ -241,8 +245,9 @@ export function rawAddress(address) {
   return m ? `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}` : address;
 }
 
-/** Whether a name stays inside the package. @param {string} name */
+/** Whether a name stays inside the package, with no scheme. @param {string} name */
 const fileName = (name) => {
+  if (SCHEME.test(name)) return false;
   try {
     return normPath(`/${name}`) === `/${name}`;
   } catch {
