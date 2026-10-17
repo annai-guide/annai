@@ -5,7 +5,7 @@ import { answerJSON } from '../../core/answer.js';
 
 const SAMPLE = '/assets/simulations/big-sur.json';
 /** @type {Record<string, string>} */
-const SPEED_WORDS = { 10: '10 times real time: an hour takes 6 minutes', 60: '60 times: an hour takes a minute', 600: '600 times: an hour takes 6 seconds', fast: 'As fast as it can go' };
+const SPEED_WORDS = { 10: '10 times real time: an hour takes 6 minutes', 60: '60 times: an hour takes a minute', 600: '600 times: an hour takes 6 seconds', fast: 'As fast as it can go: Shiori still answers each wake, so the sample takes about a minute and a long recorded track several' };
 
 /**
  * Settings → Developer → Simulate a trip (spec §13): a sample drive, an itinerary file or a trip's
@@ -23,20 +23,26 @@ export async function renderSimulate(ctx) {
   screen.append(body);
   /** @type {any} */
   let timer = null;
+  // While it is being built the screen isn't on the page yet; once it has been, leaving it ends the drawing.
+  let shown = false;
+  const gone = () => {
+    if (screen.isConnected) shown = true;
+    return shown && !screen.isConnected;
+  };
   const draw = async () => {
     clearInterval(timer);
-    if (!screen.isConnected && timer !== null) return;
+    if (gone()) return;
     body.replaceChildren(...(sim.running ? running(ctx) : [...ended(ctx), await form(ctx)]));
     if (sim.running) {
       timer = setInterval(() => {
-        if (!screen.isConnected) return clearInterval(timer);
+        if (gone()) return clearInterval(timer);
         tickTime(ctx, body);
       }, 1000);
       tickTime(ctx, body);
     }
   };
   const off = sim.onChange(() => {
-    if (!screen.isConnected) off();
+    if (gone()) off();
     else draw();
   });
   await draw();
