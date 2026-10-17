@@ -106,7 +106,7 @@ test('a tap nobody speaks into closes after the silence limit; a tap while she l
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await until(() => k.agent.state.name === 'sleeping', 1000);
-  assert.deepEqual(k.platform.log, ['mic open', 'mic close']);
+  assert.deepEqual(mics(k), ['mic open', 'mic close']);
   assert.equal(k.requests.length, 0);
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');

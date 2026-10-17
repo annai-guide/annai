@@ -5,6 +5,7 @@ On a real iPhone (Safari, and the installed app) and a real Android phone (Chrom
 ## Speaking and hearing (milestone 3a)
 
 - [ ] **The first tap unlocks sound.** Open annai fresh. Without tapping anything, nothing plays. Tap anywhere once, then Settings → Voice → Test the voice: you hear it.
+- [ ] **The first tap on iPhone, with a finger.** Close annai fully and open it from the Home Screen. Tap Shiori once with a finger (not a keyboard or a mouse) and ask something: does her voice play? A tap that came too early (before annai had started) is fine: the next tap tries again.
 - [ ] **The browser voice.** Settings → Voice: the Voice list shows this phone's voices. Pick one, set the speed to 1.2, Save, Test the voice (with Browser voice first in Settings → Models → Speech out): it speaks with that voice, a little faster.
 - [ ] **An API voice.** Add "OpenAI: voice" with your key. Test the voice: it speaks in Marin. Turn the phone's silent switch on (iPhone) and test again: note whether you still hear it.
 - [ ] **Fallback.** Put a voice with a wrong key first in Speech out. Test the voice: the next voice speaks the whole sample; the Trace shows the failed request without the key.

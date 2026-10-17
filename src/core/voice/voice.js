@@ -45,6 +45,8 @@ export class Voice {
   #watching = false;
   /** @type {Set<LevelListener>} */
   #levels = new Set();
+  /** Sound may play: a tap unlocked it (spec §10.1). */
+  #unlocked = false;
 
   /**
    * @param {{ llm: any, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, store?: import('../types.js').Store,
@@ -74,6 +76,26 @@ export class Voice {
 
   get platform() {
     return voicePlatform(this.registry);
+  }
+
+  /**
+   * Unlocks sound (an iPhone rule, spec §10.1): call it inside a tap. Once it worked it does
+   * nothing, so a tap never plays the silent clip over her voice. @returns {Promise<boolean>} whether sound may play
+   */
+  unlock() {
+    if (this.#unlocked) return Promise.resolve(true);
+    /** @type {Promise<boolean> | undefined} */
+    let tried;
+    try {
+      tried = this.platform?.player.unlock();
+    } catch {
+      tried = undefined;
+    }
+    if (!tried) return Promise.resolve(false);
+    return tried.then((ok) => {
+      if (ok) this.#unlocked = true;
+      return Boolean(ok);
+    }, () => false);
   }
 
   /** The glow follows the sound (spec §16.3): her voice, or yours. @param {LevelListener} fn @returns {() => void} */
@@ -217,6 +239,7 @@ export class Voice {
    * @param {'auto' | 'on' | 'off'} setting
    */
   async choose(setting) {
+    this.unlock(); // a choice is a tap (spec §10.1)
     /** @type {Record<string, any>} */
     const change = { mode: setting };
     if (setting !== 'auto' && (await this.route()) === 'unknown') change.lastChoices = { [this.activity()]: setting };

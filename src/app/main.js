@@ -23,6 +23,7 @@ import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalitie
 import { readAppSettings } from '../core/settings.js';
 import { Voice } from '../core/voice/voice.js';
 import { mediaKeys } from '../ui/media-keys.js';
+import { armUnlock } from '../ui/unlock.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -68,10 +69,8 @@ async function boot() {
   // Speaking and hearing (spec §10): the speech lists, through this device's player and microphone.
   const voice = new Voice({ llm, ws, registry, store, locale: navigator.language, where: platform() });
   voice.refresh().catch(() => {});
-  // The first tap of each session unlocks the audio player (an iPhone rule, spec §10.1).
-  const unlock = () => { voice.platform?.player.unlock(); };
-  addEventListener('pointerdown', unlock, { once: true, capture: true });
-  addEventListener('keydown', unlock, { once: true, capture: true });
+  // Sound may play only after a tap (an iPhone rule, spec §10.1): every tap tries until one works.
+  armUnlock(window, () => voice.unlock());
 
   // Shiori (spec §6): one agent, talking about the trip that was open last.
   const agent = new Agent({ store, ws, llm, registry, codec, voice });
