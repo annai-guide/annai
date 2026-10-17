@@ -157,3 +157,17 @@ test("minors 23: single writer, for whole files, with a clock that is behind: an
   await later();
   await assert.rejects(phone.backups.backUp(a), (e) => e instanceof TargetError && e.kind === 'newer' && e.remote?.id === stranger);
 });
+
+test('minors 25: a change that fails its checks keeps nothing of itself: no new sign-in, no new passphrase', async () => {
+  const place = memoryFilePlace();
+  const d = await device(place);
+  const id = await filePlaceOn(d);
+  await d.backups.update(id, { secret: { token: 'old-token-0001' }, encrypt: true, passphrase: 'pine needle' });
+  const secret = () => d.store.tx(['secrets'], 'readonly', (t) => t.getSecret(`backup:${id}`));
+  const before = await secret();
+  await assert.rejects(d.backups.update(id, { secret: { token: 'new-token-0002' }, passphrase: '' }), /Type a passphrase/);
+  assert.deepEqual(await secret(), before);
+  const fresh = await filePlaceOn(d);
+  await assert.rejects(d.backups.update(fresh, { secret: { token: 'new-token-0002' }, passphrase: 'cedar bark', keys: true }), /only in encrypted backups/);
+  assert.equal(await d.store.tx(['secrets'], 'readonly', (t) => t.getSecret(`backup:${fresh}`)), undefined);
+});
