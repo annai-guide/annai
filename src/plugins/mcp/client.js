@@ -41,7 +41,8 @@ export class McpClient {
   /** @type {string | null} */ #session = null;
   /** @type {string | null} the protocol version agreed on: set once connected */ #version = null;
   #id = 0;
-  /** @type {Promise<void> | null} */ #connecting = null;
+  /** @type {{ done: Promise<void>, stop: AbortController, waiting: number } | null} the session being started, and how many calls wait for it */
+  #connecting = null;
   /** Set once the session is ended for good (close, ending): no other starts, and every call says the server was removed (minors 3). */
   #closed = false;
 
@@ -155,12 +156,39 @@ export class McpClient {
     return typeof this.url === 'function' ? this.url() : this.url;
   }
 
-  /** @param {{ fetch: Fetch, signal?: AbortSignal }} o */
+  /**
+   * Waits for a session, starting one when none is being started. Calls that come meanwhile wait for
+   * the same start, each until its own signal: the start stops only once every one of them stopped (minors 4).
+   * @param {{ fetch: Fetch, signal?: AbortSignal }} o
+   */
   async #ready(o) {
     if (this.#closed) throw this.#removed();
     if (this.#version) return;
-    if (!this.#connecting) this.#connecting = this.connect(o).finally(() => { this.#connecting = null; });
-    await this.#connecting;
+    let c = this.#connecting;
+    if (!c) {
+      const stop = new AbortController();
+      const done = this.connect({ fetch: o.fetch, signal: stop.signal }).finally(() => { if (this.#connecting === c) this.#connecting = null; });
+      c = this.#connecting = { done, stop, waiting: 0 };
+    }
+    const start = c;
+    start.waiting++;
+    const { signal } = o;
+    if (!signal) return start.done;
+    /** @type {() => void} */
+    let leave = () => {};
+    const left = new Promise((_, fail) => {
+      leave = () => {
+        if (--start.waiting === 0) start.stop.abort(signal.reason);
+        fail(signal.reason);
+      };
+    });
+    if (signal.aborted) leave();
+    else signal.addEventListener('abort', leave, { once: true });
+    try {
+      await Promise.race([start.done, left]);
+    } finally {
+      signal.removeEventListener('abort', leave);
+    }
   }
 
   /** One request, its result; a JSON-RPC error is the server's words. @param {string} method @param {any} params @param {{ fetch: Fetch, signal?: AbortSignal }} o @param {boolean} [init] */

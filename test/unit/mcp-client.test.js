@@ -177,3 +177,38 @@ test('minors 3: a session that starts while the client closes is ended at once',
     await s.stop();
   }
 });
+
+test("minors 4: two calls wait for one session start; stopping one doesn't stop the other, and stopping both stops the start", async () => {
+  const s = await startMcpServer({});
+  try {
+    /** @type {AbortSignal[]} */
+    const initSignals = [];
+    const slowInit = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (String(init?.body ?? '').includes('"initialize"')) {
+        if (init.signal) initSignals.push(init.signal);
+        await new Promise((done) => setTimeout(done, 80));
+        init.signal?.throwIfAborted();
+      }
+      return fetch(url, init);
+    };
+    const c = client(s.url, '');
+    const a = new AbortController();
+    const first = c.callTool('echo', { text: 'one' }, { fetch: slowInit, signal: a.signal });
+    const second = c.callTool('echo', { text: 'two' }, { fetch: slowInit, signal: new AbortController().signal });
+    await new Promise((done) => setTimeout(done, 20));
+    a.abort();
+    await assert.rejects(first, (e) => /** @type {any} */ (e).name === 'AbortError');
+    assert.equal((await second).content[0].text, 'two');
+    assert.equal(s.requests.filter((r) => r.rpc?.method === 'initialize').length, 1);
+
+    const lone = client(s.url, '');
+    const b = new AbortController();
+    const only = lone.listTools({ fetch: slowInit, signal: b.signal });
+    await new Promise((done) => setTimeout(done, 20));
+    b.abort();
+    await assert.rejects(only, (e) => /** @type {any} */ (e).name === 'AbortError');
+    assert.ok(initSignals.at(-1)?.aborted, 'the start stopped once no one waited for it');
+  } finally {
+    await s.stop();
+  }
+});
