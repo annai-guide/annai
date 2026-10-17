@@ -47,14 +47,18 @@ const CJK = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han
 
 /**
  * The words on a stamp (choice 3): two characters of a Chinese, Japanese or Korean name; otherwise
- * the first word, with the next when the first has three letters or fewer, at most 12 characters.
+ * the first word (spaces and hyphens part words), with the next when the first has three letters or
+ * fewer, at most 12 characters.
  * @param {string} name
  */
 export function stampLabel(name) {
   const n = String(name ?? '').trim();
   if (CJK.test(n)) return [...n].slice(0, 2).join('');
-  const words = n.split(/\s+/).filter(Boolean);
+  const words = n.split(/[\s-]+/).filter(Boolean); // a hyphen parts words too (Kiyomizu-dera)
   let label = words[0] ?? '';
   if ([...label].length <= 3 && words[1]) label = `${label} ${words[1]}`;
   return [...label].slice(0, 12).join('');
 }
+
+/** "1 stamp", "5 stamps". @param {number} n */
+export const stampCount = (n) => `${n} ${n === 1 ? 'stamp' : 'stamps'}`;

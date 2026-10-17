@@ -178,3 +178,18 @@ button.chip.undo { min-height: 44px; border: 1px solid var(--line); cursor: poin
 .facts dt { color: var(--ink-2); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .original { display: flex; flex-direction: column; gap: 8px; }
+/* Stamps (spec §13, §16.2): station-stamp marks for visited places. */
+.trip-card { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.trip-card-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stamps { display: flex; flex: none; padding-left: 10px; }
+.stamp {
+  width: 40px; height: 40px; margin-left: -10px; padding: 3px; border-radius: 50%; border: 3px double var(--ai);
+  background: var(--sheet); color: var(--ai); display: grid; place-items: center; text-align: center;
+  font-family: var(--f-display); font-size: 9px; font-weight: 700; line-height: 1.05; overflow: hidden; overflow-wrap: anywhere;
+}
+.stamp:nth-child(3n + 1) { transform: rotate(-9deg); }
+.stamp:nth-child(3n + 2) { transform: rotate(6deg); }
+.stamp:nth-child(3n) { transform: rotate(-3deg); }
+.stamp.more { font-family: var(--f-mono); font-size: 11px; }
+.stamps.big { flex-wrap: wrap; gap: 8px; padding-left: 0; }
+.stamps.big .stamp { width: 60px; height: 60px; margin-left: 0; font-size: 11px; }

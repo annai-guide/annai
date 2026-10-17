@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stampsOf, stampLabel, isArrival } from '../../src/core/after/stamps.js';
+import { stampsOf, stampLabel, isArrival, stampCount } from '../../src/core/after/stamps.js';
 import { meters } from '../../src/core/live/geo.js';
 import { liveKit, at, iso, LA, MONTEREY, RIVER_INN, NEPENTHE, MCWAY } from './live-kit.js';
 
@@ -34,6 +34,7 @@ test("a stamp's words: the first word, two when the first is short, two characte
   assert.equal(stampLabel('伏見稲荷大社'), '伏見');
   assert.equal(stampLabel('Cambria Pines Lodge'), 'Cambria');
   assert.equal(stampLabel('Llanfairpwllgwyngyll'), 'Llanfairpwll');
+  assert.equal(stampLabel('Kiyomizu-dera'), 'Kiyomizu'); // a hyphen parts words too
   assert.equal(stampLabel('  '), '');
 });
 
@@ -49,4 +50,15 @@ test('live mode names an arrival as it fires: a plan place within 300 m, else a 
   await k.stay(MCWAY, at('10:25'), at('10:35'));
   const names = (await k.events(['trigger.fired'])).filter((e) => e.data.type === 'arrived').map((e) => e.data.place.name ?? null);
   assert.deepEqual(names, ['Big Sur River Inn', 'Nepenthe', null]);
+});
+
+test("stamps in words, and a trip's stamps read from its log for its card (spec §13: never stored)", async () => {
+  assert.equal(stampCount(1), '1 stamp');
+  assert.equal(stampCount(5), '5 stamps');
+  const k = await liveKit({ live: false });
+  await k.ws.patch(k.trip, '/trip.json', { timezones: [LA] }, { author: 'user' });
+  const { logEvent } = await import('../../src/core/events.js');
+  await logEvent(k.store, k.trip, { type: 'trigger.fired', data: { type: 'plan', event: 'arrived', place: place('Nepenthe', NEPENTHE) } }, at('12:00'));
+  const { tripStamps } = await import('../../src/ui/stamps.js');
+  assert.deepEqual((await tripStamps({ store: k.store, ws: k.ws }, k.trip)).map((s) => s.name), ['Nepenthe']);
 });
