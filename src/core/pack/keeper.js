@@ -37,6 +37,8 @@ export class PackKeeper {
   #timer;
   /** @type {Map<string, number>} when annai last updated each trip's pack by itself */
   #autoAt = new Map();
+  /** The plan changed (or the connection came) while a download ran: look again once it ends. */
+  #again = false;
   /** @type {import('./read.js').Pack | null} the open trip's pack, for names */
   #named = null;
   /** @type {(() => unknown)[]} */
@@ -46,7 +48,7 @@ export class PackKeeper {
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace,
    *   agent: { target: string | null, on: (kind: 'open', fn: () => void) => () => unknown },
    *   version: string, connection: () => string, visible?: () => boolean, fetch?: import('./download.js').Fetch,
-   *   quietMs?: number, pokeMs?: number, gapMs?: number, now?: () => number }} o
+   *   quietMs?: number, pokeMs?: number, gapMs?: number, now?: () => number, maxBytes?: number }} o
    *   connection: 'wifi', 'cellular', 'unknown' or 'offline' (ui/platform.js connectionOf); fetch: for tests, instead of the traced one
    */
   constructor(o) {
@@ -73,9 +75,10 @@ export class PackKeeper {
     const missing = plan.parts.filter((p) => !have.has(pathOf(p)));
     const old = manifest !== null && !(now - Date.parse(manifest.at) <= STALE_MS);
     /** @type {Why} */
+    // A pack that reached its size limit holds all of its plan it can: the rest is no more to come (until it is old).
     const why = !manifest ? null
       : manifest.key !== plan.key ? 'plan'
-        : missing.length || manifest.failed.length || manifest.stopped ? 'missing'
+        : !manifest.full && (missing.length || manifest.failed.length || manifest.stopped) ? 'missing'
           : old ? 'old' : null;
     const guides = manifest?.guides.length ? 0 : likelyGuides(plan);
     return {
@@ -99,7 +102,7 @@ export class PackKeeper {
     this.running = { scope, done: 0, total: 0, label: '' };
     this.#emit();
     this.#job = downloadPack({
-      ws, scope, version, signal: abort.signal, gapMs: this.o.gapMs, now: this.o.now,
+      ws, scope, version, signal: abort.signal, gapMs: this.o.gapMs, now: this.o.now, maxBytes: this.o.maxBytes,
       fetch: this.o.fetch ?? tracedFetch(store, scope, { tool: 'offline-pack' }),
       onProgress: (p) => {
         this.running = { scope, ...p };
@@ -114,6 +117,8 @@ export class PackKeeper {
       this.#abort = null;
       this.running = null;
       this.#emit();
+      if (this.#again) this.poke();
+      this.#again = false;
     });
     return this.#job;
   }
@@ -181,6 +186,7 @@ export class PackKeeper {
   async #auto() {
     const scope = this.o.agent.target;
     const now = (this.o.now ?? Date.now)();
+    if (this.#job) this.#again = true; // a plan change in the middle of a download: looked at when it ends
     if (!scope || this.#job || this.o.connection() !== 'wifi' || !(this.o.visible?.() ?? true)) return;
     if (now - (this.#autoAt.get(scope) ?? -Infinity) < AUTO_EVERY_MS) return;
     const s = await this.status(scope);
