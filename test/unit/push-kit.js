@@ -41,18 +41,17 @@ export function fakeSource(service) {
 }
 
 /**
- * Live mode (liveKit) with a mirror, against the relay's own code in memory, which sends to the
- * stand-in push service over HTTP. Everything runs on the live kit's clock.
- * @param {Parameters<typeof liveKit>[0]} [o]
+ * The relay's own code in memory on a clock of the test's, sending to the stand-in push service over
+ * HTTP, and a fetch to it the test can break: offline, a host down, DELETEs failing, a gate.
+ * @param {() => number} now
  */
-export async function pushKit(o) {
-  const k = await liveKit(o);
-  const service = await startPushService({ now: () => k.clock.now() });
-  const { worker, PushRelay } = makeRelay({ now: () => k.clock.now(), send: (url, init) => fetch(url, init) });
+export async function relayRig(now) {
+  const service = await startPushService({ now });
+  const { worker, PushRelay } = makeRelay({ now, send: (url, init) => fetch(url, init) });
   const jwk = await newVapidJwk();
   /** @type {any} */
   const env = { VAPID_KEY: jwk, ORIGINS: '', EXTRA_PUSH_ORIGINS: service.origin };
-  env.RELAY = memoryNamespace(PushRelay, env, { now: () => k.clock.now(), timers: false });
+  env.RELAY = memoryNamespace(PushRelay, env, { now, timers: false });
   /**
    * offline: every request fails; down: hosts whose requests fail; failDeletes: DELETEs answer 503; online: what the
    * browser says of the connection; gate: schedules wait for it; calls: every request, in order
@@ -66,6 +65,17 @@ export async function pushKit(o) {
     if (req.method === 'POST' && net.gate) await net.gate;
     return worker.fetch(req, env);
   };
+  return { service, env, net, relayFetch };
+}
+
+/**
+ * Live mode (liveKit) with a mirror, against the relay's own code in memory, which sends to the
+ * stand-in push service over HTTP. Everything runs on the live kit's clock.
+ * @param {Parameters<typeof liveKit>[0]} [o]
+ */
+export async function pushKit(o) {
+  const k = await liveKit(o);
+  const { service, env, net, relayFetch } = await relayRig(() => k.clock.now());
   const source = fakeSource(service);
   /** @type {any[]} */
   const notices = [];
