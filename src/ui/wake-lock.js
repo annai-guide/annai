@@ -17,6 +17,17 @@ export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navi
   /** @type {any} */
   let held = null;
   let asking = false;
+  /** @type {boolean | null} a choice made while the activity wasn't known yet: it is for the activity that follows (B6) */
+  let carry = null;
+  /** The first known activity after such a choice takes it, over any older one. */
+  const settle = () => {
+    const key = situation(live.activity);
+    if (carry === null || key === 'unknown') return;
+    const on = carry;
+    carry = null;
+    choices = { ...choices, [key]: on };
+    updateAppSettings(ws, { live: { awake: { [key]: on } } }).catch(() => {});
+  };
   /** @type {Set<() => void>} */
   const changes = new Set();
   const tell = () => {
@@ -30,6 +41,7 @@ export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navi
   };
   const want = () => Boolean(live.on && live.shown && choices[situation(live.activity)]);
   const apply = async () => {
+    settle();
     if (want() && !held && lock && !asking) {
       asking = true;
       try {
@@ -67,6 +79,7 @@ export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navi
     /** Keep the screen on (or not) in the situation now. @param {boolean} on */
     async choose(on) {
       const key = situation(live.activity);
+      carry = key === 'unknown' ? on : null;
       choices = { ...choices, [key]: on };
       await updateAppSettings(ws, { live: { awake: { [key]: on } } });
       await apply();
