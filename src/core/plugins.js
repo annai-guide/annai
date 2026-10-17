@@ -503,7 +503,8 @@ export class PluginHost {
         id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
         enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
         kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: m?.settings ?? null,
-        skills: active ? skillsOf(id) : kindOfState(s) === 'skill' ? [id] : [],
+        // Off, the skills it claims (minors 18).
+        skills: active ? skillsOf(id) : (await this.#claims({ [id]: s })).get(id) ?? [],
       });
     }
     return rows;

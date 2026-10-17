@@ -48,7 +48,7 @@ test('a server added with a bearer token: its tools registered as mcp_<server>_<
     const img = await k.call('mcp_trail_map', {});
     assert.equal(img.images[0].mediaType, 'image/png');
     const web = (await k.store.tx(['events'], 'readonly', (t) => t.listEvents(k.trip, { types: ['net.request'] })));
-    assert.ok(web.length >= 5 && web.every((e) => e.data.url.startsWith(s.origin)), 'every MCP request of a call is in the trip\'s trace');
+    assert.ok(web.length >= 4 && web.every((e) => e.data.url.startsWith(s.origin)), 'every MCP request of a call is in the trip\'s trace');
     assert.ok(web.some((e) => e.data.tool === 'mcp_trail_echo'));
     assert.doesNotMatch(await k.everything(), new RegExp(TOKEN));
     assert.deepEqual(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), { token: TOKEN });
@@ -288,6 +288,86 @@ test("8c-5: a tool's input schema reaches the model without $schema, $id or $com
     });
     assert.ok(tool.description.length <= 1024, `${tool.description.length} characters`);
     assert.match(tool.description, /^Finds a trail\. .*… \(from the MCP server trail\)$/s);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('minors 2: adding a server starts one session, and its tools are called in that session', async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url, token: TOKEN });
+    assert.equal(await k.call('mcp_trail_echo', { text: 'tide' }), 'tide');
+    const inits = s.requests.filter((r) => r.rpc?.method === 'initialize');
+    assert.equal(inits.length, 1, 'no session is left behind by the check');
+    const sessions = new Set(s.requests.filter((r) => r.rpc && r.rpc.method !== 'initialize').map((r) => r.headers['mcp-session-id']));
+    assert.equal(sessions.size, 1);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('minors 2: an add that fails after the server started a session ends that session', async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    // The server starts a session, then fails its tools/list.
+    k.host.connect({ fetch: async (/** @type {string} */ url, /** @type {RequestInit} */ init) => (String(init?.body ?? '').includes('tools/list') ? new Response('broken', { status: 500 }) : fetch(url, init)) });
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url }), /answered 500/);
+    const [init] = s.requests.filter((r) => r.rpc?.method === 'initialize');
+    assert.ok(init);
+    assert.ok(s.requests.some((r) => r.method === 'DELETE' && r.headers['mcp-session-id']), 'its session was ended');
+    assert.deepEqual(await k.servers.list(), []);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("minors 6 and 7: headers annai sets itself are refused, and so is a token or header value a web request can't carry, each in words that say what is wrong", async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    const k = await kit();
+    for (const name of ['Content-Type', 'accept', 'MCP-Protocol-Version', 'mcp-session-id']) {
+      await assert.rejects(k.servers.add({ name: 'trail', url: s.url, headers: `Authorization: Bearer ${TOKEN}\n${name}: text/plain` }), new RegExp(`annai sends ${name} itself`, 'i'), name);
+    }
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: `${TOKEN}…` }), (/** @type {any} */ e) => /The token has a character a web request can't carry: U\+2026, its 21st/.test(e.message) && !/CORS/.test(e.message));
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, headers: 'X-Api-Key: it’s-a-key' }), /The header X-Api-Key has a character a web request can't carry: U\+2019, its 3rd/);
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: 'abc\u0000def12345' }), /U\+0000, its 4th/);
+    assert.equal(s.requests.length, 0, 'nothing was sent');
+    assert.deepEqual(await k.servers.list(), []);
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), undefined);
+    // Latin-1 is a byte a request carries.
+    await k.servers.add({ name: 'trail', url: s.url, headers: `Authorization: Bearer ${TOKEN}\nX-Note: café` });
+  } finally {
+    await s.stop();
+  }
+});
+
+test("fix pass R2: a server added again with no key never gets the key a failed remove left this session", async () => {
+  const s = await startMcpServer({});
+  try {
+    const k = await kit();
+    const KEY = 'zap1a2b3c4d5e6f7g8h9';
+    await k.servers.add({ name: 'trail', url: `${s.origin}/api/s/${KEY}/mcp`, token: TOKEN });
+    // The remove fails at its last step, forgetting the secret: it stays until the next start.
+    const tx = k.store.tx.bind(k.store);
+    k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => {
+      if (mode !== 'readwrite' || !stores.includes('secrets')) return tx(stores, mode, fn);
+      k.store.tx = tx;
+      return Promise.reject(new Error('The disk is full.'));
+    });
+    await assert.rejects(k.servers.remove('trail'), /disk is full/);
+    assert.ok(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), 'the stale secret is there');
+    const asked = s.requests.length;
+    await k.servers.add({ name: 'trail', url: s.url });
+    const sent = s.requests.slice(asked);
+    assert.ok(sent.length > 0);
+    assert.ok(sent.every((r) => r.headers.authorization === undefined), 'no Authorization header');
+    assert.ok(sent.every((r) => r.path === '/mcp'), 'the address as typed, no old key in it');
+    assert.doesNotMatch(JSON.stringify(sent), new RegExp(`${KEY}|${TOKEN}`));
+    assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), undefined);
+    assert.equal(await k.call('mcp_trail_whoami', {}), 'You sent: nothing');
   } finally {
     await s.stop();
   }

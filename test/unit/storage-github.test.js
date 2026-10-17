@@ -312,3 +312,25 @@ test('what GitHub sends is read only up to a limit: an error, a manifest, a file
     await gh.stop();
   }
 });
+
+test("minors 24: a commit made by hand is no other device's backup: what counts is the newest backup before it", async () => {
+  const gh = await startGitHub({ repos: { [REPO]: {} } });
+  try {
+    const { type } = github();
+    const a = await archive(await device());
+    const first = await type.put(ctx(gh), a, opts());
+    /** Someone edits the README on github.com: the backup's files stay, one commit on top. @param {string} readme */
+    const byHand = (readme) => gh.commitAs(REPO, { ...Object.fromEntries(gh.files(REPO)), 'README.md': readme }, 'Update README.md');
+    const hand = byHand('# My trips\n');
+    const next = await type.put(ctx(gh), a, opts({ base: first.id }));
+    assert.deepEqual(gh.commits(REPO)[0].parents, [hand], 'it builds on the hand-made commit');
+    assert.equal(gh.files(REPO).get('README.md')?.toString(), '# My trips\n', 'which it keeps');
+    // Another device's backup, then a hand-made commit: the other device's backup is the newer one.
+    const android = { device: 'phone-b', label: 'Android phone' };
+    const theirs = await type.put(ctx(gh, android), a, opts({ base: next.id }));
+    byHand('# Ours\n');
+    await assert.rejects(type.put(ctx(gh), a, opts({ base: next.id })), (/** @type {any} */ e) => refused('newer')(e) && e.remote.id === theirs.id && e.remote.label === 'Android phone');
+  } finally {
+    await gh.stop();
+  }
+});

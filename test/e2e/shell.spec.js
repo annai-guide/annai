@@ -66,3 +66,17 @@ test('Erase everything goes straight to an empty Trips, with no error on the way
   await expect(page.getByText('No trips yet.')).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('erase-error'))).toBeNull();
 });
+
+test("minors 26: a field in a column keeps its own height: no empty gap between a trip's name and its dates", async ({ page }) => {
+  await openApp(page);
+  const name = page.locator('label.field', { has: page.getByLabel('Trip name') });
+  const dates = page.locator('.row', { has: page.getByLabel('Starts') });
+  const [a, b] = [await name.boundingBox(), await dates.boundingBox()];
+  expect(a && b).toBeTruthy();
+  if (!a || !b) return;
+  expect(a.height).toBeLessThan(100);
+  expect(b.y - (a.y + a.height)).toBeLessThan(30);
+  // In a row, fields still share it.
+  const [start, end] = [await page.locator('label.field', { has: page.getByLabel('Starts') }).boundingBox(), await page.locator('label.field', { has: page.getByLabel('Ends') }).boundingBox()];
+  expect(Math.abs((start?.width ?? 0) - (end?.width ?? 1))).toBeLessThan(2);
+});

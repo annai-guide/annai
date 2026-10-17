@@ -135,9 +135,17 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
     kind = 'skill';
     root = rootOf(names, SKILL_FILE);
     if (root === null) {
-      if (names.filter((n) => n === SKILL_FILE || n.endsWith(`/${SKILL_FILE}`)).length > 1) {
+      // Deeper than annai reads (minors 20): the shallowest annai-plugin.json, else the one SKILL.md.
+      const deep = (/** @type {string} */ file) => names.filter((n) => n.endsWith(`/${file}`)).sort((a, b) => a.split('/').length - b.split('/').length);
+      const [plugin] = deep(MANIFEST_FILE);
+      const skills = deep(SKILL_FILE);
+      if (!plugin && skills.length > 1) {
         throw new PluginError('skill', 'this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.');
       }
+      const file = plugin ? MANIFEST_FILE : SKILL_FILE;
+      const at = plugin ?? skills[0];
+      const why = at?.split('/').length > 2 ? 'nested too deep' : 'beside other files';
+      if (at) throw new PluginError(plugin ? 'plugin' : 'skill', `its ${file} is in ${at.slice(0, -file.length)}, ${why}: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`);
       throw new PluginError('plugin', `there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`);
     }
   }
@@ -263,7 +271,10 @@ const fileName = (name) => plainPath(name);
 /**
  * A package's files from an address (choice 6): a zip, whatever the address ends with; an
  * annai-plugin.json and the files it names; or a SKILL.md and the files it links to inside its folder.
- * Nothing is stored. Every error is a plain Error that says what to do.
+ * Nothing is stored. Every error is a plain Error that says what to do. Each file is asked for with
+ * the browser's cache revalidated (minors 17): the browser sends the ETag or date it kept, so an update
+ * check downloads only what changed, never a stale copy. annai sends no such header itself: GitHub's
+ * raw files refuse the CORS preflight one would need.
  * @param {string} address
  * @param {{ fetch: (url: string, init?: RequestInit) => Promise<Response>, max?: number }} o
  * @returns {Promise<Map<string, Uint8Array>>} files by name inside the package (a zip's as it has them)
@@ -278,15 +289,17 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(NOT_AN_ADDRESS);
   refuseUserinfo(url);
+  // github.com's pages can't be read by web apps; its raw files can (minors 19).
+  const hint = url.hostname === 'github.com' ? ' For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.' : '';
   let used = 0;
   const download = async (/** @type {URL} */ u) => {
     /** @type {Response} */
     let res;
     try {
-      res = await get(u.href);
+      res = await get(u.href, { cache: 'no-cache' });
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw new Error(`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`);
+      throw new Error(`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.${hint}`);
     }
     const bytes = await answerBytes(res, u.host, max - used);
     used += bytes.byteLength;
@@ -362,7 +375,15 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       if (!u) throw new Error(`The file name "${name}" isn't allowed.`);
       at.set(name, u);
     }
-    for (const [name, u] of at) files.set(name, await download(u));
+    for (const [name, u] of at) {
+      try {
+        files.set(name, await download(u));
+      } catch (e) {
+        // Which file the site lacks (minors 21).
+        const status = /** @type {any} */ (e)?.status;
+        throw status ? new Error(`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
+      }
+    }
     for (const s of skillFiles) await linked(s.slice(0, -SKILL_FILE.length), /** @type {Uint8Array} */ (files.get(s)));
     return files;
   }
@@ -371,7 +392,6 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     await linked('', first);
     return files;
   }
-  const hint = url.hostname === 'github.com' ? ' For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.' : '';
   throw new Error(`There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.${hint}`);
 }
 

@@ -26,11 +26,14 @@ const PAGE = 3;
 const TYPES = { '.md': 'text/markdown; charset=utf-8', '.json': 'application/json', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.png': 'image/png', '.zip': 'application/zip' };
 
 /**
+ * As the reference SDK's Streamable HTTP server does (minors 9), it refuses a POST that doesn't accept
+ * both JSON and SSE (406), and a protocol version it doesn't speak (400; none is 2025-03-26); given
+ * its origins, a request from any other Origin (403, as the spec's DNS-rebinding rule says).
  * @param {{ token?: string, sse?: boolean, sessions?: boolean, exposeSession?: boolean, cors?: boolean, port?: number, host?: string, files?: string,
- *   tools?: { name: string, description?: string, inputSchema?: any }[] }} [o]
+ *   tools?: { name: string, description?: string, inputSchema?: any }[], origins?: string[] }} [o]
  */
-export async function startMcpServer({ token, sse = false, sessions = true, exposeSession = true, cors = true, port = 0, host = '127.0.0.1', files, tools } = {}) {
-  /** @type {{ method: string, rpc: any, headers: Record<string, string | undefined> }[]} */
+export async function startMcpServer({ token, sse = false, sessions = true, exposeSession = true, cors = true, port = 0, host = '127.0.0.1', files, tools, origins } = {}) {
+  /** @type {{ method: string, rpc: any, headers: Record<string, string | undefined>, path?: string }[]} */
   const requests = [];
   /** @type {Set<string>} */
   const live = new Set();
@@ -84,6 +87,14 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
       }
       // Any path ending in /mcp, as hosted servers that put a key in it have ("/api/mcp/s/<key>/mcp").
       if (path !== '/mcp' && !path.endsWith('/mcp')) return send(404, 'not found');
+      /** @param {number} status @param {string} message */
+      const refuse = (status, message) => send(status, { jsonrpc: '2.0', id: null, error: { code: -32000, message } });
+      const origin = req.headers.origin;
+      if (origins && origin && !origins.includes(origin)) return refuse(403, 'Forbidden: Origin not allowed');
+      const accept = String(req.headers.accept ?? '');
+      if (req.method === 'POST' && !(accept.includes('application/json') && accept.includes('text/event-stream'))) {
+        return refuse(406, 'Not Acceptable: Client must accept both application/json and text/event-stream');
+      }
       if (token && req.headers.authorization !== `Bearer ${token}`) {
         return send(401, { jsonrpc: '2.0', id: null, error: { code: -32001, message: 'This server needs its token.' } }, { 'www-authenticate': 'Bearer' });
       }
@@ -102,7 +113,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
       } catch {
         return send(400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
       }
-      requests.push({ method: 'POST', rpc: msg, headers: { ...Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : v])) } });
+      requests.push({ method: 'POST', rpc: msg, path, headers: { ...Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : v])) } });
       if (msg?.method === 'initialize') {
         const asked = String(msg.params?.protocolVersion ?? '');
         const id = sessions ? `s-${++n}-${Math.random().toString(36).slice(2, 10)}` : null;
@@ -116,6 +127,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
         if (!sid) return send(400, { jsonrpc: '2.0', id: msg?.id ?? null, error: { code: -32000, message: 'Bad Request: no session' } });
         if (!live.has(sid)) return send(404, { jsonrpc: '2.0', id: msg?.id ?? null, error: { code: -32001, message: 'Session not found' } });
       }
+      if (!SUPPORTED.includes(String(req.headers['mcp-protocol-version'] ?? '2025-03-26'))) return refuse(400, 'Bad Request: Unsupported protocol version');
       if (msg?.id === undefined) return send(202);
       /** @param {any} result */
       const answer = (result) => {

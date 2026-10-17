@@ -35,7 +35,7 @@ A plugin's manifest:
   - `skills`: skill folders in the package, each holding a `SKILL.md` (`"."` is the package's top).
   - `personalities`: Markdown files, each a personality named by its file (`ranger.md` is "ranger"). Settings → Shiori offers them; Add makes a copy the user owns.
   - `templates`: JSON files of endpoint templates, `{ "endpoints": [{ "id", "version", "type", "name", … }] }`, in the format of annai's own `catalog/templates.json`. They join annai's in Settings → Models as "<template name> (from <your plugin's name>)"; annai's own win on the same id. A template decides where a key the user gives it is sent, and the install screen says so.
-  - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing").
+  - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing"). A module you leave out isn't there once installed from an address, and the plugin won't start; the error is the browser's own, and it names your entry file, not the missing module (Chrome: "Failed to fetch dynamically imported module: …/index.js"; Safari names no file at all: "Importing a module script failed.").
   - `settings`: a JSON Schema object; annai draws a form from it on your plugin's page in Settings → Plugins. See "Settings" below.
 - **Size:** a package may unpack to at most 64 MiB.
 
@@ -141,6 +141,8 @@ Every drawing function gets an element annai made, and a `ui` object:
 | `ui.live.on()`, `ui.live.activity()`, `ui.live.onChange(fn)` | live mode: on or off, `still` / `walking` / `moving-fast`, changes |
 
 A drawing may return a cleanup function, which annai calls when it draws that place again. A drawing that throws counts against your plugin as a tool's crash does; its element stays empty, and the rest of the screen draws.
+
+To change what a chip or a section shows, keep the element it was given and change it in place from your own code (a timer, `ui.live.onChange`, a hook), until its cleanup runs. Don't register it again for that: each registration, and each removal, makes annai draw the screen and the dock again.
 
 - **Slots,** `annai.ui.slot(slot, item)`; every item has an `id` (lowercase letters, digits and dashes):
   - `'status-chip'`, `{ id, render(el, ui) }`: a chip in the dock's row of chips, after the voice and live chips.

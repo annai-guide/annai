@@ -108,3 +108,139 @@ test('8c-5: a tool a server lists twice is listed once, the first time', async (
     await s.stop();
   }
 });
+
+/** An answer whose body never ends, and stops with the request's own reason, as a browser's does. @param {RequestInit | undefined} init @param {string} type */
+const stalled = (init, type) => new Response(new ReadableStream({
+  start(c) {
+    c.enqueue(new TextEncoder().encode(type === 'application/json' ? '{"jsonrpc":"2.0",' : 'event: message\n'));
+    init?.signal?.addEventListener('abort', () => c.error(init.signal?.reason));
+  },
+}), { status: 200, headers: { 'Content-Type': type } });
+
+test("minors 1: a time limit reached while an answer is read is the time limit, as JSON or as SSE, never \"can't read\"", async () => {
+  for (const type of ['application/json', 'text/event-stream']) {
+    const slow = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => stalled(init, type);
+    await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: slow, signal: AbortSignal.timeout(50) }), (e) => /** @type {any} */ (e).name === 'TimeoutError', type);
+  }
+  // A fetch that says so in its own words (annai's traced fetch does) is the time limit too.
+  const traced = async () => { throw new Error("annai couldn't reach mcp.example (The operation timed out.). Is the device offline?"); };
+  const signal = AbortSignal.timeout(1);
+  await new Promise((done) => setTimeout(done, 20));
+  await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: traced, signal }), (e) => /** @type {any} */ (e).name === 'TimeoutError');
+});
+
+test('minors 3: after close(), a call says the server was removed, also one in flight that sees the session gone; no session starts again', async () => {
+  const s = await startMcpServer({});
+  try {
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((done) => { release = () => done(undefined); });
+    // tools/call waits until the session was ended, so the server answers it 404.
+    const gated = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (String(init?.body ?? '').includes('tools/call')) await held;
+      return fetch(url, init);
+    };
+    const c = client(s.url, '');
+    await c.listTools({ fetch: get });
+    const inFlight = c.callTool('echo', { text: 'tide' }, { fetch: gated });
+    await new Promise((done) => setTimeout(done, 20));
+    await c.close({ fetch: get });
+    release();
+    await assert.rejects(inFlight, (e) => e instanceof McpError && /The MCP server trail was removed/.test(e.message));
+    await assert.rejects(c.callTool('echo', { text: 'again' }, { fetch: get }), /The MCP server trail was removed/);
+    await assert.rejects(c.listTools({ fetch: get }), /was removed/);
+    assert.equal(s.requests.filter((r) => r.rpc?.method === 'initialize').length, 1);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('minors 3: a session that starts while the client closes is ended at once', async () => {
+  const s = await startMcpServer({});
+  try {
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((done) => { release = () => done(undefined); });
+    const gated = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (String(init?.body ?? '').includes('"initialize"')) await held;
+      return fetch(url, init);
+    };
+    const c = client(s.url, '');
+    const listing = c.listTools({ fetch: gated });
+    await new Promise((done) => setTimeout(done, 20));
+    await c.close({ fetch: get });
+    release();
+    await assert.rejects(listing, /The MCP server trail was removed/);
+    assert.equal(s.requests.filter((r) => r.method === 'DELETE').length, 1, 'the session it got was ended');
+    assert.equal(s.requests.filter((r) => r.rpc?.method === 'tools/list').length, 0);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("minors 4: two calls wait for one session start; stopping one doesn't stop the other, and stopping both stops the start", async () => {
+  const s = await startMcpServer({});
+  try {
+    /** @type {AbortSignal[]} */
+    const initSignals = [];
+    const slowInit = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (String(init?.body ?? '').includes('"initialize"')) {
+        if (init.signal) initSignals.push(init.signal);
+        await new Promise((done) => setTimeout(done, 80));
+        init.signal?.throwIfAborted();
+      }
+      return fetch(url, init);
+    };
+    const c = client(s.url, '');
+    const a = new AbortController();
+    const first = c.callTool('echo', { text: 'one' }, { fetch: slowInit, signal: a.signal });
+    const second = c.callTool('echo', { text: 'two' }, { fetch: slowInit, signal: new AbortController().signal });
+    await new Promise((done) => setTimeout(done, 20));
+    a.abort();
+    await assert.rejects(first, (e) => /** @type {any} */ (e).name === 'AbortError');
+    assert.equal((await second).content[0].text, 'two');
+    assert.equal(s.requests.filter((r) => r.rpc?.method === 'initialize').length, 1);
+
+    const lone = client(s.url, '');
+    const b = new AbortController();
+    const only = lone.listTools({ fetch: slowInit, signal: b.signal });
+    await new Promise((done) => setTimeout(done, 20));
+    b.abort();
+    await assert.rejects(only, (e) => /** @type {any} */ (e).name === 'AbortError');
+    assert.ok(initSignals.at(-1)?.aborted, 'the start stopped once no one waited for it');
+  } finally {
+    await s.stop();
+  }
+});
+
+test("minors 5: a 400's words are read no further than their start; the rest is never read", async () => {
+  for (const said of ['Bad Request: no session', 'Bad Request']) {
+    let sent = 0;
+    const fake = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+      const m = JSON.parse(String(init.body));
+      if (m.method === 'initialize') return Response.json({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2025-06-18', capabilities: {} } });
+      if (!('id' in m)) return new Response(null, { status: 202 });
+      // A session the browser couldn't see, refused with words that go on and on.
+      return new Response(new ReadableStream({
+        pull(c) {
+          if (sent >= 24 * 1024 * 1024) return c.close();
+          c.enqueue(new TextEncoder().encode(sent === 0 ? said.padEnd(1024 * 1024) : ' '.repeat(1024 * 1024)));
+          sent += 1024 * 1024;
+        },
+      }), { status: 400 });
+    };
+    await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: fake }), (e) => e instanceof McpError && (/session/.test(said) ? e.kind === 'cors' : /answered 400/.test(e.message)));
+    assert.ok(sent <= 3 * 1024 * 1024, `read ${sent} bytes`);
+  }
+});
+
+test("minors 8: a server that can't be reached while the device is offline is a network error that says so, not CORS", async () => {
+  const down = async () => { throw new TypeError('Failed to fetch'); };
+  Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
+  try {
+    await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: down }), (e) => e instanceof McpError && e.kind === 'network' && /this device is offline/.test(e.message) && !/CORS/.test(e.message));
+  } finally {
+    delete (/** @type {any} */ (globalThis.navigator)).onLine;
+  }
+  await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: down }), (e) => e instanceof McpError && e.kind === 'cors');
+});

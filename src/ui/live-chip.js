@@ -112,8 +112,7 @@ export function liveChip(ctx) {
     chip.textContent = liveText(live);
     chip.classList.toggle('on', live.on);
   };
-  live.onChange(show);
-  ctx.sim?.onChange(show);
+  const offs = [live.onChange(show), ctx.sim?.onChange(show)];
   show();
   const el = h('div', { class: 'voice-chip-wrap live-wrap' }, chip, menu);
   // Escape closes it, from the chip or from inside the menu.
@@ -122,8 +121,8 @@ export function liveChip(ctx) {
     close();
     chip.focus();
   });
-  // dispose: the dock is remade; an open menu's listener for a tap elsewhere goes with it.
-  return { el, dispose: close };
+  // dispose: the dock is remade; an open menu's listener for a tap elsewhere goes with it, and so do its own.
+  return { el, dispose: () => { close(); offs.forEach((off) => off?.()); } };
 }
 
 /** The open trip's plan places, for "Where are you?". @param {any} ctx @returns {Promise<{ name: string, lat: number, lng: number }[]>} */
