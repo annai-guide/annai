@@ -1,0 +1,153 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { relayKit, ENDPOINT, MIN, token } from './relay-kit.js';
+import { UNCONFIRMED, BATCH, KEEP_CONFIRMED } from '../../relay/src/relay.js';
+import { startRelay } from '../../relay/serve.mjs';
+import { newVapidJwk } from '../../relay/src/vapid.js';
+
+const DAY = 86_400_000;
+
+test('a body sent without its length is read only up to 8 KB, then refused; the rest is never read', async () => {
+  const k = await relayKit();
+  let pulled = 0;
+  const chunk = new Uint8Array(64 * 1024).fill(32);
+  const body = new ReadableStream({
+    pull(c) {
+      if (pulled >= 50 * 1024 * 1024) {
+        c.close();
+        return;
+      }
+      pulled += chunk.length;
+      c.enqueue(chunk);
+    },
+  });
+  // Node needs duplex for a streamed body; the DOM's RequestInit type doesn't know it.
+  /** @type {any} */
+  const init = { method: 'POST', body, duplex: 'half', headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.9' } };
+  const res = await k.raw(new Request('https://push.annai.guide/v1/schedule', init));
+  assert.equal(res.status, 413);
+  assert.equal((await res.json()).error, 'size');
+  assert.ok(pulled <= 512 * 1024, `${pulled} bytes were read`);
+});
+
+test("without Cloudflare's rate-limit binding, the relay limits each address itself: never no limit (spec §11.6)", async () => {
+  const k = await relayKit({ limit: null });
+  for (let i = 0; i < 300; i++) assert.equal((await k.call('GET', '/v1/vapid', { ip: '198.51.100.1' })).status, 200);
+  const r = await k.call('GET', '/v1/vapid', { ip: '198.51.100.1' });
+  assert.equal(r.status, 429);
+  assert.equal(r.body.error, 'rate');
+  assert.equal((await k.call('GET', '/v1/vapid', { ip: '198.51.100.2' })).status, 200);
+});
+
+test('behind a proxy on the same machine (tailscale serve), the address is the one the proxy saw: a client cannot choose its own', async () => {
+  const r = await startRelay({ jwk: await newVapidJwk(), limit: 2 });
+  try {
+    const get = (/** @type {string} */ xff) => fetch(`${r.origin}/v1/vapid`, { headers: { 'X-Forwarded-For': xff } }).then((x) => x.status);
+    assert.equal(await get('10.0.0.1, 100.64.0.7'), 200);
+    assert.equal(await get('10.0.0.2, 100.64.0.7'), 200);
+    assert.equal(await get('10.0.0.3, 100.64.0.7'), 429, 'the last address is the one the proxy added');
+    assert.equal(await get('100.64.0.8'), 200, 'another phone');
+  } finally {
+    await r.close();
+  }
+});
+
+test('a subscription that never had a push through the relay keeps just 3 reminders, due within 10 minutes; once one is delivered, 200 (choice 13)', async () => {
+  const k = await relayKit();
+  const post = (/** @type {Record<string, any>} */ o) => k.call('POST', '/v1/schedule', { body: k.reminder(o), token: token() });
+  const far = await post({ sendAt: k.now() + UNCONFIRMED.within + 1 });
+  assert.equal(far.status, 429);
+  assert.equal(far.body.error, 'unconfirmed');
+  assert.match(far.body.message, /3 reminders, due within 10 minutes/);
+  for (let i = 0; i < UNCONFIRMED.pending; i++) assert.equal((await post({ sendAt: k.now() + 5 * MIN })).status, 201);
+  assert.equal((await post({ sendAt: k.now() + 5 * MIN })).body.error, 'unconfirmed');
+  await k.after(5 * MIN);
+  assert.equal(k.sent.length, 3);
+  for (let i = 0; i < 20; i++) assert.equal((await post({ sendAt: k.now() + DAY })).status, 201, 'confirmed: a day ahead, and more than 3');
+  assert.ok((await k.stored()).includes('confirmed'));
+});
+
+test("a reminder due now is sent at once, in the same request: annai learns whether the phone's push service took it", async () => {
+  const k = await relayKit({ statuses: [201, 410] });
+  const ok = await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() }), token: token() });
+  assert.equal(ok.status, 201);
+  assert.equal(ok.body.sent, true);
+  assert.equal(k.sent.length, 1);
+  assert.deepEqual(await k.waiting(), []);
+  assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + DAY }), token: token() })).status, 201, 'now confirmed');
+  const gone = await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() }), token: token() });
+  assert.equal(gone.status, 410);
+  assert.equal(gone.body.error, 'gone');
+  assert.deepEqual(await k.stored(), [], 'a gone subscription keeps nothing: not its other reminder, not its confirmation');
+  const later = await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + 5 * MIN }), token: token() });
+  assert.equal(later.body.sent, undefined, 'one not yet due waits for its time');
+});
+
+test('made-up endpoints cost little, briefly: their push service refuses each at its first send, and nothing of them stays', async () => {
+  const k = await relayKit({ statuses: Array(40).fill(404) });
+  for (let i = 0; i < 10; i++) {
+    const endpoint = `https://fcm.googleapis.com/fcm/send/made-up-${i}`;
+    for (let j = 0; j < UNCONFIRMED.pending; j++) assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ endpoint, sendAt: k.now() + 10 * MIN }), token: token() })).status, 201);
+    assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ endpoint, sendAt: k.now() + 30 * DAY }), token: token() })).body.error, 'unconfirmed', '30 days ahead: refused');
+  }
+  await k.after(10 * MIN);
+  assert.equal(k.sent.length, 10, 'one try each: the first 404 deletes all three');
+  for (const o of k.env.RELAY.objects.values()) assert.deepEqual(o.storage.keys(), []);
+});
+
+test('a confirmation is kept 60 days after the last push, then forgotten', async () => {
+  const k = await relayKit();
+  await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + MIN }), token: token() });
+  await k.after(MIN);
+  assert.deepEqual(await k.stored(), ['confirmed', 'jwt'], 'that it had a push, and the VAPID token (Apple: renew it at most once an hour)');
+  assert.equal(await k.alarm(), k.now() + KEEP_CONFIRMED);
+  await k.after(KEEP_CONFIRMED - MIN);
+  assert.deepEqual(await k.stored(), ['confirmed', 'jwt']);
+  await k.after(MIN);
+  assert.deepEqual(await k.stored(), []);
+  assert.equal(await k.alarm(), null);
+});
+
+test('many due at once: one alarm sends at most 25, then the next goes straight on; none is sent twice', async () => {
+  const k = await relayKit();
+  await k.confirm();
+  for (let i = 0; i < 30; i++) {
+    const payload = new Uint8Array(200);
+    new DataView(payload.buffer).setUint32(0, i);
+    await k.call('POST', '/v1/schedule', { body: k.reminder({ payload: Buffer.from(payload).toString('base64url') }), token: token() });
+  }
+  const o = await k.object(ENDPOINT);
+  await k.after(9 * MIN);
+  /** @type {any} */ (o).storage.alarm = null;
+  await k.after(MIN); // the alarm was taken away: nothing runs
+  assert.equal(k.sent.length, 0);
+  await /** @type {any} */ (o).obj.alarm();
+  assert.equal(k.sent.length, BATCH);
+  assert.ok(/** @type {number} */ (await k.alarm()) <= k.now(), 'the rest are due straight away');
+  await k.after(0);
+  const ids = k.sent.map((s) => new DataView(s.init.body.buffer, s.init.body.byteOffset).getUint32(0));
+  assert.equal(ids.length, 30);
+  assert.equal(new Set(ids).size, 30);
+  assert.deepEqual(await k.waiting(), []);
+});
+
+test('a push service that never answers is given up on, and the reminder tried again later', async () => {
+  /** @type {any[]} */
+  const inits = [];
+  const k = await relayKit({
+    timeout: 50,
+    send: (_url, init) => {
+      inits.push(init);
+      if (!(init.signal instanceof AbortSignal)) return Promise.reject(new Error('no time limit'));
+      return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+    },
+  });
+  await k.call('POST', '/v1/schedule', { body: k.reminder(), token: token() });
+  await k.after(10 * MIN);
+  assert.equal(inits.length, 1);
+  assert.ok(inits[0].signal instanceof AbortSignal, 'each send has a time limit');
+  assert.equal(inits[0].signal.aborted, true, 'and it ran out');
+  const [w] = await k.waiting();
+  assert.equal(w.tries, 1);
+  assert.equal(w.next, k.now() + 30_000);
+});

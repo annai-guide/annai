@@ -25,6 +25,7 @@ test('GET /v1/vapid gives the public key; CORS answers annai and not other sites
 
 test("POST /v1/schedule keeps the reminder in its subscription's own object, with the alarm at its time (spec §11.6)", async () => {
   const k = await relayKit();
+  await k.confirm();
   const tok = token();
   const rem = k.reminder();
   const r = await k.call('POST', '/v1/schedule', { body: rem, token: tok, origin: APP });
@@ -35,7 +36,7 @@ test("POST /v1/schedule keeps the reminder in its subscription's own object, wit
   assert.equal(r.body.sendAt, rem.sendAt);
   const [w] = await k.waiting();
   assert.deepEqual({ ...w }, { id: r.body.id, endpoint: ENDPOINT, sendAt: rem.sendAt, next: rem.sendAt, ttl: 3600, urgency: 'high', token: tok, tries: 0 });
-  assert.deepEqual(await k.stored(), [`m:${r.body.id}`, `p:${r.body.id}`]);
+  assert.deepEqual(await k.stored(), ['confirmed', `m:${r.body.id}`, `p:${r.body.id}`]);
   assert.equal(await k.alarm(), rem.sendAt);
   assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: rem.sendAt + MIN }), token: token() })).status, 201);
   assert.equal(await k.alarm(), rem.sendAt, 'the alarm stays at the earliest');
@@ -112,6 +113,7 @@ test('the push services it sends to (choice 3)', () => {
 
 test('at most 200 waiting for one subscription; another has its own 200', async () => {
   const k = await relayKit({ limit: 1000 });
+  await k.confirm();
   for (let i = 0; i < LIMITS.pending; i++) assert.equal((await k.call('POST', '/v1/schedule', { body: k.reminder({ payload: bytes(200) }), token: token() })).status, 201);
   const full = await k.call('POST', '/v1/schedule', { body: k.reminder({ payload: bytes(200) }), token: token() });
   assert.equal(full.status, 429);
