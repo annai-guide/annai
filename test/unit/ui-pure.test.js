@@ -260,3 +260,13 @@ test("steering-wheel and headset buttons tap Shiori while voice is on, and do no
   assert.equal(handlers.pause, null);
   assert.doesNotThrow(() => mediaKeys({ session: undefined, agent: { tap: () => 'typing' }, voice }));
 });
+
+test("the trace's one-line summaries of live mode: points, firings, reminders and switches", () => {
+  assert.equal(traceSummary({ type: 'location', data: { lat: 36.3715, lng: -121.9017, accuracy: 8, speed: 15 } }), '36.3715, -121.9017 ±8 m · 54 km/h');
+  assert.equal(traceSummary({ type: 'location', data: { lat: 36.3715, lng: -121.9017, accuracy: 50, source: 'manual' } }), '36.3715, -121.9017 ±50 m · manual');
+  assert.equal(traceSummary({ type: 'trigger.fired', data: { watch: 'plan:hearst:leave', text: 'Plan: time to leave soon for "Hearst Castle tour"', late: 17, offline: true } }),
+    'plan:hearst:leave · Plan: time to leave soon for "Hearst Castle tour" · late by 17 min · no connection');
+  assert.equal(traceSummary({ type: 'reminder', data: { text: 'Tea time.', aloud: true } }), 'said aloud · Tea time.');
+  assert.equal(traceSummary({ type: 'state', data: { live: 'on' } }), 'live mode on');
+  assert.equal(traceSummary({ type: 'state', data: { voice: 'on', why: 'moving' } }), 'voice on (moving)');
+});

@@ -11,6 +11,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Web: ['net.request'],
   Models: ['model.turn', 'net.request', 'decide', 'speech.browser'],
   Housekeeping: ['compaction'],
+  Live: ['location', 'trigger.fired', 'state', 'reminder'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
 });
 
@@ -31,10 +32,12 @@ export async function renderTrace(ctx, route) {
     const my = ++pending;
     list.setAttribute('aria-busy', 'true');
     const ids = select.value ? [select.value] : scopes.map((/** @type {any} */ s) => s.id);
-    const all = (await Promise.all(ids.map((/** @type {string} */ id) => ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { reverse: true, limit: 300 }))))).flat();
-    if (my !== pending) return;
     const f = filter.value.trim();
     const types = KINDS[kind.value];
+    // A drive logs a location point about every second: "Everything" leaves them to the Live kind (choice 10).
+    const query = types ? { types } : f && 'location'.includes(f) ? {} : { notTypes: ['location'] };
+    const all = (await Promise.all(ids.map((/** @type {string} */ id) => ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { reverse: true, limit: 300, ...query }))))).flat();
+    if (my !== pending) return;
     /** @type {Map<string, number>} the cost of each wake shown (spec §6.6: cost is always visible) */
     const perWake = new Map();
     for (const id of ids) for (const [w, c] of (await costs(ctx.store, id)).byWake) perWake.set(w, c);
@@ -99,6 +102,10 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'net.request' && d.kind === 'upload') return `upload · ${d.endpoint} · ${d.url} · ${d.error ?? d.status} · ${d.ms ?? '?'} ms`;
   if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
   if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
+  if (e.type === 'location') return `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
+  if (e.type === 'trigger.fired') return `${d.watch} · ${cut(d.text)}${d.late ? ` · late by ${d.late} min` : ''}${d.offline ? ' · no connection' : ''}`;
+  if (e.type === 'reminder') return `${d.aloud ? 'said aloud' : 'shown'} · ${cut(d.text)}`;
+  if (e.type === 'state') return d.live ? `live mode ${d.live}` : d.voice ? `voice ${d.voice}${d.why ? ` (${d.why})` : ''}` : '';
   if (e.type === 'decide') {
     const [best, p] = Object.entries(d.result ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]))[0] ?? ['?', 0];
     return `${best} (${Math.round(Number(p) * 100)}%) · by ${d.by}`;

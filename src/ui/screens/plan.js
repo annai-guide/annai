@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
+import { planRows, planDays, legKm, distanceText, dayLabel, beforeShiori, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
@@ -28,6 +28,13 @@ export async function renderPlan(ctx, route) {
   const locale = navigator.language || 'en-US';
   const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz, locale });
   const { days, untimed } = planDays(rows, trip);
+  /** @type {Map<string, string>} plan files Shiori changed last, and the version before (choice 9) */
+  const undo = new Map();
+  for (const x of plan.list) {
+    if (x.author !== 'shiori') continue;
+    const old = beforeShiori(await ctx.ws.history(id, x.path));
+    if (old) undo.set(x.path, old);
+  }
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
 
   const tabs = [...days.map((d) => ({ key: d.key, label: dayLabel(d.key, locale), rows: d.rows })), ...(untimed.length ? [{ key: '', label: `No time yet (${untimed.length})`, rows: untimed }] : [])];
@@ -40,7 +47,7 @@ export async function renderPlan(ctx, route) {
   function show(t) {
     buttons.forEach((b, i) => b.setAttribute('aria-selected', String(tabs[i] === t)));
     panel.setAttribute('aria-label', t.label);
-    panel.replaceChildren(t.rows.length ? timetable(id, t.rows, links, locale) : h('p', { class: 'empty', text: 'Nothing planned this day.' }));
+    panel.replaceChildren(t.rows.length ? timetable(ctx, id, t.rows, links, locale, undo) : h('p', { class: 'empty', text: 'Nothing planned this day.' }));
   }
   if (first) show(first);
 
@@ -79,14 +86,14 @@ export async function renderPlan(ctx, route) {
  * @param {any} ctx @param {string} id @param {string} prefix @param {RegExp} shape
  */
 async function records(ctx, id, prefix, shape) {
-  /** @type {{ path: string, value: Record<string, any> }[]} */
+  /** @type {{ path: string, value: Record<string, any>, author: string }[]} */
   const list = [];
   let broken = 0;
   for (const f of await ctx.ws.list(id, prefix)) {
     if (!shape.test(f.path)) continue;
     try {
       const value = await ctx.ws.readJSON(id, f.path);
-      if (value && typeof value === 'object' && !Array.isArray(value)) list.push({ path: f.path, value });
+      if (value && typeof value === 'object' && !Array.isArray(value)) list.push({ path: f.path, value, author: f.author });
       else broken++;
     } catch {
       broken++;
@@ -95,20 +102,20 @@ async function records(ctx, id, prefix, shape) {
   return { list, broken };
 }
 
-/** @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {string} locale */
-function timetable(id, rows, links, locale) {
+/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {string} locale @param {Map<string, string>} undo */
+function timetable(ctx, id, rows, links, locale, undo) {
   /** @type {HTMLElement[]} */
   const out = [];
   rows.forEach((r, i) => {
     const km = i ? legKm(rows[i - 1], r) : null;
     if (km !== null) out.push(leg(rows[i - 1], r, km, links, locale));
-    out.push(row(id, r));
+    out.push(row(ctx, id, r, undo));
   });
   return h('ol', { class: 'timetable' }, ...out);
 }
 
-/** @param {string} id @param {import('../../core/plan.js').PlanRow} r */
-function row(id, r) {
+/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {Map<string, string>} undo */
+function row(ctx, id, r, undo) {
   const it = r.item;
   // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so.
   const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
@@ -120,9 +127,17 @@ function row(id, r) {
       h('span', { class: 'visually-hidden', text: it.fixed ? 'Fixed: ' : 'Flexible: ' }),
       h('span', { class: 'name', text: String(it.title ?? r.path) }),
       it.place?.name ? h('span', { class: 'sub', text: String(it.place.name) }) : null),
-    r.check || r.missing ? h('span', { class: 'chips' },
+    r.check || r.missing || undo.has(r.path) ? h('span', { class: 'chips' },
       r.check && r.bookingPath ? h('a', { class: 'chip check', href: bookingHref(id, r.bookingPath) }, 'Check this') : null,
-      r.missing ? h('span', { class: 'chip warn', text: 'Booking missing' }) : null) : null,
+      r.missing ? h('span', { class: 'chip warn', text: 'Booking missing' }) : null,
+      undo.has(r.path) ? h('button', {
+        class: 'chip undo', type: 'button',
+        onclick: async () => {
+          await ctx.ws.restore(id, r.path, /** @type {string} */ (undo.get(r.path)), { author: 'user' });
+          ctx.notices.toast(`Undone: ${String(it.title ?? r.path)} is back as it was before Shiori changed it.`);
+          ctx.render();
+        },
+      }, 'Changed by Shiori · Undo') : null) : null,
     r.note ? h('span', { class: 'note sub warn', text: r.note }) : null);
 }
 

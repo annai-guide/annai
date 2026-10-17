@@ -12,7 +12,7 @@
  * @typedef {{ id: string, kind: 'me'|'trip'|'sys', title: string, status: 'active'|'archived',
  *   created: number, updated: number, format: number, tripId?: string, backup?: { at: number, seq: number } }} ScopeRecord
  *   backup: the last saved Backup that held this trip: when, and the last history entry it holds (spec §4.9).
- * @typedef {{ after?: number, before?: number, limit?: number, reverse?: boolean, types?: string[] }} EventQuery
+ * @typedef {{ after?: number, before?: number, limit?: number, reverse?: boolean, types?: string[], notTypes?: string[] }} EventQuery
  *
  * @typedef {object} Tx
  * @property {(hash: string) => Promise<BlobRecord|undefined>} getBlob
