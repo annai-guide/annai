@@ -37,23 +37,38 @@ export function whileText(activity) {
  */
 export function liveChip(ctx) {
   const live = ctx.live;
-  const chip = h('button', { class: 'chip live-chip', type: 'button', 'aria-expanded': 'false' });
-  const menu = h('div', { class: 'voice-menu live-menu', role: 'group', 'aria-label': 'Live mode', hidden: true });
+  const chip = h('button', { class: 'chip live-chip', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true', 'aria-controls': 'live-menu' });
+  const menu = h('div', { id: 'live-menu', class: 'voice-menu live-menu', role: 'group', 'aria-label': 'Live mode', hidden: true });
+  /** Open, or opening: a second tap while it reads the plan's places closes it, rather than opening it again. */
+  let shown = false;
+  let opens = 0;
+  /** A tap anywhere else closes it. @param {Event} e */
+  const outside = (e) => { if (!el.contains(/** @type {Node} */ (e.target))) close(); };
   const close = () => {
+    shown = false;
+    opens++;
     menu.hidden = true;
     menu.replaceChildren();
     chip.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+  };
+  /** @param {Node[]} items */
+  const showItems = (items) => {
+    menu.replaceChildren(...items);
+    menu.hidden = false;
   };
   const open = async () => {
+    shown = true;
+    const mine = ++opens;
+    chip.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
     const sim = ctx.sim;
     if (sim?.running) {
       // A simulation has live mode: the chip pauses or stops it (7b choice 10).
-      menu.replaceChildren(
+      showItems([
         h('button', { class: 'btn', type: 'button', onclick: () => { close(); if (sim.state?.paused) sim.resume(); else sim.pause(); } }, sim.state?.paused ? 'Resume the simulation' : 'Pause the simulation'),
         h('button', { class: 'btn', type: 'button', onclick: () => { close(); sim.stop(); } }, 'Stop the simulation'),
-        h('a', { class: 'btn', href: '#/simulate', onclick: () => close() }, 'Simulate a trip'));
-      menu.hidden = false;
-      chip.setAttribute('aria-expanded', 'true');
+        h('a', { class: 'btn', href: '#/simulate', onclick: () => close() }, 'Simulate a trip')]);
       return;
     }
     const items = [h('button', {
@@ -89,11 +104,9 @@ export function liveChip(ctx) {
         }, p.name));
       }
     }
-    menu.replaceChildren(...items);
-    menu.hidden = false;
-    chip.setAttribute('aria-expanded', 'true');
+    if (mine === opens) showItems(items); // else it was closed while the places were read
   };
-  chip.addEventListener('click', () => { if (menu.hidden) open(); else close(); });
+  chip.addEventListener('click', () => { if (shown) close(); else open(); });
 
   const show = () => {
     chip.textContent = liveText(live);
@@ -102,7 +115,7 @@ export function liveChip(ctx) {
   live.onChange(show);
   ctx.sim?.onChange(show);
   show();
-  const el = h('div', { class: 'voice-chip-wrap' }, chip, menu);
+  const el = h('div', { class: 'voice-chip-wrap live-wrap' }, chip, menu);
   // Escape closes it, from the chip or from inside the menu.
   el.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
     if (e.key !== 'Escape' || menu.hidden) return;

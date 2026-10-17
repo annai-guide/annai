@@ -93,7 +93,9 @@ body { padding-bottom: 170px; }
 .voice-menu .btn { min-height: 44px; min-width: 64px; }
 .voice-menu .btn[aria-pressed='true'] { background: var(--ai-wash); color: var(--ai); border-color: var(--ai); }
 .live-chip.on { border-color: var(--ai); color: var(--ai); }
-.live-menu { flex-direction: column; align-items: stretch; min-width: 260px; max-height: 60vh; overflow-y: auto; }
+/* The live menu sits above the dock, centred on the screen, so a narrow phone shows all of it. */
+.live-wrap { position: static; }
+.live-menu { flex-direction: column; align-items: stretch; width: min(260px, calc(100vw - 24px)); max-height: 60vh; overflow-y: auto; }
 .live-menu .sub { margin: 4px 6px 0; }
 .caption { max-width: 560px; margin: 0 auto 6px; padding: 8px 12px; border-radius: 12px; background: var(--sheet); border: 1px solid var(--line); white-space: pre-line; overflow-wrap: anywhere; }
 .dock.voice .seat.dock { width: 92px; height: 92px; }

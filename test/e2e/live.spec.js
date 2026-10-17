@@ -193,3 +193,31 @@ test("Trace → Live shows the firings, reminders and switches however many loca
   await filterTrace(page, { kind: 'Live', type: 'trigger' });
   await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' })).toHaveCount(1);
 });
+
+test('the live menu fits a narrow phone, says it pops up, closes on a tap elsewhere, and a double tap never opens it twice', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await openApp(page);
+  const trip = await startTrip(page, 'Big Sur');
+  await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: plus(Date.now(), 60), tz: 'UTC' }, place: BIXBY } } });
+  await page.goto('/#/now');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  const chip = page.locator('.live-chip');
+  const menu = page.getByRole('group', { name: 'Live mode' });
+  await expect(chip).toHaveAttribute('aria-haspopup', 'true');
+  await chip.click();
+  await expect(menu).toBeVisible();
+  const box = await menu.boundingBox();
+  expect(box && box.x >= 0 && box.x + box.width <= 320).toBe(true);
+  await page.getByRole('heading', { name: 'Big Sur' }).click();
+  await expect(menu).toBeHidden();
+  await expect(chip).toHaveAttribute('aria-expanded', 'false');
+  // With no location, the menu reads the plan's places as it opens: a second tap meanwhile closes it.
+  await liveOn(page);
+  await expect(chip).toHaveText('Live · no location');
+  await chip.dblclick();
+  await expect(menu).toBeHidden();
+  await chip.click();
+  await expect(menu.getByText('Where are you?')).toHaveCount(1);
+  await expect(menu.getByRole('button', { name: 'Bixby Creek Bridge' })).toHaveCount(1);
+});
