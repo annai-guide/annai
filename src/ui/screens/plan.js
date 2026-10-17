@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { planRows, planDays, legKm, distanceText, dayLabel, beforeShiori, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
+import { planRows, planDays, legKm, distanceText, dayLabel, shioriUndos, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
@@ -29,13 +29,8 @@ export async function renderPlan(ctx, route) {
   const locale = navigator.language || 'en-US';
   const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz, locale });
   const { days, untimed } = planDays(rows, trip);
-  /** @type {Map<string, { restore: string } | { remove: true }>} plan files Shiori changed last, and what Undo does (choice 9) */
-  const undo = new Map();
-  for (const x of plan.list) {
-    if (x.author !== 'shiori') continue;
-    const old = beforeShiori(await ctx.ws.history(id, x.path));
-    if (old) undo.set(x.path, old);
-  }
+  // Plan files Shiori changed last, and what Undo does (choice 9), from one read of the log.
+  const undo = await shioriUndos(ctx.ws, id, plan.list);
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
 
   const tabs = [...days.map((d) => ({ key: d.key, label: dayLabel(d.key, locale), rows: d.rows })), ...(untimed.length ? [{ key: '', label: `No time yet (${untimed.length})`, rows: untimed }] : [])];

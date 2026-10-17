@@ -155,3 +155,22 @@ export function beforeShiori(history) {
   const first = history[k].old;
   return first ? { restore: first } : { remove: true };
 }
+
+/**
+ * What Undo does for each plan file Shiori changed last, from one read of the log (B7: not one for
+ * each item). @param {import('./workspace.js').Workspace} ws @param {string} scope
+ * @param {{ path: string, author: string }[]} files the plan's files, with who wrote each last
+ * @returns {Promise<Map<string, { restore: string } | { remove: true }>>}
+ */
+export async function shioriUndos(ws, scope, files) {
+  /** @type {Map<string, { restore: string } | { remove: true }>} */
+  const out = new Map();
+  const hers = files.filter((f) => f.author === 'shiori');
+  if (!hers.length) return out;
+  const all = await ws.histories(scope);
+  for (const f of hers) {
+    const u = beforeShiori(all.get(f.path) ?? []);
+    if (u) out.set(f.path, u);
+  }
+  return out;
+}
