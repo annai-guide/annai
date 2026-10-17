@@ -28,7 +28,7 @@ import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
-import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi } from './slots.js';
+import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi, made } from './slots.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
 const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp };
@@ -65,16 +65,9 @@ export function startShell(root, core) {
   // A plugin may make the whole dock (spec §16.4: named components); when its dock fails, annai's own is used.
   const makeDock = () => {
     const c = component(ctx, 'dock');
-    if (c) {
-      try {
-        const made = c.item.create(pluginUi(ctx, c.pluginId));
-        if (!(made?.el instanceof Node)) throw new Error('its dock create() must return { el }');
-        return { el: made.el, setLarge() {}, refreshSlots() {} };
-      } catch (e) {
-        core.registry?.fail(c.pluginId, 'dock', e);
-      }
-    }
-    return createDock(ctx);
+    const theirs = c && made(ctx, c, 'dock', () => c.item.create(pluginUi(ctx, c.pluginId)), (/** @type {any} */ d) =>
+      d?.el instanceof Node ? null : 'its dock create() must return { el }');
+    return theirs ? { el: theirs.el, setLarge() {}, refreshSlots() {} } : createDock(ctx);
   };
   let dock = core.agent ? makeDock() : null;
   let dockMadeFor = dockKey(ctx);

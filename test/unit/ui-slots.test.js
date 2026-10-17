@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, cardSchema, SLOTS, COMPONENTS } from '../../src/core/ui-slots.js';
+import { Registry } from '../../src/core/registry.js';
 import { files, hostKit } from './package-kit.js';
 
 const draw = () => {};
@@ -70,4 +71,37 @@ test("a plugin's UI parts are registered under its id, refused with the reason w
     'index.js': "export function activate(annai) { annai.ui.slot('dock-action', { id: 'x', label: 'X', icon: '≈' }); }",
   }));
   await assert.rejects(host.start('wrong'), /the dock action x needs run/);
+});
+
+test('8b-4: a drawing, a dock action or a component that works ends its plugin\'s run of failures', async () => {
+  const { mount, runAction, made } = await import('../../src/ui/slots.js');
+  const registry = new Registry({ maxFailures: 3 });
+  const ctx = { registry };
+  const el = () => /** @type {any} */ ({ hidden: false, replaceChildren() {} });
+  const entry = (/** @type {any} */ item) => ({ pluginId: 'flaky', item });
+  const broke = () => { throw new Error('broke'); };
+  const twoFailures = async () => {
+    mount(ctx, entry({}), el(), broke);
+    runAction(ctx, entry({ id: 'go', run: async () => broke() }));
+    await new Promise((r) => setTimeout(r, 0));
+  };
+  /** Each way of working, between two failures before and two after, keeps the plugin on. @type {[string, () => unknown][]} */
+  const works = [
+    ['a drawing that returns', () => mount(ctx, entry({}), el(), () => undefined)],
+    ['a drawing whose promise resolves', async () => { mount(ctx, entry({}), el(), async () => () => {}); await new Promise((r) => setTimeout(r, 0)); }],
+    ['a dock action whose run returns', () => runAction(ctx, entry({ id: 'go', run: () => {} }))],
+    ['a dock action whose promise resolves', async () => { runAction(ctx, entry({ id: 'go', run: async () => {} })); await new Promise((r) => setTimeout(r, 0)); }],
+    ['an avatar or dock create that made something usable', () => assert.deepEqual(made(ctx, entry({}), 'avatar', () => ({ el: 1 }), (x) => (x.el ? null : 'no el')), { el: 1 })],
+  ];
+  for (const [how, work] of works) {
+    await twoFailures();
+    await work();
+    await twoFailures();
+    assert.equal(registry.isDisabled('flaky'), false, how);
+    registry.enable('flaky');
+  }
+  // A create that made nothing usable is a failure, and annai's own is used instead.
+  assert.equal(made(ctx, entry({}), 'dock', () => ({}), () => 'its dock create() must return { el }'), null);
+  await twoFailures();
+  assert.equal(registry.isDisabled('flaky'), true);
 });

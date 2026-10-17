@@ -3,7 +3,7 @@ import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
 import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
-import { component, mount, cleanUp, slotEntries, pluginUi } from './slots.js';
+import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
@@ -113,14 +113,7 @@ export function createDock(ctx) {
     }));
     pluginActions.replaceChildren(...slotEntries(ctx, 'ui:dock-action').map((e) => h('button', {
       class: 'ib plugin-action', type: 'button', 'aria-label': String(e.item.label), title: String(e.item.label),
-      onclick: () => {
-        try {
-          const r = e.item.run(pluginUi(ctx, e.pluginId));
-          if (r && typeof r.catch === 'function') r.catch((/** @type {unknown} */ err) => ctx.registry?.fail(e.pluginId, `dock action ${e.item.id}`, err));
-        } catch (err) {
-          ctx.registry?.fail(e.pluginId, `dock action ${e.item.id}`, err);
-        }
-      },
+      onclick: () => runAction(ctx, e),
     }, h('span', { class: 'ib-icon', 'aria-hidden': 'true', text: String(e.item.icon) }))));
   };
   refreshSlots();
@@ -151,14 +144,7 @@ export function createDock(ctx) {
  */
 function dockAvatar(ctx) {
   const c = component(ctx, 'avatar');
-  if (c) {
-    try {
-      const a = c.item.create({ size: 'dock' });
-      if (!(a?.el instanceof Node) || typeof a.setState !== 'function' || typeof a.setLevel !== 'function') throw new Error('its avatar create() must return el, setState and setLevel');
-      return { glance() {}, blink() {}, ...a };
-    } catch (e) {
-      ctx.registry?.fail(c.pluginId, 'avatar', e);
-    }
-  }
-  return createAvatar({ size: 'dock' });
+  const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
+    a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : 'its avatar create() must return el, setState and setLevel');
+  return a ? { glance() {}, blink() {}, ...a } : createAvatar({ size: 'dock' });
 }
