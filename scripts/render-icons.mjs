@@ -1,23 +1,57 @@
-// Renders the PNG app icons from assets/shiori.svg with Playwright's Chromium (dev-only tool).
+// Renders Android's maskable icon from the user's app icon (a dev-time tool, with Playwright's Chromium):
+//   node scripts/render-icons.mjs <the icon's head on a transparent background, a PNG>
+// Her head goes on a flat vermilion square, the icon's own, sized so all of it, her ears too, is inside the middle
+// circle (80% across) that Android keeps whatever the mask. The other icons in assets/icons/ are the user's own files.
 import { chromium } from '@playwright/test';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { decodePng } from './shiori-art/png.mjs';
 
-const svg = await readFile(new URL('../assets/shiori.svg', import.meta.url), 'utf8');
-const out = new URL('../assets/icons/', import.meta.url);
-await mkdir(out, { recursive: true });
-const targets = [
-  { file: 'icon-192.png', size: 192, pad: 0.08 },
-  { file: 'icon-512.png', size: 512, pad: 0.08 },
-  { file: 'apple-touch-icon.png', size: 180, pad: 0.08 },
-  { file: 'icon-maskable-512.png', size: 512, pad: 0.2 },
-];
+const src = process.argv[2];
+if (!src) {
+  console.error('usage: node scripts/render-icons.mjs <icon head PNG>');
+  process.exit(2);
+}
+const VERMILION = '#ed6849'; // sampled from the icon's seat
+const SIZE = 512;
+const SAFE = 0.4 * SIZE * 0.96; // the safe circle's radius, less a little room
+
+const png = await readFile(src);
+const { width, height, data } = decodePng(png);
+const solid = (/** @type {number} */ x, /** @type {number} */ y) => x >= 0 && y >= 0 && x < width && y < height && data[(y * width + x) * 4 + 3] >= 128;
+/** Her outline: solid pixels next to clear ones. */
+const edge = [];
+for (let y = 0; y < height; y++) {
+  for (let x = 0; x < width; x++) if (solid(x, y) && !(solid(x - 1, y) && solid(x + 1, y) && solid(x, y - 1) && solid(x, y + 1))) edge.push([x, y]);
+}
+/** The farthest edge pixel from (cx, cy). @param {number} cx @param {number} cy */
+const reach = (cx, cy) => Math.max(...edge.map(([x, y]) => Math.hypot(x - cx, y - cy)));
+// The centre of the smallest circle around her, found on a coarse grid and then a fine one.
+let best = { cx: width / 2, cy: height / 2, r: reach(width / 2, height / 2) };
+for (const step of [32, 4, 1]) {
+  const around = best;
+  for (let dy = -8; dy <= 8; dy++) {
+    for (let dx = -8; dx <= 8; dx++) {
+      const r = reach(around.cx + dx * step, around.cy + dy * step);
+      if (r < best.r) best = { cx: around.cx + dx * step, cy: around.cy + dy * step, r };
+    }
+  }
+}
+const scale = SAFE / best.r;
 const browser = await chromium.launch();
 const page = await browser.newPage();
-for (const t of targets) {
-  const inner = Math.round(t.size * (1 - 2 * t.pad));
-  await page.setViewportSize({ width: t.size, height: t.size });
-  await page.setContent(`<!doctype html><html><body style="margin:0;width:${t.size}px;height:${t.size}px;display:grid;place-items:center;background:#fbe5e1"><div style="width:${inner}px;height:${inner}px">${svg}</div></body></html>`);
-  await writeFile(new URL(t.file, out), await page.screenshot({ type: 'png' }));
-}
+const url = await page.evaluate(async ({ b64, size, colour, scale, cx, cy }) => {
+  const img = new Image();
+  img.src = `data:image/png;base64,${b64}`;
+  await img.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const g = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
+  g.fillStyle = colour;
+  g.fillRect(0, 0, size, size);
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, size / 2 - cx * scale, size / 2 - cy * scale, img.width * scale, img.height * scale);
+  return canvas.toDataURL('image/png');
+}, { b64: png.toString('base64'), size: SIZE, colour: VERMILION, scale, cx: best.cx, cy: best.cy });
 await browser.close();
-console.log('icons written to assets/icons/');
+await writeFile(new URL('../assets/icons/icon-maskable-512.png', import.meta.url), Buffer.from(url.split(',')[1], 'base64'));
+console.log(`assets/icons/icon-maskable-512.png: her head within ${(best.r * scale / SIZE * 200).toFixed(1)}% of the icon across (safe: 80%)`);
