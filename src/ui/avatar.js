@@ -3,10 +3,10 @@ import { h } from './dom.js';
 /**
  * Shiori, the character (spec §16.3): a white fox in a vermilion scarf, with her trail-tape hairpin at her left ear.
  * Her art is the user's art kit, traced by scripts/shiori-art/ into ART: parts that move on their own, like a puppet's,
- * and other drawings of some (ears folded or angled out, her head turned) that take their place. States move the parts
- * with transforms and transitions (shiori.css); her eyes are drawn here, as shapes that change smoothly, never swapped
- * pictures. Her only loops: breathing while asleep, and her tail's tip wagging while she works. A named component:
- * setState, setLevel, glance, blink. Built without innerHTML.
+ * and other drawings of some (ears folded or angled out, her head turned or asleep) that take their place. States move
+ * the parts with transforms and transitions (shiori.css); her eyes and her streamer are drawn here, as shapes that
+ * change smoothly, never swapped pictures. Her only loops: breathing while asleep, and her tail's tip and the
+ * streamer on her marker while she works. A named component: setState, setLevel, glance, blink. Built without innerHTML.
  * @typedef {'sleeping' | 'listening' | 'hearing' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} AvatarState
  */
 
@@ -59,19 +59,20 @@ const front = (e) => ({ eyes: [e, { iris: each(e.iris, (x, y) => [MIRROR - x, y]
 /** Points 1 to 11 of an oval are its top half, 13 to 23 its bottom half. @param {number} i */
 const top = (i) => i <= 12;
 
-/** A thick crescent bowed downward (‿), as in her icon. Points 0 to 11 of the open eye (its right end and top) go
- * along the crescent's top from its inner end, 12 to 23 along its bottom. @returns {Eye} */
-function crescent() {
-  const q = (/** @type {number} */ t, /** @type {number[]} */ [a, b, c]) => (1 - t) ** 2 * a + 2 * t * (1 - t) * b + t * t * c;
-  const at = (/** @type {number} */ t) => [q(t, [265, 328, 398]), q(t, [555, 620, 569])]; // outer end to inner end
+/** A thick crescent bowed downward (‿), as in her icon: along a curve from its outer end (a) round (b) to its inner end
+ * (c), thickest in the middle. Points 0 to 11 of the open eye (its inner end and top) go along the crescent's top
+ * from its inner end, 12 to 23 along its bottom. @param {number[][]} abc @param {number} half its half-thickness at the ends
+ * @returns {Eye} */
+function crescent([a, b, c], half) {
+  const at = (/** @type {number} */ t) => [0, 1].map((k) => (1 - t) ** 2 * a[k] + 2 * t * (1 - t) * b[k] + t * t * c[k]);
   const iris = [];
   for (let i = 0; i < 24; i++) {
     const t = i < 12 ? 1 - i / 12 : (i - 12) / 12;
     const [x, y] = at(t);
     const [x2, y2] = at(t + 0.001);
     const n = Math.hypot(x2 - x, y2 - y);
-    const w = i % 12 ? (10 + 5 * Math.sin(Math.PI * t)) * (i < 12 ? -1 : 1) : 0; // half its thickness, above or below
-    const end = i === 0 ? 10 : i === 12 ? -10 : 0; // its round ends
+    const w = i % 12 ? half * (1 + Math.sin(Math.PI * t) / 2) * (i < 12 ? -1 : 1) * Math.sign(c[0] - a[0]) : 0; // above or below
+    const end = i === 0 ? half : i === 12 ? -half : 0; // its round ends
     iris.push(x + ((x2 - x) * end - (y2 - y) * w) / n, y + ((y2 - y) * end + (x2 - x) * w) / n);
   }
   const [lx, ly] = at(0.16);
@@ -108,7 +109,9 @@ const FRONT = {
   open: front({ iris: OPEN, lash: LASH, light: LIGHT }),
   // Hearing you: about 110% eye and 120% highlight.
   wide: front({ iris: each(OPEN, (x, y) => [CX + (x - CX) * 1.1, 560 + (y - 560) * 1.1]), lash: each(LASH, (x, y) => [CX + (x - CX) * 1.1, 560 + (y - 560) * 1.1]), light: [362, 539, 17.4, 17.4] }),
-  closed: front(crescent()),
+  closed: front(crescent([[265, 555], [328, 620], [398, 569]], 10)),
+  // Asleep, on her asleep head (measured by scripts/shiori-art/measure.mjs, before her head dips).
+  asleep: { eyes: [crescent([[287.7, 561.7], [350.8, 614.3], [413.3, 577.2]], 7.4), crescent([[682.7, 562.7], [616, 613.8], [549.3, 577.2]], 7.4)], look: [0, 0] },
   // Falling asleep or waking: a lid over the top half, its edge curving with the eye (a flat one reads as annoyed).
   drowsy: front({ iris: each(OPEN, (x, y, i) => (top(i) ? [x, 578 - 23 * Math.sqrt(1 - across(x) ** 2)] : [x, y])), lash: each(LASH, (x, y) => [x, y + 52]), light: [362, 589, 9, 9] }),
   sad: front(sad()),
@@ -116,7 +119,7 @@ const FRONT = {
 /** The turned gazes. @type {Record<string, Gaze>} */
 const TURNED = { open: { eyes: [FAR, NEAR], look: [0, 0] }, closed: { eyes: [squashed(FAR), squashed(NEAR)], look: [0, 0] } };
 /** The front eyes each state shows. @type {Record<string, string>} */
-const EYES = { sleeping: 'closed', hearing: 'wide', offline: 'sad' };
+const EYES = { sleeping: 'asleep', hearing: 'wide', offline: 'sad' };
 
 /** @template T @param {T} a @param {T} b @param {number} k 0..1 @returns {T} */
 const mix = (a, b, k) => /** @type {any} */ (typeof a === 'number' ? a + (/** @type {number} */ (b) - a) * k
@@ -184,6 +187,28 @@ function eyes(gazes, first) {
   return { el, to };
 }
 
+// The streamer (README "Streamer"), measured by scripts/shiori-art/measure.mjs from the kit's tape_streamer: the middle
+// of its outline along its top edge, its end's two corners, along its bottom edge, and its root's bottom corner, in
+// the art's units from the middle of its straight root edge. It waves as a path, its root tucked under a bow's knot.
+const STREAMER = [1.3, -22.7, 25.3, -20.7, 49.3, -12.8, 73.3, -3.8, 97.3, 1, 121.3, -3.8, 145.3, -15.3, 169.3, -30.2, 189, -45.5,
+  216.7, 27.5, 169.3, 48.7, 145.3, 53.8, 121.3, 54.7, 97.3, 52, 73.3, 46.8, 49.3, 40.3, 25.3, 31, 1.7, 21.5];
+const LONG = 217; // its length
+/**
+ * A streamer on a knot. @param {number[]} at where its root goes @param {number} k its size @param {number} turn its angle at rest, in degrees
+ */
+function streamer(at, k, turn) {
+  const band = s('path', { class: 'band' });
+  const el = s('g', { class: 'streamer' }, band);
+  const [c, sn] = [Math.cos((turn * Math.PI) / 180), Math.sin((turn * Math.PI) / 180)];
+  /** Its wave: travelling along it, from nothing at its root to `a` units at its end. @param {number} phase @param {number} a */
+  const draw = (phase, a) => band.setAttribute('d', outline(each(STREAMER, (x, y) => {
+    const w = y + a * (x / LONG) ** 1.3 * Math.sin((1.6 * Math.PI * x) / LONG - phase);
+    return [at[0] + k * (x * c - w * sn), at[1] + k * (x * sn + w * c)];
+  })));
+  draw(0, 0);
+  return { el, draw };
+}
+
 /** The wait before the next blink. @param {number} random 0..1 */
 export function nextBlinkMs(random) {
   return Math.round(2600 + random * 5200);
@@ -194,37 +219,40 @@ const GLANCE = 14;
 
 /** @param {{ size?: 'sm' | 'md' | 'dock' | 'big', label?: string }} [o] */
 export function createAvatar({ size = 'md', label } = {}) {
-  const look = eyes(FRONT, 'closed');
+  const look = eyes(FRONT, 'asleep');
   const aside = eyes(TURNED, 'open');
-  // Back to front, as the kit's README lays them: what she leaves while working; her body; her head (ears in their
-  // other poses, then her skull under the upright ears, her head, eyes and hairpin; or her head turned); her tail,
-  // curled in front of her while she sleeps. The hairpin leans with her left ear; its tape swings under the bow.
+  const hair = streamer([689, 361], 1, 38);
+  const flag = streamer([406, 353], 1.3, -8);
+  // Back to front, as the kit's README lays them: what she leaves while working; her body; her tail, wrapped round her
+  // while she sleeps; her head (ears in their other poses, her skull under the upright ears, her head and hairpin; or
+  // her head asleep; her eyes; or her head turned). The hairpin leans with her left ear; her voice swings its streamer.
   const svg = s('svg', { class: 'avsvg', viewBox: '-27 -34 1014 1014', 'aria-hidden': 'true', focusable: 'false' },
     s('g', { class: 'away' },
-      s('g', { class: 'marker' }, part('marker'), group('flag', 'marker-tape'), part('marker-knot')),
+      s('g', { class: 'marker' }, part('marker'), group('grass', 'grass'), flag.el, part('marker-knot')),
       group('paws', 'paws'), group('tip', 'tail-tip')),
     s('g', { class: 'fox' },
       part('body'),
+      group('curl', 'tail-asleep'),
       s('g', { class: 'head' },
         s('g', { class: 'front' },
           group('alt flat-r', 'ear-flat-right'), group('alt flat-l', 'ear-flat-left'), group('alt out-l', 'ear-out-left'),
-          part('caps'), group('ear ear-r', 'ear-right'), group('ear ear-l', 'ear-left'),
-          part('head'), look.el,
-          s('g', { class: 'pin' }, part('pin'), group('tape', 'tape'), part('loop'), part('knot'))),
-        s('g', { class: 'turned' }, part('head-turned'), aside.el)),
-      group('curl', 'tail-sleep')));
+          part('caps'), group('ear ear-r', 'ear-right'), group('ear ear-l', 'ear-left'), part('head'),
+          s('g', { class: 'pin' }, part('pin'), group('tape', 'tape'), hair.el, part('loop'), part('knot'))),
+        group('asleep', 'head-asleep'),
+        look.el,
+        s('g', { class: 'turned' }, part('head-turned'), aside.el))));
   const av = h('span', { class: 'av', dataset: { state: 'sleeping' } }, svg);
   const el = h('span', { class: ['seat', size], dataset: { glow: 'her' }, ...(label ? { role: 'img', 'aria-label': label } : {}) }, av);
   const state = () => av.dataset.state ?? '';
   const gaze = () => EYES[state()] ?? 'open';
+  const turned = () => av.dataset.face === 'turned';
 
   const eyesOpen = () => !['sleeping', 'away', 'offline'].includes(state());
   let started = false;
   const blink = () => {
     if (reduced() || !eyesOpen()) return;
     // The eye squashes toward its lower third, ending on the closed shape, and opens again.
-    const pair = state() === 'thinking' ? aside : look;
-    const back = state() === 'thinking' ? 'open' : gaze();
+    const [pair, back] = turned() ? [aside, 'open'] : [look, gaze()];
     pair.to('closed', 75, () => setTimeout(() => eyesOpen() && pair.to(back, 120), 40));
   };
   const schedule = () => setTimeout(() => {
@@ -236,6 +264,48 @@ export function createAvatar({ size = 'md', label } = {}) {
     schedule();
   }, nextBlinkMs(Math.random()));
   if (!reduced()) schedule();
+
+  // Her head turns (Thinking, and back) in the middle of a blink, which hides the cut: there is no half-turned head.
+  let swap = 0;
+  /** @param {boolean} toTurned to the turned head, or back */
+  const face = (toTurned) => {
+    const id = ++swap;
+    const [from, to] = toTurned ? [look, aside] : [aside, look];
+    from.to('closed', 90, () => {
+      if (id !== swap) return;
+      if (toTurned) av.dataset.face = 'turned';
+      else delete av.dataset.face;
+      to.to('closed', 0);
+      to.to(toTurned ? 'open' : gaze(), 150);
+    });
+  };
+
+  // Her streamer waves with her voice while she talks, and on her marker while she works.
+  let level = 0;
+  let waving = 0;
+  let phase = 0;
+  let last = 0;
+  let shown = false;
+  /** @param {number} now */
+  const wave = (now) => {
+    const talking = state() === 'speaking';
+    if ((!talking && state() !== 'away') || reduced() || (shown && !el.isConnected)) {
+      waving = 0;
+      return;
+    }
+    shown ||= el.isConnected;
+    phase += (last ? Math.min(0.1, (now - last) / 1000) : 0) * (talking ? 3 + 6 * level : 3);
+    last = now;
+    if (talking) hair.draw(phase, 3 + 16 * level);
+    else flag.draw(phase, 9);
+    waving = requestAnimationFrame(wave);
+  };
+  const waves = () => {
+    if (waving || reduced()) return;
+    last = 0;
+    waving = requestAnimationFrame(wave);
+  };
+
   const api = {
     el,
     get state() { return state() || 'sleeping'; },
@@ -243,20 +313,21 @@ export function createAvatar({ size = 'md', label } = {}) {
     setState(next) {
       const was = state();
       av.dataset.state = next;
+      if ((next === 'thinking') !== turned()) face(next === 'thinking');
       // Falling asleep or waking, her eyes pass through the drowsy shape, whose lid curves with the eye.
-      if (next !== was) {
+      else if (next !== was && !turned()) {
         if ((was === 'sleeping' || next === 'sleeping') && was !== 'offline') look.to('drowsy', 260, () => look.to(gaze(), 360));
         else look.to(gaze(), 320);
-        aside.to('open', 0);
       }
       if (next !== 'speaking' && next !== 'hearing') api.setLevel(0);
+      waves();
     },
-    /** The seat's glow follows the sound: her voice, or yours in grey (spec §16.3). @param {number} level 0..1 @param {'her' | 'you'} [who] */
-    setLevel(level, who = 'her') {
-      const v = String(Math.max(0, Math.min(1, Number(level) || 0)));
+    /** The seat's glow follows the sound: her voice, or yours in grey (spec §16.3). @param {number} value 0..1 @param {'her' | 'you'} [who] */
+    setLevel(value, who = 'her') {
+      level = Math.max(0, Math.min(1, Number(value) || 0));
       el.dataset.glow = who;
-      el.style.setProperty('--amp', v);
-      av.style.setProperty('--amp', v);
+      el.style.setProperty('--amp', String(level));
+      av.style.setProperty('--amp', String(level));
     },
     /** A look toward something, such as a new card: her eyes and their highlights move together. @param {number} dx @param {number} dy */
     glance(dx, dy) {

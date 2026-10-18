@@ -874,9 +874,10 @@ Reference: mockups draft 6.
   - Her tail shows in two states only: asleep (curled across her front) and working (its tip, as she leaves the frame).
   - The Inari foxes hold a token in their mouths; Shiori's token is the hairpin.
 - **Her art** comes from the user's art kit, whose master picture decides every visible shape, position and colour (soft curved fur, sloping shoulders, dark outlines).
-  - A dev-time tool (`scripts/shiori-art/`) traces the master into parts that move on their own, like a puppet's: body, ears, head, the hairpin, and the tape's tail on it. The kit's other parts fill what the master can't show: her ears folded flat or angled out, her head turned three-quarters (from the kit's turned master), her curled tail, her tail's tip, and her trail marker.
+  - A dev-time tool (`scripts/shiori-art/`) traces the master into parts that move on their own, like a puppet's: body, ears, head, the hairpin, and the tape's tail on it. The kit's other parts fill what the master can't show: her ears folded flat or angled out, her head turned three-quarters (from the kit's turned master), her head asleep and her tail wrapped round her (from the kit's asleep masters), her tail's tip, and her trail marker in its grass.
   - The parts are one SVG file, `assets/shiori.svg`, which the service worker keeps for offline use.
-  - States move the parts with transforms and transitions. Each upright ear leans from its base, which stays put, so the seam with her head never opens; the hairpin moves with her left ear. A pose past what a lean can do (an ear folded or angled out, her head turned) is its own drawing, which takes over halfway through the move.
+  - States move the parts with transforms and transitions. Each upright ear leans from its base, which stays put, so the seam with her head never opens; the hairpin moves with her left ear. A pose past what a lean can do (an ear folded or angled out, her head asleep) is its own drawing, which takes over halfway through the move. Her head turns to the side (Thinking) in the middle of a blink, which hides the cut.
+  - The pink tape streamer is drawn live too, as a path that waves: from her hairpin's bow while she talks, and from her marker's knot while she works.
   - Her eyes are drawn live as SVG shapes, measured from the masters, so blinks, glances and narrowing change smoothly: open, wide, drowsy (a lid whose edge curves with the eye), sad (half-lidded, the lids sloping down toward the outer corners, never flat), closed (a thick ‿, as on the app icon), and the turned head's own pair.
   - Her seat is pale tea green, a darker tea in dark mode, with a dark ring. On the dark seat, her trail marker's twig is lighter. The app icon stays vermilion.
   - The expression sheet in the user's art kit is the target for how each state looks.
@@ -884,17 +885,17 @@ Reference: mockups draft 6.
 
 | State | Look | Dock label |
 |---|---|---|
-| Asleep | eyes closed, head lowered onto her big curled tail in front of her, ears folded flat, slow breathing (a loop) | Tap to talk |
+| Asleep | eyes closed, ears folded flat, her head dipped and resting on her tail, which is wrapped round her; slow breathing lifts her, and her tail with it (a loop) | Tap to talk |
 | Listening | facing you, ears up | Listening |
 | Hearing you | ears leaning in, eyes wide; the seat glow (grey) follows your voice level | Hearing you |
-| Thinking | head turned to the side, looking up and away | Thinking |
-| Talking | facing you; her head, the seat glow (vermilion) and the tape's streamer follow her voice level | Tap to interrupt |
+| Thinking | head turned to the side (mid-blink), looking up and away | Thinking |
+| Talking | facing you, open eyes; her head, the seat glow (vermilion) and the streamer, which waves and swings out, follow her voice level | Tap to interrupt |
 | Your turn | facing you, leaning, head tilted, her left ear angled out | Waiting for your OK |
-| Working | stepped out of her seat, leaving her trail marker (its ribbon flying), paw prints, and her tail's tip, wagging gently (a loop); tap it to see what she's doing | Working on … |
+| Working | stepped out of her seat, leaving her trail marker in its grass, its streamer waving, paw prints, and her tail's tip, wagging gently (loops); tap it to see what she's doing | Working on … |
 | Offline | present, grey and dim, sad half-lidded eyes with no highlight, ears folded flat | Offline · reminders still work |
 
-- **Movement is driven by events and transitions:** blinks at random intervals, a glance toward a newly appearing card, ears reacting. Only two loops: her breathing while asleep, and her tail's tip wagging while she works.
-- **Reduced-motion preference:** no glances, no transitions and no loops.
+- **Movement is driven by events and transitions:** blinks at random intervals, a glance toward a newly appearing card, ears reacting, the streamer following her voice. The only loops: her breathing while asleep, and while she works, her tail's tip wagging and her marker's streamer waving.
+- **Reduced-motion preference:** no glances, no transitions, no waving and no loops. Her voice still swings the streamer, as a still pose.
 - **The glow follows the real audio level,** read from Web Audio analysers on output and input.
 - **The avatar is a named component** with this interface:
   - `setState(state)`
