@@ -32,7 +32,7 @@ event: response.function_call_arguments.delta
 data: {"type":"response.function_call_arguments.delta","item_id":"fc_a","output_index":1,"delta":"\"Big Sur\"}","sequence_number":10}
 
 event: response.function_call_arguments.done
-data: {"type":"response.function_call_arguments.done","item_id":"fc_a","output_index":1,"name":"weather","arguments":"{\"place\":\"Big Sur\"}","sequence_number":11}
+data: {"type":"response.function_call_arguments.done","item_id":"fc_a","output_index":1,"arguments":"{\"place\":\"Big Sur\"}","sequence_number":11}
 
 event: response.output_item.done
 data: {"type":"response.output_item.done","output_index":1,"item":{"id":"fc_a","type":"function_call","status":"completed","call_id":"call_a","name":"weather","arguments":"{\"place\":\"Big Sur\"}"},"sequence_number":12}
@@ -44,7 +44,7 @@ event: response.function_call_arguments.delta
 data: {"type":"response.function_call_arguments.delta","item_id":"fc_b","output_index":2,"delta":"{\"to\":\"Carmel\"}","sequence_number":14}
 
 event: response.function_call_arguments.done
-data: {"type":"response.function_call_arguments.done","item_id":"fc_b","output_index":2,"name":"route","arguments":"{\"to\":\"Carmel\"}","sequence_number":15}
+data: {"type":"response.function_call_arguments.done","item_id":"fc_b","output_index":2,"arguments":"{\"to\":\"Carmel\"}","sequence_number":15}
 
 event: response.output_item.done
 data: {"type":"response.output_item.done","output_index":2,"item":{"id":"fc_b","type":"function_call","status":"completed","call_id":"call_b","name":"route","arguments":"{\"to\":\"Carmel\"}"},"sequence_number":16}
