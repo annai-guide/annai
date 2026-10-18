@@ -1,9 +1,11 @@
-// Renders Android's maskable icon from the user's app icon (a dev-time tool, with Playwright's Chromium):
+// Renders Android's maskable icon from the user's app icon (a dev-time tool, with Playwright's Chromium and Docker):
 //   node scripts/render-icons.mjs <the icon's head on a transparent background, a PNG>
 // Her head goes on a flat vermilion square, the icon's own, sized so all of it, her ears too, is inside the middle
 // circle (80% across) that Android keeps whatever the mask. The other icons in assets/icons/ are the user's own files.
 import { chromium } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { decodePng } from './shiori-art/png.mjs';
 
 const src = process.argv[2];
@@ -53,5 +55,9 @@ const url = await page.evaluate(async ({ b64, size, colour, scale, cx, cy }) => 
   return canvas.toDataURL('image/png');
 }, { b64: png.toString('base64'), size: SIZE, colour: VERMILION, scale, cx: best.cx, cy: best.cy });
 await browser.close();
-await writeFile(new URL('../assets/icons/icon-maskable-512.png', import.meta.url), Buffer.from(url.split(',')[1], 'base64'));
+const icons = new URL('../assets/icons/', import.meta.url);
+await writeFile(new URL('icon-maskable-512.png', icons), Buffer.from(url.split(',')[1], 'base64'));
+// Made smaller without changing a pixel (oxipng, lossless, in Docker), as the other icons are.
+execFileSync('docker', ['run', '--rm', '-v', `${fileURLToPath(icons)}:/t`, 'alpine:3.20', 'sh', '-c',
+  'apk add --no-cache oxipng >/dev/null && oxipng -o max --strip safe /t/icon-maskable-512.png'], { stdio: 'inherit' });
 console.log(`assets/icons/icon-maskable-512.png: her head within ${(best.r * scale / SIZE * 200).toFixed(1)}% of the icon across (safe: 80%)`);
