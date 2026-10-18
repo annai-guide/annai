@@ -36,11 +36,11 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
     const origin = typeof req.headers.origin === 'string' ? req.headers.origin : null;
     /** @type {Record<string, string>} */
     const cors = origin && allowed.has(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : { Vary: 'Origin' };
-    /** @param {number} status @param {any} body */
-    const answer = (status, body, more = {}) => {
+    /** @param {number} status @param {any} body @param {Record<string, string>} [more] @param {() => void} [then] once it is written */
+    const answer = (status, body, more = {}, then) => {
       if (res.headersSent) return;
       res.writeHead(status, { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...more });
-      res.end(JSON.stringify(body));
+      res.end(JSON.stringify(body), then);
     };
     if (origin && !allowed.has(origin)) {
       req.resume();
@@ -66,10 +66,10 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
       answer(405, { error: 'method', message: 'The sink takes POST.' }, { Allow: 'GET, POST, OPTIONS' });
       return;
     }
-    const tooBig = () => answer(413, { error: 'size', message: `The body is larger than the ${BODY_MAX} bytes the sink reads.` }, { Connection: 'close' });
+    // Refused as soon as it is too big, whatever comes after; the answer is written before the connection goes.
+    const tooBig = () => answer(413, { error: 'size', message: `The body is larger than the ${BODY_MAX} bytes the sink reads.` }, { Connection: 'close' }, () => req.socket.destroy());
     if (Number(req.headers['content-length'] ?? 0) > BODY_MAX) {
       tooBig();
-      req.destroy();
       return;
     }
     const got = digest(String(req.headers.authorization ?? ''));
@@ -92,7 +92,6 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
       refused = true;
       chunks.length = 0;
       tooBig();
-      req.destroy();
     });
     req.on('end', () => {
       if (refused) return;
