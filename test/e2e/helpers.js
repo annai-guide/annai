@@ -59,6 +59,17 @@ export async function openApp(page, hash = '#/trips') {
   await expect(page.locator('main.view > *')).toBeVisible();
 }
 
+/**
+ * Turns on Settings → Experimental → "Swipe sideways to move between tabs", which is off by default,
+ * and waits until the shell takes swipes.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function turnOnSwipes(page) {
+  await page.evaluate(() => { location.hash = '#/experimental'; });
+  await page.getByRole('checkbox', { name: 'Swipe sideways to move between tabs' }).check();
+  await expect(page.locator('main.view')).toHaveClass(/\bswipes\b/);
+}
+
 /** @param {import('@playwright/test').Page} page */
 export async function waitForServiceWorker(page) {
   await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 30_000 });

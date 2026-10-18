@@ -146,7 +146,7 @@ test('Settings → About: the build, the licence, the source, and every credit; 
 
 test('About fits a phone 320 px wide', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  for (const at of ['#/about', '#/about/licence', '#/about/fonts']) {
+  for (const at of ['#/about', '#/about/licence', '#/about/fonts', '#/experimental']) {
     await openApp(page, at);
     await expect(h1(page)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), at).toBe(0);

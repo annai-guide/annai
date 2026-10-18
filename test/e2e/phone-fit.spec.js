@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, turnOnSwipes } from './helpers.js';
 
 // What the user saw on an iPhone (2026-10-18): the page scrolled sideways, a date box stuck out of
 // its card, Shiori sat over the camera button in a corner, and the top bar hid that it scrolls.
 const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/backups', '#/notifications', '#/shiori',
-  '#/about', '#/welcome'];
+  '#/about', '#/experimental', '#/welcome'];
 
 for (const width of [320, 420]) {
   test(`every screen fits a phone ${width} px wide: nothing scrolls sideways`, async ({ page }) => {
@@ -83,25 +83,45 @@ test('a screen you go to opens at its top, and Back brings you back to where you
   expect(Math.abs(await page.evaluate(() => scrollY) - was)).toBeLessThan(3);
 });
 
+/**
+ * A sideways swipe on the screen, from x to x at height y, as a touch.
+ * @param {import('@playwright/test').Page} page @param {number} from @param {number} to @param {number} [y]
+ */
+const swipe = (page, from, to, y = 400) => page.evaluate(([a, b, yy]) => {
+  const main = /** @type {HTMLElement} */ (document.querySelector('main'));
+  const at = (/** @type {number} */ x) => document.elementFromPoint(x, yy) ?? main;
+  const opts = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: yy, pointerId: 7 });
+  at(a).dispatchEvent(new PointerEvent('pointerdown', opts(a)));
+  at(b).dispatchEvent(new PointerEvent('pointerup', opts(b)));
+}, [from, to, y]);
+
+// Swiping between tabs is experimental and off by default (the user, 2026-10-18): Settings → Experimental.
+test('swiping between tabs is off by default: a sideways swipe stays on its screen, which leaves sideways panning to the browser', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/trips');
+  const current = page.locator('.topnav a[aria-current="page"]');
+  await expect(current).toHaveText('Trips');
+  await swipe(page, 280, 120);
+  await page.waitForTimeout(200);
+  await expect(current).toHaveText('Trips');
+  await expect(page.locator('main.view')).toHaveCSS('touch-action', 'auto');
+});
+
 test('swiping a screen sideways moves along the top bar; not from its edge, nor on something that scrolls sideways', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await openApp(page, '#/trips');
-  const swipe = (/** @type {number} */ from, /** @type {number} */ to, /** @type {number} */ y = 400) => page.evaluate(([a, b, yy]) => {
-    const main = /** @type {HTMLElement} */ (document.querySelector('main'));
-    const at = (/** @type {number} */ x) => document.elementFromPoint(x, yy) ?? main;
-    const opts = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: yy, pointerId: 7 });
-    at(a).dispatchEvent(new PointerEvent('pointerdown', opts(a)));
-    at(b).dispatchEvent(new PointerEvent('pointerup', opts(b)));
-  }, [from, to, y]);
+  await turnOnSwipes(page);
+  await page.evaluate(() => { location.hash = '#/trips'; });
   const current = page.locator('.topnav a[aria-current="page"]');
   await expect(current).toHaveText('Trips');
-  await swipe(280, 120);
+  await expect(page.locator('main.view')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
+  await swipe(page, 280, 120);
   await expect(current).toHaveText('Plan');
-  await swipe(100, 280);
+  await swipe(page, 100, 280);
   await expect(current).toHaveText('Trips');
-  await swipe(10, 200); // from the left edge: the phone's own back gesture
+  await swipe(page, 10, 200); // from the left edge: the phone's own back gesture
   await expect(current).toHaveText('Trips');
-  await swipe(280, 250); // too short
+  await swipe(page, 280, 250); // too short
   await expect(current).toHaveText('Trips');
 });
 
@@ -145,6 +165,9 @@ test('where you were survives a reload: Back after one still brings you there', 
 test('a Settings page belongs to the Settings tab, and swiping from it moves along the top bar', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await openApp(page, '#/models');
+  await turnOnSwipes(page);
+  await page.evaluate(() => { location.hash = '#/models'; });
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
   const current = page.locator('.topnav a[aria-current="page"]');
   await expect(current).toHaveText('Settings');
   await page.evaluate(() => {
@@ -154,4 +177,27 @@ test('a Settings page belongs to the Settings tab, and swiping from it moves alo
     main.dispatchEvent(new PointerEvent('pointerup', opts(280)));
   });
   await expect(current).toHaveText('Trace');
+});
+
+// The bug the user found (2026-10-18): swiping away from a Settings page and back opened Settings itself, at its top.
+test('swiping back into a tab brings back the screen you last had open in it, where you were on it', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/settings');
+  await turnOnSwipes(page);
+  await page.evaluate(() => { location.hash = '#/models'; });
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  await page.evaluate(() => scrollTo(0, 300));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(250);
+  const was = await page.evaluate(() => scrollY);
+  const current = page.locator('.topnav a[aria-current="page"]');
+  await swipe(page, 100, 280, 300);
+  await expect(current).toHaveText('Trace');
+  await expect(page.getByRole('heading', { name: 'Trace', level: 1 })).toBeVisible();
+  await swipe(page, 280, 100, 300);
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('#/models');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(was - 3);
+  // Tapping the tab still opens its first screen.
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 });
