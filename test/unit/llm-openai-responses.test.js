@@ -100,8 +100,8 @@ test('build: a conversation with photos, a PDF, tool calls and results, this mod
   assert.deepEqual(body.input, [
     { role: 'user', content: [
       { type: 'input_text', text: 'What color?' },
-      { type: 'input_image', image_url: 'data:image/png;base64,AAAA', detail: 'auto' },
-      { type: 'input_image', file_id: 'file-1', detail: 'auto' },
+      { type: 'input_image', image_url: 'data:image/png;base64,AAAA' },
+      { type: 'input_image', file_id: 'file-1' },
       { type: 'input_file', filename: 'menu.pdf', file_data: 'data:application/pdf;base64,JVBE' },
     ] },
     RS_1,
@@ -182,6 +182,23 @@ test('build: reasoning goes back only with what followed it in the same reply, a
     { role: 'user', content: [{ type: 'input_text', text: 'Hello?' }] },
     { id: 'rs_3', type: 'reasoning', summary: [], content: [{ type: 'reasoning_text', text: 'Think.' }] },
     { role: 'assistant', content: 'Hi there.', phase: 'final_answer' },
+  ]);
+});
+
+test('build: words with a call or this model’s search after them in the reply are commentary; the rest is the final answer', () => {
+  const ws = { id: 'ws_1', type: 'web_search_call', status: 'completed', action: { type: 'search', query: 'nepenthe hours' } };
+  const s = spec({ request: { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Hours?' }] },
+    { role: 'assistant', parts: [{ type: 'text', text: 'Let me check their hours.' }, { type: 'provider', block: ws, model: MODEL }, { type: 'text', text: 'Open till 10.' }] },
+    { role: 'user', parts: [{ type: 'text', text: 'And the road?' }] },
+    { role: 'assistant', parts: [{ type: 'text', text: 'Asking.' }, { type: 'tool_call', id: 'call_1', name: 'route', input: {} }, { type: 'text', text: 'Then I will say.' }] },
+    { role: 'assistant', parts: [{ type: 'text', text: 'Elsewhere.' }, { type: 'provider', block: { type: 'server_tool_use' }, model: 'claude-x' }] },
+  ] } });
+  const phases = type.build(s).body.input.filter((/** @type {any} */ x) => x.role === 'assistant').map((/** @type {any} */ x) => [x.content, x.phase]);
+  assert.deepEqual(phases, [
+    ['Let me check their hours.', 'commentary'], ['Open till 10.', 'final_answer'],
+    ['Asking.', 'commentary'], ['Then I will say.', 'final_answer'],
+    ['Elsewhere.', 'final_answer'],
   ]);
 });
 
@@ -284,6 +301,22 @@ test('read: a failed response and an error event become ProviderErrors of the ri
   const rate = await readFailing(await fixture('error.sse'));
   assert.ok(rate.error instanceof ProviderError && rate.error.kind === 'rate');
   assert.match(rate.error.message, /Rate limit reached/);
+});
+
+test('read: an error event with a code annai doesn’t know is a bad request when the code says the request was wrong, else a server error', async () => {
+  const error = (/** @type {string} */ code) => `event: error\ndata: ${JSON.stringify({ type: 'error', code, message: `x ${code}`, param: null })}\n\n`;
+  const kinds = [];
+  for (const code of ['invalid_value', 'unsupported_parameter', 'invalid_image_format', 'something_new']) kinds.push((await readFailing(error(code))).error.kind);
+  assert.deepEqual(kinds, ['bad-request', 'bad-request', 'image', 'server']);
+  const failed = `event: response.failed\ndata: ${JSON.stringify({ type: 'response.failed', response: { status: 'failed', error: { code: 'unsupported_value', message: 'No.' } } })}\n\n`;
+  assert.equal((await readFailing(failed)).error.kind, 'bad-request');
+});
+
+test('read: the stop reason comes from the event the response ended with, even without a status', async () => {
+  const incomplete = `event: response.incomplete\ndata: ${JSON.stringify({ type: 'response.incomplete', response: { incomplete_details: { reason: 'max_output_tokens' } } })}\n\n`;
+  assert.deepEqual((await read(incomplete)).at(-1), { type: 'stop', reason: 'length' });
+  const other = `event: response.incomplete\ndata: ${JSON.stringify({ type: 'response.incomplete', response: {} })}\n\n`;
+  assert.deepEqual((await read(other)).at(-1), { type: 'stop', reason: 'other' });
 });
 
 test('read: a web search comes back as provider items, one counted search, and a citation', async () => {
@@ -415,6 +448,7 @@ test('the OpenAI (Responses) template: current models with prices, windows, phot
     assert.equal(m.contextWindow, 922000, 'the most input the 1,050,000-token window takes');
     assert.equal(m.maxOutput, 128000);
     assert.deepEqual(m.input, ['text', 'image']);
+    assert.deepEqual(m.images, { formats: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], maxEdge: 5000, maxBytes: 20000000, maxCount: 1500 });
     assert.equal(m.tools, true);
     assert.deepEqual(m.providerTools, [{ id: 'openai-web-search', name: 'OpenAI web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search' }] }, pricePerCall: 0.01, usageKey: 'web_search_requests' }]);
   }
