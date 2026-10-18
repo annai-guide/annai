@@ -30,6 +30,8 @@ import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
 import { renderAbout } from './screens/about.js';
+import { renderExperimental } from './screens/experimental.js';
+import { readAppSettings } from '../core/settings.js';
 import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi, made } from './slots.js';
 
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
@@ -37,9 +39,9 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 const SECTION = /** @type {Record<string, string>} */ ({
   trip: 'trips', file: 'trips', booking: 'trips', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
   plugins: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
-  voice: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings',
+  voice: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings',
 });
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental };
 
 /**
  * @param {HTMLElement} root
@@ -70,8 +72,16 @@ export function startShell(root, core) {
   drawTabs();
 
   const update = { ready: false, apply: () => {} };
+  // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on (the user,
+  // 2026-10-18). Off, the screen leaves sideways panning to the browser (no touch-action of its own).
+  let swipes = false;
+  const setSwipes = (/** @type {boolean} */ on) => {
+    swipes = on;
+    main.classList.toggle('swipes', on);
+  };
+  if (core.ws) readAppSettings(core.ws).then((a) => setSwipes(a.experimental?.swipeTabs === true)).catch(() => {});
   const ctx = {
-    ...core, notices, update,
+    ...core, notices, update, setSwipes,
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },
     render: () => render(),
   };
@@ -121,6 +131,14 @@ export function startShell(root, core) {
     }
   })());
   let entry = '';
+  // Each tab's screen you last had open, and where you were on it: swiping into the tab brings you back
+  // there (the page-persistence bug, 2026-10-18), where it always opened the tab's first screen at its top.
+  /** @type {Map<string, { hash: string, y: number }>} by the tab's link */
+  const lastIn = new Map();
+  /** The tab and the address of the screen drawn now. @type {{ tab: string | null, hash: string }} */
+  let shown = { tab: null, hash: '' };
+  /** Where a swipe's new history entry scrolls to, once. @type {number | null} */
+  let swipedTo = null;
   addEventListener('scroll', () => { if (entry) scrolls.set(entry, scrollY); }, { passive: true });
   addEventListener('pagehide', () => {
     if (entry) scrolls.set(entry, scrollY);
@@ -157,7 +175,9 @@ export function startShell(root, core) {
     }
     entry = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
     history.replaceState({ ...(history.state ?? {}), annaiScroll: entry }, '');
-    return 0;
+    const y = swipedTo ?? 0;
+    swipedTo = null;
+    return y;
   };
 
   /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
@@ -166,6 +186,7 @@ export function startShell(root, core) {
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
       if (entry) scrolls.set(entry, scrollY);
+      if (shown.tab) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
       pending = arrive();
     }
     cleanUp('screen', my); // what plugins drew on the screen before
@@ -178,6 +199,7 @@ export function startShell(root, core) {
     }
     // The screen you are on stays in view in the top bar, however far along it is.
     const on = links.find((a) => a.hasAttribute('aria-current'));
+    shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash };
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
     if (on) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
@@ -219,7 +241,7 @@ export function startShell(root, core) {
     return false;
   };
   main.addEventListener('pointerdown', (e) => {
-    swipe = e.pointerType === 'touch' && e.isPrimary && e.clientX > 24 && e.clientX < innerWidth - 24 && !ownsSideways(e.target)
+    swipe = swipes && e.pointerType === 'touch' && e.isPrimary && e.clientX > 24 && e.clientX < innerWidth - 24 && !ownsSideways(e.target)
       ? { x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
   });
   main.addEventListener('pointercancel', () => { swipe = null; });
@@ -231,7 +253,11 @@ export function startShell(root, core) {
     if (Math.abs(dx) < 80 || Math.abs(dx) < 2 * Math.abs(e.clientY - s.y) || e.timeStamp - s.t > 700) return;
     const i = links.findIndex((a) => a.hasAttribute('aria-current'));
     const to = i < 0 ? null : links[i + (dx < 0 ? 1 : -1)];
-    if (to) location.hash = /** @type {string} */ (to.getAttribute('href'));
+    if (!to) return;
+    const tab = /** @type {string} */ (to.getAttribute('href'));
+    const last = lastIn.get(tab);
+    swipedTo = last?.y ?? null;
+    location.hash = last?.hash ?? tab;
   });
   // What plugins add redraws when it changes (choice 9 of milestone 8b): once per change, not per item.
   if (core.registry) {

@@ -13,6 +13,19 @@ import { slotEntries } from '../slots.js';
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
 
+/**
+ * Settings' sections in the order a user reaches for them, most often first (the user, 2026-10-18),
+ * Erase last; while an update waits, it comes before everything.
+ * @param {{ updateReady: boolean }} o
+ */
+export function sectionOrder({ updateReady }) {
+  return [...(updateReady ? ['update'] : []), 'models', 'voice', 'notifications', 'backup', 'shiori', 'photos', 'tools', 'plugins', 'storage',
+    'about', 'diagnostics', 'developer', 'experimental', 'erase'];
+}
+
+/** @param {string} line @param {string} href @param {string} label */
+const goTo = (line, href, label) => [h('p', { class: 'sub', text: line }), h('div', { class: 'acts' }, h('a', { class: 'btn', href }, label))];
+
 /** @param {any} ctx */
 export async function renderSettings(ctx) {
   const st = await storageStatus();
@@ -20,9 +33,29 @@ export async function renderSettings(ctx) {
   const exportSlot = h('div', {});
   const places = ctx.backups ? await ctx.backups.list() : [];
   const automatic = places.filter((/** @type {any} */ p) => p.auto !== 'off').map((/** @type {any} */ p) => p.name);
-  return h('div', { class: 'screen' },
-    h('h1', { class: 'title', text: 'Settings' }),
-    section('Storage',
+  /** @type {Record<string, () => Promise<any> | any>} */
+  const sections = {
+    update: () => section('Update',
+      h('p', { class: 'sub', text: `A new version of annai is ready. It is used the next time annai starts. This is annai ${ctx.version}.` }),
+      h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => ctx.update.apply() }, 'Restart annai'))),
+    models: () => section('Models', ...goTo('The endpoints and models Shiori uses, and the order each role tries them in.', '#/models', 'Models')),
+    voice: () => section('Voice', ...goTo('How Shiori speaks and hears you, with a test for each.', '#/voice', 'Voice')),
+    notifications: () => section('Notifications', ...goTo('Reminders while annai is closed, through the push relay, and what it learns.', '#/notifications', 'Notifications')),
+    backup: () => section('Backup',
+      h('p', { class: 'sub', text: app.lastExportAt ? `Last export ${relTime(app.lastExportAt)}.` : 'No export yet. Export regularly: annai keeps everything on this device.' }),
+      h('p', { class: 'sub', text: automatic.length ? `Backing up automatically to ${automatic.join(', ')}.` : 'No automatic backups yet. Add a place to back up to, such as a private GitHub repository.' }),
+      h('div', { class: 'acts' }, h('button', {
+        class: 'btn', type: 'button',
+        onclick: () => exportSlot.replaceChildren(exportPanel(ctx, { kind: 'everything', title: 'everything' })),
+      }, 'Export everything'), h('a', { class: 'btn', href: '#/backups' }, 'Automatic backups')),
+      exportSlot,
+      h('p', { class: 'sub', text: 'A trip someone sent you, or a backup to bring back:' }),
+      openFileButton(ctx, 'Open an annai file')),
+    shiori: () => section('Shiori', ...goTo('Her personality, budgets and housekeeping.', '#/shiori', 'Shiori')),
+    photos: async () => section('Photos', ...(await photoControls(ctx, app))),
+    tools: () => section('Tools', ...goTo('Switches for every tool Shiori has, web search and fetch, and the Jina key.', '#/tools', 'Tools')),
+    plugins: async () => [section('Plugins', ...goTo('Skills and code plugins: install, update, switch off or remove.', '#/plugins', 'Manage plugins')), await pluginPages(ctx)],
+    storage: () => section('Storage',
       h('p', { text: st.persisted ? 'Protected from automatic clearing: yes.' : 'Protected from automatic clearing: no.' }),
       st.quota ? h('p', { class: 'sub', text: `Using ${bytes(st.usage)} of about ${bytes(st.quota)}.` }) : null,
       st.persisted ? null : h('div', { class: 'acts' }, h('button', {
@@ -33,42 +66,18 @@ export async function renderSettings(ctx) {
           ctx.render();
         },
       }, 'Protect my data'))),
-    section('Backup',
-      h('p', { class: 'sub', text: app.lastExportAt ? `Last export ${relTime(app.lastExportAt)}.` : 'No export yet. Export regularly: annai keeps everything on this device.' }),
-      h('p', { class: 'sub', text: automatic.length ? `Backing up automatically to ${automatic.join(', ')}.` : 'No automatic backups yet. Add a place to back up to, such as a private GitHub repository.' }),
-      h('div', { class: 'acts' }, h('button', {
-        class: 'btn', type: 'button',
-        onclick: () => exportSlot.replaceChildren(exportPanel(ctx, { kind: 'everything', title: 'everything' })),
-      }, 'Export everything'), h('a', { class: 'btn', href: '#/backups' }, 'Automatic backups')),
-      exportSlot),
-    section('Photos', ...(await photoControls(ctx, app))),
-    section('Open an annai file', openFileButton(ctx, 'Open an annai file')),
-    section('Models', h('p', { class: 'sub', text: 'The endpoints and models Shiori uses, and the order each role tries them in.' }),
-      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/models' }, 'Models'))),
-    section('Voice', h('p', { class: 'sub', text: 'How Shiori speaks and hears you, with a test for each.' }),
-      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/voice' }, 'Voice'))),
-    section('Notifications', h('p', { class: 'sub', text: 'Reminders while annai is closed, through the push relay, and what it learns.' }),
-      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/notifications' }, 'Notifications'))),
-    section('Shiori', h('p', { class: 'sub', text: 'Her personality, budgets and housekeeping.' }),
-      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/shiori' }, 'Shiori'))),
-    section('Tools', h('p', { class: 'sub', text: 'Switches for every tool Shiori has, web search and fetch, and the Jina key.' }),
-      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/tools' }, 'Tools'))),
-    section('Plugins', h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/plugins' }, 'Manage plugins'))),
-    await pluginPages(ctx),
-    section('About', h('p', { class: 'sub', text: `annai ${ctx.version}: its licence, its source, the credits, and how your keys and data are kept.` }),
-      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/about' }, 'About annai'))),
-    section('App',
-      h('p', { text: `annai ${ctx.version}` }),
-      ctx.update.ready
-        ? h('div', { class: 'acts' }, h('span', { text: 'An update is ready.' }), h('button', { class: 'btn pri', type: 'button', onclick: () => ctx.update.apply() }, 'Restart annai'))
-        : h('p', { class: 'sub', text: 'No update waiting.' })),
-    section('Developer',
-      h('p', { class: 'sub', text: 'Try live mode, the replay and the recap with a simulated trip.' }),
-      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/simulate' }, 'Simulate a trip'))),
-    section('Diagnostics',
+    about: () => section('About', ...goTo(`annai ${ctx.version}: its licence, its source, the credits, and how your keys and data are kept.`, '#/about', 'About annai')),
+    diagnostics: () => section('Diagnostics',
       h('p', { class: 'sub', text: 'A report of recent errors and system events, without your files or keys, to paste into a bug report.' }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => copyDiagnostics(ctx) }, 'Copy diagnostics'))),
-    section('Erase', eraseControls(ctx)));
+    developer: () => section('Developer', ...goTo('Try live mode, the replay and the recap with a simulated trip.', '#/simulate', 'Simulate a trip')),
+    experimental: () => section('Experimental', ...goTo('Features still being tried, such as swiping between tabs. Each is off until you turn it on.', '#/experimental', 'Experimental')),
+    erase: () => section('Erase', eraseControls(ctx)),
+  };
+  /** @type {any[]} */
+  const drawn = [];
+  for (const id of sectionOrder({ updateReady: Boolean(ctx.update?.ready) })) drawn.push(await sections[id]());
+  return h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'Settings' }), ...drawn);
 }
 
 /**
