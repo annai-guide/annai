@@ -195,7 +195,7 @@ async function renderPlace(ctx, id) {
   }, 'Show the backups here');
   const more = inputs.filter((/** @type {any} */ i) => i.f.advanced);
   const help = type.help
-    ? h('p', { class: 'sub' }, type.help, /^https:\/\//.test(type.helpUrl ?? '') ? [' ', h('a', { href: type.helpUrl, target: '_blank', rel: 'noopener' }, type.helpLabel ?? 'How to set it up')] : null)
+    ? h('p', { class: 'sub' }, type.help, /^https:\/\//.test(type.helpUrl ?? '') ? [' ', h('a', { href: type.helpUrl, target: '_blank', rel: 'noopener noreferrer' }, type.helpLabel ?? 'How to set it up')] : null)
     : null;
   return h('div', { class: 'screen' }, ...top,
     holdPanel,
