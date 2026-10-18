@@ -3,9 +3,12 @@ import { isStandalone, platform } from './platform.js';
 
 /** @type {any} */
 let deferred = null;
+/** The Install buttons drawn, shown once the browser offers to install: one listener for all of them. @type {Set<HTMLElement>} */
+const buttons = new Set();
 addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferred = e;
+  for (const b of buttons) b.hidden = false;
 });
 
 /** How to install annai on each platform; the welcome's last step shows them too. */
@@ -28,7 +31,9 @@ export function installButton() {
       install.hidden = true;
     },
   }, 'Install annai');
-  addEventListener('beforeinstallprompt', () => { install.hidden = false; });
+  // Buttons no longer on screen (an earlier step of the welcome) are let go.
+  for (const b of buttons) if (!b.isConnected) buttons.delete(b);
+  buttons.add(install);
   return install;
 }
 

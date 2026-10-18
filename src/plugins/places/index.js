@@ -53,19 +53,24 @@ function sunOnly(i, e) {
   return `${head}sunrise ${hm(t.sunrise)}, sunset ${hm(t.sunset)}, ${golden}.`;
 }
 
-/** A guide's introduction and the names of its sections; or one section. @param {string} title @param {string} text @param {string | undefined} section @param {string} source */
+/**
+ * A guide's introduction and the names of its sections; or one section. Each comes with its article's
+ * address, as Wikipedia's rows do: CC BY-SA credits by a link to the article.
+ * @param {string} title @param {string} text @param {string | undefined} section @param {string} source
+ */
 function guideText(title, text, section, source) {
   const heads = [...text.matchAll(/^(={2,4}) (.+?) \1$/gm)];
+  const from = `(${source}) https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
   if (!section) {
     const intro = (heads.length ? text.slice(0, heads[0].index) : text).trim();
-    return `${title} (${source})\n\n${intro}${heads.length ? `\n\nSections: ${heads.map((m) => m[2]).join(', ')}. Ask for one with section.` : ''}`;
+    return `${title} ${from}\n\n${intro}${heads.length ? `\n\nSections: ${heads.map((m) => m[2]).join(', ')}. Ask for one with section.` : ''}`;
   }
   const k = heads.findIndex((m) => m[2].toLowerCase() === String(section).toLowerCase());
   if (k < 0) return `${title} has no section "${section}". Its sections: ${heads.map((m) => m[2]).join(', ')}.`;
   const level = heads[k][1].length;
   const end = heads.slice(k + 1).find((m) => m[1].length <= level);
   const body = text.slice(/** @type {number} */ (heads[k].index) + heads[k][0].length, end?.index ?? text.length).trim();
-  return `${title}: ${heads[k][2]} (${source})\n\n${body}`;
+  return `${title}: ${heads[k][2]} ${from}\n\n${body}`;
 }
 
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;

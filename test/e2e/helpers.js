@@ -60,6 +60,16 @@ export async function openApp(page, hash = '#/trips') {
 }
 
 /**
+ * After Erase, annai starts as on a new device: the welcome, at the plain start. Goes on to Trips by the top bar.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function pastWelcome(page) {
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to annai' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+}
+
+/**
  * Turns on Settings → Experimental → "Swipe sideways to move between tabs", which is off by default,
  * and waits until the shell takes swipes.
  * @param {import('@playwright/test').Page} page

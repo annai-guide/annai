@@ -45,7 +45,7 @@ test('Settings → Experimental: swiping between tabs is off by default, kept in
 test('Settings → Tools links the Jina key to where Jina gives one, opening outside annai', async ({ page }) => {
   await openApp(page, '#/tools');
   const link = page.getByRole('link', { name: 'Get a free key from Jina' });
-  await expect(link).toHaveAttribute('href', 'https://jina.ai/api-dashboard/key-manager');
+  await expect(link).toHaveAttribute('href', 'https://jina.ai/api-dashboard/key-manager/');
   await expect(link).toHaveAttribute('target', '_blank');
   await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
 });

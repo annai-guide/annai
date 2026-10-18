@@ -135,8 +135,10 @@ export function startShell(root, core) {
   // there (the page-persistence bug, 2026-10-18), where it always opened the tab's first screen at its top.
   /** @type {Map<string, { hash: string, y: number }>} by the tab's link */
   const lastIn = new Map();
-  /** The tab and the address of the screen drawn now. @type {{ tab: string | null, hash: string }} */
-  let shown = { tab: null, hash: '' };
+  /** The tab, the address and the name of the screen drawn now. @type {{ tab: string | null, hash: string, name: string }} */
+  let shown = { tab: null, hash: '', name: '' };
+  /** Screens passed through, never the one a swipe brings back: opening a file or a link to one, installing a plugin. */
+  const PASSING = new Set(['import', 'plugin-install', 'welcome']);
   /** Where a swipe's new history entry scrolls to, once. @type {number | null} */
   let swipedTo = null;
   addEventListener('scroll', () => { if (entry) scrolls.set(entry, scrollY); }, { passive: true });
@@ -186,7 +188,7 @@ export function startShell(root, core) {
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
       if (entry) scrolls.set(entry, scrollY);
-      if (shown.tab) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
+      if (shown.tab && !PASSING.has(shown.name)) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
       pending = arrive();
     }
     cleanUp('screen', my); // what plugins drew on the screen before
@@ -199,7 +201,7 @@ export function startShell(root, core) {
     }
     // The screen you are on stays in view in the top bar, however far along it is.
     const on = links.find((a) => a.hasAttribute('aria-current'));
-    shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash };
+    shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name };
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
     if (on) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
@@ -292,7 +294,7 @@ export function startShell(root, core) {
   return {
     notices,
     render,
-    /** Shown in Settings → App once a new version is waiting. @param {() => void} apply */
+    /** Shown in Settings → Update once a new version is waiting. @param {() => void} apply */
     setUpdateReady(apply) {
       update.ready = true;
       update.apply = apply;

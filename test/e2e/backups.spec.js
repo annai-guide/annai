@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
-import { openApp, filterTrace } from './helpers.js';
+import { openApp, filterTrace, pastWelcome } from './helpers.js';
 import { startGitHub } from '../fakes/github.js';
 
 const REPO = 'me/annai-backup';
@@ -91,6 +91,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
+    await pastWelcome(page);
     await expect(page.getByText('No trips yet.')).toBeVisible();
     await addGitHub(page, gh);
     await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
