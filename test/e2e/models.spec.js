@@ -112,6 +112,29 @@ test('Sign in with OpenRouter: the key arrives and free models fill the roles (O
   expect(await page.content()).not.toContain('sk-or-test-key-123');
 });
 
+test("on an iPhone Home Screen app, Sign in with OpenRouter is a link made before the tap: it opens OpenRouter for a code, and the paste box waits, also after annai reopens", async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'webkit', 'the iPhone Home Screen path');
+  // Safari opens a page only from the tap itself, not after an await (the user's bug, 2026-10-18).
+  await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }));
+  await context.route('https://openrouter.ai/auth**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Your code</p>' }));
+  await openApp(page, '#/models');
+  const link = page.getByRole('link', { name: 'Sign in with OpenRouter' });
+  await expect(link).toHaveAttribute('href', /^https:\/\/openrouter\.ai\/auth\?/);
+  await expect(link).toHaveAttribute('target', '_blank');
+  const href = /** @type {string} */ (await link.getAttribute('href'));
+  const sent = new URL(href);
+  expect(sent.searchParams.get('callback_url')).toBeNull();
+  expect(sent.searchParams.get('code_challenge')).toBeTruthy();
+  const [popup] = await Promise.all([page.waitForEvent('popup'), link.click()]);
+  expect(popup.url()).toBe(href);
+  await popup.close();
+  await expect(page.getByLabel('Paste the code OpenRouter showed you')).toBeVisible();
+  // iPhone may close annai while the user is in Safari: the same sign-in is still waiting for its code.
+  await page.reload();
+  await expect(page.getByLabel('Paste the code OpenRouter showed you')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in with OpenRouter' })).toHaveAttribute('href', href);
+});
+
 test('an endpoint that stores files has a switch for photo uploads, kept when saved (spec §4.8)', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);

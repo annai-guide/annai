@@ -5,7 +5,7 @@ import { addFromTemplate, templateUpdates, speechAdd } from '../../core/llm/temp
 import { renderEndpoint, messageOf } from './endpoint.js';
 import { renderModel } from './model.js';
 import { talkPanel } from '../talk-panel.js';
-import { needsCode, signInUrl, exchange, connectOpenRouter } from '../openrouter.js';
+import { needsCode, signInUrl, codeSignIn, exchange, connectOpenRouter } from '../openrouter.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
@@ -149,21 +149,34 @@ function signInSection(ctx, cfg) {
   if (Object.values(cfg.endpoints).some((e) => e.template?.id === 'openrouter')) return null;
   const status = h('p', { class: 'sub', role: 'status' });
   const codeSlot = h('div', {});
-  const btn = h('button', {
-    class: 'btn pri', type: 'button',
-    onclick: async () => {
-      try {
-        if (needsCode()) {
-          window.open(await signInUrl({ callback: null }), '_blank', 'noopener');
-          codeSlot.replaceChildren(pasteCode(ctx, status));
-        } else {
+  /** @type {HTMLElement} */
+  let btn;
+  if (needsCode()) {
+    // On an iPhone Home Screen app: a real link, its address made before the tap, because Safari opens
+    // a page only from the tap itself (the user, 2026-10-18: after an await, nothing opened).
+    const link = h('a', { class: 'btn pri', target: '_blank', rel: 'noopener noreferrer', 'aria-disabled': 'true' }, 'Sign in with OpenRouter');
+    link.addEventListener('click', (e) => {
+      if (!link.getAttribute('href')) e.preventDefault();
+      else codeSlot.replaceChildren(pasteCode(ctx, status));
+    });
+    codeSignIn().then(({ url, pending }) => {
+      link.setAttribute('href', url);
+      link.removeAttribute('aria-disabled');
+      if (pending) codeSlot.replaceChildren(pasteCode(ctx, status));
+    }, (e) => { status.textContent = messageOf(e); });
+    btn = link;
+  } else {
+    btn = h('button', {
+      class: 'btn pri', type: 'button',
+      onclick: async () => {
+        try {
           location.assign(await signInUrl({ callback: `${location.origin}/` }));
+        } catch (e) {
+          status.textContent = messageOf(e);
         }
-      } catch (e) {
-        status.textContent = messageOf(e);
-      }
-    },
-  }, 'Sign in with OpenRouter');
+      },
+    }, 'Sign in with OpenRouter');
+  }
   return h('section', { class: 'panel', 'aria-label': 'Sign in' },
     h('h2', { class: 'section', text: 'The quickest start' }),
     h('p', { text: 'Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing.' }),
@@ -189,5 +202,7 @@ function pasteCode(ctx, status) {
       }
     },
   }, 'Connect');
-  return h('div', { class: 'row' }, field('Paste the code OpenRouter showed you', code), h('div', { class: 'acts' }, go));
+  return h('div', {},
+    h('p', { class: 'sub', text: 'OpenRouter opens in Safari. Sign in there; it then shows a code. Copy it, come back to annai, and paste it here.' }),
+    h('div', { class: 'row' }, field('Paste the code OpenRouter showed you', code), h('div', { class: 'acts' }, go)));
 }
