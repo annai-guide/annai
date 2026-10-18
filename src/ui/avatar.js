@@ -26,8 +26,16 @@ const part = (id) => s('use', { href: `${ART}#${id}` });
 /** A part in a group of its own, to move. @param {string} cls @param {...string} ids */
 const group = (cls, ...ids) => s('g', { class: cls }, ...ids.map(part));
 
-// Her eyes, in the art's units (3 pixels of the kit's front master), measured by scripts/shiori-art/eyes.mjs: an oval
-// (24 points round it), a lash, and a highlight [x, y, rx, ry]. Front: her right eye, on your left; her left mirrors it.
+// Her eyes, in the art's units (3 pixels of the kit's front master): an oval (24 points round it), a lash, and a
+// highlight [x, y, rx, ry]. Front: her right eye, on your left; her left mirrors it. The turned eyes (FAR, NEAR), the
+// asleep ones and the streamer are scripts/shiori-art/measure.mjs's numbers as it prints them. The front open eye is
+// tuned by hand and differs from what the tool prints, on purpose, so a re-run of the tool doesn't change it:
+//   - OPEN is the tool's oval, but for its 8th and 9th points (by the lash's root), which come from the first round's
+//     measurement and are 1 to 3 units off what the tool prints now;
+//   - LASH was traced by hand from the master, along the lash's outer edge and back along its inner one; the tool
+//     traces the same stroke as a different 13-point outline;
+//   - LIGHT is round: the tool measures 14.5 by 14.8.
+// Don't paste the tool's front-eye numbers over these without looking at her eyes.
 const OPEN = [396, 563, 394, 552, 390, 542, 385, 531, 378, 520, 367, 510, 353, 502, 335, 501, 324, 513, 316, 527, 311, 539, 308, 551,
   306, 563, 307, 576, 310, 588, 316, 600, 326, 609, 339, 615, 353, 617, 367, 615, 380, 611, 391, 601, 396, 588, 397, 575];
 const LASH = [339, 501, 322, 504, 304, 514, 289, 527, 280, 540, 274, 554, 280, 577, 287, 560, 296, 543, 307, 529, 319, 519, 327, 514, 333, 510];
@@ -141,18 +149,15 @@ function outline(p) {
   return `${d}Z`;
 }
 
-const reduced = () => {
-  try {
-    return matchMedia('(prefers-reduced-motion: reduce)').matches;
-  } catch {
-    return false;
-  }
-};
+// One query for every avatar (reduced motion), read at load; each avatar on screen listens for it to change.
+const motion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+const reduced = () => Boolean(motion?.matches);
 
 /**
- * A pair of eyes that change from one gaze to another smoothly. @param {Record<string, Gaze>} gazes @param {string} first
+ * A pair of eyes that change from one gaze to another smoothly, or at once when still() says so.
+ * @param {Record<string, Gaze>} gazes @param {string} first @param {() => boolean} still
  */
-function eyes(gazes, first) {
+function eyes(gazes, first, still) {
   const both = [0, 1].map(() => [s('path', { class: 'iris' }), s('ellipse', { class: 'light' })]);
   const el = s('g', { class: 'eyes' }, ...both.map((e) => s('g', { class: 'eye' }, ...e)));
   /** @param {Gaze} g */
@@ -164,11 +169,11 @@ function eyes(gazes, first) {
   });
   let shown = gazes[first];
   let frame = 0;
-  /** Moves the eyes to a gaze over ms, then calls then. @param {string} name @param {number} ms @param {() => void} [then] */
+  /** Moves the eyes to a gaze over ms, then calls then (unless another move replaces this one). @param {string} name @param {number} ms @param {() => void} [then] */
   const to = (name, ms, then) => {
     cancelAnimationFrame(frame);
     const target = gazes[name];
-    if (ms <= 0 || reduced()) {
+    if (ms <= 0 || still()) {
       draw(shown = target);
       then?.();
       return;
@@ -194,20 +199,35 @@ const STREAMER = [1.3, -22.7, 25.3, -20.7, 49.3, -12.8, 73.3, -3.8, 97.3, 1, 121
   216.7, 27.5, 169.3, 48.7, 145.3, 53.8, 121.3, 54.7, 97.3, 52, 73.3, 46.8, 49.3, 40.3, 25.3, 31, 1.7, 21.5];
 const LONG = 217; // its length
 /**
- * A streamer on a knot. @param {number[]} at where its root goes @param {number} k its size @param {number} turn its angle at rest, in degrees
+ * A streamer's shape on a knot: its wave travels along it, from nothing at its root to `a` units at its end.
+ * @param {number[]} at where its root goes @param {number} k its size @param {number} turn its angle at rest, in degrees
+ * @returns {(phase: number, a: number) => string} its path
  */
-function streamer(at, k, turn) {
-  const band = s('path', { class: 'band' });
-  const el = s('g', { class: 'streamer' }, band);
+const band = (at, k, turn) => {
   const [c, sn] = [Math.cos((turn * Math.PI) / 180), Math.sin((turn * Math.PI) / 180)];
-  /** Its wave: travelling along it, from nothing at its root to `a` units at its end. @param {number} phase @param {number} a */
-  const draw = (phase, a) => band.setAttribute('d', outline(each(STREAMER, (x, y) => {
+  return (phase, a) => outline(each(STREAMER, (x, y) => {
     const w = y + a * (x / LONG) ** 1.3 * Math.sin((1.6 * Math.PI * x) / LONG - phase);
     return [at[0] + k * (x * c - w * sn), at[1] + k * (x * sn + w * c)];
-  })));
-  draw(0, 0);
-  return { el, draw };
-}
+  }));
+};
+/** On her hairpin's bow (shiori.css swings it about the knot), and on her marker's knot, larger. */
+const HAIR = band([689, 361], 1, 38);
+const FLAG = band([406, 353], 1.3, -8);
+/** @param {string} d */
+const streamer = (d) => {
+  const path = s('path', { class: 'band', d });
+  return { el: s('g', { class: 'streamer' }, path), path };
+};
+
+// Working: one wave of the marker's streamer, and her tail's tip wagging, as frames worked out once and stepped through
+// at STEP ms, rather than redrawn every frame for as long as she works.
+const STEP = 1000 / 15;
+const WAVE = 30; // frames in a wave: 2 s
+const WAG = 42; // frames in a wag: 2.8 s
+/** @type {string[]} */
+let waves = [];
+const flagAt = (/** @type {number} */ n) => (waves[n % WAVE] ??= FLAG((2 * Math.PI * (n % WAVE)) / WAVE, 9));
+const wagAt = (/** @type {number} */ n) => `rotate(${f(6 * Math.cos((2 * Math.PI * (n % WAG)) / WAG))} 975 604)`;
 
 /** The wait before the next blink. @param {number} random 0..1 */
 export function nextBlinkMs(random) {
@@ -216,22 +236,29 @@ export function nextBlinkMs(random) {
 
 /** What a glance of 1 moves her eyes, in the art's units. */
 const GLANCE = 14;
+/** How far her head's swap (front, asleep) waits into a dip: halfway through the move, as shiori.css's ear swaps. */
+const SWAP_MS = 200;
 
 /** @param {{ size?: 'sm' | 'md' | 'dock' | 'big', label?: string }} [o] */
 export function createAvatar({ size = 'md', label } = {}) {
-  const look = eyes(FRONT, 'asleep');
-  const aside = eyes(TURNED, 'open');
-  const hair = streamer([689, 361], 1, 38);
-  const flag = streamer([406, 353], 1.3, -8);
+  // Off screen, off the page, or with reduced motion, nothing moves on its own: eyes and heads change at once.
+  let visible = false;
+  const still = () => !visible || reduced();
+  const look = eyes(FRONT, 'asleep', still);
+  const aside = eyes(TURNED, 'open', still);
+  const hair = streamer(HAIR(0, 0));
+  const flag = streamer(FLAG(0, 0));
+  const tip = group('tip', 'tail-tip');
   // Back to front, as the kit's README lays them: what she leaves while working; her body; her tail, wrapped round her
   // while she sleeps; her head (ears in their other poses, her skull under the upright ears, her head and hairpin; or
   // her head asleep; her eyes; or her head turned). The hairpin leans with her left ear; her voice swings its streamer.
+  const body = part('body');
   const svg = s('svg', { class: 'avsvg', viewBox: '-27 -34 1014 1014', 'aria-hidden': 'true', focusable: 'false' },
     s('g', { class: 'away' },
       s('g', { class: 'marker' }, part('marker'), group('grass', 'grass'), flag.el, part('marker-knot')),
-      group('paws', 'paws'), group('tip', 'tail-tip')),
+      group('paws', 'paws'), tip),
     s('g', { class: 'fox' },
-      part('body'),
+      body,
       group('curl', 'tail-asleep'),
       s('g', { class: 'head' },
         s('g', { class: 'front' },
@@ -241,100 +268,210 @@ export function createAvatar({ size = 'md', label } = {}) {
         group('asleep', 'head-asleep'),
         look.el,
         s('g', { class: 'turned' }, part('head-turned'), aside.el))));
-  const av = h('span', { class: 'av', dataset: { state: 'sleeping' } }, svg);
+  // Until her art has arrived, the seat shows alone (data-art="wait"), never eyes floating on it.
+  const av = h('span', { class: 'av', dataset: { state: 'sleeping', face: 'asleep', art: 'wait', hidden: '' } }, svg);
   const el = h('span', { class: ['seat', size], dataset: { glow: 'her' }, ...(label ? { role: 'img', 'aria-label': label } : {}) }, av);
   const state = () => av.dataset.state ?? '';
   const gaze = () => EYES[state()] ?? 'open';
+  /** The head she should show: turned while thinking, asleep while asleep, else her front one (no data-face). */
+  const want = () => (state() === 'thinking' ? 'turned' : state() === 'sleeping' ? 'asleep' : undefined);
+  /** @param {string | undefined} face */
+  const show = (face) => {
+    if (face === av.dataset.face) return;
+    if (face) av.dataset.face = face;
+    else delete av.dataset.face;
+  };
   const turned = () => av.dataset.face === 'turned';
 
-  const eyesOpen = () => !['sleeping', 'away', 'offline'].includes(state());
-  let started = false;
-  const blink = () => {
-    if (reduced() || !eyesOpen()) return;
-    // The eye squashes toward its lower third, ending on the closed shape, and opens again.
-    const [pair, back] = turned() ? [aside, 'open'] : [look, gaze()];
-    pair.to('closed', 75, () => setTimeout(() => eyesOpen() && pair.to(back, 120), 40));
-  };
-  const schedule = () => setTimeout(() => {
-    if (started && !el.isConnected) return; // removed from the page: stop
-    if (el.isConnected) {
-      started = true;
-      blink();
+  // Her head and eyes settle on what her state asks for. The turned head comes and goes in the middle of a blink,
+  // which hides the cut (there is no half-turned one); her asleep head takes over halfway through her head's dip.
+  let swapping = false;
+  /** @type {any} */
+  let reopen;
+  /** @type {any} */
+  let dip;
+  /** @param {number} ms */
+  const settle = (ms) => {
+    if ((want() === 'turned') !== turned()) {
+      swap();
+      return;
     }
-    schedule();
-  }, nextBlinkMs(Math.random()));
-  if (!reduced()) schedule();
-
-  // Her head turns (Thinking, and back) in the middle of a blink, which hides the cut: there is no half-turned head.
-  let swap = 0;
-  /** @param {boolean} toTurned to the turned head, or back */
-  const face = (toTurned) => {
-    const id = ++swap;
-    const [from, to] = toTurned ? [look, aside] : [aside, look];
-    from.to('closed', 90, () => {
-      if (id !== swap) return;
-      if (toTurned) av.dataset.face = 'turned';
-      else delete av.dataset.face;
-      to.to('closed', 0);
-      to.to(toTurned ? 'open' : gaze(), 150);
+    (turned() ? aside : look).to(turned() ? 'open' : gaze(), ms);
+  };
+  const swap = () => {
+    if (swapping) return;
+    swapping = true;
+    clearTimeout(reopen);
+    clearTimeout(dip);
+    (turned() ? aside : look).to('closed', 90, () => {
+      swapping = false;
+      show(want());
+      (turned() ? aside : look).to('closed', 0);
+      settle(150);
     });
   };
 
-  // Her streamer waves with her voice while she talks, and on her marker while she works.
-  let level = 0;
-  let waving = 0;
-  let phase = 0;
-  let last = 0;
-  let shown = false;
-  /** @param {number} now */
-  const wave = (now) => {
-    const talking = state() === 'speaking';
-    if ((!talking && state() !== 'away') || reduced() || (shown && !el.isConnected)) {
-      waving = 0;
-      return;
-    }
-    shown ||= el.isConnected;
-    phase += (last ? Math.min(0.1, (now - last) / 1000) : 0) * (talking ? 3 + 6 * level : 3);
-    last = now;
-    if (talking) hair.draw(phase, 3 + 16 * level);
-    else flag.draw(phase, 9);
-    waving = requestAnimationFrame(wave);
+  const eyesOpen = () => !['sleeping', 'away', 'offline'].includes(state());
+  const blink = () => {
+    if (still() || swapping || !eyesOpen()) return;
+    clearTimeout(reopen);
+    // The eye squashes toward its lower third, ending on the closed shape, and opens again on whatever she is now.
+    (turned() ? aside : look).to('closed', 75, () => { reopen = setTimeout(() => settle(120), 40); });
   };
-  const waves = () => {
-    if (waving || reduced()) return;
-    last = 0;
-    waving = requestAnimationFrame(wave);
+  /** @type {any} */
+  let blinking;
+  const blinks = () => {
+    clearTimeout(blinking);
+    if (still() || !eyesOpen()) return;
+    blinking = setTimeout(() => {
+      blink();
+      blinks();
+    }, nextBlinkMs(Math.random()));
   };
 
+  // Her streamer waves with her voice while she talks (redrawn only when it has moved enough to see), and on her
+  // marker while she works, with her tail's tip, stepped through frames worked out once.
+  let level = 0;
+  let px = 64; // her seat's size on screen
+  let frame = 0;
+  /** @type {any} */
+  let stepping;
+  let n = 0;
+  let phase = 0;
+  let last = 0;
+  let drawn = [0, 0]; // the phase and wave last drawn
+  /** @param {number} now */
+  const talk = (now) => {
+    frame = 0;
+    if (still() || state() !== 'speaking') return;
+    phase = (phase + (last ? Math.min(0.1, (now - last) / 1000) : 0) * (3 + 6 * level)) % (2 * Math.PI);
+    last = now;
+    const a = 3 + 16 * level;
+    // Half a pixel on screen, in the art's units: what moves less is not drawn.
+    const seen = (0.5 * 1014) / px;
+    const turn = Math.abs(phase - drawn[0]);
+    if (Math.abs(a - drawn[1]) > seen || a * Math.min(turn, 2 * Math.PI - turn) > seen) {
+      hair.path.setAttribute('d', HAIR(phase, a));
+      drawn = [phase, a];
+    }
+    frame = requestAnimationFrame(talk);
+  };
+  const work = () => {
+    stepping = undefined;
+    if (still() || state() !== 'away') return;
+    n = (n + 1) % (WAVE * WAG);
+    flag.path.setAttribute('d', flagAt(n));
+    tip.setAttribute('transform', wagAt(n));
+    stepping = setTimeout(work, STEP);
+  };
+  /** Starts or stops what moves on its own, for her state and whether she is seen. */
+  const loops = () => {
+    blinks();
+    if (state() === 'speaking' && !still()) {
+      if (!frame) {
+        last = 0;
+        frame = requestAnimationFrame(talk);
+      }
+    } else {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    }
+    if (state() === 'away' && !still()) {
+      if (!stepping) stepping = setTimeout(work, STEP);
+    } else {
+      clearTimeout(stepping);
+      stepping = undefined;
+    }
+  };
+  const onMotion = () => loops();
+
+  // Her art has arrived once a part has a size; until then she waits, asking every 100 ms while seen, for up to 10 s.
+  let asked = 0;
+  /** @type {any} */
+  let asking;
+  const arrived = () => {
+    try {
+      return /** @type {SVGGraphicsElement} */ (/** @type {unknown} */ (body)).getBBox().width > 0;
+    } catch {
+      return false;
+    }
+  };
+  const ask = () => {
+    clearTimeout(asking);
+    if (av.dataset.art !== 'wait' || !visible || asked >= 100) return;
+    if (arrived()) {
+      delete av.dataset.art;
+      return;
+    }
+    asked++;
+    asking = setTimeout(ask, 100);
+  };
+
+  // Whether she is seen: on the page and on screen. Out of sight, every loop stops (shiori.css pauses its own).
+  /** @param {boolean} seen @param {number} [width] */
+  const see = (seen, width) => {
+    if (width) px = width;
+    if (seen === visible) return;
+    visible = seen;
+    if (seen) {
+      delete av.dataset.hidden;
+      motion?.addEventListener('change', onMotion);
+    } else {
+      av.dataset.hidden = '';
+      motion?.removeEventListener('change', onMotion);
+    }
+    loops();
+    ask();
+  };
+  if (typeof IntersectionObserver === 'function') {
+    new IntersectionObserver((entries) => {
+      const e = entries[entries.length - 1];
+      see(e.isIntersecting && el.isConnected, e.boundingClientRect.width);
+    }).observe(el);
+  } else see(true);
+
+  /** @type {any} */
+  let glancing;
   const api = {
     el,
     get state() { return state() || 'sleeping'; },
     /** @param {import('./avatar.js').AvatarState | string} next */
     setState(next) {
       const was = state();
+      if (next === was) return;
       av.dataset.state = next;
-      if ((next === 'thinking') !== turned()) face(next === 'thinking');
-      // Falling asleep or waking, her eyes pass through the drowsy shape, whose lid curves with the eye.
-      else if (next !== was && !turned()) {
-        if ((was === 'sleeping' || next === 'sleeping') && was !== 'offline') look.to('drowsy', 260, () => look.to(gaze(), 360));
-        else look.to(gaze(), 320);
+      clearTimeout(dip);
+      if (!swapping) {
+        if ((want() === 'turned') !== turned()) swap();
+        else {
+          // Falling asleep or waking, her eyes pass through the drowsy shape, whose lid curves with the eye, and her
+          // asleep head takes over (or gives way) halfway through her head's dip.
+          if ((was === 'sleeping' || next === 'sleeping') && was !== 'offline') look.to('drowsy', 260, () => settle(360));
+          else settle(320);
+          if (want() !== av.dataset.face) {
+            if (still()) show(want());
+            else dip = setTimeout(() => !swapping && !turned() && show(want()), SWAP_MS);
+          }
+        }
       }
       if (next !== 'speaking' && next !== 'hearing') api.setLevel(0);
-      waves();
+      loops();
     },
     /** The seat's glow follows the sound: her voice, or yours in grey (spec §16.3). @param {number} value 0..1 @param {'her' | 'you'} [who] */
     setLevel(value, who = 'her') {
-      level = Math.max(0, Math.min(1, Number(value) || 0));
-      el.dataset.glow = who;
-      el.style.setProperty('--amp', String(level));
-      av.style.setProperty('--amp', String(level));
+      const v = Math.max(0, Math.min(1, Number(value) || 0));
+      if (el.dataset.glow !== who) el.dataset.glow = who;
+      if (v === level) return;
+      level = v;
+      el.style.setProperty('--amp', String(v)); // .av and her parts inherit it
     },
     /** A look toward something, such as a new card: her eyes and their highlights move together. @param {number} dx @param {number} dy */
     glance(dx, dy) {
-      if (reduced()) return;
+      if (still()) return;
       const clamp = (/** @type {number} */ v) => Math.max(-3, Math.min(3, Number(v) || 0)) * GLANCE;
+      clearTimeout(glancing);
       for (const e of [look.el, aside.el]) e.style.transform = `translate(${clamp(dx)}px, ${clamp(dy)}px)`;
-      setTimeout(() => { for (const e of [look.el, aside.el]) e.style.transform = ''; }, 1100);
+      glancing = setTimeout(() => { for (const e of [look.el, aside.el]) e.style.transform = ''; }, 1100);
     },
     blink,
   };

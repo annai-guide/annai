@@ -36,6 +36,9 @@ async function everyState(page) {
     for (const state of ['sleeping', 'listening', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline']) {
       const a = createAvatar({ size: 'big' });
       a.el.id = `av-${state}`;
+      // On screen, where she moves (off it, she keeps still).
+      a.el.style.setProperty('position', 'fixed');
+      a.el.style.setProperty('top', '0');
       document.body.append(a.el);
       a.setState(state);
     }
@@ -77,7 +80,7 @@ const look = (page, state) => page.locator(`#av-${state}`).evaluate((seat) => {
     sad: topAt(box.x + box.width * 0.35) - topAt(box.x + box.width * 0.85),
     light: Number(seat.querySelector('.head > .eyes .light')?.getAttribute('rx')),
     drawn: !/NaN/.test(iris.getAttribute('d') ?? 'NaN'),
-    wag: getComputedStyle(/** @type {Element} */ (seat.querySelector('.tip'))).animationName,
+    wag: seat.querySelector('.tip')?.getAttribute('transform') ?? '',
     head: part('head'), marker: part('marker'), grass: part('grass'), turned: part('head-turned'), asleep: part('head-asleep'), tail: part('tail-asleep'),
   };
 });
@@ -104,7 +107,9 @@ test("her states show the right parts and eyes, as the expression sheet draws th
   // Your turn: her right ear up, her left angled out.
   await expect.poll(() => look(page, 'waiting')).toMatchObject({ ears: '1 0 0 0 1' });
   // Working: her marker in its grass, and her tail's tip wagging; no head.
-  await expect.poll(() => look(page, 'away')).toMatchObject({ fox: 0, away: 1, wag: 'wag' });
+  await expect.poll(() => look(page, 'away')).toMatchObject({ fox: 0, away: 1 });
+  const wag = (await look(page, 'away')).wag;
+  await expect.poll(async () => (await look(page, 'away')).wag).not.toBe(wag);
   expect((await look(page, 'away')).marker).toBeGreaterThan(100);
   expect((await look(page, 'away')).grass).toBeGreaterThan(200);
   // Offline: grey, ears folded flat, no highlight, and half-lidded eyes whose lids slope down toward the outer corner.
@@ -119,12 +124,15 @@ test("she blinks and glances, her head turns in the middle of a blink, her tail'
     const at = (/** @type {string} */ p) => p;
     const { createAvatar } = await import(at('/src/ui/avatar.js'));
     const a = createAvatar({ size: 'big' });
+    a.el.style.setProperty('position', 'fixed');
+    a.el.style.setProperty('top', '0');
     document.body.append(a.el);
     const av = /** @type {HTMLElement} */ (a.el.querySelector('.av'));
+    const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+    await wait(200); // she is seen
     const iris = /** @type {SVGPathElement} */ (a.el.querySelector('.head > .eyes .iris'));
     const eyes = /** @type {SVGGElement} */ (a.el.querySelector('.head > .eyes'));
     const light = /** @type {SVGEllipseElement} */ (a.el.querySelector('.light'));
-    const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
     a.setState('hearing');
     const wideAtOnce = light.getAttribute('rx') === '17.4';
     a.setState('listening');
@@ -162,9 +170,11 @@ test("she blinks and glances, her head turns in the middle of a blink, her tail'
     const talked = band('.pin') !== talk;
     a.setState('away');
     const flag = band('.marker');
+    const tip = () => a.el.querySelector('.tip')?.getAttribute('transform') ?? '';
+    const wagged = tip();
     await wait(500);
     const flew = band('.marker') !== flag;
-    const wag = getComputedStyle(/** @type {Element} */ (a.el.querySelector('.tip'))).animationName;
+    const wag = tip() !== wagged;
     return { wideAtOnce, open, least: Math.min(open, ...heights), after: iris.getBBox().height, glanced, back: eyes.style.transform, wag, face, atTurn, swings: quiet !== loud, talked, flew };
   }, calm);
   const moving = await run(false);
@@ -175,7 +185,7 @@ test("she blinks and glances, her head turns in the middle of a blink, her tail'
   expect(moving.face).toBe('turned');
   expect(moving.atTurn.length).toBe(1);
   expect(moving.atTurn[0], 'her eyes are closed when her head turns').toBeLessThan(moving.open * 0.6);
-  expect(moving).toMatchObject({ wag: 'wag', swings: true, talked: true, flew: true });
+  expect(moving).toMatchObject({ wag: true, swings: true, talked: true, flew: true });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const calm = await run(true);
   expect(calm.wideAtOnce).toBe(true);
@@ -183,7 +193,38 @@ test("she blinks and glances, her head turns in the middle of a blink, her tail'
   expect(calm.glanced).toBe('');
   expect(calm.face).toBe('turned');
   // No waving or wagging; her voice still swings the streamer, as a pose.
-  expect(calm).toMatchObject({ wag: 'none', swings: true, talked: false, flew: false });
+  expect(calm).toMatchObject({ wag: false, swings: true, talked: false, flew: false });
+});
+
+test("taken off the page while working, her marker's streamer stops; out of sight, so does everything else", async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createAvatar } = await import(at('/src/ui/avatar.js'));
+    const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+    const a = createAvatar({ size: 'big' });
+    a.el.style.setProperty('position', 'fixed');
+    a.el.style.setProperty('top', '0');
+    document.body.append(a.el);
+    a.setState('away');
+    await wait(500);
+    const band = /** @type {SVGPathElement} */ (a.el.querySelector('.marker .band'));
+    /** @type {number} */
+    let changes = 0;
+    const watch = new MutationObserver(() => { changes++; });
+    watch.observe(band, { attributes: true, attributeFilter: ['d'] });
+    await wait(600);
+    const on = changes;
+    a.el.remove();
+    await wait(300); // the observer reports her gone
+    changes = 0;
+    await wait(1000);
+    watch.disconnect();
+    return { on, off: changes, hidden: /** @type {HTMLElement} */ (a.el.querySelector('.av')).dataset.hidden };
+  });
+  expect(result.on, 'it waves on the page').toBeGreaterThan(4);
+  expect(result.off, 'and stops off it').toBe(0);
+  expect(result.hidden).toBe('');
 });
 
 test("her art is kept for offline use: after the first visit she shows with no network", async ({ page }, testInfo) => {
