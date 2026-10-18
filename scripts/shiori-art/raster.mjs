@@ -234,37 +234,43 @@ export function polygon(width, height, pts) {
 }
 
 /**
- * Places an image on a new canvas: scaled by s about its origin, then moved by (dx, dy). Bilinear, on premultiplied colour.
- * @param {Image} img @param {number} s @param {number} dx @param {number} dy @param {number} width @param {number} height
+ * Places an image on a new canvas: its pixel `from` lands on the canvas's `to`, scaled by `scale` and turned by
+ * `angle` degrees (clockwise) about that point. Bilinear, on premultiplied colour.
+ * @param {Image} img @param {{ scale?: number, angle?: number, from?: number[], to?: number[] }} at
+ * @param {number} width @param {number} height
  * @returns {Image}
  */
-export function place(img, s, dx, dy, width, height) {
+export function place(img, { scale = 1, angle = 0, from = [0, 0], to = [0, 0] }, width, height) {
   const out = new Uint8Array(width * height * 4);
-  const at = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ k) => {
+  const cos = Math.cos((angle * Math.PI) / 180);
+  const sin = Math.sin((angle * Math.PI) / 180);
+  const px = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ k) => {
     if (x < 0 || y < 0 || x >= img.width || y >= img.height) return 0;
     const i = (y * img.width + x) * 4;
     return k === 3 ? img.data[i + 3] : (img.data[i + k] * img.data[i + 3]) / 255;
   };
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const sx = (x + 0.5 - dx) / s - 0.5;
-      const sy = (y + 0.5 - dy) / s - 0.5;
+      // back from the canvas to the image: undo the move, the turn and the scale
+      const ox = x + 0.5 - to[0];
+      const oy = y + 0.5 - to[1];
+      const sx = (ox * cos + oy * sin) / scale + from[0] - 0.5;
+      const sy = (-ox * sin + oy * cos) / scale + from[1] - 0.5;
       if (sx < -1 || sy < -1 || sx > img.width || sy > img.height) continue;
       const x0 = Math.floor(sx);
       const y0 = Math.floor(sy);
       const fx = sx - x0;
       const fy = sy - y0;
-      const px = [0, 0, 0, 0];
+      const c = [0, 0, 0, 0];
       for (let k = 0; k < 4; k++) {
-        px[k] = at(x0, y0, k) * (1 - fx) * (1 - fy) + at(x0 + 1, y0, k) * fx * (1 - fy) + at(x0, y0 + 1, k) * (1 - fx) * fy + at(x0 + 1, y0 + 1, k) * fx * fy;
+        c[k] = px(x0, y0, k) * (1 - fx) * (1 - fy) + px(x0 + 1, y0, k) * fx * (1 - fy) + px(x0, y0 + 1, k) * (1 - fx) * fy + px(x0 + 1, y0 + 1, k) * fx * fy;
       }
       const i = (y * width + x) * 4;
-      const a = px[3];
-      if (a <= 0) continue;
-      out[i] = Math.round((px[0] * 255) / a);
-      out[i + 1] = Math.round((px[1] * 255) / a);
-      out[i + 2] = Math.round((px[2] * 255) / a);
-      out[i + 3] = Math.round(a);
+      if (c[3] <= 0) continue;
+      out[i] = Math.round((c[0] * 255) / c[3]);
+      out[i + 1] = Math.round((c[1] * 255) / c[3]);
+      out[i + 2] = Math.round((c[2] * 255) / c[3]);
+      out[i + 3] = Math.round(c[3]);
     }
   }
   return { width, height, data: out };
