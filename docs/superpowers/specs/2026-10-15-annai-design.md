@@ -822,6 +822,13 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - The trace makes everything the agent sent and read visible.
   - Third-party code plugins run with full trust, and their install screen says so.
 - **No telemetry.** "Copy diagnostics" produces a redacted report for the user to share if they choose.
+- **Credits.** Every data source annai contacts is credited in Settings → About, with the attribution its licence or policy asks for:
+  - OpenStreetMap: "© OpenStreetMap contributors", under the ODbL, linked to its copyright page; through Overpass, and Nominatim under its usage policy
+  - Wikipedia and Wikivoyage: their contributors, under CC BY-SA 4.0
+  - Open-Meteo: "Weather data by Open-Meteo.com", under CC BY 4.0
+  - Jina Reader and Jina Search
+
+  Where a licence asks for it next to the data, it is there too: the offline pack panel credits OpenStreetMap, Wikipedia and Wikivoyage, and the weather tool's answer, which the Trace shows, starts with Open-Meteo's credit. annai draws no map tiles. A unit test fails when the code names a host that is neither credited nor listed with the reason it isn't a source.
 
 ## 16. UI
 
@@ -852,10 +859,15 @@ Reference: mockups draft 6.
   - **Conversation**
   - **Files**
   - **Trace:** filters plus tool switches
-  - **Settings:** Models, Voice, Photos, Tools, Plugins, Storage & backup, Privacy, Developer
-  - **Onboarding:** install guide, OpenRouter sign-in, profile
+  - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, "Restart annai" comes first.
+    - **About:** annai's version and the build of the service worker that runs it; the licence (AGPL-3.0, its text shipped and readable offline) and the source; where to report a problem; the privacy summary (what annai does with keys and data, and where that stops, in the welcome's words); the fine print; "Show the welcome again"; and the credits (§15), the fonts' licences and Shiori's art.
+    - **Experimental:** features still being tried, each off until turned on. The first is swiping between tabs.
+  - **Onboarding:**
+    - **the welcome,** once per device, at annai's plain start (`/`): what annai is, what it can do, your keys and data, the fine print, then the install guide where annai isn't installed and Settings → Models with Sign in with OpenRouter. It is in annai's voice, not Shiori's, and its steps can be skipped. A link that opens a screen (a shared trip, a share, the sign-in coming back) is never interrupted; the welcome waits for the next plain start. It is noted in the app's settings.
+    - the install guide, OpenRouter sign-in, profile
   - **Import preview**
   - **Recap and Replay**
+- **Swiping sideways between the top bar's tabs** is experimental and off by default (Settings → Experimental). On, swiping into a tab brings back the screen last open in it, where you were on it.
 - **Visual identity:**
   - vermilion accent
   - cool, plain paper neutrals
