@@ -896,6 +896,7 @@ Reference: mockups draft 6.
 
 - **Movement is driven by events and transitions:** blinks at random intervals, a glance toward a newly appearing card, ears reacting, the streamer following her voice. The only loops: her breathing while asleep, and while she works, her tail's tip wagging and her marker's streamer waving.
 - **Reduced-motion preference:** no glances, no transitions, no waving and no loops. Her voice still swings the streamer, as a still pose.
+- **Out of sight** (scrolled away, or off the page), nothing of hers moves or redraws until she is seen again.
 - **The glow follows the real audio level,** read from Web Audio analysers on output and input.
 - **The avatar is a named component** with this interface:
   - `setState(state)`
