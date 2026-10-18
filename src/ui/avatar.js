@@ -9,9 +9,12 @@ import { h } from './dom.js';
  */
 
 const NS = 'http://www.w3.org/2000/svg';
-const OUT = '#e0cdb9';
-const FUR = '#fbf5ee';
-const INNER = '#f4a7a0';
+/** Her outlines, eyes and nose: dark brown, on any background, as in her icon. */
+const INK = '#3b2a24';
+const FUR = '#fffaf4';
+const INNER = '#f8c4a8';
+const TIP = '#f8c4a8';
+const BLUSH = '#f7b39a';
 const TAPE = '#f05a87';
 const TAPE2 = '#e3487a';
 const SCARF = '#d9473a';
@@ -32,59 +35,69 @@ const tails = (x, y, len) => s('g', { class: 'tails' },
 
 /** @returns {SVGSVGElement} */
 export function foxSvg() {
-  // Drawn after the user's reference sheet (2026-10-18): tall fox ears, a ruff of fur at her cheeks, round
-  // eyes, a small nose high on the face (never a mouth), and her hairpin tucked behind her left ear.
+  // Drawn after the user's app icon and state sheet (2026-10-18): dark outlines, tall ears, a ruff of fur at her
+  // cheeks, big round eyes, a small rounded nose (never a mouth), a bow, and her hairpin at her left ear.
+  // The drawing is the seat's circle: 64 across, centred on 32.25.
+  const ink = { stroke: INK, 'stroke-width': 1.15, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' };
   const earL = s('g', { class: 'ear-l' },
-    s('path', { d: 'M29 15C24 9 19 3 13.5-3.5 10.5 4 9.5 14 11 25z', fill: FUR, stroke: OUT, 'stroke-width': 1.2, 'stroke-linejoin': 'round' }),
-    s('path', { d: 'M25.5 15.5C22 11 18.5 6.5 14.5 2 13 8 12.5 14 13.5 21z', fill: INNER }));
+    s('path', { d: 'M28 21.5C22 15.5 17.5 11.5 13.75 9.25 11.6 15.5 10.6 22.5 11.2 32L16 33 24 26z', fill: FUR }),
+    s('path', { d: 'M23.5 20.6C20.5 17.2 17.6 14.6 15.2 13.2 13.9 17.6 13.4 22.5 13.6 27.6 15.5 25 18.5 22.5 23.5 20.6z', fill: INNER }),
+    s('path', { d: 'M26.5 20.9C22 15.5 17.5 11.5 13.75 9.25 11.6 15.5 10.6 22.5 11.2 31.9', fill: 'none', ...ink }));
   const earR = s('g', { class: 'ear-r' },
-    // The twig runs behind the ear; its tape is tied where it comes out, on the ear's outer side.
-    s('path', { class: 'twig', d: 'M38.5 17.5C45 12 51 7 58.5 3', fill: 'none', 'stroke-width': 2.2, 'stroke-linecap': 'round' }),
-    s('path', { d: 'M57.5 3.4c1.2-2.8 3.6-3.8 6-3.2-1 2.6-3.3 3.8-6 3.2z', fill: LEAF }),
-    s('path', { d: 'M35 15C40 9 45 3 50.5-3.5 53.5 4 54.5 14 53 25z', fill: FUR, stroke: OUT, 'stroke-width': 1.2, 'stroke-linejoin': 'round' }),
-    s('path', { d: 'M38.5 15.5C42 11 45.5 6.5 49.5 2 51 8 51.5 14 50.5 21z', fill: INNER }),
-    tails(55.5, 8, 7),
-    s('path', { d: 'M55.6 7.2l-3.6-2.9.3 5.2zM55.6 7.2l3.8-2.5-.3 5.2z', fill: TAPE }),
-    s('circle', { cx: 55.6, cy: 7.2, r: 1.2, fill: TAPE2 }));
-  // Big round eyes with two highlights, after the reference sheet.
+    s('path', { d: 'M36.5 21.5C42.5 15.5 47 11.5 50.75 9.25 52.9 15.5 53.9 22.5 53.3 32L48.5 33 40.5 26z', fill: FUR }),
+    s('path', { d: 'M41 20.6C44 17.2 46.9 14.6 49.3 13.2 50.6 17.6 51.1 22.5 50.9 27.6 49 25 46 22.5 41 20.6z', fill: INNER }),
+    s('path', { d: 'M38 20.9C42.5 15.5 47 11.5 50.75 9.25 52.9 15.5 53.9 22.5 53.3 31.9', fill: 'none', ...ink }),
+    // Her hairpin: a forked twig with a pink bow, worn where her left ear meets her head.
+    s('path', { class: 'twig', d: 'M44.6 23.2l3.6 11M44.6 23.2l-2.2-1.8M45.5 25.9l2-3.1', fill: 'none', 'stroke-width': 1.25, 'stroke-linecap': 'round' }),
+    tails(47.4, 27.3, 6.5),
+    s('path', { d: 'M47.4 26.6l-2.9-2.2.1 4.1zM47.4 26.6l3.1-1.9-.2 4.1z', fill: TAPE, stroke: '#8a1f45', 'stroke-width': 0.5, 'stroke-linejoin': 'round' }),
+    s('circle', { cx: 47.4, cy: 26.6, r: 0.95, fill: TAPE2 }));
   const eye = (/** @type {number} */ cx) => [
-    s('ellipse', { class: 'eye', cx, cy: 29, rx: 3.6, ry: 4.2 }),
-    s('circle', { cx: cx + 1.3, cy: 27.4, r: 1.35, fill: '#fff' }),
-    s('circle', { cx: cx - 1.2, cy: 30.9, r: 0.6, fill: '#fff' }),
+    s('ellipse', { class: 'eye', cx, cy: 41.2, rx: 3.6, ry: 3.95 }),
+    s('circle', { cx: cx + 1.35, cy: 39.6, r: 1.45, fill: '#fff' }),
+    s('circle', { cx: cx - 1.25, cy: 43, r: 0.65, fill: '#fff' }),
   ];
   const face = s('g', { class: 'face' },
-    s('ellipse', { cx: 18.8, cy: 34.6, rx: 3.3, ry: 2, fill: '#f6aa9c', opacity: 0.75 }),
-    s('ellipse', { cx: 45.2, cy: 34.6, rx: 3.3, ry: 2, fill: '#f6aa9c', opacity: 0.75 }),
-    s('g', { class: 'eyes' }, s('g', { class: 'lid' }, ...eye(24), ...eye(40))),
-    s('path', { class: 'closed', d: 'M20 29.5q4 3 8 0M36 29.5q4 3 8 0', fill: 'none', 'stroke-width': 1.9, 'stroke-linecap': 'round' }),
-    // A small nose just under the eyes, where it reads as a nose and not a mouth (spec §16.3 polish list).
-    s('path', { class: 'nose', d: 'M30.4 35.4q1.6-.7 3.2 0-.6 1.4-1.6 2-1-.6-1.6-2z' }));
+    s('ellipse', { cx: 16.8, cy: 45.9, rx: 2.9, ry: 1.8, fill: BLUSH, opacity: 0.85 }),
+    s('ellipse', { cx: 47.7, cy: 45.9, rx: 2.9, ry: 1.8, fill: BLUSH, opacity: 0.85 }),
+    s('g', { class: 'eyes' }, s('g', { class: 'lid' }, ...eye(22.3), ...eye(42.2))),
+    s('path', { class: 'closed', d: 'M17.9 41Q22.3 45.3 26.7 41l-.2-.1M37.8 41Q42.2 45.3 46.6 41M17.9 41l-1.3-1.1M46.6 41l1.3-1.1', fill: 'none', 'stroke-width': 1.5, 'stroke-linecap': 'round' }),
+    s('path', { class: 'nose', d: 'M30.4 45.6Q32.25 44.9 34.1 45.6 33.6 47.4 32.25 48 30.9 47.4 30.4 45.6z' }));
+  // Asleep, she curls up with her tail across her front (the user, 2026-10-18).
+  const tail = s('g', { class: 'tail' },
+    s('path', { d: 'M18 66C21 57.5 31 52.6 42 53.4 50 54 56 57.8 58 63.5V66z', fill: FUR }),
+    s('path', { d: 'M47.5 54.4l1.1 3.1 2.8-1.5.4 3.4 3.2-.9-.4 3.1 3.4 1.9V66H44z', fill: TIP }),
+    s('path', { d: 'M18 66C21 57.5 31 52.6 42 53.4 50 54 56 57.8 58 63.5', fill: 'none', ...ink }));
   const fox = s('g', { class: 'fox' },
     // Her chest, under her head and the bow.
-    s('path', { d: 'M20.5 46C22 56 26 63 32 63s10-7 11.5-17z', fill: FUR, stroke: OUT, 'stroke-width': 1.2 }),
-    earL, earR,
-    // Her head, with a ruff of fur at each cheek.
+    s('path', { d: 'M17.5 50C17 56 16 61 15 67h34.5c-1-6-2-11-2.5-17z', fill: FUR, ...ink }),
+    // Her head, with a ruff of fur at each cheek and tufts at her chin.
     s('path', {
-      d: 'M32 9C42 9 50 14 52 23l4.5 4-4 1.5 3.5 4.5-5 .5 2 5h-5.5C44 44 38 47.5 32 48s-12-4-15.5-9.5H11l2-5-5-.5 3.5-4.5-4-1.5 4.5-4C14 14 22 9 32 9z',
-      fill: FUR, stroke: OUT, 'stroke-width': 1.2, 'stroke-linejoin': 'round',
+      d: 'M25 21.5C28.5 19.6 36 19.6 39.5 21.5 44 23 48.5 26 53.3 31.9l2.2 1.7-3.4 1.9 6.3 5.1-6.8.7 5 4.3-7.6.7 3.8 3.7-7.5-.6-1.9 3.1-3.1-1.5-3.1 2.3-2.9-1.7-2.05 2-2.05-2-2.9 1.7-3.1-2.3-3.1 1.5-1.9-3.1-7.5.6 3.8-3.7-7.6-.7 5-4.3-6.8-.7 6.3-5.1-3.4-1.9 2.2-1.7C14 27 19.5 23.3 25 21.5z',
+      fill: FUR, ...ink,
     }),
+    earL, earR,
     // Her scarf, tied in a bow under her chin.
-    s('path', { d: 'M29.5 50.3C24 46 19.3 46.2 18.4 48.9c-.6 3 4.6 5.6 11.1 2.6zM34.5 50.3C40 46 44.7 46.2 45.6 48.9c.6 3-4.6 5.6-11.1 2.6z', fill: SCARF, stroke: '#b8372c', 'stroke-width': 0.6, 'stroke-linejoin': 'round' }),
-    s('path', { d: 'M30.6 52.6l-3.8 7.8 4.6-1.9zM33.4 52.6l3.8 7.8-4.6-1.9z', fill: SCARF, stroke: '#b8372c', 'stroke-width': 0.6, 'stroke-linejoin': 'round' }),
-    s('circle', { cx: 32, cy: 50.8, r: 3.1, fill: SCARF, stroke: '#b8372c', 'stroke-width': 0.6 }),
-    face);
+    s('path', { d: 'M30.5 54.5C26 51.8 21.5 51.3 19.2 52.6 18 55.5 19.6 58.8 21.6 59.6 24.5 58.6 27.8 57.2 30.5 56.4zM34 54.5C38.5 51.8 43 51.3 45.3 52.6 46.5 55.5 44.9 58.8 42.9 59.6 40 58.6 36.7 57.2 34 56.4z', fill: SCARF, ...ink, 'stroke-width': 0.9 }),
+    s('path', { d: 'M30.6 57.2l-3 7.3 4-1.3.65-4.7zM33.9 57.2l3 7.3-4-1.3-.65-4.7z', fill: SCARF, ...ink, 'stroke-width': 0.9 }),
+    s('circle', { cx: 32.25, cy: 55.6, r: 2.8, fill: SCARF, ...ink, 'stroke-width': 0.9 }),
+    face, tail);
   /** A paw print, as she leaves. @param {number} x @param {number} y @param {number} turn degrees */
-  const paw = (x, y, turn) => s('g', { transform: `rotate(${turn} ${x} ${y})`, fill: 'var(--twig)', opacity: 0.7 },
-    s('ellipse', { cx: x, cy: y, rx: 1.6, ry: 1.3 }),
-    s('circle', { cx: x - 1.6, cy: y - 1.8, r: 0.6 }), s('circle', { cx: x, cy: y - 2.4, r: 0.6 }), s('circle', { cx: x + 1.6, cy: y - 1.8, r: 0.6 }));
+  const paw = (x, y, turn) => s('g', { transform: `rotate(${turn} ${x} ${y})`, fill: INK, opacity: 0.6 },
+    s('ellipse', { cx: x, cy: y, rx: 1.5, ry: 1.2 }),
+    s('circle', { cx: x - 1.5, cy: y - 1.7, r: 0.55 }), s('circle', { cx: x, cy: y - 2.3, r: 0.55 }), s('circle', { cx: x + 1.5, cy: y - 1.7, r: 0.55 }));
+  // Working: she has stepped out, leaving her trail marker, her paw prints, and the tip of her tail going.
   const marker = s('g', { class: 'marker' },
-    paw(42, 58, 70), paw(49, 54, 60), paw(55, 59, 75), paw(61, 54, 65),
-    s('path', { class: 'twig', d: 'M33 64C31.5 52 33.5 40 32 22', fill: 'none', 'stroke-width': 3.6, 'stroke-linecap': 'round' }),
-    s('path', { class: 'twig', d: 'M32.6 38C36 35 39 33.5 43 33', fill: 'none', 'stroke-width': 2.2, 'stroke-linecap': 'round' }),
-    s('path', { d: 'M43 33c2-3 5-3.8 7.5-2.8-1.4 2.8-4.2 3.8-7.5 2.8z', fill: LEAF }),
-    tails(33, 28, 12),
-    s('rect', { x: 28, y: 23.5, width: 9, height: 6, rx: 1.8, fill: TAPE, transform: 'rotate(-12 32.5 26.5)' }));
-  return /** @type {SVGSVGElement} */ (s('svg', { class: 'avsvg', viewBox: '-3 -6 70 70', 'aria-hidden': 'true', focusable: 'false' }, fox, marker));
+    s('path', { d: 'M22.5 62l1-4 1 4M25.5 62.5l1.5-5 .6 5M33 62l1-3.5 1 3.5', fill: 'none', stroke: LEAF, 'stroke-width': 0.9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
+    s('path', { class: 'twig', d: 'M28.5 63L33 34M31.6 43l4.4-3.4M33 34l-2-2.4', fill: 'none', 'stroke-width': 2.2, 'stroke-linecap': 'round' }),
+    tails(33.6, 38, 10),
+    s('path', { d: 'M33.4 37.4l-3.6-2.6.2 4.6zM33.4 37.4l3.8-2.2-.2 4.6z', fill: TAPE, stroke: '#8a1f45', 'stroke-width': 0.5, 'stroke-linejoin': 'round' }),
+    s('circle', { cx: 33.4, cy: 37.4, r: 1.1, fill: TAPE2 }),
+    paw(40, 58, 75), paw(45.5, 54.5, 65), paw(50, 59, 80),
+    s('path', { d: 'M66 50C60 49.5 54.5 51.5 52.5 55 55.5 57.5 61 58 66 57z', fill: FUR }),
+    s('path', { d: 'M52.5 55c.8-1.6 2-2.7 3.5-3.4l.3 2.2 1.9-1.3-.2 3 2-.3-1.4 2.4c-2.3-.2-4.4-1.1-6.1-2.6z', fill: TIP }),
+    s('path', { d: 'M66 50C60 49.5 54.5 51.5 52.5 55 55.5 57.5 61 58 66 57', fill: 'none', ...ink }));
+  return /** @type {SVGSVGElement} */ (s('svg', { class: 'avsvg', viewBox: '-3.5 -2.5 71.5 71.5', 'aria-hidden': 'true', focusable: 'false' }, fox, marker));
 }
 
 /** The wait before the next blink. @param {number} random 0..1 */
