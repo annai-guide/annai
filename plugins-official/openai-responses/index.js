@@ -131,7 +131,7 @@ function wire(m, providerId, t) {
     if (p.type === 'text') return [{ type: 'input_text', text: p.text }];
     if (p.type === 'image') return [p.fileId ? { type: 'input_image', file_id: p.fileId, detail } : { type: 'input_image', image_url: `data:${p.mediaType};base64,${p.data}`, detail }];
     if (p.type === 'document') return [{ type: 'input_file', filename: p.name ?? 'document.pdf', file_data: `data:${p.mediaType};base64,${p.data}` }];
-    return []; // Responses has no audio input; a model that takes audio is never sent here (spec §9.6)
+    return []; // Responses has no audio input, so its models are added as taking none, and annai sends audio elsewhere (spec §9.6)
   });
   return content.length ? [...results, { role: 'user', content }] : results;
 }
