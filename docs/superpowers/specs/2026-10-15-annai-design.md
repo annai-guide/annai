@@ -871,7 +871,8 @@ Reference: mockups draft 6.
 
 - **Design:** a white fox (白狐, Inari's messenger) in a vermilion scarf. Her 枝折り hairpin is a twig with a strip of pink trail tape tied on, worn at her left ear.
   - Eyes only.
-  - No tail beside her face.
+  - Her tail shows in two states only: asleep (curled across her front) and working (its tip, as she leaves the frame).
+  - The art follows the app icon: dark outlines, a ruff of fur at her cheeks, and a vermilion seat with a dark ring.
   - The Inari foxes hold a token in their mouths; Shiori's token is the hairpin.
 - **Her gaze carries the state:**
 
@@ -897,9 +898,6 @@ Reference: mockups draft 6.
 
   Plugins and personality packs can replace the art.
 
-**Polish list for the UI build:**
-- The nose currently reads as a mouth hole: drop it or redraw it.
-- Final art pass on the fox.
 
 ### 16.4 UI extension
 
