@@ -43,45 +43,74 @@ async function everyState(page) {
 }
 
 /**
- * What one avatar shows: how opaque its parts are, its seat's filter, and the shape of her right eye and its highlight.
+ * What one avatar shows: how opaque its parts are (each of its ears' drawings, its head front or turned), its seat's
+ * filter, the shape of her right eye and its highlight, and the tail tip's animation.
  * @param {import('@playwright/test').Page} page @param {string} state
  */
 const look = (page, state) => page.locator(`#av-${state}`).evaluate((seat) => {
   const opacity = (/** @type {string} */ sel) => Number(getComputedStyle(/** @type {Element} */ (seat.querySelector(sel))).opacity);
-  const iris = /** @type {SVGPathElement} */ (seat.querySelector('.iris'));
+  const iris = /** @type {SVGPathElement} */ (seat.querySelector('.front .iris'));
   const box = iris.getBBox();
-  // The eye's far left: where a ‿ has an end, higher than its middle.
+  // The eye's far left and far right: where a ‿ has its ends, higher than its middle; where a sad lid meets the eye.
   let left = { x: Infinity, y: 0 };
+  let right = { x: -Infinity, y: 0 };
   for (let l = 0; l < iris.getTotalLength(); l += 2) {
     const p = iris.getPointAtLength(l);
     if (p.x < left.x) left = { x: p.x, y: p.y };
+    if (p.x > right.x) right = { x: p.x, y: p.y };
   }
+  // Her lid's edge: the top of the oval, at its outer quarter and its inner quarter.
+  const topAt = (/** @type {number} */ x) => {
+    let y = Infinity;
+    for (let l = 0; l < iris.getTotalLength(); l += 1) {
+      const p = iris.getPointAtLength(l);
+      if (Math.abs(p.x - x) < 1.5 && p.y < y) y = p.y;
+    }
+    return y;
+  };
   const part = (/** @type {string} */ id) => /** @type {SVGGraphicsElement} */ (seat.querySelector(`use[href$="#${id}"]`)).getBBox().width;
   return {
     fox: opacity('.fox'), curl: opacity('.curl'), away: opacity('.away'),
+    ears: ['.ear-r', '.ear-l', '.flat-r', '.flat-l', '.out-l'].map(opacity).join(' '),
+    face: [opacity('.front'), opacity('.turned')].join(' '),
     filter: getComputedStyle(seat).filter,
     wide: box.width / box.height, endsUp: left.y < box.y + box.height / 2,
-    light: Number(seat.querySelector('.light')?.getAttribute('r')),
-    head: part('head'), marker: part('marker'),
+    sad: topAt(box.x + box.width * 0.35) - topAt(box.x + box.width * 0.85),
+    light: Number(seat.querySelector('.front .light')?.getAttribute('rx')),
+    drawn: !/NaN/.test(iris.getAttribute('d') ?? 'NaN'),
+    wag: getComputedStyle(/** @type {Element} */ (seat.querySelector('.tip'))).animationName,
+    head: part('head'), marker: part('marker'), turned: part('head-turned'),
   };
 });
 
-test("her states show the right parts: asleep, her curled tail and ‿ eyes; working, her marker and no head; offline, grey with no highlight", async ({ page }) => {
+test("her states show the right parts and eyes, as the expression sheet draws them", async ({ page }) => {
   await everyState(page);
   // Her parts come from the art file, which has loaded.
   await expect.poll(async () => (await look(page, 'listening')).head).toBeGreaterThan(100);
-  await expect.poll(() => look(page, 'sleeping')).toMatchObject({ fox: 1, curl: 1, away: 0, light: 0, endsUp: true });
+  // Asleep: ears folded flat, her curled tail in front of her, ‿ eyes.
+  await expect.poll(() => look(page, 'sleeping')).toMatchObject({ fox: 1, curl: 1, away: 0, light: 0, endsUp: true, ears: '0 0 1 1 0', drawn: true });
   expect((await look(page, 'sleeping')).wide, 'a thick crescent, wider than tall').toBeGreaterThan(2);
-  await expect.poll(() => look(page, 'listening')).toMatchObject({ fox: 1, curl: 0, away: 0, light: 14.5 });
+  await expect.poll(() => look(page, 'listening')).toMatchObject({ fox: 1, curl: 0, away: 0, light: 14.5, ears: '1 1 0 0 0', face: '1 0' });
   expect((await look(page, 'listening')).wide, 'an open eye').toBeLessThan(1.5);
-  await expect.poll(() => look(page, 'away')).toMatchObject({ fox: 0, away: 1 });
-  expect((await look(page, 'away')).marker).toBeGreaterThan(100);
-  await expect.poll(() => look(page, 'offline')).toMatchObject({ fox: 1, curl: 0, light: 0, filter: 'grayscale(1)' });
   // Hearing you, her eyes are wide: a bigger highlight.
   await expect.poll(async () => (await look(page, 'hearing')).light).toBe(17.4);
+  // Thinking: her head turned, both its ears its own.
+  await expect.poll(() => look(page, 'thinking')).toMatchObject({ face: '0 1' });
+  expect((await look(page, 'thinking')).turned).toBeGreaterThan(100);
+  // Talking: open eyes, not smiling ones.
+  await expect.poll(() => look(page, 'speaking')).toMatchObject({ light: 14.5, ears: '1 1 0 0 0' });
+  // Your turn: her right ear up, her left angled out.
+  await expect.poll(() => look(page, 'waiting')).toMatchObject({ ears: '1 0 0 0 1' });
+  // Working: her marker, and her tail's tip wagging; no head.
+  await expect.poll(() => look(page, 'away')).toMatchObject({ fox: 0, away: 1, wag: 'wag' });
+  expect((await look(page, 'away')).marker).toBeGreaterThan(100);
+  // Offline: grey, ears folded flat, no highlight, and half-lidded eyes whose lids slope down toward the outer corner.
+  await expect.poll(() => look(page, 'offline')).toMatchObject({ fox: 1, curl: 0, light: 0, filter: 'grayscale(1)', ears: '0 0 1 1 0', drawn: true });
+  expect((await look(page, 'offline')).sad, 'the lid is lower at the outer corner').toBeGreaterThan(5);
+  expect((await look(page, 'offline')).wide, 'half-lidded').toBeGreaterThan(1.3);
 });
 
-test('she blinks and glances; with reduced motion she does neither, and her states change at once', async ({ page }) => {
+test("she blinks and glances, and her tail's tip wags while she works; with reduced motion she does none of it, and her states change at once", async ({ page }) => {
   await page.goto('/');
   const run = (/** @type {boolean} */ calm) => page.evaluate(async (calm) => {
     const at = (/** @type {string} */ p) => p;
@@ -90,10 +119,10 @@ test('she blinks and glances; with reduced motion she does neither, and her stat
     document.body.append(a.el);
     const iris = /** @type {SVGPathElement} */ (a.el.querySelector('.iris'));
     const eyes = /** @type {SVGGElement} */ (a.el.querySelector('.eyes'));
-    const light = /** @type {SVGCircleElement} */ (a.el.querySelector('.light'));
+    const light = /** @type {SVGEllipseElement} */ (a.el.querySelector('.light'));
     const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
     a.setState('hearing');
-    const wideAtOnce = light.getAttribute('r') === '17.4';
+    const wideAtOnce = light.getAttribute('rx') === '17.4';
     a.setState('listening');
     await wait(900);
     const open = iris.getBBox().height;
@@ -107,23 +136,27 @@ test('she blinks and glances; with reduced motion she does neither, and her stat
     a.glance(1, 0.5);
     const glanced = eyes.style.transform;
     await wait(1300);
-    return { wideAtOnce, open, least: Math.min(open, ...heights), after: iris.getBBox().height, glanced, back: eyes.style.transform };
+    a.setState('away');
+    const wag = getComputedStyle(/** @type {Element} */ (a.el.querySelector('.tip'))).animationName;
+    return { wideAtOnce, open, least: Math.min(open, ...heights), after: iris.getBBox().height, glanced, back: eyes.style.transform, wag };
   }, calm);
   const moving = await run(false);
   expect(moving.least, 'the blink squashes her eye').toBeLessThan(moving.open * 0.6);
   expect(moving.after).toBeCloseTo(moving.open, 0);
   expect(moving.glanced).toBe('translate(14px, 7px)');
   expect(moving.back).toBe('');
+  expect(moving.wag).toBe('wag');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const calm = await run(true);
   expect(calm.wideAtOnce).toBe(true);
   expect(calm.least).toBe(calm.open);
   expect(calm.glanced).toBe('');
+  expect(calm.wag).toBe('none');
 });
 
 test("her art is kept for offline use: after the first visit she shows with no network", async ({ page }, testInfo) => {
   // A port for each worker running at once, as both browsers may run this test together.
-  const server = await startServer(8792 + testInfo.parallelIndex);
+  const server = await startServer(8811 + testInfo.parallelIndex);
   try {
     await page.goto(`${server.origin}/`);
     await expect(page.getByRole('navigation', { name: 'Shiori' })).toBeVisible();

@@ -12,8 +12,10 @@ test("Shiori's art is one file the service worker keeps, holding every part her 
   const sw = await readFile(new URL('sw.js', root), 'utf8');
   assert.ok((/const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '').includes(`'${art}'`), 'in SHELL, so she shows offline');
   const svg = await readFile(new URL(art.slice(1), root), 'utf8');
-  const ids = [...avatar.matchAll(/part\('([^']+)'\)/g)].map((m) => m[1]);
-  assert.deepEqual(ids, ['marker', 'paws', 'tail-tip', 'body', 'tail-sleep', 'ear-right', 'ear-left', 'head', 'pin', 'tape', 'knot']);
+  // part('id'), or group('class', 'id'): every part the avatar draws, back to front.
+  const ids = [...avatar.matchAll(/(?:part\(|group\('[^']+', )'([^']+)'\)/g)].map((m) => m[1]);
+  assert.deepEqual(ids, ['marker', 'marker-tape', 'marker-knot', 'paws', 'tail-tip', 'body', 'ear-flat-right', 'ear-flat-left', 'ear-out-left',
+    'caps', 'ear-right', 'ear-left', 'head', 'pin', 'tape', 'loop', 'knot', 'head-turned', 'tail-sleep']);
   for (const id of ids) assert.match(svg, new RegExp(`<g id="${id}"[ >]`), id);
 });
 

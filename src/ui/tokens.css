@@ -26,6 +26,8 @@
   --shadow: rgba(20, 22, 40, 0.18);
   --seat: #c5d6b8; /* Shiori's seat: pale tea green */
   --paw: #3e1a10; /* her paw prints on it */
+  --twig: #583623; /* her trail marker's twig, and its outline */
+  --twig-line: #3e1a10;
   --f-display: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', ui-rounded, system-ui, sans-serif;
   --f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -42,6 +44,8 @@
     --ok: #7fcaa8; --ok-wash: #16302a; --lattice: #262833; --shadow: rgba(0, 0, 0, 0.5);
     --seat: #44523f;
     --paw: #eadcc4;
+    --twig: #d8b48c; /* at least 3:1 on the dark seat */
+    --twig-line: #bd9772;
     color-scheme: dark;
   }
 }

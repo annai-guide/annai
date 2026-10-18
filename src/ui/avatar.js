@@ -2,10 +2,11 @@ import { h } from './dom.js';
 
 /**
  * Shiori, the character (spec §16.3): a white fox in a vermilion scarf, with her trail-tape hairpin at her left ear.
- * Her art is the user's art kit, traced by scripts/shiori-art/ into ART: parts that move on their own, like a puppet's.
- * States move the parts with transforms and transitions (shiori.css); her eyes are drawn here, as shapes that change
- * smoothly, never swapped pictures. The only loop is her breathing while asleep. A named component: setState,
- * setLevel, glance, blink. Built without innerHTML.
+ * Her art is the user's art kit, traced by scripts/shiori-art/ into ART: parts that move on their own, like a puppet's,
+ * and other drawings of some (ears folded or angled out, her head turned) that take their place. States move the parts
+ * with transforms and transitions (shiori.css); her eyes are drawn here, as shapes that change smoothly, never swapped
+ * pictures. Her only loops: breathing while asleep, and her tail's tip wagging while she works. A named component:
+ * setState, setLevel, glance, blink. Built without innerHTML.
  * @typedef {'sleeping' | 'listening' | 'hearing' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} AvatarState
  */
 
@@ -22,21 +23,42 @@ function s(tag, attrs = {}, ...children) {
 }
 /** One part of her art. @param {string} id */
 const part = (id) => s('use', { href: `${ART}#${id}` });
+/** A part in a group of its own, to move. @param {string} cls @param {...string} ids */
+const group = (cls, ...ids) => s('g', { class: cls }, ...ids.map(part));
 
-// Her eyes, in the art's units (3 pixels of the kit's master): her right eye, on your left; her left eye mirrors it.
-// The open eye and its lash are the master's; the other shapes are made from them, as the kit's README describes.
+// Her eyes, in the art's units (3 pixels of the kit's front master), measured by scripts/shiori-art/eyes.mjs: an oval
+// (24 points round it), a lash, and a highlight [x, y, rx, ry]. Front: her right eye, on your left; her left mirrors it.
 const OPEN = [396, 563, 394, 552, 390, 542, 385, 531, 378, 520, 367, 510, 353, 502, 335, 501, 324, 513, 316, 527, 311, 539, 308, 551,
   306, 563, 307, 576, 310, 588, 316, 600, 326, 609, 339, 615, 353, 617, 367, 615, 380, 611, 391, 601, 396, 588, 397, 575];
 const LASH = [339, 501, 322, 504, 304, 514, 289, 527, 280, 540, 274, 554, 280, 577, 287, 560, 296, 543, 307, 529, 319, 519, 327, 514, 333, 510];
 const MIRROR = 957.7; // her left eye is at MIRROR - x
 const CX = 352; // the middle of her right eye
 const HALF = 45.5; // half its width
+// Turned three-quarters (Thinking): the far eye, then the near one, glancing up and to the side.
+const FAR = {
+  iris: [288, 498, 289, 491, 290, 482, 290, 471, 287, 457, 279, 440, 263, 447, 252, 456, 243, 463, 242, 477, 239, 484, 237, 491, 234, 498,
+    232, 506, 231, 516, 233, 529, 240, 539, 251, 542, 263, 539, 272, 532, 278, 523, 282, 516, 284, 510, 286, 504],
+  lash: [280, 440, 290, 441, 296, 445, 300, 449, 306, 460, 309, 471, 310, 484, 309, 496, 305, 507, 304, 491, 300, 473, 294, 460, 287, 454, 281, 441],
+  light: [260.4, 472.7, 9.3, 13.5],
+};
+const NEAR = {
+  iris: [527, 542, 528, 528, 525, 513, 517, 499, 509, 481, 491, 480, 474, 484, 460, 490, 449, 498, 440, 508, 433, 518, 427, 529, 422, 542,
+    419, 557, 421, 572, 432, 584, 445, 592, 460, 596, 474, 596, 488, 594, 501, 588, 511, 579, 519, 568, 525, 555],
+  lash: [511, 481, 528, 486, 548, 498, 564, 514, 577, 534, 584, 550, 563, 575, 564, 553, 561, 540, 555, 528, 540, 509, 526, 499, 517, 496, 512, 482],
+  light: [466.5, 517.1, 15.7, 15.6],
+};
 
-/** @typedef {{ iris: number[], lash: number[], light: number[], look: number[] }} Eye outlines [x, y, ...]; light [x, y, r]; look moves both */
+/** @typedef {{ iris: number[], lash: number[], light: number[] }} Eye outlines [x, y, ...]; light [x, y, rx, ry] */
+/** @typedef {{ eyes: Eye[], look: number[] }} Gaze both eyes, and how far they look aside */
 /** @param {number[]} pts @param {(x: number, y: number, i: number) => number[]} f */
 const each = (pts, f) => pts.flatMap((v, i) => (i % 2 ? [] : f(v, pts[i + 1], i / 2)));
-/** Across the eye, -1 to 1. @param {number} x */
+/** Across her right eye, -1 (outer corner) to 1 (inner). @param {number} x */
 const across = (x) => Math.max(-1, Math.min(1, (x - CX) / HALF));
+/** A front gaze: her right eye, and her left mirroring it. @param {Eye} e */
+const front = (e) => ({ eyes: [e, { iris: each(e.iris, (x, y) => [MIRROR - x, y]), lash: each(e.lash, (x, y) => [MIRROR - x, y]), light: [MIRROR - e.light[0], ...e.light.slice(1)] }], look: [0, 0] });
+/** Points 1 to 11 of an oval are its top half, 13 to 23 its bottom half. @param {number} i */
+const top = (i) => i <= 12;
+
 /** A thick crescent bowed downward (‿), as in her icon. Points 0 to 11 of the open eye (its right end and top) go
  * along the crescent's top from its inner end, 12 to 23 along its bottom. @returns {Eye} */
 function crescent() {
@@ -54,33 +76,59 @@ function crescent() {
   }
   const [lx, ly] = at(0.16);
   const [mx, my] = at(0.5);
-  return { iris, lash: each(LASH, (x, y) => [lx + (x - 300) / 25, ly + (y - 540) / 25]), light: [mx, my, 0], look: [0, 0] };
+  return { iris, lash: each(LASH, (x, y) => [lx + (x - 300) / 25, ly + (y - 540) / 25]), light: [mx, my, 0, 0] };
 }
 
-const LIGHT = [361, 541, 14.5];
-/** @type {Record<string, Eye>} */
-const SHAPES = {
-  open: { iris: OPEN, lash: LASH, light: LIGHT, look: [0, 0] },
-  // Hearing you: about 110% eye and 120% highlight.
-  wide: { iris: each(OPEN, (x, y) => [CX + (x - CX) * 1.1, 560 + (y - 560) * 1.1]), lash: each(LASH, (x, y) => [CX + (x - CX) * 1.1, 560 + (y - 560) * 1.1]), light: [362, 539, 17.4], look: [0, 0] },
-  closed: crescent(),
-  // A lid over the top half, its edge curving with the eye (a flat one reads as annoyed).
-  drowsy: { iris: each(OPEN, (x, y, i) => (i <= 12 ? [x, 578 - 23 * Math.sqrt(1 - across(x) ** 2)] : [x, y])), lash: each(LASH, (x, y) => [x, y + 52]), light: [362, 589, 9], look: [0, 0] },
-  // Narrowed from below, looking up and to one side.
-  thinking: { iris: each(OPEN, (x, y, i) => [x, i > 12 ? Math.min(y, 592 - 10 * across(x) ** 2) : y]), lash: LASH, light: LIGHT, look: [-9, -8] },
-  // The lower edge lifted by an upward curve.
-  smiling: { iris: each(OPEN, (x, y, i) => [x, i > 12 ? Math.min(y, 600 - 20 * (1 - across(x) ** 2)) : y]), lash: LASH, light: [361, 543, 14.5], look: [0, 0] },
-};
-SHAPES.offline = { ...SHAPES.drowsy, light: [362, 589, 0] };
-/** The eyes each state shows. @type {Record<string, string>} */
-const EYES = { sleeping: 'closed', hearing: 'wide', thinking: 'thinking', speaking: 'smiling', offline: 'offline' };
+/** Half-lidded and sad (Offline): the lid slopes down toward the outer corner, never flat, and ends past it in a
+ * short round stroke. */
+function sad() {
+  const lid = (/** @type {number} */ x) => 556 - 11 * across(x) - 2 * (1 - across(x) ** 2);
+  const lash = [];
+  for (let a = 0; a < 13; a++) { // as many points as LASH, so one shape can turn into the other
+    const t = (a / 13) * 2 * Math.PI;
+    const x = 305 + 17 * Math.cos(t);
+    lash.push(x, lid(x) + 5 * Math.sin(t) + 1);
+  }
+  return { iris: each(OPEN, (x, y, i) => (top(i) ? [x, lid(x)] : [x, y])), lash, light: [362, 585, 0, 0] };
+}
 
-/** @param {Eye} a @param {Eye} b @param {number} k 0..1 @returns {Eye} */
-const mix = (a, b, k) => /** @type {Eye} */ (Object.fromEntries(Object.entries(a).map(([n, v]) => [n, v.map((x, i) => x + (b[/** @type {keyof Eye} */ (n)][i] - x) * k)])));
+/** A blink's end for the turned eyes: each oval squashed toward its lower third, bowed down. @param {Eye} e @returns {Eye} */
+function squashed(e) {
+  const ys = e.iris.filter((_, i) => i % 2);
+  const xs = e.iris.filter((_, i) => !(i % 2));
+  const [y0, y1, x0, x1] = [Math.min(...ys), Math.max(...ys), Math.min(...xs), Math.max(...xs)];
+  const low = y0 + (y1 - y0) * 0.66;
+  const to = (/** @type {number} */ x, /** @type {number} */ y) => [x, low + (y - low) * 0.15 + (y1 - y0) * 0.12 * (1 - ((2 * x - x0 - x1) / (x1 - x0)) ** 2)];
+  return { iris: each(e.iris, to), lash: each(e.lash, to), light: [e.light[0], low, 0, 0] };
+}
+
+const LIGHT = [361, 541, 14.5, 14.5];
+/** The front gazes, by name. @type {Record<string, Gaze>} */
+const FRONT = {
+  open: front({ iris: OPEN, lash: LASH, light: LIGHT }),
+  // Hearing you: about 110% eye and 120% highlight.
+  wide: front({ iris: each(OPEN, (x, y) => [CX + (x - CX) * 1.1, 560 + (y - 560) * 1.1]), lash: each(LASH, (x, y) => [CX + (x - CX) * 1.1, 560 + (y - 560) * 1.1]), light: [362, 539, 17.4, 17.4] }),
+  closed: front(crescent()),
+  // Falling asleep or waking: a lid over the top half, its edge curving with the eye (a flat one reads as annoyed).
+  drowsy: front({ iris: each(OPEN, (x, y, i) => (top(i) ? [x, 578 - 23 * Math.sqrt(1 - across(x) ** 2)] : [x, y])), lash: each(LASH, (x, y) => [x, y + 52]), light: [362, 589, 9, 9] }),
+  sad: front(sad()),
+};
+/** The turned gazes. @type {Record<string, Gaze>} */
+const TURNED = { open: { eyes: [FAR, NEAR], look: [0, 0] }, closed: { eyes: [squashed(FAR), squashed(NEAR)], look: [0, 0] } };
+/** The front eyes each state shows. @type {Record<string, string>} */
+const EYES = { sleeping: 'closed', hearing: 'wide', offline: 'sad' };
+
+/** @template T @param {T} a @param {T} b @param {number} k 0..1 @returns {T} */
+const mix = (a, b, k) => /** @type {any} */ (typeof a === 'number' ? a + (/** @type {number} */ (b) - a) * k
+  : Array.isArray(a) ? a.map((v, i) => mix(v, /** @type {any} */ (b)[i], k)) : Object.fromEntries(Object.entries(/** @type {any} */ (a)).map(([n, v]) => [n, mix(v, /** @type {any} */ (b)[n], k)])));
 const f = (/** @type {number} */ v) => Math.round(v * 10) / 10;
-/** A closed outline through the points (Catmull-Rom, as Bézier curves): soft, never jagged. @param {number[]} p */
+/** A closed outline through the points (Catmull-Rom, as Bézier curves): soft, never jagged. Always drawn the same way
+ * round, so outlines that overlap in one path add up rather than cancel. @param {number[]} p */
 function outline(p) {
   const n = p.length / 2;
+  let area = 0;
+  for (let i = 0; i < n; i++) area += p[i * 2] * p[((i + 1) % n) * 2 + 1] - p[((i + 1) % n) * 2] * p[i * 2 + 1];
+  if (area < 0) p = each(p, (x, y, i) => [p[(n - 1 - i) * 2], p[(n - 1 - i) * 2 + 1]]);
   const pt = (/** @type {number} */ i) => [p[((i + n) % n) * 2], p[((i + n) % n) * 2 + 1]];
   let d = `M${f(p[0])} ${f(p[1])}`;
   for (let i = 0; i < n; i++) {
@@ -88,27 +136,6 @@ function outline(p) {
     d += `C${f(x1 + (x2 - x0) / 6)} ${f(y1 + (y2 - y0) / 6)} ${f(x2 - (x3 - x1) / 6)} ${f(y2 - (y3 - y1) / 6)} ${f(x2)} ${f(y2)}`;
   }
   return `${d}Z`;
-}
-
-/** Her two eyes: an iris with its lash, and a highlight, each. */
-function eyes() {
-  const both = [0, 1].map(() => [s('path', { class: 'iris' }), s('circle', { class: 'light' })]);
-  const el = s('g', { class: 'eyes' }, ...both.map((e) => s('g', { class: 'eye' }, ...e)));
-  /** @param {Eye} e */
-  const draw = (e) => both.forEach(([iris, light], side) => {
-    const place = (/** @type {number} */ x) => (side ? MIRROR - x : x) + e.look[0];
-    const at = (/** @type {number[]} */ pts) => outline(each(pts, (x, y) => [place(x), y + e.look[1]]));
-    iris.setAttribute('d', at(e.iris) + at(e.lash));
-    light.setAttribute('cx', String(f(place(e.light[0]))));
-    light.setAttribute('cy', String(f(e.light[1] + e.look[1])));
-    light.setAttribute('r', String(f(e.light[2])));
-  });
-  return { el, draw };
-}
-
-/** The wait before the next blink. @param {number} random 0..1 */
-export function nextBlinkMs(random) {
-  return Math.round(2600 + random * 5200);
 }
 
 const reduced = () => {
@@ -119,35 +146,27 @@ const reduced = () => {
   }
 };
 
-/** What a glance of 1 moves her eyes, in the art's units. */
-const GLANCE = 14;
-
-/** @param {{ size?: 'sm' | 'md' | 'dock' | 'big', label?: string }} [o] */
-export function createAvatar({ size = 'md', label } = {}) {
-  const look = eyes();
-  // Back to front, as the kit's README lays them: what she leaves while working; her body; her curled tail; her ears
-  // under her head; her eyes; the hairpin, which leans with her left ear, its tape tail swinging under the knot.
-  const svg = s('svg', { class: 'avsvg', viewBox: '-27 -34 1014 1014', 'aria-hidden': 'true', focusable: 'false' },
-    s('g', { class: 'away' }, part('marker'), s('g', { class: 'paws' }, part('paws')), part('tail-tip')),
-    s('g', { class: 'fox' },
-      part('body'),
-      s('g', { class: 'curl' }, part('tail-sleep')),
-      s('g', { class: 'head' },
-        s('g', { class: 'ear ear-r' }, part('ear-right')),
-        s('g', { class: 'ear ear-l' }, part('ear-left')),
-        part('head'),
-        look.el,
-        s('g', { class: 'pin' }, part('pin'), s('g', { class: 'tape' }, part('tape')), part('knot')))));
-  const av = h('span', { class: 'av', dataset: { state: 'sleeping' } }, svg);
-  const el = h('span', { class: ['seat', size], dataset: { glow: 'her' }, ...(label ? { role: 'img', 'aria-label': label } : {}) }, av);
-
-  let shown = SHAPES.closed;
+/**
+ * A pair of eyes that change from one gaze to another smoothly. @param {Record<string, Gaze>} gazes @param {string} first
+ */
+function eyes(gazes, first) {
+  const both = [0, 1].map(() => [s('path', { class: 'iris' }), s('ellipse', { class: 'light' })]);
+  const el = s('g', { class: 'eyes' }, ...both.map((e) => s('g', { class: 'eye' }, ...e)));
+  /** @param {Gaze} g */
+  const draw = (g) => both.forEach(([iris, light], i) => {
+    const e = g.eyes[i];
+    const at = (/** @type {number[]} */ pts) => outline(each(pts, (x, y) => [x + g.look[0], y + g.look[1]]));
+    iris.setAttribute('d', at(e.iris) + at(e.lash));
+    for (const [k, v] of [['cx', e.light[0] + g.look[0]], ['cy', e.light[1] + g.look[1]], ['rx', e.light[2]], ['ry', e.light[3]]]) light.setAttribute(/** @type {string} */ (k), String(f(/** @type {number} */ (v))));
+  });
+  let shown = gazes[first];
   let frame = 0;
-  /** Moves her eyes to a shape over ms. @param {Eye} to @param {number} ms @param {() => void} [then] */
-  const eyesTo = (to, ms, then) => {
+  /** Moves the eyes to a gaze over ms, then calls then. @param {string} name @param {number} ms @param {() => void} [then] */
+  const to = (name, ms, then) => {
     cancelAnimationFrame(frame);
+    const target = gazes[name];
     if (ms <= 0 || reduced()) {
-      look.draw(shown = to);
+      draw(shown = target);
       then?.();
       return;
     }
@@ -155,21 +174,58 @@ export function createAvatar({ size = 'md', label } = {}) {
     const start = performance.now();
     const step = (/** @type {number} */ now) => {
       const k = Math.min(1, (now - start) / ms);
-      look.draw(shown = mix(from, to, k < 0.5 ? 2 * k * k : 1 - (2 - 2 * k) ** 2 / 2));
+      draw(shown = mix(from, target, k < 0.5 ? 2 * k * k : 1 - (2 - 2 * k) ** 2 / 2));
       if (k < 1) frame = requestAnimationFrame(step);
       else then?.();
     };
     frame = requestAnimationFrame(step);
   };
-  look.draw(shown);
-  const stateEyes = () => SHAPES[EYES[av.dataset.state ?? ''] ?? 'open'];
+  draw(shown);
+  return { el, to };
+}
 
-  const eyesOpen = () => !['sleeping', 'away', 'offline'].includes(av.dataset.state ?? '');
+/** The wait before the next blink. @param {number} random 0..1 */
+export function nextBlinkMs(random) {
+  return Math.round(2600 + random * 5200);
+}
+
+/** What a glance of 1 moves her eyes, in the art's units. */
+const GLANCE = 14;
+
+/** @param {{ size?: 'sm' | 'md' | 'dock' | 'big', label?: string }} [o] */
+export function createAvatar({ size = 'md', label } = {}) {
+  const look = eyes(FRONT, 'closed');
+  const aside = eyes(TURNED, 'open');
+  // Back to front, as the kit's README lays them: what she leaves while working; her body; her head (ears in their
+  // other poses, then her skull under the upright ears, her head, eyes and hairpin; or her head turned); her tail,
+  // curled in front of her while she sleeps. The hairpin leans with her left ear; its tape swings under the bow.
+  const svg = s('svg', { class: 'avsvg', viewBox: '-27 -34 1014 1014', 'aria-hidden': 'true', focusable: 'false' },
+    s('g', { class: 'away' },
+      s('g', { class: 'marker' }, part('marker'), group('flag', 'marker-tape'), part('marker-knot')),
+      group('paws', 'paws'), group('tip', 'tail-tip')),
+    s('g', { class: 'fox' },
+      part('body'),
+      s('g', { class: 'head' },
+        s('g', { class: 'front' },
+          group('alt flat-r', 'ear-flat-right'), group('alt flat-l', 'ear-flat-left'), group('alt out-l', 'ear-out-left'),
+          part('caps'), group('ear ear-r', 'ear-right'), group('ear ear-l', 'ear-left'),
+          part('head'), look.el,
+          s('g', { class: 'pin' }, part('pin'), group('tape', 'tape'), part('loop'), part('knot'))),
+        s('g', { class: 'turned' }, part('head-turned'), aside.el)),
+      group('curl', 'tail-sleep')));
+  const av = h('span', { class: 'av', dataset: { state: 'sleeping' } }, svg);
+  const el = h('span', { class: ['seat', size], dataset: { glow: 'her' }, ...(label ? { role: 'img', 'aria-label': label } : {}) }, av);
+  const state = () => av.dataset.state ?? '';
+  const gaze = () => EYES[state()] ?? 'open';
+
+  const eyesOpen = () => !['sleeping', 'away', 'offline'].includes(state());
   let started = false;
   const blink = () => {
     if (reduced() || !eyesOpen()) return;
     // The eye squashes toward its lower third, ending on the closed shape, and opens again.
-    eyesTo(SHAPES.closed, 75, () => setTimeout(() => eyesOpen() && eyesTo(stateEyes(), 120), 40));
+    const pair = state() === 'thinking' ? aside : look;
+    const back = state() === 'thinking' ? 'open' : gaze();
+    pair.to('closed', 75, () => setTimeout(() => eyesOpen() && pair.to(back, 120), 40));
   };
   const schedule = () => setTimeout(() => {
     if (started && !el.isConnected) return; // removed from the page: stop
@@ -182,17 +238,18 @@ export function createAvatar({ size = 'md', label } = {}) {
   if (!reduced()) schedule();
   const api = {
     el,
-    get state() { return av.dataset.state ?? 'sleeping'; },
-    /** @param {import('./avatar.js').AvatarState | string} state */
-    setState(state) {
-      const was = av.dataset.state;
-      av.dataset.state = state;
+    get state() { return state() || 'sleeping'; },
+    /** @param {import('./avatar.js').AvatarState | string} next */
+    setState(next) {
+      const was = state();
+      av.dataset.state = next;
       // Falling asleep or waking, her eyes pass through the drowsy shape, whose lid curves with the eye.
-      if (state !== was) {
-        if ((was === 'sleeping' || state === 'sleeping') && was !== 'offline') eyesTo(SHAPES.drowsy, 260, () => eyesTo(stateEyes(), 360));
-        else eyesTo(stateEyes(), 320);
+      if (next !== was) {
+        if ((was === 'sleeping' || next === 'sleeping') && was !== 'offline') look.to('drowsy', 260, () => look.to(gaze(), 360));
+        else look.to(gaze(), 320);
+        aside.to('open', 0);
       }
-      if (state !== 'speaking' && state !== 'hearing') api.setLevel(0);
+      if (next !== 'speaking' && next !== 'hearing') api.setLevel(0);
     },
     /** The seat's glow follows the sound: her voice, or yours in grey (spec §16.3). @param {number} level 0..1 @param {'her' | 'you'} [who] */
     setLevel(level, who = 'her') {
@@ -205,8 +262,8 @@ export function createAvatar({ size = 'md', label } = {}) {
     glance(dx, dy) {
       if (reduced()) return;
       const clamp = (/** @type {number} */ v) => Math.max(-3, Math.min(3, Number(v) || 0)) * GLANCE;
-      look.el.style.transform = `translate(${clamp(dx)}px, ${clamp(dy)}px)`;
-      setTimeout(() => { look.el.style.transform = ''; }, 1100);
+      for (const e of [look.el, aside.el]) e.style.transform = `translate(${clamp(dx)}px, ${clamp(dy)}px)`;
+      setTimeout(() => { for (const e of [look.el, aside.el]) e.style.transform = ''; }, 1100);
     },
     blink,
   };
