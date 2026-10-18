@@ -10,7 +10,7 @@ const TUNABLES = Object.freeze({
   nowRole: 'developer', // the now block's role: a developer message isn't where OpenAI's cache breakpoint goes, so the cached prefix ends before it (spec §6.3); "user" for servers without developer messages
   phase: true, // labels Shiori's words as "commentary" or "final_answer", as OpenAI's newer models want; false for servers that refuse it
   reasoningSummary: 'auto', // reasoning summaries, for models with reasoning levels; false where they aren't allowed (OpenAI may want a verified organization)
-  encryptedReasoning: true, // asks for reasoning as encrypted items, to send back; false for a model that refuses it
+  encryptedReasoning: true, // asks models with reasoning levels for their reasoning as encrypted items, to send back (OpenAI sends them anyway); false for one that refuses it
   imageDetail: null, // e.g. "low", "high" or "original"; unset is "auto"
   uploads: true, // photos go to the files API once, then by id (spec §4.8)
 });
@@ -80,8 +80,10 @@ function build({ endpoint, model, key, tunables: t, request }) {
   /** @type {Record<string, any>} */
   const body = { model: model.providerId, input, stream: true, store: false };
   if (request.system) body.instructions = request.system;
+  // Only a model with reasoning levels takes a reasoning field or the include for it; each level's patch adds its effort (spec §9.3).
+  const thinks = Object.keys(model.reasoning ?? {}).length > 0;
   /** @type {string[]} */
-  const include = t.encryptedReasoning ? ['reasoning.encrypted_content'] : [];
+  const include = thinks && t.encryptedReasoning ? ['reasoning.encrypted_content'] : [];
   const max = request.maxOutput ?? model.maxOutput;
   if (max) body.max_output_tokens = Math.max(MIN_OUTPUT, max);
   if (request.tools?.length) {
@@ -89,8 +91,7 @@ function build({ endpoint, model, key, tunables: t, request }) {
     body.tools = request.tools.map((/** @type {any} */ x) => ({ type: 'function', name: x.name, description: x.description, parameters: x.input, strict: false }));
   }
   if (request.toolChoice) body.tool_choice = { type: 'function', name: request.toolChoice };
-  // Only a model with reasoning levels takes a reasoning field; each level's patch adds its effort (spec §9.3).
-  if (t.reasoningSummary && Object.keys(model.reasoning ?? {}).length) body.reasoning = { summary: t.reasoningSummary };
+  if (thinks && t.reasoningSummary) body.reasoning = { summary: t.reasoningSummary };
   if (request.logprobs) {
     body.top_logprobs = request.logprobs;
     include.push('message.output_text.logprobs');

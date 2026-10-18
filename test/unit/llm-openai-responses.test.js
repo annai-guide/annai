@@ -91,10 +91,11 @@ test('build: a conversation with photos, a PDF, tool calls and results, this mod
   assert.equal(body.model, MODEL);
   assert.equal(body.stream, true);
   assert.equal(body.store, false, 'nothing is kept on the server: the whole conversation goes each time');
-  assert.deepEqual(body.include, ['reasoning.encrypted_content']);
   assert.equal(body.instructions, 'Be brief.');
   assert.equal(body.max_output_tokens, 500);
-  assert.equal(body.reasoning, undefined, 'a model without reasoning levels is sent no reasoning field');
+  // A model without reasoning levels may not reason: it is sent no reasoning field, and isn't asked for encrypted reasoning.
+  assert.equal(body.reasoning, undefined);
+  assert.equal(body.include, undefined);
   assert.deepEqual(body.tools, [{ type: 'function', name: 'report_color', description: 'Report a color.', parameters: { type: 'object', properties: { color: { type: 'string' } } }, strict: false }]);
   assert.deepEqual(body.input, [
     { role: 'user', content: [
@@ -116,15 +117,14 @@ test('build: a conversation with photos, a PDF, tool calls and results, this mod
   assert.equal(type.tail, true);
 });
 
-test('build: the tunables: no key, the now block as a user message, no phase, no encrypted reasoning asked for, image detail', () => {
-  const tunables = { ...type.tunables, nowRole: 'user', phase: false, encryptedReasoning: false, imageDetail: 'high' };
+test('build: the tunables: no key, the now block as a user message, no phase, image detail', () => {
+  const tunables = { ...type.tunables, nowRole: 'user', phase: false, imageDetail: 'high' };
   const s = spec({ key: null, tunables, endpoint: endpointOf({ headers: { 'OpenAI-Project': 'proj_1' } }), request: { messages: [
     { role: 'user', parts: [{ type: 'image', mediaType: 'image/jpeg', data: 'CCCC' }] },
     { role: 'assistant', parts: [{ type: 'text', text: 'A red square.' }] },
   ], tail: 'NOW' } });
   const { headers, body } = type.build(s);
   assert.deepEqual(headers, { 'content-type': 'application/json', 'OpenAI-Project': 'proj_1' });
-  assert.equal(body.include, undefined);
   assert.equal(body.max_output_tokens, 128000, "the model's maximum output, when the request sets none");
   assert.deepEqual(body.input, [
     { role: 'user', content: [{ type: 'input_image', image_url: 'data:image/jpeg;base64,CCCC', detail: 'high' }] },
@@ -133,16 +133,18 @@ test('build: the tunables: no key, the now block as a user message, no phase, no
   ]);
 });
 
-test('build: a model with reasoning levels asks for summaries, unless the endpoint says not to; the level patch adds the effort', () => {
+test('build: a model with reasoning levels asks for summaries and encrypted reasoning, unless the endpoint says not to; the level patch adds the effort', () => {
   const reasoning = { off: { reasoning: { effort: 'none' } }, low: { reasoning: { effort: 'low' } } };
   const s = spec({ model: modelOf({ reasoning }), request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } });
   const { body } = type.build(s);
   assert.deepEqual(body.reasoning, { summary: 'auto' });
+  assert.deepEqual(body.include, ['reasoning.encrypted_content']);
   assert.deepEqual(applyPatches(body, s.endpoint, s.model, 'medium').reasoning, { summary: 'auto', effort: 'low' });
   assert.deepEqual(applyPatches(body, s.endpoint, s.model, 'off').reasoning, { summary: 'auto', effort: 'none' });
   // An organization that isn't verified for summaries switches them off once, for every model (plan choice 6).
-  const off = type.build({ ...s, tunables: { ...s.tunables, reasoningSummary: false } }).body;
+  const off = type.build({ ...s, tunables: { ...s.tunables, reasoningSummary: false, encryptedReasoning: false } }).body;
   assert.equal(off.reasoning, undefined);
+  assert.equal(off.include, undefined);
 });
 
 test('build: a forced tool, logprobs, and never fewer than 16 output tokens', () => {
@@ -154,7 +156,7 @@ test('build: a forced tool, logprobs, and never fewer than 16 output tokens', ()
   const { body } = type.build(s);
   assert.deepEqual(body.tool_choice, { type: 'function', name: 'decide' });
   assert.equal(body.top_logprobs, 5);
-  assert.deepEqual(body.include, ['reasoning.encrypted_content', 'message.output_text.logprobs']);
+  assert.deepEqual(body.include, ['message.output_text.logprobs']);
   assert.equal(body.max_output_tokens, 16);
 });
 
