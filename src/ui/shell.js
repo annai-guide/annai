@@ -121,12 +121,29 @@ export function startShell(root, core) {
   let entry = '';
   addEventListener('scroll', () => { if (entry) scrolls.set(entry, scrollY); }, { passive: true });
   addEventListener('pagehide', () => {
+    if (entry) scrolls.set(entry, scrollY);
     try {
       sessionStorage.setItem(KEPT, JSON.stringify([...scrolls].slice(-50)));
     } catch {
       // not kept: a reload then opens at the top
     }
   });
+  /** Scrolls to want while the screen grows toward it, until it's there, you move, or 2 s pass. @param {number} my @param {number} want */
+  const follow = (my, want) => {
+    const until = performance.now() + 2000;
+    const stop = () => {
+      grows.disconnect();
+      for (const t of ['pointerdown', 'wheel', 'keydown']) removeEventListener(t, stop, true);
+    };
+    const grows = new ResizeObserver(() => {
+      if (my !== seq || performance.now() > until) return stop();
+      scrollTo(0, want);
+      if (Math.abs(scrollY - want) <= 2) stop();
+    });
+    for (const t of ['pointerdown', 'wheel', 'keydown']) addEventListener(t, stop, true);
+    grows.observe(main);
+    setTimeout(stop, 2000);
+  };
   /** Where a screen still being drawn should scroll to: whichever drawing finishes first after a move uses it. @type {number | null} */
   let pending = null;
   /** This history entry's key, and where to scroll to on it. @returns {number} */
@@ -144,7 +161,11 @@ export function startShell(root, core) {
   /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
   async function render(o = {}) {
     const my = ++seq;
-    if (o.moved) pending = arrive();
+    if (o.moved) {
+      // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
+      if (entry) scrolls.set(entry, scrollY);
+      pending = arrive();
+    }
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
     const section = SECTION[route.name] ?? (route.parts[0] === 'trip' ? 'trips' : route.parts[0]);
@@ -167,9 +188,9 @@ export function startShell(root, core) {
         const want = pending;
         pending = null;
         scrollTo(0, want);
-        // A screen that fills in a moment later is scrolled again once it is long enough; not the Conversation,
-        // which goes to its last message itself.
-        if (want && route.name !== 'talk') setTimeout(() => { if (my === seq && Math.abs(scrollY - want) > 2) scrollTo(0, want); }, 150);
+        // A screen that fills in a moment later is scrolled again as it grows, for up to 2 seconds or until you
+        // touch it; not the Conversation, which goes to its last message itself.
+        if (want && route.name !== 'talk') follow(my, want);
       }
     } catch (e) {
       if (my !== seq) return;
