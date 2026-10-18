@@ -144,9 +144,9 @@ test('the service: installs an endpoint type on demand, calls a role with fallba
   assert.deepEqual((await llm.listModels(id)).map((m) => m.providerId), ['scripted']);
 });
 
-test('Anthropic and OpenRouter template models list their web tools (spec §9.5)', async () => {
+test('Anthropic, OpenRouter and OpenAI (Responses) template models list their web tools (spec §9.5)', async () => {
   const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
-  for (const id of ['anthropic', 'openrouter']) {
+  for (const id of ['anthropic', 'openrouter', 'openai-responses']) {
     for (const m of catalog.endpoints.find((/** @type {any} */ e) => e.id === id).models) {
       assert.ok(m.providerTools?.some((/** @type {any} */ t) => t.kind === 'search'), `${id} ${m.providerId}`);
     }

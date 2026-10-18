@@ -22,7 +22,7 @@
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
  *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string }} Request
- *   tail: volatile text (the now block) sent last, inside the final user message, after any cache marker.
+ *   tail: the now block, last, after any cache marker: in the final user message, or where the type puts it (OpenAI Responses: a developer message).
  *   toolChoice: a tool the model must call. logprobs: how many alternatives to report for the first token.
  *   providerTools: turn on the model's own tools of these kinds, except the ids switched off (spec §9.5);
  *   needsProviderTool: only models with such a tool of this kind may answer.
@@ -181,7 +181,7 @@ export function safeId(id) {
  * @property {string} name  shown in Settings
  * @property {string} pluginId  set by annai
  * @property {Record<string, any>} [tunables]  defaults for the type's tunables (spec §9.2)
- * @property {boolean} [tail]  true when build() places request.tail itself; otherwise annai adds it as the last text
+ * @property {boolean} [tail]  true when build() places request.tail; else annai adds it as the last text
  * @property {(c: CallSpec) => { url: string, headers: Record<string, string>, body: any }} [build]  the HTTP request for annai's request
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
  * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
