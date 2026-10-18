@@ -51,13 +51,23 @@ export async function testModel(c) {
   const useImage = model.input.includes('image');
   const useTools = model.tools !== false;
   if (useImage || useTools) {
-    const ask = useTools ? 'What color is the square? Answer by calling report_color.' : 'What color is the square? Answer in one word.';
+    // Without a picture there is no square to look at, so the question carries its answer: a model that
+    // takes no photos is tested on the tool alone (the user's DeepSeek answered in words, 2026-10-18).
+    const ask = !useImage ? 'The square is red. Report its color by calling report_color.'
+      : useTools ? 'What color is the square? Answer by calling report_color.' : 'What color is the square? Answer in one word.';
     /** @type {import('./contract.js').Part[]} */
     const parts = [...(useImage ? [/** @type {const} */ ({ type: 'image', mediaType: 'image/png', data: TEST_IMAGE })] : []), { type: 'text', text: ask }];
     try {
-      const r = await callOnce({ ...base, request: { messages: [{ role: 'user', parts }], ...(useTools ? { tools: [REPORT] } : {}), maxOutput: 512 } });
+      // Room for a model that thinks before it calls a tool, which can't always be turned off.
+      const r = await callOnce({ ...base, request: { messages: [{ role: 'user', parts }], ...(useTools ? { tools: [REPORT] } : {}), maxOutput: 2048 } });
       const call = r.parts.find((p) => p.type === 'tool_call' && p.name === REPORT.name);
-      if (useTools) steps.push({ step: 'tools', ok: Boolean(call), detail: call ? 'Tool calls work.' : "The model answered but didn't call the test tool." });
+      const cut = r.stop === 'length';
+      if (useTools) {
+        steps.push({
+          step: 'tools', ok: Boolean(call),
+          detail: call ? 'Tool calls work.' : cut ? 'The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.' : "The model answered but didn't call the test tool.",
+        });
+      }
       if (useImage) {
         const answer = call?.type === 'tool_call' ? JSON.stringify(call.input) : r.text;
         const red = /red/i.test(answer);

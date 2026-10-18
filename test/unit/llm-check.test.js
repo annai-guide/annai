@@ -165,3 +165,21 @@ test("what the Test button says never shows a key, whatever the provider's messa
   assert.match(r.steps[0].detail, /may not use this model/);
   assert.doesNotMatch(JSON.stringify(r), /0123456789abcdef/);
 });
+
+test("a model that takes no photos is asked something it can answer with the tool, with room to think first; a reply cut off by its length says so (the user's DeepSeek, 2026-10-18)", async () => {
+  const c = scriptedCase([{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }], { input: ['text'], tools: true });
+  /** @type {any[]} */
+  const seen = [];
+  const run = c.type.run;
+  c.type.run = (/** @type {any} */ x) => { seen.push(x.request); return run(x); };
+  const r = await testModel(c);
+  assert.deepEqual(r.steps.map((s) => [s.step, s.ok]), [['access', true], ['key', true], ['tools', true]]);
+  const ask = seen[1];
+  const words = ask.messages[0].parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text).join(' ');
+  assert.ok(!ask.messages[0].parts.some((/** @type {any} */ p) => p.type === 'image'));
+  assert.match(words, /red/, 'without a picture, the question carries the answer');
+  assert.doesNotMatch(words, /What color is the square\?/);
+  assert.ok(ask.maxOutput >= 2048, `room for a thinking model before its tool call: ${ask.maxOutput}`);
+  const cut = await testModel(scriptedCase([{ text: 'OK' }, { text: 'Let me think about the', stop: 'length' }], { input: ['text'], tools: true }));
+  assert.match(cut.steps[2].detail, /ran out of room|length/i);
+});
