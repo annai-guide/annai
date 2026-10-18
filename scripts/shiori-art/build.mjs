@@ -361,6 +361,27 @@ if (debug) {
   for (const part of PARTS) await writeFile(join(debug, `${part.id}.png`), encodePng(preview(part.labels)));
 }
 
+// What src/ui/shiori.css and src/ui/avatar.js move the parts about, in the SVG's units, recorded in the art (a unit test
+// checks they agree): each ear's base (its corner by her head) and how far that base is turned; the bow's knot, where
+// the streamer's root goes; the marker's knot; the tail tip's cut edge; how far her head dips asleep.
+const u = (/** @type {number} */ v) => Math.round(v / UNIT);
+/** @param {import('./raster.mjs').Mask} m */
+const centre = (m) => {
+  let [n, sx, sy] = [0, 0, 0];
+  m.data.forEach((v, p) => { if (v) [n, sx, sy] = [n + 1, sx + (p % W) - OX, sy + Math.floor(p / W) - OY]; });
+  return [u(sx / n), u(sy / n)];
+};
+const PIVOTS = {
+  ...Object.fromEntries(Object.entries(EAR_LINE).map(([side, [[ox, oy], [ix, iy]]]) => {
+    const turn = (Math.atan2(side === 'right' ? iy - oy : oy - iy, side === 'right' ? ix - ox : ox - ix) * 180) / Math.PI;
+    return [`ear-${side[0]}`, [u(ox), u(oy), Math.round(turn * 10) / 10]];
+  })),
+  knot: centre(seed(is(master, [TAPE]), [2075, 1085])),
+  'marker-knot': centre(seed(is(markerAll, [TAPE]), markerAt([373, 457]))),
+  'tail-tip': AT.tailTip.to.map(u),
+  dip: DIP.map(u),
+};
+
 console.log('tracing');
 const work = await mkdtemp(join(tmpdir(), 'shiori-art-'));
 try {
@@ -381,6 +402,7 @@ try {
   groups.push(paws());
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-27 -34 1014 1014">
 <!-- Shiori's parts, traced from the user's art kit by scripts/shiori-art/build.mjs. Don't edit by hand; run the tool. -->
+<!-- pivots ${JSON.stringify(PIVOTS)} -->
 <defs>
 ${groups.join('\n')}
 </defs>
@@ -388,21 +410,7 @@ ${groups.join('\n')}
 `;
   await writeFile(out, svg);
   console.log(`wrote assets/shiori.svg (${(svg.length / 1024).toFixed(1)} KiB)`);
-  // What src/ui/shiori.css pivots the parts about, in the SVG's units.
-  const u = (/** @type {number} */ v) => Math.round(v / UNIT);
-  for (const [side, [[ox, oy], [ix, iy]]] of Object.entries(EAR_LINE)) {
-    const turn = Math.atan2(side === 'right' ? iy - oy : oy - iy, side === 'right' ? ix - ox : ox - ix) * 180 / Math.PI;
-    console.log(`ear-${side[0]}: origin ${u(ox)}px ${u(oy)}px, base turned ${turn.toFixed(1)}deg`);
-  }
-  const centre = (/** @type {import('./raster.mjs').Mask} */ m) => {
-    let [n, sx, sy] = [0, 0, 0];
-    m.data.forEach((v, p) => { if (v) [n, sx, sy] = [n + 1, sx + (p % W) - OX, sy + Math.floor(p / W) - OY]; });
-    return `${u(sx / n)}px ${u(sy / n)}px`;
-  };
-  console.log(`tape: origin ${centre(seed(is(master, [TAPE]), [2075, 1085]))} (the knot)`);
-  console.log(`marker streamer: root at ${centre(seed(is(markerAll, [TAPE]), markerAt([373, 457])))} (its knot)`);
-  console.log(`asleep: her head lowered by ${DIP.map(u).join('px ')}px`);
-  console.log(`tail-tip: origin ${AT.tailTip.to.map(u).join('px ')}px (the top of its cut edge, outside the seat)`);
+  console.log('pivots, as src/ui/shiori.css and src/ui/avatar.js must use them (test/unit/shiori-art.test.js checks):', JSON.stringify(PIVOTS));
 } finally {
   await rm(work, { recursive: true, force: true });
 }
