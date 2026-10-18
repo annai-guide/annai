@@ -179,7 +179,18 @@ export function createLlm({
       try {
         res = await get(r.url, { headers: r.headers });
       } catch (e) {
-        throw new ProviderError('unreachable', String(/** @type {any} */ (e)?.message ?? e));
+        // In words, by host, never the browser's own ("Load failed"): a server that answers a check made
+        // without the browser's access rules is there, but doesn't allow web apps (spec §9.8).
+        let host = 'this endpoint';
+        try {
+          host = new URL(r.url).host;
+        } catch {
+          // not an address: the words say "this endpoint"
+        }
+        if (await probe(r.url)) {
+          throw new ProviderError('blocked', `${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.`, { cause: e });
+        }
+        throw new ProviderError('unreachable', `annai couldn't reach ${host}. Check the base URL and your connection.`, { cause: e });
       }
       if (!res.ok) {
         const text = await res.text().catch(() => '');

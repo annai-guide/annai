@@ -159,3 +159,26 @@ test("a package's templates join annai's; the catalog's own win on the same id (
   const out = await loadTemplates({ ws, fetch: get, extra: [{ id: 'openai', version: 9, type: 'x', name: 'Fake OpenAI' }, { id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM' }] });
   assert.deepEqual(out.endpoints.map((t) => [t.id, t.name]), [['openai', 'OpenAI'], ['trail-llm', 'Trail LLM']]);
 });
+
+test("fetching a model list from an endpoint that doesn't allow web apps says so, by its host, rather than the browser's \"Load failed\"", async () => {
+  const { registry, store, ws } = await setup();
+  const importModule = async (/** @type {string} */ url) => {
+    const m = /^\/plugins\/([^/]+)\/(.+)$/.exec(url);
+    if (!m) return import(url);
+    const code = await ws.readText(SYS_PLUGINS, `/${decodeURIComponent(m[1])}/${m[2]}`);
+    return import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
+  };
+  const plugins = new PluginHost({ registry, workspace: ws, importModule });
+  /** @type {boolean} */
+  let answers = true;
+  const fetchOf = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    if (String(url).startsWith('https://api.example-llm.test/')) throw new TypeError('Load failed'); // what Safari says when CORS blocks it
+    return repoFetch(url);
+  };
+  const llm = createLlm({ store, ws, plugins, fetch: fetchOf, probe: async () => answers });
+  await llm.ensureType('chat-completions');
+  const id = await addFromTemplate({ ws, store }, { ...tpl('custom-chat-completions'), baseUrl: 'https://api.example-llm.test/step_plan/v1' }, { roles: null, key: 'sk-test' });
+  await assert.rejects(llm.listModels(id), (/** @type {any} */ e) => e.kind === 'blocked' && /api\.example-llm\.test/.test(e.message) && /web apps/.test(e.message) && !/Load failed/.test(e.message));
+  answers = false;
+  await assert.rejects(llm.listModels(id), (/** @type {any} */ e) => e.kind === 'unreachable' && /api\.example-llm\.test/.test(e.message) && /couldn't reach/.test(e.message));
+});
