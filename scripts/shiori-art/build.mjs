@@ -5,15 +5,15 @@
 // move on their own (body, ears, head, hairpin, tape tail), fills what each part hid with what was around it, adds
 // the parts the master doesn't show (the ears' other poses, the turned head, the curled tail, the tail's tip, the
 // trail marker), splits each part into flat colour layers, traces each layer with potrace (in Docker), and writes
-// the layers as one SVG of named groups. scripts/shiori-art/eyes.mjs measures the eyes, which are drawn live.
+// the layers as one SVG of named groups. scripts/shiori-art/measure.mjs measures the eyes and the streamer, which are drawn live.
 import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { decodePng, encodePng } from './png.mjs';
-import { rgb, classify, where, union, minus, and, region, fillHoles, distance, grow, inpaint, polygon, place, pbm, blank } from './raster.mjs';
+import { rgb, classify, where, union, minus, and, region, fillHoles, distance, grow, inpaint, polygon, place, pbm, blank, blur, despeckle } from './raster.mjs';
 import { tracedPath } from './paths.mjs';
-import { TURNED } from './eyes.mjs';
+import { TURNED } from './measure.mjs';
 
 const kit = process.argv[2];
 if (!kit) {
@@ -41,9 +41,9 @@ const pts = (pts) => pts.map(([x, y]) => [x + OX, y + OY]);
  * @type {Record<string, At>}
  */
 const AT = {
-  tailSleep: { file: 'parts/tail_sleep.png', scale: 2.16, angle: -45, from: [700, 500], to: [1139, 2961] },
   tailTip: { file: 'parts/tail_tip.png', scale: 1.05, angle: -35, from: [702, 450], to: [2924, 1813] },
   marker: { file: 'parts/trail_marker.png', scale: 1.37, angle: 14, from: [392, 1620], to: [860, 2600] },
+  grass: { file: 'parts/grass_blades.png', scale: 1.09, from: [560, 760], to: [830, 2590] },
   earFlatRight: { file: 'parts/ears/ear_flat_right.png', scale: 1.92, angle: -10, from: [540, 260], to: [940, 1080] },
   earFlatLeft: { file: 'parts/ears/ear_flat_left.png', scale: 1.92, angle: 10, from: [116, 260], to: [1940, 1050] },
   earOutLeft: { file: 'parts/ears/ear_out_left.png', scale: 1.066, angle: -22.4, from: [25, 201], to: [1875, 933] },
@@ -61,8 +61,13 @@ const fromTurned = ([x, y]) => [(x - TURNED.knot[0]) * TURNED.scale + TURNED.fro
 const [INK, FUR, PINK, SCARF, TAPE, BOW, TWIG, GRASS] = [1, 2, 3, 4, 5, 6, 7, 8];
 /** @type {Record<number, string | null>} */
 const FILL = { [INK]: '#3E1A10', [FUR]: '#FFFFFE', [PINK]: '#FFCBAE', [SCARF]: '#EC3F29', [TAPE]: '#FE3972', [BOW]: '#790B32', [TWIG]: '#583623', [GRASS]: '#5C842F' };
-/** What each class looks like in a picture: the master's twig is #5F3926 and the marker's lighter. @param {string} twig */
-const refs = (twig) => ['3E1A10', 'FFFFFE', 'FFCBAE', 'EC3F29', 'FE3972', '790B32', twig, '5C842F'].map(rgb);
+/**
+ * What each class looks like in a picture: the master's twig is #5F3926 and the marker's lighter; the asleep masters,
+ * generated later, have browns of their own (ASLEEP). Every picture is drawn in the master's palette (FILL).
+ * @param {string} twig @param {Record<string, string>} [own] other colours by class: ink, bow, tape
+ */
+const refs = (twig, own = {}) => [own.ink ?? '3E1A10', 'FFFFFE', 'FFCBAE', 'EC3F29', own.tape ?? 'FE3972', own.bow ?? '790B32', twig, '5C842F'].map(rgb);
+const ASLEEP = /** @type {const} */ (['773B16', { ink: '4C2311', bow: '9F0B27', tape: 'FA4D6A' }]);
 
 const png = async (/** @type {string} */ f) => decodePng(await readFile(join(kit, f)));
 /** A kit part on the canvas, as classes. @param {At} at */
@@ -80,9 +85,10 @@ const seed = (m, [x, y]) => region(m, Math.round(x) + OX, Math.round(y) + OY);
  * A head's own pixels: the white fur joined to its face, its holes (eyes, nose, blush, inner ears, hairpin) and the
  * outline round it, and the body's own. Where the two meet, each gets the whole line, so either can move off it.
  * @param {import('./raster.mjs').Labels} L @param {number[]} face a point on the face @param {number[][]} [more] points in an ear its outline cuts off
+ * @param {import('./raster.mjs').Mask} [also] more of the head, as it is
  */
-function headOf(L, face, more = []) {
-  const all = fillHoles(union(seed(is(L, [FUR]), face), ...more.map((p) => seed(is(L, [FUR, PINK]), p))));
+function headOf(L, face, more = [], also = blank(W, H)) {
+  const all = fillHoles(union(seed(is(L, [FUR]), face), also, ...more.map((p) => seed(is(L, [FUR, PINK]), p))));
   const bodyLight = minus(is(L, [FUR, SCARF]), all);
   const dHead = distance(all).dist;
   const dBody = distance(bodyLight).dist;
@@ -117,6 +123,51 @@ function bowPieces(L, { knot: k, tails: t, stem, twig, edge }) {
     tails: { ...L, data: L.data.map((l, p) => (tails.data[p] ? l : knotIn.data[p] ? TAPE : 0)) },
     knot: cut(L, knot),
   };
+}
+
+/** Labels moved by (dx, dy) pixels. @param {import('./raster.mjs').Labels} L @param {number} dx @param {number} dy */
+function shift(L, dx, dy) {
+  const out = new Uint8Array(L.data.length);
+  for (let y = Math.max(0, dy); y < Math.min(H, H + dy); y++) out.set(L.data.subarray((y - dy) * W + Math.max(0, -dx), (y - dy) * W + W - Math.max(0, dx)), y * W + Math.max(0, dx));
+  return { ...L, data: out };
+}
+
+/**
+ * Her asleep tail, from the tailed master, kept simple (README "Asleep pose"): its top edge as drawn, with its few
+ * large tufts; its outer and bottom edges smoothed; its outline redrawn at the master's width. It reaches up under her
+ * head, so it can rise and fall with her breathing without a gap; below the canvas it carries straight on.
+ * @param {import('./raster.mjs').Labels} L the tailed master @param {import('./raster.mjs').Mask} head her asleep head
+ */
+function tailOf(L, head) {
+  const fur = seed(is(L, [FUR]), [300, 2600]);
+  const inner = fillHoles(union(fur, seed(is(L, [PINK]), [2400, 2500])));
+  const face = fillHoles(seed(is(L, [FUR]), [1440, 1500]));
+  const dT = distance(inner).dist;
+  const dF = distance(face).dist;
+  const outer = union(inner, where(L, (l, p) => l === INK && dT[p] <= 45 && dT[p] < dF[p]));
+  const top = new Int32Array(W).fill(H);
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (outer.data[y * W + x]) { top[x] = y; break; }
+  const near = blur(outer, 3);
+  const far = blur(outer, 24);
+  const bottom = 2879 + OY;
+  const shape = blank(W, H);
+  const kept = blank(W, H);
+  for (let p = 0; p < W * H; p++) {
+    const x = p % W;
+    const y = Math.floor(p / W);
+    const w = 1 - Math.max(0, Math.min(1, (y - top[x] - 140) / 120)); // 1 along the top edge, 0 below it
+    shape.data[p] = w * near[p] + (1 - w) * far[p] >= 0.5 ? 1 : 0;
+    kept.data[p] = w > 0.5 && L.data[p] === INK && outer.data[p] && dF[p] > 50 ? 1 : 0; // not her chin's outline
+  }
+  // Under her head, and on below the canvas.
+  const up = shift(shape, 0, -90);
+  for (let p = 0; p < W * H; p++) if (up.data[p] && head.data[p]) shape.data[p] = 1;
+  for (let y = bottom + 1; y < H; y++) shape.data.copyWithin(y * W, bottom * W, bottom * W + W);
+  const dOut = distance(where(shape, (v) => !v)).dist;
+  const colours = { width: W, height: H, data: L.data.map((l, p) => (l === PINK && inner.data[p] ? PINK : inner.data[p] ? FUR : 0)) };
+  for (let y = bottom + 1; y < H; y++) colours.data.copyWithin(y * W, bottom * W, bottom * W + W);
+  const filled = inpaint(colours, where(shape, (v, p) => v === 1 && colours.data[p] === 0), (l) => l === FUR || l === PINK);
+  return { width: W, height: H, data: shape.data.map((v, p) => (v ? (dOut[p] <= 30 || kept.data[p] ? INK : filled.data[p] || FUR) : 0)) };
 }
 
 console.log('reading the master');
@@ -217,23 +268,47 @@ const turnedEyes = grow(union(fillHoles(seed(turnedInk, fromTurned([960, 1380]))
 const turnedFace = inpaint(turned, turnedEyes, (l) => l === FUR);
 const headTurned = cut(turnedFace, headOf(turnedFace, fromTurned([1250, 1150]), [fromTurned([1240, 600])]).head);
 
-// The other ear poses (README "Ear poses"): folded flat for Asleep and Offline, her left ear angled out for Your turn.
+// The other ear poses (README "Ear poses"): folded flat for Offline, her left ear angled out for Your turn.
 console.log('placing the ears, tails and marker');
 const earFlatRight = await placed(AT.earFlatRight);
 const earFlatLeft = await placed(AT.earFlatLeft);
 const earOutLeft = await placed(AT.earOutLeft);
 
-// The parts the master doesn't show: the curled tail big, turned so its tip rises in front of her (pose_asleep);
-// the marker about as tall as her head and ears, its tape's tails flying free; the tail's tip leaving past the seat.
-const tailSleep = await placed(AT.tailSleep);
+// Asleep (README "Asleep pose"): her head from the asleep master, and her tail, wrapped round her, from the tailed one.
+console.log('reading the asleep masters');
+const asleep = classify(place(await png('master/shiori_master_asleep.png'), { to: [OX, OY] }, W, H), refs(...ASLEEP));
+const asleepInk = is(asleep, [INK]);
+const asleepEyes = grow(union(fillHoles(seed(asleepInk, [1037, 1930])), fillHoles(seed(asleepInk, [1768, 1935]))), 4);
+const asleepFace = inpaint(asleep, asleepEyes, (l) => l === FUR);
+// The hairpin reaches the head's outline, so it isn't a hole in her fur: it is added to her head as it is.
+const asleepPin = and(is(asleepFace, [TWIG, TAPE, BOW]), polygon(W, H, pts([[1700, 900], [2400, 900], [2400, 1700], [1700, 1700]])));
+const asleepHead = headOf(asleepFace, [1440, 1500], [], asleepPin).head;
+// Her head is drawn where her front head is, and src/ui/shiori.css lowers it by DIP as she falls asleep: a dip.
+const DIP = [-45, 156];
+const tailed = classify(place(await png('master/shiori_master_asleep_tail.png'), { to: [OX, OY] }, W, H), refs(...ASLEEP));
+const tailAsleep = tailOf(tailed, asleepHead);
+// The sliver of scarf between her right cheek and the tail, from the tailed master: drawn over her cheek's edge in an
+// outline of its own, a little fuller than there, so it still shows at 48 pixels.
+const sliver = grow(seed(is(tailed, [SCARF]), [2044, 2157]), 12);
+const sliverLine = grow(sliver, 26);
+const headAsleep = shift({ ...asleepFace, data: asleepFace.data.map((l, p) => (sliver.data[p] ? SCARF : sliverLine.data[p] ? INK : asleepHead.data[p] ? l : 0)) }, -DIP[0], -DIP[1]);
+
+// The parts the master doesn't show: the marker about as tall as her head and ears, and the tail's tip leaving past
+// the seat. The marker's dense tuft and its tape's tails give way to the kit's grass blades and the streamer (drawn
+// live), so the twig is carried on down to the ground, where the tuft hid it.
 const tailTip = await placed(AT.tailTip);
-const marker = await placed(AT.marker, '734930');
+const markerAll = await placed(AT.marker, '734930');
 const markerAt = (/** @type {number[]} */ p) => onMaster(AT.marker, p);
-const markerTwig = seed(is(marker, [TWIG]), markerAt([300, 1200]));
-const markerPieces = bowPieces(marker, {
+const markerTwig = seed(is(markerAll, [TWIG]), markerAt([300, 1200]));
+const markerPieces = bowPieces(markerAll, {
   knot: markerAt([373, 457]), tails: [markerAt([567, 575]), markerAt([525, 742])],
-  stem: [[250, 380], [430, 380], [412, 920], [250, 920]].map(markerAt), twig: union(markerTwig, and(grow(markerTwig, 34), is(marker, [INK]))), edge: 46,
+  stem: [[250, 380], [396, 380], [404, 920], [250, 920]].map(markerAt), twig: union(markerTwig, and(grow(markerTwig, 34), is(markerAll, [INK]))), edge: 46,
 });
+const tuft = and(grow(seed(is(markerAll, [GRASS]), markerAt([200, 1560])), 75), is(markerAll, [GRASS, INK]));
+const base = polygon(W, H, pts([[252, 1195], [400, 1195], [404, 1590], [256, 1590]].map(markerAt)));
+const baseFill = polygon(W, H, pts([[282, 1195], [370, 1195], [374, 1560], [286, 1560]].map(markerAt)));
+const marker = { ...markerPieces.stays, data: markerPieces.stays.data.map((l, p) => (baseFill.data[p] ? TWIG : base.data[p] ? INK : tuft.data[p] ? 0 : l)) };
+const grass = await placed(AT.grass);
 
 /**
  * A part's layers, back to front: a colour, the classes it covers, and the outline classes it reaches a little way
@@ -244,18 +319,19 @@ const markerPieces = bowPieces(marker, {
  */
 const fur = /** @type {Layer[]} */ ([[FILL[FUR], [FUR, PINK], [INK]], [FILL[PINK], [PINK], [INK]], [FILL[INK], [INK]]]);
 const bow = /** @type {Layer[]} */ ([[FILL[TAPE], [TAPE], [BOW]], [FILL[BOW], [BOW]]]);
-// The marker's twig takes the page's currentColor, and its lines the page's fill.
-const markerLayers = /** @type {Layer[]} */ ([['currentColor', [TWIG], [INK, BOW]], [FILL[GRASS], [GRASS], [INK, BOW]], [FILL[TAPE], [TAPE], [INK, BOW]], [null, [INK, BOW]]]);
+// The marker's twig takes the page's currentColor, and its lines and the grass the page's fill.
+const markerLayers = /** @type {Layer[]} */ ([['currentColor', [TWIG], [INK, BOW]], [FILL[TAPE], [TAPE], [INK, BOW]], [null, [INK, BOW]]]);
 /** @type {Part[]} */
 const PARTS = [
-  { id: 'marker', labels: markerPieces.stays, layers: markerLayers },
-  { id: 'marker-tape', labels: markerPieces.tails, layers: markerLayers },
+  { id: 'marker', labels: marker, layers: markerLayers },
+  { id: 'grass', labels: grass, layers: [[null, [GRASS, INK]]] },
   { id: 'marker-knot', labels: markerPieces.knot, layers: markerLayers },
   { id: 'tail-tip', labels: tailTip, layers: fur },
   { id: 'body', labels: bodyPart, layers: [[FILL[FUR], [FUR, SCARF], [INK]], [FILL[SCARF], [SCARF], [INK]], [FILL[INK], [INK]]] },
   { id: 'ear-flat-right', labels: earFlatRight, layers: fur },
   { id: 'ear-flat-left', labels: earFlatLeft, layers: fur },
   { id: 'ear-out-left', labels: earOutLeft, layers: fur },
+  { id: 'tail-asleep', labels: tailAsleep, layers: fur },
   { id: 'caps', labels: capPart, layers: fur },
   { id: 'ear-right', labels: ears.right, layers: fur },
   { id: 'ear-left', labels: ears.left, layers: fur },
@@ -265,12 +341,19 @@ const PARTS = [
   { id: 'loop', labels: cut(master, loop), layers: bow },
   { id: 'knot', labels: pinPieces.knot, layers: bow },
   { id: 'head-turned', labels: headTurned, layers: [[FILL[FUR], [FUR, PINK], [INK]], [FILL[PINK], [PINK], [INK]], [FILL[TWIG], [TWIG], [INK]], ...bow, [FILL[INK], [INK]]] },
-  { id: 'tail-sleep', labels: tailSleep, layers: fur },
+  { id: 'head-asleep', labels: headAsleep, layers: [[FILL[FUR], [FUR, PINK], [INK]], [FILL[PINK], [PINK], [INK]], [FILL[SCARF], [SCARF], [INK]], [FILL[TWIG], [TWIG], [INK]], ...bow, [FILL[INK], [INK]]] },
 ];
-/** A layer's mask: its classes, and up to 6 pixels of the outline next to them. @param {Part} part @param {number[]} classes @param {number[]} [into] */
+/**
+ * A layer's mask: its classes, and up to 6 pixels of the outline next to them, without islands or holes under 600
+ * pixels (about a third of a pixel at her largest size), which are grain in the kit's pictures.
+ * @param {Part} part @param {number[]} classes @param {number[]} [into]
+ */
 function layerMask(part, classes, into = []) {
   const own = is(part.labels, classes);
-  return into.length ? union(own, and(grow(own, 6), is(part.labels, into))) : own;
+  const m = despeckle(into.length ? union(own, and(grow(own, 6), is(part.labels, into))) : own, 600);
+  // Smoothed a little, so pixel wobble at its edges doesn't become dozens of tiny curves.
+  const soft = blur(m, 2);
+  return { ...m, data: Uint8Array.from(soft, (v) => (v >= 0.5 ? 1 : 0)) };
 }
 
 if (debug) {
@@ -317,7 +400,8 @@ ${groups.join('\n')}
     return `${u(sx / n)}px ${u(sy / n)}px`;
   };
   console.log(`tape: origin ${centre(seed(is(master, [TAPE]), [2075, 1085]))} (the knot)`);
-  console.log(`marker-tape: origin ${centre(seed(is(marker, [TAPE]), markerAt([373, 457])))} (its knot)`);
+  console.log(`marker streamer: root at ${centre(seed(is(markerAll, [TAPE]), markerAt([373, 457])))} (its knot)`);
+  console.log(`asleep: her head lowered by ${DIP.map(u).join('px ')}px`);
   console.log(`tail-tip: origin ${AT.tailTip.to.map(u).join('px ')}px (the top of its cut edge, outside the seat)`);
 } finally {
   await rm(work, { recursive: true, force: true });

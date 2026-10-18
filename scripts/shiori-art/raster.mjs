@@ -286,3 +286,73 @@ export function pbm(m) {
   }
   return Buffer.concat([head, body]);
 }
+
+/**
+ * A mask blurred (three box blurs, close to a Gaussian of the given sigma) to coverage 0..1.
+ * @param {Mask} m @param {number} sigma @returns {Float32Array}
+ */
+export function blur(m, sigma) {
+  const { width, height } = m;
+  let a = Float32Array.from(m.data);
+  let b = new Float32Array(a.length);
+  const r = Math.max(1, Math.round(Math.sqrt((12 * sigma * sigma) / 3 + 1) / 2));
+  for (let pass = 0; pass < 3; pass++) {
+    for (let y = 0; y < height; y++) {
+      let sum = 0;
+      const row = y * width;
+      for (let x = -r; x <= r; x++) sum += a[row + Math.min(width - 1, Math.max(0, x))];
+      for (let x = 0; x < width; x++) {
+        b[row + x] = sum / (2 * r + 1);
+        sum += a[row + Math.min(width - 1, x + r + 1)] - a[row + Math.max(0, x - r)];
+      }
+    }
+    [a, b] = [b, a];
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      for (let y = -r; y <= r; y++) sum += a[Math.min(height - 1, Math.max(0, y)) * width + x];
+      for (let y = 0; y < height; y++) {
+        b[y * width + x] = sum / (2 * r + 1);
+        sum += a[Math.min(height - 1, y + r + 1) * width + x] - a[Math.max(0, y - r) * width + x];
+      }
+    }
+    [a, b] = [b, a];
+  }
+  return a;
+}
+
+/**
+ * The mask without its small islands, and with its small holes filled: what grain in a picture leaves behind.
+ * @param {Mask} m @param {number} area the largest island or hole to clean away, in pixels
+ */
+export function despeckle(m, area) {
+  const clean = (/** @type {Uint8Array} */ data, /** @type {number} */ value) => {
+    const { width, height } = m;
+    const seen = new Uint8Array(data.length);
+    const stack = new Int32Array(data.length);
+    const members = new Int32Array(area + 1);
+    for (let start = 0; start < data.length; start++) {
+      if (data[start] !== value || seen[start]) continue;
+      let top = 0;
+      let n = 0;
+      stack[top++] = start;
+      seen[start] = 1;
+      while (top) {
+        const p = stack[--top];
+        if (n <= area) members[n] = p;
+        n++;
+        const x = p % width;
+        for (const q of [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, p >= width ? p - width : -1, p < (height - 1) * width ? p + width : -1]) {
+          if (q >= 0 && data[q] === value && !seen[q]) {
+            seen[q] = 1;
+            stack[top++] = q;
+          }
+        }
+      }
+      if (n <= area) for (let i = 0; i < n; i++) data[members[i]] = 1 - value;
+    }
+  };
+  const data = m.data.slice();
+  clean(data, 1);
+  clean(data, 0);
+  return { ...m, data };
+}
