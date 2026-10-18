@@ -35,3 +35,23 @@ test("the art tool writes potrace's curves in whole units, relative to rounded p
   const odd = '<g transform="translate(0.000000,30.000000) scale(0.100000,-0.100000)"><path d="M0 300 l14 0 l14 0 l14 0 l-42 0 z"/></g>';
   assert.equal(tracedPath(odd, (x, y) => [x / 3, y / 3]), 'M0 0l1 0-1 0z');
 });
+
+test("the pivots the art tool works out are the ones shiori.css and avatar.js move her parts about", async () => {
+  const svg = await readFile(new URL('assets/shiori.svg', root), 'utf8');
+  const recorded = /<!-- pivots (\{.*\}) -->/.exec(svg)?.[1];
+  assert.ok(recorded, 'scripts/shiori-art/build.mjs records them in the art');
+  const p = JSON.parse(/** @type {string} */ (recorded));
+  const css = await readFile(new URL('src/ui/shiori.css', root), 'utf8');
+  const js = await readFile(new URL('src/ui/avatar.js', root), 'utf8');
+  const px = (/** @type {number[]} */ [x, y]) => `${x}px ${y}px`;
+  const [rx, ry, rTurn] = p['ear-r'];
+  const [lx, ly, lTurn] = p['ear-l'];
+  assert.match(css, new RegExp(`\\.ear-r \\{ transform-origin: ${px([rx, ry])}; transform: rotate\\(${rTurn}deg\\) .* rotate\\(${-rTurn}deg\\)`));
+  assert.match(css, new RegExp(`\\.ear-l \\{ transform-origin: ${px([lx, ly])}; transform: rotate\\(${lTurn}deg\\) .* rotate\\(${-lTurn}deg\\)`));
+  assert.match(css, new RegExp(`\\.pin \\{ transform-origin: ${px([lx, ly])};.* rotate\\(${lTurn}deg\\) .* rotate\\(${-lTurn}deg\\)`));
+  assert.match(css, new RegExp(`\\.pin \\.streamer \\{ transform-origin: ${px(p.knot)};`));
+  assert.match(css, new RegExp(`\\[data-state="sleeping"\\] \\{ --head-x: ${p.dip[0]}px; --head-y: ${p.dip[1]}px; \\}`));
+  assert.ok(js.includes(`band([${p.knot.join(', ')}],`), 'the hairpin streamer on the knot');
+  assert.ok(js.includes(`band([${p['marker-knot'].join(', ')}],`), "the marker's streamer on its knot");
+  assert.ok(js.includes(`${p['tail-tip'].join(' ')})\``), "the tail tip's wag about its cut edge");
+});
