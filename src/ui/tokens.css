@@ -28,6 +28,7 @@
   --paw: #3e1a10; /* her paw prints on it */
   --twig: #583623; /* her trail marker's twig, and its outline */
   --twig-line: #3e1a10;
+  --grass: #486838; /* its grass blades, outlines only */
   --f-display: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', ui-rounded, system-ui, sans-serif;
   --f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -46,6 +47,7 @@
     --paw: #eadcc4;
     --twig: #d8b48c; /* at least 3:1 on the dark seat */
     --twig-line: #bd9772;
+    --grass: #a9d07c;
     color-scheme: dark;
   }
 }

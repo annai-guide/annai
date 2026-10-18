@@ -1,71 +1,80 @@
 /* Shiori, the character (spec §16.3): the user's art kit, traced into parts (/assets/shiori.svg) that move on their own.
    Units are the art's: her seat is 1014 across. Each state sets her pose; the parts follow it with transitions. */
 .av { display: inline-block; position: relative;
-  --lean: 0deg; --tilt: 0deg; --head-y: 0px; --head-s: 1; --lean-r: 0deg; --len-r: 1; --lean-l: 0deg; --len-l: 1;
+  --lean: 0deg; --tilt: 0deg; --head-x: 0px; --head-y: 0px; --head-s: 1; --lean-r: 0deg; --len-r: 1; --lean-l: 0deg; --len-l: 1;
   --pin-y: 0px; --pin-lean: var(--lean-l); --pin-len: var(--len-l); }
 .avsvg { width: 100%; height: 100%; overflow: visible; display: block; }
 .avsvg .iris { fill: #441f14; }
 .avsvg .light { fill: #fff; }
 .avsvg .paws { color: var(--paw); }
 .avsvg .marker { color: var(--twig); fill: var(--twig-line); }
+.avsvg .grass { fill: var(--grass); }
+.avsvg .band { fill: #fe3972; stroke: #790b32; stroke-width: 11; stroke-linejoin: round; }
 .avsvg g { transform-box: view-box; transition: transform .6s cubic-bezier(.3, .7, .2, 1), opacity .5s ease; }
-.avsvg .eyes { transition-duration: .3s; }
+.avsvg .eyes { transition: transform .3s cubic-bezier(.3, .7, .2, 1), opacity 0s; }
 /* Her body leans from where she sits; her head turns about her neck. */
 .avsvg .fox { transform-origin: 480px 960px; transform: rotate(var(--lean)); }
-.avsvg .head { transform-origin: 480px 717px; transform: translateY(var(--head-y)) rotate(var(--tilt)) scale(var(--head-s)); }
+.avsvg .head { transform-origin: 480px 717px; transform: translate(var(--head-x), var(--head-y)) rotate(var(--tilt)) scale(var(--head-s)); }
 /* An upright ear leans from its base: a shear along the line across its base, which stays where it is, so the seam
    with her head never opens. --lean-* leans the ear out (negative: in), --len-* lengthens it. The hairpin moves with
    her left ear, and stays on her head when that ear is another drawing. */
 .avsvg .ear-r { transform-origin: 170px 438px; transform: rotate(-30.5deg) skewX(var(--lean-r)) scaleY(var(--len-r)) rotate(30.5deg); }
 .avsvg .ear-l { transform-origin: 787px 438px; transform: rotate(29.4deg) skewX(calc(var(--lean-l) * -1)) scaleY(var(--len-l)) rotate(-29.4deg); }
 .avsvg .pin { transform-origin: 787px 438px; transform: translateY(var(--pin-y)) rotate(29.4deg) skewX(calc(var(--pin-lean) * -1)) scaleY(var(--pin-len)) rotate(-29.4deg); }
-/* Past about 30° an ear is another drawing (README "Ear poses"), and Thinking is her head turned: they swap in halfway
-   through the move, the new drawing finishing it. */
-.avsvg .ear, .avsvg .alt, .avsvg .front, .avsvg .turned { transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity 0s linear .2s; }
-.avsvg .alt, .avsvg .turned { opacity: 0; }
+/* Past about 30° an ear is another drawing (README "Ear poses"), and asleep her head is: they swap in halfway through
+   the move, the new drawing finishing it. Her head turns (Thinking) mid-blink, which avatar.js times (data-face). */
+.avsvg :is(.ear, .alt, .asleep) { transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity 0s linear .2s; }
+.avsvg :is(.front, .turned) { transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity 0s; }
+.avsvg :is(.alt, .asleep, .turned) { opacity: 0; }
+.av[data-face="turned"] :is(.front, .head > .eyes) { opacity: 0; }
+.av[data-face="turned"] .turned { opacity: 1; }
 .avsvg .flat-r { transform-origin: 313px 360px; transform: rotate(35deg); }
 .avsvg .flat-l { transform-origin: 647px 350px; transform: rotate(-35deg); }
 .avsvg .out-l { transform-origin: 625px 311px; transform: rotate(-25deg); }
-/* The tape's tail swings under the bow. */
-.avsvg .tape { transform-origin: 689px 361px; transition-duration: .12s; }
-/* Her curled tail shows only while she sleeps, sliding in from below (a fading tail would show the scarf through it);
-   what she leaves shows only while she works. */
+/* Talking, the streamer takes the place of the tape's short tail, and swings under the bow with her voice. */
+.avsvg .pin .streamer { transform-origin: 689px 361px; opacity: 0; transition: transform .12s linear, opacity .15s; }
+.av[data-state="speaking"] .pin .streamer { opacity: 1; transform: rotate(calc(var(--amp, 0) * -55deg)); }
+.av[data-state="speaking"] .tape { opacity: 0; }
+/* Her tail shows wrapped round her only while she sleeps, sliding in from below (a fading tail would show the scarf
+   through it); what she leaves shows only while she works. */
 .avsvg .curl { opacity: 0; transform: translateY(560px); transition: transform .6s ease-in, opacity 0s .6s; }
 .avsvg .away { opacity: 0; transform: translateY(40px); }
-.avsvg .flag { transform-origin: 406px 353px; transform: rotate(-55deg) scale(1.1, 1.4); }
 .avsvg .tip { transform-origin: 975px 604px; }
 
-/* asleep: her head lowered onto her curled tail, ears folded flat (as offline, below), eyes closed, slow breathing (a loop) */
-.av[data-state="sleeping"] { --head-s: 1.1; --head-y: 60px; --lean-r: 24deg; --len-r: .84; --lean-l: 24deg; --len-l: .84; --pin-lean: 0deg; --pin-len: 1; --pin-y: 30px; }
+/* asleep: her head dips onto her tail, wrapped round her, as her asleep head (flat ears, eyes closed); her breathing
+   (a loop) lifts her, and her tail more */
+.av[data-state="sleeping"] { --head-x: -15px; --head-y: 52px; }
+.av[data-state="sleeping"] .front { opacity: 0; transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity 0s linear .2s; }
+.av[data-state="sleeping"] .asleep { opacity: 1; }
 .av[data-state="sleeping"] .curl { opacity: 1; transform: none; transition: transform .7s cubic-bezier(.3, .7, .2, 1), opacity 0s; }
 .av[data-state="sleeping"] .fox { animation: breathe 5s ease-in-out infinite; }
+.av[data-state="sleeping"] .curl > use { transform-box: view-box; transform-origin: 480px 980px; animation: swell 5s ease-in-out infinite; }
 /* hearing you: ears leaning in, their tips closer, head a little closer */
 .av[data-state="hearing"] { --head-s: 1.03; --lean-r: -26deg; --len-r: .9; --lean-l: -26deg; --len-l: .9; }
-/* thinking: her head turned, looking up and to the side */
+/* thinking: her head turned (data-face), looking up and to the side */
 .av[data-state="thinking"] { --tilt: -6deg; }
-.av[data-state="thinking"] .front { opacity: 0; }
-.av[data-state="thinking"] .turned { opacity: 1; }
-/* talking: her head bobs and the tape's tail flies out with her voice */
+/* talking: her head bobs, and the streamer waves (avatar.js) and swings out with her voice */
 .av[data-state="speaking"] { --head-y: calc(var(--amp, 0) * -14px); }
 .av[data-state="speaking"] .head { transition-duration: .15s; }
-.av[data-state="speaking"] .tape { transform: rotate(calc(var(--amp, 0) * -62deg)) scale(calc(1 + var(--amp, 0) * .4), calc(1 + var(--amp, 0) * 1.3)); }
 /* your turn: she leans, her head tilted clearly, her right ear up and her left angled out */
 .av[data-state="waiting"] { --lean: -5deg; --tilt: 22deg; --lean-r: -4deg; --len-r: 1.04; --pin-lean: 0deg; --pin-len: 1; --pin-y: 30px; }
 .av[data-state="waiting"] .ear-l { opacity: 0; }
 .av[data-state="waiting"] .out-l { opacity: 1; transform: none; }
-/* working: she has stepped out, leaving her trail marker, paw prints and the tip of her tail, which wags (a loop) */
+/* working: she has stepped out, leaving her trail marker (its streamer waves: a loop, in avatar.js), paw prints and the
+   tip of her tail, which wags (a loop) */
 .av[data-state="away"] .fox { opacity: 0; transform: translateY(260px); }
 .av[data-state="away"] .away { opacity: 1; transform: none; }
 .av[data-state="away"] .tip { animation: wag 2.8s ease-in-out infinite; }
 /* offline: present, grey and dim, sad half-lidded eyes, ears folded flat (a droop between flat and upright reads alert) */
 .av[data-state="offline"] { --head-y: 14px; --lean-r: 24deg; --len-r: .84; --lean-l: 24deg; --len-l: .84; --pin-lean: 0deg; --pin-len: 1; --pin-y: 30px; }
-.av:is([data-state="sleeping"], [data-state="offline"]) :is(.ear-r, .ear-l) { opacity: 0; }
-.av:is([data-state="sleeping"], [data-state="offline"]) :is(.flat-r, .flat-l) { opacity: 1; transform: none; }
+.av[data-state="offline"] :is(.ear-r, .ear-l) { opacity: 0; }
+.av[data-state="offline"] :is(.flat-r, .flat-l) { opacity: 1; transform: none; }
 .seat:has(.av[data-state="offline"]) { filter: grayscale(1); }
 .av[data-state="offline"] .avsvg { opacity: .62; }
 
 @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
 @keyframes wag { 0%, 100% { transform: rotate(6deg); } 50% { transform: rotate(-6deg); } }
+@keyframes swell { 0%, 100% { transform: none; } 50% { transform: scaleY(1.03); } }
 
 /* her seat: tea green with a dark ring, which closes the circle where her white body meets a white page; the glow
    follows sound, her voice (accent) or yours (grey) */
