@@ -296,6 +296,48 @@ annai's own MCP client (a built-in plugin) gives Shiori the tools of the MCP ser
 - **Auth:** a bearer token, or headers; annai keeps them in its secrets and never in a file, the log or the trace. A key in the address itself (a path segment or a query value that looks like one) is kept in secrets too, and the address is shown with it blanked; an address with a name and password before an `@` is refused. OAuth isn't there yet.
 - **Tools** come as `mcp_<server>_<tool>` (letters, digits, `_` and `-`); the first 100 of a server are used. Text, images (PNG, JPEG, WebP, GIF up to 5 MB) and embedded text resources reach Shiori; `isError` is an error she sees.
 
+## Remote trace (for developers)
+
+annai's official plugin **Remote trace (for developers)** sends annai's trace to a server you run, so you can watch a phone's entries, requests and errors as they happen. Install it from Settings → Plugins → From annai's catalog. It sends nothing until you give it a server address (https, or http only for `localhost` or `127.0.0.1`) and the server's token, and turn Send on. The token is kept with your keys, never in a file. Off, or removed, it stops at once; Remove also takes its settings and token.
+
+- **What it sends:** every entry the log records from the moment Send is on, in every scope, as an opened row of the Trace screen shows it: `{ scope, seq, ts, type, actor, data, refs }`. That is what you write, what Shiori says, her tool calls and results, model turns, web requests (their addresses as the trace keeps them) and errors.
+  - It sends a batch 3 seconds after the first entry waiting, or at once when 100 wait.
+  - The batch is a POST of `{ app, build, device, dropped, entries }` with `Authorization: Bearer <token>`. `app` is "annai" and its version, `build` annai's build stamp, `device` a random id made at the first send and kept in the plugin's settings, and `dropped` how many entries it dropped since the last batch the server took.
+  - Its own requests are in annai's trace, as any plugin's are.
+- **What it never sends:**
+  - **Keys and its token.** Every entry first goes through annai's own blanking, as annai's cards do, so a key you type into a message is blanked too.
+  - **Stored content:** texts over 2,000 characters (such as model replies and their reasoning), photos and other bytes. Only their names and hashes go.
+  - **Location points,** unless you turn on Send location points. Other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.
+  - **Entries from before Send was on, or after it went off.**
+  - **Entries a plugin caused** (its own requests and model calls, its `plugin.error`), because no plugin's hooks get those (see "Following the log").
+- **Offline, or refused:** it keeps the newest 2,000 entries and counts the ones it drops. It tries again after 3 seconds, then twice as long each time, up to once a minute. A server that keeps refusing (any answer that isn't 2xx) gives one card, not one per batch.
+- **The dock** shows a "Trace" chip while it is sending; tapping it opens the plugin's page.
+
+**The sink.** `scripts/trace-sink.mjs` is a small receiving server with no dependencies:
+
+```bash
+node scripts/trace-sink.mjs --port <p> --token <t> --out <file.jsonl> [--origin <allowed origin>]...
+```
+
+- **The token** must be at least 16 characters; `openssl rand -hex 16` makes one.
+- **What it takes:** batches with that token, from `https://annai.guide` and each `--origin` you add (more than one is fine), at most 1 MiB each. It listens on 127.0.0.1 only. Ports 8765, 8790–8792, 8796, 8797 and 18010–18014 are annai's own, so it refuses them.
+- **What it writes:** each entry, appended to the file as one JSON line `{ received, device, build, ...entry }`, and one line `{ received, device, build, dropped }` when a batch says entries were dropped. Watch it with `tail -f trace.jsonl`, or pick from it with `jq`, such as `jq -c 'select(.type == "error")' trace.jsonl`.
+- **From a phone:** the phone needs https. On a tailnet, `tailscale serve` gives that:
+
+  ```bash
+  TOKEN=$(openssl rand -hex 16); echo "$TOKEN"
+  node scripts/trace-sink.mjs --port 8798 --token "$TOKEN" --out trace.jsonl
+  tailscale serve --bg --https=8443 http://127.0.0.1:8798
+  ```
+
+  Then, in annai on the phone, set the server address to `https://<this machine's name on your tailnet>:8443/`, give the same token, and turn Send on. `tailscale serve --https=8443 off` stops the https side.
+
+**A server of your own** needs to:
+
+- take the POST;
+- answer 2xx;
+- allow annai's origin for CORS, with the `Authorization` and `Content-Type` headers, on its error answers too, so the plugin can tell a refused token from a server it can't reach.
+
 ## Rules
 
 - **Keep content as files.** annai stores each piece of content once and points files and log entries at it. Removing *any* trip deletes every stored piece that no file and no log entry points at, wherever it came from (spec §4.9).
