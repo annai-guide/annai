@@ -213,11 +213,11 @@ ${groups.join('\n')}
   await rm(work, { recursive: true, force: true });
 }
 
-/** A few paw prints, for Working (the README: drawn in SVG). */
+/** A few paw prints, for Working (the README: drawn in SVG), in the avatar's colour for them (light or dark). */
 function paws() {
   const print = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ turn) =>
-    `<g transform="rotate(${turn} ${x} ${y})"><ellipse cx="${x}" cy="${y}" rx="19" ry="16"/><circle cx="${x - 19}" cy="${y - 21}" r="7"/><circle cx="${x - 6}" cy="${y - 29}" r="7"/><circle cx="${x + 7}" cy="${y - 29}" r="7"/><circle cx="${x + 19}" cy="${y - 21}" r="7"/></g>`;
-  return `<g id="paws" fill="${FILL[INK]}" opacity=".55">${print(560, 760, 70)}${print(650, 820, 95)}${print(745, 760, 75)}</g>`;
+    `<g transform="rotate(${turn} ${x} ${y})"><ellipse cx="${x}" cy="${y}" rx="24" ry="20"/><circle cx="${x - 24}" cy="${y - 27}" r="9"/><circle cx="${x - 8}" cy="${y - 37}" r="9"/><circle cx="${x + 8}" cy="${y - 37}" r="9"/><circle cx="${x + 24}" cy="${y - 27}" r="9"/></g>`;
+  return `<g id="paws" fill="currentColor" opacity=".7">${print(540, 770, 70)}${print(650, 835, 95)}${print(760, 765, 75)}</g>`;
 }
 
 /** A small picture of a label map, to look at. @param {import('./raster.mjs').Labels} L */

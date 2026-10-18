@@ -5,6 +5,7 @@
 .avsvg { width: 100%; height: 100%; overflow: visible; display: block; }
 .avsvg .iris { fill: #441f14; }
 .avsvg .light { fill: #fff; }
+.avsvg .paws { color: var(--paw); }
 .avsvg g { transform-box: view-box; transition: transform .6s cubic-bezier(.3, .7, .2, 1), opacity .5s ease; }
 .avsvg .eyes { transition-duration: .3s; }
 /* Her head turns about her neck. */
@@ -32,7 +33,7 @@
 /* talking: her head bobs and the tape swings with her voice */
 .av[data-state="speaking"] { --head-y: calc(var(--amp, 0) * -14px); }
 .av[data-state="speaking"] .head { transition-duration: .15s; }
-.av[data-state="speaking"] .tape { transform: rotate(calc(var(--amp, 0) * -26deg)); }
+.av[data-state="speaking"] .tape { transform: rotate(calc(var(--amp, 0) * -18deg)); }
 /* your turn: a clear tilt, her ears asymmetric */
 .av[data-state="waiting"] { --tilt: 9deg; --lean-r: -6deg; --len-r: 1.06; --lean-l: 24deg; --len-l: .88; }
 /* working: she has stepped out, leaving her trail marker, paw prints and the tip of her tail */

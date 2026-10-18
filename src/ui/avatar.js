@@ -128,7 +128,7 @@ export function createAvatar({ size = 'md', label } = {}) {
   // Back to front, as the kit's README lays them: what she leaves while working; her body; her curled tail; her ears
   // under her head; her eyes; the hairpin, which leans with her left ear, its tape tail swinging under the knot.
   const svg = s('svg', { class: 'avsvg', viewBox: '-27 -34 1014 1014', 'aria-hidden': 'true', focusable: 'false' },
-    s('g', { class: 'away' }, part('marker'), part('paws'), part('tail-tip')),
+    s('g', { class: 'away' }, part('marker'), s('g', { class: 'paws' }, part('paws')), part('tail-tip')),
     s('g', { class: 'fox' },
       part('body'),
       s('g', { class: 'curl' }, part('tail-sleep')),
