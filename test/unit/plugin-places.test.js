@@ -77,6 +77,8 @@ test("weather: the place's time zone, the day, and its hours as TSV", async () =
   assert.match(asked[0].url, /latitude=36\.158&longitude=-121\.672/);
   assert.match(asked[0].url, /timezone=auto/);
   assert.equal(out, [
+    // Open-Meteo's licence asks for its credit next to wherever its data shows: the Trace shows this answer.
+    'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)',
     'Time zone: America/Los_Angeles (PST)',
     '2026-11-26: 8 to 15 °C, rain chance up to 20%, sunrise 06:58, sunset 16:53',
     'time\ttemp_c\train_chance_pct\train_mm\tweather\twind_kmh',

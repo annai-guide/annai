@@ -16,6 +16,7 @@ export const manifest = {
 };
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
+const CREDIT_OPEN_METEO = 'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)';
 /** Nominatim allows one request a second (spec §7.2); the gap is a little more. */
 export const NOMINATIM_GAP = { ms: 1100 };
 
@@ -201,7 +202,8 @@ export function activate(annai) {
         const d = w.daily && typeof w.daily === 'object' ? w.daily : {};
         const at = (/** @type {string} */ key, /** @type {number} */ k) => (Array.isArray(d[key]) ? d[key][k] : undefined);
         const di = (Array.isArray(d.time) ? d.time : []).indexOf(times[idx[0]].slice(0, 10));
-        const lines = [`Time zone: ${w.timezone}${w.timezone_abbreviation ? ` (${w.timezone_abbreviation})` : ''}`];
+        // Open-Meteo's licence asks for this credit next to wherever its data shows; the Trace shows this answer.
+        const lines = [CREDIT_OPEN_METEO, `Time zone: ${w.timezone}${w.timezone_abbreviation ? ` (${w.timezone_abbreviation})` : ''}`];
         if (di >= 0) {
           lines.push(`${d.time[di]}: ${Math.round(at('temperature_2m_min', di))} to ${Math.round(at('temperature_2m_max', di))} °C, rain chance up to ${at('precipitation_probability_max', di)}%, `
             + `sunrise ${String(at('sunrise', di)).slice(11)}, sunset ${String(at('sunset', di)).slice(11)}`);
