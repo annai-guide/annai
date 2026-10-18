@@ -872,20 +872,25 @@ Reference: mockups draft 6.
 - **Design:** a white fox (白狐, Inari's messenger) in a vermilion scarf. Her 枝折り hairpin is a twig with a strip of pink trail tape tied on, worn at her left ear.
   - Eyes only.
   - Her tail shows in two states only: asleep (curled across her front) and working (its tip, as she leaves the frame).
-  - The art follows the app icon: dark outlines, a ruff of fur at her cheeks, and a vermilion seat with a dark ring.
   - The Inari foxes hold a token in their mouths; Shiori's token is the hairpin.
+- **Her art** comes from the user's art kit, whose master picture decides every visible shape, position and colour (soft curved fur, sloping shoulders, dark outlines).
+  - A dev-time tool (`scripts/shiori-art/`) traces the master into parts that move on their own, like a puppet's: body, ears, head, the hairpin, and the tape's tail on it. The kit's other parts fill what the master can't show: her curled tail, her tail's tip, and her trail marker.
+  - The parts are one SVG file, `assets/shiori.svg`, which the service worker keeps for offline use.
+  - States move the parts with transforms and transitions; no picture is ever swapped. Each ear leans from its base, which stays put, so the seam with her head never opens. The hairpin moves with her left ear.
+  - Her eyes are drawn live as SVG shapes, so blinks, glances and narrowing change smoothly: open, wide, smiling, thinking, drowsy (a lid whose edge curves with the eye), and closed (a thick ‿, as on the app icon).
+  - Her seat is pale tea green, a darker tea in dark mode, with a dark ring. The app icon stays vermilion.
 - **Her gaze carries the state:**
 
 | State | Look | Dock label |
 |---|---|---|
-| Asleep | eyes closed, head lowered, ears relaxed, slow breathing (the only loop) | Tap to talk |
+| Asleep | eyes closed, head lowered onto her curled tail, ears relaxed outward, slow breathing (the only loop) | Tap to talk |
 | Listening | facing you, ears up | Listening |
-| Hearing you | ears forward; the seat glow (grey) follows your voice level | Hearing you |
-| Thinking | looks up and away | Thinking |
-| Talking | facing you; the seat glow (vermilion) and the tape follow her voice level | Tap to interrupt |
-| Your turn | facing you, head tilted | Waiting for your OK |
-| Working | stepped out of her seat, leaving her trail marker; tap it to see what she's doing | Working on … |
-| Offline | present, muted, ears down | Offline · reminders still work |
+| Hearing you | ears forward, eyes wide; the seat glow (grey) follows your voice level | Hearing you |
+| Thinking | looks up and away, eyes narrowed, head tilted a little, one ear out | Thinking |
+| Talking | facing you, smiling eyes; her head, the seat glow (vermilion) and the tape follow her voice level | Tap to interrupt |
+| Your turn | facing you, head tilted, ears uneven | Waiting for your OK |
+| Working | stepped out of her seat, leaving her trail marker, paw prints and her tail's tip; tap it to see what she's doing | Working on … |
+| Offline | present, grey and dim, drowsy eyes with no highlight, ears down | Offline · reminders still work |
 
 - **Movement is driven by events and transitions,** not loops: blinks at random intervals, a glance toward a newly appearing card, ears reacting.
 - **The glow follows the real audio level,** read from Web Audio analysers on output and input.
