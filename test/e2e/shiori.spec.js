@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addEndpoint, anthropicToolReply, filterTrace } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/');
@@ -19,9 +19,124 @@ test('the avatar: states change her look, the level reaches the seat, and there 
   await expect(page.locator('#probe')).toHaveAttribute('data-glow', 'you');
   expect(await page.locator('#probe').evaluate((el) => getComputedStyle(el).getPropertyValue('--amp').trim())).toBe('0.5');
   expect(await page.locator('#probe svg [style]').count()).toBe(0);
-  expect(await page.locator('#probe svg .marker').count()).toBe(1);
+  expect(await page.locator('#probe svg use[href="/assets/shiori.svg#marker"]').count()).toBe(1);
   await page.evaluate(() => /** @type {any} */ (window).__a.setState('away'));
   await expect(av).toHaveAttribute('data-state', 'away');
+});
+
+/**
+ * Puts one avatar per state on the page, as #av-<state>.
+ * @param {import('@playwright/test').Page} page
+ */
+async function everyState(page) {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createAvatar } = await import(at('/src/ui/avatar.js'));
+    for (const state of ['sleeping', 'listening', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline']) {
+      const a = createAvatar({ size: 'big' });
+      a.el.id = `av-${state}`;
+      document.body.append(a.el);
+      a.setState(state);
+    }
+  });
+}
+
+/**
+ * What one avatar shows: how opaque its parts are, its seat's filter, and the shape of her right eye and its highlight.
+ * @param {import('@playwright/test').Page} page @param {string} state
+ */
+const look = (page, state) => page.locator(`#av-${state}`).evaluate((seat) => {
+  const opacity = (/** @type {string} */ sel) => Number(getComputedStyle(/** @type {Element} */ (seat.querySelector(sel))).opacity);
+  const iris = /** @type {SVGPathElement} */ (seat.querySelector('.iris'));
+  const box = iris.getBBox();
+  // The eye's far left: where a ‿ has an end, higher than its middle.
+  let left = { x: Infinity, y: 0 };
+  for (let l = 0; l < iris.getTotalLength(); l += 2) {
+    const p = iris.getPointAtLength(l);
+    if (p.x < left.x) left = { x: p.x, y: p.y };
+  }
+  const part = (/** @type {string} */ id) => /** @type {SVGGraphicsElement} */ (seat.querySelector(`use[href$="#${id}"]`)).getBBox().width;
+  return {
+    fox: opacity('.fox'), curl: opacity('.curl'), away: opacity('.away'),
+    filter: getComputedStyle(seat).filter,
+    wide: box.width / box.height, endsUp: left.y < box.y + box.height / 2,
+    light: Number(seat.querySelector('.light')?.getAttribute('r')),
+    head: part('head'), marker: part('marker'),
+  };
+});
+
+test("her states show the right parts: asleep, her curled tail and ‿ eyes; working, her marker and no head; offline, grey with no highlight", async ({ page }) => {
+  await everyState(page);
+  // Her parts come from the art file, which has loaded.
+  await expect.poll(async () => (await look(page, 'listening')).head).toBeGreaterThan(100);
+  await expect.poll(() => look(page, 'sleeping')).toMatchObject({ fox: 1, curl: 1, away: 0, light: 0, endsUp: true });
+  expect((await look(page, 'sleeping')).wide, 'a thick crescent, wider than tall').toBeGreaterThan(2);
+  await expect.poll(() => look(page, 'listening')).toMatchObject({ fox: 1, curl: 0, away: 0, light: 14.5 });
+  expect((await look(page, 'listening')).wide, 'an open eye').toBeLessThan(1.5);
+  await expect.poll(() => look(page, 'away')).toMatchObject({ fox: 0, away: 1 });
+  expect((await look(page, 'away')).marker).toBeGreaterThan(100);
+  await expect.poll(() => look(page, 'offline')).toMatchObject({ fox: 1, curl: 0, light: 0, filter: 'grayscale(1)' });
+  // Hearing you, her eyes are wide: a bigger highlight.
+  await expect.poll(async () => (await look(page, 'hearing')).light).toBe(17.4);
+});
+
+test('she blinks and glances; with reduced motion she does neither, and her states change at once', async ({ page }) => {
+  await page.goto('/');
+  const run = (/** @type {boolean} */ calm) => page.evaluate(async (calm) => {
+    const at = (/** @type {string} */ p) => p;
+    const { createAvatar } = await import(at('/src/ui/avatar.js'));
+    const a = createAvatar({ size: 'big' });
+    document.body.append(a.el);
+    const iris = /** @type {SVGPathElement} */ (a.el.querySelector('.iris'));
+    const eyes = /** @type {SVGGElement} */ (a.el.querySelector('.eyes'));
+    const light = /** @type {SVGCircleElement} */ (a.el.querySelector('.light'));
+    const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+    a.setState('hearing');
+    const wideAtOnce = light.getAttribute('r') === '17.4';
+    a.setState('listening');
+    await wait(900);
+    const open = iris.getBBox().height;
+    /** @type {number[]} */
+    const heights = [];
+    const watch = new MutationObserver(() => heights.push(iris.getBBox().height));
+    watch.observe(iris, { attributes: true });
+    a.blink();
+    await wait(600);
+    watch.disconnect();
+    a.glance(1, 0.5);
+    const glanced = eyes.style.transform;
+    await wait(1300);
+    return { wideAtOnce, open, least: Math.min(open, ...heights), after: iris.getBBox().height, glanced, back: eyes.style.transform };
+  }, calm);
+  const moving = await run(false);
+  expect(moving.least, 'the blink squashes her eye').toBeLessThan(moving.open * 0.6);
+  expect(moving.after).toBeCloseTo(moving.open, 0);
+  expect(moving.glanced).toBe('translate(14px, 7px)');
+  expect(moving.back).toBe('');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const calm = await run(true);
+  expect(calm.wideAtOnce).toBe(true);
+  expect(calm.least).toBe(calm.open);
+  expect(calm.glanced).toBe('');
+});
+
+test("her art is kept for offline use: after the first visit she shows with no network", async ({ page }, testInfo) => {
+  // A port for each worker running at once, as both browsers may run this test together.
+  const server = await startServer(8792 + testInfo.parallelIndex);
+  try {
+    await page.goto(`${server.origin}/`);
+    await expect(page.getByRole('navigation', { name: 'Shiori' })).toBeVisible();
+    await waitForServiceWorker(page);
+    await server.stop();
+    await page.reload();
+    await expect(page.getByRole('navigation', { name: 'Shiori' })).toBeVisible();
+    expect(await page.evaluate(async () => (await fetch('/assets/shiori.svg')).ok)).toBe(true);
+    // The dock's avatar draws her parts from the kept file.
+    await expect.poll(() => page.locator('.dock .seat use[href$="#head"]').evaluate((u) => /** @type {SVGGraphicsElement} */ (u).getBBox().width)).toBeGreaterThan(100);
+  } finally {
+    await server.stop();
+  }
 });
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
