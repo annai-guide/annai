@@ -42,10 +42,12 @@ export function foxSvg() {
   const earL = s('g', { class: 'ear-l' },
     s('path', { d: 'M28 21.5C22 15.5 17.5 11.5 13.75 9.25 11.6 15.5 10.6 22.5 11.2 32L16 33 24 26z', fill: FUR }),
     s('path', { d: 'M23.5 20.6C20.5 17.2 17.6 14.6 15.2 13.2 13.9 17.6 13.4 22.5 13.6 27.6 15.5 25 18.5 22.5 23.5 20.6z', fill: INNER }),
+    s('path', { d: 'M21.2 21.6l-1.4-2.6 2.9.4c-1.8.4-3.6 1.6-5.2 3.4l1.4-3.3z', fill: FUR }),
     s('path', { d: 'M26.5 20.9C22 15.5 17.5 11.5 13.75 9.25 11.6 15.5 10.6 22.5 11.2 31.9', fill: 'none', ...ink }));
   const earR = s('g', { class: 'ear-r' },
     s('path', { d: 'M36.5 21.5C42.5 15.5 47 11.5 50.75 9.25 52.9 15.5 53.9 22.5 53.3 32L48.5 33 40.5 26z', fill: FUR }),
     s('path', { d: 'M41 20.6C44 17.2 46.9 14.6 49.3 13.2 50.6 17.6 51.1 22.5 50.9 27.6 49 25 46 22.5 41 20.6z', fill: INNER }),
+    s('path', { d: 'M43.3 21.6l1.4-2.6-2.9.4c1.8.4 3.6 1.6 5.2 3.4l-1.4-3.3z', fill: FUR }),
     s('path', { d: 'M38 20.9C42.5 15.5 47 11.5 50.75 9.25 52.9 15.5 53.9 22.5 53.3 31.9', fill: 'none', ...ink }),
     // Her hairpin: a forked twig with a pink bow, worn where her left ear meets her head.
     s('path', { class: 'twig', d: 'M44.6 23.2l3.6 11M44.6 23.2l-2.2-1.8M45.5 25.9l2-3.1', fill: 'none', 'stroke-width': 1.25, 'stroke-linecap': 'round' }),
@@ -61,7 +63,8 @@ export function foxSvg() {
     s('ellipse', { cx: 16.8, cy: 45.9, rx: 2.9, ry: 1.8, fill: BLUSH, opacity: 0.85 }),
     s('ellipse', { cx: 47.7, cy: 45.9, rx: 2.9, ry: 1.8, fill: BLUSH, opacity: 0.85 }),
     s('g', { class: 'eyes' }, s('g', { class: 'lid' }, ...eye(22.3), ...eye(42.2))),
-    s('path', { class: 'closed', d: 'M17.9 41Q22.3 45.3 26.7 41l-.2-.1M37.8 41Q42.2 45.3 46.6 41M17.9 41l-1.3-1.1M46.6 41l1.3-1.1', fill: 'none', 'stroke-width': 1.5, 'stroke-linecap': 'round' }),
+    // Closed, her eyes are thick crescents, as in her icon.
+    s('path', { class: 'closed', d: 'M17.6 40.2Q22.3 45.8 27 40.6M37.5 40.6Q42.2 45.8 46.9 40.2', fill: 'none', 'stroke-width': 2.3, 'stroke-linecap': 'round' }),
     s('path', { class: 'nose', d: 'M30.4 45.6Q32.25 44.9 34.1 45.6 33.6 47.4 32.25 48 30.9 47.4 30.4 45.6z' }));
   // Asleep, she curls up with her tail across her front (the user, 2026-10-18).
   const tail = s('g', { class: 'tail' },
