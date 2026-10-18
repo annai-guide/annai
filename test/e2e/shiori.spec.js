@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { openApp, waitForServiceWorker, startModelServer, startServer, addEndpoint, anthropicToolReply, filterTrace } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/trips');
   await page.evaluate(async () => {
     // A browser URL, not a file on disk: pass it as a value so the type checker doesn't resolve it.
     const at = (/** @type {string} */ p) => p;
@@ -29,7 +29,7 @@ test('the avatar: states change her look, the level reaches the seat, and there 
  * @param {import('@playwright/test').Page} page
  */
 async function everyState(page) {
-  await page.goto('/');
+  await page.goto('/#/trips');
   await page.evaluate(async () => {
     const at = (/** @type {string} */ p) => p;
     const { createAvatar } = await import(at('/src/ui/avatar.js'));
@@ -119,7 +119,7 @@ test("her states show the right parts and eyes, as the expression sheet draws th
 });
 
 test("she blinks and glances, her head turns in the middle of a blink, her tail's tip wags and her streamers wave; with reduced motion she does none of it, and her states change at once", async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/trips');
   const run = (/** @type {boolean} */ calm) => page.evaluate(async (calm) => {
     const at = (/** @type {string} */ p) => p;
     const { createAvatar } = await import(at('/src/ui/avatar.js'));
@@ -197,7 +197,7 @@ test("she blinks and glances, her head turns in the middle of a blink, her tail'
 });
 
 test("taken off the page while working, her marker's streamer stops; out of sight, so does everything else", async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/trips');
   const result = await page.evaluate(async () => {
     const at = (/** @type {string} */ p) => p;
     const { createAvatar } = await import(at('/src/ui/avatar.js'));
@@ -231,7 +231,7 @@ test("her art is kept for offline use: after the first visit she shows with no n
   // A port for each worker running at once, as both browsers may run this test together.
   const server = await startServer(8811 + testInfo.parallelIndex);
   try {
-    await page.goto(`${server.origin}/`);
+    await page.goto(`${server.origin}/#/trips`);
     await expect(page.getByRole('navigation', { name: 'Shiori' })).toBeVisible();
     await waitForServiceWorker(page);
     await server.stop();

@@ -4,7 +4,7 @@ import { openApp, waitForServiceWorker, startServer } from './helpers.js';
 test('annai opens offline after the first visit', async ({ page }) => {
   const server = await startServer(8791);
   try {
-    await page.goto(`${server.origin}/`);
+    await page.goto(`${server.origin}/#/trips`);
     await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
     await waitForServiceWorker(page);
     await server.stop();

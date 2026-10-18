@@ -47,8 +47,13 @@ export function watchConsole(page) {
   return errors;
 }
 
-/** Opens annai and waits for the first screen. Exports always download in tests (no share sheet). @param {import('@playwright/test').Page} page @param {string} [hash] */
-export async function openApp(page, hash = '') {
+/**
+ * Opens annai and waits for the first screen. Exports always download in tests (no share sheet).
+ * It opens Trips by its address, not annai's plain start, where a fresh device is welcomed first
+ * (welcome.spec.js tests that).
+ * @param {import('@playwright/test').Page} page @param {string} [hash]
+ */
+export async function openApp(page, hash = '#/trips') {
   await page.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
   await page.goto('/' + hash);
   await expect(page.locator('main.view > *')).toBeVisible();

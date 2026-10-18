@@ -55,6 +55,8 @@ export async function renderSettings(ctx) {
       h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/tools' }, 'Tools'))),
     section('Plugins', h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/plugins' }, 'Manage plugins'))),
     await pluginPages(ctx),
+    section('About', h('p', { class: 'sub', text: `annai ${ctx.version}: its licence, its source, the credits, and how your keys and data are kept.` }),
+      h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/about' }, 'About annai'))),
     section('App',
       h('p', { text: `annai ${ctx.version}` }),
       ctx.update.ready
