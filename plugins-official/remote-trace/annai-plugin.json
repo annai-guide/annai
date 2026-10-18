@@ -1,0 +1,37 @@
+{
+  "id": "remote-trace",
+  "name": "Remote trace (for developers)",
+  "version": "0.1.0",
+  "api": 1,
+  "entry": "index.js",
+  "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
+  "homepage": "https://github.com/annai-guide/annai/blob/main/docs/plugins.md#remote-trace-for-developers",
+  "settings": {
+    "type": "object",
+    "properties": {
+      "server": {
+        "type": "string",
+        "title": "Server address",
+        "description": "Where annai sends its trace: a server you run, such as annai's scripts/trace-sink.mjs. https://…, or http:// only for localhost or 127.0.0.1."
+      },
+      "token": {
+        "type": "string",
+        "writeOnly": true,
+        "title": "Token",
+        "description": "The server's token. annai sends it as Authorization: Bearer, and keeps it with your keys, never in a file."
+      },
+      "location": {
+        "type": "boolean",
+        "default": false,
+        "title": "Send location points",
+        "description": "Also send the location points live mode records, about one a second on a drive. Off, other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input."
+      },
+      "send": {
+        "type": "boolean",
+        "default": false,
+        "title": "Send",
+        "description": "On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once."
+      }
+    }
+  }
+}

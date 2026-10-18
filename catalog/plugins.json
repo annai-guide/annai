@@ -30,6 +30,16 @@
       }
     },
     {
+      "id": "remote-trace",
+      "name": "Remote trace (for developers)",
+      "version": "0.1.0",
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "6505232cc840bb711e9543d39c80f42086b0ff3f85fea850735842253b4a8f38",
+        "index.js": "b0ed47f903933d370b7fb16a62867900fce94affff390593fdc38bd0b7077bc7"
+      }
+    },
+    {
       "id": "scripted-model",
       "name": "Scripted model",
       "version": "0.4.0",
