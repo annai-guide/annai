@@ -47,11 +47,18 @@ function body(n) {
   return start();
 }
 
+/** Whether this is Safari on an iPhone, where a model set up here stays in Safari, apart from the Home Screen app. */
+const inSafari = () => platform() === 'ios' && !isStandalone();
+
 /** The last step: install where annai isn't installed, then connect a model. */
 function start() {
   const p = platform();
   const model = [
-    h('p', { text: 'Connect a model, so Shiori can think. Sign in with OpenRouter is the quickest way, and it starts you on free models.' }),
+    h('p', {
+      text: inSafari()
+        ? 'Connect a model there, so Shiori can think. Sign in with OpenRouter is the quickest way, and it starts you on free models. A model set up here, in Safari, stays in Safari.'
+        : 'Connect a model, so Shiori can think. Sign in with OpenRouter is the quickest way, and it starts you on free models.',
+    }),
   ];
   if (isStandalone() || p === 'desktop') {
     return [...model, ...(p === 'desktop' && !isStandalone() ? [h('p', { class: 'sub', text: 'You can also install annai as an app from your browser\'s menu.' })] : [])];
@@ -86,9 +93,13 @@ export async function renderWelcome(ctx, route) {
       n > 1 ? h('button', { class: 'btn', type: 'button', onclick: go(stepHash(n - 1)) }, 'Back') : null,
       h('button', { class: 'btn ghost', type: 'button', onclick: go(stepHash(LAST)) }, 'Skip'),
     ]
+    // In Safari on an iPhone the model belongs in the Home Screen app, so looking around comes first there.
     : [
-      h('button', { class: 'btn pri', type: 'button', onclick: go('#/models') }, 'Set up a model'),
-      h('button', { class: 'btn', type: 'button', onclick: go('#/trips') }, 'Look around first'),
+      ...(inSafari()
+        ? [h('button', { class: 'btn pri', type: 'button', onclick: go('#/trips') }, 'Look around first'),
+          h('button', { class: 'btn', type: 'button', onclick: go('#/models') }, 'Set up a model')]
+        : [h('button', { class: 'btn pri', type: 'button', onclick: go('#/models') }, 'Set up a model'),
+          h('button', { class: 'btn', type: 'button', onclick: go('#/trips') }, 'Look around first')]),
       h('button', { class: 'btn ghost', type: 'button', onclick: go(stepHash(n - 1)) }, 'Back'),
     ];
   const screen = h('div', { class: 'screen welcome', dataset: { step: String(n) } },

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, watchConsole } from './helpers.js';
+import { openApp, watchConsole, pastWelcome } from './helpers.js';
 
 test('starts without errors and shows Trips', async ({ page }) => {
   const errors = watchConsole(page);
@@ -62,7 +62,7 @@ test('dropping a file on annai opens it', async ({ page }) => {
   await expect(page.getByRole('alert')).toContainText("isn't an annai file");
 });
 
-test('Erase everything goes straight to an empty Trips, with no error on the way', async ({ page }) => {
+test('Erase everything starts annai again as on a new device, the welcome then an empty Trips, with no error on the way', async ({ page }) => {
   await openApp(page);
   await page.getByRole('link', { name: 'Settings' }).click();
   await page.evaluate(() => {
@@ -72,6 +72,7 @@ test('Erase everything goes straight to an empty Trips, with no error on the way
   });
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
+  await pastWelcome(page);
   await expect(page.getByText('No trips yet.')).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('erase-error'))).toBeNull();
 });

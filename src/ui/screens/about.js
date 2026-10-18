@@ -61,11 +61,17 @@ export async function renderAbout(ctx, route) {
   if (route.parts[1] === 'fonts') {
     return licenceText('Font licences', `${FONTS.map((f) => f.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}, under the SIL Open Font License 1.1, as annai ships them.`, '/assets/fonts/OFL.txt', `${REPO}/blob/main/assets/fonts/OFL.txt`);
   }
-  const build = await runningBuild();
+  // Drawn at once; the build fills in when the service worker answers, or when one starts running annai.
+  const version = h('p', { class: 'version', text: `annai ${ctx.version}` });
+  const ask = () => runningBuild().then((build) => {
+    version.textContent = build ? `annai ${ctx.version} · build ${build}` : `annai ${ctx.version} · build not known yet: annai's offline service is still starting`;
+    if (!build) navigator.serviceWorker?.addEventListener('controllerchange', () => { if (version.isConnected) ask(); }, { once: true });
+  }).catch(() => {}); // the version alone stays
+  ask();
   return h('div', { class: 'screen about' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'About annai' }),
-    h('p', { class: 'version', text: build ? `annai ${ctx.version} · build ${build}` : `annai ${ctx.version} · build not known yet: annai's offline service is still starting` }),
+    version,
     h('p', { class: 'sub', text: 'annai (案内) is Japanese for "guidance; showing someone around". It is a free, open-source travel guide, and its guide is Shiori.' }),
     section('Licence and source',
       h('p', { text: 'annai is free software under the GNU Affero General Public License, version 3 (AGPL-3.0). You may use it, study it, share it and change it. Anyone who runs a changed copy for others must offer them its source too.' }),

@@ -88,12 +88,12 @@ test("weather: the place's time zone, the day, and its hours as TSV", async () =
   assert.match(await run('weather', { ...McWay, when: '2027-03-01' }, () => ({ timezone: 'America/Los_Angeles', hourly: { time: [] }, daily: { time: [] } })), /16 days/);
 });
 
-test('guide: the introduction and the sections; one section; or what there is instead', async () => {
+test('guide: the introduction and the sections, with the article\'s address (CC BY-SA asks for it); one section; or what there is instead', async () => {
   const { run } = await setup();
   const extract = 'Big Sur is a region.\n\n== Understand ==\nRugged coast.\n\n== Eat ==\nNepenthe.\n\n=== Budget ===\nDeli.\n\n== Sleep ==\nCamp.';
   const page = { query: { pages: { 1: { title: 'Big Sur', extract } } } };
-  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage)\n\nBig Sur is a region.\n\nSections: Understand, Eat, Budget, Sleep. Ask for one with section.');
-  assert.equal(await run('guide', { place: 'Big Sur', section: 'eat' }, () => page), 'Big Sur: Eat (Wikivoyage)\n\nNepenthe.\n\n=== Budget ===\nDeli.');
+  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.\n\nSections: Understand, Eat, Budget, Sleep. Ask for one with section.');
+  assert.equal(await run('guide', { place: 'Big Sur', section: 'eat' }, () => page), 'Big Sur: Eat (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nNepenthe.\n\n=== Budget ===\nDeli.');
   const missing = await run('guide', { place: 'Bigg Sur' }, (url) => (url.includes('opensearch') ? ['Bigg Sur', ['Big Sur', 'Big Sur River']] : { query: { pages: { '-1': { title: 'Bigg Sur', missing: '' } } } }));
   assert.equal(missing, 'Wikivoyage has no article called "Bigg Sur". Close ones: Big Sur, Big Sur River.');
 });
@@ -184,18 +184,18 @@ test("past the pack's edge nearby asks the services, and the pack fills in for a
 test('guide reads the pack first: by its title, without "(California)", or by a name that led to it; a section too', async () => {
   const { run, ws, trip } = await setup({ trip: true });
   await mcwayPack(ws, /** @type {string} */ (trip));
-  assert.equal(await run('guide', { place: 'Cambria' }, nothing), 'Cambria (California) (Wikivoyage, offline pack of 2026-10-16)\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
-  assert.equal(await run('guide', { place: 'cambria, california', section: 'see' }, nothing), 'Cambria (California): See (Wikivoyage, offline pack of 2026-10-16)\n\nMoonstone Beach.');
+  assert.equal(await run('guide', { place: 'Cambria' }, nothing), 'Cambria (California) (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_(California)\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
+  assert.equal(await run('guide', { place: 'cambria, california', section: 'see' }, nothing), 'Cambria (California): See (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_(California)\n\nMoonstone Beach.');
   assert.match(await run('guide', { place: 'Hearst Castle' }, nothing), /^San Simeon \(Wikivoyage, offline pack of 2026-10-16\)/);
   const page = { query: { pages: { 1: { title: 'Big Sur', extract: 'Big Sur is a region.' } } } };
-  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage)\n\nBig Sur is a region.');
+  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
 });
 
 test('a broken pack is no pack: the tools go online', async () => {
   const { run, ws, trip, asked } = await setup({ trip: true });
   await ws.write(/** @type {string} */ (trip), '/offline/pack.json', '{"format":1,', { author: 'system', type: 'text/plain' });
   const page = { query: { pages: { 1: { title: 'Big Sur', extract: 'Big Sur is a region.' } } } };
-  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage)\n\nBig Sur is a region.');
+  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
   await run('nearby', McWay, (url) => (url.includes('overpass') ? { elements: [] } : { query: { geosearch: [] } }));
   assert.ok(asked.some((a) => a.url.includes('overpass')));
 });
@@ -235,7 +235,7 @@ test('a pack whose manifest has no download time says the day of its newest part
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack \(downloaded 2026-10-18\)\.$/);
   await ws.write(id, '/offline/pack.json', JSON.stringify({ ...m, at: '' }), { author: 'system' });
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack\.$/);
-  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\)\n/);
+  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_\(California\)\n/);
 });
 
 test("nearby online takes an Overpass answer that says \"runtime error\" as no answer: the next server, then the pack, as for any failure", async () => {

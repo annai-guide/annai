@@ -5,7 +5,7 @@ import { modelOf } from '../../core/llm/config.js';
 
 const GROUPS = ['Talk', 'Files', 'Web', 'Places', 'Go', 'Time', 'Self'];
 /** Jina's page for its API keys ("Manage API Key"), where a free key is made. */
-const JINA_KEYS = 'https://jina.ai/api-dashboard/key-manager';
+const JINA_KEYS = 'https://jina.ai/api-dashboard/key-manager/';
 
 /** A switch for every tool and provider-side tool (spec §7.2, §9.5); switches cover plugins' tools too. @param {any} ctx */
 export async function toolSwitchList(ctx) {

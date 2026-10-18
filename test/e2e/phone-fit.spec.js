@@ -179,6 +179,20 @@ test('a Settings page belongs to the Settings tab, and swiping from it moves alo
   await expect(current).toHaveText('Trace');
 });
 
+test('a swipe never brings back a screen you pass through, such as opening a file', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/trips');
+  await turnOnSwipes(page);
+  await page.evaluate(() => { location.hash = '#/import'; });
+  await expect(page.getByRole('heading', { name: 'Open a trip', level: 1 })).toBeVisible();
+  const current = page.locator('.topnav a[aria-current="page"]');
+  await expect(current).toHaveText('Trips');
+  await swipe(page, 280, 100, 300);
+  await expect(current).toHaveText('Plan');
+  await swipe(page, 100, 280, 300);
+  await expect(page.getByRole('heading', { name: 'Trips', level: 1 })).toBeVisible();
+});
+
 // The bug the user found (2026-10-18): swiping away from a Settings page and back opened Settings itself, at its top.
 test('swiping back into a tab brings back the screen you last had open in it, where you were on it', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });

@@ -15,6 +15,21 @@ test('annai opens offline after the first visit', async ({ page }) => {
   }
 });
 
+test('after the welcome, annai opens offline at its plain start, at Trips', async ({ page }, testInfo) => {
+  const server = await startServer(8821 + testInfo.parallelIndex);
+  try {
+    await page.goto(`${server.origin}/`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Welcome to annai' })).toBeVisible();
+    await waitForServiceWorker(page);
+    await server.stop();
+    await page.goto('about:blank');
+    await page.goto(`${server.origin}/`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  } finally {
+    await server.stop();
+  }
+});
+
 test('installed plugin files are served from storage', async ({ page }) => {
   await openApp(page);
   await waitForServiceWorker(page);

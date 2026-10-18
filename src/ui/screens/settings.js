@@ -178,8 +178,9 @@ function eraseControls(ctx) {
       ctx.store.close();
       await eraseDatabase();
       try { await caches.delete('annai-inbox'); } catch { /* no caches */ }
-      // No hashchange: nothing may render against the closed store before the reload.
-      history.replaceState(null, '', '#/trips');
+      // No hashchange: nothing may render against the closed store before the reload. annai starts again at
+      // its plain start, as on a new device, so the welcome shows again.
+      history.replaceState(null, '', location.pathname);
       location.reload();
     },
   }, 'Erase now');

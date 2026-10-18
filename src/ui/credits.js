@@ -42,7 +42,7 @@ export const SOURCES = [
   {
     name: 'Open-Meteo',
     hosts: ['api.open-meteo.com'],
-    use: "Weather forecasts, for Shiori's weather tool. Sunrise, sunset and golden hour are worked out on the phone.",
+    use: "Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.",
     credit: 'Weather data by Open-Meteo.com, under CC BY 4.0.',
     links: [{ href: 'https://open-meteo.com/', text: 'Weather data by Open-Meteo.com' }, { href: 'https://creativecommons.org/licenses/by/4.0/', text: 'CC BY 4.0' }],
   },
@@ -67,4 +67,4 @@ export const FONTS = [
 ];
 
 /** Shiori's art (assets/shiori.svg, the app icons). */
-export const ART = "Shiori's art: drawn for annai.";
+export const ART = "Shiori's art: designed for annai with AI image generation, then traced into vector art.";

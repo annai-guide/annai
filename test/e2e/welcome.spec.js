@@ -41,6 +41,34 @@ test('a fresh device is welcomed at its first plain start, and only once', async
   await expect(h1(page)).toHaveText('Trips');
 });
 
+test('Erase starts annai again as on a new device: the welcome shows again', async ({ page }) => {
+  await openApp(page, '#/welcome');
+  await expect.poll(async () => typeof (await appSettings(page)).welcomedAt).toBe('number');
+  await page.evaluate(() => { location.hash = '#/settings'; });
+  await page.getByLabel('Type ERASE to confirm').fill('ERASE');
+  await page.getByRole('button', { name: 'Erase now' }).click();
+  await expect(h1(page)).toHaveText(STEPS[0]);
+  expect(new URL(page.url()).hash).toBe('#/welcome');
+});
+
+test("the last step, where annai isn't installed: on an iPhone in Safari, look around first, and set the model up in the Home Screen app; elsewhere, set up a model", async ({ page, browserName }) => {
+  await openApp(page, '#/welcome/5');
+  await expect(h1(page)).toHaveText(STEPS[4]);
+  const primary = page.locator('.welcome .acts .btn.pri').last();
+  if (browserName === 'webkit') {
+    // The iPhone project: Safari, not the Home Screen app.
+    await expect(primary).toHaveText('Look around first');
+    await expect(page.locator('.welcome')).toContainText('A model set up here, in Safari, stays in Safari.');
+  } else {
+    await expect(primary).toHaveText('Set up a model');
+    // Chrome on Android offers to install from a button, once the browser says it can.
+    const install = page.locator('.welcome').getByRole('button', { name: 'Install annai' });
+    await expect(install).toBeHidden();
+    await page.evaluate(() => dispatchEvent(new Event('beforeinstallprompt')));
+    await expect(install).toBeVisible();
+  }
+});
+
 test.describe('a link that opens a screen is never interrupted', () => {
   test.use({ serviceWorkers: 'block' });
 
@@ -117,6 +145,7 @@ test('Settings → About: the build, the licence, the source, and every credit; 
   await expect(h1(page)).toHaveText('About annai');
   const sw = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
   const build = /const BUILD = '([^']+)'/.exec(sw)?.[1];
+  // The page is drawn at once; the build comes when the service worker answers.
   await expect(page.getByText(`annai 0.1.0 · build ${build}`)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Licence and source' }).getByRole('link', { name: 'github.com/annai-guide/annai', exact: true })).toHaveAttribute('href', 'https://github.com/annai-guide/annai');
   await expect(page.getByRole('link', { name: 'github.com/annai-guide/annai/issues' })).toHaveAttribute('href', 'https://github.com/annai-guide/annai/issues');
