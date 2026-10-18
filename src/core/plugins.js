@@ -4,7 +4,7 @@ import { forget } from './forget.js';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme } from './ui-slots.js';
 import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
-import { tracedFetch } from './agent/net.js';
+import { tracedFetch, withoutSecretsIn } from './agent/net.js';
 import { addressParts, KEY_BLANK } from './address.js';
 import { record } from './agent/log.js';
 import { readAppSettings, updateAppSettings } from './settings.js';
@@ -855,6 +855,8 @@ export class PluginHost {
         /** null removes it. */
         set: (/** @type {string} */ name, /** @type {any} */ value) => this.ws.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => (value === null || value === undefined
           ? t.deleteSecret(`plugin:${id}:${name}`) : t.putSecret(`plugin:${id}:${name}`, value))),
+        /** A copy of value with every secret annai keeps, and anything shaped like a credential, blanked in every string (spec §9.9). */
+        blank: (/** @type {any} */ value) => withoutSecretsIn(this.ws.store, value),
       }),
     });
   }

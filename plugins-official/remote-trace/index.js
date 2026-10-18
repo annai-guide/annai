@@ -1,15 +1,11 @@
-// annai's own blanking, the module annai loaded itself: /plugins/remote-trace/ and plugins-official/remote-trace/
-// both sit two folders below the root, so this path is the same file in the browser and in the repository's tests.
-import { withoutSecretsIn } from '../../src/core/agent/net.js';
-
 /**
  * Remote trace (for developers): sends annai's trace, as the Trace screen shows it, to a server the
  * user runs, so a developer can watch a phone's entries, requests and errors as they happen. It is
  * off until the user gives it a server and a token and turns Send on (spec §15: no telemetry), and
  * leaves location points out unless asked. Every entry goes through annai's own secret blanking
- * first, though entries never hold keys. Stored content (texts over 2,000 characters, photos) stays
- * on the device. scripts/trace-sink.mjs is a server that receives it; docs/plugins.md, "Remote trace
- * (for developers)", says what it sends and never sends.
+ * (annai.secrets.blank) first, though entries never hold keys. Stored content (texts over 2,000
+ * characters, photos) stays on the device. scripts/trace-sink.mjs is a server that receives it;
+ * docs/plugins.md, "Remote trace (for developers)", says what it sends and never sends.
  */
 
 export const ID = 'remote-trace';
@@ -254,7 +250,7 @@ export function start(annai, {
       }
       const { app, build } = await shell;
       // annai's own blanking, a second guard: every secret annai keeps, and anything shaped like a credential (spec §9.9).
-      const entries = await withoutSecretsIn(annai.files.store, items.map((x) => x.e));
+      const entries = await annai.secrets.blank(items.map((x) => x.e));
       if (!mine()) return;
       const res = await annai.net.fetch(to.server, {
         method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },

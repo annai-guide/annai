@@ -4,6 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { logEvent } from '../../src/core/events.js';
+import { withoutSecretsIn } from '../../src/core/agent/net.js';
 import { SYS, SYS_SETTINGS, SYS_PLUGINS } from '../../src/core/scopes.js';
 import { start, activate, serverProblem, shellBuild, BATCH_MS, BATCH_MAX, KEEP_MAX, BATCH_BYTES, ENTRY_BYTES, RETRY_MS, RETRY_MAX_MS, REFUSALS, SETTINGS_FILE } from '../../plugins-official/remote-trace/index.js';
 import { hostKit } from './package-kit.js';
@@ -79,13 +80,16 @@ async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, a
   const went = [];
   const annai = {
     id: 'remote-trace',
-    files: { store },
     hooks: { on: (/** @type {any} */ fn) => { hook = fn; return () => { hook = null; }; } },
     settings: {
       get: async () => ({ location: false, send: false, ...saved }),
       set: async (/** @type {any} */ c) => { Object.assign(saved, c); },
     },
-    secrets: { get: async (/** @type {string} */ n) => (await store.tx(['secrets'], 'readonly', (t) => t.getSecret(`plugin:remote-trace:${n}`))) ?? null },
+    secrets: {
+      get: async (/** @type {string} */ n) => (await store.tx(['secrets'], 'readonly', (t) => t.getSecret(`plugin:remote-trace:${n}`))) ?? null,
+      // What annai.secrets.blank does (src/core/plugins.js).
+      blank: (/** @type {any} */ v) => withoutSecretsIn(store, v),
+    },
     net: {
       fetch: async (/** @type {string} */ url, /** @type {any} */ init) => {
         posts.push({ url, init, body: JSON.parse(init.body), at: clock.now() });

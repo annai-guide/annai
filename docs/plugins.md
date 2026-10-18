@@ -71,6 +71,7 @@ export function activate(annai) {
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
 | `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
+| `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or endpoint's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
 | `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
 | `annai.wake(reason)` | wakes Shiori, with the reason she sees. Quiet hours and the per-hour limit apply (spec §6.6). |
@@ -305,7 +306,7 @@ annai's official plugin **Remote trace (for developers)** sends annai's trace to
   - The batch is a POST of `{ app, build, device, dropped, entries }` with `Authorization: Bearer <token>`. `app` is "annai" and its version, `build` annai's build stamp, `device` a random id made at the first send and kept in the plugin's settings, and `dropped` how many entries it dropped since the last batch the server took.
   - Its own requests are in annai's trace, as any plugin's are.
 - **What it never sends:**
-  - **Keys and its token.** Every entry first goes through annai's own blanking, as annai's cards do, so a key you type into a message is blanked too.
+  - **Keys and its token.** Every entry first goes through `annai.secrets.blank`, annai's own blanking, as annai's cards do, so a key you type into a message is blanked too.
   - **Stored content:** texts over 2,000 characters (such as model replies and their reasoning), photos and other bytes. Only their names and hashes go.
   - **Location points,** unless you turn on Send location points. Other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.
   - **Entries from before Send was on, or after it went off.**

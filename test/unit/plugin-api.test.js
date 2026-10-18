@@ -61,3 +61,27 @@ test('search providers in the order the settings give', async () => {
   await new Promise((r) => setTimeout(r, 0));
   assert.deepEqual((await a.searchProvidersAsync()).map((/** @type {any} */ p) => p.id), ['two', 'one']);
 });
+
+test("annai.secrets.blank gives a copy with every secret annai keeps, and anything shaped like a credential, blanked in every string, however deep; other text and values are unchanged", async () => {
+  const k = await agentKit([[{ text: '' }]]);
+  const KEY = 'sk-planted-endpoint-key-0123456789';
+  await k.store.tx(['secrets'], 'readwrite', async (t) => {
+    await t.putSecret('endpoint:stand-in:key', KEY);
+    await t.putSecret('plugin:other:token', { token: 'other-plugins-token-abcdef' });
+  });
+  const a = await api(k);
+  const value = Object.freeze({
+    text: `key ${KEY}, in an address ${encodeURIComponent(`?k=${KEY}`)}`,
+    deep: [{ error: 'Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123 refused', n: 3 }, 'OTHER-PLUGINS-TOKEN-ABCDEF', null, true],
+    plain: 'Low tide at 5:40, page=2',
+  });
+  const out = await a.secrets.blank(value);
+  assert.deepEqual(out, {
+    text: 'key «key», in an address %3Fk%3D«key»',
+    deep: [{ error: 'Authorization: Bearer «key» refused', n: 3 }, '«key»', null, true],
+    plain: 'Low tide at 5:40, page=2',
+  });
+  assert.notEqual(out, value, 'a copy');
+  assert.equal(await a.secrets.blank('nothing secret here'), 'nothing secret here');
+  assert.equal(await a.secrets.blank(42), 42);
+});
