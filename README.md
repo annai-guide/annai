@@ -9,7 +9,7 @@ memories afterwards.
 
 > **Status:** milestones 1 to 4 are built: trips with
 > versioned files, export and import (optionally encrypted), plugins, offline use and the trace;
-> photos; removing trips; and models (endpoints from templates or Sign in with OpenRouter, roles
+> photos; removing trips; and models (Chat Completions, Anthropic Messages and OpenAI Responses endpoints, from templates or Sign in with OpenRouter, roles
 > with fallback, the Test button, and every request in the trace); and Shiori herself: the dock and
 > her avatar, a conversation through her output tools, file, web and places tools that can each be
 > switched off, personalities and memory, budgets, and housekeeping for long conversations. Shiori sees

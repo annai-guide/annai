@@ -154,7 +154,8 @@ A photo is encoded at two points, each with its own settings: **ingest**, once, 
     - **Every upload expires after 48 hours.** Anthropic and OpenAI let annai set that, and Gemini always does it. So nothing annai uploads outlives its use for long, even when annai's own data is lost. An expired id is simply uploaded again.
     - **Where a provider can't expire uploads** (OpenRouter today), annai deletes its own, which it names `annai-…`. It deletes one when compaction drops the photo. At each start, it also deletes any of its uploads there that is more than 48 hours old, found by name and age, so this works even after annai's data is lost.
     - OpenRouter's documentation suggests uploading may need a management key, so uploads there are used only once the endpoint's Test shows they work (§9.8).
-    - Storing uploads costs nothing at Anthropic and Gemini; OpenAI lists no price for it (checked 2026-10-15).
+    - The Anthropic Messages and OpenAI Responses types upload.
+    - Storing uploads costs nothing at Anthropic and Gemini; OpenAI lists no price for it (checked 2026-10-15, and again 2026-10-18).
 - **A closer look.**
   - `read(path, region)` crops the source and sends the crop through the request settings (§7.2).
   - In the photo viewer, the user can crop what is on screen and send it to Shiori (§16.2).
@@ -290,7 +291,7 @@ The turn ends when the model calls no tool (the convention), calls `sleep`, or h
    - connectivity
    - the wake reasons
 
-The provider adapter places cache markers where the provider needs them (Anthropic) or relies on automatic caching (OpenAI, Gemini).
+The provider adapter places cache markers where the provider needs them (Anthropic) or relies on automatic caching (OpenAI, Gemini). OpenAI's automatic breakpoint goes at the end of the latest user message or tool results, so OpenAI Responses sends the now block last as a developer message of its own. The cached prefix then ends where Anthropic's marker would.
 
 ### 6.4 Cache lifetime awareness
 
@@ -415,8 +416,8 @@ There's no special machinery:
 The core contains no protocol. Settings offer these endpoint types, each mapped to an official on-demand plugin:
 - Chat Completions
 - Anthropic Messages
-- OpenAI Responses
-- Gemini
+- OpenAI Responses. Nothing is kept on the server (`store: false`): the whole conversation goes each time, and the model's encrypted reasoning goes back with it.
+- Gemini, not built yet. Until it is, Gemini's OpenAI-compatible endpoint works through Chat Completions.
 
 Plugins can add further types.
 
@@ -452,7 +453,7 @@ Precedence: **user setting > template > plugin default.** Roles reference models
   - The core overrides per kind of call: the "is this for me?" check is always `off`, and compaction is `low`. `task` may request a level.
 - **Each model has a map from level → request patch.** The template ships it, and the user can edit it.
 - **A missing level uses the nearest one; on a tie, the cheaper one.**
-- **Each endpoint type also declares where the reasoning text comes back:** `thinking` blocks, `reasoning_content`, or `reasoning`. Reasoning is stored, never shown to the user, and visible in the trace.
+- **Each endpoint type also declares where the reasoning text comes back:** `thinking` blocks, `reasoning_content`, `reasoning`, or OpenAI Responses' reasoning summaries. Reasoning is stored, never shown to the user, and visible in the trace.
 - **The Test button can try each level** and record which ones work.
 
 ### 9.4 Patch format
@@ -1033,4 +1034,4 @@ Each milestone gets its own implementation plan. The plugin interface exists fro
 | 8 | **Extensions:** skills, MCP client, code-plugin install UX, UI slots (§5, §16.4) | A third-party skill, an MCP server and a code plugin can each be installed and used. |
 | 9 | **Backup targets:** GitHub, S3-compatible, WebDAV (§12.4) | Automatic backup and restore to GitHub works. |
 
-Remaining official plugins (OpenAI Responses, Gemini, more speech and search providers, and photo encoders such as WebP for Safari or AVIF) are added during milestones 2 and 3 as needed.
+Remaining official plugins (Gemini, more speech and search providers, and photo encoders such as WebP for Safari or AVIF) are added during milestones 2 and 3 as needed. OpenAI Responses joined on 2026-10-18.

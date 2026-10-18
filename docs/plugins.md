@@ -208,7 +208,7 @@ export function activate(annai) {
 ## Endpoint types
 
 An endpoint type teaches annai one model protocol. The core contains none (spec §9.1).
-annai's own Chat Completions and Anthropic Messages types are plugins too: see `plugins-official/`.
+annai's own Chat Completions, Anthropic Messages and OpenAI Responses types are plugins too: see `plugins-official/`.
 
 ```js
 export function activate(annai) {
