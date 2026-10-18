@@ -254,3 +254,23 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 16px 8px; }
 .look { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
 .look figcaption { display: flex; flex-direction: column; font-size: 13px; }
+
+/* The welcome and Settings → About (the user, 2026-10-18). */
+.welcome { max-width: 560px; }
+.welcome .step { font-family: var(--f-mono); font-size: 13px; color: var(--ink-2); margin-bottom: -10px; }
+.welcome .title:focus, .welcome .title:focus-visible { outline: none; }
+.welcome .lead { font-size: 18px; }
+.welcome .acts { margin-top: 4px; }
+.welcoming .risk { display: none; }
+/* What annai can do: each with the 枝折戸 lattice's diamond. */
+.can { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.can li { position: relative; padding-left: 22px; }
+.can li::before { content: ''; position: absolute; left: 3px; top: 0.62em; width: 8px; height: 8px; background: var(--ai); transform: rotate(45deg); }
+.facts-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; overflow-wrap: anywhere; }
+.facts-list strong { display: block; }
+.facts-list.limits { padding-left: 20px; list-style: disc; gap: 6px; }
+.sub-head { font-family: var(--f-display); font-weight: 700; font-size: 17px; }
+.about .version { font-family: var(--f-mono); font-size: 14px; overflow-wrap: anywhere; }
+.credit { display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.credit-name { font-size: 16px; font-weight: 700; }
+pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--f-mono); font-size: 12px; line-height: 1.5; margin: 0; padding: 12px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line); }

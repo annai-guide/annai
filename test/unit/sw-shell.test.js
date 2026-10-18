@@ -22,7 +22,8 @@ test('the service worker caches exactly the files the app ships', async () => {
   const sw = await readFile(new URL('sw.js', root), 'utf8');
   const block = /const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '';
   const shell = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
-  const expected = ['/', '/index.html', '/manifest.webmanifest', ...(await walk('src')), ...(await walk('assets')), ...(await walk('skills'))].sort();
+  // LICENSE too, so Settings → About → Read the licence works offline.
+  const expected = ['/', '/index.html', '/manifest.webmanifest', '/LICENSE', ...(await walk('src')), ...(await walk('assets')), ...(await walk('skills'))].sort();
   assert.deepEqual(shell, expected);
 });
 
@@ -61,4 +62,21 @@ test('installing fetches the shell past the HTTP cache, so an update never store
   await done;
   assert.ok(added.length > 10);
   for (const r of added) assert.equal(r instanceof Request ? r.cache : 'default', 'reload', `${r instanceof Request ? r.url : r} is fetched through the HTTP cache`);
+});
+
+test('the service worker tells a page its build, on the port the page sends, for Settings → About', async () => {
+  const source = await readFile(new URL('sw.js', root), 'utf8');
+  /** @type {Record<string, (e: any) => void>} */
+  const handlers = {};
+  const self = { location: new URL('https://annai.guide/sw.js'), addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; }, skipWaiting: () => {} };
+  vm.runInNewContext(source, { self, caches: {}, Request, Response, URL, console });
+  /** @type {any[]} */
+  const said = [];
+  handlers.message({ data: 'build', ports: [{ postMessage: (/** @type {any} */ m) => said.push(m) }] });
+  // Through JSON: the object comes from the worker's own realm.
+  assert.deepEqual(JSON.parse(JSON.stringify(said)), [{ version: VERSION, build: /const BUILD = '([^']+)'/.exec(source)?.[1] }]);
+  // Anything else, or no port, is ignored.
+  handlers.message({ data: 'build', ports: [] });
+  handlers.message({ data: 'something else', ports: [{ postMessage: (/** @type {any} */ m) => said.push(m) }] });
+  assert.equal(said.length, 1);
 });

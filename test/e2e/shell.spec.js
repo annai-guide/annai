@@ -29,7 +29,7 @@ test("on iPhone the install warning says the Home Screen app keeps trips of its 
 test('only one tab runs annai at a time', async ({ page, context }) => {
   await openApp(page);
   const second = await context.newPage();
-  await second.goto('/');
+  await second.goto('/#/trips');
   await expect(second.getByRole('heading', { name: 'annai is open in another tab' })).toBeVisible();
   await second.getByRole('button', { name: 'Use it here' }).click();
   await expect(second.getByRole('heading', { name: 'Trips' })).toBeVisible();

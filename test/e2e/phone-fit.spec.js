@@ -3,7 +3,8 @@ import { openApp } from './helpers.js';
 
 // What the user saw on an iPhone (2026-10-18): the page scrolled sideways, a date box stuck out of
 // its card, Shiori sat over the camera button in a corner, and the top bar hid that it scrolls.
-const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/backups', '#/notifications', '#/shiori'];
+const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/backups', '#/notifications', '#/shiori',
+  '#/about', '#/welcome'];
 
 for (const width of [320, 420]) {
   test(`every screen fits a phone ${width} px wide: nothing scrolls sideways`, async ({ page }) => {
@@ -13,7 +14,8 @@ for (const width of [320, 420]) {
     const wide = [];
     for (const s of SCREENS) {
       // Wait for this screen to be drawn, not a fixed time: a slow screen would pass without being looked at.
-      await page.evaluate((hash) => { document.querySelector('main')?.firstElementChild?.setAttribute('data-old', ''); location.hash = hash; }, s);
+      // The screen open already (Trips, as openApp opens it) is looked at as it is.
+      await page.evaluate((hash) => { if (location.hash === hash) return; document.querySelector('main')?.firstElementChild?.setAttribute('data-old', ''); location.hash = hash; }, s);
       await page.waitForFunction(() => document.querySelector('main')?.firstElementChild && !document.querySelector('main > [data-old]'));
       await page.waitForTimeout(100);
       const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

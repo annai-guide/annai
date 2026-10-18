@@ -8,18 +8,16 @@ addEventListener('beforeinstallprompt', (e) => {
   deferred = e;
 });
 
-const STEPS = {
+/** How to install annai on each platform; the welcome's last step shows them too. */
+export const STEPS = {
   ios: ['Tap the Share button in Safari.', 'Choose "Add to Home Screen".', 'Open annai from your Home Screen.',
     'Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".'],
   android: ['Open the browser menu (⋮).', 'Choose "Install app" or "Add to Home screen".', 'Open annai from your Home screen.'],
   desktop: ['Use your browser menu to install annai as an app.'],
 };
 
-/** The data-safety warning shown until annai runs installed (spec §2, §17 rule 1). */
-export function installBanner() {
-  if (isStandalone()) return h('div', { hidden: true });
-  const p = platform();
-  const how = h('ol', { class: 'steps', hidden: true }, ...STEPS[p].map((s) => h('li', { text: s })));
+/** The Install button, shown where the browser offers to install annai (Chrome on Android). */
+export function installButton() {
   const install = h('button', {
     class: 'btn pri', type: 'button', hidden: !deferred,
     onclick: async () => {
@@ -31,6 +29,15 @@ export function installBanner() {
     },
   }, 'Install annai');
   addEventListener('beforeinstallprompt', () => { install.hidden = false; });
+  return install;
+}
+
+/** The data-safety warning shown until annai runs installed (spec §2, §17 rule 1). */
+export function installBanner() {
+  if (isStandalone()) return h('div', { hidden: true });
+  const p = platform();
+  const how = h('ol', { class: 'steps', hidden: true }, ...STEPS[p].map((s) => h('li', { text: s })));
+  const install = installButton();
   return h('section', { class: 'risk', 'aria-label': 'Install annai' },
     h('p', {}, h('strong', { text: "annai isn't installed yet." }), ' ',
       p === 'ios'
