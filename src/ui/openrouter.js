@@ -31,13 +31,34 @@ export async function signInUrl({ callback, storage = localStorage, now = Date.n
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
   const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
   const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
-  storage.setItem(SLOT, JSON.stringify({ verifier, state, at: now, mode: callback ? 'callback' : 'code' }));
   const params = new URLSearchParams({ code_challenge: challenge, code_challenge_method: 'S256' });
   if (callback) {
     params.set('callback_url', callback);
     params.set('state', state);
   }
-  return `${AUTH_URL}?${params}`;
+  const url = `${AUTH_URL}?${params}`;
+  storage.setItem(SLOT, JSON.stringify({ verifier, state, at: now, mode: callback ? 'callback' : 'code', url }));
+  return url;
+}
+
+/**
+ * The sign-in for an iPhone Home Screen app, ready before the tap: Safari opens a page only from the
+ * tap itself, not after an await, so the address must exist already. One still waiting for its code
+ * is kept (same address, same verifier), so a redraw, or annai reopened after the trip to Safari,
+ * still takes the code OpenRouter shows.
+ * @param {{ storage?: KeyValue, now?: number }} [c]
+ * @returns {Promise<{ url: string, pending: boolean }>} pending: one was already waiting
+ */
+export async function codeSignIn({ storage = localStorage, now = Date.now() } = {}) {
+  /** @type {any} */
+  let saved = null;
+  try {
+    saved = JSON.parse(storage.getItem(SLOT) ?? 'null');
+  } catch {
+    saved = null;
+  }
+  if (saved?.mode === 'code' && typeof saved.url === 'string' && now - saved.at <= MAX_AGE) return { url: saved.url, pending: true };
+  return { url: await signInUrl({ callback: null, storage, now }), pending: false };
 }
 
 /** The code and state OpenRouter sent back, when this page load is its callback. @param {string} search */

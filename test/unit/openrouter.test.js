@@ -5,7 +5,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { readConfig, modelOf, getKey } from '../../src/core/llm/config.js';
-import { signInUrl, callbackFrom, exchange, finishSignIn, AUTH_URL, KEYS_URL } from '../../src/ui/openrouter.js';
+import { signInUrl, codeSignIn, callbackFrom, exchange, finishSignIn, AUTH_URL, KEYS_URL } from '../../src/ui/openrouter.js';
 
 /** A Storage-like map. */
 function memoryStorage() {
@@ -96,4 +96,28 @@ test('a callback without the state is refused, and a code may be pasted only in 
   await assert.rejects(exchange({ code: 'attacker-code', state: null, pasted: true, fetch, storage, now: 2000 }), /didn't start in this browser/);
   await signInUrl({ callback: null, storage, now: 3000 });
   assert.equal(await exchange({ code: 'mine', state: null, pasted: true, fetch, storage, now: 3000 }), 'sk-or-attacker');
+});
+
+test('the iPhone Home Screen sign-in is ready before the tap, and a pending one is kept: the same address, the same verifier, until it expires', async () => {
+  /** @type {Map<string, string>} */
+  const m = new Map();
+  const storage = { getItem: (/** @type {string} */ k) => m.get(k) ?? null, setItem: (/** @type {string} */ k, /** @type {string} */ v) => { m.set(k, v); }, removeItem: (/** @type {string} */ k) => { m.delete(k); } };
+  const first = await codeSignIn({ storage, now: 1000 });
+  assert.equal(first.pending, false);
+  const u = new URL(first.url);
+  assert.equal(u.origin + u.pathname, AUTH_URL);
+  assert.equal(u.searchParams.get('callback_url'), null, 'OpenRouter shows the code when there is no callback');
+  assert.ok(u.searchParams.get('code_challenge'));
+  const verifier = JSON.parse(m.get('annai.openrouter') ?? '{}').verifier;
+  // Drawn again (a redraw, or annai reopened after a trip to Safari): the same sign-in, so the code still fits.
+  const again = await codeSignIn({ storage, now: 1000 + 5 * 60_000 });
+  assert.deepEqual(again, { url: first.url, pending: true });
+  assert.equal(JSON.parse(m.get('annai.openrouter') ?? '{}').verifier, verifier);
+  // Too old: a new one.
+  const later = await codeSignIn({ storage, now: 1000 + 16 * 60_000 });
+  assert.equal(later.pending, false);
+  assert.notEqual(later.url, first.url);
+  // A sign-in that came back by itself (not a code) is not reused for a code.
+  await signInUrl({ callback: 'https://annai.guide/', storage, now: 2_000_000 });
+  assert.equal((await codeSignIn({ storage, now: 2_000_001 })).pending, false);
 });
