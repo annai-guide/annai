@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '10523fe9c91b';
+const BUILD = '4d1d692dfbc9';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -11,6 +11,7 @@ const SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/LICENSE',
   '/assets/fonts/OFL.txt',
   '/assets/fonts/ibm-plex-mono-400.woff2',
   '/assets/fonts/ibm-plex-mono-500.woff2',
@@ -163,6 +164,7 @@ const SHELL = [
   '/src/plugins/web/index.js',
   '/src/ui/base.css',
   '/src/ui/cards.js',
+  '/src/ui/credits.js',
   '/src/ui/dock.js',
   '/src/ui/dom.js',
   '/src/ui/add-files.js',
@@ -187,6 +189,7 @@ const SHELL = [
   '/src/ui/photo-codec.js',
   '/src/ui/photo-viewer.js',
   '/src/ui/platform.js',
+  '/src/ui/privacy.js',
   '/src/ui/plugin-cards.js',
   '/src/ui/plugin-pending.js',
   '/src/ui/plugin-updates.js',
@@ -194,10 +197,12 @@ const SHELL = [
   '/src/ui/router.js',
   '/src/ui/save.js',
   '/src/ui/settings-form.js',
+  '/src/ui/screens/about.js',
   '/src/ui/screens/backups.js',
   '/src/ui/screens/booking.js',
   '/src/ui/screens/drive.js',
   '/src/ui/screens/endpoint.js',
+  '/src/ui/screens/experimental.js',
   '/src/ui/screens/ext.js',
   '/src/ui/screens/file.js',
   '/src/ui/screens/import.js',
@@ -221,6 +226,7 @@ const SHELL = [
   '/src/ui/screens/trip.js',
   '/src/ui/screens/trips.js',
   '/src/ui/screens/voice.js',
+  '/src/ui/screens/welcome.js',
   '/src/ui/shell.js',
   '/src/ui/slots.js',
   '/src/ui/stamps.js',
@@ -233,6 +239,7 @@ const SHELL = [
   '/src/ui/unlock.js',
   '/src/ui/voice-chip.js',
   '/src/ui/wake-lock.js',
+  '/src/ui/welcome.js',
 ];
 
 sw.addEventListener('install', (event) => {
@@ -248,8 +255,10 @@ sw.addEventListener('activate', (event) => {
 });
 
 // A new version waits until annai restarts; it only takes over early when the user taps "Restart now" (spec §17 rule 5).
+// Settings → About asks which build is running, on a port of its own.
 sw.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') sw.skipWaiting();
+  else if (event.data === 'build') event.ports?.[0]?.postMessage({ version: VERSION, build: BUILD });
 });
 
 sw.addEventListener('fetch', (event) => {

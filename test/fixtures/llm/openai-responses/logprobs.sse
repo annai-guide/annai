@@ -1,0 +1,18 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_e2e","object":"response","created_at":1792310400,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":8000,"model":"gpt-6-luna","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":"low","summary":"auto"},"store":false,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"truncation":"disabled","usage":null,"metadata":{}},"sequence_number":0}
+
+event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_e2e","object":"response","created_at":1792310400,"status":"in_progress","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":8000,"model":"gpt-6-luna","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":"low","summary":"auto"},"store":false,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"truncation":"disabled","usage":null,"metadata":{}},"sequence_number":1}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg_l","type":"message","status":"in_progress","role":"assistant","content":[]},"sequence_number":2}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_l","output_index":0,"content_index":0,"delta":"B","logprobs":[{"token":"B","logprob":-0.05,"top_logprobs":[{"token":"B","logprob":-0.05},{"token":"A","logprob":-3.2}]}],"sequence_number":3}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_l","output_index":0,"content_index":0,"delta":".","logprobs":[{"token":".","logprob":-0.01,"top_logprobs":[{"token":".","logprob":-0.01}]}],"sequence_number":4}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_e2e","object":"response","created_at":1792310400,"status":"completed","error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":8000,"model":"gpt-6-luna","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":"low","summary":"auto"},"store":false,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"truncation":"disabled","usage":{"input_tokens":80,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":0},"output_tokens":2,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":82},"metadata":{}},"sequence_number":5}
+

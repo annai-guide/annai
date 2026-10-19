@@ -38,6 +38,7 @@ import { ensureProvided } from '../core/llm/official.js';
 import { startBackups } from '../ui/auto-backup.js';
 import { PushMirror } from '../core/push/mirror.js';
 import { browserSource, takeNews, onPushMessage, closeNotifications } from '../ui/push.js';
+import { shouldWelcome } from '../ui/welcome.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -150,6 +151,9 @@ async function boot() {
       await ensureProvided(plugins, 'storage-type', type);
     },
   });
+  // The welcome, once per device, at annai's plain start (the user, 2026-10-18): a link that opens a screen
+  // (a shared trip, a share, the sign-in coming back) is never interrupted. Decided before the first draw.
+  if (await shouldWelcome(ws, location).catch(() => false)) history.replaceState(history.state, '', '#/welcome');
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, version: VERSION });
   pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: 'Notifications', run: () => { location.hash = '#/notifications'; } }] });
   for (const n of early.splice(0)) pushCard(n);

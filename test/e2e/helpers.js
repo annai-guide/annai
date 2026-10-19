@@ -47,11 +47,37 @@ export function watchConsole(page) {
   return errors;
 }
 
-/** Opens annai and waits for the first screen. Exports always download in tests (no share sheet). @param {import('@playwright/test').Page} page @param {string} [hash] */
-export async function openApp(page, hash = '') {
+/**
+ * Opens annai and waits for the first screen. Exports always download in tests (no share sheet).
+ * It opens Trips by its address, not annai's plain start, where a fresh device is welcomed first
+ * (welcome.spec.js tests that).
+ * @param {import('@playwright/test').Page} page @param {string} [hash]
+ */
+export async function openApp(page, hash = '#/trips') {
   await page.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
   await page.goto('/' + hash);
   await expect(page.locator('main.view > *')).toBeVisible();
+}
+
+/**
+ * After Erase, annai starts as on a new device: the welcome, at the plain start. Goes on to Trips by the top bar.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function pastWelcome(page) {
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to annai' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+}
+
+/**
+ * Turns on Settings → Experimental → "Swipe sideways to move between tabs", which is off by default,
+ * and waits until the shell takes swipes.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function turnOnSwipes(page) {
+  await page.evaluate(() => { location.hash = '#/experimental'; });
+  await page.getByRole('checkbox', { name: 'Swipe sideways to move between tabs' }).check();
+  await expect(page.locator('main.view')).toHaveClass(/\bswipes\b/);
 }
 
 /** @param {import('@playwright/test').Page} page */
@@ -175,6 +201,37 @@ export function anthropicToolReply(calls, text = '') {
   }
   out += ev('message_delta', { delta: { stop_reason: calls.length ? 'tool_use' : 'end_turn' }, usage: { output_tokens: 20 } });
   return out + ev('message_stop', {});
+}
+
+/**
+ * An OpenAI Responses SSE reply: an encrypted reasoning item if given, text if given, then function calls.
+ * @param {{ text?: string, calls?: { name: string, input: any }[], reasoning?: { id: string, summary: string, encrypted: string } }} r
+ */
+export function responsesReply({ text = '', calls = [], reasoning } = {}) {
+  const ev = (/** @type {string} */ type, /** @type {any} */ data) => `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
+  let out = ev('response.created', { response: { id: 'resp_e2e', status: 'in_progress', output: [] } });
+  let i = 0;
+  if (reasoning) {
+    out += ev('response.output_item.added', { output_index: i, item: { id: reasoning.id, type: 'reasoning', summary: [] } });
+    out += ev('response.reasoning_summary_text.delta', { item_id: reasoning.id, output_index: i, summary_index: 0, delta: reasoning.summary });
+    const item = { id: reasoning.id, type: 'reasoning', status: 'completed', summary: [{ type: 'summary_text', text: reasoning.summary }], encrypted_content: reasoning.encrypted };
+    out += ev('response.output_item.done', { output_index: i++, item });
+  }
+  if (text) {
+    const id = `msg_e2e_${i}`;
+    out += ev('response.output_item.added', { output_index: i, item: { id, type: 'message', role: 'assistant', status: 'in_progress', content: [] } });
+    out += ev('response.output_text.delta', { item_id: id, output_index: i, content_index: 0, delta: text });
+    out += ev('response.output_item.done', { output_index: i++, item: { id, type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text, annotations: [] }] } });
+  }
+  for (const [n, c] of calls.entries()) {
+    const args = JSON.stringify(c.input);
+    const item = { id: `fc_e2e_${n}`, type: 'function_call', call_id: `call_e2e_${n}_${Math.random().toString(36).slice(2, 8)}`, name: c.name, arguments: args };
+    out += ev('response.output_item.added', { output_index: i, item: { ...item, status: 'in_progress', arguments: '' } });
+    out += ev('response.function_call_arguments.delta', { item_id: item.id, output_index: i, delta: args });
+    out += ev('response.output_item.done', { output_index: i++, item: { ...item, status: 'completed' } });
+  }
+  const usage = { input_tokens: 400, input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 }, output_tokens: 20, output_tokens_details: { reasoning_tokens: 0 } };
+  return out + ev('response.completed', { response: { id: 'resp_e2e', status: 'completed', output: [], usage } });
 }
 
 /**
