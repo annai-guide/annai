@@ -11,7 +11,7 @@ import { createLlm } from '../../src/core/llm/service.js';
 import { readConfig, modelOf, getKey, saveRoles, STAND_INS } from '../../src/core/llm/config.js';
 import { addFromTemplate, speechBehind } from '../../src/core/llm/templates.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
-import { signInUrl, finishSignIn, addOpenRouterVoice, VOICE_TEMPLATES } from '../../src/ui/openrouter.js';
+import { signInUrl, finishSignIn, addOpenRouterVoice, voiceMissing, VOICE_TEMPLATES } from '../../src/ui/openrouter.js';
 
 // Sign in with OpenRouter also sets up OpenRouter's transcription and a voice, behind the phone's own
 // (the user, 2026-10-18: "Add, behind phone"). OpenRouter is stood in for: no request leaves this test.
@@ -242,3 +242,32 @@ test('the key is in no file, log entry or trace: not after sign-in, nor after a 
   assert.ok(!JSON.stringify(d.cards).includes(KEY));
 });
 
+/** The workspace, failing to save an endpoint made from one template (a full disk, say). @param {any} ws @param {string[]} tplIds */
+const failingFor = (ws, tplIds) => new Proxy(ws, {
+  get: (t, k) => (k === 'writeMany'
+    ? (/** @type {any} */ scope, /** @type {any[]} */ entries, /** @type {any} */ o) => (entries.some((e) => tplIds.includes(e.content?.template?.id)) ? Promise.reject(new Error('The disk is full.')) : t.writeMany(scope, entries, o))
+    : typeof t[k] === 'function' ? t[k].bind(t) : t[k]),
+});
+
+test("a sign-in whose voice can't be added still signs in, says so, and the OpenRouter endpoint's page offers what is missing (fix pass)", async () => {
+  // All of it fails: chat only, and both are offered.
+  const d = await device();
+  d.ctx.ws = failingFor(d.ws, ['openrouter-transcription', 'openrouter-speech']);
+  assert.equal(await signIn(d), true);
+  let cfg = await readConfig(d.ws);
+  assert.deepEqual(Object.values(cfg.endpoints).map((e) => e.template?.id), ['openrouter']);
+  assert.equal(d.cards[0].title, 'Signed in with OpenRouter');
+  assert.match(d.cards[0].body, /couldn't add all of OpenRouter's voice just now: the OpenRouter endpoint's page can add the rest/);
+  const catalog = await d.llm.templates();
+  assert.deepEqual(voiceMissing(cfg, catalog), ['openrouter-transcription', 'openrouter-speech']);
+  // Half of it fails: the transcription is there, the voice is offered.
+  const h = await device();
+  h.ctx.ws = failingFor(h.ws, ['openrouter-speech']);
+  await signIn(h);
+  cfg = await readConfig(h.ws);
+  assert.deepEqual(Object.values(cfg.endpoints).map((e) => e.template?.id).sort(), ['openrouter', 'openrouter-transcription']);
+  assert.match(h.cards[0].body, /couldn't add all of OpenRouter's voice/);
+  assert.deepEqual(voiceMissing(cfg, catalog), ['openrouter-speech']);
+  h.ctx.ws = h.ws;
+  assert.deepEqual(await addOpenRouterVoice(h.ctx, KEY), ['openrouter-speech'], 'the page adds the rest');
+});
