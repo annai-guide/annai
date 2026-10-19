@@ -1,6 +1,6 @@
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
-import { AllFailedError, estimateTokens } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, candidates } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf, saveModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
@@ -29,13 +29,16 @@ import { validate } from '../schema.js';
  * role, runs the tool calls in order (sleep last), appends the results and calls again, until she
  * sleeps, calls no tool, or something stops her. She reaches the user only through output tools
  * (§7.1); everything else she writes stays in the trace.
- * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap'} WakeKind
- *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on; recap: the user asked to hear the trip's recap (spec §13)
+ * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap' | 'note' | 'cue' | 'halves'} WakeKind
+ *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on; recap: the user asked to hear the trip's recap (spec §13);
+ *   note: the other half wrote (the Koe and Kokoro design); cue: something the other half did that this one should look at; halves: an instruction block
  * @typedef {{ watch: string, text: string }} Reminder  a watch's fallback (spec §11.3)
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
- * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean }} Wake
+ * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
+ *   logged?: boolean, from?: 'koe' | 'kokoro' }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
- *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13)
+ *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
+ *   logged: its lines are in the log already (the other half wrote them), so only the wake is written; from: the half a note came from
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -46,7 +49,39 @@ import { validate } from '../schema.js';
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
  * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
  * @typedef {import('./tools.js').Tool & { pluginId: string }} LoopTool
+ * @typedef {import('./transcript.js').Resolved} Resolved
+ * @typedef {object} Half  how the loop runs as one half of Shiori (the Koe and Kokoro design; plan, "Agent as a half")
+ * @property {'one' | 'kokoro' | 'koe'} name
+ * @property {string} tag  its model.turn tag
+ * @property {(voiceOn: boolean) => Promise<{ role: string }>} role  the role it calls now
+ * @property {boolean} registryTools  false: only its own loop tools, none of the plugins'
+ * @property {() => boolean} voice  whether it may use the microphone and the speaker now
+ * @property {boolean} logVoice  it writes the voice mode's changes (only one half does)
+ * @property {boolean} housekeeping  it compacts its conversation (Koe keeps a window instead)
+ * @property {string} [nonce]  Koe's session nonce, in the marker of Kokoro's notes
+ * @property {() => import('./transcript.js').HalfName} [rules]  whose rules its transcript reads by now (Kokoro: one half's until Shiori is two)
+ * @property {(snapshot: import('./context.js').Snapshot) => string} [system]  its system text, when not Shiori's
+ * @property {(c: { now: number, timeZone: string, voice: string, online: boolean, reasons: string[], place?: string, activity?: string, voiceWhy?: string }) => Promise<string>} [tail]
+ *   its tail, in place of the now block
+ * @property {() => string | null} [koe]  Koe's state, for Kokoro's now block
+ * @property {() => Promise<string[]>} [hidden]  its loop tools left out now
+ * @property {(type: string) => Record<string, any>} [mark]  what it adds to the events it writes of a type ({ half: 'koe' })
+ * @property {<T>(fn: () => Promise<T>) => Promise<T>} [serial]  writes of both halves, one at a time, so both read them in the log's order
+ * @property {(e: any, r: Resolved) => Promise<void> | void} [logged]  an event it wrote, for the other half to observe
+ * @property {(call: { id: string, name: string, input: any, wake: string }) => Promise<import('./tools.js').ToolOutput | null>} [gate]  a call not run, and its result
+ * @property {(why: string, e: unknown) => boolean} [failed]  every model failed: true when the other half tells the user, so no card
+ * @property {() => void} [calling]  a model call starts
+ * @property {(t: TurnEnd) => void} [ended]  a turn ended
+ * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
+ *   finalText: the text of a last reply with no tool calls; told: it told the other half (or a gated call did); kinds: the wakes it took
  */
+
+/** Shiori as one half, as she always was. @type {Half} */
+export const ONE = Object.freeze({
+  name: /** @type {const} */ ('one'), tag: TALK_TAG, role: async () => ({ role: 'main' }), registryTools: true, voice: () => true, logVoice: true, housekeeping: true,
+});
+/** No registry: a half with only its own tools. */
+const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
 
 /** The dock's words for each state (spec §16.3). */
 export const LABELS = Object.freeze({
@@ -101,7 +136,7 @@ export class Agent {
   #opens = 0;
   /** Counts opens: only the latest one does anything. */
   #generation = 0;
-  /** Reminders written into a conversation while it was being opened, for its transcript once open. @type {{ scope: string, e: any }[]} */
+  /** Reminders, and what the other half wrote, while a conversation was being opened, for its transcript once open. @type {{ scope: string, e: any, r?: Resolved }[]} */
   #late = [];
   /** @type {(() => void)[]} waiting for the running turn or housekeeping to end */
   #free = [];
@@ -154,14 +189,28 @@ export class Agent {
   #aloudOnly = false;
   /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
   #writeTries = new Map();
+  /** How this loop runs: as Shiori, or as one of her halves. @type {Half} */
+  #half = ONE;
+  /** The last entry its transcript took: what the other half wrote is added once, in the log's order. */
+  #seen = 0;
+  /** A model call is running: what the other half writes meanwhile waits in the inbox, for the call's own turn to go first. */
+  #calling = false;
+  /** @type {{ e: any, r: Resolved }[]} */
+  #inbox = [];
+  /** Cuts the model call running now, not the turn (cutIn). @type {AbortController | null} */
+  #callCut = null;
+  /** The other half cut in while she spoke: speak says so, and doesn't listen. */
+  #noteCut = false;
+  /** What the running turn did, for its end (Half.ended). */
+  #facts = { finalText: '', told: false, slept: false, spoke: false, kinds: /** @type {string[]} */ ([]) };
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
    *   now?: () => number, online?: () => boolean, timeZone?: () => string, fetch?: (url: string, init?: RequestInit) => Promise<Response>, secondMs?: number,
    *   codec?: ConstructorParameters<typeof PhotoCopies>[0]['codec'], voice?: import('../voice/voice.js').Voice | null,
-   *   timers?: { set: (fn: () => void, ms: number) => any, clear: (handle: any) => void } }} c
+   *   timers?: { set: (fn: () => void, ms: number) => any, clear: (handle: any) => void }, half?: Half }} c
    */
-  constructor({ store, ws, llm, registry, codec, voice, now = Date.now, online = () => globalThis.navigator?.onLine !== false, timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, fetch: get, secondMs = 1000,
+  constructor({ store, ws, llm, registry, codec, voice, half = ONE, now = Date.now, online = () => globalThis.navigator?.onLine !== false, timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, fetch: get, secondMs = 1000,
     timers = { set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => /** @type {any} */ (setTimeout(fn, ms)), clear: (/** @type {any} */ h) => clearTimeout(h) } }) {
     this.store = store;
     this.ws = ws;
@@ -179,10 +228,32 @@ export class Agent {
     /** The browser's photo codec: request copies and crops (spec §4.8). Without one, photos go as they are. */
     this.codec = codec ?? null;
     this.#photos = codec ? new PhotoCopies({ codec, read: (hash) => blobBytes(this.store, hash) }) : null;
+    this.#half = half;
+    this.transcript = new Transcript({ half: this.#rules(), nonce: half.nonce });
     this.#loopTools = this.#talkTools();
     this.voice = voice ?? null;
     // The mode read as annai starts is no change: only changes are logged (spec §4.5).
     this.voice?.onChange((m, first) => { if (!first) this.#voiceChanged(m); });
+  }
+
+  /** Whose rules its transcript reads by now. */
+  #rules() {
+    return this.#half.rules?.() ?? this.#half.name;
+  }
+
+  /** The conversation from the log, by this half's rules. @param {string} scope @param {{ before?: number }} [o] */
+  #load(scope, o = {}) {
+    return Transcript.load(this.store, scope, { ...o, half: this.#rules(), nonce: this.#half.nonce });
+  }
+
+  /** What this half adds to an event of a type it writes. @param {string} type */
+  #mark(type) {
+    return this.#half.mark?.(type) ?? {};
+  }
+
+  /** A tapped answer is marked as chosen for the other half's reading; one half's log is as it was. */
+  #chose() {
+    return this.#half.name === 'one' ? {} : { chose: true };
   }
 
   /**
@@ -193,7 +264,7 @@ export class Agent {
     const cfg = await this.llm.config();
     /** @type {import('./refusals.js').Learned} */
     let images = {};
-    for (const id of cfg.roles?.main?.models ?? []) {
+    for (const id of candidates(cfg, (await this.#half.role(this.#voiceNow)).role)) {
       const m = cfg.models[id] ? modelOf(cfg.models[id]) : null;
       if (m?.input?.includes('image')) images = stricter(images, m.images ?? {});
     }
@@ -286,16 +357,18 @@ export class Agent {
     if (generation !== this.#generation) return;
     await this.#whenFree();
     const scope = trip ?? ME;
-    const transcript = await Transcript.load(this.store, scope);
+    const transcript = await this.#load(scope);
     if (generation !== this.#generation) return;
-    const repaired = await repair(this.store, scope, transcript);
+    const repaired = await repair(this.store, scope, transcript, this.#mark('tool.result'));
     if (generation !== this.#generation) return;
     await this.#keepElsewhere(scope);
     if (generation !== this.#generation) return;
     this.trip = trip;
     this.scope = scope;
     this.transcript = transcript;
-    for (const l of this.#late.splice(0)) if (l.scope === scope) this.#joinLate(l.e);
+    this.#seen = transcript.through;
+    this.#inbox = [];
+    for (const l of this.#late.splice(0)) if (l.scope === scope) this.#joinLate(l.e, l.r);
     this.#snapshot = null;
     // The last conversation's housekeeping stays with it: it is checked again at its next turn.
     this.#due = false;
@@ -356,6 +429,12 @@ export class Agent {
   /** @param {Wake} w */
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME });
+    // A note ends a wait for one (Koe's wait means "Kokoro is working"): it is below the wait's result.
+    const p = this.#pending;
+    if (w.kind === 'note' && p?.kind === 'wait') {
+      this.#pending = null;
+      p.resolve({ note: w.from ?? 'kokoro' });
+    }
   }
 
   /**
@@ -399,38 +478,121 @@ export class Agent {
     // A wake for another conversation than the one open (files added to another trip) is written
     // into it now, and answered when it opens (spec §6.1, §7.3).
     if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
-    if (w.kind === 'user' || w.kind === 'choice' || w.kind === 'restart' || w.kind === 'file' || w.kind === 'live' || w.kind === 'recap') {
-      this.#push(w);
-      this.#drain();
+    if (['user', 'choice', 'restart', 'file', 'live', 'recap', 'note', 'cue', 'halves'].includes(w.kind)) {
+      this.enqueue(w);
       return Promise.resolve();
     }
     this.#checking++;
-    this.settings().then(({ budgets }) => {
-      const now = this.now(); // quiet hours follow the day as lived, a simulation's too
-      if (budgets.quietHours && inQuiet(now, budgets.quietHours, this.timeZone())) {
-        // Quiet hours hold Shiori, not the reminders (spec §11.3).
-        if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
-        const later = { ...w, fallbacks: [] };
-        const held = setTimeout(() => this.wake(later), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
-        /** @type {any} */ (held).unref?.(); // in Node (tests), a held wake must not keep the process alive
-        return;
-      }
-      // Wakes an hour count real hours, even during a simulation (review 2a).
-      const real = this.#real.now();
-      this.#recentWakes = this.#recentWakes.filter((t) => t > real - 3_600_000 && t <= real);
-      if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
-        this.#notice({ tone: 'info', title: 'Shiori skipped a wake', body: `${w.plugin ? `The plugin ${w.plugin}` : 'Something'} woke her more than the ${budgets.wakesPerHour} times an hour you allow: ${w.text}` });
-        if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
-        return;
-      }
-      this.#recentWakes.push(real);
-      this.#push(w);
-      this.#drain();
-    }).finally(() => {
+    this.admit(w).then((ok) => { if (ok) this.enqueue(w); }).finally(() => {
       this.#checking--;
       this.#settle();
     });
     return Promise.resolve();
+  }
+
+  /** Queues a wake for the open conversation and starts a turn, past the budgets' checks (admit). @param {Wake} w */
+  enqueue(w) {
+    this.#push(w);
+    this.#drain();
+  }
+
+  /**
+   * The budgets' checks of a wake that isn't the user's (spec §6.6): quiet hours hold it until they
+   * end (its reminders shown now), and the hourly limit drops it with a card; each says its reminders.
+   * @param {Wake} w @param {(w: Wake) => unknown} [again] how a held wake is woken again when quiet hours end
+   * @returns {Promise<boolean>} whether it may wake her now
+   */
+  async admit(w, again = (x) => this.wake(x)) {
+    const { budgets } = await this.settings();
+    const now = this.now(); // quiet hours follow the day as lived, a simulation's too
+    if (budgets.quietHours && inQuiet(now, budgets.quietHours, this.timeZone())) {
+      // Quiet hours hold Shiori, not the reminders (spec §11.3).
+      if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
+      const later = { ...w, fallbacks: [] };
+      const held = setTimeout(() => again(later), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
+      /** @type {any} */ (held).unref?.(); // in Node (tests), a held wake must not keep the process alive
+      return false;
+    }
+    // Wakes an hour count real hours, even during a simulation (review 2a).
+    const real = this.#real.now();
+    this.#recentWakes = this.#recentWakes.filter((t) => t > real - 3_600_000 && t <= real);
+    if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
+      this.#notice({ tone: 'info', title: 'Shiori skipped a wake', body: `${w.plugin ? `The plugin ${w.plugin}` : 'Something'} woke her more than the ${budgets.wakesPerHour} times an hour you allow: ${w.text}` });
+      if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
+      return false;
+    }
+    this.#recentWakes.push(real);
+    return true;
+  }
+
+  /**
+   * Cuts in (an immediate note, plan "The channel"): the model call running now stops, and the turn
+   * goes on with what is queued; speech playing stops where it is.
+   */
+  cutIn() {
+    this.#callCut?.abort();
+    if (this.voice && this.#half.voice() && this.voice.speaker.speaking) {
+      this.#noteCut = true;
+      this.voice.speaker.stop();
+      for (const u of this.#utterances.values()) u.stop();
+    }
+  }
+
+  /** Whether a wait (not an ask) is waiting for an answer. */
+  get waiting() {
+    return this.#pending?.kind === 'wait';
+  }
+
+  /** The ask or wait waiting for the user, by its call id. */
+  get pendingId() {
+    return this.#pending?.id ?? null;
+  }
+
+  /**
+   * An event the other half wrote, added to this half's transcript by its rules, once (plan decision 2).
+   * During a model call it waits, so this half's own turn, written by the trace when the call ends,
+   * goes first when the log has it first. Koe reads its window again after Kokoro tidies up.
+   * @param {any} e @param {Resolved} r
+   */
+  async observe(e, r) {
+    if (this.#opens && e.scope === (this.#target ?? ME)) {
+      this.#late.push({ scope: e.scope, e, r });
+      return;
+    }
+    if (e.scope !== this.scope) return;
+    if (e.type === 'compaction') {
+      if (this.#half.name === 'koe') await this.reread();
+      return;
+    }
+    if (this.#calling) this.#inbox.push({ e, r });
+    else this.#apply(e, r);
+  }
+
+  /** Reads the open conversation from the log again, by this half's rules as they are now. */
+  async reread() {
+    this.transcript = await this.#load(this.scope);
+    this.#seen = this.transcript.through;
+    this.#inbox = [];
+  }
+
+  /** Adds an event, after what waited in the inbox from before it in the log. @param {any} e @param {Resolved} r */
+  #apply(e, r) {
+    this.#flush(e.seq);
+    if (e.seq <= this.#seen) return;
+    this.#seen = e.seq;
+    this.transcript.apply(e, r);
+  }
+
+  /** What waited in the inbox from before an entry (or all of it), in the log's order. @param {number} [before] */
+  #flush(before = Infinity) {
+    if (!this.#inbox.length) return;
+    const ready = this.#inbox.filter((x) => x.e.seq < before).sort((a, b) => a.e.seq - b.e.seq);
+    this.#inbox = this.#inbox.filter((x) => x.e.seq >= before);
+    for (const x of ready) {
+      if (x.e.seq <= this.#seen) continue;
+      this.#seen = x.e.seq;
+      this.transcript.apply(x.e, x.r);
+    }
   }
 
   /**
@@ -550,8 +712,10 @@ export class Agent {
   async #toolsNow() {
     const switches = await toolSwitches(this.ws);
     const web = (await readAppSettings(this.ws)).web ?? {};
-    const via = webVia({ web, model: await this.#mainModel(), switches });
-    const tools = toolList({ registry: this.registry, switches, loop: this.#loopTools }).filter((t) => !via.hide.includes(t.name));
+    // A half with only its own tools has no web of its own, nor a provider's.
+    const via = this.#half.registryTools ? webVia({ web, model: await this.#mainModel(), switches }) : { hide: [], kinds: [], off: [] };
+    const hidden = [...via.hide, ...((await this.#half.hidden?.()) ?? [])];
+    const tools = toolList({ registry: this.#half.registryTools ? this.registry : NO_TOOLS, switches, loop: this.#loopTools }).filter((t) => !hidden.includes(t.name));
     const providerTools = via.kinds.length ? { providerTools: { kinds: via.kinds, off: via.off } } : {};
     return { tools, via, providerTools };
   }
@@ -567,19 +731,19 @@ export class Agent {
 
   /** Whether the main role's first model gets photos by upload, so they count as their id (spec §6.5). */
   async #uploading() {
-    const id = (await this.llm.config()).roles?.main?.models?.[0];
+    const id = candidates(await this.llm.config(), (await this.#half.role(this.#voiceNow)).role)[0];
     return Boolean(id && this.llm.uploading && (await this.llm.uploading(id)));
   }
 
-  /** The main role's first model. */
-  #mainModel() {
-    return this.#roleModel('main');
+  /** The first model of the role this half calls (Shiori's: main). */
+  async #mainModel() {
+    return this.#roleModel((await this.#half.role(this.#voiceNow)).role);
   }
 
-  /** A role's first model (the main role's when it has none). @param {string} role */
+  /** A role's first model (the main role's when a chat role has none; the other Koe list's for Koe). @param {string} role */
   async #roleModel(role) {
     const cfg = await this.llm.config();
-    const id = cfg.roles?.[role]?.models?.[0] ?? cfg.roles?.main?.models?.[0];
+    const id = candidates(cfg, role)[0];
     return id && cfg.models[id] ? modelOf(cfg.models[id]) : null;
   }
 
@@ -595,8 +759,11 @@ export class Agent {
       ? (settings.compaction.threshold * window) / 3
       : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3;
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
-    // The conversation only, by type (A6): what the summary is made of, and what the cut is measured on.
-    const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) }))).filter((e) => !NOT_SAID.has(e.type));
+    // The conversation only, by type (A6): what the summary is made of, and what the cut is measured on. Koe's own
+    // turns, results and wakes aren't in this half's conversation, nor the lines a half reads only of the other.
+    const split = this.#rules() === 'kokoro';
+    const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
+      .filter((e) => !NOT_SAID.has(e.type) && e.data?.half !== 'koe' && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
@@ -607,7 +774,7 @@ export class Agent {
     if (cut === null) return false;
     // What was heard in the part summarized is written down first, the last time its sound is at hand (spec §10.3): the
     // summary and the log both have the words. While it can't be, housekeeping waits, unless the next request would overflow.
-    const unwritten = (await Transcript.load(this.store, this.scope, { before: cut })).unwritten();
+    const unwritten = (await this.#load(this.scope, { before: cut })).unwritten();
     if (unwritten.length && (await this.#writeDown('housekeeping', unwritten, { final: Boolean(o.forced) })).length) return false;
     const after = events.filter((e) => e.seq >= cut);
     const first = after.find((e) => e.type === 'msg.user')?.data?.text ?? after.find((e) => e.type === 'wake')?.data?.reasons?.[0]?.text ?? '';
@@ -615,8 +782,11 @@ export class Agent {
     this.#setState('away', 'tidying up the conversation');
     const summary = mode === 'warm' ? await this.#warmSummary(marker, settings) : await this.#coldSummary(cut);
     if (!summary) return false;
-    await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
-    this.transcript = await Transcript.load(this.store, this.scope);
+    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
+    await this.#serially(async () => {
+      await this.reread();
+      await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
+    });
     this.#snapshot = null;
     this.#due = false;
     return true;
@@ -651,7 +821,7 @@ export class Agent {
 
   /** Cold: the utility model, from the older part as text. @param {number} cut */
   async #coldSummary(cut) {
-    const old = await Transcript.load(this.store, this.scope, { before: cut });
+    const old = await this.#load(this.scope, { before: cut });
     // Words written down since (by housekeeping, just now) count for the part summarized.
     for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['heard.text'], after: cut - 1 }))) old.apply(e, { texts: {}, images: [] });
     // Half the utility model's window, in characters, leaves room for the instructions and the summary.
@@ -719,19 +889,42 @@ export class Agent {
     }
   }
 
-  /** An entry written while the open conversation was being read: added unless the reading had it. @param {any} e */
-  #joinLate(e) {
+  /**
+   * An entry written while the open conversation was being read: added unless the reading had it. One
+   * the other half wrote is shown by that half. @param {any} e @param {Resolved} [r]
+   */
+  #joinLate(e, r) {
     if (e.seq <= this.transcript.through) return;
+    if (r) {
+      this.#apply(e, r);
+      return;
+    }
     this.transcript.apply(e, { texts: {}, images: [] });
     this.#emit('event', e);
   }
 
-  /** Writes a conversation event, adds it to the transcript, and tells the screen. @param {Parameters<typeof record>[2]} ev */
-  async #log(ev) {
-    const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...ev });
-    this.transcript.apply(stored, await resolveEvent(this.store, stored));
-    this.#emit('event', stored);
-    return stored;
+  /**
+   * Writes a conversation event, adds it to the transcript, and tells the screen; and the other half,
+   * which adds it to its own. The halves write one at a time, so both read their events in the log's order.
+   * @param {Parameters<typeof record>[2]} ev
+   */
+  #log(ev) {
+    const write = async () => {
+      const mark = this.#mark(ev.type);
+      const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...ev, data: { ...ev.data, ...mark } });
+      const r = await resolveEvent(this.store, stored);
+      this.#apply(stored, r);
+      if (ev.type.startsWith('out.')) this.#facts.spoke = true;
+      this.#emit('event', stored);
+      await this.#half.logged?.(stored, r);
+      return stored;
+    };
+    return this.#serially(write);
+  }
+
+  /** Runs fn when neither half is writing (Half.serial). @template T @param {() => Promise<T>} fn @returns {Promise<T>} */
+  #serially(fn) {
+    return this.#half.serial ? this.#half.serial(fn) : fn();
   }
 
   /** @param {Wake} w */
@@ -751,10 +944,12 @@ export class Agent {
   async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev), trip = this.trip) {
     if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map((w) => ({ kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}) })) } });
     else {
-      const others = wakes.filter((w) => w.kind !== 'user' && w.kind !== 'choice' && w.kind !== 'heard');
+      // What the other half wrote is in the log already: only other news gets a line.
+      const others = wakes.filter((w) => w.kind !== 'user' && w.kind !== 'choice' && w.kind !== 'heard' && !w.logged);
       if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map((w) => ({ kind: w.kind, text: w.text })) } });
     }
     for (const w of wakes) {
+      if (w.logged) continue;
       if (w.kind === 'heard' && w.heard) {
         await this.#logHeard(w.heard, { wake: wakeId, meanwhile, gate: w.gate }, log);
         continue;
@@ -804,11 +999,19 @@ export class Agent {
     // Asked to hear her with voice mode off: she speaks, and the microphone stays off (spec §10.5, §6.2).
     this.#aloudOnly = this.#voiceNow && asked && !this.voice?.on;
     this.#heardBy = null;
+    this.#facts = { finalText: '', told: false, slept: false, spoke: false, kinds: wakes.map((w) => w.kind) };
+    // Shiori became two halves, or one again: her conversation is read by the rules she has now.
+    if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
     let ok = false;
     try {
       ok = await this.#steps(wakes, wakeId, abort);
     } finally {
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn('the end of a turn failed', e));
+      try {
+        this.#half.ended?.({ wakeId, ok, ...this.#facts });
+      } catch (e) {
+        console.warn('the end of a turn failed', e);
+      }
     }
   }
 
@@ -846,16 +1049,23 @@ export class Agent {
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
       const { tools, via, providerTools } = await this.#toolsNow();
-      const plan = await nextPlanItems(this.ws, this.trip, this.now());
+      const { role } = await this.#half.role(this.#voiceNow);
       const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
       const here = this.sense?.() ?? {};
-      const tail = nowBlock({ now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, plan, place: here.place, activity: here.activity });
-      const request = { ...buildRequest({ snapshot: /** @type {any} */ (this.#snapshot), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }), ...providerTools };
+      const now = { now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, place: here.place, activity: here.activity };
+      const koe = this.#half.koe?.() ?? null;
+      const tail = this.#half.tail ? await this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now()), ...(koe ? { koe } : {}) });
+      const snapshot = /** @type {import('./context.js').Snapshot} */ (this.#snapshot);
+      const request = {
+        ...buildRequest({ snapshot, ...(this.#half.system ? { system: this.#half.system(snapshot) } : {}), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }),
+        ...providerTools,
+      };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
-      const need = compactionNeed({ tokens: Math.max(estimateTokens(request), this.#lastPrompt), window, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold });
+      // A half that doesn't tidy up (Koe, with its window) never compacts.
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(request), this.#lastPrompt), window, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
@@ -877,18 +1087,35 @@ export class Agent {
       this.#setState('thinking');
       /** @type {any} */
       let result;
+      const cut = new AbortController();
       try {
+        this.#half.calling?.();
+        this.#calling = true;
+        this.#callCut = cut;
         result = await this.llm.call({
-          role: 'main', request, signal: abort.signal, scope: this.scope, prefer,
-          record: { tag: TALK_TAG, wake: wakeId, prefix: fingerprint.slice(0, 16), context: { from: this.transcript.from, to: this.transcript.to }, keepParts: true },
+          role, request, signal: AbortSignal.any([abort.signal, cut.signal]), scope: this.scope, prefer,
+          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context: { from: this.transcript.from, to: this.transcript.to }, keepParts: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
-          ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs() } : {}),
+          ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
         });
       } catch (e) {
+        this.#callCut = null;
+        this.#calling = false;
+        this.#flush();
+        // Cut in by the other half (an immediate note): this call is void, and the turn goes on with what is queued.
+        if (cut.signal.aborted && !abort.signal.aborted) {
+          const more = this.#take();
+          if (more.length) {
+            await this.#logWakes(more, wakeId, true);
+            reasons.push(...more.map((w) => this.#reason(w)));
+            owed.push(...more.flatMap((w) => w.fallbacks ?? []));
+          }
+          continue;
+        }
         // "Request too long" from every model: compact first, then try once more (spec §9.6).
-        const tooLong = e instanceof AllFailedError && e.attempts.some((a) => a.outcome === 'context' || a.outcome === 'too-long');
+        const tooLong = this.#half.housekeeping && e instanceof AllFailedError && e.attempts.some((a) => a.outcome === 'context' || a.outcome === 'too-long');
         if (tooLong && !triedCompacting) {
           triedCompacting = true;
           const done = await this.#tidyUp('cold', { forced: true }, wakeId);
@@ -905,6 +1132,7 @@ export class Agent {
         failed = true;
         break;
       }
+      this.#callCut = null;
       steps++;
       this.#heardBy = result.modelId;
       answered = true;
@@ -913,14 +1141,16 @@ export class Agent {
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       if (!calls.length) {
         if (result.reply.stop === 'pause') continue;
+        this.#facts.finalText = String(result.reply.text ?? '').trim();
         break;
       }
       const sleeping = calls.some((/** @type {any} */ c) => c.name === 'sleep');
+      if (sleeping) this.#facts.slept = true;
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
@@ -941,6 +1171,7 @@ export class Agent {
         await this.#logWakes(more, wakeId, true);
         reasons.push(...more.map((w) => this.#reason(w)));
         owed.push(...more.flatMap((w) => w.fallbacks ?? []));
+        this.#facts.kinds.push(...more.map((w) => w.kind));
       }
     }
     if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope);
@@ -982,11 +1213,13 @@ export class Agent {
     if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return;
     const body = await withoutSecrets(this.store, this.#explain(e));
     const last = e instanceof AllFailedError ? e.attempts.at(-1) : undefined;
-    if (this.#photoCard === wakeId) {
-      // its card already says why
+    // The other half tells the user (Koe that Kokoro couldn't check), or talks in its place: no card.
+    const quiet = this.#half.failed?.(body, e) ?? false;
+    if (quiet || this.#photoCard === wakeId) {
+      // said elsewhere, or its card already says why
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
     else await this.#notice({ tone: 'warn', title: "Shiori can't reach her model", body });
-    await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, message: body } });
+    await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, message: body, ...(quiet ? { quiet: true } : {}) } });
   }
 
   /**
@@ -1112,15 +1345,26 @@ export class Agent {
     return rec ? modelOf(rec) : null;
   }
 
-  /** Adds the reply to the transcript from the model.turn the trace just wrote, or from the reply itself if that write failed. @param {any[]} parts @param {string} wakeId */
+  /**
+   * Adds the reply to the transcript from the model.turn the trace just wrote (this half's, by its tag
+   * and wake: the other half may have written one since), or from the reply itself if that write
+   * failed; then what the other half wrote during the call, in the log's order. @param {any[]} parts @param {string} wakeId
+   */
   async #applyTurn(parts, wakeId) {
-    const [turn] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['model.turn'], reverse: true, limit: 1 }));
-    if (turn && turn.data?.wake === wakeId && turn.data?.tag === TALK_TAG && turn.data?.stored?.includes('parts')) {
-      this.transcript.apply(turn, await resolveEvent(this.store, turn));
-      this.#emit('event', turn);
-    } else {
-      this.transcript.apply({ seq: this.transcript.to + 1, type: 'model.turn', data: { tag: TALK_TAG } }, { texts: { parts: JSON.stringify(parts) }, images: [] });
-    }
+    await this.#serially(async () => {
+      const recent = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['model.turn'], reverse: true, limit: 8 }));
+      const turn = recent.find((x) => x.data?.wake === wakeId && x.data?.tag === this.#half.tag);
+      // The latest of this wake's own turns, unless it is one taken already (an earlier step's: this one's write failed).
+      if (turn && turn.seq > this.#seen && turn.data?.stored?.includes('parts')) {
+        this.#apply(turn, await resolveEvent(this.store, turn));
+        this.#emit('event', turn);
+      } else {
+        this.#flush();
+        this.transcript.apply({ seq: this.transcript.to + 1, type: 'model.turn', data: { tag: this.#half.tag } }, { texts: { parts: JSON.stringify(parts) }, images: [] });
+      }
+      this.#calling = false;
+      this.#flush();
+    });
   }
 
   /**
@@ -1136,7 +1380,11 @@ export class Agent {
     /** @type {import('./tools.js').ToolOutput} */
     let output;
     let ms = 0;
+    // Kokoro's output tools while Koe talks (plan decision 15): not run, in code, never by instructions alone.
+    const gated = tool && !o.signal.aborted && this.#half.gate ? await this.#half.gate({ id: c.id, name: c.name, input, wake: o.wakeId }) : null;
+    if (c.name === 'tell_koe' || c.name === 'tell_kokoro' || gated?.told) this.#facts.told = true;
     if (o.signal.aborted) output = { content: STOPPED, isError: true };
+    else if (gated) output = { content: gated.content, ...(gated.isError ? { isError: true } : {}) };
     else if (!tool) output = { content: `Error: there is no tool called ${c.name}, or it is switched off.`, isError: true };
     else if (typeof c.input !== 'object' || c.input === null) output = { content: `Error: the input for ${c.name} wasn't valid JSON.`, isError: true };
     else {
@@ -1240,7 +1488,7 @@ export class Agent {
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
           if (got.chosen !== undefined) {
-            await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.chosen]] });
+            await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
           }
           await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text ?? '']] });
@@ -1259,6 +1507,7 @@ export class Agent {
           }
           const got = await this.#waitFor(call.id, 'wait', seconds * this.secondMs);
           if (got.stopped) return { content: STOPPED, isError: true };
+          if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
           if (got.text === undefined) return `Nothing yet (${seconds} seconds).`;
           await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text]] });
           return `The user wrote: ${got.text}`;
@@ -1281,6 +1530,9 @@ export class Agent {
   #waitFor(id, kind, ms) {
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (queued >= 0) return Promise.resolve({ text: this.#queue.splice(queued, 1)[0].text });
+    // A note already queued answers a wait: it is below (the wake itself is taken at the next step).
+    const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
+    if (note) return Promise.resolve({ note: note.from ?? 'kokoro' });
     this.#setState('waiting');
     if (kind === 'wait') this.state = { name: 'waiting', label: 'Your turn' };
     return new Promise((resolve) => {
@@ -1300,7 +1552,7 @@ export class Agent {
    * effect at her next turn. @param {import('../voice/mode.js').VoiceMode} m
    */
   #voiceChanged(m) {
-    record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'state', actor: 'system', data: { voice: m.on ? 'on' : 'off', setting: m.setting, why: m.why } }).catch(() => {});
+    if (this.#half.logVoice) record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'state', actor: 'system', data: { voice: m.on ? 'on' : 'off', setting: m.setting, why: m.why } }).catch(() => {});
     if (m.on) return;
     this.#voiceNow = false;
     this.#closeEar();
@@ -1316,15 +1568,16 @@ export class Agent {
    * @param {boolean} [asked]
    */
   async #voiceOn(asked = false) {
-    if (!this.voice) return false;
+    // While Koe talks, the microphone and the speaker are Koe's (plan decision 17).
+    if (!this.voice || !this.#half.voice()) return false;
     await this.voice.refresh();
     return (this.voice.on || asked) && (await toolSwitches(this.ws)).speak !== false;
   }
 
-  /** How long her first words may take with voice on (spec §9.6: tighter for voice); the main role's own limit when lower. */
-  async #firstWordsMs() {
+  /** How long her first words may take with voice on (spec §9.6: tighter for voice); the role's own limit when lower. @param {string} role */
+  async #firstWordsMs(role) {
     const { firstWordsSeconds } = await /** @type {import('../voice/voice.js').Voice} */ (this.voice).settings();
-    const own = (await this.llm.config()).roles?.main?.firstOutputSeconds;
+    const own = (await this.llm.config()).roles?.[role]?.firstOutputSeconds;
     return Math.min(firstWordsSeconds, own ?? Infinity) * 1000;
   }
 
@@ -1398,6 +1651,11 @@ export class Agent {
         : { tone: 'warn', title: "Shiori couldn't speak aloud", body: 'No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.' });
       return unspoken(spoken.failed);
     }
+    if (spoken.cut && this.#noteCut) {
+      // Cut in for a note, which follows: the turn goes on without listening.
+      this.#noteCut = false;
+      return spoken.heard ? `A note stopped you after: "${spoken.heard}". It follows.` : 'A note stopped you before you said anything. It follows.';
+    }
     if (spoken.cut) this.#cut = true;
     const before = spokenText(spoken);
     if (call.sleeping) return spoken.cut ? `${before} The microphone is open: what they say next wakes you.` : before;
@@ -1433,7 +1691,7 @@ export class Agent {
     }
     if (got.stopped) return { content: STOPPED, isError: true };
     if (got.chosen !== undefined) {
-      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.chosen]] });
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
       return `The user chose: ${got.chosen}`;
     }
     return this.#answer('', got, call, '');
