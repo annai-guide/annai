@@ -579,3 +579,44 @@ test("Koe failing while Kokoro's turn runs, voice on: Kokoro's answer is said al
   assert.deepEqual(plays(k), ['Nepenthe is open till 10.']);
   assert.deepEqual((await k.events(['out.speak'])).map((e) => [e.data.half, e.data.voice]), [['kokoro', true]]);
 });
+
+/** Koe streams a wrong claim; Kokoro cuts in while its first sentence plays. @param {string} correction */
+async function cutWhileStreaming(correction) {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', times: 1, reply: { stream: true, pieceMs: 15, toolCalls: [{ name: 'speak', input: { text: 'Bixby Bridge is a steel suspension bridge. It opened in the nineteen fifties, I believe. It is two miles ahead of us now.' } }] } },
+      { match: 'a note from Kokoro', reply: { toolCalls: [{ name: 'speak', input: { text: correction } }] } },
+      { match: '.', reply: sleep },
+    ] } },
+    voice: { playMs: 120, speechIn: ['m-hear'] },
+  });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => plays(k).length === 1, 4000);
+  await k.agent.channel.send('kokoro', 'Wrong: Bixby Bridge is a 1932 concrete arch (Caltrans).', 'immediate', 'tool');
+  return k;
+}
+
+test('an immediate note while Koe streams a speak: what it said aloud is in the conversation and in both halves\' views, marked cut (probe C)', async () => {
+  const k = await cutWhileStreaming("Sorry, I misspoke: it's a 1932 concrete arch.");
+  await new Promise((r) => setTimeout(r, 100));
+  await k.agent.idle();
+  assert.deepEqual(plays(k), ['Bixby Bridge is a steel suspension bridge.', "Sorry, I misspoke: it's a 1932 concrete arch."]);
+  const said = (await k.events(['out.speak'])).map((e) => [e.data.half, e.data.voice, e.data.cut ?? false, e.data.text]);
+  assert.equal(said.length, 2, JSON.stringify(said));
+  assert.deepEqual(said[0].slice(0, 3), ['koe', true, true]);
+  assert.match(said[0][3], /^Bixby Bridge is .*…$/);
+  assert.ok(read(k.agent.kokoro).includes(`[Koe said aloud] ${JSON.stringify(said[0][3])}`), JSON.stringify(read(k.agent.kokoro)));
+  assert.ok(read(k.agent.koe).includes(`[annai] ${JSON.stringify(`a note stopped you after: ${said[0][3]}`)}`), JSON.stringify(read(k.agent.koe)));
+});
+
+test("after a note cut Koe's streaming speak, a later tap-cut says the user stopped it, not a note (probe C2)", async () => {
+  const k = await cutWhileStreaming("Sorry, I misspoke: it's a 1932 concrete arch. It opened in 1932. It is famous.");
+  await until(() => plays(k).includes("Sorry, I misspoke: it's a 1932 concrete arch."), 4000);
+  assert.equal(k.agent.tap(), 'cut');
+  await new Promise((r) => setTimeout(r, 100));
+  await k.agent.idle();
+  const last = (await results(k, 'speak')).at(-1);
+  assert.match(last.data.content, /^The user stopped you after: /);
+});
