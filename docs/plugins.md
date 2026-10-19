@@ -296,6 +296,23 @@ export function activate(annai) {
   - `listRequest()` and `readList()` make "Fetch model list" work.
   - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the provider's page, per ability (the `uploads` tunable).
 
+### Audio formats
+
+Speech travels in the smallest format both the phone and the provider handle (spec §10.6). Your protocol and your provider description say what that is, as tunables. annai reads them; your code only names files and formats.
+
+- **Formats are named by file kind:** `ogg` and `webm` (Opus), `mp4` and `aac` (AAC; `aac` is ADTS), `mp3`, `flac`, `wav`. On a voice's side, `opus` is OpenAI's name for Ogg Opus.
+- **`audioIn`** (a transcription type, or a chat type that takes `audio` parts): what it takes, its preferred first. annai sends the first, in its codec order, that the phone makes: Opus, then AAC, MP3, FLAC, WAV. Within a codec, your order wins. Always include `wav`: annai makes WAV itself, so it's the format that always works.
+- **`audioOut`** (a voice type): the formats `response_format` (or your equivalent) can ask for. With your `format` tunable set to `"auto"`, annai puts the smallest one the phone plays in `tunables.format` before calling `speechRequest`. Still treat `"auto"` as your default, as an older annai leaves it as it is.
+- **In a description,** set them per ability where the provider differs from the protocol, as the official ones do:
+  - Groq's transcription takes `["webm", "ogg", "mp4", "mp3", "flac", "wav"]`;
+  - Gemini through Chat Completions only `["wav", "mp3"]`;
+  - OpenRouter's voices give only `["mp3"]`.
+
+  A user can change them on the provider's page, per ability or model.
+- **What your code gets:** an `audio` part's `mediaType` (`audio/ogg`, `audio/webm`, `audio/mp4`, `audio/aac`, `audio/mpeg`, `audio/flac` or `audio/wav`), or a transcription's `audio.mediaType`. Name the file or format for it, as Chat Completions does (`audio/mp4` → `m4a`).
+- **When a provider refuses** a format it was said to take (a 400 that names the audio or the format), annai sends the same request again with WAV, and keeps sending that model WAV until it restarts. So keep `classify` from turning such a refusal into another kind.
+- **A failed upload** (network or server) is sent again with the very same bytes: don't change the audio between attempts.
+
 ## Backup places
 
 A backup place keeps annai's backups somewhere else: a git repository, a bucket, a folder on a server. annai builds each backup (a Backup of everything, spec §12.2) and decides when; your type only moves it. annai's own GitHub and Forgejo / Gitea types are plugins too: see `plugins-official/storage-github/` and `plugins-official/storage-forgejo/`.
