@@ -1,6 +1,6 @@
 import { TALK_TAG, KOE_TAG, record, storedTexts, blobBytes } from './log.js';
 import { toBase64 } from '../bytes.js';
-import { blockFor, saidWithout, wrapNote, stripMarkers } from './blocks.js';
+import { blockFor, saidWithout, wrapNote, escapeTags, quote } from './blocks.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -34,6 +34,8 @@ export class Transcript {
   messages = [];
   /** @type {HalfName} */
   half = 'one';
+  /** Koe's session nonce, in the marker of Kokoro's notes. */
+  nonce = '';
   /** First and last event in context, for model.turn records (spec §4.5). */
   from = 0;
   to = 0;
@@ -58,9 +60,10 @@ export class Transcript {
   /** Koe's notes as annai wrapped them: the only words in Koe's transcript that may carry the marker (security review). @type {WeakSet<Part>} */
   #wrapped = new WeakSet();
 
-  /** @param {{ half?: HalfName }} [o] */
-  constructor({ half = 'one' } = {}) {
+  /** @param {{ half?: HalfName, nonce?: string }} [o] */
+  constructor({ half = 'one', nonce = '' } = {}) {
     this.half = half;
+    this.nonce = nonce;
   }
 
   /** Whether an event was written by this half, or by the other: Kokoro's own are those not marked Koe's (older ones too). @param {any} d */
@@ -87,7 +90,8 @@ export class Transcript {
       if (!this.#mine(d)) return;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
-        this.#line(others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${w.text}` })));
+        // Two halves read a reason quoted, so it can't start a line or pass for a label; one half reads it as before.
+        this.#line(others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${this.half === 'one' ? w.text : quote(w.text)}` })));
         this.unanswered = true;
         this.waiting = 'wake';
       }
@@ -117,7 +121,7 @@ export class Transcript {
       // A note from the other half: Kokoro's block, or Koe's marked text.
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
       /** @type {Part} */
-      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '') : /** @type {string} */ (blockFor(e, texts)) };
+      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce) : /** @type {string} */ (blockFor(e, texts)) };
       if (koe) this.#wrapped.add(part);
       this.#line([part]);
       this.unanswered = true;
@@ -168,7 +172,7 @@ export class Transcript {
       }
     } else if (e.type === 'heard.text') {
       // A segment's words, written down later: every place it is sent now sends them (spec §10.3).
-      const text = koe ? stripMarkers(String(d.text ?? '')) : String(d.text ?? '');
+      const text = koe ? escapeTags(String(d.text ?? '')) : String(d.text ?? '');
       const had = this.#heard.get(d.of);
       if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
       this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'speech' && p.id === d.of ? { ...p, text } : p)) }));
@@ -176,7 +180,8 @@ export class Transcript {
     } else if (e.type === 'reminder') {
       // A reminder annai showed (and said) by itself, the model out of reach (spec §11.3): she knows, so she doesn't repeat it.
       if (!texts.text) return;
-      this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since you couldn't be reached: "${texts.text}"` }]);
+      const said = this.half === 'one' ? `"${texts.text}"` : quote(texts.text);
+      this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since you couldn't be reached: ${said}` }]);
     } else if (e.type === 'tool.result' && this.#mine(d) && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       const heard = (Array.isArray(d.heard) ? d.heard : []).map((/** @type {string} */ id) => this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id }));
@@ -235,14 +240,15 @@ export class Transcript {
   }
 
   /**
-   * Koe's user lines lose any note marker but annai's own wrapper, wherever their words came from: a
-   * page, a file, a card, a reminder, what was heard or typed (security review). @param {Part} p @returns {Part}
+   * Koe's user lines have their angle brackets escaped, wherever their words came from (a page, a file,
+   * a card, a reminder, what was heard or typed), so no text but annai's own wrapper is a tag (security reviews).
+   * @param {Part} p @returns {Part}
    */
   #unmarked(p) {
     if (this.#wrapped.has(p)) return p;
-    if (p.type === 'text') return { ...p, text: stripMarkers(p.text) };
-    if (p.type === 'tool_result') return { ...p, content: stripMarkers(p.content) };
-    if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: stripMarkers(p.text) };
+    if (p.type === 'text') return { ...p, text: escapeTags(p.text) };
+    if (p.type === 'tool_result') return { ...p, content: escapeTags(p.content) };
+    if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: escapeTags(p.text) };
     return p;
   }
 
@@ -256,15 +262,15 @@ export class Transcript {
 
   /**
    * The conversation of a scope: the latest compaction's summary, then the events after the part
-   * it covers (spec §6.5), up to before (exclusive) when given; read by one half's rules.
-   * @param {Store} store @param {string} scope @param {{ before?: number, half?: HalfName }} [o]
+   * it covers (spec §6.5), up to before (exclusive) when given; read by one half's rules (Koe's with its session nonce).
+   * @param {Store} store @param {string} scope @param {{ before?: number, half?: HalfName, nonce?: string }} [o]
    */
   static async load(store, scope, o = {}) {
     const [latest] = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true, limit: 1, ...(o.before ? { before: o.before } : {}) }));
     const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, {
       types: [...SAID], ...(latest ? { after: latest.data.to } : {}), ...(o.before ? { before: o.before } : {}),
     }));
-    const t = new Transcript({ half: o.half ?? 'one' });
+    const t = new Transcript({ half: o.half ?? 'one', nonce: o.nonce ?? '' });
     if (latest) t.apply(latest, await resolveEvent(store, latest));
     for (const e of events) if (e.type !== 'compaction' && !NOT_SAID.has(e.type)) t.apply(e, await resolveEvent(store, e));
     t.through = Math.max(latest?.seq ?? 0, events.at(-1)?.seq ?? 0);
