@@ -185,6 +185,23 @@ test("list: OpenRouter's model list becomes models with windows, inputs, tools a
   assert.deepEqual(type.readList({ data: [{ id: 'gpt-x', object: 'model' }] }), [{ providerId: 'gpt-x' }]);
 });
 
+test('list: a model list with max_model_len gives the context window (vLLM, SGLang); llama.cpp\'s training context is not the one it serves', async () => {
+  const { startFakeServer } = await import('../fakes/model-server.js');
+  for (const flavour of /** @type {const} */ (['vllm', 'sglang', 'llamacpp'])) {
+    const s = await startFakeServer({ flavour });
+    try {
+      const [m] = type.readList(await (await fetch(`${s.origin}/v1/models`)).json());
+      if (flavour === 'llamacpp') assert.deepEqual([m.contextWindow, m.input], [undefined, ['text', 'image']], 'n_ctx_train is left alone; photos are found');
+      else assert.deepEqual(m, { providerId: 'Qwen/Qwen3-8B', contextWindow: 32768 }, flavour);
+    } finally {
+      await s.stop();
+    }
+  }
+  // OpenRouter's context_length comes first, then max_model_len, then its top provider's.
+  assert.equal(type.readList({ data: [{ id: 'x', context_length: 1000, max_model_len: 2000, top_provider: { context_length: 3000 } }] })[0].contextWindow, 1000);
+  assert.equal(type.readList({ data: [{ id: 'x', max_model_len: 2000, top_provider: { context_length: 3000 } }] })[0].contextWindow, 2000);
+});
+
 test('read: url citations and counted searches', async () => {
   const events = await read(await fixture('citations.sse'));
   assert.deepEqual(events.filter((e) => e.type === 'citation'), [{ type: 'citation', url: 'https://www.nepenthe.com/', title: 'Nepenthe Big Sur' }]);

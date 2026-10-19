@@ -320,13 +320,17 @@ function pricesOf(p) {
   return out;
 }
 
-/** The models an endpoint lists. OpenRouter's list says much more than OpenAI's, which gives ids only. @param {any} json */
+/**
+ * The models an endpoint lists. OpenRouter's list says much more than OpenAI's, which gives ids only; vLLM's and
+ * SGLang's give the context they serve as max_model_len. llama.cpp's n_ctx_train is what the model was trained on,
+ * not what the server serves, so it is left alone. @param {any} json
+ */
 function readList(json) {
   return (Array.isArray(json?.data) ? json.data : []).filter((/** @type {any} */ m) => typeof m?.id === 'string').map((/** @type {any} */ m) => {
     /** @type {Record<string, any>} */
     const out = { providerId: m.id };
     if (m.name) out.name = m.name;
-    const window = m.context_length ?? m.top_provider?.context_length;
+    const window = m.context_length ?? m.max_model_len ?? m.top_provider?.context_length;
     if (window) out.contextWindow = window;
     if (m.top_provider?.max_completion_tokens) out.maxOutput = m.top_provider.max_completion_tokens;
     const kinds = m.architecture?.input_modalities;
