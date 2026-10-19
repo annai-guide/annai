@@ -55,6 +55,26 @@ test("voice off, a chat model later in Koe's list answers before the realtime on
   }
 });
 
+test("a session for typing that closes because the pathway moved to a text model says so, not \"voice off\": voice was off all along (fix pass)", async () => {
+  const k = await liveKit([{ said: 'A taco stand, two minutes ahead.', audio: tone(0.2) }], { voice: { mode: 'off' }, koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-koe', 60_000);
+    assert.equal(await k.agent.split(), true);
+    assert.equal(k.agent.koeState, 'live', 'the chat model resting: Live, muted');
+    k.agent.send('Where can we eat?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    assert.equal(k.agent.live.state, 'open');
+    k.llm.bench.clear('m-koe');
+    await k.agent.split();
+    assert.equal(k.agent.koeState, 'text');
+    await soon(async () => (await lives(k, 'closed')).length === 1);
+    assert.equal((await lives(k, 'closed'))[0].data.why, 'pathway');
+  } finally {
+    await k.done();
+  }
+});
+
 // Task 2: a session's life.
 test("voice on with a realtime Koe: a tap opens a session with Koe's live instructions, its view of the trip and its tools, and the microphone", async () => {
   const k = await liveKit([]);
