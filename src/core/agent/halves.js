@@ -92,6 +92,8 @@ export class Halves {
   #down = { role: '', until: 0 };
   /** The Koe list Koe's last call used. */
   #koeRole = '';
+  /** Koe is back, but waits for Kokoro's turn with the voice to end. */
+  #later = false;
   /** What Kokoro was told last, in which conversation. @type {{ scope: string | null, state: Told }} */
   #told = { scope: null, state: 'koe-up' };
   /** @type {Promise<unknown>} both halves' writes, one at a time */
@@ -289,7 +291,10 @@ export class Halves {
     const { role, models } = koeList(cfg, Boolean(this.voice?.on));
     const benched = models.length > 0 && models.every((id) => (this.llm.bench?.until(id) ?? 0) > Date.now());
     /** @type {Told} */
-    const told = (this.#down.role === role && this.clock() < this.#down.until) || benched ? 'koe-down' : 'koe-up';
+    let told = (this.#down.role === role && this.clock() < this.#down.until) || benched ? 'koe-down' : 'koe-up';
+    // One voice at a time: Kokoro keeps it to the end of a turn that has it, then Koe takes over (#kokoroEnded asks again).
+    this.#later = told === 'koe-up' && this.koeState === 'down' && this.kokoro.voicing;
+    if (this.#later) told = 'koe-down';
     const was = this.talking;
     this.koeState = !this.#split ? 'off' : told === 'koe-up' ? 'text' : 'down';
     if (this.talking !== was) this.#emit('state', this.talking.state);
@@ -503,6 +508,7 @@ export class Halves {
    * @param {TurnEnd} t
    */
   #kokoroEnded(t) {
+    if (this.#later) this.#route(() => this.#refresh());
     if (this.koeState !== 'text') return;
     let told = t.told;
     if (t.ok && t.finalText && !t.told && !t.slept) {

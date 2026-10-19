@@ -530,3 +530,40 @@ test('[speak, show] with voice on still listens: only a question to Kokoro or a 
   assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (8 seconds).');
   assert.equal(micOpens(k), 2, "the tap's window, then the speak's");
 });
+
+/** Whether the device log ever had two microphones open, or played while one was open (half-duplex). @param {string[]} log */
+function overlaps(log) {
+  let open = 0;
+  for (const l of log) {
+    if (l.startsWith('mic open')) open++;
+    else if (l === 'mic close') open--;
+    if (open > 1 || (open > 0 && l.startsWith('play '))) return l;
+  }
+  return '';
+}
+
+test("Koe coming back while Kokoro's turn has the voice waits for that turn's end: one microphone at a time, one voice, nothing said twice (probes B, B2)", async () => {
+  let clock = Date.parse('2026-11-26T12:00:00Z');
+  const k = await agentKit([{ rules: [
+    { match: 'Sunset', reply: calls(['speak', { text: 'Sunset in 30 minutes.' }]) },
+    { match: "Koe can't speak", reply: { toolCalls: [{ name: 'speak', input: { text: 'Nepenthe is open till 10.' } }] } }, // it listens after
+    { match: '.', reply: sleep },
+  ] }], {
+    koe: { talk: [{ delayMs: 10, error: 'auth', message: 'bad key' }, { toolCalls: [{ name: 'speak', input: { text: 'Sunset in 30 minutes.' } }] }, sleep] },
+    agent: { now: () => clock }, voice: { speechIn: ['m-hear'] },
+  });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 100 } }); // 1 s here
+  k.agent.send('Is Nepenthe open?');
+  await until(() => k.agent.koeState === 'down' && k.agent.kokoro.state.name === 'listening', 4000);
+  clock += 61_000;
+  k.llm.bench.clear('m-koet');
+  await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [] });
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal(overlaps(k.platform.log), '', JSON.stringify(k.platform.log));
+  assert.deepEqual(plays(k), ['Nepenthe is open till 10.', 'Sunset in 30 minutes.']);
+  assert.equal(k.sent['model-koet'].length, 1, 'Koe took nothing over mid-turn');
+  assert.deepEqual((await k.events(['halves'])).map((e) => e.data.state), ['koe-down', 'koe-up'], 'Koe is back once that turn is over');
+  assert.equal(k.agent.koeState, 'text');
+});
