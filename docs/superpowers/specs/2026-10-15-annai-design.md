@@ -547,6 +547,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
   - Where the ability's protocol has a files API, it also uploads that small image, so annai knows whether photo uploads work with this key (§4.8).
+  - Its requests ask at level off. Where Main (or else Utility) asks this model at a level whose patch is another than off's, one more tiny request asks at that level, and a refusal is said in plain words with what to change ("At Main's level (medium), this model refused: …"). A model that can't think, given a named level, would otherwise pass Test and fail every turn.
   - It explains failures in plain words: "this address blocks web apps" is a different message from "key rejected".
 
 ### 9.9 Usage, cost, errors, keys

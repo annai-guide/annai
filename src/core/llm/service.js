@@ -306,7 +306,11 @@ export function createLlm({
      */
     async test(modelId) {
       const { rec, type, endpoint, model, key } = await resolve(modelId, { install: true });
-      const result = await testModel({ type, endpoint, model, key, fetch: get, probe });
+      // Test asks at the level of the first role that asks this model at one (fix pass).
+      const { roles } = await readConfig(ws);
+      const r = ['main', 'utility'].find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
+      const role = r ? { name: r[0].toUpperCase() + r.slice(1), level: roles[r].level } : undefined;
+      const result = await testModel({ type, endpoint, model, key, fetch: get, probe, role });
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
       if (found.access && found.key !== false) bench.clear(modelId); // reachable with a working key: no reason to rest
       await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), ...found, at: Date.now() } });

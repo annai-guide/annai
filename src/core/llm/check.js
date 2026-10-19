@@ -1,6 +1,6 @@
 import { callOnce } from './call.js';
 import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
-import { LEVELS } from './reasoning.js';
+import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
 
 /** A 16×16 red PNG: the small image the Test button sends (spec §9.8). */
@@ -19,10 +19,11 @@ const SAY_OK = { system: 'This is a connection test.', messages: [{ role: 'user'
 const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
 
 /**
- * @typedef {{ step: 'access' | 'key' | 'tools' | 'images' | 'upload', ok: boolean, detail: string }} TestStep
+ * @typedef {{ step: 'access' | 'key' | 'tools' | 'images' | 'level' | 'upload', ok: boolean, detail: string }} TestStep
  *   upload is advice: when it fails, photos still go in each request, so the model still passes
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
- *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number }} TestCase
+ *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
+ *   role?: { name: string, level: string } }} TestCase  role: a role asking this model at a level of its own
  */
 
 /** Whether a URL is at the endpoint's own address. @param {any} endpoint @param {string} url */
@@ -90,6 +91,18 @@ export async function testModel(c) {
     } catch (e) {
       const err = asError(e);
       steps.push({ step: err.kind === 'image' || !useTools ? 'images' : 'tools', ok: false, detail: explain(err) });
+    }
+  }
+  // What the role will send, if not off's (fix pass).
+  const { role } = c;
+  if (role && nearestLevel(model.reasoning, role.level) !== nearestLevel(model.reasoning, 'off')) {
+    const at = `${role.name}'s level (${role.level})`;
+    try {
+      await callOnce({ ...base, level: role.level, request: { ...SAY_OK, maxOutput: room(model) } });
+      steps.push({ step: 'level', ok: true, detail: `It also answers at ${at}.` });
+    } catch (e) {
+      const err = asError(e);
+      steps.push({ step: 'level', ok: false, detail: `At ${at}, this model refused: ${err.message.replace(/[.\s]*$/, '.')} Lower ${role.name}'s level in Settings → Models, or change this model's Reasoning levels on its page.` });
     }
   }
   if (useImage && type.uploadRequest && type.readUpload && endpoint.tunables?.uploads !== false) steps.push(await testUpload(c));
