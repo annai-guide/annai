@@ -12,7 +12,7 @@ import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError, TAKEN, NOT_OWN, KEYED, isPluginBug, compareRanks } from './registry.js';
+import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
@@ -380,21 +380,31 @@ export class PluginHost {
         failures.push({ id, error, disabled });
       }
     }
-    await this.#keepComponents(Object.keys(state)).catch(() => {}); // the next start tries again
+    // Once every plugin has started (else the next start tries again).
+    if (!failures.length) await this.#keepOwners(Object.keys(state)).catch(() => {});
     return failures;
   }
 
   /**
-   * At the first start with milestone 6, a component a plugin replaced under the old rule (the last to start
-   * won, in installed.json's order) stays in use, as the user's choice; marked done in the app settings.
+   * At the first start with milestone 6, what the old rules used stays used, as the user's choice: a component, the last
+   * plugin's to start; another shared name, the first's (installed.json's order). Skills kept theirs by install time.
    * @param {string[]} order installed.json's ids, as they started before
    */
-  async #keepComponents(order) {
-    if ((await readAppSettings(this.ws)).componentsKept) return;
-    const used = this.registry.entries('ui:component', { all: true }).filter((e) => order.includes(e.pluginId) && !this.registry.isDisabled(e.pluginId))
-      .sort((a, b) => order.indexOf(a.pluginId) - order.indexOf(b.pluginId));
-    const uses = Object.fromEntries(used.map((e) => [`ui:component:${e.item?.name}`, e.pluginId]).filter(([k]) => !this.#uses[k]));
-    await updateAppSettings(this.ws, { componentsKept: true, ...(Object.keys(uses).length ? { uses } : {}) });
+  async #keepOwners(order) {
+    if ((await readAppSettings(this.ws)).ownersKept) return;
+    const at = (/** @type {string} */ id) => (this.builtins.has(id) ? -1 : order.indexOf(id));
+    /** @type {Record<string, string>} */
+    const uses = {};
+    for (const [kind, read] of Object.entries(NAMED).filter(([k]) => k !== 'skill' && !KEYED.has(k))) {
+      const live = this.registry.entries(kind, { all: true }).filter((e) => (this.builtins.has(e.pluginId) || order.includes(e.pluginId)) && !this.registry.isDisabled(e.pluginId)).sort((a, b) => at(a.pluginId) - at(b.pluginId));
+      for (const name of new Set(live.map((e) => read(e.item)))) {
+        const mine = live.filter((e) => read(e.item) === name);
+        const was = (kind === 'ui:component' ? mine.at(-1) : mine[0])?.pluginId;
+        const k = `${kind}:${name}`;
+        if (was && !this.#uses[k] && this.registry.choosable(kind, name) && this.registry.owner(kind, name)?.pluginId !== was) uses[k] = was;
+      }
+    }
+    await updateAppSettings(this.ws, { ownersKept: true, ...(Object.keys(uses).length ? { uses } : {}) });
     this.#uses = (await readAppSettings(this.ws)).uses ?? {};
     this.registry.setRules(this.#rules);
   }

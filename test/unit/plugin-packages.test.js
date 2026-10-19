@@ -254,7 +254,7 @@ test("M6: after the upgrade, an avatar plugin that was in use is still used, rec
   assert.equal(component({ registry: next.registry }, 'avatar')?.pluginId, 'second-look');
   assert.equal(component({ registry: next.registry }, 'dock')?.pluginId, 'dock-look');
   const app = await readAppSettings(ws);
-  assert.deepEqual([app.uses, app.componentsKept], [{ 'ui:component:avatar': 'second-look', 'ui:component:dock': 'dock-look' }, true]);
+  assert.deepEqual([app.uses, app.ownersKept], [{ 'ui:component:avatar': 'second-look', 'ui:component:dock': 'dock-look' }, true]);
   // Once: a choice undone stays undone at the next start.
   await next.choose('ui:component', 'avatar', null);
   const again = relaunch();
@@ -266,6 +266,33 @@ test("M6: after the upgrade, an avatar plugin that was in use is still used, rec
   await fresh.host.install(LOOK('later-look'));
   await fresh.relaunch().startInstalled();
   assert.deepEqual((await readAppSettings(fresh.ws)).uses, undefined);
+});
+
+test("M6 fix: the upgrade waits for a start where every plugin started: a component plugin that failed once is kept as used at the next", async () => {
+  const { component } = await import('../../src/ui/slots.js');
+  const { host, ws, relaunch } = await hostKit();
+  const g = /** @type {any} */ (globalThis);
+  await host.install(codePlugin('flaky-look', "if (!globalThis.flakyOnce) { globalThis.flakyOnce = 1; throw new Error('transient'); } return annai.ui.component('avatar', { create: () => ({ el: {} }) });"));
+  assert.deepEqual((await relaunch().startInstalled()).map((f) => f.id), ['flaky-look']);
+  assert.equal((await readAppSettings(ws)).ownersKept, undefined);
+  const next = relaunch();
+  assert.deepEqual(await next.startInstalled(), []);
+  assert.equal(component({ registry: next.registry }, 'avatar')?.pluginId, 'flaky-look');
+  assert.equal((await readAppSettings(ws)).ownersKept, true);
+  delete g.flakyOnce;
+});
+
+test("M6 fix: after the upgrade, a name two plugins share stays with the one that answered before (the first in installed.json), as the user's choice", async () => {
+  const { host, ws, relaunch } = await hostKit();
+  for (const id of ['zeta', 'alpha']) await host.install(codePlugin(id, `return annai.tools.register({ name: 'tides', description: '${id}', input: {}, run: () => '${id}' });`));
+  const state = await host.installed();
+  state.zeta.installed = 5000; // first in installed.json, updated later by a host that stamped updates
+  state.alpha.installed = 2000;
+  await ws.write(SYS_PLUGINS, '/installed.json', state, { author: 'system' });
+  const next = relaunch();
+  await next.startInstalled();
+  assert.deepEqual(next.registry.entries('tool').map((e) => e.pluginId), ['zeta']);
+  assert.deepEqual((await readAppSettings(ws)).uses, { 'tool:tides': 'zeta' });
 });
 
 test("removing a plugin forgets the choices that named it", async () => {
