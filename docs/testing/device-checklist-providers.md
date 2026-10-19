@@ -41,7 +41,7 @@ Your llama.cpp server here is the Unsloth Studio one, with HTTPS in front of it 
 
 ## Milestone 4: OpenRouter as a code provider
 
-Before you start, open Settings → Updates: if it offers OpenRouter 2.0.0, Chat Completions 0.6.0, Another address 1.2.0, or llama.cpp, Ollama or LM Studio 1.1.0, update them.
+Before you start, open Settings → Updates: if it offers OpenRouter 2.0.0, Chat Completions 0.7.0, Another address 1.2.0, or llama.cpp, Ollama or LM Studio 1.1.0, update them.
 
 - [ ] **After Erase, the welcome names the sign-in.** Settings → Erase. At the welcome's last step (Get started) in the Home Screen app: "Connect a model, so Shiori can think. Sign in with OpenRouter is the quickest way, and it starts you on free models." Tap **Set up a model**.
 - [ ] **Models' first tap opens OpenRouter.** Models shows "The quickest start" with **Sign in with OpenRouter**; for a moment, on a slow connection, a greyed "Getting the sign-in ready…" may show first, but never a link that does nothing. Tap **Sign in with OpenRouter** once: OpenRouter opens in Safari at once. Sign in, copy the code, come back to annai: the paste box is there (also if iOS closed annai meanwhile). Paste it, **Connect**: a card "Signed in with OpenRouter", and Models lists **one** provider, OpenRouter, with "Chat, Transcription, Voice". The quickest start is gone.
