@@ -370,3 +370,17 @@ test("fix pass: a failed add leaves no provider plugin installed without a provi
   assert.deepEqual(Object.keys((await llm.config()).providers), []);
   assert.deepEqual(await k.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
 });
+
+test('fix pass: a speech call to a provider whose key goes in a header of its own keeps the key out of the trace, even in an error that echoes it', async () => {
+  const KEY = 'sk-test-access-code-9876543210';
+  const k = await serviceKit({ fetch: async (/** @type {any} */ url, /** @type {any} */ init) => new Response(`refused X-Access-Code=${init.headers['X-Access-Code']}`, { status: 403 }) });
+  const id = await k.llm.addProvider('provider-x', { key: KEY });
+  const rec = (await k.llm.config()).providers[id];
+  await saveProvider(k.ws, { ...rec, user: { keyHeader: 'X-Access-Code' } });
+  const voice = /** @type {any} */ (Object.values((await k.llm.config()).models).find((m) => m.ability === 'voice'));
+  await assert.rejects(k.llm.synthesize({ modelId: voice.id, text: 'Hello.' }), (/** @type {any} */ e) => e.kind === 'auth');
+  assert.ok(k.reached.some((r) => r.includes(KEY)), 'the key went in its header');
+  const events = await k.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS));
+  assert.ok(events.some((e) => e.type === 'net.request'));
+  assert.ok(!JSON.stringify(events).includes(KEY), 'no trace entry holds it');
+});

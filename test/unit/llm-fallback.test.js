@@ -250,3 +250,22 @@ test('an upload the provider no longer knows: the endpoint forgets its uploads, 
   assert.deepEqual(r.attempts.map((a) => [a.model, a.outcome]), [['m-0', 'upload'], ['m-0', 'ok']]);
   assert.equal(forgot, 1);
 });
+
+test("fix pass: a key sent in a header of its own (keyHeader) never reaches the trace, even under a header name that doesn't look like a credential and in an error that echoes it", async () => {
+  const KEY = 'sk-test-access-code-0123456789';
+  /** @type {any} */
+  const echo = { type: 'echo', name: 'Echo', pluginId: 'echo', build: (/** @type {any} */ c) => ({ url: 'https://llm.example/v1/chat', headers: { ...c.endpoint.headers }, body: {} }), async *read() {} };
+  const s = setup([[]], { types: [['echo', echo]], endpointTypes: ['echo'] });
+  s.config.providers['pv-0'].user = { ...s.config.providers['pv-0'].user, baseUrl: 'https://llm.example/v1', keyHeader: 'X-Access-Code' };
+  /** @type {any[]} */
+  const sent = [];
+  const fetch = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    sent.push(init.headers);
+    return new Response(JSON.stringify({ error: { message: `Bad X-Access-Code ${init.headers['X-Access-Code']}` } }), { status: 400 });
+  };
+  await assert.rejects(call(s, { keyFor: async () => KEY, fetch }));
+  assert.equal(sent[0]['X-Access-Code'], KEY, 'the key went in its header');
+  const events = await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS));
+  assert.ok(events.length > 0);
+  assert.ok(!JSON.stringify(events).includes(KEY), 'no trace entry holds it');
+});
