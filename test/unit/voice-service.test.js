@@ -11,35 +11,46 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes } from '../../src/core/scopes.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { fakePlatform } from './voice-fakes.js';
+import { pickOut } from '../../src/core/voice/formats.js';
 import { clip, quiet, cat } from './voice-kit.js';
 
 const enc = new TextEncoder();
 
-/** A Voice over a fake llm: one API voice (v1), one transcription model (t1), and the stand-ins. @param {{ failing?: boolean, retryAfter?: number, micFails?: string }} [o] */
-async function voiceKit({ failing = false, retryAfter, micFails } = {}) {
+/**
+ * A Voice over a fake llm: one API voice (v1), one transcription model (t1), and the stand-ins.
+ * @param {{ failing?: boolean, retryAfter?: number, micFails?: string, format?: string, refuses?: string[], plays?: string[] }} [o]
+ *   format: v1's format tunable (it offers OpenAI's list); refuses: the formats v1 answers 400 to, as Speaches does opus and aac; plays: what the phone plays
+ */
+async function voiceKit({ failing = false, retryAfter, micFails, format = 'mp3', refuses = [], plays } = {}) {
   const registry = new Registry();
   const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
-  const platform = fakePlatform({ micFails });
+  const platform = fakePlatform({ micFails, plays });
   registry.add('voice-browser', 'voice-platform', platform);
   const bench = new Bench();
   /** @type {string[]} */
   const calls = [];
+  /** The format v1 was asked for, each time, as speechCall resolves 'auto'. @type {string[]} */
+  const asked = [];
+  const offers = ['opus', 'aac', 'mp3', 'flac', 'wav'];
   const llm = {
     bench,
     types: () => new Map([['say', { speech: 'out' }], ['hear', { speech: 'in' }]]),
     config: async () => ({
       providers: {
-        po: { id: 'po', plugin: 'p', template: null, user: { abilities: { voice: { kind: 'voice', type: 'say' } } } },
+        po: { id: 'po', plugin: 'p', template: null, user: { abilities: { voice: { kind: 'voice', type: 'say', tunables: { format, audioOut: offers } } } } },
         pi: { id: 'pi', plugin: 'p', template: null, user: { abilities: { transcription: { kind: 'transcription', type: 'hear' } } } },
       },
       models: { v1: { id: 'v1', provider: 'po', ability: 'voice', template: null, user: { providerId: 'tts' } }, t1: { id: 't1', provider: 'pi', ability: 'transcription', template: null, user: { providerId: 'asr' } } },
       roles: { 'speech-out': { models: ['v1', 'browser-voice'], level: 'off' }, 'speech-in': { models: ['send-audio', 't1', 'dictation'], level: 'off' } },
     }),
-    /** @param {{ modelId: string, text: string }} c */
-    async synthesize({ modelId, text }) {
+    /** @param {{ modelId: string, text: string, plays?: string[] }} c */
+    async synthesize({ modelId, text, plays: p }) {
       calls.push(`say ${modelId} ${text}`);
       if (failing) throw new ProviderError('rate', 'Slow down.', { retryAfter });
+      const f = format === 'auto' ? pickOut(offers, p ?? ['mp3', 'wav']) ?? 'mp3' : format;
+      asked.push(f);
+      if (refuses.includes(f)) throw new ProviderError('bad-request', 'Invalid request');
       return { clip: { data: enc.encode(`${modelId}:${text}`), mediaType: 'audio/mpeg' } };
     },
     /** @param {{ modelId: string, audio: any }} c */
@@ -49,7 +60,7 @@ async function voiceKit({ failing = false, retryAfter, micFails } = {}) {
     },
   };
   const voice = new Voice({ llm, ws, registry, locale: 'en' });
-  return { voice, platform, llm, calls, ws, bench };
+  return { voice, platform, llm, calls, ws, bench, asked };
 }
 
 test('say(): through the speech-out list, the browser voice taking over from a voice that is resting', async () => {
@@ -61,6 +72,26 @@ test('say(): through the speech-out list, the browser voice taking over from a v
   await f.voice.say('Hello.');
   assert.deepEqual(f.platform.log.filter((l) => l.startsWith('browser')), ['browser Hello.']);
   assert.ok(f.bench.until('v1') > Date.now() + 40_000, 'it rests as long as the provider asked');
+});
+
+test("a voice that refuses the format it offers is asked for MP3, then WAV, and gets that until annai restarts (Speaches refuses opus and aac)", async () => {
+  const k = await voiceKit({ format: 'auto', refuses: ['opus', 'aac'], plays: ['ogg', 'aac', 'mp3', 'wav'] });
+  await k.voice.say('Hello.');
+  assert.deepEqual(k.asked, ['opus', 'mp3']);
+  assert.deepEqual(k.platform.log.filter((l) => l.startsWith('play')), ['play v1:Hello.']);
+  await k.voice.say('Again.');
+  assert.deepEqual(k.asked, ['opus', 'mp3', 'mp3'], 'MP3 straight away');
+  assert.equal(k.bench.until('v1'), 0, 'it spoke: not benched');
+  const w = await voiceKit({ format: 'auto', refuses: ['opus', 'mp3'], plays: ['ogg', 'mp3', 'wav'] });
+  await w.voice.sample('v1', 'Hi.');
+  assert.deepEqual(w.asked, ['opus', 'mp3', 'wav']);
+  const none = await voiceKit({ format: 'auto', refuses: ['opus', 'mp3', 'wav'], plays: ['ogg', 'mp3', 'wav'] });
+  await none.voice.say('Hello.');
+  assert.deepEqual(none.asked, ['opus', 'mp3', 'wav']);
+  assert.deepEqual(none.platform.log.filter((l) => l.startsWith('browser')), ['browser Hello.'], 'then the next voice, as before');
+  const chosen = await voiceKit({ format: 'opus', refuses: ['opus'], plays: ['ogg', 'mp3', 'wav'] });
+  await chosen.voice.say('Hello.');
+  assert.deepEqual(chosen.asked, ['opus'], 'a format the user chose is left alone');
 });
 
 test('a resting voice rests as long as the provider asked, else the usual cooldown (spec §9.6)', () => {

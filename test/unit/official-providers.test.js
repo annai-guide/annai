@@ -235,4 +235,5 @@ test('every official transcription and Chat Completions ability declares the aud
   assert.deepEqual(declared['provider-gemini/chat'], ['wav', 'mp3'], 'measured: Gemini through Chat Completions refuses the rest');
   assert.deepEqual(declared['provider-openrouter/voice'], ['mp3'], "OpenRouter's voices send MP3 (or raw PCM) only");
   assert.deepEqual(declared['provider-openai/voice'], ['opus', 'aac', 'mp3', 'flac', 'wav']);
+  assert.deepEqual(declared['provider-local-speech/voice'], ['mp3', 'wav'], 'Speaches refuses opus and aac; Kokoro-FastAPI takes MP3 too');
 });
