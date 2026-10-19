@@ -195,3 +195,29 @@ test("a catch-up that ends before the first fix still counts the way travelled w
   assert.ok(live.odometer - km < 2, `odometer ${live.odometer}`);
   live.dispose();
 });
+
+test("a coarse first fix after coming back (a cell tower's, 800 m) leaves the way travelled meanwhile to the first good one, not to a jump when the user later moves (fix pass 2)", async () => {
+  const k = await liveKit();
+  await k.fix(at('08:31'), MONTEREY);
+  k.live.dispose();
+  const clock = new ManualClock(at('10:30'));
+  const agent = fakeAgent(k.trip);
+  const sensors = fakeSensors(k.registry);
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA });
+  await live.start();
+  await live.settled();
+  sensors.fix({ lat: NEPENTHE.lat, lng: NEPENTHE.lng, accuracy: 800, speed: 0 });
+  await live.settled();
+  await clock.advanceTo(at('10:30:30'), () => live.settled());
+  sensors.fix({ lat: NEPENTHE.lat, lng: NEPENTHE.lng, accuracy: 8, speed: 0 });
+  await live.settled();
+  const km = live.odometer;
+  assert.ok(km > 40 && km < 50, `odometer ${km}`);
+  for (let s = 0; s <= 120; s += 5) {
+    await clock.advanceTo(at('10:31') + s * 1000, () => live.settled());
+    sensors.fix({ ...off(NEPENTHE, 0, -s * 15), accuracy: 8, speed: 15 });
+    await live.settled();
+  }
+  assert.ok(live.odometer - km < 2, `odometer ${live.odometer}`);
+  live.dispose();
+});

@@ -838,8 +838,9 @@ export class Live {
     // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
     // away counts the way since then at once, in the catch-up (spec §11.4) when it comes in time, not as a
     // jump when the user next moves; one after FIX_WAIT_MS does too, as the catch-up has gone.
-    const back = this.#back;
-    this.#back = false;
+    // A fix too coarse to count (a cell tower's) leaves it to the first that is good enough.
+    const back = this.#back && fix.accuracy <= 100;
+    if (fix.accuracy <= 100) this.#back = false;
     if (!this.#odo) this.#odo = fix;
     else if ((moving || back) && fix.accuracy <= 100 && meters(this.#odo, fix) >= (back ? Math.max(STOP_M, 2 * fix.accuracy) : Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy))) {
       this.odometer += meters(this.#odo, fix) / 1000;
