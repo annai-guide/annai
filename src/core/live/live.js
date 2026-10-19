@@ -1010,7 +1010,9 @@ export class Live {
     const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(() => null);
     if (info?.simulation === true) this.#still.add(scope);
     else this.#still.delete(scope);
-    if (this.#still.has(scope) && this.#sim?.trip !== scope) {
+    // An archived trip's, which a change to its watch file brings here too, wait until it is unarchived (minors-live item 33).
+    const archived = scope !== ME && (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)))?.status === 'archived';
+    if (archived || (this.#still.has(scope) && this.#sim?.trip !== scope)) {
       this.#watches.delete(scope);
       return;
     }
