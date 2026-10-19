@@ -38,6 +38,10 @@ export class Updates {
   #running = null;
   /** @type {Promise<void> | null} */
   #restarting = null;
+  /** The restart asked for: Don't restart, or its swap, ends it. @type {object | null} */
+  #asked = null;
+  /** Counts checks: one given up on writes nothing if it answers late. */
+  #gen = 0;
   /** What a card offered already, by id and version. */
   #offered = new Set();
   /** What the last check found, and whether this one changed it. */
@@ -107,11 +111,17 @@ export class Updates {
     }
     if (what.app || what.official) this.#at = t;
     if (what.address) this.#addressAt = t;
+    const gen = ++this.#gen;
     /** @type {any} */
     let timer;
     /** @type {Promise<Result>} */
-    const slow = new Promise((r) => { timer = setTimeout(() => r((this.last = { failed: ['The check took too long. Check the connection, and try again.'], found: this.last?.found ?? [] })), this.limitMs); });
-    const run = Promise.race([this.#run(what), slow]).finally(() => {
+    const slow = new Promise((r) => {
+      timer = setTimeout(() => {
+        this.#gen++;
+        r((this.last = { failed: ['The check took too long. Check the connection, and try again.'], found: this.last?.found ?? [] }));
+      }, this.limitMs);
+    });
+    const run = Promise.race([this.#run(what, gen), slow]).finally(() => {
       clearTimeout(timer);
       this.#running = null;
       this.changed(this.#moved);
@@ -121,15 +131,17 @@ export class Updates {
     return run;
   }
 
-  /** @param {Kinds} what @returns {Promise<Result>} */
-  async #run(what) {
+  /** @param {Kinds} what @param {number} gen @returns {Promise<Result>} */
+  async #run(what, gen) {
     /** @type {string[]} */
     const failed = [];
     if (what.app) {
       if (!this.app) failed.push("annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.");
       else await this.app.check().catch(() => failed.push("annai couldn't check for a new version of itself. Check the connection and try again."));
     }
-    const plugins = await checkPlugins(this.host, this.env, what);
+    const current = () => gen === this.#gen;
+    const plugins = await checkPlugins(this.host, this.env, what, current);
+    if (!current()) return /** @type {Result} */ (this.last);
     this.checkedAt = this.now();
     this.last = { failed: [...failed, ...plugins.failed], found: plugins.found };
     this.#offer(plugins.found, Boolean(what.manual));
@@ -149,16 +161,34 @@ export class Updates {
     this.#card = offerCard({ plugins: this.host, notices: this.notices }, found, { ...this.env, reload: () => this.restart(), applied: () => this.changed(true) });
   }
 
+  /** The new version found didn't finish downloading: said, and "It is downloading" goes. */
+  downloadFailed() {
+    this.last = { failed: ["The download of the new version didn't finish. annai tries again the next time it checks."], found: this.last?.found ?? [] };
+    this.changed(false);
+  }
+
   /** Restarts annai, into the version that waits if one does, once Shiori's turn is over and a tap's unlock settled. */
   restart() {
-    this.#restarting ??= (async () => {
+    this.#restarting ??= this.#restartOnce({});
+    return this.#restarting;
+  }
+
+  /** @param {object} me */
+  async #restartOnce(me) {
+    this.#asked = me;
+    const off = () => this.#asked !== me;
+    try {
       if (this.agent?.busy) {
-        this.notices?.card({ title: 'annai restarts once Shiori has finished', body: 'She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.' });
-        while (this.agent.busy) await this.agent.idle();
+        this.notices?.card({
+          title: 'annai restarts once Shiori has finished', body: 'She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.',
+          actions: [{ label: "Don't restart", run: () => { this.#asked = this.#restarting = null; this.changed(false); } }],
+        });
+        while (this.agent.busy && !off()) await this.agent.idle();
       }
       await this.voice?.settled();
-      (this.#swap ?? this.reload)();
-    })();
-    return this.#restarting;
+      if (!off()) (this.#swap ?? this.reload)();
+    } finally {
+      if (!off()) this.#asked = this.#restarting = null;
+    }
   }
 }

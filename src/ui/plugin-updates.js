@@ -25,11 +25,11 @@ const knownOf = (host) => {
 
 /**
  * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked
- * keeps what it found before, and says why in failed.
- * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds]
+ * keeps what it found before, and says why in failed. Nothing is kept once current() is false.
+ * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds] @param {() => boolean} [current]
  * @returns {Promise<{ found: Update[], failed: string[] }>} found: every update known now, of both kinds
  */
-export async function checkPlugins(host, env = {}, { official = true, address = true } = {}) {
+export async function checkPlugins(host, env = {}, { official = true, address = true } = {}, current = () => true) {
   /** @type {string[]} */
   const failed = [];
   const known = knownOf(host);
@@ -40,11 +40,11 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
   };
   if (official) {
     const now = await officialUpdates(host, env).catch((e) => { failed.push(String(e?.message ?? e).replace(/^catalog: /, '')); return null; });
-    if (now) keep(false, now);
+    if (now && current()) keep(false, now);
   }
   if (address) {
     const now = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), failed }).catch(() => null);
-    if (now) keep(true, now);
+    if (now && current()) keep(true, now);
   }
   return { found: await knownUpdates(host), failed };
 }
