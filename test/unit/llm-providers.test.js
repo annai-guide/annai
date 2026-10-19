@@ -257,7 +257,9 @@ test('removing the last provider of a plugin removes the plugin and the protocol
   const a = await k.llm.addProvider('provider-x', { key: 'sk-a' });
   const b = await k.llm.addProvider('provider-x', { key: 'sk-b', name: 'X (home)' });
   await k.llm.addProvider('provider-y', {});
+  assert.deepEqual(await k.llm.removalOf(a), { plugin: null, protocols: [] }, 'what Remove would take, said before it is tapped');
   assert.deepEqual(await k.llm.removeProvider(a), { plugin: null, protocols: [] });
+  assert.deepEqual(await k.llm.removalOf(b), { plugin: 'provider-x', protocols: ['proto-a', 'proto-v'] });
   assert.ok((await k.host.installed())['provider-x']);
   assert.equal(await k.llm.keyFor(a), null);
   assert.equal(await k.llm.keyFor(b), 'sk-b');

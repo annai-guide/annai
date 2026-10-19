@@ -6,6 +6,7 @@ import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem } from '../../core/llm/provider-desc.js';
+import { andList } from '../format.js';
 
 export { messageOf };
 
@@ -66,7 +67,11 @@ export async function renderProvider(ctx, id) {
     },
   }, 'Save');
   const others = Object.values(cfg.providers).filter((x) => x.plugin === rec.plugin && x.id !== id).length;
-  const removes = [`Removes its key, its models and their places in roles${!others && installed ? `, and the ${pluginName} plugin` : ''}.`];
+  // What goes with it, named before the tap: its plugin when it is the last, and the protocols nothing else needs.
+  const going = await ctx.llm.removalOf(id);
+  const state = await ctx.plugins.installed();
+  const protocols = going.protocols.map((x) => String(state[x]?.name ?? x)).sort();
+  const removes = [`Removes its key, its models and their places in roles${going.plugin ? `, and the ${pluginName} plugin` : ''}${protocols.length ? `, with ${andList(protocols)}, which nothing else needs` : ''}.`];
   if (!others && installed?.source === 'url') removes.push(`To add it back, you'll need its address again: ${sourceLine(installed).replace(/^From /, '')}.`);
   if (!others && installed?.source === 'file') removes.push(`To add it back, you'll need its file again${installed.file ? ` (${installed.file})` : ''}.`);
   const view = { ctx, id, tunablesFor, desc };

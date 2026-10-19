@@ -71,6 +71,9 @@ const OUTCOMES = {
   'too-long': 'conversation too long for it', 'no-provider-tool': 'has no web tool of that kind', 'not-chat': "isn't a chat model", 'no-speech': "couldn't hear the speech", 'no-audio': "doesn't take audio",
 };
 
+/** "a, b and c". @param {string[]} list */
+export const andList = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] ?? '');
+
 /** What happened to one model in a role call, in a few words (spec §9.6). @param {string} outcome */
 export function outcomeText(outcome) {
   return OUTCOMES[outcome] ?? outcome;

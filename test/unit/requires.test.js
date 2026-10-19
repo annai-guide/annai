@@ -195,3 +195,18 @@ test("security review: a package from a file or an address can't take the id of 
   await assert.rejects(host.install(files(PROTO('proto-a', 'type-a', '0.9.0')), { source: 'file' }), /annai's own plugin uses this name/);
   assert.equal((await host.installed())['proto-a'].source, 'official');
 });
+
+test('fix pass: a requirement this install updated is put back as it was when the package then fails, its files and all', async () => {
+  const { host } = await hostKit();
+  const old = await site({ 'proto-a': PROTO('proto-a', 'type-a', '0.3.0') });
+  await addFromCatalog(host, 'proto-a', { fetch: old.fetch });
+  const s = await site({
+    'proto-a': PROTO('proto-a', 'type-a', '1.0.0'),
+    'provider-q': { 'annai-plugin.json': JSON.stringify({ id: 'provider-q', name: 'Q', version: '1.0.0', api: 1, entry: 'index.js', requires: [{ id: 'proto-a', version: '^1' }] }), 'index.js': 'export function activate() { throw new Error("broken"); }' },
+  });
+  await assert.rejects(addFromCatalog(host, 'provider-q', { fetch: s.fetch }), /broken/);
+  const installed = await host.installed();
+  assert.deepEqual(Object.keys(installed), ['proto-a']);
+  assert.equal(installed['proto-a'].version, '0.3.0');
+  assert.equal(await host.verifyOfficial('proto-a', /** @type {any} */ (old.entries[0])), true, 'its own files, as before');
+});

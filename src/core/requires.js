@@ -1,5 +1,6 @@
 import { PluginError } from './registry.js';
 import { officialPlugins, download } from './llm/official.js';
+import { SYS_PLUGINS } from './scopes.js';
 
 /**
  * What a plugin requires (spec §5.3, decision 7): plugins by id and a range "^N", the same major. An
@@ -117,8 +118,11 @@ export async function installRequirements(host, requires, env, { who, id, instal
   const before = await host.installed();
   /** @type {string[]} */
   const fresh = [];
+  /** @type {Map<string, Map<string, Uint8Array>>} the files of requirements this call updates, to put back (fix pass) */
+  const was = new Map();
   try {
     for (const [e, files] of got) {
+      if (before[e.id]) was.set(e.id, await storedFiles(host, e.id));
       await host.install(files, { source: 'official' });
       if (!before[e.id]) fresh.push(e.id);
     }
@@ -129,8 +133,23 @@ export async function installRequirements(host, requires, env, { who, id, instal
     for (const x of [...requires.map((r) => r.id).filter((x) => x !== id), ...(install ? [id] : [])]) await running(host, x, { tap: env.tap, fresh: fresh.includes(x) });
   } catch (e) {
     for (const x of fresh.reverse()) await host.uninstall(x).catch(() => {});
+    for (const [x, files] of was) {
+      await host.install(files, { source: 'official' }).catch(() => {});
+      await running(host, x).catch(() => {});
+    }
     throw e;
   }
+}
+
+/** An installed package's files, by name inside it. @param {PluginHost} host @param {string} id */
+async function storedFiles(host, id) {
+  /** @type {Map<string, Uint8Array>} */
+  const files = new Map();
+  for (const f of await host.ws.list(SYS_PLUGINS, `/${id}/`)) {
+    const got = await host.ws.read(SYS_PLUGINS, f.path);
+    if (got) files.set(f.path.slice(id.length + 2), got.bytes);
+  }
+  return files;
 }
 
 /**
@@ -178,20 +197,22 @@ export async function addFromCatalog(host, id, env = {}) {
 }
 
 /**
- * Removes the official protocol plugins nothing needs (decision 10): ones providing endpoint types no
- * installed plugin requires and no ability uses. A third party's stays. @param {PluginHost} host @param {Set<string>} inUseTypes
- * @returns {Promise<string[]>} the ids removed
+ * The official protocol plugins nothing needs (decision 10): ones providing endpoint types no installed
+ * plugin requires and no ability uses; a third party's stays. gone: plugins counted as removed already.
+ * @param {PluginHost} host @param {Set<string>} inUseTypes @param {Set<string>} [gone] @returns {Promise<string[]>}
  */
-export async function prune(host, inUseTypes) {
+export async function pruneable(host, inUseTypes, gone = new Set()) {
   const all = await manifests(host);
-  const required = new Set(Object.values(all).flatMap((m) => (Array.isArray(m.requires) ? m.requires.map((/** @type {any} */ r) => r?.id) : [])));
-  /** @type {string[]} */
-  const removed = [];
-  for (const [id, s] of Object.entries(await host.installed())) {
+  const required = new Set(Object.entries(all).filter(([id]) => !gone.has(id)).flatMap(([, m]) => (Array.isArray(m.requires) ? m.requires.map((/** @type {any} */ r) => r?.id) : [])));
+  return Object.entries(await host.installed()).filter(([id, s]) => {
     const types = all[id]?.provides?.['endpoint-type'];
-    if (s.source !== 'official' || !types?.length || required.has(id) || types.some((/** @type {string} */ t) => inUseTypes.has(t))) continue;
-    await host.uninstall(id);
-    removed.push(id);
-  }
-  return removed.sort();
+    return !gone.has(id) && s.source === 'official' && types?.length && !required.has(id) && !types.some((/** @type {string} */ t) => inUseTypes.has(t));
+  }).map(([id]) => id).sort();
+}
+
+/** Removes the protocol plugins pruneable() names. @param {PluginHost} host @param {Set<string>} inUseTypes @returns {Promise<string[]>} the ids removed */
+export async function prune(host, inUseTypes) {
+  const removed = await pruneable(host, inUseTypes);
+  for (const id of removed) await host.uninstall(id);
+  return removed;
 }
