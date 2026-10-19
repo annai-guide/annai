@@ -8,8 +8,13 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-/** @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string, devices?: { kind: string, label: string }[] }} [o] */
-export function fakePlatform({ playMs = 20, blocked = false, dictation = false, micFails = '', devices = [] } = {}) {
+/**
+ * @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string, devices?: { kind: string, label: string }[],
+ *   encoder?: { makes: string[], records?: { type: string, format: string }[], fails?: string[] }, plays?: string[] }} [o]
+ *   encoder: an encoder that makes these formats (a file is its format and length in samples, as text), records these with MediaRecorder,
+ *   and fails these; plays: what the player plays
+ */
+export function fakePlatform({ playMs = 20, blocked = false, dictation = false, micFails = '', devices = [], encoder, plays } = {}) {
   /** @type {string[]} */
   const log = [];
   /** @type {string[]} */
@@ -19,6 +24,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   /** @type {any} */
   let heard = null;
   let opens = 0;
+  let files = 0;
   const platform = {
     /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
     voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
@@ -42,8 +48,26 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       platform.deviceList = list;
       for (const fn of platform.deviceChanges) fn();
     },
+    ...(encoder ? {
+      encoder: {
+        makes: async () => encoder.makes,
+        records: () => encoder.records ?? [],
+        /** @param {Int16Array} pcm @param {number} rate @param {string} format */
+        async encode(pcm, rate, format) {
+          log.push(`encode ${format}`);
+          if (encoder.fails?.includes(format)) throw new Error(`no ${format} today`);
+          return enc.encode(`${format}<${pcm.length}@${rate}>`);
+        },
+        /** A clip this encoder made, read back: its length in samples. @param {Uint8Array} data */
+        async decode(data) {
+          log.push('decode');
+          return { pcm: new Float32Array(Number(/<(\d+)@/.exec(dec.decode(data))?.[1] ?? 0) * 3), rate: 48_000 };
+        },
+      },
+    } : {}),
     player: {
       async unlock() { log.push('unlock'); return true; },
+      ...(plays ? { plays: () => plays } : {}),
       /** @param {{ data: Uint8Array }} clip @param {{ signal: AbortSignal, onLevel?: (x: number) => void }} o */
       play(clip, { signal, onLevel }) {
         const name = dec.decode(clip.data);
@@ -70,13 +94,19 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       },
     },
     mic: {
-      /** @param {{ onFrames: (pcm: Float32Array, rate: number) => void, onError: (e: Error) => void }} o */
-      async open({ onFrames }) {
+      /** @param {{ onFrames: (pcm: Float32Array, rate: number) => void, onError: (e: Error) => void, record?: string }} o */
+      async open({ onFrames, record }) {
         if (micFails) throw Object.assign(new Error('Permission denied'), { name: micFails });
         opens++;
-        log.push('mic open');
+        log.push(record ? `mic open, recording ${record}` : 'mic open');
         frames = onFrames;
-        return { close() { log.push('mic close'); frames = null; } };
+        return {
+          close() { log.push('mic close'); frames = null; },
+          ...(record ? {
+            take: async () => { log.push('mic take'); return enc.encode(`${record} file ${++files}`); },
+            again: () => { log.push('mic again'); },
+          } : {}),
+        };
       },
       /** What the microphone hears now, in chunks. @param {Float32Array} pcm @param {number} rate */
       feed(pcm, rate) {
@@ -138,10 +168,13 @@ export function fakeVoices(ids, { failing = {}, fetchMs = 2, browser = false } =
 /**
  * A fake llm service for the Voice: chat models in the main role (with their inputs), a voice (v1),
  * transcription models, and the two speech lists. calls records what was asked.
- * @param {{ main?: { id: string, input: string[] }[], asr?: string[], speechIn?: string[], speechOut?: string[], hears?: string[], failing?: string[], reply?: string }} [o]
- *   hears: what transcription answers, in turn (the last repeats); failing: transcription models that fail; reply: what a chat call answers
+ * @param {{ main?: { id: string, input: string[] }[], asr?: string[], speechIn?: string[], speechOut?: string[], hears?: string[], failing?: string[], reply?: string,
+ *   audioIn?: Record<string, string[]>, refuses?: Record<string, string>, flaky?: Record<string, number> }} [o]
+ *   hears: what transcription answers, in turn (the last repeats); failing: transcription models that fail; reply: what a chat call answers;
+ *   audioIn: the formats a model takes; refuses: a transcription model that refuses this media type ('*': every file); flaky: one whose upload fails this many times first
+ * The transcription models' type takes webm, mp4, mp3 and wav unless a model says otherwise, as OpenAI's does.
  */
-export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], speechIn = ['send-audio', 't1', 'dictation'], speechOut = ['v1', 'browser-voice'], hears = ['what was said'], failing = [], reply = 'the words' } = {}) {
+export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], speechIn = ['send-audio', 't1', 'dictation'], speechOut = ['v1', 'browser-voice'], hears = ['what was said'], failing = [], reply = 'the words', audioIn = {}, refuses = {}, flaky = {} } = {}) {
   const bench = new Bench();
   /** @type {string[]} */
   const calls = [];
@@ -157,26 +190,39 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
   };
   for (const m of main) cfg.models[m.id] = { id: m.id, provider: 'pc', ability: 'chat', template: null, user: { providerId: m.id, input: m.input }, created: 0 };
   for (const id of asr) cfg.models[id] = { id, provider: 'pi', ability: 'transcription', template: null, user: { providerId: id }, created: 0 };
+  for (const [id, formats] of Object.entries(audioIn)) cfg.models[id].user.tunables = { audioIn: formats };
   let heard = 0;
+  /** What each transcription upload carried. @type {{ modelId: string, mediaType: string, data: Uint8Array, signal?: AbortSignal }[]} */
+  const uploads = [];
   return {
     bench,
     calls,
-    types: () => new Map([['chat', {}], ['say', { speech: 'out' }], ['hear', { speech: 'in' }]]),
+    uploads,
+    types: () => new Map([['chat', {}], ['say', { speech: 'out' }], ['hear', { speech: 'in', tunables: { audioIn: ['webm', 'mp4', 'mp3', 'wav'] } }]]),
     config: async () => cfg,
     /** @param {{ modelId: string, text: string }} c */
     async synthesize({ modelId, text }) {
       calls.push(`say ${modelId} ${text}`);
       return { clip: { data: enc.encode(`${modelId}:${text}`), mediaType: 'audio/mpeg' } };
     },
-    /** @param {{ modelId: string, audio: any, scope?: string, wake?: string }} c */
-    async transcribe({ modelId, audio, scope, wake }) {
+    /** @param {{ modelId: string, audio: any, scope?: string, wake?: string, signal?: AbortSignal }} c */
+    async transcribe({ modelId, audio, scope, wake, signal }) {
       calls.push(['hear', modelId, audio.mediaType, scope, wake].filter(Boolean).join(' '));
+      uploads.push({ modelId, mediaType: audio.mediaType, data: audio.data, signal });
       if (failing.includes(modelId)) throw new ProviderError('server', `${modelId} is down`);
+      // whisper.cpp's server: any refusal comes back as "Invalid request" (its error handler replaces the body); '*' refuses every file.
+      if (refuses[modelId] === audio.mediaType || refuses[modelId] === '*') throw new ProviderError('bad-request', 'Invalid request');
+      if (flaky[modelId]) {
+        flaky[modelId]--;
+        throw new ProviderError('network', "annai couldn't reach the provider.");
+      }
       return { text: hears[Math.min(heard++, hears.length - 1)] };
     },
-    /** @param {any} c */
+    /** The request as the model that answers gets it: heard speech resolved for it, as callRole does. @param {any} c */
     async call(c) {
-      calls.push(`call ${c.role} ${c.prefer ?? ''} ${c.record?.tag ?? ''} ${c.request.messages[0].parts.map((/** @type {any} */ p) => p.type).join(',')}`);
+      const to = main.find((m) => m.id === c.prefer) ?? main[0];
+      const request = c.speech ? await c.speech({ id: to.id, name: to.id, input: to.input }, c.request) : c.request;
+      calls.push(`call ${c.role} ${c.prefer ?? ''} ${c.record?.tag ?? ''} ${request.messages[0].parts.map((/** @type {any} */ p) => p.type).join(',')}`);
       return { reply: { text: reply, parts: [{ type: 'text', text: reply }] }, modelId: c.prefer ?? main[0].id };
     },
   };

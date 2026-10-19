@@ -50,14 +50,16 @@ async function setUp(k, plugin, origin, { key, model } = {}) {
   return { id, modelId, model: modelOf((await readConfig(k.ws)).models[modelId]) };
 }
 
+/** The chat requests a stand-in was sent. @param {{ requests: any[] }} s */
+const lastChats = (s) => s.requests.filter((r) => r.method === 'POST' && r.path === '/v1/chat/completions');
 /** The last chat request a stand-in was sent. @param {{ requests: any[] }} s */
 const lastChat = (s) => s.requests.filter((r) => r.method === 'POST' && r.path === '/v1/chat/completions').at(-1)?.body;
 /** Some fields of an object. @param {any} o @param {string[]} keys */
 const pick = (o, keys) => Object.fromEntries(keys.filter((x) => x in o).map((x) => [x, o[x]]));
 
-test('llama.cpp: keywords Unsloth, LM Studio and KoboldCpp; its default address on port 9931; a listed model that reads images takes photos', async () => {
+test('llama.cpp: keywords Unsloth, LM Studio and KoboldCpp; its default address on port 9931; a listed model that reads images takes photos, and the context it is served is read from /props', async () => {
   const m = JSON.parse(await readFile(new URL('plugins-official/provider-llamacpp/annai-plugin.json', root), 'utf8'));
-  assert.deepEqual([m.name, m.category, m.keywords, m.entry], ['llama.cpp', 'providers', ['Unsloth', 'LM Studio', 'KoboldCpp'], undefined]);
+  assert.deepEqual([m.name, m.category, m.keywords, m.entry], ['llama.cpp', 'providers', ['Unsloth', 'LM Studio', 'KoboldCpp'], 'index.js']);
   assert.deepEqual([m.provider.baseUrl, m.provider.key, m.provider.local], ['http://localhost:9931/v1', 'optional', true]);
   assert.deepEqual(m.requires, [{ id: 'chat-completions', version: '^0' }]);
   const k = await kit();
@@ -65,8 +67,9 @@ test('llama.cpp: keywords Unsloth, LM Studio and KoboldCpp; its default address 
   try {
     const { model } = await setUp(k, 'provider-llamacpp', s.origin, { key: 'sk-unsloth-stand-in' });
     assert.deepEqual([model.providerId, model.input], ['qwen3.8-flash', ['text', 'image']]);
-    assert.equal(model.contextWindow, null, "its list gives the training context, not the served one: set by hand until milestone 4");
+    assert.equal(model.contextWindow, 32768, "its list gives the training context; /props, the one each conversation is served (decision 22)");
     assert.equal(s.requests.find((r) => r.method === 'GET' && r.path === '/v1/models')?.headers.authorization, 'Bearer sk-unsloth-stand-in');
+    assert.equal(s.requests.find((r) => r.method === 'GET' && r.path === '/props')?.headers.authorization, 'Bearer sk-unsloth-stand-in', 'the key goes to its own address only');
     assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['chat-completions', 'provider-llamacpp']);
   } finally {
     await s.stop();
@@ -79,8 +82,9 @@ const CASES = /** @type {[string, import('../fakes/model-server.js').Flavour, Re
   // vLLM and SGLang: reasoning_effort too, for models switched by effort (gpt-oss); explicit chat_template_kwargs win on both (fix pass 3).
   ['provider-vllm', 'vllm', { reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false, thinking: false } }, { reasoning_effort: 'medium', chat_template_kwargs: { enable_thinking: true, thinking: true } }],
   ['provider-sglang', 'sglang', { reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false, thinking: false } }, { reasoning_effort: 'medium', chat_template_kwargs: { enable_thinking: true, thinking: true } }],
-  // Ollama decides how hard a model thinks: only off is named, as a named level is refused by a model that can't think (fix pass 1).
-  ['provider-ollama', 'ollama', { reasoning_effort: 'none' }, {}],
+  // Ollama: a model whose capabilities list thinking (qwen3, listed first) gets the named levels from its list (decision 22);
+  // one that can't think keeps only off named, as it refuses a named level (fix pass 1).
+  ['provider-ollama', 'ollama', { reasoning_effort: 'none' }, { reasoning_effort: 'medium' }],
   ['provider-lmstudio', 'lmstudio', {}, {}],
 ]);
 
@@ -168,7 +172,8 @@ test("vLLM's transcription starts off, and brings its protocol when turned on; A
   const v = (await official('provider-vllm')).provider.abilities;
   assert.deepEqual([v.chat.on, v.transcription.on, v.transcription.kind, v.transcription.type], [undefined, false, 'transcription', 'openai-transcription']);
   const another = JSON.parse(await readFile(new URL('plugins-official/provider-another-address/annai-plugin.json', root), 'utf8'));
-  assert.equal(another.version, '1.1.0');
+  assert.equal(another.version, '1.2.0', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0');
+  assert.equal(another.catchAll, true);
   assert.match(another.provider.note, /Wait for the first words/);
   assert.match(another.provider.note, /never streams/);
 });
@@ -201,7 +206,7 @@ test("the user's llama.cpp server (Unsloth Studio), as recorded on 2026-10-19, r
   ]);
 });
 
-test("Ollama: a model that can't think answers at every level, as only off is named; Ollama decides how hard one that can think does (fix pass 1)", async () => {
+test("Ollama: a model that can't think answers at every level, as only off is named for it (fix pass 1); one that thinks gets the named levels from its list (decision 22)", async () => {
   const levels = (await official('provider-ollama')).provider.abilities.chat.modelDefaults?.reasoning;
   assert.deepEqual(levels, { off: { reasoning_effort: 'none' }, low: {}, medium: {}, high: {} }, 'no max: it would be the model default on gpt-oss anyway (fix pass 4)');
   const { levelPatch, nearestLevel } = await import('../../src/core/llm/reasoning.js');
@@ -214,9 +219,9 @@ test("Ollama: a model that can't think answers at every level, as only off is na
       const r = await k.llm.call({ request: HI, level });
       assert.equal(r.reply.text, 'Hello!', level);
     }
-    assert.deepEqual(s.requests.filter((r) => r.method === 'POST').map((r) => r.body.reasoning_effort), [undefined, undefined, undefined, undefined, 'none']);
+    assert.deepEqual(lastChats(s).map((r) => r.body.reasoning_effort), [undefined, undefined, undefined, undefined, 'none']);
     assert.equal((await k.llm.config()).models[modelId].ability, 'chat');
-    assert.match((await official('provider-ollama')).provider.abilities.chat.note ?? '', /Ollama decides how hard a model thinks.*gpt-oss/);
+    assert.match((await official('provider-ollama')).provider.abilities.chat.note ?? '', /A model that thinks gets low, medium and high; for one that can't, annai only switches thinking off/);
   } finally {
     await s.stop();
   }
@@ -250,7 +255,7 @@ test("Test also asks at the level a role will use: a model Main asks at medium t
   const s = await startFakeServer({ flavour: 'ollama', cors: '*', replies: [{ text: 'OK' }, { calls: [{ name: 'report_color', input: { color: 'red' } }] }] });
   try {
     const { modelId } = await setUp(k, 'provider-ollama', s.origin, { model: 'llama3.2:latest' });
-    const posts = () => s.requests.filter((r) => r.method === 'POST').map((r) => r.body);
+    const posts = () => lastChats(s).map((r) => r.body);
     // Ollama's map before the fix pass: a named level, which a model that can't think refuses.
     const rec = (await readConfig(k.ws)).models[modelId];
     await saveModel(k.ws, { ...rec, user: { ...rec.user, reasoning: { off: { reasoning_effort: 'none' }, medium: { reasoning_effort: 'medium' } } } });
@@ -288,6 +293,71 @@ test("Test's extra call is made only where the role's level sends something othe
     const r = await k.llm.test(modelId);
     assert.deepEqual([r.ok, r.steps.map((x) => x.step)], [true, ['access', 'key', 'tools']]);
     assert.equal(s.requests.filter((x) => x.method === 'POST').length, 2);
+  } finally {
+    await s.stop();
+  }
+});
+
+// Decision 22 (the user, 2026-10-18: "yes add the code for reading context windows"): llama.cpp, Ollama and LM Studio
+// read the context a server serves, which their model lists don't say, through the provider contract's list.
+
+test("the user's Unsloth Studio (llama.cpp), as measured on 2026-10-19: /props gives the loaded model's context and says it reads images, which Studio's own list doesn't; its unexplained max_context_length is left alone", async () => {
+  const k = await kit();
+  const listed = JSON.parse(await readFile(new URL('test/fixtures/llm/local/unsloth-studio-models.json', root), 'utf8')).data;
+  const props = JSON.parse(await readFile(new URL('test/fixtures/llm/local/unsloth-studio-props.json', root), 'utf8'));
+  const s = await startFakeServer({ flavour: 'llamacpp', key: 'sk-unsloth-stand-in', models: listed, props });
+  try {
+    const id = await k.llm.addProvider('provider-llamacpp', { official: true, baseUrl: `${s.origin}/v1`, key: 'sk-unsloth-stand-in', roles: null });
+    const all = await k.llm.listModels(id, 'chat');
+    assert.deepEqual(all.map((m) => pick(m, ['providerId', 'contextWindow', 'input'])), [
+      { providerId: 'unsloth/Qwen3.8-Flash-Next-GGUF', contextWindow: 262144, input: ['text', 'image'] },
+      { providerId: 'unsloth/Qwen3.8-27B-GGUF' },
+    ], 'only the model /props names: another may be loaded with another context');
+  } finally {
+    await s.stop();
+  }
+});
+
+test("llama.cpp: a server without /props, or one that won't say, still lists its models as the protocol does", async () => {
+  const k = await kit();
+  const s = await startFakeServer({ flavour: 'vllm' }); // no /props: 404
+  try {
+    const id = await k.llm.addProvider('provider-llamacpp', { official: true, baseUrl: `${s.origin}/v1`, roles: null });
+    assert.deepEqual((await k.llm.listModels(id, 'chat')).map((m) => pick(m, ['providerId', 'contextWindow'])), [{ providerId: 'Qwen/Qwen3-8B', contextWindow: 32768 }]);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("Ollama: the context a loaded model was given (/api/ps), else its Modelfile's num_ctx, never its training context; photos and tools from its capabilities; the named thinking levels only for a model that thinks", async () => {
+  const k = await kit();
+  const s = await startFakeServer({ flavour: 'ollama', cors: [ANNAI] });
+  try {
+    const id = await k.llm.addProvider('provider-ollama', { official: true, baseUrl: `${s.origin}/v1`, roles: null });
+    const all = await k.llm.listModels(id, 'chat');
+    assert.deepEqual(all.map((m) => pick(m, ['providerId', 'contextWindow', 'input', 'tools', 'reasoning'])), [
+      { providerId: 'qwen3:8b', contextWindow: 4096, input: ['text'], tools: true,
+        reasoning: { off: { reasoning_effort: 'none' }, low: { reasoning_effort: 'low' }, medium: { reasoning_effort: 'medium' }, high: { reasoning_effort: 'high' } } },
+      { providerId: 'llama3.2:latest', contextWindow: 8192, input: ['text'], tools: true },
+    ]);
+    assert.deepEqual(s.requests.filter((r) => r.method === 'POST' && r.path === '/api/show').map((r) => r.body), [{ model: 'qwen3:8b' }, { model: 'llama3.2:latest' }]);
+    // Added, the one that can't think keeps the plugin's map: only off is named.
+    const llama = await addListedModel(k, id, 'chat', /** @type {any} */ (all[1]));
+    assert.deepEqual(modelOf((await readConfig(k.ws)).models[llama]).reasoning, { off: { reasoning_effort: 'none' }, low: {}, medium: {}, high: {} });
+  } finally {
+    await s.stop();
+  }
+});
+
+test('LM Studio: a loaded instance\'s context, never the most it could take; photos and tools from its own list', async () => {
+  const k = await kit();
+  const s = await startFakeServer({ flavour: 'lmstudio', cors: '*', key: 'lm-token-stand-in' });
+  try {
+    const id = await k.llm.addProvider('provider-lmstudio', { official: true, baseUrl: `${s.origin}/v1`, key: 'lm-token-stand-in', roles: null });
+    assert.deepEqual((await k.llm.listModels(id, 'chat')).map((m) => pick(m, ['providerId', 'contextWindow', 'input', 'tools'])), [
+      { providerId: 'qwen/qwen3-8b', contextWindow: 8192, input: ['text'], tools: true },
+    ]);
+    assert.equal(s.requests.find((r) => r.method === 'GET' && r.path === '/api/v1/models')?.headers.authorization, 'Bearer lm-token-stand-in');
   } finally {
     await s.stop();
   }

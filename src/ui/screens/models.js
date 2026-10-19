@@ -5,10 +5,9 @@ import { providerOf, modelOf, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } fr
 import { LEVELS } from '../../core/llm/reasoning.js';
 import { ROLE_KINDS } from '../../core/llm/provider-desc.js';
 import { speechAdd } from '../../core/llm/providers.js';
-import { officialPlugins } from '../../core/llm/official.js';
-import { renderProvider, messageOf } from './provider.js';
+import { renderProvider } from './provider.js';
 import { renderModel } from './model.js';
-import { needsCode, signInUrl, codeSignIn, tapCode, exchange, signIn, signingIn } from '../openrouter.js';
+import { featuredStart } from '../provider-setup.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
@@ -34,13 +33,14 @@ export async function renderModels(ctx, route) {
   if (route.parts[1] === 'provider') return renderProvider(ctx, route.params.id ?? '');
   if (route.parts[1] === 'model') return renderModel(ctx, route.params.id ?? '');
   await ctx.llm.ready;
-  const [cfg, offer, app] = await Promise.all([ctx.llm.config(), addable(ctx), readAppSettings(ctx.ws)]);
+  const [cfg, app] = await Promise.all([ctx.llm.config(), readAppSettings(ctx.ws)]);
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Models' }),
     h('p', { class: 'sub', text: 'Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.' }),
-    signInSection(ctx, cfg),
-    providersSection(ctx, cfg, offer),
+    // The one-tap start, while there is no provider (spec §9.8): the catalog's featured provider's own sign-in.
+    Object.keys(cfg.providers).length ? null : featuredStart(ctx),
+    providersSection(ctx, cfg),
     rolesSection(ctx, cfg),
     ...requestSections(ctx, app.shiori ?? {}));
 }
@@ -75,52 +75,10 @@ function requestSections(ctx, s) {
 }
 
 /**
- * The providers that can be added (spec §9.8): annai's catalog's model providers, and the provider
- * plugins installed from elsewhere, named so; offline, the ones installed already. Another address
- * comes after annai's own, those from elsewhere last. A copy from elsewhere that holds the id of one of
- * annai's own is never offered as annai's (security review): a note says why it isn't there.
- * @param {import('../../core/llm/official.js').CatalogPlugin[] | null} catalog @param {{ plugin: string, name: string }[]} running
- * @param {Record<string, any>} installed @returns {{ options: { id: string, name: string, official: boolean }[], notes: string[] }}
+ * The providers, each with its abilities that are on and its models, and Add a provider, which opens
+ * the catalog on model providers (spec §16.2). @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg
  */
-export function addOptions(catalog, running, installed) {
-  /** @type {{ id: string, name: string, official: boolean }[]} */
-  const options = [];
-  /** @type {string[]} */
-  const notes = [];
-  for (const p of catalog ?? []) {
-    if (!p.abilities?.length) continue;
-    if (installed[p.id] && installed[p.id].source !== 'official') {
-      notes.push(`${p.name}: the one installed came from elsewhere but uses the name of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.`);
-      continue;
-    }
-    options.push({ id: p.id, name: p.name, official: true });
-  }
-  for (const s of running) {
-    if (options.some((o) => o.id === s.plugin) || catalog?.some((p) => p.id === s.plugin)) continue;
-    const i = installed[s.plugin];
-    let from = '';
-    if (i?.source === 'url') {
-      try {
-        from = `from ${new URL(i.url).host}`;
-      } catch {
-        from = 'from an address';
-      }
-    } else if (i?.source !== 'official') from = 'from a file';
-    options.push({ id: s.plugin, name: from ? `${s.name} (${from})` : s.name, official: !from });
-  }
-  const rank = (/** @type {{ id: string, official: boolean }} */ o) => (o.official ? 0 : 2) + (o.id === 'provider-another-address' ? 1 : 0);
-  options.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-  return { options, notes };
-}
-
-/** What Add a provider offers now. @param {any} ctx */
-async function addable(ctx) {
-  const catalog = await officialPlugins().catch(() => null);
-  return { ...addOptions(catalog, ctx.llm.providers(), await ctx.plugins.installed()), offline: catalog === null };
-}
-
-/** The providers, each with its abilities that are on and its models, and Add a provider. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg @param {Awaited<ReturnType<typeof addable>>} offer */
-function providersSection(ctx, cfg, offer) {
+function providersSection(ctx, cfg) {
   const types = ctx.llm.types();
   const rows = Object.values(cfg.providers).sort((a, b) => a.created - b.created).map((rec) => {
     const p = providerOf(rec, (t) => types.get(t)?.tunables ?? {});
@@ -130,32 +88,10 @@ function providersSection(ctx, cfg, offer) {
       h('span', { class: 'name', text: p.name }),
       h('span', { class: 'sub', text: [on.length ? on.join(', ') : 'Nothing switched on', `${n} model${n === 1 ? '' : 's'}`].join(' · ') })));
   });
-  const status = h('p', { class: 'sub', role: 'status' });
-  const pick = h('select', { id: 'provider-add' }, ...offer.options.map((o) => h('option', { value: o.id, text: o.name })));
-  const add = h('button', {
-    class: 'btn pri', type: 'button',
-    onclick: async () => {
-      const chosen = offer.options.find((o) => o.id === pick.value);
-      if (!chosen) return;
-      add.disabled = true;
-      status.textContent = `Adding ${chosen.name}, with what it needs…`;
-      try {
-        const id = await ctx.llm.addProvider(chosen.id, { roles: 'recommended', official: chosen.official });
-        ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
-      } catch (e) {
-        status.textContent = messageOf(e);
-      } finally {
-        add.disabled = false;
-      }
-    },
-  }, 'Add');
   return h('section', { class: 'panel', 'aria-label': 'Providers' },
     h('h2', { class: 'section', text: 'Providers' }),
     rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: 'No providers yet. Add one below.' }),
-    offer.options.length ? h('div', { class: 'row' }, field('Add a provider', pick), h('div', { class: 'acts' }, add)) : null,
-    offer.offline ? h('p', { class: 'sub', text: "annai's list of providers couldn't be loaded. Connect to the internet and open this screen again." }) : null,
-    ...offer.notes.map((t) => h('p', { class: 'sub', text: t })),
-    status);
+    h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add?kind=providers&from=models' }, 'Add a provider')));
 }
 
 /** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
@@ -227,6 +163,8 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
   return h('div', { class: 'role' },
     h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
+    // The catalog, on providers that can hear you, or speak (spec §16.2).
+    speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KINDS[role][0]}&from=models`, 'aria-label': `Add a provider for ${role}` }, 'Add a provider')) : null,
     h('div', { class: 'row' },
       others.length ? field(`Add a model to ${called}`, pick) : null,
       others.length ? h('div', { class: 'acts' }, h('button', {
@@ -239,83 +177,4 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
       level ? savedField(`Reasoning for ${called}`, level, () => level.value, (v) => edit(role, (x) => ({ ...x, level: v }))) : null,
       savedField(waitLabel, wait, () => numberIn(wait, 1, 600, 'Wait from 1 to 600 seconds; leave it empty for the usual.', { whole: true }),
         (n) => edit(role, ({ firstOutputSeconds: _, ...x }) => (n === null ? x : { ...x, firstOutputSeconds: n })))));
-}
-
-/** The quickest start: Sign in with OpenRouter (spec §9.8), offered until an OpenRouter provider exists. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
-function signInSection(ctx, cfg) {
-  if (Object.values(cfg.providers).some((p) => p.plugin === 'provider-openrouter')) return null;
-  const status = h('p', { class: 'sub', role: 'status' });
-  const codeSlot = h('div', {});
-  /** @type {HTMLElement} */
-  let btn;
-  if (needsCode()) {
-    // On an iPhone Home Screen app: a real link, its address made before the tap, because Safari opens
-    // a page only from the tap itself (the user, 2026-10-18: after an await, nothing opened).
-    const link = h('a', { class: 'btn pri', target: '_blank', rel: 'noopener noreferrer', 'aria-disabled': 'true' }, 'Sign in with OpenRouter');
-    /** The address for the tap: the sign-in still waiting for its code, or a new one once that has expired. */
-    const prepare = () => codeSignIn().then(({ url, pending }) => {
-      link.setAttribute('href', url);
-      link.removeAttribute('aria-disabled');
-      if (!pending) codeSlot.replaceChildren();
-      else if (!codeSlot.firstChild) codeSlot.replaceChildren(pasteCode(ctx, status, prepare));
-    }, (e) => { status.textContent = messageOf(e); });
-    link.addEventListener('click', (e) => {
-      const href = link.getAttribute('href');
-      if (!href) return e.preventDefault();
-      // annai's 15 minutes start now. No sign-in waits for this address (it was used, or dropped): a new one, for the next tap.
-      if (!tapCode(href)) {
-        e.preventDefault();
-        status.textContent = 'annai has made a new sign-in: tap Sign in with OpenRouter again.';
-        return prepare();
-      }
-      if (!codeSlot.firstChild) codeSlot.replaceChildren(pasteCode(ctx, status, prepare));
-    });
-    prepare();
-    btn = link;
-  } else {
-    btn = h('button', {
-      class: 'btn pri', type: 'button', disabled: signingIn(),
-      onclick: async () => {
-        try {
-          location.assign(await signInUrl({ callback: `${location.origin}/` }));
-        } catch (e) {
-          status.textContent = messageOf(e);
-        }
-      },
-    }, 'Sign in with OpenRouter');
-    // Back from OpenRouter: the code is being traded for a key, and the provider set up.
-    if (signingIn()) status.textContent = 'Finishing the sign-in with OpenRouter…';
-  }
-  return h('section', { class: 'panel', 'aria-label': 'Sign in' },
-    h('h2', { class: 'section', text: 'The quickest start' }),
-    h('p', { text: "Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the phone's own dictation and voice stay first." }),
-    h('div', { class: 'acts' }, btn),
-    codeSlot,
-    status);
-}
-
-/**
- * On an iPhone Home Screen app: paste the code OpenRouter showed.
- * @param {any} ctx @param {HTMLElement} status @param {() => Promise<void>} prepare makes the link's address again after a failure
- */
-function pasteCode(ctx, status, prepare) {
-  const code = h('input', { id: 'openrouter-code', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
-  const go = h('button', {
-    class: 'btn pri', type: 'button',
-    onclick: async () => {
-      go.disabled = true;
-      status.textContent = 'Connecting to OpenRouter…';
-      try {
-        await signIn(ctx, () => exchange({ code: code.value, state: null, pasted: true }));
-        ctx.render();
-      } catch (e) {
-        status.textContent = messageOf(e);
-        go.disabled = false;
-        await prepare(); // an expired sign-in makes way for a new one
-      }
-    },
-  }, 'Connect');
-  return h('div', {},
-    h('p', { class: 'sub', text: 'OpenRouter opens in Safari. Sign in there; it then shows a code, which works for 10 minutes. Copy it, come back to annai, and paste it here.' }),
-    h('div', { class: 'row' }, field('Paste the code OpenRouter showed you', code), h('div', { class: 'acts' }, go)));
 }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, turnOnSwipes } from './helpers.js';
+import { openApp, turnOnSwipes, waitForServiceWorker, pickFile, zipOf } from './helpers.js';
 
 // In headless WebKit no tap unlocks sound, so every tap, a swipe's pointerup too, starts the silent clip again; and a
 // page that goes away while one starts can wedge WebKit's process on Linux (the Erase hang, 2026-10-18). A swipe test
@@ -23,7 +23,7 @@ test.afterEach(async ({ page }) => {
 
 // What the user saw on an iPhone (2026-10-18): the page scrolled sideways, a date box stuck out of
 // its card, Shiori sat over the camera button in a corner, and the top bar hid that it scrolls.
-const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/backups', '#/notifications', '#/shiori',
+const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/add', '#/backups', '#/notifications', '#/shiori',
   '#/about', '#/experimental', '#/welcome'];
 
 for (const width of [320, 420]) {
@@ -55,6 +55,44 @@ for (const width of [320, 420]) {
     expect(out).toEqual([]);
   });
 }
+
+// A plugin's own words can hold one long word: a URL, a token, a host (the user saw a page scroll sideways, 2026-10-18).
+test("a plugin with a long word in its description, its name and keyword, and from a long host, fits a phone 320 px wide: its install screen, Add and Plugins", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await openApp(page, '#/plugins');
+  await waitForServiceWorker(page);
+  const host = `${'h'.repeat(60)}.example`;
+  const manifest = {
+    id: 'long-words', name: `Long${'n'.repeat(70)}`, version: '1.0.0', api: 1, keywords: ['k'.repeat(40)], requires: [{ id: 'chat-completions', version: '^0' }],
+    description: `See ${'x'.repeat(120)} or https://very.long.example/${'a'.repeat(80)}`,
+    provider: { baseUrl: `https://${host}/v1`, key: 'required', abilities: { chat: { kind: 'chat', type: 'chat-completions' } } },
+  };
+  const over = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  await pickFile(page, { name: 'long.zip', mimeType: 'application/zip', buffer: await zipOf({ 'annai-plugin.json': Buffer.from(JSON.stringify(manifest)) }) });
+  await expect(page.getByRole('heading', { name: /^Install Long/ })).toBeVisible();
+  expect(await over(), 'the install screen').toBe(0);
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Plugins' })).toBeVisible({ timeout: 30_000 });
+  // As if it came from an address on a long host: Add and Plugins say where it came from.
+  await page.evaluate(async (url) => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const state = await ws.readJSON('sys:plugins', '/installed.json');
+    await ws.write('sys:plugins', '/installed.json', { ...state, 'long-words': { ...state['long-words'], source: 'url', url } }, { author: 'system' });
+    store.close();
+  }, `https://${host}/kits/${'p'.repeat(60)}/annai-plugin.json`);
+  await page.reload();
+  for (const hash of ['#/plugins', '#/add', '#/add?kind=providers&from=models']) {
+    await page.goto(`/${hash}`);
+    await expect(page.locator('.found .card', { hasText: /^Long/ })).toBeVisible();
+    expect(await over(), hash).toBe(0);
+  }
+  await page.getByLabel('Search the catalog').fill('kkkk');
+  await expect(page.locator('.found .card')).toContainText(`Also for: ${'k'.repeat(40)}`);
+  expect(await over(), 'a long keyword').toBe(0);
+});
 
 test('the dock keeps camera, Shiori and type apart, Shiori in the middle', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });

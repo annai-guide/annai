@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { checkProviderDesc } from '../../src/core/llm/provider-desc.js';
-import { catalogFacts } from '../../scripts/catalog-facts.mjs';
+import { catalogFacts } from '../../src/core/catalog-facts.js';
 import { satisfies } from '../../src/core/requires.js';
 import { readConfig, modelOf } from '../../src/core/llm/config.js';
 import { createLlm } from '../../src/core/llm/service.js';
@@ -17,13 +17,17 @@ const entry = (id) => catalog.find((/** @type {any} */ p) => p.id === id);
 /** Whether a type comes from one of these requirements, in range of the catalog. @param {string} type @param {any[]} requires */
 const providedBy = (type, requires = []) => requires.some((r) => entry(r.id)?.provides?.['endpoint-type']?.includes(type) && satisfies(entry(r.id).version, r.version));
 
+/** The official providers with code. */
+const CODE = ['provider-openrouter', 'provider-llamacpp', 'provider-ollama', 'provider-lmstudio'];
+
 test('every official provider is valid, its id is provider-*, and its requires cover the abilities that start on, in range of the catalog', async () => {
   const providers = (await officialManifests()).filter((m) => m.provider);
   assert.equal(providers.length, 15);
   for (const m of providers) {
     assert.match(m.id, /^provider-[a-z0-9-]+$/);
     assert.deepEqual(checkProviderDesc(m.provider), [], m.id);
-    assert.equal(m.entry, undefined, `${m.id}: data only`);
+    // Data only, but for those with quirks no data can carry (milestone 4): OpenRouter's sign-in, and the context a server serves (decision 22).
+    assert.equal(m.entry, CODE.includes(m.id) ? 'index.js' : undefined, `${m.id}: ${CODE.includes(m.id) ? 'has code' : 'data only'}`);
     for (const [id, a] of Object.entries(m.provider.abilities)) {
       if (/** @type {any} */ (a).on !== false) assert.ok(providedBy(/** @type {any} */ (a).type, m.requires), `${m.id}/${id}: ${/** @type {any} */ (a).type}`);
       else assert.ok(catalog.some((/** @type {any} */ p) => p.provides?.['endpoint-type']?.includes(/** @type {any} */ (a).type)), `${m.id}/${id}: a type annai has`);
@@ -183,7 +187,7 @@ test("OpenRouter's speech abilities: OpenAI-style requests to its audio API with
 test('catalogFacts: abilities in order, free from zero prices, local, code, the category derived when it is absent', async () => {
   const facts = (/** @type {any} */ m) => catalogFacts({ id: 'x', name: 'X', version: '1.0.0', api: 1, ...m }, { size: 1234 });
   const router = catalogFacts(await (async () => JSON.parse(await readFile(new URL('plugins-official/provider-openrouter/annai-plugin.json', root), 'utf8')))(), { size: 9 });
-  assert.deepEqual([router.abilities, router.free, router.local, router.code, router.category, router.size], [['chat', 'transcription', 'voice'], true, false, false, 'providers', 9]);
+  assert.deepEqual([router.abilities, router.free, router.local, router.code, router.category, router.size], [['chat', 'transcription', 'voice'], true, false, true, 'providers', 9]);
   assert.deepEqual(router.requires.map((r) => r.id), ['chat-completions', 'speech-openai']);
   assert.equal(facts({ provider: { abilities: { a: { kind: 'transcription' }, b: { kind: 'voice' } } } }).category, 'speech');
   assert.equal(facts({ provider: { local: true, abilities: { a: { kind: 'chat', models: [{ providerId: 'p', prices: { input: 1, output: 0 } }] } } } }).free, false);
@@ -200,4 +204,42 @@ test('catalogFacts: abilities in order, free from zero prices, local, code, the 
   assert.equal(entry('provider-local-speech').category, 'speech');
   assert.deepEqual(entry('provider-local-speech').keywords, ['Speaches', 'whisper.cpp', 'Kokoro']);
   assert.ok(catalog.every((/** @type {any} */ p) => p.size > 0));
+  // The one-tap start's provider (spec §9.8), marked in annai's own catalog only.
+  assert.deepEqual(catalog.filter((/** @type {any} */ p) => p.featured).map((/** @type {any} */ p) => [p.id, p.featured]), [['provider-openrouter', 'Sign in with OpenRouter is the quickest way, and it starts you on free models.']]);
+});
+
+test('every official transcription and Chat Completions ability declares the audio it takes (audioIn), every voice what it gives (audioOut), WAV and MP3 always among them (Koe and Kokoro design, "Audio formats")', async () => {
+  /** @type {Record<string, any>} */
+  const defaults = {};
+  const register = (/** @type {any} */ t) => { defaults[t.type] = t.tunables ?? {}; return () => {}; };
+  const helpers = { ProviderError: Error, errorFromResponse: () => new Error(), mergePatch: (/** @type {any} */ a, /** @type {any} */ b) => ({ ...a, ...b }), sse: () => {} };
+  (await import('../../plugins-official/speech-openai/index.js')).activate({ providers: { register }, helpers });
+  (await import('../../plugins-official/chat-completions/index.js')).activate({ providers: { register }, helpers });
+  assert.deepEqual(defaults['chat-completions'].audioIn, ['wav', 'mp3'], "Chat Completions' input_audio: OpenAI's takes WAV and MP3 only");
+  const known = ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'];
+  /** @type {Record<string, any>} */
+  const declared = {};
+  for (const m of (await officialManifests()).filter((x) => x.provider)) {
+    for (const [id, a] of Object.entries(/** @type {Record<string, any>} */ (m.provider.abilities))) {
+      const t = { ...defaults[a.type], ...a.tunables };
+      if (a.kind === 'transcription' || a.type === 'chat-completions') {
+        assert.ok(t.audioIn.includes('wav') && t.audioIn.every((/** @type {string} */ f) => known.includes(f)), `${m.id}/${id}: ${t.audioIn}`);
+        declared[`${m.id}/${id}`] = t.audioIn;
+      }
+      if (a.kind === 'voice') {
+        assert.ok(t.audioOut.includes('mp3') && t.format === 'auto', `${m.id}/${id}`);
+        declared[`${m.id}/${id}`] = t.audioOut;
+      }
+    }
+  }
+  const opus = ['webm', 'ogg', 'mp4', 'mp3', 'flac', 'wav'];
+  assert.deepEqual(declared['provider-groq/transcription'], opus);
+  assert.deepEqual(declared['provider-local-speech/transcription'], opus);
+  assert.deepEqual(declared['provider-vllm/transcription'], opus);
+  assert.deepEqual(declared['provider-openai/transcription'], ['webm', 'mp4', 'mp3', 'wav']);
+  assert.deepEqual(declared['provider-openrouter/chat'], ['ogg', 'aac', 'mp4', 'mp3', 'flac', 'wav']);
+  assert.deepEqual(declared['provider-gemini/chat'], ['wav', 'mp3'], 'measured: Gemini through Chat Completions refuses the rest');
+  assert.deepEqual(declared['provider-openrouter/voice'], ['mp3'], "OpenRouter's voices send MP3 (or raw PCM) only");
+  assert.deepEqual(declared['provider-openai/voice'], ['opus', 'aac', 'mp3', 'flac', 'wav']);
+  assert.deepEqual(declared['provider-local-speech/voice'], ['mp3', 'wav'], 'Speaches refuses opus and aac; Kokoro-FastAPI takes MP3 too');
 });

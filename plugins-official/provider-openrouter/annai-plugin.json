@@ -1,9 +1,11 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "api": 1,
+  "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
+  "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
   "category": "providers",
   "requires": [
     {
@@ -29,7 +31,15 @@
         "kind": "chat",
         "type": "chat-completions",
         "tunables": {
-          "reasoningField": "reasoning"
+          "reasoningField": "reasoning",
+          "audioIn": [
+            "ogg",
+            "aac",
+            "mp4",
+            "mp3",
+            "flac",
+            "wav"
+          ]
         },
         "modelDefaults": {
           "providerTools": [
@@ -351,7 +361,10 @@
         "kind": "voice",
         "type": "openai-speech",
         "tunables": {
-          "listPath": "/models?output_modalities=speech"
+          "listPath": "/models?output_modalities=speech",
+          "audioOut": [
+            "mp3"
+          ]
         },
         "note": "Shiori's voice. Each model has voices of its own, listed on its page at openrouter.ai: put one in the model's Voice. Fish Audio's free voice speaks with its default voice. OpenRouter sends MP3 or PCM only.",
         "models": [

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, fakeMicrophone } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, fakeMicrophone, filterTrace, savedBy } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 const clipPath = (/** @type {string} */ name) => fileURLToPath(new URL(`../fixtures/voice/${name}.wav`, import.meta.url));
@@ -140,6 +140,46 @@ test('chatter: with a quick-decision model, talk that is not for her is recorded
     expect(server.bodies('/b/v1/messages')).toHaveLength(1);
     expect(JSON.stringify(server.bodies('/d/v1/messages')[0].messages)).toContain('Can you pass the water?');
     await expect(page.locator('.convo .system-line').filter({ hasText: 'Heard, not for Shiori' })).toHaveText('Heard, not for Shiori: Can you pass the water?');
+  } finally {
+    await server.stop();
+  }
+});
+
+test("kept voice clips: kept as the smallest file the phone makes and plays, played from the Trace; the player lets the clip's address go when it leaves (spec §10.2, §10.6)", async ({ page }) => {
+  const server = await startModelServer({
+    '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'Noted.' } }, { name: 'sleep', input: {} }]))],
+    '/ears/audio/transcriptions': json({ text: 'Dinner is at half past six.' }),
+    '/voice/audio/speech': wav,
+  });
+  try {
+    await fakeMicrophone(page, [clipPath('where-eat')]);
+    await setUpVoice(page, server.origin);
+    await page.goto('/#/voice');
+    const keep = page.getByLabel('Keep voice clips');
+    await keep.check();
+    await expect(savedBy(keep)).toHaveText('Saved');
+    await page.goto('/#/talk');
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect.poll(() => server.bodies('/voice/audio/speech').length, { timeout: 30_000 }).toBe(1);
+    await page.goto('/#/trace');
+    await filterTrace(page, { kind: 'Conversation' });
+    const heard = page.locator('.trace li').filter({ hasText: 'clip kept' }).first();
+    // Both browsers make Opus and play Ogg.
+    await expect(heard.locator('.d')).toHaveText(/ · clip kept: ogg, \d+(\.\d)? KB$/);
+    await heard.locator('summary').click();
+    await heard.getByRole('button', { name: 'Show what was stored' }).click();
+    const src = String(await heard.locator('audio').getAttribute('src'));
+    expect(src).toMatch(/^blob:/);
+    /** Whether an audio element can still load the clip's address. */
+    const loads = () => page.evaluate((u) => new Promise((resolve) => {
+      const a = new Audio();
+      a.onloadedmetadata = () => resolve('loads');
+      a.onerror = () => resolve('let go');
+      a.src = u;
+    }), src);
+    expect(await loads()).toBe('loads');
+    await page.goto('/#/talk');
+    await expect.poll(loads).toBe('let go');
   } finally {
     await server.stop();
   }

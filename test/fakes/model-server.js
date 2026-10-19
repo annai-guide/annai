@@ -19,11 +19,12 @@ import http from 'node:http';
  * @typedef {{ method: string, path: string, headers: Record<string, any>, body: any }} Seen
  *   body: parsed JSON, or the text ('' for none)
  * @typedef {{ flavour: Flavour, key?: string, cors?: '*' | string[] | false, spa?: boolean, authEverywhere?: boolean,
- *   models?: object[], replies?: Reply[], gapMs?: number }} Options
+ *   models?: object[], replies?: Reply[], gapMs?: number, props?: object, show?: Record<string, object>, running?: object[], native?: object[] }} Options
  *   key: asked for as a bearer token; cors: '*' allows any origin (reflected, as llama.cpp does), a list those origins,
  *   false none (default: the flavour's own); spa: 200 text/html for any unknown path, as a web app's fallback does;
  *   authEverywhere: 401 for every /v1 path without the key, real or not, as auth in front of a server does;
- *   gapMs: a pause between a stream's chunks, as a model writing at its own pace makes
+ *   gapMs: a pause between a stream's chunks, as a model writing at its own pace makes; props: llama.cpp's /props;
+ *   show and running: Ollama's /api/show by model and /api/ps's models; native: LM Studio's /api/v1/models's models
  */
 
 /** Hosts Ollama allows by default (OLLAMA_ORIGINS adds to them), whatever the scheme and port. */
@@ -58,12 +59,12 @@ const FLAVOURS = {
     models: () => [{ id: 'Qwen/Qwen3-8B', object: 'model', created: CREATED, owned_by: 'sglang', root: 'Qwen/Qwen3-8B', max_model_len: 32768 }],
   },
   ollama: {
-    post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/embeddings'], get: ['/v1/models'],
+    post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/embeddings', '/api/show'], get: ['/v1/models', '/api/ps'],
     reasoning: 'reasoning', cors: 'ollama', callsWhole: true, forces: 'never', noThinking: ['llama3.2:latest'],
     models: () => [{ id: 'qwen3:8b', object: 'model', created: CREATED, owned_by: 'library' }, { id: 'llama3.2:latest', object: 'model', created: CREATED, owned_by: 'library' }],
   },
   lmstudio: {
-    post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/embeddings'], get: ['/v1/models'],
+    post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/embeddings'], get: ['/v1/models', '/api/v1/models'],
     reasoning: 'reasoning_content', cors: false, forces: 'any',
     models: () => [{ id: 'qwen/qwen3-8b', object: 'model', owned_by: 'organization_owner' }],
   },
@@ -73,6 +74,15 @@ const FLAVOURS = {
     models: () => [{ id: 'router-model', object: 'model', created: CREATED, owned_by: 'router' }],
   },
 };
+
+/** Ollama's /api/show, by model: one that thinks and one that can't; the second's Modelfile sets its context. */
+const SHOW = {
+  'qwen3:8b': { capabilities: ['completion', 'tools', 'thinking'], model_info: { 'general.architecture': 'qwen3', 'qwen3.context_length': 40960 }, parameters: 'stop "<|im_start|>"\nstop "<|im_end|>"', details: { family: 'qwen3' } },
+  'llama3.2:latest': { capabilities: ['completion', 'tools'], model_info: { 'general.architecture': 'llama', 'llama.context_length': 131072 }, parameters: 'num_ctx 8192\nstop "<|eot_id|>"', details: { family: 'llama' } },
+};
+/** LM Studio's /api/v1/models: a model loaded with a context smaller than it could take. */
+const NATIVE = [{ type: 'llm', publisher: 'qwen', key: 'qwen/qwen3-8b', display_name: 'Qwen3 8B', max_context_length: 40960,
+  capabilities: { vision: false, trained_for_tool_use: true }, loaded_instances: [{ id: 'qwen/qwen3-8b', config: { context_length: 8192 } }] }];
 
 /** An OpenAI-shaped error. @param {string} message @param {string} type */
 const error = (message, type) => JSON.stringify({ error: { message, type, param: null, code: null } });
@@ -143,7 +153,16 @@ export async function startFakeServer(o) {
       if ((isPost && method !== 'POST') || (isGet && method !== 'GET')) return send(405, 'text/plain; charset=utf-8', 'Method Not Allowed');
       if (!keyed) return send(401, 'application/json', error('Not authenticated', 'authentication_error'));
       if (path === '/v1/models') return send(200, 'application/json', JSON.stringify({ object: 'list', data: models }));
-      if (path === '/props') return send(200, 'application/json', JSON.stringify({ default_generation_settings: { n_ctx: 32768 }, total_slots: 1, modalities: { vision: true }, model_alias: 'qwen3.8-flash' }));
+      // llama.cpp's server properties: the context each conversation gets, what the loaded model takes in, and its name.
+      if (path === '/props') return send(200, 'application/json', JSON.stringify(o.props ?? { default_generation_settings: { n_ctx: 32768 }, total_slots: 1, modalities: { vision: true, audio: false }, model_alias: 'qwen3.8-flash' }));
+      // Ollama's models loaded now, each with the context it was given, and what one model can do (its docs, api/types.go).
+      if (path === '/api/ps') return send(200, 'application/json', JSON.stringify({ models: o.running ?? [{ name: 'qwen3:8b', model: 'qwen3:8b', size: 6e9, size_vram: 6e9, context_length: 4096 }] }));
+      if (path === '/api/show') {
+        const shown = (o.show ?? SHOW)[body?.model];
+        return shown ? send(200, 'application/json', JSON.stringify(shown)) : send(404, 'application/json', JSON.stringify({ error: `model '${body?.model}' not found` }));
+      }
+      // LM Studio's own list: capabilities, and each loaded instance's context.
+      if (path === '/api/v1/models') return send(200, 'application/json', JSON.stringify({ models: o.native ?? NATIVE }));
       if (path === '/health') return send(200, 'application/json', '{"status":"ok"}');
       if (!body || typeof body !== 'object') return send(400, 'application/json', error('missing required field: model', 'invalid_request_error'));
       if (path !== CHAT) return send(501, 'application/json', error('This stand-in answers only chat completions.', 'not_implemented'));

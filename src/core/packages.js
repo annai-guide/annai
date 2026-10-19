@@ -53,6 +53,8 @@ export const PLUGIN_MANIFEST_SCHEMA = {
     },
     category: { enum: CATEGORIES },
     keywords: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 40 } },
+    featured: { type: 'string', minLength: 1, maxLength: 200 },
+    catchAll: { type: 'boolean' },
   },
 };
 

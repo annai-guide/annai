@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '7c586782b6bf';
+const BUILD = '532faac470c6';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -66,6 +66,7 @@ const SHELL = [
   '/src/core/backup-targets.js',
   '/src/core/bookings.js',
   '/src/core/bytes.js',
+  '/src/core/catalog-facts.js',
   '/src/core/crc32.js',
   '/src/core/errors.js',
   '/src/core/events.js',
@@ -83,6 +84,7 @@ const SHELL = [
   '/src/core/llm/official.js',
   '/src/core/llm/provider-desc.js',
   '/src/core/llm/providers.js',
+  '/src/core/llm/setup.js',
   '/src/core/llm/cost.js',
   '/src/core/llm/partial-json.js',
   '/src/core/llm/reasoning.js',
@@ -132,6 +134,7 @@ const SHELL = [
   '/src/core/registry.js',
   '/src/core/request-photos.js',
   '/src/core/schema.js',
+  '/src/core/search.js',
   '/src/core/scopes.js',
   '/src/core/settings.js',
   '/src/core/skills.js',
@@ -143,10 +146,12 @@ const SHELL = [
   '/src/core/xml.js',
   '/src/core/tsv.js',
   '/src/core/voice/detector.js',
+  '/src/core/voice/formats.js',
   '/src/core/voice/gate.js',
   '/src/core/voice/listening.js',
   '/src/core/voice/mic.js',
   '/src/core/voice/mode.js',
+  '/src/core/voice/mux.js',
   '/src/core/voice/pcm.js',
   '/src/core/voice/platform.js',
   '/src/core/voice/recorder.js',
@@ -195,19 +200,20 @@ const SHELL = [
   '/src/ui/notices.js',
   '/src/ui/offline-pack.js',
   '/src/ui/open-file.js',
-  '/src/ui/openrouter.js',
   '/src/ui/photo-codec.js',
   '/src/ui/photo-viewer.js',
   '/src/ui/platform.js',
   '/src/ui/privacy.js',
   '/src/ui/plugin-cards.js',
   '/src/ui/plugin-pending.js',
+  '/src/ui/provider-setup.js',
   '/src/ui/plugin-updates.js',
   '/src/ui/push.js',
   '/src/ui/router.js',
   '/src/ui/save.js',
   '/src/ui/settings-form.js',
   '/src/ui/screens/about.js',
+  '/src/ui/screens/add.js',
   '/src/ui/screens/backups.js',
   '/src/ui/screens/booking.js',
   '/src/ui/screens/drive.js',

@@ -1,5 +1,5 @@
 // Writes catalog/plugins.json from plugins-official/: each official plugin's facts (its kind, abilities,
-// keywords, size and requirements, as scripts/catalog-facts.mjs reads them), what it provides and the
+// keywords, size and requirements, as src/core/catalog-facts.js reads them), what it provides and the
 // SHA-256 of every file, which annai checks before installing (spec §5.3). Every plugin's manifest is
 // checked as annai checks one, and every provider's requirements and abilities are checked against the
 // catalog: each requirement is there in range, and each ability's type comes from a plugin it requires.
@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkManifest } from '../src/core/packages.js';
-import { catalogFacts } from './catalog-facts.mjs';
+import { catalogFacts } from '../src/core/catalog-facts.js';
 import { satisfies } from '../src/core/requires.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -44,7 +44,8 @@ for (const e of (await readdir(dir, { withFileTypes: true })).filter((x) => x.is
     size += (await stat(join(base, f))).size;
   }
   const facts = catalogFacts(manifest, { size });
-  plugins.push({ ...facts, provides: manifest.provides ?? {}, files: hashes });
+  // featured: the one-tap start's provider (spec §9.8); it counts only here, in annai's own catalog.
+  plugins.push({ ...facts, ...(manifest.featured ? { featured: manifest.featured } : {}), provides: manifest.provides ?? {}, files: hashes });
 }
 
 // What a provider needs is in the catalog, in range, and gives each of its abilities' types.

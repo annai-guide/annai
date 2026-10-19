@@ -27,7 +27,7 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.6.0",
+      "version": "0.8.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19224,
+      "size": 19389,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -43,8 +43,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "00f959aa9abb83c8066188f0dafc67daa7ca807a592a3fd740cc76a808528f11",
-        "index.js": "f507e313bb72456b66c95ad685dd671dae20fe4d243543d5804ee858fec1ade4"
+        "annai-plugin.json": "5e78158293a9a2ec7f5d496b6ba7631043af3007e49d0dddfde36ad348498864",
+        "index.js": "544016a052c55d7ab5cfd0d8e347e06a38e1cc6ab36a80d1065b11d855557bde"
       }
     },
     {
@@ -73,7 +73,7 @@
     {
       "id": "provider-another-address",
       "name": "Another address",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, then switch on what it offers.",
       "category": "providers",
       "keywords": [
@@ -90,11 +90,12 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 2146,
+      "size": 2166,
       "requires": [],
+      "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "511d00724b07a89f94fd2403e9b03306a4f8d2cc7e9b1df5680b585e35df0dfa"
+        "annai-plugin.json": "fbef424057f9200bcd4c5522c57ab40dfa7bff529329999eee69cb8ab12a57fb"
       }
     },
     {
@@ -150,7 +151,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Gemini models through Google's OpenAI-compatible endpoint.",
       "category": "providers",
       "keywords": [],
@@ -160,7 +161,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 838,
+      "size": 911,
       "requires": [
         {
           "id": "chat-completions",
@@ -169,13 +170,13 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "ce9e6cdb1ab2c4d87dffaa11bf81413a26701d975ac83d00f07a6f5b2b00469a"
+        "annai-plugin.json": "5fb33ea0abb312b9f67a27eece05428a4275f51a56ac968ddf25b237829b47c9"
       }
     },
     {
       "id": "provider-groq",
       "name": "Groq",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Fast open models, and fast Whisper transcription.",
       "category": "providers",
       "keywords": [],
@@ -186,7 +187,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 1424,
+      "size": 1607,
       "requires": [
         {
           "id": "chat-completions",
@@ -199,13 +200,13 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "486deb789765385f011486151e74ed5a4b35ab4984eea3cdfec4b13b7c9dcb13"
+        "annai-plugin.json": "2bbac45f89c61ad0faa40c9422dd54e457398cd6359143347312b4d8de258aa3"
       }
     },
     {
       "id": "provider-llamacpp",
       "name": "llama.cpp",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Models on a llama.cpp server you run (llama-server), or one built on it such as Unsloth Studio or KoboldCpp. Their thinking is switched off for quick decisions.",
       "category": "providers",
       "keywords": [
@@ -218,8 +219,8 @@
       ],
       "free": false,
       "local": true,
-      "code": false,
-      "size": 2419,
+      "code": true,
+      "size": 4236,
       "requires": [
         {
           "id": "chat-completions",
@@ -228,13 +229,14 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "a057c552705c7fd625c1944de0005b40ad673671b4e88d9284c2d711d47f82a7"
+        "annai-plugin.json": "f909e1c12fd074db893fb93690c2f5ef5b0f1c4a34078c06292b0e2fef547a0d",
+        "index.js": "29fc232f48ffb0ce35ad94f8ee7aa96fef88ba137bdfbfaade2d02dcf643bdc5"
       }
     },
     {
       "id": "provider-lmstudio",
       "name": "LM Studio",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Models on LM Studio's server.",
       "category": "providers",
       "keywords": [],
@@ -243,8 +245,8 @@
       ],
       "free": false,
       "local": true,
-      "code": false,
-      "size": 1163,
+      "code": true,
+      "size": 3436,
       "requires": [
         {
           "id": "chat-completions",
@@ -253,13 +255,14 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "0417c103cd627f54d66e71413472ad51a93abec2386d5b23efc4cef5f3c01ce3"
+        "annai-plugin.json": "796effa145a97d0edc9482aa861e48e18d61d18efd769123c2699e0b4ed415b4",
+        "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451"
       }
     },
     {
       "id": "provider-local-speech",
       "name": "Local speech server",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
       "category": "speech",
       "keywords": [
@@ -274,7 +277,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1084,
+      "size": 1508,
       "requires": [
         {
           "id": "speech-openai",
@@ -283,7 +286,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "cdcb214c562a94ab0d293276906cafaac7cb0b0e0f77bd71ae27586bc048399a"
+        "annai-plugin.json": "a476804001c49cba0729c279633e31d5b9927ce2b0c328b9c48b2d4a494fd152"
       }
     },
     {
@@ -314,7 +317,7 @@
     {
       "id": "provider-ollama",
       "name": "Ollama",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Models on Ollama, with their thinking switched off for quick decisions.",
       "category": "providers",
       "keywords": [],
@@ -323,8 +326,8 @@
       ],
       "free": false,
       "local": true,
-      "code": false,
-      "size": 1785,
+      "code": true,
+      "size": 4394,
       "requires": [
         {
           "id": "chat-completions",
@@ -333,7 +336,8 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "d875efc172f96d48685c31501c3370104096f5a40923ec7939493242b7682703"
+        "annai-plugin.json": "877a05b72ea616b983dfb42ab2a6e2aad3f5f519e250421e0fef87fe58518422",
+        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb"
       }
     },
     {
@@ -370,7 +374,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -381,8 +385,8 @@
       ],
       "free": true,
       "local": false,
-      "code": false,
-      "size": 12277,
+      "code": true,
+      "size": 27051,
       "requires": [
         {
           "id": "chat-completions",
@@ -393,9 +397,11 @@
           "version": "^0"
         }
       ],
+      "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "f0c28243c5c0a068f292753db9d085e3337482afdf51e44614fbf6c86787ced5"
+        "annai-plugin.json": "11303dd69457849f5e6a015b0858bc7c972fd966f33912695f182f1e312a9b63",
+        "index.js": "31a1cc2a0a534ec00151891c495fc1663ca35b70107c42914bab8909548fe25f"
       }
     },
     {
@@ -451,7 +457,7 @@
     {
       "id": "provider-vllm",
       "name": "vLLM",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Models on a vLLM server you run, with their thinking switched through the chat template, and Whisper models for transcription.",
       "category": "providers",
       "keywords": [],
@@ -462,7 +468,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 2381,
+      "size": 2564,
       "requires": [
         {
           "id": "chat-completions",
@@ -471,7 +477,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "6a32bcdd9d338a37ef6b2263b2b044ced82e6cbc8ca773544ceb583da9b98f14"
+        "annai-plugin.json": "69a1eff6ba80e026c4d199f9bc80f71f3a45f45123d2eba33aafb31fb5d95842"
       }
     },
     {
@@ -519,7 +525,7 @@
     {
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.",
       "category": "developer",
       "keywords": [],
@@ -527,7 +533,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 5028,
+      "size": 5436,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -536,8 +542,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "8434d28413ef9a9f8f7842ae1cce4fee202d40907b406594d14c7112f78c72e0",
-        "index.js": "704573b61cb1660bea03947f873b18b2a33463ab77a91c41bf474cea33f5cb6d"
+        "annai-plugin.json": "bd6bbecd8c1eddbd0aae320338281553e8b7b8f3de7553a21ae4105b0ee5d501",
+        "index.js": "ade6b64fe75cb53acb028c391da95aa181b8c38dcf93b3f717cfcff0ec9df1e0"
       }
     },
     {

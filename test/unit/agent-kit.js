@@ -53,7 +53,8 @@ export function fakeCodec(formats) {
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
  * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
- *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string },
+ *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
+ *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> } }} [opts]
  *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
@@ -158,10 +159,11 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   /** @type {ReturnType<typeof fakePlatform> | null} */
   let platform = null;
   if (v) {
-    platform = fakePlatform({ playMs: v.playMs ?? 5, dictation: v.dictation, micFails: v.micFails });
+    platform = fakePlatform({ playMs: v.playMs ?? 5, dictation: v.dictation, micFails: v.micFails, encoder: v.encoder, plays: v.plays });
     registry.add('voice-browser', 'voice-platform', platform);
     await updateAppSettings(ws, { voice: { mode: v.mode ?? 'on', keepClips: Boolean(v.keepClips) } });
     voice = new Voice({ llm, ws, registry, store, locale: 'en', where: 'ios' });
+    voice.retryMs = [0, 0]; // a failed upload is sent again at once here
     await voice.refresh(); // as the app does when it starts
   }
   /** @type {any} */

@@ -10,6 +10,8 @@ import { checkRequires, installWith, checkPackageId } from '../../core/requires.
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
+/** A plugin's code loads through the service worker (spec §5.3). */
+export const NO_SERVICE = "Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.";
 
 /**
  * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
@@ -111,13 +113,15 @@ export function restartCard(ctx, name) {
  */
 export async function renderPluginInstall(ctx) {
   const p = pendingPackage();
-  const back = h('p', { class: 'crumbs' }, h('a', { href: '#/plugins' }, '← Plugins'));
+  // Back to the Add screen it was picked on, where installing from a file or an address starts.
+  const to = p?.back ?? '#/add';
+  const back = h('p', { class: 'crumbs' }, h('a', { href: to }, '← Add'));
   if (!p) {
     return h('div', { class: 'screen' }, back, h('h1', { class: 'title', text: 'Nothing to install' }),
-      h('p', {}, "There's nothing to install. ", h('a', { href: '#/plugins' }, 'Go back to Plugins.')));
+      h('p', {}, "There's nothing to install. ", h('a', { href: to }, 'Go back to Add.')));
   }
   const { pkg, from } = p;
-  const what = pkg.kind === 'skill' ? 'A skill' : pkg.provider && !pkg.code ? 'A model provider · data only' : pkg.code ? 'A plugin' : 'A package without code';
+  const what = pkg.kind === 'skill' ? 'A skill' : pkg.provider ? `A model provider · ${pkg.code ? 'has code' : 'data only'}` : pkg.code ? 'A plugin' : 'A package without code';
   const line = [what, pkg.shownVersion ? `version ${pkg.shownVersion}` : null, pkg.author ? `by ${pkg.author}` : null].filter(Boolean).join(' · ');
   const home = webAddress(pkg.homepage);
   const needs = await needsOf(ctx, pkg);
@@ -147,7 +151,7 @@ export async function renderPluginInstall(ctx) {
       h('h2', { class: 'section', text: 'New in this version' }),
       h('ul', { class: 'brings' }, ...whatItBrings(pkg.replaces.added).map((t) => h('li', { text: t })))) : null,
     h('div', { class: 'acts' }, install,
-      h('button', { class: 'btn', type: 'button', onclick: () => { setPendingPackage(null); ctx.go('#/plugins'); } }, 'Cancel')));
+      h('button', { class: 'btn', type: 'button', onclick: () => { setPendingPackage(null); ctx.go(to); } }, 'Cancel')));
 }
 
 /** Installs the package on screen, then starts it; each step that fails says so. @param {any} ctx @param {HTMLButtonElement} button */
@@ -159,7 +163,7 @@ async function installPending(ctx, button) {
   try {
     // What it needs (annai's own, from its catalog) may be code too.
     if ((pkg.code || pkg.requires?.length) && !navigator.serviceWorker?.controller) {
-      throw new Error("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.");
+      throw new Error(NO_SERVICE);
     }
     if (pkg.requires?.length) {
       // With what it requires, all or nothing, and started (spec §5.3).

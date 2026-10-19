@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, pickProvider, startSettled } from './helpers.js';
 import { startFakeServer } from '../fakes/model-server.js';
 
 // Servers you run (milestone 2): a provider plugin per local server, whose quirks are data. The stand-ins
@@ -18,9 +18,7 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await page.getByLabel('Add a provider').selectOption({ label: 'llama.cpp' });
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'llama.cpp' })).toBeVisible({ timeout: 30_000 });
+    await pickProvider(page, 'llama.cpp');
     // Its default address, and the words for a phone.
     await expect(page.getByLabel('Address', { exact: true })).toHaveValue('http://localhost:9931/v1');
     await expect(page.getByText(/From a phone, the server needs an HTTPS address/)).toBeVisible();
@@ -32,6 +30,8 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     await chat.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(chat.getByText('1 model.')).toBeVisible();
     await chat.getByRole('button', { name: 'Add qwen3.8-flash' }).click();
+    // The context the server serves, from its /props (decision 22).
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toContainText('33K context');
     // The list said it reads images: it takes photos.
     await page.getByRole('link', { name: /^qwen3\.8-flash/ }).click();
     await expect(page.getByLabel('Takes photos')).toBeChecked();
@@ -67,7 +67,10 @@ test("a router that never streams, through Another address's Chat Completions: T
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await expect(page.getByLabel('Add a provider').locator('option', { hasText: 'llama.cpp' })).toHaveCount(1);
+    await startSettled(page);
+    await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Add llama.cpp', exact: true })).toHaveCount(1);
+    await page.getByRole('link', { name: '← Models' }).click();
     await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Router', url: `${s.origin}/v1`, key: 'sk-test-router-0123', model: 'router-model' });
     await page.getByRole('link', { name: /Router/ }).click();
     await expect(page.getByText(/never streams.*Wait for the first words/)).toBeVisible();
@@ -89,9 +92,7 @@ test("a router that never streams, through Another address's Chat Completions: T
 test('an address on your network over plain http is refused in words that say how to reach it', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await page.getByLabel('Add a provider').selectOption({ label: 'Ollama' });
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ollama' })).toBeVisible({ timeout: 30_000 });
+  await pickProvider(page, 'Ollama');
   await expect(page.getByLabel('API key'), 'Ollama takes no key').toHaveCount(0);
   await expect(page.getByText(/OLLAMA_ORIGINS=https:\/\/annai\.guide/)).toBeVisible();
   await page.getByLabel('Address', { exact: true }).fill('http://192.168.1.20:11434/v1');

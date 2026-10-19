@@ -12,7 +12,7 @@ import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError, TAKEN } from './registry.js';
+import { PluginError, TAKEN, isPluginBug } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
@@ -21,10 +21,13 @@ import { checkTool } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { mergePatch } from './patch.js';
 import { descOrigins } from './llm/provider-desc.js';
+import { checkSetup } from './llm/setup.js';
+import { catalogFacts } from './catalog-facts.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
 export { API_VERSION, MANIFEST_FILE, PLUGIN_MAX_BYTES, PLUGIN_MANIFEST_SCHEMA } from './packages.js';
+export { isPluginBug } from './registry.js';
 /** How long a plugin's activate() may take before annai gives up on it. */
 export const START_TIMEOUT = 10_000;
 /** Launches in a row a plugin may fail to start on before annai turns it off. */
@@ -42,24 +45,8 @@ function defaultsOf(schema) {
   return structuredClone(Object.fromEntries(Object.entries(props).filter(([, p]) => p?.default !== undefined && !p.writeOnly).map(([k, p]) => [k, p.default])));
 }
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
-/** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
-const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
-
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
   backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer });
-
-/**
- * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the
- * browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer (§17).
- * @param {unknown} e
- */
-export function isPluginBug(e) {
-  if (!(e instanceof Error)) return true;
-  const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
-  // An address the user typed that isn't one is the user's to fix, not a bug.
-  const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
-  return !offline && !address && BUGS.some((B) => e instanceof B);
-}
 
 /** A state record's kind: a bare skill, or a plugin (every record from before milestone 8). @param {any} s @returns {'skill' | 'plugin'} */
 const kindOfState = (s) => (s?.kind === 'skill' ? 'skill' : 'plugin');
@@ -548,12 +535,22 @@ export class PluginHost {
     return { ...had, bytes };
   }
 
-  /** Rows for the plugins screen. problem: why an installed plugin can't start, if it can't. */
+  /**
+   * Rows for the plugins screen, each with the facts annai's catalog gives (its kind, abilities,
+   * keywords, size: catalogFacts) and what it provides. problem: why an installed plugin can't start, if it can't.
+   */
   async describe() {
     const rows = [];
     const skillsOf = (/** @type {string} */ id) => this.registry.entries('skill').filter((e) => e.pluginId === id).map((e) => String(e.item?.name));
+    /** @type {Map<string, number>} each package's files' bytes, by its folder */
+    const sizes = new Map();
+    for (const f of await this.ws.list(SYS_PLUGINS, '/')) {
+      const id = f.path.split('/')[1];
+      sizes.set(id, (sizes.get(id) ?? 0) + f.size);
+    }
     for (const m of this.builtins.values()) {
       rows.push({
+        ...catalogFacts(m), provides: m.provides ?? {},
         id: m.id, name: m.name, version: m.version, shownVersion: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id),
         failing: this.registry.isDisabled(m.id), problem: null, restart: false, kind: 'plugin', source: 'builtin', skills: skillsOf(m.id), code: true, settings: null,
         provider: false, requires: [],
@@ -579,6 +576,7 @@ export class PluginHost {
       }
       const active = this.active.has(id);
       rows.push({
+        ...catalogFacts(m ?? { id, name: s.name ?? id, version: s.version }, { size: sizes.get(id) ?? 0 }), provides: m?.provides ?? {},
         id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
         enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
         kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: m?.settings ?? null,
@@ -847,6 +845,14 @@ export class PluginHost {
             throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech()`);
           }
           return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
+        },
+        /** A provider plugin's own setup and quirks, once (decision 15; docs/plugins.md, "Model providers with code"). */
+        setup: (/** @type {any} */ item) => {
+          if (!manifest.provider) throw new PluginError(id, 'providers.setup is for a plugin that describes a model provider (its manifest has no provider)');
+          const wrong = checkSetup(item);
+          if (wrong) throw new PluginError(id, wrong);
+          if (registry.entries('provider-setup', { all: true }).some((e) => e.pluginId === id)) throw new PluginError(id, 'called providers.setup twice: a plugin has one setup');
+          return registry.add(id, 'provider-setup', Object.freeze({ ...item, keyField: item.keyField !== false }));
         },
       }),
       storage: Object.freeze({

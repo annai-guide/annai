@@ -1,8 +1,9 @@
 {
   "id": "provider-lmstudio",
   "name": "LM Studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 1,
+  "entry": "index.js",
   "description": "Models on LM Studio's server.",
   "category": "providers",
   "requires": [
@@ -20,7 +21,7 @@
       "chat": {
         "kind": "chat",
         "type": "chat-completions",
-        "note": "Add models with Fetch model list, then set each one's context window on its page. LM Studio doesn't document how thinking is switched: set a model's Reasoning levels on its page if it thinks."
+        "note": "Add models with Fetch model list. For a model loaded in LM Studio, it reads the context it was loaded with, and whether it reads images and was trained for tool calls; for one not loaded, set its context window on its page. LM Studio doesn't document how thinking is switched: set a model's Reasoning levels on its page if it thinks."
       }
     }
   }

@@ -1,12 +1,65 @@
 import { encodeWav } from '../../core/voice/pcm.js';
+import { oggOpus, webmOpus, adts, flacFile, cat } from '../../core/voice/mux.js';
+import { CODEC_ORDER, mediaTypeOf } from '../../core/voice/formats.js';
 
 /**
  * The device side of voice (spec §10), a built-in plugin (§19): one audio player for every voice
  * clip, unlocked by the first tap of each session (an iPhone rule, §10.1); the browser's own
  * voice; the microphone, through an AudioWorklet (§10.2); the phone's dictation; the audio devices,
- * for voice Auto (§10.5); and the audio session type where the browser has one (Safari). The core reaches it as 'voice-platform'.
+ * for voice Auto (§10.5); the audio session type where the browser has one (Safari); and its audio
+ * encoders (§10.6). The core reaches it as 'voice-platform'.
  * @typedef {import('../../core/voice/platform.js').VoicePlatform} VoicePlatform
  */
+
+/** AudioEncoder's codecs, at 16 kHz mono: bitrate, and the files each makes. */
+const CODECS = /** @type {[string, number, string[]][]} */ ([['opus', 24_000, ['ogg', 'webm']], ['mp4a.40.2', 32_000, ['aac']], ['mp3', 32_000, ['mp3']], ['flac', 0, ['flac']]]);
+/** @param {string} format */
+const codecFor = (format) => CODECS.find((c) => c[2].includes(format))?.[0];
+/** MediaRecorder's types; plain audio/mp4 in case iOS refuses the codec string. */
+const RECORDS = [['audio/ogg;codecs=opus', 'ogg'], ['audio/webm;codecs=opus', 'webm'], ['audio/mp4;codecs=mp4a.40.2', 'mp4'], ['audio/mp4', 'mp4']];
+const PARAMS = /** @type {Record<string, string>} */ ({ ogg: '; codecs=opus', webm: '; codecs=opus', mp4: '; codecs=mp4a.40.2' });
+
+/**
+ * One codec's packets for 16-bit PCM, and its description (OpusHead, AAC's config, FLAC's
+ * metadata). An encoder that hasn't finished in ms has failed. @param {Int16Array} pcm @param {number} rate @param {string} codec @param {number} ms
+ * @returns {Promise<{ packets: Uint8Array[], description: Uint8Array | null }>}
+ */
+async function encodeWith(pcm, rate, codec, ms) {
+  /** @type {Uint8Array[]} */
+  const packets = [];
+  /** @type {Uint8Array | null} */
+  let description = null;
+  /** @type {unknown} */
+  let failed = null;
+  /** @type {any} */
+  let timer;
+  const enc = new AudioEncoder({
+    output: (chunk, meta) => {
+      const b = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(b);
+      packets.push(b);
+      const d = /** @type {any} */ (meta?.decoderConfig?.description);
+      if (d) description = ArrayBuffer.isView(d) ? new Uint8Array(d.buffer, d.byteOffset, d.byteLength).slice() : new Uint8Array(d).slice();
+    },
+    error: (e) => { failed = e; },
+  });
+  try {
+    const bitrate = CODECS.find((c) => c[0] === codec)?.[1];
+    enc.configure({ codec, sampleRate: rate, numberOfChannels: 1, ...(bitrate ? { bitrate } : {}) });
+    const data = new AudioData({ format: 's16', sampleRate: rate, numberOfFrames: pcm.length, numberOfChannels: 1, timestamp: 0, data: /** @type {Int16Array<ArrayBuffer>} */ (pcm) });
+    enc.encode(data);
+    data.close();
+    const flushed = enc.flush();
+    flushed.catch(() => {}); // closed below when it took too long
+    await Promise.race([flushed, new Promise((_, no) => { timer = setTimeout(() => no(new Error(`The ${codec} encoder took too long.`)), ms); })]);
+  } finally {
+    clearTimeout(timer);
+    if (enc.state !== 'closed') enc.close();
+  }
+  if (failed) throw failed;
+  if (!packets.length) throw new Error(`The ${codec} encoder made nothing.`);
+  return { packets, description };
+}
 export const manifest = { id: 'voice-browser', name: 'Voice on this device', version: '0.1.0', api: 1, description: "The phone's speaker, microphone, voice and dictation." };
 
 /** @param {any} annai */
@@ -14,8 +67,8 @@ export function activate(annai) {
   return annai.register('voice-platform', browserPlatform());
 }
 
-/** @returns {VoicePlatform} */
-export function browserPlatform() {
+/** limitMs: how long a codec's trial may take; an encoding gets that and 0.3 s a second of speech. @returns {VoicePlatform} */
+export function browserPlatform({ limitMs = 2000 } = {}) {
   /** @type {AudioContext | null} */
   let ctx = null;
   const context = () => (ctx ??= new AudioContext());
@@ -24,6 +77,21 @@ export function browserPlatform() {
   const player = () => (element ??= new Audio());
   /** @type {Promise<void> | null} */
   let worklet = null;
+  /** @type {Promise<string[]> | null} */
+  let made = null;
+  /** Codecs whose encoding failed or hung: WAV and the rest until annai restarts. */
+  const broken = new Set();
+  /** A segment's packets by codec, so its Ogg and its WebM share one encoding. @type {WeakMap<ArrayBufferLike, Map<string, ReturnType<typeof encodeWith>>>} */
+  const packets = new WeakMap();
+  /** @param {Int16Array} pcm @param {number} rate @param {string} codec */
+  const packetsOf = (pcm, rate, codec) => {
+    let m = packets.get(pcm.buffer);
+    if (!m) packets.set(pcm.buffer, (m = new Map()));
+    const key = `${codec} ${rate} ${pcm.byteOffset} ${pcm.length}`;
+    let p = m.get(key);
+    if (!p) m.set(key, (p = encodeWith(pcm, rate, codec, limitMs + (pcm.length / rate) * 300)));
+    return p;
+  };
 
   /**
    * The clip's loudness every 50 ms, 0..1, for the glow (spec §16.3), read with Web Audio's
@@ -69,6 +137,7 @@ export function browserPlatform() {
         }
         return played;
       },
+      plays: () => CODEC_ORDER.flat().filter((f) => f !== 'opus' && player().canPlayType(mediaTypeOf(f) + (PARAMS[f] ?? '')) !== ''),
       async play(clip, { signal, onLevel = () => {} }) {
         if (signal.aborted) return { ended: false, fraction: 0 };
         const a = player();
@@ -155,8 +224,40 @@ export function browserPlatform() {
         });
       },
     },
+    encoder: {
+      // Each codec tried once, side by side, on a tenth of a second: one the browser says it has may still fail or hang.
+      async makes() {
+        made ??= typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined' ? Promise.resolve([])
+          : Promise.all(CODECS.map(([codec, , formats]) => encodeWith(new Int16Array(1600), 16_000, codec, limitMs).then(() => formats, () => []))).then((l) => l.flat());
+        return (await made).filter((f) => !broken.has(codecFor(f)));
+      },
+      records: () => (typeof MediaRecorder === 'undefined' ? [] : RECORDS.filter(([t]) => MediaRecorder.isTypeSupported(t)).map(([type, format]) => ({ type, format }))
+        .filter((r, i, all) => all.findIndex((x) => x.format === r.format) === i)),
+      async encode(pcm, rate, format) {
+        const codec = codecFor(format);
+        if (!codec) throw new Error(`annai can't make ${format} here.`);
+        const { packets: p, description: d } = await packetsOf(pcm, rate, codec).catch((e) => {
+          broken.add(codec);
+          throw e;
+        });
+        if (codec === 'opus') {
+          const head = d && String.fromCharCode(...d.subarray(0, 8)) === 'OpusHead' ? d : null;
+          // 312: libopus's usual look-ahead. Chromium gives it at the input's rate (104 at 16 kHz); the file wants 48 kHz.
+          const ps = head ? head[10] | (head[11] << 8) : 312;
+          const o = { rate, channels: 1, samples: pcm.length, preSkip: ps < 120 ? Math.round((ps * 48_000) / rate) : ps };
+          return format === 'ogg' ? oggOpus(p, o) : webmOpus(p, o);
+        }
+        if (codec === 'mp4a.40.2') return adts(p, { rate, channels: 1 });
+        if (codec === 'flac') return flacFile(d, p);
+        return cat(p); // MP3 frames are a file as they are
+      },
+      async decode(data) {
+        const buf = await context().decodeAudioData(data.slice().buffer);
+        return { pcm: buf.getChannelData(0), rate: buf.sampleRate };
+      },
+    },
     mic: {
-      async open({ onFrames, onError }) {
+      async open({ onFrames, onError, record }) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         try {
           const c = context();
@@ -176,8 +277,47 @@ export function browserPlatform() {
           source.connect(node);
           node.connect(silent).connect(c.destination); // some browsers run a node only when it leads somewhere
           for (const t of stream.getAudioTracks()) t.onended = () => onError(new Error('The microphone stopped.'));
+          // A MediaRecorder alongside (decision 24), in files cut by take().
+          /** @type {MediaRecorder | null} */
+          let rec = null;
+          /** @type {Blob[]} */
+          let parts = [];
+          const begin = () => {
+            if (!record) return;
+            const mine = (parts = []);
+            try {
+              rec = new MediaRecorder(stream, { mimeType: record, audioBitsPerSecond: 32_000 });
+              rec.ondataavailable = (e) => { if (e.data.size) mine.push(e.data); };
+              rec.start();
+            } catch {
+              rec = null; // the segment is sent as the encoder or WAV make it
+            }
+          };
+          /** keep: read the file; else it is thrown away unread. @returns {Promise<Uint8Array | null>} */
+          const end = (keep = false) => new Promise((resolve) => {
+            const r = rec;
+            const mine = parts;
+            rec = null;
+            if (!r || r.state === 'inactive') return resolve(null);
+            r.onstop = () => (keep ? new Blob(mine).arrayBuffer().then((b) => resolve(b.byteLength ? new Uint8Array(b) : null), () => resolve(null)) : resolve(null));
+            r.onerror = () => resolve(null);
+            r.stop();
+          });
+          begin();
           return {
+            ...(record ? {
+              take() {
+                const file = end(true);
+                begin();
+                return file;
+              },
+              again() {
+                end();
+                begin();
+              },
+            } : {}),
             close() {
+              end();
               node.port.onmessage = null;
               for (const t of stream.getTracks()) {
                 t.onended = null;

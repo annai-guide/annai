@@ -16,10 +16,11 @@ const TUNABLES = Object.freeze({
   // What a call in the current turn without its own extra_content carries (another model wrote it, before a fallback): Gemini 3
   // refuses such a call, and its docs give a stand-in thought signature for it. Gemini's description sets it.
   standInCallExtra: null,
+  audioIn: ['wav', 'mp3'], // what input_audio takes: OpenAI's and Gemini's take only these; OpenRouter's say more (spec §10.6)
 });
 const STOP = /** @type {Record<string, string>} */ ({ stop: 'end', tool_calls: 'tool', function_call: 'tool', length: 'length', content_filter: 'refusal' });
 const CODES = /** @type {Record<string, string>} */ ({ context_length_exceeded: 'context', insufficient_quota: 'credit', invalid_api_key: 'auth', model_not_found: 'not-found' });
-const AUDIO = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/flac': 'flac', 'audio/ogg': 'ogg', 'audio/aac': 'aac' });
+const AUDIO = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/flac': 'flac', 'audio/ogg': 'ogg', 'audio/aac': 'aac', 'audio/webm': 'webm', 'audio/mp4': 'm4a' });
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -308,17 +309,16 @@ function usageOf(u) {
 }
 
 /**
- * A sharper kind for an error: by its OpenAI-style code, OpenRouter's free-model limits or Google's status; or null.
- * @param {number} _status @param {string} body
+ * A sharper kind for an error, by its OpenAI-style code or Google's status, or null. A provider's own limits are its
+ * plugin's (decision 15). @param {number} status @param {string} body
  */
-function classify(_status, body) {
+function classify(status, body) {
   try {
     const j = JSON.parse(body);
-    const e = (Array.isArray(j) ? j[0] : j)?.error;
-    // OpenRouter's free models used up for the day: its words ask for credits, but no account ran out.
-    if (/free-models-per-(day|min)/.test(String(e?.message))) return 'rate';
-    // Gemini's limits (its free tier's a minute among them) say "quota" too: they are too many requests for now.
-    if (e?.status === 'RESOURCE_EXHAUSTED') return 'rate';
+    const e = (Array.isArray(j) ? j[0] : j)?.error; // Google's APIs send a list of one
+    // Google's RESOURCE_EXHAUSTED on a 429 (its free tier's limits among them) says "quota", and is too many requests;
+    // on a 402 (prepaid credit used up) it is an account out of credit, as the status says.
+    if (status === 429 && e?.status === 'RESOURCE_EXHAUSTED') return 'rate';
     return CODES[String(e?.code ?? e?.type ?? '')] ?? null;
   } catch {
     return null;

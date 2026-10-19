@@ -170,6 +170,12 @@ function eraseControls(ctx) {
       ctx.store.close();
       await eraseDatabase();
       try { await caches.delete('annai-inbox'); } catch { /* no caches */ }
+      // What annai keeps in the browser goes too, a sign-in waiting among it (its verifier), as on a new device; this
+      // tab's scroll positions as it goes, after the shell has kept them.
+      try {
+        for (const k of Object.keys(localStorage)) if (k.startsWith('annai.')) localStorage.removeItem(k);
+      } catch { /* storage blocked */ }
+      addEventListener('pagehide', () => { try { sessionStorage.clear(); } catch { /* storage blocked */ } });
       // Not while a tap's sound unlock starts its clip: that deadlocks WebKit on Linux (welcome.spec.js).
       await ctx.voice?.settled();
       // No hashchange: nothing may render against the closed store before the reload. annai starts again at
