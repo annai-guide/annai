@@ -420,11 +420,16 @@ test('Settings → Notifications offers what each state needs; when the phone to
 });
 
 test('the install screen says what a package brings and where it came from', async () => {
-  const { whatItBrings, sourceLine } = await import('../../src/ui/screens/plugin-install.js');
+  const { whatItBrings, sourceLine, keysNote } = await import('../../src/ui/screens/plugin-install.js');
   assert.deepEqual(whatItBrings({ code: true, skills: [{ name: 'trail-safety', description: 'Before a hike.' }], personalities: [{ name: 'ranger' }],
     provider: { abilities: { chat: { kind: 'chat' }, ears: { kind: 'transcription' }, voice: { kind: 'voice' } } } }),
   ['Code that runs in annai', 'Skill "trail-safety": Before a hike.', 'Personality "ranger"', 'A model provider: chat, transcription and voice']);
-  assert.deepEqual(whatItBrings({ code: false, skills: [], personalities: [], hosts: ['api.b.test'] }), ['Its provider now sends keys you give it to api.b.test']);
+  assert.deepEqual(whatItBrings({ code: false, skills: [], personalities: [], origins: ['https://api.b.test'] }), ['Its provider now sends keys you give it to https://api.b.test']);
+  // Security review: a fresh install of a provider says where keys go, with each origin's scheme.
+  assert.equal(keysNote({ provider: { baseUrl: 'https://api.openai.test/v1', abilities: { voice: { kind: 'voice', baseUrl: 'http://localhost:8880/v1' } } } }),
+    'Keys you give this provider are sent to http://localhost:8880 and https://api.openai.test.');
+  assert.equal(keysNote({ provider: { baseUrl: '', abilities: {} } }), 'Keys you give this provider are sent only to the address you give it.');
+  assert.equal(keysNote({ provider: null }), null);
   assert.deepEqual(whatItBrings({ code: false, skills: [], personalities: [] }), ['Nothing annai uses yet']);
   assert.equal(sourceLine({ source: 'url', url: 'https://trails.example/kits/SKILL.md?token=abc' }), 'From trails.example/kits/SKILL.md?token=«key»');
   assert.equal(sourceLine({ source: 'file', file: 'tides.zip' }), 'From a file: tides.zip');

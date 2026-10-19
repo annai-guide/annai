@@ -80,17 +80,34 @@ test("requires: a range that isn't ^N, an id that isn't one, or a homepage that 
   assert.deepEqual((await pkg([{ id: 'acme-proto', version: '^2', homepage: 'https://acme.example/annai' }])).requires, [{ id: 'acme-proto', version: '^2', homepage: 'https://acme.example/annai' }]);
 });
 
-test('addedParts: a provider whose description names a host the installed one did not has hosts in Added', async () => {
+test('addedParts: a provider whose description names an origin the installed one did not has origins in Added', async () => {
   const pkgWith = async (/** @type {string} */ baseUrl) => inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: { ...OPENAI_LIKE, baseUrl } }) }));
-  const added = addedParts({ code: false, skills: [], personalities: [], hosts: ['api.a.test'] }, await pkgWith('https://api.b.test/v1'));
-  assert.deepEqual(added.hosts, ['api.b.test']);
+  const before = { code: false, skills: [], personalities: [], origins: ['https://api.a.test'] };
+  const added = addedParts(before, await pkgWith('https://api.b.test/v1'));
+  assert.deepEqual(added.origins, ['https://api.b.test']);
   assert.equal(addsAnything(added), true);
-  assert.match(addedWords(added), /sends keys to api\.b\.test/);
+  assert.match(addedWords(added), /sends keys to https:\/\/api\.b\.test/);
   assert.equal(agreedTo(null, added), false);
   assert.equal(agreedTo(added, added), true);
-  const same = addedParts({ code: false, skills: [], personalities: [], hosts: ['api.a.test'] }, await pkgWith('https://api.a.test/v2'));
-  assert.deepEqual(same.hosts, []);
+  const same = addedParts(before, await pkgWith('https://api.a.test/v2'));
+  assert.deepEqual(same.origins, []);
   assert.equal(addsAnything(same), false);
+});
+
+test('security review: an update that changes the scheme or the port of where keys go is something new, asked first', async () => {
+  const before = { code: false, skills: [], personalities: [], origins: ['https://localhost:8443'] };
+  for (const baseUrl of ['http://localhost:8443/v1', 'https://localhost:9443/v1', 'http://localhost/v1']) {
+    const pkg = await inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: { ...OPENAI_LIKE, baseUrl } }) }));
+    const added = addedParts(before, pkg);
+    assert.equal(addsAnything(added), true, baseUrl);
+    assert.equal(agreedTo({ code: false, skills: [], personalities: [], origins: ['https://localhost:8443'] }, added), false, baseUrl);
+  }
+});
+
+test('security review: a manifest whose provider has an address that does not parse, or plain http to another machine, is refused', async () => {
+  for (const baseUrl of ['::not a url::', 'http://api.openai.test/v1']) {
+    await assert.rejects(inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: { ...OPENAI_LIKE, baseUrl } }) })), /provider isn't valid.*baseUrl/, baseUrl);
+  }
 });
 
 test('the fingerprint changes when any file or name does, and only then', async () => {

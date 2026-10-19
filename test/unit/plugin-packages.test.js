@@ -201,11 +201,23 @@ test('host: what a new version of an installed package adds is known before it i
   next.set('index.js', utf8('export function activate() {}'));
   next.set('skills/trail-maps/SKILL.md', utf8('---\nname: trail-maps\ndescription: Reading a trail map.\n---\nNorth is up.'));
   const added = (await host.inspect(next)).replaces?.added;
-  assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.hosts], [true, ['trail-maps'], [], []]);
-  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], hosts: [] });
-  // A provider that now sends keys somewhere new: that host is something new too (decision 11).
+  assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.origins], [true, ['trail-maps'], [], []]);
+  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], origins: [] });
+  // A provider that now sends keys somewhere new: that origin is something new too (decision 11).
   const moved = (await host.inspect(KIT({ version: '1.0.2', provider: { ...TRAIL_LLM, abilities: { chat: { ...TRAIL_LLM.abilities.chat, baseUrl: 'https://elsewhere.example/v1' } } } }))).replaces?.added;
-  assert.deepEqual(moved?.hosts, ['elsewhere.example']);
+  assert.deepEqual(moved?.origins, ['https://elsewhere.example']);
+});
+
+test('security review: the origins a provider sends keys to are kept with its record at install; an update compares against them', async () => {
+  const { host, ws } = await hostKit();
+  await host.install(KIT());
+  assert.deepEqual((await host.installed())['trail-kit'].origins, ['https://llm.trails.example']);
+  assert.deepEqual((await host.installedParts('trail-kit')).origins, ['https://llm.trails.example']);
+  // Even if the stored manifest changed under it, what the user agreed to at install is what counts.
+  await ws.write(SYS_PLUGINS, '/trail-kit/annai-plugin.json', { id: 'trail-kit', name: 'Trail kit', version: '1.0.0', api: 1, provider: { ...TRAIL_LLM, baseUrl: 'https://other.example/v1' } }, { author: 'system' });
+  assert.deepEqual((await host.installedParts('trail-kit')).origins, ['https://llm.trails.example']);
+  const downgrade = (await host.inspect(KIT({ version: '1.0.1', provider: { ...TRAIL_LLM, baseUrl: 'https://llm.trails.example:8443/v1' } }))).replaces?.added;
+  assert.deepEqual(downgrade?.origins, ['https://llm.trails.example:8443']);
 });
 
 // Fix pass 8a-2: a remove or an install while the plugin is starting.

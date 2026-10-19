@@ -7,7 +7,7 @@ import { PluginError } from './registry.js';
 import { parseSkill, skillVersion, skillLinks, frontMatter, SkillError, SKILL_FILE } from './skills.js';
 import { answerBytes } from './answer.js';
 import { readZip } from './zip.js';
-import { checkProviderDesc, descHosts, CATEGORIES } from './llm/provider-desc.js';
+import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.js';
 
 /**
  * A package as annai reads it before installing (spec §5.2): a folder, zip or address holding
@@ -410,11 +410,11 @@ function asManifest(url, body) {
 
 /**
  * What a package brings that an installed one didn't (the coordinator's second finding): code where
- * there was none, skills and personalities it didn't have, and hosts its provider description sends
- * keys to that the installed one didn't (milestone 1, decision 11). An update that adds any of them
- * asks the user first.
- * @typedef {{ code: boolean, skills: string[], personalities: string[], hosts: string[] }} Parts what an installed package has, by name
- * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], hosts: string[] }} Added
+ * there was none, skills and personalities it didn't have, and origins (scheme, host and port) its
+ * provider description sends keys to that the installed one didn't (milestone 1, decision 11; the
+ * security review: a change of scheme or port is new too). An update that adds any of them asks the user first.
+ * @typedef {{ code: boolean, skills: string[], personalities: string[], origins: string[] }} Parts what an installed package has, by name
+ * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], origins: string[] }} Added
  * @param {Parts} before @param {Package} pkg @returns {Added}
  */
 export function addedParts(before, pkg) {
@@ -422,12 +422,12 @@ export function addedParts(before, pkg) {
     code: !before.code && pkg.code,
     skills: pkg.skills.filter((s) => !before.skills.includes(s.name)),
     personalities: pkg.personalities.filter((p) => !before.personalities.includes(p.name)),
-    hosts: pkg.provider ? descHosts(pkg.provider).filter((h) => !(before.hosts ?? []).includes(h)) : [],
+    origins: pkg.provider ? descOrigins(pkg.provider).filter((o) => !(before.origins ?? []).includes(o)) : [],
   };
 }
 
 /** Whether anything was added. @param {Added | null | undefined} a */
-export const addsAnything = (a) => Boolean(a && (a.code || a.skills.length || a.personalities.length || a.hosts?.length));
+export const addsAnything = (a) => Boolean(a && (a.code || a.skills.length || a.personalities.length || a.origins?.length));
 
 /** Whether what the user agreed to covers what is added now. @param {Added | null | undefined} agreed @param {Added} added */
 export function agreedTo(agreed, added) {
@@ -436,7 +436,7 @@ export function agreedTo(agreed, added) {
   return (!added.code || agreed.code)
     && added.skills.every((s) => agreed.skills.some((x) => x.name === s.name))
     && added.personalities.every((p) => agreed.personalities.some((x) => x.name === p.name))
-    && (added.hosts ?? []).every((h) => (agreed.hosts ?? []).includes(h));
+    && (added.origins ?? []).every((o) => (agreed.origins ?? []).includes(o));
 }
 
 /** What was added, in words. @param {Added} a */
@@ -445,6 +445,6 @@ export function addedWords(a) {
     ...(a.code ? ['code that runs in annai'] : []),
     ...a.skills.map((s) => `the skill ${s.name}`),
     ...a.personalities.map((p) => `the personality ${p.name}`),
-    ...(a.hosts ?? []).map((h) => `a provider that sends keys to ${h}`),
+    ...(a.origins ?? []).map((o) => `a provider that sends keys to ${o}`),
   ].join(', ');
 }

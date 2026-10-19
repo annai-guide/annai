@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkProviderDesc, descHosts, ABILITY_KINDS, CATEGORIES, ROLE_KIND } from '../../src/core/llm/provider-desc.js';
+import { checkProviderDesc, descOrigins, ABILITY_KINDS, CATEGORIES, ROLE_KIND } from '../../src/core/llm/provider-desc.js';
 import { OPENAI_LIKE, LOCAL_SPEECH } from './provider-kit.js';
 
 /** @param {any} desc @param {string} id @param {any} ability */
@@ -21,10 +21,22 @@ test('a provider description with abilities, models and roles is valid; each mis
   assert.match(checkProviderDesc(null).join(), /\$/);
 });
 
-test('descHosts lists every host a key may go to', () => {
-  assert.deepEqual(descHosts(LOCAL_SPEECH), ['localhost:8000', 'localhost:8880']);
-  assert.deepEqual(descHosts(OPENAI_LIKE), ['api.openai.test']);
-  assert.deepEqual(descHosts({ ...LOCAL_SPEECH, baseUrl: '', abilities: { chat: { kind: 'chat', type: 'chat-completions' } } }), []);
+test('descOrigins lists every origin a key may go to: scheme, host and port', () => {
+  assert.deepEqual(descOrigins(LOCAL_SPEECH), ['http://localhost:8000', 'http://localhost:8880']);
+  assert.deepEqual(descOrigins(OPENAI_LIKE), ['https://api.openai.test']);
+  assert.deepEqual(descOrigins({ ...LOCAL_SPEECH, baseUrl: '', abilities: { chat: { kind: 'chat', type: 'chat-completions' } } }), [], 'an address the user gives');
+});
+
+test('security review: every address must parse, and be https, or http only for localhost and 127.0.0.1 (the CSP); none is dropped', () => {
+  const at = (/** @type {string} */ baseUrl) => checkProviderDesc({ ...OPENAI_LIKE, baseUrl }).join();
+  const abilityAt = (/** @type {string} */ baseUrl) => checkProviderDesc(withAbility(OPENAI_LIKE, 'voice', { ...OPENAI_LIKE.abilities.voice, baseUrl })).join();
+  for (const bad of ['not a url', 'api.openai.test/v1', 'http://api.openai.test/v1', 'http://[::1]:8000/v1', 'ftp://api.openai.test/', 'javascript:alert(1)', 'https://']) {
+    assert.match(at(bad), /\$\.baseUrl/, bad);
+    assert.match(abilityAt(bad), /\$\.abilities\.voice\.baseUrl/, bad);
+  }
+  for (const good of ['', 'https://api.openai.test/v1', 'http://localhost:8000/v1', 'http://127.0.0.1:9931/v1', 'https://10.0.0.5:8443/v1']) assert.equal(at(good), '', good);
+  assert.equal(abilityAt('http://localhost:8880/v1'), '');
+  assert.match(abilityAt(''), /abilities\.voice\.baseUrl/, "an ability's own address, given, can't be empty");
 });
 
 test('the kinds, categories and which ability kind each role takes', () => {
