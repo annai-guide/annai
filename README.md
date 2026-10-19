@@ -112,7 +112,9 @@ ImageMagick 7 with HEIC and WebP support. They're committed; rebuild them only t
 
 **Deploying.** `sw.js` names its offline cache after a hash of every file it ships
 (`BUILD`, written by `npm run stamp`), so installed copies update whenever anything
-changes. CI fails when the stamp is stale; the Cloudflare Pages build command should be
+changes. annai looks for a new `sw.js` when it starts, when it comes back to the screen (at most
+every 15 minutes) and on Settings → Updates → Check now; the new version runs from the next start,
+or at once with Restart now. CI fails when the stamp is stale; the Cloudflare Pages build command should be
 `node scripts/stamp.mjs`, so the deployed `sw.js` is always current.
 
 While annai is being tested, annai.guide is served from a machine of the author's: a release is

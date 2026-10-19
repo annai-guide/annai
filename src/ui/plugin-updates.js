@@ -5,51 +5,71 @@ import { whatItBrings, FULL_ACCESS } from './screens/plugin-install.js';
 
 /**
  * Plugin updates (spec §5.3): annai's own, from its catalog, and packages installed from an address,
- * from there. Offered on one card and in Settings → Plugins; nothing changes until the user taps Update.
- * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, reload?: () => void,
- *   addressFetch?: (url: string, init?: RequestInit) => Promise<Response> }} Env
- *   fetch: for annai's own catalog and files; addressFetch: for addresses (traced, in the app)
+ * from there. Offered on one card, in Settings → Updates and in Settings → Plugins; nothing changes until the user taps Update.
+ * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, reload?: () => unknown,
+ *   addressFetch?: (url: string, init?: RequestInit) => Promise<Response>, applied?: () => void }} Env
+ *   fetch: for annai's own catalog and files; addressFetch: for addresses (traced, in the app); applied: after Update ran
  * @typedef {{ id: string, name: string, installed: string, available: string, entry?: any, url?: string, changed?: boolean,
  *   added?: import('../core/packages.js').Added, agreed?: boolean }} Update
  *   added: what an update from an address brings that the installed package didn't; agreed: the user said yes to it
  */
 
-/** @type {Map<string, Update>} what the last check found at addresses, by id: Settings → Plugins shows it without asking every address again */
-const known = new Map();
+/** What the last checks found, by host, then by id: Settings → Updates and → Plugins show it without asking again. @type {WeakMap<any, Map<string, Update>>} */
+const found = new WeakMap();
+/** @param {any} host @returns {Map<string, Update>} */
+const knownOf = (host) => {
+  let m = found.get(host);
+  if (!m) found.set(host, (m = new Map()));
+  return m;
+};
 
-/** Every update there is now, of both kinds; a kind that can't be checked (offline) gives none. @param {any} host @param {Env} [env] @returns {Promise<Update[]>} */
-export async function pluginUpdates(host, env = {}) {
-  const official = await officialUpdates(host, env).catch(() => []);
-  const addressed = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)) }).catch(() => null);
-  if (addressed) {
-    known.clear();
-    for (const u of addressed) known.set(u.id, u);
+/**
+ * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked
+ * keeps what it found before, and says why in failed. Nothing is kept once current() is false.
+ * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds] @param {() => boolean} [current]
+ * @returns {Promise<{ found: Update[], failed: string[] }>} found: every update known now, of both kinds
+ */
+export async function checkPlugins(host, env = {}, { official = true, address = true } = {}, current = () => true) {
+  /** @type {string[]} */
+  const failed = [];
+  const known = knownOf(host);
+  /** @param {boolean} url @param {Update[]} list */
+  const keep = (url, list) => {
+    for (const [id, u] of known) if (Boolean(u.url) === url) known.delete(id);
+    for (const u of list) known.set(u.id, u);
+  };
+  if (official) {
+    const now = await officialUpdates(host, env).catch((e) => { failed.push(String(e?.message ?? e).replace(/^catalog: /, '')); return null; });
+    if (now && current()) keep(false, now);
   }
-  return [...official, ...(addressed ?? [])];
+  if (address) {
+    const now = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), failed }).catch(() => null);
+    if (now && current()) keep(true, now);
+  }
+  return { found: await knownUpdates(host), failed };
+}
+
+/** The updates the last checks found, for plugins still installed as they were. @param {any} host @returns {Promise<Update[]>} */
+export async function knownUpdates(host) {
+  const state = await host.installed();
+  return [...knownOf(host).values()].filter((u) => state[u.id]?.source === (u.url ? 'url' : 'official') && String(state[u.id]?.version) === u.installed);
 }
 
 /** The updates the last check found at addresses, for packages still installed. @param {any} host @returns {Promise<Update[]>} */
 export async function knownAddressUpdates(host) {
-  const state = await host.installed();
-  return [...known.values()].filter((u) => state[u.id]?.source === 'url' && String(state[u.id]?.version) === u.installed);
+  return (await knownUpdates(host)).filter((u) => u.url);
 }
 
 /** "Tides 1.0.0 → 1.1.0", or "tide-pools (changed)" when only its files did. @param {Update} u */
-const offerWords = (u) => `${u.changed || u.installed === u.available ? `${u.name} (changed)` : `${u.name} ${u.installed} → ${u.available}`}${addsAnything(u.added) ? ' (brings something new: you\'ll be asked first)' : ''}`;
+export const offerWords = (u) => `${u.changed || u.installed === u.available ? `${u.name} (changed)` : `${u.name} ${u.installed} → ${u.available}`}${addsAnything(u.added) ? ' (brings something new: you\'ll be asked first)' : ''}`;
 
-/**
- * Looks for updates, and offers them on one card. Quiet when offline or when there is nothing new.
- * @param {{ plugins: any, notices: any }} ctx @param {Env} [env]
- */
-export async function offerPluginUpdates(ctx, env = {}) {
-  const updates = await pluginUpdates(ctx.plugins, env);
-  if (!updates.length) return updates;
-  ctx.notices.card({
+/** The card that offers updates; nothing changes until Update. @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Env} [env] @returns {() => void} dismiss */
+export function offerCard(ctx, updates, env = {}) {
+  return ctx.notices.card({
     title: 'Plugin updates are ready',
     body: `New versions: ${updates.map(offerWords).join(', ')}. Nothing changes until you update. An updated plugin that is running now is off until annai restarts.`,
     actions: [{ label: 'Update', primary: true, run: () => { applyUpdates(ctx, updates, env); } }],
   });
-  return updates;
 }
 
 /**
@@ -74,7 +94,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
         ? await updateFromAddress(ctx.plugins, u.id, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), ...(u.agreed ? { agreed: u.added } : {}) })
         : await updateOfficial(ctx.plugins, u.entry, env);
       applied++;
-      if (u.url) known.delete(u.id);
+      knownOf(ctx.plugins).delete(u.id);
       if (how === 'restart') waiting.push(u.name);
     } catch (e) {
       failed.push(`${u.name}: ${/** @type {any} */ (e)?.message ?? e}`);
@@ -91,6 +111,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
   } else if (!failed.length && applied) {
     ctx.notices.toast('Plugins updated.');
   }
+  env.applied?.();
 }
 
 /**

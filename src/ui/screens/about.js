@@ -3,8 +3,8 @@ import { SOURCES, FONTS, ART } from '../credits.js';
 import { keysAndData, finePrint, REPO } from '../privacy.js';
 
 /**
- * Settings → About (the user, 2026-10-18): annai, its version and the build that is running, its
- * licence and source, where to report a problem, what it does with keys and data (the welcome's
+ * Settings → About (the user, 2026-10-18): annai, its version and the build that is running (Updates is a
+ * tap away), its licence and source, where to report a problem, what it does with keys and data (the welcome's
  * words), the fine print, the welcome again, and the credits. #/about/licence and #/about/fonts show
  * the licence texts annai ships, so they read offline.
  * @typedef {import('../credits.js').Link} Link
@@ -53,6 +53,17 @@ export function runningBuild(ms = 2000) {
   });
 }
 
+/** "annai 0.1.0 · build …", drawn at once; the build fills in when the service worker answers, or once one runs annai. @param {string} v */
+export function versionLine(v) {
+  const version = h('p', { class: 'version', text: `annai ${v}` });
+  const ask = () => runningBuild().then((build) => {
+    version.textContent = build ? `annai ${v} · build ${build}` : `annai ${v} · build not known yet: annai's offline service is still starting`;
+    if (!build) navigator.serviceWorker?.addEventListener('controllerchange', () => { if (version.isConnected) ask(); }, { once: true });
+  }).catch(() => {}); // the version alone stays
+  ask();
+  return version;
+}
+
 /** @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderAbout(ctx, route) {
   if (route.parts[1] === 'licence') {
@@ -61,17 +72,11 @@ export async function renderAbout(ctx, route) {
   if (route.parts[1] === 'fonts') {
     return licenceText('Font licences', `${FONTS.map((f) => f.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}, under the SIL Open Font License 1.1, as annai ships them.`, '/assets/fonts/OFL.txt', `${REPO}/blob/main/assets/fonts/OFL.txt`);
   }
-  // Drawn at once; the build fills in when the service worker answers, or when one starts running annai.
-  const version = h('p', { class: 'version', text: `annai ${ctx.version}` });
-  const ask = () => runningBuild().then((build) => {
-    version.textContent = build ? `annai ${ctx.version} · build ${build}` : `annai ${ctx.version} · build not known yet: annai's offline service is still starting`;
-    if (!build) navigator.serviceWorker?.addEventListener('controllerchange', () => { if (version.isConnected) ask(); }, { once: true });
-  }).catch(() => {}); // the version alone stays
-  ask();
   return h('div', { class: 'screen about' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'About annai' }),
-    version,
+    versionLine(ctx.version),
+    h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/updates' }, 'Check for updates')),
     h('p', { class: 'sub', text: 'annai (案内) is Japanese for "guidance; showing someone around". It is a free, open-source travel guide, and its guide is Shiori.' }),
     section('Licence and source',
       h('p', { text: 'annai is free software under the GNU Affero General Public License, version 3 (AGPL-3.0). You may use it, study it, share it and change it. Anyone who runs a changed copy for others must offer them its source too.' }),

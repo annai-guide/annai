@@ -10,14 +10,14 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
-import { isStandalone, requestPersist, watchForUpdates, platform, deviceName, connectionOf } from '../ui/platform.js';
+import { isStandalone, requestPersist, watchForUpdates, restartInto, platform, deviceName, connectionOf } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { finishSignIn } from '../ui/openrouter.js';
 import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
 import { disabledCard } from '../ui/plugin-cards.js';
-import { offerPluginUpdates } from '../ui/plugin-updates.js';
+import { Updates, DAILY } from '../ui/updates.js';
 import { Agent } from '../core/agent/loop.js';
 import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
@@ -154,7 +154,14 @@ async function boot() {
   // The welcome, once per device, at annai's plain start (the user, 2026-10-18): a link that opens a screen
   // (a shared trip, a share, the sign-in coming back) is never interrupted. Decided before the first draw.
   if (await shouldWelcome(ws, location).catch(() => false)) history.replaceState(history.state, '', '#/welcome');
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, version: VERSION });
+  // Updates (spec §5.3, §17 rule 5): annai's own and its plugins', checked at start, on coming back to the screen,
+  // once a day, and on Check now. Packages installed from an address are checked there, each request in the trace.
+  const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: 'plugin updates' }) } });
+  updates.agent = agent;
+  updates.voice = voice;
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });
+  updates.notices = shell.notices;
+  updates.changed = (waits) => { if (/^#\/updates\b/.test(location.hash) || (waits && /^#\/(settings|plugins)\b/.test(location.hash))) shell.redraw(); };
   pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: 'Notifications', run: () => { location.hash = '#/notifications'; } }] });
   for (const n of early.splice(0)) pushCard(n);
   // A plugin switched off after repeated errors gets a card saying why (spec §5.5), with no key in it.
@@ -188,24 +195,20 @@ async function boot() {
   liveProblem = watchErrors(store, shell);
   for (const e of liveEarly.splice(0)) liveProblem(e);
   if (isStandalone()) requestPersist();
-  registerServiceWorker(store, shell);
+  registerServiceWorker(store, shell, updates);
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
   // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
-  // Plugin updates are looked for at start and once a day, and only offered (spec §5.3).
-  // Packages installed from an address are checked there too, each request in the trace (milestone 8a).
-  const addressFetch = tracedFetch(store, SYS, { tool: 'plugin updates' });
-  const lookForUpdates = () => controllerReady().then(() => offerPluginUpdates({ plugins, notices: shell.notices }, { addressFetch })).then((found) => {
-    if (found.length && location.hash.startsWith('#/plugins')) shell.render(); // its Update buttons
-  });
   startPlugins(plugins, shell).finally(() => {
     pluginsStarted();
-    lookForUpdates();
+    controllerReady().then(() => updates.start()).catch(() => {});
     // The link catalog is kept for offline use: fetched now, so it is there before the first offline moment (spec §7.2).
     loadLinks({ ws }).catch(() => {});
     // Automatic backups start once installed plugins have: a place's kind comes from its plugin.
     startBackups({ backups, store, notices: shell.notices, go: (hash) => { location.hash = hash; } });
   });
-  setInterval(lookForUpdates, 24 * 60 * 60 * 1000);
+  // An iPhone Home Screen app that comes back from the background only resumes: the browser checks nothing then.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updates.auto().catch(() => {}); });
+  setInterval(() => updates.auto().catch(() => {}), DAILY);
   // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).
   finishSignIn({ llm, ws, store, notices: shell.notices, render: shell.render }).then((was) => { if (was) shell.render(); });
 }
@@ -272,19 +275,21 @@ function controllerReady(timeoutMs = 15_000) {
   });
 }
 
-/** @param {any} store @param {ReturnType<typeof startShell>} shell */
-async function registerServiceWorker(store, shell) {
+/** @param {any} store @param {ReturnType<typeof startShell>} shell @param {Updates} updates */
+async function registerServiceWorker(store, shell, updates) {
   if (!('serviceWorker' in navigator)) return;
-  let restartRequested = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (restartRequested) location.reload(); // never on the first install, which also changes the controller
-  });
+  const sw = navigator.serviceWorker;
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    watchForUpdates(navigator.serviceWorker, reg, () => shell.setUpdateReady(() => {
-      restartRequested = true;
-      reg.waiting?.postMessage('skip-waiting');
-    }));
+    const reg = await sw.register('/sw.js', { scope: '/' });
+    // A version behind the one running, not the first install.
+    const behind = (/** @type {ServiceWorker | null} */ w) => Boolean(w && sw.controller && sw.controller !== w);
+    updates.app = { check: () => reg.update(), state: () => (behind(reg.installing) ? 'downloading' : 'none') };
+    // Restart now, here and on Settings → Updates, waits for Shiori's turn to end (Updates.restart).
+    const swap = restartInto(sw, reg);
+    watchForUpdates(sw, reg, () => {
+      updates.ready(swap);
+      shell.setUpdateReady(() => { updates.restart(); });
+    }, () => updates.downloadFailed());
   } catch (e) {
     logEvent(store, SYS, { type: 'error', data: { message: `The offline service didn't start: ${/** @type {any} */ (e)?.message ?? e}` } }).catch(() => {});
   }
