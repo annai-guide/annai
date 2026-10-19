@@ -2,10 +2,11 @@
 // The receiving end of annai's Remote trace plugin (plugins-official/remote-trace): a tiny server, with
 // no dependencies, that takes the plugin's batches and appends each entry to a JSONL file, one line each,
 // with the device it came from and the time it arrived. For a developer watching a phone as it runs.
-//   node scripts/trace-sink.mjs --port <p> --token <t> --out <file.jsonl> [--origin <allowed origin>]...
+//   node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out <file.jsonl> [--origin <allowed origin>]...
+// The token may come from TRACE_SINK_TOKEN instead; a file or the environment keeps it out of shell history and ps.
 // It listens on 127.0.0.1 only: a phone reaches it through an https proxy, such as `tailscale serve`.
 import http from 'node:http';
-import { appendFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -19,19 +20,22 @@ export const ENTRIES_MAX = 1000;
 /** The origin annai is served from, always allowed. */
 export const ANNAI = 'https://annai.guide';
 const TOKEN_MIN = 16;
-const USAGE = 'node scripts/trace-sink.mjs --port <p> --token <t> --out <file.jsonl> [--origin <allowed origin>]...';
+const USAGE = 'node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out <file.jsonl> [--origin <allowed origin>]...\n(or the token in TRACE_SINK_TOKEN)';
 
 const digest = (/** @type {string} */ s) => createHash('sha256').update(s).digest();
 
 /**
- * Starts the sink on a port of this machine. log: each batch, in a line for the console.
- * @param {{ port?: number, token: string, out: string, origins?: string[], now?: () => number, log?: (line: string) => void }} o
+ * Starts the sink on a port of this machine. log: each batch, in a line for the console; append: how lines reach the file.
+ * @param {{ port?: number, token: string, out: string, origins?: string[], now?: () => number, log?: (line: string) => void,
+ *   append?: (file: string, text: string) => Promise<void> }} o
  */
-export async function startSink({ port = 0, token, out, origins = [], now = () => Date.now(), log = () => {} }) {
+export async function startSink({ port = 0, token, out, origins = [], now = () => Date.now(), log = () => {}, append = appendFile }) {
   const allowed = new Set([ANNAI, ...origins.map((o) => o.replace(/\/+$/, ''))]);
   const want = digest(`Bearer ${token}`);
   /** Writes one after another, so lines keep the order batches came in. */
   let writing = Promise.resolve();
+  /** A write failed (a full disk), and may have left a line cut short: the next starts on a new line, so the cut one stays alone. */
+  let torn = false;
   const server = http.createServer((req, res) => {
     const origin = typeof req.headers.origin === 'string' ? req.headers.origin : null;
     /** @type {Record<string, string>} */
@@ -115,10 +119,15 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
       const entries = batch.entries.filter((/** @type {unknown} */ e) => e && typeof e === 'object' && !Array.isArray(e));
       // The sink's own fields come first, and an entry can't overwrite them.
       const lines = [...(dropped ? [{ dropped }] : []), ...entries].map((e) => `${JSON.stringify({ ...head, ...e, ...head })}\n`).join('');
-      writing = writing.then(() => (lines ? appendFile(out, lines) : undefined)).then(() => {
+      writing = writing.then(async () => {
+        if (!lines) return;
+        await append(out, torn ? `\n${lines}` : lines);
+        torn = false;
+      }).then(() => {
         log(`${received} ${device}${build ? ` (build ${build})` : ''}: ${entries.length} entries${dropped ? `, ${dropped} dropped before` : ''}`);
         answer(200, { received: entries.length });
       }, (e) => {
+        torn = true;
         answer(500, { error: 'write', message: "The sink couldn't write the file." });
         log(`${received} couldn't write ${out}: ${/** @type {any} */ (e)?.message ?? e}`);
       });
@@ -155,7 +164,17 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     console.error(words);
     process.exit(1);
   };
-  const [portArg, token, out] = [one('--port'), one('--token'), one('--out')];
+  const [portArg, out, tokenFile] = [one('--port'), one('--out'), one('--token-file')];
+  /** @type {string | undefined} */
+  let token = one('--token');
+  if (!token && tokenFile) {
+    try {
+      token = (await readFile(tokenFile, 'utf8')).trim();
+    } catch (e) {
+      quit(`The sink can't read the token file ${tokenFile}: ${/** @type {any} */ (e)?.message ?? e}`);
+    }
+  }
+  token ||= process.env.TRACE_SINK_TOKEN?.trim();
   if (portArg === undefined || !token || !out) quit(`Usage: ${USAGE}`);
   const port = Number(portArg);
   if (!/^\d+$/.test(String(portArg)) || port > 65535) quit('--port must be a port number, such as 8798.');
