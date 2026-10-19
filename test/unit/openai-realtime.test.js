@@ -35,7 +35,7 @@ const { type: TYPE, notes: NOTES } = openaiRealtime();
 const endpoint = (baseUrl) => ({ id: 'pv-o/realtime', provider: 'pv-o', ability: 'realtime', type: 'openai-realtime', name: 'OpenAI', baseUrl, headers: {}, tunables: TYPE.tunables, extraBody: {} });
 /** @param {any} [over] @returns {any} */
 const model = (over = {}) => ({ id: 'm-r', provider: 'pv-o', ability: 'realtime', name: 'GPT Realtime 2.1', providerId: 'gpt-realtime-2.1', input: ['text', 'image'], tools: true, contextWindow: 128000, maxOutput: 32000,
-  prices: { input: 4, cacheRead: 0.4, audioIn: 32, image: 5, output: 24, audioOut: 64 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over });
+  prices: { input: 4, cacheRead: 0.4, audioIn: 32, image: 5, cacheReadImage: 0.5, output: 24, audioOut: 64 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over });
 const TOOLS = [{ name: 'tell_kokoro', description: 'Ask Kokoro to check something.', input: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'], additionalProperties: false } }];
 const setup = (/** @type {any} */ over = {}) => ({ instructions: 'You are Koe.', context: '<today>Big Sur, 10:00</today>', tools: TOOLS, ...over });
 
@@ -123,14 +123,14 @@ test("a spoken turn: G.711 μ-law appended, then commit and response.create at t
     assert.equal(events.filter((e) => e.type === 'said').map((e) => e.text).join(''), "I'm checking on that.");
     assert.deepEqual(new Uint8Array(events.filter((e) => e.type === 'audio').flatMap((e) => [...e.data])), audio);
     assert.deepEqual(events.filter((e) => e.type === 'tool').map(({ at, ...e }) => e), [{ type: 'tool', id: 'call_1', name: 'tell_kokoro', input: { text: 'Is Nepenthe open now?' } }], 'once, though OpenAI says it twice');
-    assert.deepEqual(events.find((e) => e.type === 'usage').usage, { input: 400, cacheRead: 350, cacheReadAudio: 150, audioIn: 250, image: 50, output: 40, audioOut: 120 });
+    assert.deepEqual(events.find((e) => e.type === 'usage').usage, { input: 400, cacheRead: 300, cacheReadAudio: 150, cacheReadImage: 50, audioIn: 250, image: 50, output: 40, audioOut: 120 });
     // OpenAI ends a response when it has made it, faster than it plays; the turn ends when playing it would.
     const first = events.find((e) => e.type === 'audio').at;
     const end = events.find((e) => e.type === 'turn');
     assert.equal(end.end, 'complete');
     assert.ok(end.at - first >= 350, `complete ${end.at - first} ms after the first audio of 400 ms`);
     const [req] = await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['net.request'] }));
-    assert.ok(Math.abs(req.data.cost - (400 * 4 + 350 * 0.4 + 150 * 0.4 + 250 * 32 + 50 * 5 + 40 * 24 + 120 * 64) / 1e6) < 1e-12);
+    assert.ok(Math.abs(req.data.cost - (400 * 4 + 300 * 0.4 + 150 * 0.4 + 50 * 0.5 + 250 * 32 + 50 * 5 + 40 * 24 + 120 * 64) / 1e6) < 1e-12);
     session.close();
   } finally {
     await s.stop();
@@ -286,10 +286,10 @@ test("its address is the ability's own, wss: for https, the model in the query; 
   assert.deepEqual(TYPE.tunables, { input: 'pcmu', output: 'pcm16', voice: 'marin', transcription: 'gpt-transcribe', noiseReduction: 'far_field', renewMinutes: 55 });
 });
 
-test('usage: text, audio and image apart, cached ones apart, the cached audio as cacheReadAudio; a report without details is all text', () => {
-  assert.deepEqual(usageOf(USAGE), { input: 400, cacheRead: 350, cacheReadAudio: 150, audioIn: 250, image: 50, output: 40, audioOut: 120 });
-  assert.deepEqual(usageOf({ input_tokens: 90, output_tokens: 10 }), { input: 90, cacheRead: 0, cacheReadAudio: 0, audioIn: 0, output: 10, audioOut: 0 });
-  assert.deepEqual(usageOf({ input_tokens: 90, output_tokens: 10, input_token_details: { cached_tokens: 40 } }), { input: 50, cacheRead: 40, cacheReadAudio: 0, audioIn: 0, output: 10, audioOut: 0 });
+test('usage: text, audio and image apart, cached ones apart, the cached audio and images as cacheReadAudio and cacheReadImage; a report without details is all text', () => {
+  assert.deepEqual(usageOf(USAGE), { input: 400, cacheRead: 300, cacheReadAudio: 150, cacheReadImage: 50, audioIn: 250, image: 50, output: 40, audioOut: 120 });
+  assert.deepEqual(usageOf({ input_tokens: 90, output_tokens: 10 }), { input: 90, cacheRead: 0, cacheReadAudio: 0, cacheReadImage: 0, audioIn: 0, output: 10, audioOut: 0 });
+  assert.deepEqual(usageOf({ input_tokens: 90, output_tokens: 10, input_token_details: { cached_tokens: 40 } }), { input: 50, cacheRead: 40, cacheReadAudio: 0, cacheReadImage: 0, audioIn: 0, output: 10, audioOut: 0 });
 });
 
 test('after it is ready, what OpenAI refuses is noted in the trace with the key blanked, never a crash; a frame that is not JSON is skipped with a note', async () => {

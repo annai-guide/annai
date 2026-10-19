@@ -140,7 +140,7 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
       h('p', { class: 'sub', text: 'Each setting is saved as you change it.' }),
       ...nameFields(save, m, base.name, title),
       voice ? savedField('Voice', voice, () => voice.value.trim(), () => save('tunables', (/** @type {any} */ now) => withVoice(now.tunables))) : null,
-      modelJson(save, { in: 'Prices, USD (JSON: perMinute, minSeconds)', out: 'Prices, USD (JSON: perMillionChars)', live: 'Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, output, audioOut)' }[kind], 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
+      modelJson(save, { in: 'Prices, USD (JSON: perMinute, minSeconds)', out: 'Prices, USD (JSON: perMillionChars)', live: 'Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)' }[kind], 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
       h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => showTunables(await save('tunables', withVoice(t))))),
       modelJson(save, 'Extra request fields (JSON)', 'model-extra', 'extraBody', m.extraBody)),
     kind === 'live' ? testPanel(ctx, rec.id, rec.verified, 'Test', true) : speechTestPanel(ctx, m, kind, rec.verified),

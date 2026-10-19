@@ -29,11 +29,11 @@
  *   providerTools: turn on the model's own tools of these kinds, except the ids switched off (spec §9.5);
  *   needsProviderTool: only models with such a tool of this kind may answer.
  * @typedef {{ input: number, cacheRead: number, cacheWrite: number, cacheWrite1h: number, output: number, reasoning: number, cost?: number,
- *   serverTools?: Record<string, number>, audioIn?: number, audioOut?: number, image?: number, cacheReadAudio?: number }} Usage
+ *   serverTools?: Record<string, number>, audioIn?: number, audioOut?: number, image?: number, cacheReadAudio?: number, cacheReadImage?: number }} Usage
  *   Tokens. input leaves out cache reads and writes; output includes reasoning, which is also
  *   counted on its own. cost is in USD, when the provider reports it. serverTools: the provider's own tool calls it
  *   counted, by its usage key (such as web_search_requests). audioIn, audioOut and image: a realtime model's audio, and
- *   image and video, tokens, counted apart from input and output (K4); cacheReadAudio: cached audio (K6).
+ *   image and video, tokens, counted apart from input and output (K4); cacheReadAudio, cacheReadImage: cached audio and images (K6).
  * @typedef {'end' | 'tool' | 'length' | 'refusal' | 'pause' | 'other'} StopReason
  *   pause: the provider paused a long turn; send the reply back as it is, and it continues.
  * @typedef {{ type: 'text', text: string }

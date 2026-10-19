@@ -90,8 +90,8 @@ const G711 = { pcmu: [muLaw, fromMuLaw], pcma: [aLaw, fromALaw] };
 const n = (x) => Number(x) || 0;
 
 /**
- * annai's usage from OpenAI's response usage: text, audio and image tokens apart, cached ones apart (cached audio
- * as cacheReadAudio, priced on its own), output text and audio.
+ * annai's usage from OpenAI's response usage: text, audio and image tokens apart, cached ones apart (cached audio and
+ * images as cacheReadAudio and cacheReadImage, each priced on its own), output text and audio.
  * @param {any} u @returns {Record<string, number>}
  */
 export function usageOf(u) {
@@ -105,7 +105,7 @@ export function usageOf(u) {
   const audioOut = n(u.output_token_details?.audio_tokens);
   return {
     input: Math.max(0, (d.text_tokens ?? n(u.input_tokens) - audio - image) - cachedText),
-    cacheRead: n(cachedText) + cachedImage, cacheReadAudio: cachedAudio,
+    cacheRead: n(cachedText), cacheReadAudio: cachedAudio, cacheReadImage: cachedImage,
     audioIn: Math.max(0, audio - cachedAudio), ...(image - cachedImage > 0 ? { image: image - cachedImage } : {}),
     output: u.output_token_details?.text_tokens ?? Math.max(0, n(u.output_tokens) - audioOut), audioOut,
   };

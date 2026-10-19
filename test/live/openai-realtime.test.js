@@ -31,7 +31,7 @@ activate({
 const endpoint = { id: 'live/realtime', provider: 'live', ability: 'realtime', type: 'openai-realtime', name: 'OpenAI', baseUrl: process.env.OPENAI_REALTIME_URL ?? 'https://api.openai.com/v1', headers: {}, tunables: TYPE.tunables, extraBody: {} };
 /** @type {any} */
 const model = { id: 'live', provider: 'live', ability: 'realtime', name: MODEL, providerId: MODEL, input: ['text', 'image'], tools: true, contextWindow: 128000, maxOutput: 32000,
-  prices: MODEL.endsWith('mini') ? { input: 0.6, cacheRead: 0.06, audioIn: 10, cacheReadAudio: 0.3, image: 0.8, output: 2.4, audioOut: 20 } : { input: 4, cacheRead: 0.4, audioIn: 32, cacheReadAudio: 0.4, image: 5, output: 24, audioOut: 64 },
+  prices: MODEL.endsWith('mini') ? { input: 0.6, cacheRead: 0.06, audioIn: 10, cacheReadAudio: 0.3, image: 0.8, cacheReadImage: 0.08, output: 2.4, audioOut: 20 } : { input: 4, cacheRead: 0.4, audioIn: 32, cacheReadAudio: 0.4, image: 5, cacheReadImage: 0.5, output: 24, audioOut: 64 },
   cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {} };
 const KOE = [
   'You are Koe, the voice of Shiori, a travel guide, talking with the user. Kokoro, your other half, looks things up.',
