@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
+import { updateAppSettings } from '../../src/core/settings.js';
 import { liveKit, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
 import { cleanSaid, realWord } from '../../src/core/koe/live.js';
 
@@ -202,6 +203,57 @@ test('ask shows its buttons and is answered at once; the tap comes as the next t
     const chosen = (await k.events(['msg.user'])).at(-1);
     assert.deepEqual([chosen.data.chose, chosen.data.split], [true, true]);
     assert.ok(read(k.agent.kokoro).includes('[the user chose] "Ramen"'));
+  } finally {
+    await k.done();
+  }
+});
+
+// Task 6: a realtime model in a typing conversation.
+test('typing to a realtime Koe, voice off: its transcript is the reply, nothing plays, and no microphone opens; voice on later, the same session speaks, and a tap gives it the microphone', async () => {
+  const k = await liveKit([{ said: "There's a taco stand two minutes ahead.", audio: tone(0.3) }, { heard: 'Thanks', said: "You're welcome.", audio: tone(0.2) }], { voice: { mode: 'off' } });
+  try {
+    assert.equal(k.agent.koeState, 'live', 'voice off with only a realtime model: Koe is live, muted');
+    k.agent.send('Where can we eat?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const [said] = await k.events(['out.speak']);
+    assert.deepEqual([said.data.text, said.data.voice, said.data.live], ["There's a taco stand two minutes ahead.", undefined, true]);
+    assert.equal(k.platform.streams.length, 0, 'its sound was dropped');
+    assert.ok(!k.platform.log.includes('mic open'));
+    assert.equal(k.agent.live.listening, false);
+    assert.ok(read(k.agent.kokoro).includes(`[Koe said] "There's a taco stand two minutes ahead."`), 'Kokoro reads it as said, not aloud');
+    // Voice comes on (the chip is a tap): the same session speaks from now on; the microphone opens at a tap on Shiori.
+    await updateAppSettings(k.ws, { voice: { mode: 'on' } });
+    await k.voice.unlock();
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.equal(k.agent.live.state, 'open');
+    assert.ok(!k.platform.log.includes('mic open'));
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await say(k, 'first-one');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    assert.equal((await k.events(['out.speak']))[1].data.voice, true);
+    assert.equal(k.server.connections().length, 1, 'one session all along');
+  } finally {
+    await k.done();
+  }
+});
+
+test('a photo goes in as a turn of its own, then the words that ask about it; Kokoro gets the same request copy', async () => {
+  const k = await liveKit([{ said: 'That looks like Bixby Bridge.', audio: tone(0.2) }], { voice: { mode: 'off' } });
+  try {
+    await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+    k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const turns = got(k, 'clientContent').map((/** @type {any} */ m) => [m.clientContent.turns[0].parts[0].inlineData?.mimeType ?? m.clientContent.turns[0].parts[0].text, m.clientContent.turnComplete]);
+    assert.deepEqual(turns, [['image/webp', false], ['What is this?', true]]);
+    const [msg] = await k.events(['msg.user']);
+    assert.equal(msg.data.images.length, 1);
+    const sent = Buffer.from(got(k, 'clientContent')[0].clientContent.turns[0].parts[0].inlineData.data, 'base64').toString();
+    assert.match(sent, /^\d+x\d+:/, 'the request copy, as Kokoro gets it');
+    assert.ok(JSON.stringify(k.sent['model-0'][0].messages).includes('"type":"image"'), 'Kokoro saw it');
   } finally {
     await k.done();
   }
