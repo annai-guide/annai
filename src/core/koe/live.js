@@ -80,8 +80,9 @@ export class LiveKoe {
   /** A session a trigger or a note opened listens only this long after it speaks, as Shiori's speak does (K2), until the user speaks or taps. */
   #answerMs = 8_000;
   #brief = false;
-  /** Koe's sound's sample rate. */
+  /** Koe's sound's sample rate, and the microphone's as the session takes it. */
   #rate = 24_000;
+  #inRate = 16_000;
   #keep = false;
   #rotate = false;
   #tools = 0;
@@ -215,8 +216,9 @@ export class LiveKoe {
     if (this.#input || !this.#s || this.state !== 'open' || !this.c.visible()) return;
     this.unmute();
     this.c.release();
+    this.#inRate = this.#s.audioIn.rate; // what is said is kept at it too
     this.#input = new LiveInput({
-      mic: p.mic, rate: this.#s.audioIn.rate, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
+      mic: p.mic, rate: this.#inRate, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
     });
     this.listening = true;
@@ -543,7 +545,8 @@ export class LiveKoe {
       pcm.set(x, at);
       at += x.length;
     }
-    const kept = await v.clipOf(/** @type {any} */ ({ id: h.id, source: 'mic', ms: h.ms, at: h.at, audio: { data: encodeWav(pcm, 16_000), mediaType: 'audio/wav', seconds: pcm.length / 16_000 }, pcm: Promise.resolve({ pcm, rate: 16_000 }) })).catch(() => null);
+    const rate = this.#inRate;
+    const kept = await v.clipOf(/** @type {any} */ ({ id: h.id, source: 'mic', ms: h.ms, at: h.at, audio: { data: encodeWav(pcm, rate), mediaType: 'audio/wav', seconds: pcm.length / rate }, pcm: Promise.resolve({ pcm, rate }) })).catch(() => null);
     if (!kept) return { data: {}, blobs: [] };
     const hash = await sha256Hex(kept.data);
     return { data: { clip: hash, clipFormat: kept.format, clipBytes: kept.data.length }, blobs: [{ hash, bytes: kept.data, type: kept.mediaType }] };

@@ -344,3 +344,21 @@ test("item 13: the quiet spell doesn't run out while Kokoro works on Koe's quest
     await k.done();
   }
 });
+
+test("item 14 (K6): a kept clip of what was said live is at the session's own rate (OpenAI's μ-law: 8 kHz), not a 16 kHz guess", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: 'Tacos.', audio: tone(0.2) }], {
+    live: { type: 'openai-realtime' }, voice: { keepClips: true, encoder: { makes: ['ogg'] }, plays: ['ogg', 'mp3', 'wav'] },
+  });
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['heard'])).length === 1);
+    const [heard] = await k.events(['heard']);
+    const { blobBytes } = await import('../../src/core/agent/log.js');
+    const clip = new TextDecoder().decode(/** @type {Uint8Array} */ (await blobBytes(k.store, heard.data.clip)));
+    assert.match(clip, /^ogg<\d+@8000>$/, clip);
+  } finally {
+    await k.done();
+  }
+});
