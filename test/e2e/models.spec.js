@@ -305,6 +305,8 @@ test('Another address with OpenAI Responses switched on: its model list, the Tes
     await page.getByLabel('Takes photos').check();
     await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
     await page.getByRole('link', { name: '← Responses stand-in' }).click();
+    // The model's page has a Test button too: its provider's page first (CI, 2026-10-19).
+    await expect(page.getByRole('heading', { level: 1, name: 'Responses stand-in', exact: true })).toBeVisible();
     // The Test button: access and the key, then the tool with the photo, then an upload.
     await page.getByRole('button', { name: 'Test', exact: true }).click();
     await expect(page.getByText('Everything works.')).toBeVisible();

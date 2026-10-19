@@ -36,6 +36,8 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     await page.getByRole('link', { name: /^qwen3\.8-flash/ }).click();
     await expect(page.getByLabel('Takes photos')).toBeChecked();
     await page.getByRole('link', { name: '← llama.cpp' }).click();
+    // The model's page has a Test button too: its provider's page first (CI, 2026-10-19).
+    await expect(page.getByRole('heading', { level: 1, name: 'llama.cpp', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Test', exact: true }).click();
     await expect(page.getByText('Everything works.')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('✓ Tool calls work.')).toBeVisible();

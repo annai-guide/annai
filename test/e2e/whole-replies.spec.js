@@ -43,6 +43,8 @@ for (const kind of /** @type {const} */ (['Chat Completions', 'OpenAI Responses'
       await page.getByLabel('Takes photos').check();
       await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
       await page.getByRole('link', { name: '← Router' }).click();
+      // The model's page has a Test button too: its provider's page first (CI, 2026-10-19).
+      await expect(page.getByRole('heading', { level: 1, name: 'Router', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Test', exact: true }).click();
       await expect(page.getByText('Everything works.')).toBeVisible();
       await expect(page.getByText('✓ Tool calls work.')).toBeVisible();
