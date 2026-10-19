@@ -1,4 +1,4 @@
-import { ProviderError, KINDS, explain } from '../llm/contract.js';
+import { ProviderError, KINDS, explain, sameOrigin } from '../llm/contract.js';
 import { NO_USAGE, costOf, addCost } from '../llm/cost.js';
 import { addressProblem } from '../llm/provider-desc.js';
 import { isPluginBug } from '../registry.js';
@@ -11,9 +11,8 @@ import { utf8 } from '../bytes.js';
  * neither holds its address, subprotocols or key.
  * @typedef {import('../llm/contract.js').EndpointType} EndpointType @typedef {import('../llm/contract.js').LiveDriver} LiveDriver
  * @typedef {import('../llm/contract.js').LiveEvent} LiveEvent @typedef {import('../llm/contract.js').ErrorKind} ErrorKind
- * @typedef {Omit<LiveDriver, 'ready' | 'close' | 'cancel'> & { ready: Promise<void>, closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>,
- *   on(fn: (e: LiveEvent) => void): () => void, cancel(): void, close(why?: string): void, bytes: { in: number, out: number }, handle?: string,
- *   tunables: Record<string, any> }} LiveSession
+ * @typedef {Omit<LiveDriver, 'close'> & { closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>, on(fn: (e: LiveEvent) => void): () => void,
+ *   close(why?: string): void, bytes: { in: number, out: number }, handle?: string, tunables: Record<string, any> }} LiveSession
  *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with
  */
 
@@ -21,23 +20,15 @@ import { utf8 } from '../bytes.js';
 export const READY_MS = 15_000;
 
 /**
- * Refuses a session address not at the ability's origin, before anything opens: wss: for https, ws: only for http on
- * localhost or 127.0.0.1, as the security policy allows. The words name origins, never the key.
+ * Refuses a session address not at the ability's origin, before anything opens: the one rule HTTP requests follow
+ * (sameOrigin), wss: as https and ws: as http, which the security policy allows only for localhost and 127.0.0.1.
  * @param {import('../llm/config.js').Endpoint} endpoint @param {string} url
  */
 export function liveOrigin(endpoint, url) {
-  /** @type {URL | null} */
-  let u = null;
-  let want = '';
-  try {
-    u = new URL(url);
-    want = new URL(endpoint.baseUrl).origin;
-  } catch {
-    // refused below
-  }
-  const web = { 'wss:': 'https:', 'ws:': 'http:' }[u?.protocol ?? ''];
-  if (u && web && `${web}//${u.host}` === want && !addressProblem(want)) return;
-  throw new ProviderError('bad-request', `${endpoint.name}'s live voice built a session address at ${u ? `${u.protocol}//${u.host}` : "an address that isn't one"}, not its address ${want || '(none)'}. Check its tunables.`);
+  const web = /^wss?:\/\//i.test(url) ? url.replace(/^ws/i, 'http') : '';
+  sameOrigin(endpoint, web);
+  const wrong = addressProblem(new URL(web).origin);
+  if (wrong) throw new ProviderError('bad-request', wrong);
 }
 
 /**
@@ -95,6 +86,7 @@ export function openLive(c) {
   const started = now();
   let last = started;
   const bytes = { in: 0, out: 0 };
+  const size = (/** @type {string | Uint8Array} */ d) => (typeof d === 'string' ? utf8(d).length : d.byteLength);
   let turns = 0;
   /** @type {number | undefined} */
   let cost;
@@ -118,14 +110,13 @@ export function openLive(c) {
     log('closed', { ms: now() - started, code, kind, why: asked || reason, bytesIn: bytes.in, bytesOut: bytes.out, turns, cost });
     settle({ code, reason: blank(reason), kind });
   };
-  /** What the protocol heard: usage priced and traced, the handle kept, then every listener told. @param {LiveEvent} e */
+  /** Usage priced and traced, the handle kept, then every listener told. @param {LiveEvent} e */
   const emit = (e) => {
     if (e?.type === 'usage') {
       const usage = { ...NO_USAGE, ...e.usage };
       const turnCost = costOf(usage, model.prices);
       cost = addCost(cost, turnCost);
-      trace?.request({ kind: 'realtime', endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url: first.url, status: 101, ms: now() - last,
-        firstMs: null, outcome: 'ok', usage, ...(turnCost !== undefined ? { cost: turnCost } : {}), ...(wake ? { wake } : {}) });
+      trace?.request({ kind: 'realtime', endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url: first.url, status: 101, ms: now() - last, firstMs: null, outcome: 'ok', usage, cost: turnCost, wake });
       last = now();
     } else if (e?.type === 'resume') session.handle = e.handle;
     else if (e?.type === 'goaway') log('goaway', { ms: e.ms });
@@ -143,7 +134,7 @@ export function openLive(c) {
     /** One connection. @param {{ url: string, protocols?: string[] }} r @param {Record<string, any>} tunables @param {boolean} again */
     const attempt = (r, tunables, again) => {
       const st = { opened: false, up: false, late: false, broken: false };
-      /** What the protocol does with each message, set as it attaches. @type {((d: string | Uint8Array) => void) | null} */
+      /** Set as the protocol attaches. @type {((d: string | Uint8Array) => void) | null} */
       let handler = null;
       /** @param {ProviderError} err @param {number} code @param {string} reason */
       const down = (err, code, reason) => {
@@ -169,7 +160,7 @@ export function openLive(c) {
         if (asked) return s.close(1000);
         const io = {
           send: (/** @type {string | Uint8Array} */ d) => {
-            bytes.out += typeof d === 'string' ? utf8(d).length : d.byteLength;
+            bytes.out += size(d);
             s.send(d);
           },
           on: (/** @type {(d: string | Uint8Array) => void} */ fn) => { handler = fn; },
@@ -190,7 +181,7 @@ export function openLive(c) {
       });
       s.addEventListener('message', (/** @type {MessageEvent} */ e) => {
         const d = typeof e.data === 'string' ? e.data : new Uint8Array(e.data);
-        bytes.in += typeof d === 'string' ? utf8(d).length : d.byteLength;
+        bytes.in += size(d);
         try {
           handler?.(d);
         } catch (err) {
@@ -218,41 +209,37 @@ export function openLive(c) {
     attempt(first, c.tunables, false);
   });
   ready.catch(() => {}); // read by whoever awaits it, never left unhandled
-  /** A driver call; a bug in it counts against the plugin. @param {string} what @param {(d: LiveDriver) => void} fn */
-  const call = (what, fn) => {
-    if (!driver || done) return;
+  /** A driver call; a bug in it counts against the plugin. @param {string} what @param {any[]} a */
+  const call = (what, a) => {
     try {
-      fn(driver);
+      if (driver && !done) /** @type {any} */ (driver)[what]?.(...a);
     } catch (e) {
       bug(what, e);
       if (!isPluginBug(e)) throw e;
     }
   };
-  /** @type {LiveSession} */
-  const session = {
+  const session = /** @type {LiveSession} */ ({
     ready,
     closed,
     bytes,
     tunables: c.tunables,
-    on(fn) {
+    on(/** @type {(e: LiveEvent) => void} */ fn) {
       listeners.add(fn);
       return () => { listeners.delete(fn); };
     },
-    audio: (chunk) => call('audio', (d) => d.audio(chunk)),
-    activity: (edge) => call('activity', (d) => d.activity(edge)),
-    text: (t, o) => call('text', (d) => d.text(t, o)),
-    image: (i) => call('image', (d) => d.image(i)),
-    answer: (id, name, output, o) => call('answer', (d) => d.answer(id, name, output, o)),
-    cancel: () => call('cancel', (d) => d.cancel?.()),
+    ...Object.fromEntries(['audio', 'activity', 'text', 'image', 'answer', 'cancel'].map((m) => [m, (/** @type {any[]} */ ...a) => call(m, a)])),
     close(why = 'closed') {
       if (done || asked) return;
       asked = why;
-      call('close', (d) => d.close?.());
+      call('close', []);
       ws?.close(1000);
     },
-  };
+  });
   return session;
 }
+
+/** What a Test says once a session is ready. @type {import('../llm/check.js').TestStep[]} */
+const OPENED = [{ step: 'access', ok: true, detail: 'annai can open a live session at this address from the browser.' }, { step: 'key', ok: true, detail: 'The key works.' }];
 
 /**
  * A realtime model's Test (K4): asked "Say OK.", the session must answer aloud, in words, within ms; then it closes.
@@ -284,7 +271,7 @@ export async function testLive(session, { onAudio, ms = 10_000 } = {}) {
     const ok = Boolean(heard && words);
     const detail = ok ? `It answered aloud: ${words}.` : how === 'late' ? `It didn't answer aloud within ${ms / 1000} seconds.`
       : KINDS.has(how) ? `The session closed before it answered. ${explain(new ProviderError(/** @type {any} */ (how), ''))}` : 'It answered, but not aloud in words.';
-    return { ok, steps: [{ step: 'access', ok: true, detail: 'annai can open a live session at this address from the browser.' }, { step: 'key', ok: true, detail: 'The key works.' }, { step: 'live', ok, detail }] };
+    return { ok, steps: [...OPENED, { step: 'live', ok, detail }] };
   } catch (e) {
     const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
     return { ok: false, steps: [{ step: err.kind === 'auth' || err.kind === 'credit' ? 'key' : 'access', ok: false, detail: explain(err) }] };

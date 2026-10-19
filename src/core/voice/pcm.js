@@ -77,28 +77,48 @@ export function wavSeconds(bytes) {
   return size / 2 / fmt.channels / fmt.sampleRate;
 }
 
-/**
- * The same sound at another sample rate: filtered first when going down, so nothing folds back,
- * then read between samples. @param {Float32Array} pcm @param {number} from @param {number} to
- */
+/** Sound at another sample rate, piece by piece: the same samples as all at once. Filtered first when going down, so nothing folds back, then read between samples. */
+export class StreamResampler {
+  #pos = 0; // the next output's place in the input
+  #base = 0; // where this piece starts in the input
+  #last = 0; // the last piece's last sample, filtered
+  #n = 0; // outputs so far
+  #filter;
+
+  /** @param {number} from @param {number} to */
+  constructor(from, to) {
+    this.step = from / to;
+    const a = to < from ? biquad('lowpass', to * 0.45, from) : null;
+    const b = to < from ? biquad('lowpass', to * 0.45, from) : null;
+    this.#filter = a && b ? (/** @type {number} */ x) => b(a(x)) : (/** @type {number} */ x) => x;
+  }
+
+  /** @param {Float32Array} pcm @returns {Float32Array} */
+  push(pcm) {
+    const x = new Float32Array(pcm.length + 1); // x[0]: the sample before this piece
+    x[0] = this.#last;
+    for (let i = 0; i < pcm.length; i++) x[i + 1] = this.#filter(pcm[i]);
+    /** @type {number[]} */
+    const out = [];
+    for (; this.#pos <= this.#base + pcm.length - 1; this.#pos = ++this.#n * this.step) {
+      const j = Math.floor(this.#pos);
+      const f = this.#pos - j;
+      const k = j - this.#base + 1;
+      out.push(x[k] * (1 - f) + (f ? x[k + 1] * f : 0));
+    }
+    if (pcm.length) this.#last = x[pcm.length];
+    this.#base += pcm.length;
+    return Float32Array.from(out);
+  }
+}
+
+/** The same sound at another sample rate, all at once; its last sample is held to the length in time. @param {Float32Array} pcm @param {number} from @param {number} to */
 export function resample(pcm, from, to) {
   if (from === to) return pcm;
-  let src = pcm;
-  if (to < from) {
-    const a = biquad('lowpass', to * 0.45, from);
-    const b = biquad('lowpass', to * 0.45, from);
-    src = pcm.map((x) => b(a(x)));
-  }
-  const n = Math.floor((src.length * to) / from);
-  const out = new Float32Array(n);
-  const step = from / to;
-  for (let i = 0; i < n; i++) {
-    const x = i * step;
-    const j = Math.floor(x);
-    const f = x - j;
-    out[i] = (src[j] ?? 0) * (1 - f) + (src[j + 1] ?? src[j] ?? 0) * f;
-  }
-  return out;
+  const out = new StreamResampler(from, to).push(pcm);
+  const all = new Float32Array(Math.floor((pcm.length * to) / from));
+  all.set(out.subarray(0, all.length));
+  return all.fill(out[out.length - 1] ?? 0, Math.min(out.length, all.length));
 }
 
 /**
