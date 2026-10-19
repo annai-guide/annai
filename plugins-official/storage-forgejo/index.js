@@ -326,7 +326,8 @@ async function fill(g) {
       if (typeof owner !== 'string' || typeof r.name !== 'string' || r.private !== true || r.archived === true || r.mirror === true || r.permissions?.push !== true) continue;
       if ((!g.owner || same(owner, g.owner)) && (!g.repo || same(r.name, g.repo))) found.push({ owner, repo: r.name });
     }
-    if (data.length < COMMITS_PAGE) break;
+    // A page shorter than asked for isn't the end: a server may hold fewer ([api] MAX_RESPONSE_ITEMS). An empty one is.
+    if (!data.length) break;
   }
   const own = found.filter((r) => login && same(r.owner, login));
   const pool = (own.length ? own : found).sort((a, b) => (`${a.owner}/${a.repo}` < `${b.owner}/${b.repo}` ? -1 : 1));

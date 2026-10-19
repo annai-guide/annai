@@ -58,14 +58,15 @@ function idOf(format, o) {
 /**
  * @param {{ token?: string, user?: string, repos?: Record<string, { private?: boolean, archived?: boolean, format?: 'sha1' | 'sha256', defaultBranch?: string,
  *   push?: boolean, mirror?: boolean, files?: Record<string, string | Buffer> }>, cors?: boolean | string, perPage?: number, flavor?: 'forgejo' | 'gitea',
- *   maxBody?: number, lfs?: boolean }} [opts]
+ *   maxBody?: number, lfs?: boolean, maxItems?: number }} [opts]
  *   user: the tokens' account; repos: each one empty, or with one commit holding files; cors: true allows any origin, a string only that origin, false none
  *   (Forgejo's default); perPage: the most tree entries a page holds; flavor: Gitea says truncated only while more pages follow,
  *   and answers a stale sha with 422; maxBody: a proxy in front refuses larger requests with 413, without CORS headers;
  *   lfs: the server keeps files .gitattributes sends to Git LFS ([server] LFS_START_SERVER): ChangeFiles commits a pointer
- *   to the content in their place, as both servers did (2026-10-18), and /media gives the content
+ *   to the content in their place, as both servers did (2026-10-18), and /media gives the content; maxItems: the most a
+ *   page of the repository search holds ([api] MAX_RESPONSE_ITEMS, 50 unless the server's app.ini says less)
  */
-export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity, lfs = false } = {}) {
+export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity, lfs = false, maxItems = 50 } = {}) {
   /** @type {Map<string, Repo>} */
   const all = new Map();
   /** @type {{ method: string, path: string, status: number, body: string }[]} */
@@ -310,7 +311,7 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
       const [priv, archived, words] = [flag('is_private'), flag('archived'), (q.get('q') ?? '').toLowerCase()];
       const found = [...all.values()].filter((x) => (priv === null || x.private === priv) && (archived === null || x.archived === archived) && x.name.split('/')[1].toLowerCase().includes(words))
         .sort((a, b) => (a.name.split('/')[1] < b.name.split('/')[1] ? -1 : 1));
-      const limit = Math.min(50, Number(q.get('limit')) || 30);
+      const limit = Math.min(maxItems, Number(q.get('limit')) || 30);
       const start = (Math.max(1, Number(q.get('page')) || 1) - 1) * limit;
       return { status: 200, json: { ok: true, data: found.slice(start, start + limit).map(repoJson) }, headers: { 'x-total-count': String(found.length) } };
     }

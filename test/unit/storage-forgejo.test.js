@@ -405,9 +405,17 @@ test('the search is read page by page, and a repository found on a later page is
   try {
     const { type } = forgejo();
     assert.deepEqual((await type.check(ctx(fj, { owner: '', repo: '' }))).config, { owner: 'me', repo: 'z-backup' });
-    assert.equal(fj.count('GET', '/repos/search'), 2, 'is_private leaves the public ones out; 61 private ones are two pages');
+    assert.equal(fj.count('GET', '/repos/search'), 3, 'is_private leaves the public ones out; 61 private ones are two pages, and an empty third says that was all');
   } finally {
     await fj.stop();
+  }
+  // A server whose pages hold fewer than annai asks for (MAX_RESPONSE_ITEMS 20): its short pages aren't the end (fix pass 5).
+  const short = await startForgejo({ repos, maxItems: 20 });
+  try {
+    const { type } = forgejo();
+    assert.deepEqual((await type.check(ctx(short, { owner: '', repo: '' }))).config, { owner: 'me', repo: 'z-backup' });
+  } finally {
+    await short.stop();
   }
 });
 
