@@ -267,3 +267,15 @@ test("Settings → Updates says plainly what the last check said: checking, offl
   assert.deepEqual(statusWords({ checking: false, last: { failed: ['tide-pools couldn\'t be checked: …'], found: [] }, checkedAt: at }, false, now),
     { said: 'Last checked 3 minutes ago. Not everything could be checked:', failed: ['tide-pools couldn\'t be checked: …'] });
 });
+
+test('a check that hangs (a connection that stalls) ends after a time limit, in plain words, and Check now can be tapped again', async () => {
+  const { host } = await hostKit();
+  const updates = new Updates({ host, env: { fetch: async () => new Response(JSON.stringify({ plugins: [] })) }, online: () => true, limitMs: 20 });
+  updates.app = { check: () => new Promise(() => {}), state: () => 'none' };
+  await updates.start();
+  const r = await updates.checkNow();
+  assert.deepEqual(r?.failed, ["The check took too long. Check the connection, and try again."]);
+  assert.equal(updates.checking, false);
+  updates.app = { check: async () => {}, state: () => 'none' };
+  assert.deepEqual((await updates.checkNow())?.failed, []);
+});
