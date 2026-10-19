@@ -159,6 +159,13 @@ test('classify: OpenAI-style error codes', () => {
   assert.equal(type.classify(500, 'not json'), null);
 });
 
+test("classify: OpenRouter's free models used up for the day are too many requests, not an account out of credit", () => {
+  // Its words ask for credits, which would read as "out of credit" to a key that never had any.
+  const daily = JSON.stringify({ error: { code: 429, message: 'Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day' } });
+  assert.equal(type.classify(429, daily), 'rate');
+  assert.equal(type.classify(429, JSON.stringify({ error: { code: 429, message: 'Rate limit exceeded', metadata: { error_type: 'rate_limit_exceeded' } } })), null, 'the core reads a plain 429 as rate already');
+});
+
 test("list: OpenRouter's model list becomes models with windows, inputs, tools and prices per million tokens", async () => {
   const { url, headers } = type.listRequest({ endpoint: spec().endpoint, key: 'sk-or-test' });
   assert.equal(url, 'https://openrouter.ai/api/v1/models');
