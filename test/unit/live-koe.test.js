@@ -370,3 +370,26 @@ test("a drop that can't resume, with no model after it: Koe is down, and Kokoro 
     await k.done();
   }
 });
+
+// Task 8: cost. Realtime turns are priced and counted in Spend per day.
+test("Spend per day reached: the session closes with the budget card, its turns counted in Spend per day; none opens again today", async () => {
+  const usage = { promptTokenCount: 1_000_000, responseTokenCount: 0, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 1_000_000 }] };
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1), usage }]);
+  try {
+    await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+    k.agent.send('Hi');
+    await until(() => k.agent.live.state === 'open');
+    await until(() => k.agent.live.state === 'closed');
+    await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
+    const closed = (await k.events(['live.session'])).find((/** @type {any} */ e) => e.data.state === 'closed');
+    assert.deepEqual([closed.data.why, closed.data.cost], ['budget', 0.75]);
+    const [turn] = (await k.events(['net.request'])).filter((/** @type {any} */ e) => e.data.kind === 'realtime');
+    assert.equal(turn.data.cost, 0.75, 'priced at $0.75 a million text tokens in');
+    assert.ok(k.notices.some((/** @type {any} */ n) => n.title === "Shiori stopped: today's budget is spent"));
+    k.agent.send('Hi again');
+    await k.agent.idle();
+    assert.equal(k.server.connections().length, 1, 'no session opens over the budget');
+  } finally {
+    await k.done();
+  }
+});

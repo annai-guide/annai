@@ -116,6 +116,7 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
 .voice-row .chip { border: 0; background: none; min-height: 32px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); }
 .ib-icon { font-size: 22px; line-height: 1; }
 .voice-row .chip:hover { color: var(--ink); }
+.voice-row .chip.listening { color: var(--risk); font-weight: 600; }
 .ib-svg { display: block; }
 .voice-chip-wrap { position: relative; }
 .voice-chip, .voice-row .chip { cursor: pointer; font: inherit; }

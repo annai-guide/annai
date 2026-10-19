@@ -138,7 +138,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   }
   // A live session's life (K4): never its address or key, which annai never keeps.
   if (e.type === 'live.session') {
-    return [`live session ${d.state}`, d.model, d.ms !== undefined ? `${(d.ms / 1000).toFixed(1)} s` : null, d.why ? cut(d.why) : null, d.kind,
+    return [`live session ${d.state}`, d.model, d.ms !== undefined ? (d.ms >= 60_000 ? `${(d.ms / 60_000).toFixed(1)} min` : `${(d.ms / 1000).toFixed(1)} s`) : null, d.why ? cut(d.why) : null, d.kind,
       d.bytesIn !== undefined ? `${bytes(d.bytesIn)} in, ${bytes(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null].filter(Boolean).join(' · ');
   }
   if (e.type === 'net.request') {
