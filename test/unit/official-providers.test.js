@@ -18,7 +18,7 @@ const entry = (id) => catalog.find((/** @type {any} */ p) => p.id === id);
 const providedBy = (type, requires = []) => requires.some((r) => entry(r.id)?.provides?.['endpoint-type']?.includes(type) && satisfies(entry(r.id).version, r.version));
 
 /** The official providers with code. */
-const CODE = ['provider-openrouter'];
+const CODE = ['provider-openrouter', 'provider-llamacpp', 'provider-ollama', 'provider-lmstudio'];
 
 test('every official provider is valid, its id is provider-*, and its requires cover the abilities that start on, in range of the catalog', async () => {
   const providers = (await officialManifests()).filter((m) => m.provider);
@@ -26,7 +26,7 @@ test('every official provider is valid, its id is provider-*, and its requires c
   for (const m of providers) {
     assert.match(m.id, /^provider-[a-z0-9-]+$/);
     assert.deepEqual(checkProviderDesc(m.provider), [], m.id);
-    // Data only, but for those with quirks no data can carry (milestone 4): OpenRouter's sign-in.
+    // Data only, but for those with quirks no data can carry (milestone 4): OpenRouter's sign-in, and the context a server serves (decision 22).
     assert.equal(m.entry, CODE.includes(m.id) ? 'index.js' : undefined, `${m.id}: ${CODE.includes(m.id) ? 'has code' : 'data only'}`);
     for (const [id, a] of Object.entries(m.provider.abilities)) {
       if (/** @type {any} */ (a).on !== false) assert.ok(providedBy(/** @type {any} */ (a).type, m.requires), `${m.id}/${id}: ${/** @type {any} */ (a).type}`);
