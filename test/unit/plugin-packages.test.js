@@ -65,7 +65,7 @@ test("host: ids already taken are refused (annai's own parts, a package of the o
   assert.deepEqual(registry.clashes('trail-safety'), [{ kind: 'skill', name: 'trail-safety', owner: 'trail-kit', used: false, reserved: false, chosen: false }]);
   await assert.rejects(host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'trail-kit') })), /trail-kit: is installed already as a plugin\. Remove it first/);
   await host.install(KIT()); // the same package again replaces itself
-  assert.equal((await host.inspect(KIT())).replaces?.version, '1.0.0');
+  assert.equal((await host.inspect(KIT())).previous?.version, '1.0.0');
 });
 
 test('host: a package without code needs no restart after an update; one whose code ran does', async () => {
@@ -267,11 +267,11 @@ test('host: what a new version of an installed package adds is known before it i
   const next = KIT({ version: '1.1.0', entry: 'index.js', skills: ['skills/trail-safety', 'skills/trail-maps'] });
   next.set('index.js', utf8('export function activate() {}'));
   next.set('skills/trail-maps/SKILL.md', utf8('---\nname: trail-maps\ndescription: Reading a trail map.\n---\nNorth is up.'));
-  const added = (await host.inspect(next)).replaces?.added;
+  const added = (await host.inspect(next)).previous?.added;
   assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.origins], [true, ['trail-maps'], [], []]);
-  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], origins: [] });
+  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).previous?.added, { code: false, skills: [], personalities: [], origins: [] });
   // A provider that now sends keys somewhere new: that origin is something new too (decision 11).
-  const moved = (await host.inspect(KIT({ version: '1.0.2', provider: { ...TRAIL_LLM, abilities: { chat: { ...TRAIL_LLM.abilities.chat, baseUrl: 'https://elsewhere.example/v1' } } } }))).replaces?.added;
+  const moved = (await host.inspect(KIT({ version: '1.0.2', provider: { ...TRAIL_LLM, abilities: { chat: { ...TRAIL_LLM.abilities.chat, baseUrl: 'https://elsewhere.example/v1' } } } }))).previous?.added;
   assert.deepEqual(moved?.origins, ['https://elsewhere.example']);
 });
 
@@ -283,7 +283,7 @@ test('security review: the origins a provider sends keys to are kept with its re
   // Even if the stored manifest changed under it, what the user agreed to at install is what counts.
   await ws.write(SYS_PLUGINS, '/trail-kit/annai-plugin.json', { id: 'trail-kit', name: 'Trail kit', version: '1.0.0', api: 1, provider: { ...TRAIL_LLM, baseUrl: 'https://other.example/v1' } }, { author: 'system' });
   assert.deepEqual((await host.installedParts('trail-kit')).origins, ['https://llm.trails.example']);
-  const downgrade = (await host.inspect(KIT({ version: '1.0.1', provider: { ...TRAIL_LLM, baseUrl: 'https://llm.trails.example:8443/v1' } }))).replaces?.added;
+  const downgrade = (await host.inspect(KIT({ version: '1.0.1', provider: { ...TRAIL_LLM, baseUrl: 'https://llm.trails.example:8443/v1' } }))).previous?.added;
   assert.deepEqual(downgrade?.origins, ['https://llm.trails.example:8443']);
 });
 

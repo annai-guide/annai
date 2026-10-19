@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "api": 1,
   "entry": "index.js",
+  "replaces": ["plan-row"],
   "files": ["index.js", "theme.css"],
   "description": "Test plugin: one of each thing a plugin can add to annai's screens.",
   "author": "annai tests",

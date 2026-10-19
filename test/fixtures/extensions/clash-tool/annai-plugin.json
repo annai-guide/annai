@@ -1,0 +1,9 @@
+{
+  "id": "clash-tool",
+  "name": "Clash tool",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "index.js",
+  "description": "Test plugin (milestone 6 of providers as plugins): a tool named weather, which annai has already, without replaces.",
+  "author": "annai tests"
+}

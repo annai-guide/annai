@@ -152,6 +152,11 @@ export class Registry {
     return first ? { pluginId: first.pluginId, chosen: false } : null;
   }
 
+  /** Whether the user's choice may move a name: not one annai keeps, nor a protocol's or a kind of backup place's. @param {string} kind @param {string} name */
+  choosable(kind, name) {
+    return !KEYED.has(kind) && this.#rules.reserved(kind, name) !== 'only';
+  }
+
   /**
    * The names a plugin registers that someone else also has, or that the user chose for, with their owners: what
    * its page says (Not used, or used by choice). @param {string} pluginId @returns {Clash[]}
@@ -165,8 +170,7 @@ export class Registry {
         const o = this.owner(kind, name);
         const others = all.some((e) => e.pluginId !== pluginId && !this.#disabled.has(e.pluginId) && read(e.item) === name);
         if (o?.pluginId === pluginId && !o.chosen && !others) continue;
-        const reserved = KEYED.has(kind) || this.#rules.reserved(kind, name) === 'only';
-        out.push({ kind, name, owner: o?.pluginId ?? pluginId, used: o?.pluginId === pluginId, reserved, chosen: Boolean(o?.chosen) });
+        out.push({ kind, name, owner: o?.pluginId ?? pluginId, used: o?.pluginId === pluginId, reserved: !this.choosable(kind, name), chosen: Boolean(o?.chosen) });
       }
     }
     return out;
