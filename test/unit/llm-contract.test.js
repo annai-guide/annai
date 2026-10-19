@@ -75,3 +75,13 @@ test('portable: a provider block goes only to the model that wrote it', () => {
   assert.equal(portable(messages, 'a')[0].parts.length, 2);
   assert.deepEqual(portable(messages, 'b')[0].parts, [{ type: 'text', text: 'Hi' }]);
 });
+
+test("portable() drops a tool call's extra for another model, keeps it for the one that wrote it (Gemini 3's thought signature, K1 Task 1)", () => {
+  /** @type {import('../../src/core/llm/contract.js').Message[]} */
+  const m = [{ role: 'assistant', parts: [{ type: 'tool_call', id: 'a', name: 'x', input: {}, extra: { s: 1 }, model: 'gemini-3.8-flash' }] }];
+  assert.deepEqual(/** @type {any} */ (portable(m, 'gpt-6-luna')[0].parts[0]).extra, undefined);
+  assert.deepEqual(/** @type {any} */ (portable(m, 'gemini-3.8-flash')[0].parts[0]).extra, { s: 1 });
+  // A call without a model (written before annai kept one) keeps no extra either.
+  const old = [{ role: /** @type {const} */ ('assistant'), parts: [{ type: /** @type {const} */ ('tool_call'), id: 'a', name: 'x', input: {}, extra: { s: 1 } }] }];
+  assert.equal(/** @type {any} */ (portable(old, 'gemini-3.8-flash')[0].parts[0]).extra, undefined);
+});

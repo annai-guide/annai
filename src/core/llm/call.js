@@ -113,7 +113,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     } else if (ev.type === 'reasoning') {
       parts.push({ type: 'reasoning', text: ev.text, ...(ev.signature ? { signature: ev.signature } : {}), ...(ev.redacted ? { redacted: ev.redacted } : {}), model: model.providerId });
     } else if (ev.type === 'tool_call') {
-      parts.push({ type: 'tool_call', id: ev.id, name: ev.name, input: ev.input });
+      // What the provider wrote on the call to have back (Gemini 3's thought signature) goes back only to this model.
+      parts.push({ type: 'tool_call', id: ev.id, name: ev.name, input: ev.input, ...(ev.extra !== undefined ? { extra: ev.extra, model: model.providerId } : {}) });
     } else if (ev.type === 'provider') {
       parts.push({ type: 'provider', block: ev.block, model: model.providerId });
     } else if (ev.type === 'citation') {

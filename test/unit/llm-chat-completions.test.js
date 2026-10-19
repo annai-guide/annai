@@ -330,3 +330,61 @@ test('only application/json is a whole reply: NDJSON, stream+json and problem+js
   }
   assert.equal((await readAll(json(await fixture('whole-text.json')))).find((e) => e.type === 'text')?.text, 'Kyoto is in Japan.');
 });
+
+// K1 Task 1 (the Koe and Kokoro spike, 2026-10-19): Gemini 3 models write a thought signature on each tool call, in
+// extra_content.google.thought_signature, and refuse the next step without it ("Function call is missing a thought_signature").
+const SIGNED = [
+  'data: {"choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"c1","type":"function","function":{"name":"read","arguments":"{}"},"extra_content":{"google":{"thought_signature":"sig"}}}]},"finish_reason":null}]}',
+  'data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"id":"c2","type":"function","function":{"name":"list","arguments":"{}"}}]},"finish_reason":null}]}',
+  'data: {"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}',
+  'data: [DONE]',
+  '',
+].join('\n\n');
+
+test("a tool call's extra_content (Gemini's thought signature) comes back on that call in the next request", async () => {
+  const s = spec({ model: { ...spec().model, providerId: 'gemini-3.8-flash' }, request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Read it' }] }] } });
+  const events = await read(SIGNED, s);
+  assert.deepEqual(events.filter((e) => e.type === 'tool_call'), [
+    { type: 'tool_call', id: 'c1', name: 'read', input: {}, extra: { google: { thought_signature: 'sig' } } },
+    { type: 'tool_call', id: 'c2', name: 'list', input: {} },
+  ]);
+  // Through annai's call: the reply's parts keep it, with the model that wrote it.
+  const reply = await callOnce({ type, endpoint: s.endpoint, model: s.model, key: s.key, request: s.request, fetch: async () => new Response(SIGNED, { headers: { 'content-type': 'text/event-stream' } }) });
+  const calls = reply.parts.filter((p) => p.type === 'tool_call');
+  assert.deepEqual(calls[0], { type: 'tool_call', id: 'c1', name: 'read', input: {}, extra: { google: { thought_signature: 'sig' } }, model: 'gemini-3.8-flash' });
+  assert.deepEqual(calls[1], { type: 'tool_call', id: 'c2', name: 'list', input: {} });
+  // The next request, to the same model: the signature is back on its call, and only there.
+  /** @type {any} */
+  let body = null;
+  const next = { messages: [...s.request.messages, { role: /** @type {const} */ ('assistant'), parts: reply.parts }, { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('tool_result'), id: 'c1', content: 'a' }, { type: /** @type {const} */ ('tool_result'), id: 'c2', content: 'b' }] }] };
+  await callOnce({ type, endpoint: s.endpoint, model: s.model, key: s.key, request: next, fetch: async (_u, init) => { body = JSON.parse(String(init.body)); return new Response(await fixture('text.sse')); } });
+  const sent = body.messages.find((/** @type {any} */ m) => m.tool_calls).tool_calls;
+  assert.deepEqual(sent[0].extra_content, { google: { thought_signature: 'sig' } });
+  assert.equal('extra_content' in sent[1], false);
+  // To another model the signature isn't sent: it was written for the one that made the call.
+  await callOnce({ type, endpoint: s.endpoint, model: { ...s.model, providerId: 'gpt-6-luna' }, key: s.key, request: next, fetch: async (_u, init) => { body = JSON.parse(String(init.body)); return new Response(await fixture('text.sse')); } });
+  assert.equal('extra_content' in body.messages.find((/** @type {any} */ m) => m.tool_calls).tool_calls[0], false);
+});
+
+test('a whole JSON reply keeps extra_content too', async () => {
+  const whole = JSON.stringify({ choices: [{ message: { content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'read', arguments: '{}' }, extra_content: { google: { thought_signature: 'sig' } } }] }, finish_reason: 'tool_calls' }] });
+  const events = await readAll(json(whole));
+  assert.deepEqual(events.filter((e) => e.type === 'tool_call'), [{ type: 'tool_call', id: 'c1', name: 'read', input: {}, extra: { google: { thought_signature: 'sig' } } }]);
+});
+
+test("standInCallExtra (Gemini's description sets it): a call in the current turn that another model wrote carries the stand-in, so a fallback mid-turn isn't refused; earlier turns' calls, and its own, are as they were", () => {
+  const stand = { google: { thought_signature: 'skip_thought_signature_validator' } };
+  const messages = [
+    { role: 'user', parts: [{ type: 'text', text: 'Earlier' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'old', name: 'read', input: {} }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'old', content: 'a' }, { type: 'text', text: '[meanwhile, the user wrote] Now' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'theirs', name: 'read', input: {} }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'theirs', content: 'b' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'mine', name: 'list', input: {}, extra: { google: { thought_signature: 'sig' } } }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'mine', content: 'c' }] },
+  ];
+  const calls = (/** @type {any} */ t) => Object.fromEntries(type.build(spec({ tunables: { ...type.tunables, ...t }, request: { messages } })).body.messages.filter((/** @type {any} */ m) => m.tool_calls).map((/** @type {any} */ m) => [m.tool_calls[0].id, m.tool_calls[0].extra_content]));
+  assert.deepEqual(calls({ standInCallExtra: stand }), { old: undefined, theirs: stand, mine: { google: { thought_signature: 'sig' } } });
+  assert.deepEqual(calls({}), { old: undefined, theirs: undefined, mine: { google: { thought_signature: 'sig' } } });
+  assert.equal(type.tunables.standInCallExtra, null);
+});

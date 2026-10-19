@@ -27,7 +27,7 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 17763,
+      "size": 18745,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -43,8 +43,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "41b224eac717ed14256c07edeecb7f2356c7cf4f0c239b964ec60c54958a3893",
-        "index.js": "f647a24419fbb6ffd004f56a21b7472301ca07dc1f9ca8c8ec29876934fd30bb"
+        "annai-plugin.json": "00f959aa9abb83c8066188f0dafc67daa7ca807a592a3fd740cc76a808528f11",
+        "index.js": "35f65cb7d901ba4d18907d6c62ac8caede11f8cce731aa0688fa0a5a4d356279"
       }
     },
     {
@@ -150,7 +150,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Gemini models through Google's OpenAI-compatible endpoint.",
       "category": "providers",
       "keywords": [],
@@ -160,7 +160,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 653,
+      "size": 838,
       "requires": [
         {
           "id": "chat-completions",
@@ -169,7 +169,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "2e2a7030ddbc3c3f6f892a6360055e117a8f5caa66f880b8ada8231cb31465f6"
+        "annai-plugin.json": "ce9e6cdb1ab2c4d87dffaa11bf81413a26701d975ac83d00f07a6f5b2b00469a"
       }
     },
     {
