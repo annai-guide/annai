@@ -1,7 +1,7 @@
 {
   "id": "provider-another-address",
   "name": "Another address",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "catchAll": true,
   "api": 1,
   "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, then switch on what it offers.",
