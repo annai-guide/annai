@@ -8,6 +8,7 @@ import { ensureBaseScopes, SYS_SETTINGS } from '../../src/core/scopes.js';
 import { readConfig, saveRoles, modelOf, KOE_ROLE, CHAT_ROLES } from '../../src/core/llm/config.js';
 import { candidates } from '../../src/core/llm/fallback.js';
 import { ROLE_KINDS, checkProviderDesc } from '../../src/core/llm/provider-desc.js';
+import { nearestLevel } from '../../src/core/llm/reasoning.js';
 import { addProvider, useSuggestion } from '../../src/core/llm/providers.js';
 import { splitOn, koePath } from '../../src/core/llm/fallback.js';
 import { ROUTER_SRC } from './provider-kit.js';
@@ -34,7 +35,9 @@ test('roles.json has the one Koe list; a saved file without it reads it as empty
   await ensureBaseScopes(ws);
   await ws.write(SYS_SETTINGS, '/llm/roles.json', { main: { models: [], level: 'medium' } }, { author: 'user' });
   let { roles } = await readConfig(ws);
-  assert.deepEqual(roles.koe.models, []);
+  assert.deepEqual(roles.koe, { models: [], level: 'low' }, "Koe thinks at low unless set (the user, 2026-10-19: low over off)");
+  // A model whose map lacks low uses the nearest it has, the cheaper on a tie.
+  assert.deepEqual([nearestLevel({ off: {}, medium: {} }, roles.koe.level), nearestLevel({ medium: {}, high: {} }, roles.koe.level)], ['off', 'medium']);
   assert.ok(!('koe-talk' in roles) && !('koe-type' in roles));
   await saveRoles(ws, { ...roles, koe: { models: [], level: 'medium', firstOutputSeconds: 8 } });
   ({ roles } = await readConfig(ws));
