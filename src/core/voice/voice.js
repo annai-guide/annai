@@ -14,6 +14,8 @@ import { listen } from './listening.js';
 import { micProblem } from './mic.js';
 import { browserVoiceFor } from './where.js';
 import { record as logEvent } from '../agent/log.js';
+import { encodeWav } from './pcm.js';
+import { sha256Hex } from '../hash.js';
 
 /**
  * Voice (spec §10): annai's speaking and hearing, for the screens, and in milestone 3b for
@@ -149,6 +151,19 @@ export class Voice {
   async clipOf(h) {
     const kept = this.memory.get(h.id) ?? { ...h, transcripts: new Map(), encoded: new Map(h.encoded) };
     return audioFor(kept, CODEC_ORDER.flat().filter((f) => this.plays().includes(f)), this.platform?.encoder);
+  }
+
+  /**
+   * What a heard entry keeps with "keep voice clips" (spec §10.2): a blob it names (§4.9), as clipOf makes it; nothing without
+   * the setting. A live session's speech (K5) comes as its samples. @param {import('./resolve.js').Heard | { id: string, pcm: Int16Array, rate: number }} h
+   * @returns {Promise<{ data: Record<string, any>, blobs: { hash: string, bytes: Uint8Array, type: string }[] }>}
+   */
+  async keep(h) {
+    const seg = 'pcm' in h ? { id: h.id, audio: { data: encodeWav(h.pcm, h.rate), mediaType: 'audio/wav', seconds: h.pcm.length / h.rate } } : h;
+    const kept = seg.audio && (await this.settings()).keepClips ? await this.clipOf(/** @type {any} */ (seg)).catch(() => null) : null;
+    if (!kept) return { data: {}, blobs: [] };
+    const hash = await sha256Hex(kept.data);
+    return { data: { clip: hash, clipFormat: kept.format, clipBytes: kept.data.length }, blobs: [{ hash, bytes: kept.data, type: kept.mediaType }] };
   }
 
   /** A MediaRecorder type to record alongside, when some receiver would take its format over the encoder's (decision 24). */

@@ -12,6 +12,9 @@ export function escapeTags(text) {
   return (s.length > MAX_TEXT ? `${s.slice(0, MAX_TEXT)}…` : s).replace(/</g, '‹').replace(/>/g, '›');
 }
 
+/** Words not annai's, as Koe reads them: no tag, and no line that starts like one of annai's labels. @param {string} text */
+export const theirs = (text) => escapeTags(text).replace(/^(\s*)\[/gm, '$1\\[');
+
 /** Words inside a label, quoted, so a label or a new line in them can't pass for annai's. @param {unknown} text */
 export const quote = (text) => JSON.stringify(String(text ?? ''));
 
