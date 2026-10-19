@@ -6,6 +6,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
+import { callOnce } from '../../src/core/llm/call.js';
 
 /** The endpoint type, registered the way annai's plugin host would. @returns {any} */
 function load() {
@@ -198,4 +199,103 @@ test('build: a tool call whose arguments were cut short is sent with empty argum
   ] } });
   const call = type.build(s).body.messages.find((/** @type {any} */ m) => m.tool_calls).tool_calls[0];
   assert.equal(call.function.arguments, '{}');
+});
+
+// Item 24 (2026-10-18): a server that never streams, such as the user's own router, answers `stream: true` with one
+// whole application/json chat completion. It is read as the same events a stream gives.
+/** @param {string} text @param {number} [status] */
+const json = (text, status = 200) => new Response(text, { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
+/** @param {Response} res @param {any} [s] */
+async function readAll(res, s = spec()) {
+  const out = [];
+  for await (const e of type.read(res, s)) out.push(e);
+  return out;
+}
+
+test('a whole JSON reply where a stream was asked for: its words, reasoning first, the logprobs, a source, usage with cached tokens and the stop reason', async () => {
+  const events = await readAll(json(await fixture('whole-text.json')));
+  assert.deepEqual(events, [
+    { type: 'logprobs', top: [{ token: 'Ky', logprob: -0.01 }, { token: 'It', logprob: -4.2 }] },
+    { type: 'reasoning_delta', text: 'The user asks where Kyoto is.' },
+    { type: 'reasoning', text: 'The user asks where Kyoto is.' },
+    { type: 'text', text: 'Kyoto is in Japan.' },
+    { type: 'citation', url: 'https://en.wikipedia.org/wiki/Kyoto', title: 'Kyoto' },
+    { type: 'usage', usage: { input: 200, cacheRead: 1000, cacheWrite: 0, output: 30, reasoning: 12 } },
+    { type: 'stop', reason: 'end' },
+  ]);
+});
+
+test('a whole JSON reply with tool calls: each call whole, with its arguments, after the reasoning ("reasoning", as OpenRouter names it)', async () => {
+  const events = await readAll(json(await fixture('whole-tools.json')));
+  assert.deepEqual(events.filter((e) => e.type === 'reasoning'), [{ type: 'reasoning', text: 'A color is asked for.' }]);
+  assert.deepEqual(events.filter((e) => e.type === 'tool_call'), [
+    { type: 'tool_call', id: 'call_abc', name: 'report_color', input: { color: 'red' } },
+    { type: 'tool_call', id: 'call_def', name: 'report_size', input: { size: 3 } },
+  ]);
+  assert.deepEqual(events.at(-1), { type: 'stop', reason: 'tool' });
+  assert.ok(events.findIndex((e) => e.type === 'reasoning') < events.findIndex((e) => e.type === 'tool_call'));
+  // Its words as a list of parts, as some servers write them, and arguments already an object.
+  const parts = JSON.stringify({ choices: [{ message: { content: [{ type: 'text', text: 'Hi ' }, { type: 'text', text: 'there' }], tool_calls: [{ id: 'c1', function: { name: 'x', arguments: { a: 1 } } }] }, finish_reason: 'tool_calls' }] });
+  const more = await readAll(json(parts));
+  assert.deepEqual(more.filter((e) => e.type === 'text' || e.type === 'tool_call'), [{ type: 'text', text: 'Hi there' }, { type: 'tool_call', id: 'c1', name: 'x', input: { a: 1 } }]);
+});
+
+test('a whole JSON reply that is an error is the error it says, sharpened as an HTTP error is; one with no answer in it says so', async () => {
+  await assert.rejects(readAll(json(await fixture('whole-error.json'))), (e) => e instanceof ProviderError && e.kind === 'context' && /maximum context length/.test(e.message));
+  await assert.rejects(readAll(json(JSON.stringify({ error: { message: 'Insufficient credits', code: 402 } }))), (e) => e instanceof ProviderError && e.kind === 'credit');
+  await assert.rejects(readAll(json('{"id":"x","choices":[]}')), (e) => e instanceof ProviderError && e.kind === 'server' && /no answer/.test(e.message));
+  await assert.rejects(readAll(json('{"choices": [')), (e) => e instanceof ProviderError && e.kind === 'server' && /can't read/.test(e.message));
+  // A stream is still read as one, whatever else is there.
+  assert.deepEqual((await readAll(new Response(await fixture('tools.sse'), { headers: { 'content-type': 'text/event-stream' } }))).at(-1), { type: 'stop', reason: 'tool' });
+});
+
+test("a whole reply waits as a stream's first words do: one in time is taken, and one slower than the wait stops in words the trace and card show", async () => {
+  const s = spec({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Where is Kyoto?' }] }] } });
+  const body = await fixture('whole-text.json');
+  /** The whole reply after ms, its headers at once or with it. @param {number} ms @param {boolean} early */
+  const after = (ms, early) => async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+    const wait = () => new Promise((done, fail) => {
+      const t = setTimeout(done, ms);
+      init.signal?.addEventListener('abort', () => { clearTimeout(t); fail(init.signal?.reason); });
+    });
+    if (!early) {
+      await wait();
+      return json(body);
+    }
+    const stream = new ReadableStream({ async start(c) { await wait().catch(() => {}); c.enqueue(new TextEncoder().encode(body)); c.close(); } });
+    return new Response(stream, { headers: { 'content-type': 'application/json' } });
+  };
+  const call = (/** @type {any} */ fetch, /** @type {number} */ firstOutputMs) => callOnce({ type, endpoint: s.endpoint, model: s.model, key: s.key, request: s.request, fetch, firstOutputMs });
+  assert.equal((await call(after(20, false), 1000)).text, 'Kyoto is in Japan.');
+  assert.equal((await call(after(20, true), 1000)).text, 'Kyoto is in Japan.');
+  for (const early of [false, true]) {
+    await assert.rejects(call(after(400, early), 50), (e) => e instanceof ProviderError && e.kind === 'timeout' && e.message === 'No output started in time.', String(early));
+  }
+});
+
+/** A whole JSON reply whose connection drops after its first piece. */
+const dropping = () => new Response(new ReadableStream({
+  start(c) {
+    c.enqueue(new TextEncoder().encode('{"choices":[{"message":{"content":"Kyo'));
+    c.error(new TypeError('network error'));
+  },
+}), { headers: { 'content-type': 'application/json' } });
+
+test("a whole reply whose connection drops part way is a dropped connection, tried again elsewhere, and never counted against the plugin (fix pass 1)", async () => {
+  await assert.rejects(readAll(dropping()), (e) => e instanceof ProviderError && e.kind === 'network' && e.message === 'The connection dropped.');
+  const s = spec({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } });
+  let failed = 0;
+  await assert.rejects(callOnce({ type, endpoint: s.endpoint, model: s.model, key: s.key, request: s.request, fetch: async () => dropping(), registry: /** @type {any} */ ({ fail: () => { failed++; } }) }),
+    (e) => e instanceof ProviderError && e.kind === 'network');
+  assert.equal(failed, 0);
+});
+
+test('only application/json is a whole reply: NDJSON, stream+json and problem+json are read as streams, and so is a stream sent as application/json (fix pass 3)', async () => {
+  const sseText = await fixture('tools.sse');
+  for (const kind of ['application/x-ndjson', 'application/stream+json', 'application/problem+json', 'application/json', 'application/json; charset=utf-8']) {
+    const events = await readAll(new Response(sseText, { headers: { 'content-type': kind } }));
+    assert.deepEqual(events.filter((e) => e.type === 'tool_input').map((e) => e.partial), ['', '{"col', '{"color":"red"}'], kind);
+    assert.deepEqual(events.at(-1), { type: 'stop', reason: 'tool' }, kind);
+  }
+  assert.equal((await readAll(json(await fixture('whole-text.json')))).find((e) => e.type === 'text')?.text, 'Kyoto is in Japan.');
 });

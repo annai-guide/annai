@@ -122,7 +122,7 @@ export class Voice {
    */
   unlock() {
     if (this.#unlocked) return Promise.resolve(true);
-    /** @type {Promise<boolean> | undefined} */
+    /** @type {Promise<boolean> | boolean | undefined} */
     let tried;
     try {
       tried = this.platform?.player.unlock();
@@ -130,7 +130,8 @@ export class Voice {
       tried = undefined;
     }
     if (!tried) return Promise.resolve(false);
-    return (this.#unlocking = tried.then((ok) => {
+    // A platform's unlock may give a plain boolean rather than a promise of one.
+    return (this.#unlocking = Promise.resolve(tried).then((ok) => {
       if (ok) this.#unlocked = true;
       return Boolean(ok);
     }, () => false));

@@ -185,9 +185,10 @@ The design leaves these to the builder. Each line says why.
 21. **Skills join the one-owner rule.**
     - A taken skill name no longer stops an install. The skill is Not used, with the switch.
     - Why: the design names skill names, and `replaces` must work for them.
-22. **The local-server plugins are data only.**
-    - Reading a server's real context window would need code: llama.cpp's `/props`, Ollama's `/api/show`, LM Studio's `/api/v1/models`. That is left as a question for the user.
-    - Why: the design says "data first", and code would put the full-trust note on their plugin pages.
+22. **The local-server plugins start data only, then get a little code** (the user's answer, 2026-10-18: "yes add the code for reading context windows").
+    - That code reads the context window the server really serves: llama.cpp's `/props`, Ollama's `/api/show`, and LM Studio's `/api/v1/models` with its vision and tool flags.
+    - It uses the provider contract's `list` hook, so it's built in Milestone 4 once the contract exists. Milestone 2 ships them data only, with the context window set by hand until then.
+    - They're official, so there's no install question; their plugin pages show the has-code note.
 23. **Chat Completions and OpenAI Responses read a whole JSON reply** when a server ignores `stream: true`.
     - Why: maiGo drops `stream` and answers `application/json` (its server writes the whole completion). Today annai's SSE reader finds nothing in that reply and says "The reply stopped before it finished".
 24. **OpenRouter's speech list paths stay data.**
@@ -407,7 +408,7 @@ maiGo (the user's router, M2 and M5):
   - usage in the stream (the protocol's `usageInStream`, on by default);
   - llama.cpp's prompt cache (on by default; nothing to send).
 - **Shared protocol code** (built in M2): Chat Completions reads `max_model_len` (vLLM, SGLang), and Chat Completions and Responses read whole replies (maiGo).
-- **Provider code** (not built, a question for the user): the served context window from llama.cpp's `/props`, Ollama's `/api/show`, and LM Studio's `/api/v1/models` with its vision and tool flags. Each would use the contract's `list` (M4).
+- **Provider code** (the user said yes, 2026-10-18; built in M4 with the contract): the served context window from llama.cpp's `/props`, Ollama's `/api/show`, and LM Studio's `/api/v1/models` with its vision and tool flags. Each uses the contract's `list`.
 
 ---
 
@@ -499,13 +500,13 @@ Which checks need the real servers:
 12. **M6 changes `registry.list()`** for named kinds, under every consumer: run the whole suite. Skills' install-time refusal tests become "Not used" tests.
 13. **`featured` is trusted only from annai's own catalog.** A third-party manifest's `featured` is ignored everywhere.
 
-### Questions only the user can answer
+### Questions only the user can answer (both answered 2026-10-18)
 
-1. **Code for context windows.** Should llama.cpp, Ollama and LM Studio get a little code to read the served context window, and LM Studio's vision and tool flags?
+1. **Answered: yes, add the code** (decision 22; built in M4). **Code for context windows.** Should llama.cpp, Ollama and LM Studio get a little code to read the served context window, and LM Studio's vision and tool flags?
    - Shiori's housekeeping works from each model's context window, and Ollama's default of 4K is easy to miss.
    - Code makes those plugins "has code" (official, so no install question, but the full-access note on their pages).
    - The plan builds them data only and asks the user to set the context window by hand.
-2. **HTTPS for the llama.cpp server.** Can the user put https in front of their llama.cpp server, as for maiGo, for M2's and M5's checks from the iPhone? Without it, those checks can't run from the phone or from annai.guide at all.
+2. **Answered: https is in front of it on the tailnet,** and the user enters an API key from Unsloth Studio into annai on the phone, because Studio wants a key for proxied requests. Addresses stay out of the repo. **HTTPS for the llama.cpp server.** Can the user put https in front of their llama.cpp server, as for maiGo, for M2's and M5's checks from the iPhone? Without it, those checks can't run from the phone or from annai.guide at all.
 
 ---
 

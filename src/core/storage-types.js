@@ -8,19 +8,22 @@
  * are uploaded); "file" keeps the archive file itself.
  * fields and secret: what the user fills in for a place; secret values live in secrets, never in files.
  * where(config): the place in a few words ("you/annai-backup").
+ * check(c) may fill in fields the user left empty: its config, which annai keeps as the place's own; or refuse
+ * with TargetError "setup" and choices, each a label and the fields it fills in, for the user to pick one.
  * put(c, archive, o) refuses with TargetError "newer" when the place's newest backup is neither
  * o.base nor one this device made (c.device.id), and with "large" before uploading anything when it
  * would send more than o.maxUpload bytes.
  *
  * @typedef {import('./backup-targets.js').RemoteBackup} RemoteBackup
  * @typedef {{ key: string, label: string, placeholder?: string, advanced?: boolean }} Field
+ * @typedef {{ label: string, config: Record<string, string> }} Choice  one of several a place found for fields left empty
  * @typedef {{ config: Record<string, string>, secret: Record<string, string>, device: { id: string, label: string }, app: string }} TargetContext
  * @typedef {{ phase: 'building'|'checking'|'uploading'|'downloading', done: number, total: number }} Progress
  * @typedef {{ blob: Blob, name: string, manifest: any }} Archive
  * @typedef {{ base: string | null, maxUpload: number, signal?: AbortSignal, onProgress: (p: Progress) => void }} PutOptions
  * @typedef {{ type: string, name: string, stores: 'tree' | 'file', fields: Field[], secret: Field[], help?: string, helpUrl?: string, helpLabel?: string,
  *   where: (config: Record<string, string>) => string,
- *   check: (c: TargetContext) => Promise<{ note: string }>,
+ *   check: (c: TargetContext) => Promise<{ note: string, config?: Record<string, string> }>,
  *   list: (c: TargetContext) => Promise<RemoteBackup[]>,
  *   put: (c: TargetContext, archive: Archive, o: PutOptions) => Promise<{ id: string, at: number, uploaded?: number, files?: number }>,
  *   get: (c: TargetContext, id: string, o: { signal?: AbortSignal, onProgress: (p: Progress) => void }) => Promise<Blob>,
@@ -34,8 +37,9 @@ export class TargetError extends Error {
   /**
    * @param {'newer'|'large'|'rate'|'auth'|'refused'|'missing'|'setup'|'other'} kind
    * @param {string} message what happened and what to do next
-   * @param {{ remote?: RemoteBackup, bytes?: number, retryAt?: number }} [extra]
-   *   remote: the newer backup ("newer"); bytes: what the upload would be ("large"); retryAt: when to try again ("rate")
+   * @param {{ remote?: RemoteBackup, bytes?: number, retryAt?: number, choices?: Choice[] }} [extra]
+   *   remote: the newer backup ("newer"); bytes: what the upload would be ("large"); retryAt: when to try again ("rate");
+   *   choices: what the user may pick from, for a field left empty ("setup")
    */
   constructor(kind, message, extra = {}) {
     super(message);
@@ -44,6 +48,7 @@ export class TargetError extends Error {
     this.remote = extra.remote;
     this.bytes = extra.bytes;
     this.retryAt = extra.retryAt;
+    this.choices = extra.choices;
   }
 }
 

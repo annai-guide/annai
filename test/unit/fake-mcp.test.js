@@ -66,3 +66,17 @@ test("minors 9: the stand-in checks what the reference SDK checks: Accept (406),
     await s.stop();
   }
 });
+
+test("small fixes 12: given its origins, the stand-in lets a request with no Origin through, as the reference SDK does, and refuses the opaque Origin null", async () => {
+  const s = await startMcpServer({ origins: ['http://127.0.0.1:8790'] });
+  try {
+    const hello = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } });
+    const post = (/** @type {Record<string, string>} */ headers) => fetch(s.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', ...headers }, body: hello });
+    assert.equal((await post({})).status, 200, 'no Origin: a client outside a browser');
+    const opaque = await post({ Origin: 'null' });
+    assert.equal(opaque.status, 403);
+    assert.match((await opaque.json()).error.message, /Origin/);
+  } finally {
+    await s.stop();
+  }
+});

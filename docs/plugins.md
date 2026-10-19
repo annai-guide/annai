@@ -312,6 +312,9 @@ export function activate(annai) {
   - **Progress:** call `o.onProgress({ phase: 'uploading', done, total })` as you go, and stop when `o.signal` aborts.
   - **Whole files** (`stores: 'file'`): annai names the file (`archive.name`, made with `annai.helpers.backupFiles.name`), encrypts it when the place says so, checks its size and the place's newest backup before calling `put`, and deletes this device's older backups with your `delete`. Your `list` turns file names back into backups with `annai.helpers.backupFiles.parse(name)`, which returns null for other files. `put` only stores the file.
 - **`get(c, id, o)`** returns the backup as an annai archive file (a `Blob`), which annai opens on its import screen.
+- **`check(c)`** tests the place for Save and test, and returns `{ note }`, the words shown.
+  - **Fields left empty:** a place that can find one (the Forgejo place finds the repository from the token) returns it as `config` too, such as `{ note, config: { repo } }`. annai keeps it as the place's own setting, so later calls get it.
+  - **Several to choose from:** refuse with `new TargetError('setup', words, { choices: [{ label, config }] })`. The place's screen shows a button for each, which fills in its `config` and tests again.
 - **`delete(c, id)`**, optional, removes one backup.
 - **`browserAccess(origin)`**, optional, returns `{ text, code }`: what the place must allow for annai at that origin (CORS rules, server headers). The place's screen shows it, with a Copy button.
 - **Read every answer with `annai.helpers.readAnswer(res, 'json' | 'text' | 'blob' | 'arrayBuffer', where)`.** Whatever is wrong with an answer (not JSON, cut off, over 8 MB of text) becomes a `TargetError`, so a broken or hostile server never counts as a bug in your plugin. `annai.helpers.xml.elements(xml, name)` and `.text(xml, name)` read XML answers in one pass, and never throw.

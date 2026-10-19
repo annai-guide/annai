@@ -28,7 +28,8 @@ const TYPES = { '.md': 'text/markdown; charset=utf-8', '.json': 'application/jso
 /**
  * As the reference SDK's Streamable HTTP server does (minors 9), it refuses a POST that doesn't accept
  * both JSON and SSE (406), and a protocol version it doesn't speak (400; none is 2025-03-26); given
- * its origins, a request from any other Origin (403, as the spec's DNS-rebinding rule says).
+ * its origins, a request from any other Origin (403, as the spec's DNS-rebinding rule says). A request
+ * with no Origin passes, as in the SDK's validateRequestHeaders: clients outside a browser send none.
  * @param {{ token?: string, sse?: boolean, sessions?: boolean, exposeSession?: boolean, cors?: boolean, port?: number, host?: string, files?: string,
  *   tools?: { name: string, description?: string, inputSchema?: any }[], origins?: string[] }} [o]
  */

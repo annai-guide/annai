@@ -10,7 +10,7 @@ It is a Cloudflare Worker with one Durable Object per push subscription: the obj
 phone's reminders and wakes with its alarm at the next one's time. It has no dependencies.
 
 - `GET /v1/vapid`: the relay's public key, which phones subscribe with.
-- `POST /v1/schedule`: a reminder, `Authorization: Bearer <cancel token>` and JSON `{ endpoint, key, sendAt, ttl?, urgency?, payload, id? }`. Answers `201 { id, sendAt }`. A reminder due now is sent in the same request: `201 { id, sendAt, sent: true }`, or 410 when the phone's subscription no longer exists. Its id and token are remembered for 5 minutes after, so the same request sent again (its answer lost on the way) answers the same and sends nothing.
+- `POST /v1/schedule`: a reminder, `Authorization: Bearer <cancel token>` and JSON `{ endpoint, key, sendAt, ttl?, urgency?, payload, id? }`. Answers `201 { id, sendAt }`. A reminder due now is sent in the same request: `201 { id, sendAt, sent: true }`, or 410 when the phone's subscription no longer exists. Once a reminder is sent, in its own request or at its time, its id and token are remembered for 5 minutes after, so the same request sent again (its answer lost on the way) answers the same and sends nothing.
 - `DELETE /v1/schedule/:id`, with the same `Authorization`. Answers 204.
 
 Limits:
@@ -97,8 +97,8 @@ there is no need to keep a copy of the key.
 ### Costs
 
 On the Free plan, Workers and Durable Objects each allow 100,000 requests a day (above). Each
-reminder costs about three (scheduled, the alarm that sends it, the send), and a cancelled one about
-three. One person's trips use a few hundred a day at most.
+reminder costs about four (scheduled, the alarm that sends it, the send, and the alarm that forgets its
+id and token 5 minutes later), and a cancelled one about three. One person's trips use a few hundred a day at most.
 
 ### Self-hosting
 

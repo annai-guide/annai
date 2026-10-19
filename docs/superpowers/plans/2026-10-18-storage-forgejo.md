@@ -30,7 +30,24 @@ Checked 2026-10-18 against the current API descriptions (codeberg.org/swagger.v1
 | ChangeFiles' answer repeats each file's content in base64, up to 10 MiB a file (larger: `""` on Forgejo, `null` on Gitea). | `GetFilesResponseFromCommit`; probe |
 | No limit on the request's size in Forgejo itself (a 30 MB request worked). A proxy in front often has one (nginx: 1 MB unless `client_max_body_size` is raised). Forgejo's quota answers 413 `{"message":"quota exceeded"}`, checked before the request against what is already used. | probe; `context.EnforceQuotaAPI` in Forgejo's `routers/api/v1/api.go` |
 | An archived repository answers 423. | swagger; probe |
+| **Git LFS:** on a server that runs LFS (`[server] LFS_START_SERVER = true`), ChangeFiles commits a file `.gitattributes` gives `filter=lfs` as an LFS pointer (`version https://git-lfs.github.com/spec/v1`, `oid sha256:<content's SHA-256>`, `size <n>`, about 130 bytes), and keeps the content in LFS. Forgejo reads the attributes from the branch as it was; Gitea also from a `.gitattributes` in the same request. `/media` gives the content, `/raw` the pointer (Gitea). So annai compares such a file by its pointer's id: a photo kept in LFS isn't sent again with every backup. | probe (2026-10-18, both servers with LFS on; annai's put twice: the photo went once) |
 | CORS: `[cors] ENABLED = true` and `ALLOW_DOMAIN = <origin>` in app.ini. `Authorization` is always allowed; `HEADERS` adds to it (default `Content-Type`, `User-Agent`). The default methods cover GET and POST. Error answers carry the CORS headers too. Without it, a preflight gets 405 and answers carry none. Codeberg allows every origin. The user's server allows `Authorization`, `Content-Type` and `Accept` only, so annai sends no other header. | `modules/setting/cors.go`, Forgejo `routers/api/shared/middleware.go`, Gitea `routers/api/v1/api.go`; probe; codeberg.org; the coordinator |
+
+## Owner and repository left empty (the user's ask, 2026-10-18)
+
+Measured on throwaway Forgejo 16.0.6-rootless and Gitea 28.2.0 containers, with tokens made inside them. A user `me` with private repositories (one archived), a public one, a private repository of another user where `me` is a collaborator with write, one where `me` may only read, and an organization's private repository where `me` is a collaborator with write.
+
+| Fact | Probe |
+|---|---|
+| `GET /api/v1/user` (and `/user/repos`, `/users/{u}/repos`) need `read:user`. A token with only `write:repository` gets **403** "token does not have at least one of required scope(s): [read:user]" on both. | both servers |
+| `GET /api/v1/repos/search` needs only `read:repository` (so `write:repository` works); a token with only `read:user` gets 403. A token the server doesn't know gets 401. | both servers |
+| The search lists every repository the user may see: their own, ones shared with them, organizations', and public ones. `is_private=true` keeps only private ones and `archived=false` leaves out archived ones; `private=true` doesn't filter. `q` matches part of the name. Each comes with `private`, `archived`, `mirror`, `owner.login`, `name` and `permissions.push`. Answers are `{ ok, data }`, sorted by name, at most 50 a page, with `X-Total-Count`. | both servers |
+| `permissions.push` is the user's permission on the repository, not the token's: a `read:repository` token shows `push: true` too (its ChangeFiles is refused with 403, as before). A collaborator who may only read gets `push: false`. | both servers |
+| `owner.type` ("User", "Organization") is there on Gitea only. | both servers |
+
+So annai finds an empty owner or repository with the search (`is_private=true&archived=false`, page by page until a page is short, since browsers can read `X-Total-Count` only when the server exposes it), keeping those with `push`, not a mirror, and matching what the user typed. It asks `GET /user` first: with `read:user` the token's own account comes first; without it (the usual token), the 403 is passed over. One found is filled in and kept as the place's settings; several are listed for the user to pick (at most 20 shown); none says to create a private repository, `annai-backup` for example.
+
+The core change it needs: a storage type's `check` may return `config` (what it filled in), which annai keeps as the place's settings, and a `TargetError` may carry `choices`, which the place's screen shows as buttons.
 
 ## Decisions
 

@@ -119,3 +119,29 @@ test("a server that doesn't let web apps use its API says so, and shows the line
     await fj.stop();
   }
 });
+
+test('an owner and a repository left empty: Save and test lists the private repositories the token can change, and a tap on one fills them in', async ({ page, baseURL }) => {
+  const fj = await startForgejo({ repos: { [REPO]: {}, 'me/notes': {}, 'me/site': { private: false } }, cors: new URL(String(baseURL)).origin });
+  const host = new URL(fj.origin).host;
+  try {
+    await openApp(page);
+    await page.getByRole('link', { name: 'Settings' }).click();
+    await page.getByRole('link', { name: 'Automatic backups' }).click();
+    await page.getByLabel('Add a place to back up to').selectOption({ label: 'Forgejo / Gitea' });
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Forgejo / Gitea', exact: true })).toBeVisible({ timeout: 30_000 });
+    await page.getByLabel('Server address').fill(fj.origin);
+    await page.getByLabel('Access token').fill(fj.token);
+    await page.getByRole('button', { name: 'Save and test' }).click();
+    await expect(page.getByText(`This token can change 2 private repositories on ${host}. Choose the one for annai's backups, or type its owner and name.`)).toBeVisible();
+    const where = page.getByRole('region', { name: 'Where' });
+    await expect(where.getByRole('button', { name: 'me/site' })).toHaveCount(0);
+    await where.getByRole('button', { name: 'me/annai-backup' }).click();
+    await expect(page.getByText(`Works: annai can reach ${REPO} on ${host}, a private repository.`)).toBeVisible();
+    await expect(page.getByLabel('Owner')).toHaveValue('me');
+    await expect(page.getByLabel('Repository')).toHaveValue('annai-backup');
+    await expect(page.getByText(`${host}/${REPO}`, { exact: true })).toBeVisible();
+  } finally {
+    await fj.stop();
+  }
+});

@@ -178,6 +178,51 @@ test('minors 3: a session that starts while the client closes is ended at once',
   }
 });
 
+test("small fixes 12: a session that starts while its server is removed is ended at the address, and with the token, it was started with, though the removal took them meanwhile", async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((done) => { release = () => done(undefined); });
+    const gated = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (String(init?.body ?? '').includes('"initialize"')) await held;
+      return fetch(url, init);
+    };
+    // The server's secret: its address and token, as the plugin keeps them.
+    let secret = /** @type {{ url: string, token: string } | null} */ ({ url: s.url, token: TOKEN });
+    const c = new McpClient({ url: async () => secret?.url ?? 'http://127.0.0.1:9/mcp', server: 'trail', auth: async () => (secret ? { Authorization: `Bearer ${secret.token}` } : {}) });
+    const listing = c.listTools({ fetch: gated });
+    await new Promise((done) => setTimeout(done, 20));
+    await c.close({ fetch: get }); // the removal: no session yet, so nothing to end
+    secret = null; // and its secret goes
+    release();
+    await assert.rejects(listing, /The MCP server trail was removed/);
+    assert.equal(s.requests.filter((r) => r.method === 'DELETE').length, 1, 'ended where it was started, signed in as it was');
+  } finally {
+    await s.stop();
+  }
+});
+
+test("small fixes 12: a server that refuses annai's address (its Origin check, 403) says so, rather than that its key was refused", async () => {
+  const s = await startMcpServer({ origins: ['https://elsewhere.example'] });
+  try {
+    const from = (/** @type {string} */ origin) => (/** @type {string} */ url, /** @type {RequestInit} */ init) => fetch(url, { ...init, headers: { ...Object.fromEntries(new Headers(init?.headers)), Origin: origin } });
+    const c = client(s.url, '');
+    await assert.rejects(c.listTools({ fetch: from('https://annai.guide') }), (e) => e instanceof McpError && e.kind === 'cors'
+      && /^The MCP server trail doesn't take requests from annai's address: it checks the Origin they come from\. Add annai's address to the origins it allows\.$/.test(e.message));
+    // A 403 that says nothing of an Origin is still the key's.
+    const keyed = await startMcpServer({ token: TOKEN });
+    try {
+      const refusing = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => (String(init?.body ?? '').includes('"initialize"') ? new Response('{"error":"forbidden"}', { status: 403 }) : fetch(url, init));
+      await assert.rejects(client(keyed.url).listTools({ fetch: refusing }), (e) => e instanceof McpError && e.kind === 'auth' && /refused annai's key/.test(e.message));
+    } finally {
+      await keyed.stop();
+    }
+  } finally {
+    await s.stop();
+  }
+});
+
 test("minors 4: two calls wait for one session start; stopping one doesn't stop the other, and stopping both stops the start", async () => {
   const s = await startMcpServer({});
   try {

@@ -66,3 +66,23 @@ test('forget: nothing that matches changes nothing', async () => {
   const { store } = await setup();
   assert.deepEqual(await forget(store, SYS_PLUGINS, { files: inTides, history: inTides }), { files: 0, events: 0, bytes: 0 });
 });
+
+test("forget reads only the content it frees, never a list of every blob there is: a push sync's forget stays quick beside thousands of photos", async () => {
+  const { store, ws } = await setup();
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  for (let i = 0; i < 50; i++) await ws.write(trip, `/files/p${i}.jpg`, new Uint8Array([0, i, 1, 2]), { author: 'user' });
+  await ws.write(SYS_PLUGINS, '/tides/index.js', 'v1 code', { author: 'system' });
+  await ws.write(SYS_PLUGINS, '/tides/index.js', 'v2 code', { author: 'system' });
+  let listed = 0;
+  /** @type {any} the store, counting listBlobs */
+  const spied = {
+    ...store,
+    tx: (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => store.tx(stores, mode, (t) => fn(new Proxy(t, {
+      get: (o, k) => (k === 'listBlobs' ? () => { listed++; return o.listBlobs(); } : /** @type {any} */ (o)[k]),
+    }))),
+  };
+  const r = await forget(spied, SYS_PLUGINS, { history: inTides });
+  assert.deepEqual(r, { files: 0, events: 2, bytes: 'v1 code'.length });
+  assert.equal(listed, 0);
+  assert.equal(await stored(store, 'v1 code'), false);
+});

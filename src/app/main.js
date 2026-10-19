@@ -313,12 +313,12 @@ function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof star
       explainStorageFull({ notices: shell.notices, go: (/** @type {string} */ hash) => { location.hash = hash; } }, err);
       return;
     }
-    logEvent(store, SYS, { type: 'error', data: { message: String(err?.message ?? err), stack: String(err?.stack ?? '').slice(0, 2000) } }).catch(() => {});
-    shell.notices.card({
+    // The card says the details are in Trace only once they are: what failed may be the writing itself (live mode's log).
+    logEvent(store, SYS, { type: 'error', data: { message: String(err?.message ?? err), stack: String(err?.stack ?? '').slice(0, 2000) } }).then(() => true, () => false).then((noted) => shell.notices.card({
       tone: 'warn', title: 'Something went wrong',
-      body: 'annai kept running. The details are in Trace.',
-      actions: [{ label: 'Open Trace', run: () => { location.hash = '#/trace'; } }],
-    });
+      body: noted ? 'annai kept running. The details are in Trace.' : "annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.",
+      actions: noted ? [{ label: 'Open Trace', run: () => { location.hash = '#/trace'; } }] : [],
+    }));
   };
   addEventListener('error', (e) => report(e.error ?? e.message));
   addEventListener('unhandledrejection', (e) => report(e.reason));

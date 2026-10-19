@@ -3,7 +3,8 @@
  * out. Nothing is kept on the server (`store: false`): the whole conversation goes each time.
  * Reasoning comes back as encrypted items. Each is kept as a signed reasoning part, the item itself
  * as its signature, and sent back unchanged to the model that wrote it. A web search the model
- * made is a provider part, sent back the same way (spec §9.5).
+ * made is a provider part, sent back the same way (spec §9.5). A server that never streams answers with
+ * the whole response object as JSON, which is read as the same events (item 24, 2026-10-18).
  */
 const TUNABLES = Object.freeze({
   path: '/responses',
@@ -33,7 +34,7 @@ const INCOMPLETE = /** @type {Record<string, string>} */ ({ max_output_tokens: '
 
 /** @param {any} annai */
 export function activate(annai) {
-  const { sse, ProviderError } = annai.helpers;
+  const { sse, ProviderError, errorFromResponse } = annai.helpers;
   return annai.providers.register({
     type: 'openai-responses',
     name: 'OpenAI Responses',
@@ -42,7 +43,7 @@ export function activate(annai) {
     /** @param {any} c */
     build: (c) => build(c),
     /** @param {Response} res */
-    read: (res) => read(res, sse, ProviderError),
+    read: (res) => read(res, sse, ProviderError, errorFromResponse),
     classify,
     /** A photo to the files API, for vision, expiring as asked (spec §4.8). @param {any} c */
     uploadRequest: ({ endpoint, key, bytes, mediaType, name, expiresInSeconds }) => {
@@ -154,9 +155,28 @@ function replayable(signature) {
 /**
  * The events of a streamed response. Text, reasoning summaries and a call's arguments arrive as
  * they stream; each output item is given whole when it is done.
- * @param {Response} res @param {any} sse @param {any} ProviderError
+ * @param {Response} res @param {any} sse @param {any} ProviderError @param {any} errorFromResponse
  */
-async function* read(res, sse, ProviderError) {
+async function* read(res, sse, ProviderError, errorFromResponse) {
+  let body = res.body;
+  // One whole response object, from a server that ignores stream: true: only application/json, not NDJSON or problem+json.
+  if (/^application\/json\s*(;|$)/i.test(res.headers.get('content-type') ?? '')) {
+    /** @type {string} */
+    let text;
+    try {
+      text = await res.text();
+    } catch (e) {
+      // A connection that drops on the way is a dropped connection, tried elsewhere, as a stream's is (sse.js): never a bug of the plugin's.
+      if (/** @type {any} */ (e)?.name === 'AbortError' || /** @type {any} */ (e)?.name === 'TimeoutError') throw e;
+      throw new ProviderError('network', 'The connection dropped.', { cause: e });
+    }
+    // A stream sent as JSON is still a stream.
+    if (!/^\s*(data:|event:|:)/.test(text)) {
+      yield* readWhole(text, ProviderError, errorFromResponse);
+      return;
+    }
+    body = new Response(text).body;
+  }
   /** @type {Map<number, { id: string, name: string, args: string }>} */
   const calls = new Map();
   /** @type {Set<string>} */
@@ -174,7 +194,7 @@ async function* read(res, sse, ProviderError) {
   /** @type {any} */
   let done = null;
   let incomplete = false;
-  for await (const { event, data } of sse(/** @type {ReadableStream<Uint8Array>} */ (res.body))) {
+  for await (const { event, data } of sse(/** @type {ReadableStream<Uint8Array>} */ (body))) {
     if (data === '[DONE]') break;
     /** @type {any} */
     let e;
@@ -233,6 +253,71 @@ async function* read(res, sse, ProviderError) {
   if (done.usage || searches) yield { type: 'usage', usage: { ...(done.usage ? usageOf(done.usage) : {}), ...(searches ? { serverTools: { web_search_requests: searches } } : {}) } };
   const reason = incomplete ? INCOMPLETE[done.incomplete_details?.reason] ?? 'other' : refused ? 'refusal' : called ? 'tool' : 'end';
   yield { type: 'stop', reason };
+}
+
+/**
+ * The events of one whole response object (a server that ignores stream: true), in a stream's order:
+ * each output item's own, then usage and the stop reason. An error in its place is that error, as an
+ * HTTP error's would be.
+ * @param {string} text @param {any} ProviderError @param {any} errorFromResponse
+ */
+function* readWhole(text, ProviderError, errorFromResponse) {
+  /** @type {any} */
+  let r;
+  try {
+    r = JSON.parse(text);
+  } catch {
+    throw new ProviderError('server', "The endpoint answered with a whole reply annai can't read, rather than a stream.");
+  }
+  if (isObject(r?.error) && !Array.isArray(r.output)) {
+    const e = errorFromResponse(typeof r.error.code === 'number' ? r.error.code : 500, JSON.stringify({ error: r.error }));
+    throw new ProviderError(classify(e.status ?? 500, JSON.stringify({ error: r.error })) ?? e.kind, e.message, { status: e.status });
+  }
+  if (r?.status === 'failed') throw new ProviderError(streamKind(r.error?.code, r.error?.message), String(r.error?.message ?? 'The response failed.'));
+  if (!Array.isArray(r?.output)) throw new ProviderError('server', 'The endpoint answered with a whole reply that had no answer in it.');
+  let searches = 0;
+  let called = false;
+  let refused = false;
+  let sentLogprobs = false;
+  /** @type {Set<string>} */
+  const cited = new Set();
+  for (const item of /** @type {any[]} */ (r.output)) {
+    if (!item || typeof item !== 'object') continue;
+    if (item.type === 'reasoning') {
+      const said = /** @type {any[]} */ (itemDone(item, undefined));
+      for (const e of said) if (e.text) yield { type: 'reasoning_delta', text: e.text };
+      yield* said;
+    } else if (item.type === 'message') {
+      for (const c of Array.isArray(item.content) ? item.content : []) {
+        const lp = Array.isArray(c?.logprobs) ? c.logprobs[0] : null;
+        if (lp && !sentLogprobs) {
+          sentLogprobs = true;
+          const top = Array.isArray(lp.top_logprobs) && lp.top_logprobs.length ? lp.top_logprobs : [lp];
+          yield { type: 'logprobs', top: top.map((/** @type {any} */ x) => ({ token: String(x.token), logprob: Number(x.logprob) })) };
+        }
+        if (c?.type === 'output_text' && c.text) yield { type: 'text', text: String(c.text) };
+        if (c?.type === 'refusal' && c.refusal) {
+          refused = true;
+          yield { type: 'text', text: String(c.refusal) };
+        }
+        for (const a of Array.isArray(c?.annotations) ? c.annotations : []) {
+          if (a?.type !== 'url_citation' || !a.url || cited.has(a.url)) continue;
+          cited.add(a.url);
+          yield { type: 'citation', url: a.url, ...(a.title ? { title: a.title } : {}) };
+        }
+      }
+    } else {
+      if (item.type === 'function_call') {
+        called = true;
+        yield { type: 'tool_input', id: String(item.call_id ?? ''), name: String(item.name ?? ''), partial: String(item.arguments ?? '') };
+      }
+      if (item.type === 'web_search_call' && (!item.action || item.action.type === 'search')) searches++;
+      yield* itemDone(item, undefined);
+    }
+  }
+  if (r.usage || searches) yield { type: 'usage', usage: { ...(r.usage ? usageOf(r.usage) : {}), ...(searches ? { serverTools: { web_search_requests: searches } } : {}) } };
+  const incomplete = r.status === 'incomplete';
+  yield { type: 'stop', reason: incomplete ? INCOMPLETE[r.incomplete_details?.reason] ?? 'other' : refused ? 'refusal' : called ? 'tool' : 'end' };
 }
 
 /**
