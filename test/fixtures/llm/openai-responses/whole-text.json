@@ -1,0 +1,16 @@
+{
+  "id": "resp_whole_1",
+  "object": "response",
+  "status": "completed",
+  "error": null,
+  "incomplete_details": null,
+  "model": "router/model",
+  "output": [
+    { "id": "rs_1", "type": "reasoning", "summary": [{ "type": "summary_text", "text": "The user asks where Kyoto is." }], "encrypted_content": "gAAAA-sealed" },
+    {
+      "id": "msg_1", "type": "message", "role": "assistant", "status": "completed",
+      "content": [{ "type": "output_text", "text": "Kyoto is in Japan.", "annotations": [{ "type": "url_citation", "url": "https://en.wikipedia.org/wiki/Kyoto", "title": "Kyoto", "start_index": 0, "end_index": 5 }], "logprobs": [{ "token": "Ky", "logprob": -0.01, "top_logprobs": [{ "token": "Ky", "logprob": -0.01 }, { "token": "It", "logprob": -4.2 }] }] }]
+    }
+  ],
+  "usage": { "input_tokens": 1200, "input_tokens_details": { "cached_tokens": 1000 }, "output_tokens": 30, "output_tokens_details": { "reasoning_tokens": 12 }, "total_tokens": 1230 }
+}

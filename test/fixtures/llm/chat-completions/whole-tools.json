@@ -1,0 +1,22 @@
+{
+  "id": "chatcmpl-whole-2",
+  "object": "chat.completion",
+  "created": 1792500001,
+  "model": "router/model",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "reasoning": "A color is asked for.",
+        "tool_calls": [
+          { "id": "call_abc", "type": "function", "function": { "name": "report_color", "arguments": "{\"color\":\"red\"}" } },
+          { "id": "call_def", "type": "function", "function": { "name": "report_size", "arguments": "{\"size\":3}" } }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": { "prompt_tokens": 300, "completion_tokens": 20 }
+}

@@ -473,3 +473,46 @@ test('adding the OpenAI (Responses) template saves its models and fills the empt
   assert.deepEqual(Object.keys(cfg.models).map(name).sort(), ['GPT-6 Astra', 'GPT-6 Luna', 'GPT-6.1 Sol']);
   assert.deepEqual([cfg.roles.main.models.map(name), cfg.roles.utility.models.map(name), cfg.roles.decide.models.map(name)], [['GPT-6.1 Sol'], ['GPT-6 Luna'], ['GPT-6 Luna']]);
 });
+
+// Item 24 (2026-10-18): a server that never streams answers `stream: true` with the whole response object, as
+// application/json. It is read as the same events a stream gives.
+/** @param {string} text @param {number} [status] */
+const whole = (text, status = 200) => new Response(text, { status, headers: { 'content-type': 'application/json' } });
+/** @param {Response} res */
+async function readWhole(res) {
+  const out = [];
+  for await (const e of type.read(res, spec())) out.push(e);
+  return out;
+}
+
+test('a whole JSON response where a stream was asked for: reasoning with its item as the signature, the words, logprobs, a source, usage and the stop reason', async () => {
+  const events = await readWhole(whole(await fixture('whole-text.json')));
+  const signature = JSON.stringify({ id: 'rs_1', type: 'reasoning', summary: [{ type: 'summary_text', text: 'The user asks where Kyoto is.' }], encrypted_content: 'gAAAA-sealed' });
+  assert.deepEqual(events, [
+    { type: 'reasoning_delta', text: 'The user asks where Kyoto is.' },
+    { type: 'reasoning', text: 'The user asks where Kyoto is.', signature },
+    { type: 'logprobs', top: [{ token: 'Ky', logprob: -0.01 }, { token: 'It', logprob: -4.2 }] },
+    { type: 'text', text: 'Kyoto is in Japan.' },
+    { type: 'citation', url: 'https://en.wikipedia.org/wiki/Kyoto', title: 'Kyoto' },
+    { type: 'usage', usage: { input: 200, cacheRead: 1000, cacheWrite: 0, output: 30, reasoning: 12 } },
+    { type: 'stop', reason: 'end' },
+  ]);
+});
+
+test('a whole JSON response with a tool call: the words, then the call whole, and the stop reason "tool"', async () => {
+  const events = await readWhole(whole(await fixture('whole-tools.json')));
+  assert.deepEqual(events.filter((e) => e.type === 'text' || e.type === 'tool_call'), [
+    { type: 'text', text: 'Let me note that.' },
+    { type: 'tool_call', id: 'call_abc', name: 'report_color', input: { color: 'red' } },
+  ]);
+  assert.deepEqual(events.at(-1), { type: 'stop', reason: 'tool' });
+  const cut = await readWhole(whole(JSON.stringify({ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, output: [{ type: 'message', content: [{ type: 'output_text', text: 'Kyo' }] }] })));
+  assert.deepEqual(cut.at(-1), { type: 'stop', reason: 'length' });
+});
+
+test('a whole JSON response that failed, or an error in its place, is the error it says', async () => {
+  await assert.rejects(readWhole(whole(await fixture('whole-failed.json'))), (e) => e instanceof ProviderError && e.kind === 'rate' && /Rate limit/.test(e.message));
+  await assert.rejects(readWhole(whole(await fixture('whole-error.json'))), (e) => e instanceof ProviderError && e.kind === 'auth' && /Incorrect API key/.test(e.message));
+  await assert.rejects(readWhole(whole('not json')), (e) => e instanceof ProviderError && e.kind === 'server' && /can't read/.test(e.message));
+  await assert.rejects(readWhole(whole('{"id":"resp"}')), (e) => e instanceof ProviderError && e.kind === 'server' && /no answer/.test(e.message));
+});

@@ -421,6 +421,8 @@ The core contains no protocol. Settings offer these endpoint types, each mapped 
 - OpenAI Responses. Nothing is kept on the server (`store: false`): the whole conversation goes each time, and the model's encrypted reasoning goes back with it.
 - Gemini, not built yet. Until it is, Gemini's OpenAI-compatible endpoint works through Chat Completions.
 
+Chat Completions and OpenAI Responses also take a server that answers `stream: true` with one whole JSON reply, such as an LLM router that never streams. The wait for the first words then covers the whole reply.
+
 Plugins can add further types.
 
 The core provides:

@@ -18,29 +18,29 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "provides": {
         "endpoint-type": [
           "chat-completions"
         ]
       },
       "files": {
-        "annai-plugin.json": "63331a2b3c43458534005cdee92544e7a27abd0d69f6ebbf11055ed1d175867e",
-        "index.js": "9fe0ce60c029d89e55890b2946d9b21d4856064027484e346336db760bd58550"
+        "annai-plugin.json": "dc357560de09dff266f95a5e50a66638b94fde1960696f4ef39553220d4092ea",
+        "index.js": "774ab8e95756b208522df514903d0b6070d1213c40e0fef157105c4990f78d36"
       }
     },
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "provides": {
         "endpoint-type": [
           "openai-responses"
         ]
       },
       "files": {
-        "annai-plugin.json": "886adcd8fd0e61b3786528f3a7bbd3b1396cc636143e71b7bc2aee0acb1d7178",
-        "index.js": "81b0892878a51a9b60579143d0a7fdfa82afa95deccd4c91e6c8887bf1740f6d"
+        "annai-plugin.json": "8fa049bbbeb525c27a24bd9034d7f8909822fbf07b2016a72dcff0b19a91d714",
+        "index.js": "38f8369f7be74daee1fbd177f119c4dcd81a5a7b4856e905f4105ba4e20822c9"
       }
     },
     {
