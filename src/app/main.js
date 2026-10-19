@@ -10,7 +10,7 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h } from '../ui/dom.js';
-import { isStandalone, requestPersist, watchForUpdates, platform, deviceName, connectionOf } from '../ui/platform.js';
+import { isStandalone, requestPersist, watchForUpdates, restartInto, platform, deviceName, connectionOf } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
@@ -279,24 +279,17 @@ function controllerReady(timeoutMs = 15_000) {
 async function registerServiceWorker(store, shell, updates) {
   if (!('serviceWorker' in navigator)) return;
   const sw = navigator.serviceWorker;
-  let restartRequested = false;
-  sw.addEventListener('controllerchange', () => {
-    if (restartRequested) location.reload(); // never on the first install, which also changes the controller
-  });
   try {
     const reg = await sw.register('/sw.js', { scope: '/' });
     // A version behind the one running, not the first install.
     const behind = (/** @type {ServiceWorker | null} */ w) => Boolean(w && sw.controller && sw.controller !== w);
     updates.app = { check: () => reg.update(), state: () => (behind(reg.installing) ? 'downloading' : 'none') };
+    // Restart now, here and on Settings → Updates, waits for Shiori's turn to end (Updates.restart).
+    const swap = restartInto(sw, reg);
     watchForUpdates(sw, reg, () => {
-      // Restart now, here and on Settings → Updates, waits for Shiori's turn to end (Updates.restart).
-      updates.ready(() => {
-        restartRequested = true;
-        if (reg.waiting) reg.waiting.postMessage('skip-waiting');
-        else location.reload();
-      });
+      updates.ready(swap);
       shell.setUpdateReady(() => { updates.restart(); });
-    });
+    }, () => updates.downloadFailed());
   } catch (e) {
     logEvent(store, SYS, { type: 'error', data: { message: `The offline service didn't start: ${/** @type {any} */ (e)?.message ?? e}` } }).catch(() => {});
   }

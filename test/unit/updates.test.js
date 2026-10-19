@@ -26,7 +26,7 @@ const fakeNotices = () => {
  * annai with a skill installed from an address, a clock and a connection of the test's own, and counts of
  * what was asked: annai's service worker, its catalog, and the skill's address.
  */
-async function kit() {
+async function kit({ limitMs = 45_000 } = {}) {
   const { host } = await hostKit();
   let served = SKILL;
   const asked = { app: 0, catalog: 0, address: 0 };
@@ -52,6 +52,7 @@ async function kit() {
     },
     now: () => c.t,
     online: () => c.on,
+    limitMs,
   });
   updates.app = { check: () => { asked.app++; return c.appCheck(); }, state: () => 'none' };
   updates.notices = c.notices;
@@ -278,4 +279,78 @@ test('a check that hangs (a connection that stalls) ends after a time limit, in 
   assert.equal(updates.checking, false);
   updates.app = { check: async () => {}, state: () => 'none' };
   assert.deepEqual((await updates.checkNow())?.failed, []);
+});
+
+test('a Restart now whose new version never takes over leaves later taps working', async () => {
+  const { host } = await hostKit();
+  let swaps = 0;
+  const u = new Updates({ host, reload: () => {} });
+  u.ready(() => { swaps++; });
+  await u.restart();
+  await u.restart();
+  assert.equal(swaps, 2, 'the second tap asks again');
+});
+
+test("Don't restart, on the card a restart waiting for Shiori shows, calls it off; a later tap restarts", async () => {
+  const { host } = await hostKit();
+  /** @type {string[]} */
+  const did = [];
+  /** @type {() => void} */
+  let free = () => {};
+  const agent = { busy: true, idle: () => new Promise((r) => { free = () => { agent.busy = false; r(undefined); }; }) };
+  const notices = fakeNotices();
+  const u = new Updates({ host, reload: () => did.push('reload') });
+  Object.assign(u, { agent, notices });
+  /** @type {boolean[]} */
+  const changed = [];
+  u.changed = (waits) => { changed.push(waits); };
+  u.ready(() => did.push('swap'));
+  changed.length = 0;
+  const first = u.restart();
+  await tick();
+  const [card] = notices.cards;
+  assert.deepEqual(card.actions.map((/** @type {any} */ a) => a.label), ["Don't restart"]);
+  card.actions[0].run();
+  assert.deepEqual(changed, [false], 'Settings → Updates is drawn again: no "Restarting…"');
+  free();
+  await first;
+  await tick();
+  assert.deepEqual(did, [], 'called off: nothing restarts when she finishes');
+  await u.restart();
+  assert.deepEqual(did, ['swap']);
+  assert.equal(notices.cards.length, 1, 'she was free: no card');
+});
+
+test('a check the time limit gave up on writes nothing when it answers late: no result, no time, no card, no updates', async () => {
+  const k = await kit({ limitMs: 20 });
+  await k.updates.start();
+  /** @type {() => void} */
+  let go = () => {};
+  k.appCheck = () => new Promise((r) => { go = () => r(undefined); });
+  k.t += DAILY;
+  const given = await k.updates.auto();
+  assert.deepEqual(given?.failed, ['The check took too long. Check the connection, and try again.']);
+  k.appCheck = async () => {};
+  k.t += 1000;
+  await k.updates.checkNow();
+  const at = k.updates.checkedAt;
+  k.serve(SKILL.replace('version: "1.2"', 'version: "1.3"'));
+  k.t += 1000;
+  go(); // the stalled check answers now
+  for (let i = 0; i < 50; i++) await tick();
+  assert.deepEqual(k.updates.last?.failed, []);
+  assert.equal(k.updates.checkedAt, at);
+  assert.equal(k.notices.cards.length, 0);
+  assert.deepEqual(await k.updates.plugins(), []);
+});
+
+test("a new version that didn't finish downloading is said, and Settings → Updates is drawn again", async () => {
+  const k = await kit();
+  await k.updates.start();
+  /** @type {boolean[]} */
+  const changed = [];
+  k.updates.changed = (waits) => { changed.push(waits); };
+  k.updates.downloadFailed();
+  assert.deepEqual(k.updates.last?.failed, ["The download of the new version didn't finish. annai tries again the next time it checks."]);
+  assert.deepEqual(changed, [false]);
 });
