@@ -78,3 +78,15 @@ test('a backup from before the change, restored after it, is moved over again at
   assert.deepEqual(await store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
   assert.equal(await moveOver(ws, store), null, 'once done, done');
 });
+
+test('fix pass: an endpoint file that names no id (a broken record, a truncated restore) still has its key removed: the old ids were the file names', async () => {
+  const { store, ws } = await setup();
+  await ws.write(SYS_SETTINGS, '/llm/endpoints/ep-good.json', { id: 'ep-good', type: 'chat-completions', template: null, user: { name: 'Good' }, created: 1 }, { author: 'user' });
+  await ws.write(SYS_SETTINGS, '/llm/endpoints/ep-odd.json', { user: { name: 'Odd' } }, { author: 'user' });
+  await ws.write(SYS_SETTINGS, '/llm/endpoints/ep-broken.json', 'not json at all', { author: 'user', type: 'text/plain' });
+  await store.tx(['secrets'], 'readwrite', async (t) => { for (const id of ['ep-good', 'ep-odd', 'ep-broken']) await t.putSecret(`llm:${id}`, `k-${id}-123456`); });
+  const r = await moveOver(ws, store);
+  assert.deepEqual(r?.names.sort(), ['Good', 'Odd', 'ep-broken'].sort());
+  assert.deepEqual(await store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
+  assert.deepEqual(await ws.list(SYS_SETTINGS, '/llm/endpoints/'), []);
+});

@@ -19,8 +19,11 @@ export async function moveOver(ws, store) {
   const ids = new Set();
   for (const f of endpoints) {
     const e = await ws.readJSON(SYS_SETTINGS, f.path).catch(() => null);
+    // The old ids were the file names: a record that names no id still has its key removed.
+    const file = String(f.path.split('/').pop()).replace(/\.json$/, '');
+    ids.add(file);
     if (typeof e?.id === 'string') ids.add(e.id);
-    names.push(String(e?.user?.name || e?.template?.values?.name || e?.template?.id || e?.type || f.path.split('/').pop()?.replace(/\.json$/, '')));
+    names.push(String(e?.user?.name || e?.template?.values?.name || e?.template?.id || e?.type || file));
   }
   /** @type {Set<string>} a model from before names its endpoint; a provider's names its provider */
   const old = new Set(endpoints.map((f) => f.path));
