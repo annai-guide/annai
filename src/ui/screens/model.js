@@ -90,6 +90,7 @@ export async function renderModel(ctx, id) {
         savedField('Maximum output (tokens)', max, () => tokens(max, 'The maximum output'), (v) => save('maxOutput', v))),
       modelJson(save, 'Prices, USD per million tokens (JSON)', 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
       savedField('Cache lifetimes (5m, 1h)', ttls, readTtls, (v) => save('cacheTtls', v)),
+      h('p', { class: 'sub', text: 'Empty: it is asked for five minutes.' }),
       // What it takes in photos (spec §9.2): formats, maxEdge (pixels), maxBytes, maxCount. A refusal can teach these.
       modelJson(save, 'Photo limits (JSON)', 'model-images', 'images', m.images ?? {}),
       modelJson(save, 'Reasoning levels (JSON)', 'model-reasoning', 'reasoning', m.reasoning),

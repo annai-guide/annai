@@ -8,7 +8,8 @@ import { kindOf, ensureBaseScopes, SYS, SYS_PLUGINS } from '../../src/core/scope
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { readConfig, modelOf, endpointOf, getKey, saveEndpoint, saveRoles } from '../../src/core/llm/config.js';
-import { loadTemplates, addFromTemplate, useSuggestion, templateUpdates, applyTemplate, addListedModel } from '../../src/core/llm/templates.js';
+import { loadTemplates, addFromTemplate, useSuggestion, templateUpdates, applyTemplate, addListedModel, addModelById } from '../../src/core/llm/templates.js';
+import { ttlFor } from '../../src/core/agent/warmth.js';
 import { createLlm } from '../../src/core/llm/service.js';
 
 const root = new URL('../../', import.meta.url);
@@ -110,6 +111,18 @@ test('a model from a fetched list keeps what the list said, under a name of its 
   const model = modelOf((await readConfig(ws)).models[m]);
   assert.equal(model.name, 'Anthropic: Claude Haiku 5.5 (2)');
   assert.equal(model.contextWindow, 1000);
+});
+
+test('a model added by id, or from the list, on an Anthropic endpoint takes both cache lifetimes, so it gets the hour; elsewhere it lists none (review, 2026-10-18)', async () => {
+  const { ws, store } = await setup();
+  const claude = await addFromTemplate({ ws, store }, tpl('custom-anthropic'), { roles: null });
+  const other = await addFromTemplate({ ws, store }, tpl('openrouter'), { roles: null });
+  const ttls = async (/** @type {string} */ id) => modelOf((await readConfig(ws)).models[id]).cacheTtls;
+  assert.deepEqual(await ttls(await addModelById({ ws }, claude, 'claude-opus-6')), ['5m', '1h']);
+  assert.deepEqual(await ttls(await addListedModel({ ws }, claude, { providerId: 'claude-sonnet-6' })), ['5m', '1h']);
+  assert.deepEqual(await ttls(await addModelById({ ws }, other, 'some/model')), []);
+  const haiku = await addModelById({ ws }, claude, 'claude-haiku-6');
+  assert.equal(ttlFor(modelOf((await readConfig(ws)).models[haiku]), '1h'), '1h');
 });
 
 test("templates load when online and come from last time's copy when offline", async () => {

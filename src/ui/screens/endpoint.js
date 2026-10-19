@@ -1,6 +1,6 @@
 import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave } from '../dom.js';
-import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
-import { templateUpdates, applyTemplate, addListedModel, useSuggestion } from '../../core/llm/templates.js';
+import { endpointOf, endpointBase, modelOf, saveEndpoint, setKey, removeEndpoint, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
+import { templateUpdates, applyTemplate, addListedModel, addModelById, useSuggestion } from '../../core/llm/templates.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { addOpenRouterVoice, voiceMissing, BEHIND } from '../openrouter.js';
@@ -67,16 +67,19 @@ export async function renderEndpoint(ctx, id) {
   // The address, key and extra headers (often a credential too) are saved together with a button, so a half-typed connection is never used.
   const save = h('button', {
     class: 'btn pri', type: 'button',
-    onclick: () => queueSave(async () => {
-      try {
-        await saveFields({ baseUrl: url.value.trim(), headers: headers.read() });
-        if (key.value.trim()) await setKey(ctx.store, id, key.value.trim());
-        ctx.notices.toast('Saved');
-        if (title.isConnected) ctx.render();
-      } catch (err) {
-        status.textContent = messageOf(err);
-      }
-    }),
+    onclick: () => {
+      const here = location.hash;
+      queueSave(async () => {
+        try {
+          await saveFields({ baseUrl: url.value.trim(), headers: headers.read() });
+          if (key.value.trim()) await setKey(ctx.store, id, key.value.trim());
+          ctx.notices.toast('Saved');
+          if (location.hash === here) ctx.render(); // not on a screen opened meanwhile
+        } catch (err) {
+          status.textContent = messageOf(err);
+        }
+      });
+    },
   }, 'Save');
   const models = Object.values(cfg.models).filter((m) => m.endpoint === id).map(modelOf);
   return h('div', { class: 'screen' },
@@ -159,7 +162,7 @@ function modelsSection(ctx, endpointId, models) {
       const value = providerId.value.trim();
       if (!value) return;
       try {
-        await saveModel(ctx.ws, newModel(endpointId, { user: { providerId: value } }));
+        await addModelById(ctx, endpointId, value);
         ctx.render();
       } catch (e) {
         status.textContent = messageOf(e);

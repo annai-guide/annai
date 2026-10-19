@@ -213,6 +213,26 @@ test('a model keeps its photo limits on its page, to see and change (spec §9.2)
   await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/\n  "maxEdge": 1568/); // shown again, formatted, once saved
   await page.reload();
   await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/"maxBytes": 3000000/);
+  // A limit the model's settings refuse says which, and isn't saved (review, 2026-10-18).
+  await page.getByLabel('Photo limits (JSON)').fill('{ "maxEdge": 10 }');
+  await page.getByLabel('Photo limits (JSON)').blur();
+  await expect(page.getByRole('alert')).toHaveText('maxEdge must be at least 16');
+  await page.reload();
+  await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/"maxEdge": 1568/);
+  // Added by id on an Anthropic endpoint, it takes both cache lifetimes, so it gets the hour (review, 2026-10-18).
+  await expect(page.getByLabel('Cache lifetimes (5m, 1h)')).toHaveValue('5m, 1h');
+  // A save that fails puts the field back to what is stored, and says why.
+  await page.getByRole('link', { name: '← Stand-in' }).click();
+  await page.getByLabel('Add a model by id').fill('c-model');
+  await page.getByRole('button', { name: 'Add model' }).click();
+  await page.getByRole('link', { name: /^c-model/ }).click();
+  await expect(page.getByRole('heading', { name: 'c-model', level: 1 })).toBeVisible(); // not the endpoint's Name, still shown a moment
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('b-model');
+  await name.blur();
+  await expect(page.getByRole('alert')).toHaveText('"b-model" is already used by another model');
+  await expect(name).toHaveValue('c-model');
+  await expect(name).not.toHaveAttribute('aria-invalid', 'true');
 });
 
 test('an OpenAI Responses endpoint: its model list, the Test button with the tool, the photo and the upload, and a conversation with one tool call (stood in for)', async ({ page }) => {
