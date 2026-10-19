@@ -25,21 +25,12 @@
             "off": {
               "reasoning_effort": "none"
             },
-            "low": {
-              "reasoning_effort": "low"
-            },
-            "medium": {
-              "reasoning_effort": "medium"
-            },
-            "high": {
-              "reasoning_effort": "high"
-            },
-            "max": {
-              "reasoning_effort": "max"
-            }
+            "low": {},
+            "medium": {},
+            "high": {}
           }
         },
-        "note": "Add models with Fetch model list. Ollama holds only 4K tokens of a conversation unless told (with under 24 GiB of video memory), far less than Shiori needs: start it with OLLAMA_CONTEXT_LENGTH=64000, and set each model's context window on its page to match. Ollama can't be made to call a given tool, so a quick decision may go to the main model instead."
+        "note": "Add models with Fetch model list. Ollama decides how hard a model thinks; annai only switches thinking off, for quick decisions, as a model that can't think refuses a named level. A model with named levels, such as gpt-oss, can be given them on its page, in its Reasoning levels (for example \"high\": { \"reasoning_effort\": \"high\" }). Ollama holds only 4K tokens of a conversation unless told (with under 24 GiB of video memory), far less than Shiori needs: start it with OLLAMA_CONTEXT_LENGTH=64000, and set each model's context window on its page to match. Ollama can't be made to call a given tool, so a quick decision may go to the main model instead."
       }
     }
   }

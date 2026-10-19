@@ -38,11 +38,12 @@ async function kit() {
 
 /**
  * A local server's provider at a stand-in's address, its first listed model added and put in main.
- * @param {Awaited<ReturnType<typeof kit>>} k @param {string} plugin @param {string} origin @param {{ key?: string }} [o]
+ * @param {Awaited<ReturnType<typeof kit>>} k @param {string} plugin @param {string} origin @param {{ key?: string, model?: string }} [o]
  */
-async function setUp(k, plugin, origin, { key } = {}) {
+async function setUp(k, plugin, origin, { key, model } = {}) {
   const id = await k.llm.addProvider(plugin, { official: true, baseUrl: `${origin}/v1`, roles: null, ...(key ? { key } : {}) });
-  const [listed] = await k.llm.listModels(id, 'chat');
+  const all = await k.llm.listModels(id, 'chat');
+  const listed = model ? all.find((m) => m.providerId === model) : all[0];
   const modelId = await addListedModel(k, id, 'chat', listed);
   const cfg = await readConfig(k.ws);
   await saveRoles(k.ws, { ...cfg.roles, main: { models: [modelId], level: 'medium' } });
@@ -77,7 +78,8 @@ const CASES = /** @type {[string, import('../fakes/model-server.js').Flavour, Re
   ['provider-llamacpp', 'llamacpp', { reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false } }, { reasoning_effort: 'medium', chat_template_kwargs: { enable_thinking: true } }],
   ['provider-vllm', 'vllm', { chat_template_kwargs: { enable_thinking: false, thinking: false } }, { chat_template_kwargs: { enable_thinking: true, thinking: true } }],
   ['provider-sglang', 'sglang', { chat_template_kwargs: { enable_thinking: false, thinking: false } }, { chat_template_kwargs: { enable_thinking: true, thinking: true } }],
-  ['provider-ollama', 'ollama', { reasoning_effort: 'none' }, { reasoning_effort: 'medium' }],
+  // Ollama decides how hard a model thinks: only off is named, as a named level is refused by a model that can't think (fix pass 1).
+  ['provider-ollama', 'ollama', { reasoning_effort: 'none' }, {}],
   ['provider-lmstudio', 'lmstudio', {}, {}],
 ]);
 
@@ -196,4 +198,25 @@ test("the user's llama.cpp server (Unsloth Studio), as recorded on 2026-10-19, r
     { providerId: 'unsloth/Qwen3.8-Flash-Next-GGUF', contextWindow: 262144 },
     { providerId: 'unsloth/Qwen3.8-27B-GGUF' },
   ]);
+});
+
+test("Ollama: a model that can't think answers at every level, as only off is named; Ollama decides how hard one that can think does (fix pass 1)", async () => {
+  const levels = (await official('provider-ollama')).provider.abilities.chat.modelDefaults?.reasoning;
+  assert.deepEqual(levels, { off: { reasoning_effort: 'none' }, low: {}, medium: {}, high: {} }, 'no max: it would be the model default on gpt-oss anyway (fix pass 4)');
+  const { levelPatch, nearestLevel } = await import('../../src/core/llm/reasoning.js');
+  assert.deepEqual([nearestLevel(levels, 'max'), levelPatch(levels, 'max'), levelPatch(levels, 'medium')], ['high', {}, {}], 'an empty level is a level, and sends nothing');
+  const k = await kit();
+  const s = await startFakeServer({ flavour: 'ollama', cors: '*', replies: [{ text: 'Hello!' }] });
+  try {
+    const { modelId } = await setUp(k, 'provider-ollama', s.origin, { model: 'llama3.2:latest' });
+    for (const level of ['low', 'medium', 'high', 'max', 'off']) {
+      const r = await k.llm.call({ request: HI, level });
+      assert.equal(r.reply.text, 'Hello!', level);
+    }
+    assert.deepEqual(s.requests.filter((r) => r.method === 'POST').map((r) => r.body.reasoning_effort), [undefined, undefined, undefined, undefined, 'none']);
+    assert.equal((await k.llm.config()).models[modelId].ability, 'chat');
+    assert.match((await official('provider-ollama')).provider.abilities.chat.note ?? '', /Ollama decides how hard a model thinks.*gpt-oss/);
+  } finally {
+    await s.stop();
+  }
 });

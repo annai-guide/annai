@@ -324,7 +324,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1719,
+      "size": 1785,
       "requires": [
         {
           "id": "chat-completions",
@@ -333,7 +333,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "fb972c61ecd527c32c78adaa70e9363367f06a1f8f939089bc0e70cb451cacc0"
+        "annai-plugin.json": "d875efc172f96d48685c31501c3370104096f5a40923ec7939493242b7682703"
       }
     },
     {
