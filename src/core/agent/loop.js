@@ -1098,6 +1098,7 @@ export class Agent {
       }
       const prefer = this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
       this.#cut = false;
+      this.#noteCut = false;
       this.#wentToSleep = false;
       this.#streaming = '';
       this.#setState('thinking');
@@ -1112,7 +1113,7 @@ export class Agent {
           role, request, signal: AbortSignal.any([abort.signal, cut.signal]), scope: this.scope, prefer,
           record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
-          onEvent: (/** @type {any} */ ev) => this.#streamed(ev),
+          onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
         });
@@ -1124,8 +1125,11 @@ export class Agent {
           this.#rereadDue = false;
           await this.#serially(() => this.reread());
         }
-        // Cut in by an immediate note: the turn goes on with what is queued.
+        // Cut in by an immediate note: the turn goes on with what is queued, and knows what it had said.
         if (cut.signal.aborted && !abort.signal.aborted) {
+          const said = await this.#cutSpeech(wakeId);
+          if (said && this.#noteCut) this.#push({ kind: 'cue', text: `a note stopped you after: ${said}` });
+          this.#noteCut = false;
           const more = this.#take();
           if (more.length) {
             await this.#logWakes(more, wakeId, true);
@@ -1624,13 +1628,11 @@ export class Agent {
   /**
    * Speech streams in while the model writes it, and plays sentence by sentence (spec §10.1). A
    * call that starts over (another model) drops what it had begun to say.
-   * @param {any} ev a stream event
+   * @param {any} ev a stream event @param {string} wakeId
    */
-  #streamed(ev) {
+  #streamed(ev, wakeId) {
     if (ev.type === 'restart') {
-      for (const u of this.#utterances.values()) u.stop();
-      this.#utterances.clear();
-      this.#streaming = '';
+      this.#cutSpeech(wakeId).catch(() => {});
       return;
     }
     if (!this.#voiceNow || !this.#half.voice() || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
@@ -1653,6 +1655,25 @@ export class Agent {
     } else {
       u.end(String(ev.input?.text ?? ''));
     }
+  }
+
+  /**
+   * Speech that streamed in and played but whose call never ran (the call was cut, or started over): what
+   * was said aloud is written into the conversation, marked cut. @param {string} wakeId @returns {Promise<string>} what was said
+   */
+  async #cutSpeech(wakeId) {
+    const begun = [...this.#utterances];
+    this.#utterances.clear();
+    this.#streaming = '';
+    let said = '';
+    for (const [id, u] of begun) {
+      u.stop();
+      const spoken = await u.done;
+      if (!spoken.heard) continue;
+      said = spoken.heard;
+      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] });
+    }
+    return said;
   }
 
   /**
