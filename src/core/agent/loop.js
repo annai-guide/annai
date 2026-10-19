@@ -42,8 +42,8 @@ import { validate } from '../schema.js';
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
- * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void }} Pending
- *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit
+ * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean }} Pending
+ *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's
  * @typedef {{ name: StateName, label: string, detail?: string }} State
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[] }} Notice
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
@@ -439,7 +439,7 @@ export class Agent {
     this.#queue.push({ ...w, scope: this.#target ?? ME });
     // A note ends a wait for one (Koe's wait means "Kokoro is working").
     const p = this.#pending;
-    if (w.kind === 'note' && p?.kind === 'wait') {
+    if (w.kind === 'note' && p?.tool) {
       this.#pending = null;
       p.resolve({ note: w.from ?? 'kokoro' });
     }
@@ -547,8 +547,9 @@ export class Agent {
     }
   }
 
+  /** The wait tool runs (not speak's listening). */
   get waiting() {
-    return this.#pending?.kind === 'wait';
+    return Boolean(this.#pending?.tool);
   }
 
   get pendingId() {
@@ -765,7 +766,7 @@ export class Agent {
     // The conversation only, by type (A6): what the summary is made of, and what the cut is measured on (not Koe's).
     const split = this.#rules() === 'kokoro';
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
-      .filter((e) => !NOT_SAID.has(e.type) && e.data?.half !== 'koe' && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
+      .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
@@ -1507,7 +1508,7 @@ export class Agent {
         run: async (/** @type {{ seconds: number }} */ i, /** @type {any} */ call) => {
           const seconds = Math.min(600, Math.max(1, Number(i.seconds) || 8));
           if (call.voice && this.voice && !this.#aloudOnly) {
-            const heard = await this.#listenFor(call.id, 'wait', seconds);
+            const heard = await this.#listenFor(call.id, 'wait', seconds, true);
             if (!heard.deaf) return this.#answer('', heard, call, `Nothing yet (${seconds} seconds).`);
           }
           const got = await this.#waitFor(call.id, 'wait', seconds * this.secondMs);
@@ -1543,7 +1544,7 @@ export class Agent {
     return new Promise((resolve) => {
       /** @type {ReturnType<typeof setTimeout> | undefined} */
       let timer;
-      this.#pending = { id, kind, resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      this.#pending = { id, kind, tool: kind === 'wait', resolve: (v) => { clearTimeout(timer); resolve(v); } };
       if (ms > 0) timer = setTimeout(() => {
         if (this.#pending?.id === id) this.#pending = null;
         resolve({});
@@ -1732,9 +1733,9 @@ export class Agent {
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a
    * silence of seconds. Speech heard before isn't an answer: it reaches her as heard while she was
    * thinking, and with such speech waiting, speak and wait don't listen: it reaches her at once.
-   * @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @returns {Promise<Got>}
+   * @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @returns {Promise<Got>}
    */
-  async #listenFor(id, kind, seconds) {
+  async #listenFor(id, kind, seconds, tool = false) {
     const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (typed >= 0) return { text: this.#queue.splice(typed, 1)[0].text };
     if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
@@ -1752,7 +1753,7 @@ export class Agent {
           resolve({});
         }, seconds * this.secondMs);
       };
-      this.#pending = { id, kind, listening: true, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      this.#pending = { id, kind, listening: true, tool, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
       arm();
     });
   }
@@ -2017,7 +2018,7 @@ export class Agent {
       }
       this.#writeTries.delete(id);
       await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null } });
-      voice.memory.drop(id);
+      voice.memory.drop(id, r?.text);
     }
     return left;
   }

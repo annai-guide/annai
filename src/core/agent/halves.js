@@ -26,7 +26,7 @@ import { modelOf } from '../llm/config.js';
  */
 
 /** The events a half marks as its own while Shiori is two halves. */
-const MARKED = new Set(['wake', 'tool.call', 'tool.result', 'error', 'out.speak', 'out.show', 'out.ask', 'note', 'model.turn']);
+const MARKED = new Set(['wake', 'tool.call', 'tool.result', 'error', 'out.speak', 'out.show', 'out.ask', 'note', 'model.turn', 'heard']);
 const BLOCKS = Object.freeze({
   'koe-down': "Koe can't speak right now; talk to the user directly.",
   'koe-up': 'Koe is speaking again; use tell_koe.',
@@ -36,6 +36,11 @@ export const KOE_REST_MS = 60_000;
 const KOKORO_ONLY = ['personality', 'recap', 'restart'];
 /** The user's own wakes, past the budgets. */
 const THEIRS = ['user', 'choice', 'file', 'live'];
+/** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
+export const REVIEW_MS = 180_000;
+const REVIEW = "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
+/** The conversation's lines, for the review. */
+const LINES = ['msg.user', 'heard', 'out.speak', 'out.show', 'out.ask'];
 
 /** The notes between the halves: written into the conversation, then handed over; the sender never waits. */
 export class Channel {
@@ -96,8 +101,12 @@ export class Halves {
   #routes = 0;
   /** @type {string | null | undefined} the trip Koe has open; undefined: none yet */
   #koeTrip = undefined;
-  /** Kokoro told Koe since the user last typed: Koe asking about it again wakes nobody. */
+  /** Kokoro told Koe since the user last typed or spoke: Koe asking about it again wakes nobody. */
   #answered = false;
+  /** Heard words Kokoro hasn't woken for: Koe answering them wakes it (the design's cues). */
+  #cue = false;
+  /** When the first line Kokoro hasn't read came; 0: none. */
+  #unseen = 0;
   /** @type {string[]} what Kokoro told Koe that Koe hasn't said since */
   #unsaid = [];
   #failTold = false;
@@ -125,7 +134,7 @@ export class Halves {
           this.#koeOpen();
           this.koe.enqueue(w);
         },
-        kokoro: (w) => { if (!(w.from === 'koe' && this.#answered)) this.kokoro.enqueue(w); },
+        kokoro: (w) => { if (!(w.from === 'koe' && this.#answered)) this.#wakeKokoro(w); },
       },
       cut: { koe: () => this.koe.cutIn(), kokoro: () => this.kokoro.cutIn() },
     });
@@ -145,7 +154,10 @@ export class Halves {
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
         gate: (call) => this.#gate(call),
         failed: (why, e) => this.#kokoroFailed(why, e),
-        calling: () => { this.#nothingTold = false; },
+        calling: () => {
+          this.#nothingTold = false;
+          this.#unseen = 0; // it reads every line so far
+        },
         ended: (t) => this.#kokoroEnded(t),
       },
     });
@@ -347,7 +359,7 @@ export class Halves {
       if (!THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
       this.#koeOpen();
       this.koe.enqueue(w);
-      this.kokoro.enqueue({ ...w, fallbacks: [] });
+      this.#wakeKokoro({ ...w, fallbacks: [] });
     });
     return Promise.resolve();
   }
@@ -413,14 +425,33 @@ export class Halves {
     return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: '[a photo; Kokoro sees it]' } : p)) }));
   }
 
-  /** @param {any} e @param {import('./loop.js').Resolved} r */
+  /** Its next call reads every line so far. @param {Wake} w */
+  #wakeKokoro(w) {
+    this.#cue = false;
+    this.#unseen = 0;
+    this.kokoro.enqueue(w);
+  }
+
+  /**
+   * Kokoro hears all and wakes on cue (the design): what the user typed, or sent; Koe answering what was
+   * heard (chatter wakes nobody); and a review once 3 minutes of conversation have gone by unread.
+   * @param {any} e @param {import('./loop.js').Resolved} r
+   */
   async #koeLogged(e, r) {
     await this.kokoro.observe(e, r);
-    if (e.type === 'msg.user' && e.data?.split) {
+    const typed = e.type === 'msg.user' && e.data?.split;
+    if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
       this.#failTold = false;
-      this.kokoro.enqueue({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
     }
+    const answered = e.type.startsWith('out.') && this.#cue;
+    if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
+    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true });
+    else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
+    if (typed || answered || !LINES.includes(e.type) || this.koeState !== 'text') return;
+    const now = this.clock();
+    if (!this.#unseen) this.#unseen = now;
+    else if (now - this.#unseen >= REVIEW_MS) this.#wakeKokoro({ kind: 'cue', text: REVIEW, logged: true });
   }
 
   /** Kokoro's speak, show and ask while Koe talks become notes to Koe; its wait is answered (plan decision 15). @param {{ id: string, name: string, input: any, wake: string }} call */

@@ -41,6 +41,8 @@ export class HeardMemory {
   /** @type {Map<string, Kept>} */
   #all = new Map();
   #bytes = 0;
+  /** The words of the last segments let go once written down: a request built just before (the other half's) still sends them. @type {Map<string, string>} */
+  #words = new Map();
 
   constructor({ maxBytes = HEARD_MAX_BYTES } = {}) {
     this.maxBytes = maxBytes;
@@ -62,11 +64,19 @@ export class HeardMemory {
     return this.#all.get(id) ?? null;
   }
 
-  /** @param {string} id */
-  drop(id) {
+  /** @param {string} id @param {string} [words] what it said, written down */
+  drop(id, words) {
     const kept = this.#all.get(id);
     if (kept) this.#bytes -= bytesOf(kept);
     this.#all.delete(id);
+    if (words === undefined) return;
+    this.#words.set(id, words);
+    for (const old of this.#words.keys()) if (this.#words.size > 64) this.#words.delete(old);
+  }
+
+  /** @param {string} id */
+  words(id) {
+    return this.#words.get(id);
   }
 
   get size() {
@@ -171,7 +181,8 @@ async function resolvePart(p, model, c) {
     if (got) c.memory.keep({ id: p.id, source: 'mic', audio: { ...got, seconds: 0 }, ms: 0, at: 0 });
   }
   const kept = c.memory.get(p.id);
-  if (!kept) return { type: 'text', text: NOT_TRANSCRIBED };
+  const words = c.memory.words(p.id);
+  if (!kept) return { type: 'text', text: words === undefined ? NOT_TRANSCRIBED : said(words) };
   if (!kept.audio) return { type: 'text', text: said(kept.text ?? '') };
   for (const id of c.list) {
     if (id === 'send-audio') {

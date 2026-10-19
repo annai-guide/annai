@@ -162,3 +162,184 @@ test("listening is judged against Koe's model: audio goes to it, and it writes t
   const [text] = await k.events(['heard.text']);
   assert.equal(text.data.by, 'model-koet');
 });
+
+// K2 Task 2: Kokoro hears everything and wakes on cue (plan decision 8).
+const choose = (/** @type {'A' | 'B'} */ letter) => ({ toolCalls: [{ name: 'decide', input: { option: letter } }] });
+/** A half's transcript as text: labels, words, and what was heard. @param {any} half */
+const read = (half) => half.transcript.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type === 'speech' ? `speech:${p.text ?? p.id}` : p.type === 'tool_result' ? `result:${p.content}` : '')));
+/** Every text of a request's user messages. @param {any} req */
+const userTexts = (req) => req.messages.filter((/** @type {any} */ m) => m.role === 'user').flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text));
+/** One spoken line: a tap, the words, and the turn they start. @param {any} k @param {string} clip */
+async function say(k, clip) {
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, clip);
+  await k.agent.idle();
+}
+
+test('chatter (the gate says not for Shiori) goes into both transcripts and wakes neither', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { type: { rules: [{ match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Want tacos?' } }] } }] } },
+    voice: { decide: [choose('B')], speechIn: ['m-hear'], hears: ['did you lock the car'] },
+  });
+  k.agent.send('Lunch?');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'gas-station');
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  const [heard] = await k.events(['heard']);
+  assert.deepEqual([heard.data.dismissed, heard.data.gate], [true, 'chatter']);
+  assert.equal(k.sent['model-koe'].length, 1, 'Koe went back to sleep without a call');
+  assert.equal(k.sent['model-0'].length, 1, 'Kokoro woke for what was typed, and not for the chatter');
+  assert.ok(read(k.agent.kokoro).join('|').includes('[heard, not meant for you]|speech:did you lock the car'), JSON.stringify(read(k.agent.kokoro)));
+  assert.ok(read(k.agent.koe).includes('speech:did you lock the car'), JSON.stringify(read(k.agent.koe)));
+});
+
+test('a heard question Koe answers wakes Kokoro once, with "[heard]" and "[Koe said aloud]" in its context', async () => {
+  const k = await agentKit([{ rules: [{ match: 'Koe answered the user', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: calls(['speak', { text: "That's Bixby Bridge, a 1932 concrete arch." }]) }] } },
+    voice: { speechIn: ['m-hear'], hears: ['what is that bridge'] },
+  });
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal(k.sent['model-0']?.length, 1);
+  const [kokoro] = k.sent['model-0'];
+  assert.match(kokoro.tail, /woke for: Koe answered the user/);
+  const texts = userTexts(kokoro);
+  const at = texts.indexOf('[heard]');
+  assert.ok(at >= 0 && texts[at + 1] === 'what is that bridge', JSON.stringify(texts));
+  assert.ok(texts.includes(`[Koe said aloud] ${JSON.stringify("That's Bixby Bridge, a 1932 concrete arch.")}`), JSON.stringify(texts));
+  assert.deepEqual(k.transcribed, ['m-hear'], 'transcribed once, for both halves');
+});
+
+test('Koe asking in the same reply as it answers costs one Kokoro call, whichever comes first; a new question heard reaches Kokoro again', async () => {
+  for (const order of ['speak first', 'ask first']) {
+    const speak = ['speak', { text: "I'm checking." }];
+    const ask = ['tell_kokoro', { text: 'Is Nepenthe open now?' }];
+    const k = await agentKit([{ rules: [{ match: '.', reply: { delayMs: 60, ...calls(['tell_koe', { text: 'Open till 10 tonight.' }]) } }] }], {
+      koe: { talk: { rules: [
+        { match: 'the user spoke', reply: calls(.../** @type {any} */ (order === 'speak first' ? [speak, ask] : [ask, speak])) },
+        { match: 'a note from Kokoro', reply: calls(['speak', { text: "It's open till 10 tonight." }]) },
+      ] } },
+      voice: { speechIn: ['m-hear'], hears: ['is nepenthe open', 'and tomorrow'] },
+    });
+    await say(k, 'where-eat');
+    await new Promise((r) => setTimeout(r, 100));
+    await k.agent.idle();
+    assert.equal(k.sent['model-0']?.length, 1, order);
+    assert.deepEqual(plays(k), ["I'm checking.", "It's open till 10 tonight."], order);
+    // A new question, after Kokoro has answered: Koe's question reaches it.
+    await say(k, 'first-one');
+    await new Promise((r) => setTimeout(r, 100));
+    await k.agent.idle();
+    assert.equal(k.sent['model-0'].length, 2, order);
+    assert.ok(userTexts(k.sent['model-0'][1]).includes('and tomorrow'), `${order}: ${JSON.stringify(k.sent['model-0'][1].messages)} ${k.sent['model-0'][1].tail}`);
+  }
+});
+
+test("a heard answer to Koe's question is a line of Kokoro's, the same live and loaded from the log", async () => {
+  const { Transcript } = await import('../../src/core/agent/transcript.js');
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    // A heard answer follows the speak's result, so the stand-in reads the second call as a new wake: times picks the rule.
+    koe: { talk: { rules: [
+      { match: 'the user spoke', times: 1, reply: { toolCalls: [{ name: 'speak', input: { text: 'Want tacos?' } }] } },
+      { match: 'the user spoke', reply: calls(['speak', { text: 'Tacos it is.' }]) },
+    ] } },
+    voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'yes the first one'] },
+  });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => k.agent.state.name === 'listening' && k.sent['model-koet']?.length === 1);
+  await hear(k, 'first-one');
+  await k.agent.idle();
+  const lines = read(k.agent.kokoro).join('|');
+  assert.ok(lines.includes('[heard]|speech:yes the first one'), lines);
+  assert.deepEqual((await Transcript.load(k.store, k.trip, { half: 'kokoro' })).messages, k.agent.kokoro.transcript.messages);
+  assert.equal(k.agent.kokoro.transcript.unanswered, false, "Koe answers what is heard: Kokoro owes nothing after a reload");
+});
+
+test("the review: after 3 minutes of conversation Kokoro hasn't seen, the next line wakes it; silence never does", async () => {
+  let clock = Date.parse('2026-11-26T12:00:00Z');
+  const k = await agentKit([{ rules: [{ match: 'review', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: sleep }] } }, agent: { now: () => clock },
+    voice: { speechIn: ['m-hear'], hears: ['one', 'two', 'three', 'four'] },
+  });
+  const kokoroCalls = () => k.sent['model-0']?.length ?? 0;
+  await say(k, 'where-eat');
+  clock += 60_000;
+  await say(k, 'first-one');
+  assert.equal(kokoroCalls(), 0, 'Koe took both for chatter: nobody woke Kokoro');
+  clock += 125_000;
+  await new Promise((r) => setTimeout(r, 50));
+  await k.agent.idle();
+  assert.equal(kokoroCalls(), 0, 'silence wakes nobody');
+  await say(k, 'gas-station');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal(kokoroCalls(), 1);
+  assert.match(k.sent['model-0'][0].tail, /woke for: a review: /);
+  const texts = userTexts(k.sent['model-0'][0]);
+  for (const words of ['one', 'two', 'three']) assert.ok(texts.includes(words), JSON.stringify(texts));
+  clock += 10_000;
+  await say(k, 'where-lunch');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal(kokoroCalls(), 1, 'the next review waits for 3 more minutes');
+});
+
+test("the words of what was heard are written down once, after Koe's turn, and Kokoro's transcript gets them", async () => {
+  const k = await agentKit([{ rules: [{ match: 'Koe answered the user', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: { toolCalls: [{ name: 'speak', input: { text: "That's Bixby Bridge." } }] } }] } },
+    voice: { speechIn: ['m-hear'], hears: ['what is that bridge'] },
+  });
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal(k.sent['model-0']?.length, 1, "Kokoro's turn ended while Koe listened");
+  const written = await k.events(['heard.text']);
+  assert.equal(written.length, 1);
+  const koeWake = (await k.events(['wake'])).find((e) => e.data.half === 'koe');
+  assert.equal(written[0].data.wake, koeWake?.data.id, "written down after Koe's turn");
+  assert.ok(read(k.agent.kokoro).includes('speech:what is that bridge'));
+  assert.deepEqual(k.agent.kokoro.transcript.unwritten(), []);
+  assert.deepEqual(k.transcribed, ['m-hear']);
+});
+
+test('a line that wakes Kokoro anyway (typed, or Koe answering) brings no review with it', async () => {
+  let clock = Date.parse('2026-11-26T12:00:00Z');
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: sleep }, { match: 'the user wrote', reply: sleep }] } }, agent: { now: () => clock },
+    voice: { speechIn: ['m-hear'], hears: ['one'] },
+  });
+  await say(k, 'where-eat');
+  clock += 4 * 60_000;
+  k.agent.send('Where are we?');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal(k.sent['model-0']?.length, 1);
+  assert.match(k.sent['model-0'][0].tail, /woke for: the user wrote$/m);
+});
+
+test("Kokoro's request built before Koe wrote the words down still sends the words, though the sound was let go", async () => {
+  const k = await agentKit([{ rules: [{ match: 'Koe answered the user', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: calls(['speak', { text: "That's Bixby Bridge." }]) }] } },
+    voice: { speechIn: ['m-hear'], hears: ['what is that bridge'] },
+  });
+  let written = false;
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'heard.text') written = true; });
+  const call = k.llm.call;
+  k.llm.call = async (/** @type {any} */ c) => {
+    // Kokoro's call goes out only once Koe has written the words down and let the sound go.
+    if (c.record?.tag === 'conversation') await until(() => written && k.voice.memory.size === 0, 3000);
+    return call(c);
+  };
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  const texts = userTexts(k.sent['model-0'][0]);
+  assert.ok(texts.includes('what is that bridge'), JSON.stringify(texts));
+  assert.ok(!texts.includes('[audio, not transcribed]'));
+});
