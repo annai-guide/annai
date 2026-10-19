@@ -47,3 +47,46 @@ test("Gemini's Live voice: switched on, gemini-live installs; Test opens a sessi
     await s.stop();
   }
 });
+
+// OpenAI Realtime (K6), against the stand-in's openai flavour: the key goes as the browser's subprotocol, never in the address.
+const SK = 'sk-proj-e2e-realtime-stand-in-0123456789abcdef';
+const openaiUsage = { input_tokens: 600, output_tokens: 30, input_token_details: { text_tokens: 600 }, output_token_details: { audio_tokens: 30 } };
+
+test("OpenAI's Realtime voice: switched on, openai-realtime installs; Test opens a session with the key as a subprotocol that answers aloud; the Trace shows the session, never the key", async ({ page }) => {
+  const s = await startRealtimeServer({ flavour: 'openai', key: SK, turns: [{ said: 'OK.', audio: voice(), usage: openaiUsage }] });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await pickProvider(page, 'OpenAI');
+    await page.getByLabel('API key').fill(SK);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    const rt = page.getByRole('region', { name: 'Realtime voice', exact: true });
+    await expect(rt.getByText(/short-lived keys made by a server/)).toBeVisible();
+    const use = rt.getByLabel('Use Realtime voice');
+    await expect(use).not.toBeChecked();
+    await use.check();
+    await expect(savedBy(use)).toHaveText('Saved', { timeout: 30_000 }); // openai-realtime, installed first
+    const address = rt.getByLabel('Its own address');
+    await address.fill(`${s.origin}/v1`);
+    await leaveSaved(address);
+    await expect(rt.getByRole('link', { name: /^GPT Realtime 2\.1\b/ }).first()).toBeVisible();
+    await rt.getByRole('button', { name: 'Test', exact: true }).click();
+    await expect(rt.getByText('It answered aloud: OK.')).toBeVisible({ timeout: 30_000 });
+    await expect(rt.getByText('Everything works.')).toBeVisible();
+    const [c] = s.connections();
+    expect([c.path, c.key], 'the key went to the stand-in as a subprotocol, not in the address').toEqual(['/v1/realtime', SK]);
+    expect(c.model, 'one of its models').toMatch(/^gpt-realtime-2\.1/);
+    expect(c.protocols[0]).toBe('realtime');
+    const [update, item] = s.received();
+    expect(update.session.audio.input.format, 'telephone audio in').toEqual({ type: 'audio/pcmu' });
+    expect(item.item.content[0].text).toBe('Say OK.');
+    await page.goto('/#/trace');
+    await filterTrace(page, { kind: 'Models', type: 'live.session' });
+    await expect(page.getByText(/live session closed · GPT Realtime 2\.1/).first()).toBeVisible();
+    await expect(page.getByText(/live session ready · GPT Realtime 2\.1/).first()).toBeVisible();
+    expect(await page.content()).not.toContain(SK);
+  } finally {
+    await s.stop();
+  }
+});
