@@ -3,9 +3,11 @@ import { Detector } from '../voice/detector.js';
 
 /**
  * A live session's microphone (the Koe and Kokoro design: realtime sessions stream no silence). annai's end-of-sentence
- * detector drives the API's manual turns (decision 9): at speech start, activityStart and the sound just before it;
- * then 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and activityEnd. While Koe plays, a
- * start needs bargeInDb more over the floor (decision 13): her own voice from the car's speakers is quieter than a passenger.
+ * detector drives the API's manual turns (decision 9): once a run has minSpeechMs of speech in it, activityStart and
+ * everything since just before it; then 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and
+ * activityEnd. A click or a door slam, thrown away sooner, sends nothing: no turn to pay for, no sound off the phone.
+ * While Koe plays, a start needs bargeInDb more over the floor (decision 13): her own voice from the car's speakers is
+ * quieter than a passenger.
  */
 
 /** Sound at another rate, piece by piece, as 16-bit PCM: the same samples as all at once (filtered, then read between samples, as resample()). */
@@ -47,6 +49,8 @@ export class StreamResampler {
 export class LiveInput {
   /** Speech is being sent now. */
   active = false;
+  /** Speech began, and is held until it has enough in it to be sure. */
+  #held = false;
   /** @type {Detector | null} */
   #detector = null;
   /** @type {StreamResampler | null} */
@@ -61,16 +65,17 @@ export class LiveInput {
 
   /**
    * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void },
-   *   rate?: number, pauseMs?: number, startDb?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
+   *   rate?: number, pauseMs?: number, startDb?: number, minSpeechMs?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
    *   speaking?: () => boolean, onLevel?: (x: number) => void, onError?: (e: Error) => void }} o
    *   rate: what the session takes; speaking: whether Koe's voice is playing; bargeInDb: Infinity turns cutting in by voice off
    */
-  constructor({ mic, send, rate = 16_000, pauseMs = 700, startDb = 10, preRollMs = 300, chunkMs = 100, bargeInDb = 6, speaking = () => false, onLevel, onError }) {
+  constructor({ mic, send, rate = 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6, speaking = () => false, onLevel, onError }) {
     this.mic = mic;
     this.send = send;
     this.rate = rate;
     this.pauseMs = pauseMs;
     this.startDb = startDb;
+    this.minSpeechMs = minSpeechMs;
     this.bargeInDb = bargeInDb;
     this.speaking = speaking;
     this.onLevel = onLevel;
@@ -89,11 +94,11 @@ export class LiveInput {
     if (this.#closed) this.#mic.close();
   }
 
-  /** Closes the microphone; speech going on is ended. */
+  /** Closes the microphone; speech going on is ended, if it was enough to be speech. */
   stop() {
     if (this.#closed) return;
     this.#closed = true;
-    if (this.active) this.#end();
+    this.#events(this.#detector?.end() ?? []);
     this.#mic?.close();
     this.onLevel?.(0);
   }
@@ -102,30 +107,41 @@ export class LiveInput {
   #frames(pcm, sampleRate) {
     if (this.#closed) return;
     if (this.#detector?.sampleRate !== sampleRate) {
-      this.#detector = new Detector({ sampleRate, pauseMs: this.pauseMs, startDb: this.startDb });
+      this.#detector = new Detector({ sampleRate, pauseMs: this.pauseMs, startDb: this.startDb, minSpeechMs: this.minSpeechMs });
       this.#resampler = new StreamResampler(sampleRate, this.rate);
     }
     const d = this.#detector;
     d.startDb = this.startDb + (this.speaking() ? this.bargeInDb : 0);
     const out = /** @type {StreamResampler} */ (this.#resampler).push(pcm);
-    const was = this.active;
-    if (was) this.#add(out);
+    if (this.active) this.#add(out);
     else this.#hold(out);
-    for (const e of d.push(pcm)) {
-      if (e.type === 'speech' && !this.active) {
-        this.active = true;
-        this.send.activity('start');
-        for (const b of this.#before.splice(0)) this.#add(b);
-      } else if (e.type !== 'speech' && this.active) {
-        this.#end(); // a cut, or a noise the detector threw away: the turn ends either way
-      }
-    }
+    this.#events(d.push(pcm));
+    if (this.#held && d.speechMs >= this.minSpeechMs) this.#start();
     this.onLevel?.(d.level);
   }
 
-  /** Keeps the newest sound for the pre-roll. @param {Int16Array} pcm */
+  /** @param {import('../voice/detector.js').DetectorEvent[]} events */
+  #events(events) {
+    for (const e of events) {
+      if (e.type === 'speech') this.#held = !this.active;
+      else if (this.active || (this.#held && e.type === 'segment')) {
+        if (!this.active) this.#start();
+        this.#end(); // the cut; or a noise thrown away once already sent: the turn ends either way
+      } else this.#held = false; // thrown away before it was sent: nothing at all
+    }
+  }
+
+  #start() {
+    this.#held = false;
+    this.active = true;
+    this.send.activity('start');
+    for (const b of this.#before.splice(0)) this.#add(b);
+  }
+
+  /** Keeps the newest sound for the pre-roll, and all of it while speech is held. @param {Int16Array} pcm */
   #hold(pcm) {
     this.#before.push(pcm);
+    if (this.#held) return;
     let n = this.#before.reduce((s, b) => s + b.length, 0);
     while (n - this.#before[0].length >= this.keep) n -= /** @type {Int16Array} */ (this.#before.shift()).length;
     if (n > this.keep) this.#before[0] = this.#before[0].subarray(n - this.keep);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { StreamResampler, LiveInput } from '../../src/core/realtime/input.js';
-import { clip, quiet, cat, RATE } from './voice-kit.js';
+import { clip, quiet, cat, burst, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -73,7 +73,7 @@ test('the audio sent is the speech: its loudest part is where the speech is', as
   assert.ok(peak > want * 0.7 && peak < want * 1.3, `peak ${peak} vs ${want}`);
 });
 
-test('a sentence still going on when listening stops is ended; a click is ended too, and nothing more is sent', async () => {
+test('a sentence still going on when listening stops is ended, and nothing more is sent', async () => {
   const r = rig();
   await r.input.start();
   r.feed(up3(cat(quiet(1), lunch.subarray(0, 12_000))));
@@ -124,4 +124,17 @@ test('while Koe plays, a start needs 6 dB more over the floor', async () => {
   await off.input.start();
   off.feed(cat(hiss(2), voice(0.05)), RATE);
   assert.ok(!off.sent.includes('start'), 'with cutting in by voice off, nothing starts while Koe plays');
+});
+
+test('a click or a door slam leaves nothing: no activity and no audio, so no billed turn (review)', async () => {
+  const r = rig();
+  await r.input.start();
+  r.feed(up3(cat(quiet(1), burst(0.12, 0.8), quiet(1.5), burst(0.2, 0.9), quiet(1.5))));
+  assert.deepEqual(r.sent, [], 'nothing left the phone');
+  // Speech after it is sent whole, its start included.
+  r.feed(up3(cat(lunch, quiet(1.5))));
+  assert.equal(r.sent[0], 'start');
+  assert.equal(r.sent.at(-1), 'end');
+  assert.ok(msOf(r.sent) > (lunch.length / RATE) * 1000, 'the whole sentence, not from where it was sure');
+  r.input.stop();
 });

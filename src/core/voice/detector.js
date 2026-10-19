@@ -68,6 +68,11 @@ export class Detector {
     return this.#seg !== null;
   }
 
+  /** How much of the speech going on was loud enough to be speech, in ms: under minSpeechMs, it may yet be a click. */
+  get speechMs() {
+    return (this.#seg?.speech ?? 0) * FRAME_MS;
+  }
+
   /** @param {Float32Array} pcm @returns {DetectorEvent[]} */
   push(pcm) {
     /** @type {DetectorEvent[]} */
