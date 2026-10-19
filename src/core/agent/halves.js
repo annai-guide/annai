@@ -164,7 +164,7 @@ export class Halves {
     this.koe = new Agent({
       ...c,
       half: {
-        name: 'koe', tag: KOE_TAG, registryTools: false, logVoice: false, housekeeping: false, nonce: this.nonce, serial, ready,
+        name: 'koe', tag: KOE_TAG, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
         // Voice on uses "Koe for talking", off "Koe for typing", whatever the turn speaks (the design).
         role: async () => ({ role: (this.#koeRole = koeList(await this.llm.config(), Boolean(this.voice?.on)).role) }),
         voice: () => this.koeState === 'text',
@@ -253,8 +253,8 @@ export class Halves {
   #stateOf(half, s) {
     if (half === this.talking) this.#emit('state', s);
     if (half === this.kokoro) this.#emitHalves();
-    // Koe waits on a Kokoro with nothing to do: nothing to add (the wait is set up right after its state).
-    if (half === this.koe && s.name === 'waiting') queueMicrotask(() => { if (this.koe.waiting && !this.kokoro.busy && this.koeState === 'text') this.#nothingToAdd(); });
+    // Koe waits on a Kokoro with nothing to do: nothing to add (the wait, listening or not, is set up right after its state).
+    if (half === this.koe && (s.name === 'waiting' || s.name === 'listening')) queueMicrotask(() => { if (this.koe.waiting && !this.kokoro.busy && this.koeState === 'text') this.#nothingToAdd(); });
   }
 
   #emitHalves() {
