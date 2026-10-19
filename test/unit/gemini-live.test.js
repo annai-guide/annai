@@ -213,3 +213,27 @@ test("gemini-live is a protocol in annai's catalog: a keyed name, so a third par
   r.add('gemini-live', 'endpoint-type', { type: 'gemini-live', by: 'annai' });
   assert.deepEqual(r.list('endpoint-type').map((t) => t.by), ['annai'], "annai's, whatever the user chose");
 });
+
+test('a frame that is not JSON is skipped with a note in the trace, never a crash that counts against the plugin (review)', async () => {
+  /** @type {any[]} */
+  const notes = [];
+  /** @type {any} */
+  let type = null;
+  activate({
+    providers: { register: (/** @type {any} */ x) => { type = x; return () => {}; } },
+    helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } },
+    events: { append: async (/** @type {string} */ scope, /** @type {string} */ t, /** @type {any} */ data) => { notes.push([scope, t, data]); } },
+  });
+  /** @type {(d: string | Uint8Array) => void} */
+  let deliver = () => {};
+  /** @type {any[]} */
+  const events = [];
+  const driver = type.attach({ send() {}, on: (/** @type {any} */ fn) => { deliver = fn; } }, { model: model(), tunables: type.tunables, setup: setup(), emit: (/** @type {any} */ e) => events.push(e) });
+  assert.doesNotThrow(() => deliver(new TextEncoder().encode('<html>Bad gateway</html>')));
+  assert.doesNotThrow(() => deliver('{"serverContent":'));
+  deliver(new TextEncoder().encode(JSON.stringify({ setupComplete: {} })));
+  await driver.ready;
+  deliver(JSON.stringify({ serverContent: { outputTranscription: { text: 'Still here.' } } }));
+  assert.deepEqual(events, [{ type: 'said', text: 'Still here.', final: false }]);
+  assert.deepEqual(notes, [['sys', 'live.skipped', { bytes: 24 }], ['sys', 'live.skipped', { bytes: 17 }]]);
+});

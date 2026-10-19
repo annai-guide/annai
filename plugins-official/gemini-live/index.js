@@ -64,7 +64,15 @@ export function activate(annai) {
       // Gemini ends a cut-off turn with a turnComplete of its own, right after interrupted: that turn has ended once already.
       let cut = false;
       socket.on((/** @type {string | Uint8Array} */ d) => {
-        const m = JSON.parse(typeof d === 'string' ? d : new TextDecoder().decode(d));
+        /** @type {any} */
+        let m;
+        try {
+          m = JSON.parse(typeof d === 'string' ? d : new TextDecoder().decode(d));
+        } catch {
+          // Not Gemini's JSON (a proxy's page, a cut frame): skipped and noted, never a crash that switches the plugin off.
+          annai.events?.append('sys', 'live.skipped', { bytes: typeof d === 'string' ? d.length : d.byteLength }).catch(() => {});
+          return;
+        }
         if (m.setupComplete) isReady();
         const sc = m.serverContent;
         if (sc?.modelTurn) cut = false; // new audio: a new turn (transcripts can trail the cut one)
