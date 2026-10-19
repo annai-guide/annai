@@ -10,7 +10,7 @@ import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderF
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
-import { Warmth, TTL_MS, ttlFor, SOON_MS } from './warmth.js';
+import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
 import { tracedFetch, withoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop } from './budgets.js';
@@ -249,7 +249,7 @@ export class Agent {
   async settings() {
     const s = (await readAppSettings(this.ws)).shiori ?? {};
     return {
-      personality: s.personality ?? 'shiori', cacheTtl: s.cacheTtl === '1h' ? '1h' : '5m', askBeforeTuning: Boolean(s.askBeforeTuning),
+      personality: s.personality ?? 'shiori', cacheTtl: wantedTtl(s.cacheTtl), askBeforeTuning: Boolean(s.askBeforeTuning),
       budgets: s.budgets ?? {}, compaction: { threshold: 0.7, maxRequestMiB: 8, ...(s.compaction ?? {}) },
     };
   }

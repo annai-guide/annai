@@ -7,6 +7,9 @@ export const TTL_MS = Object.freeze({ '5m': 5 * 60_000, '1h': 60 * 60_000 });
 /** A cache this close to expiring counts as about to expire: a rewrite now costs nothing extra. */
 export const SOON_MS = 60_000;
 
+/** The lifetime wanted (Settings → Models → Cache): an hour, unless the user chose 5 minutes (the user, 2026-10-18). @param {unknown} chosen @returns {'5m' | '1h'} */
+export const wantedTtl = (chosen) => (chosen === '5m' ? '5m' : '1h');
+
 /** The lifetime to ask a model for: the one wanted, if it has it, else its first, else 5 minutes. @param {{ cacheTtls: string[] }} model @param {string} wanted @returns {'5m' | '1h'} */
 export function ttlFor(model, wanted) {
   const list = model.cacheTtls ?? [];
