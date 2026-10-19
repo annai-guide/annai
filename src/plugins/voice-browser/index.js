@@ -74,6 +74,8 @@ export function browserPlatform() {
   let worklet = null;
   /** @type {Promise<string[]> | null} */
   let makes = null;
+  /** The rate each codec takes here, found by trying: 16 kHz, else 48 kHz. @type {Map<string, number>} */
+  const rates = new Map();
   /** A segment's packets by codec, so its Ogg and its WebM share one encoding. @type {WeakMap<ArrayBufferLike, Map<string, ReturnType<typeof encodeWith>>>} */
   const packets = new WeakMap();
   /** @param {Int16Array} pcm @param {number} rate @param {string} codec */
@@ -82,7 +84,14 @@ export function browserPlatform() {
     if (!m) packets.set(pcm.buffer, (m = new Map()));
     const key = `${codec} ${rate} ${pcm.byteOffset} ${pcm.length}`;
     let p = m.get(key);
-    if (!p) m.set(key, (p = encodeWith(pcm, rate, codec)));
+    const at = rates.get(codec) ?? rate;
+    // A codec that takes only 48 kHz gets the speech read between its samples, three times as many.
+    const up = () => Int16Array.from({ length: Math.floor((pcm.length * at) / rate) }, (_, i) => {
+      const x = (i * rate) / at;
+      const j = Math.floor(x);
+      return Math.round(pcm[j] + ((pcm[j + 1] ?? pcm[j]) - pcm[j]) * (x - j));
+    });
+    if (!p) m.set(key, (p = encodeWith(at === rate ? pcm : up(), at, codec)));
     return p;
   };
 
@@ -223,12 +232,17 @@ export function browserPlatform() {
         /** @type {string[]} */
         const out = [];
         if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') return out;
-        for (const [codec, , formats] of CODECS) {
-          try {
-            const { description } = await encodeWith(new Int16Array(1600), 16_000, codec);
-            if (codec !== 'flac' || description) out.push(...formats);
-          } catch {
-            // not on this device
+        for (const [codec, bitrate, formats] of CODECS) {
+          // 48 kHz only for a codec of a set bitrate: a lossless file of 48 kHz is bigger than WAV at 16.
+          for (const rate of bitrate ? [16_000, 48_000] : [16_000]) {
+            try {
+              await encodeWith(new Int16Array(rate / 10), rate, codec);
+              rates.set(codec, rate);
+              out.push(...formats);
+              break;
+            } catch {
+              // not at this rate, or not on this device
+            }
           }
         }
         return out;
@@ -243,7 +257,7 @@ export function browserPlatform() {
           const o = { rate, channels: 1, samples: pcm.length, preSkip: head ? head[10] | (head[11] << 8) : 312 }; // 312: libopus's usual look-ahead
           return format === 'ogg' ? oggOpus(p, o) : webmOpus(p, o);
         }
-        if (codec === 'mp4a.40.2') return adts(p, { rate, channels: 1 });
+        if (codec === 'mp4a.40.2') return adts(p, { rate: rates.get(codec) ?? rate, channels: 1 });
         if (codec === 'flac') return flacFile(d, p);
         return cat(p); // MP3 frames are a file as they are
       },

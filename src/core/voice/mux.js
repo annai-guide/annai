@@ -176,11 +176,23 @@ export function adts(frames, { rate, channels }) {
 }
 
 /**
- * A FLAC file: the encoder's description ("fLaC" and its STREAMINFO; a bare STREAMINFO is given
- * both), then the frames, which carry their own headers. @param {Uint8Array | null} description @param {Uint8Array[]} frames
+ * A FLAC file: "fLaC", the metadata blocks with the last one marked, then the frames, which carry
+ * their own headers. Encoders give the metadata three ways: in the stream before the frames, in the
+ * description after a mapping's header (Ogg FLAC's), or as a bare STREAMINFO.
+ * @param {Uint8Array | null} description @param {Uint8Array[]} frames
  */
 export function flacFile(description, frames) {
-  if (!description?.length) throw new Error('The FLAC encoder gave no STREAMINFO.');
-  const marked = String.fromCharCode(...description.subarray(0, 4)) === 'fLaC';
-  return cat([...(marked ? [description] : [ascii('fLaC'), Uint8Array.of(0x80, 0, 0, description.length), description]), ...frames]);
+  const marker = (/** @type {Uint8Array} */ b, /** @type {number} */ i) => String.fromCharCode(...b.subarray(i, i + 4)) === 'fLaC';
+  const d = description ?? new Uint8Array();
+  const at = d.findIndex((_, i) => marker(d, i));
+  const head = frames[0] && marker(frames[0], 0) ? [] : at >= 0 ? [d.subarray(at)] : d.length === 34 ? [ascii('fLaC'), Uint8Array.of(0, 0, 0, 34), d] : null;
+  if (!head) throw new Error('The FLAC encoder gave no STREAMINFO.');
+  const file = cat([...head, ...frames]);
+  // The block before the first frame (a frame starts 0xFF) is marked the last one.
+  for (let i = 4; i + 4 <= file.length && !(file[i] & 0x80);) {
+    const next = i + 4 + ((file[i + 1] << 16) | (file[i + 2] << 8) | file[i + 3]);
+    if (next >= file.length || file[next] === 0xff) file[i] |= 0x80;
+    i = next;
+  }
+  return file;
 }

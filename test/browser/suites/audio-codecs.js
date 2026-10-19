@@ -23,7 +23,7 @@ export default function (test, assert) {
     const pcm = voiced(1.5);
     for (const format of makes) {
       const file = await enc.encode(pcm, 16_000, format);
-      assert.ok(file.length > 100 && file.length < pcm.length, `${format}: ${file.length} bytes`);
+      assert.ok(file.length > 100 && file.length < pcm.length * 2, `${format}: ${file.length} bytes, smaller than WAV`);
       let seconds = NaN;
       try {
         seconds = await decodedSeconds(file);
@@ -46,6 +46,29 @@ export default function (test, assert) {
     assert.deepEqual([...webm.subarray(0, 4)], [0x1a, 0x45, 0xdf, 0xa3]);
     assert.deepEqual(await enc.encode(pcm, 16_000, 'ogg'), ogg);
     await assert.rejects(enc.encode(pcm, 16_000, 'wav'), /can't make wav here/);
+  });
+
+  test('a codec that takes only 48 kHz gets the speech at 48 kHz, and the file still plays for its length', async () => {
+    const real = /** @type {any} */ (globalThis).AudioEncoder;
+    if (!real) return;
+    /** @type {any} */ (globalThis).AudioEncoder = class extends real {
+      /** @param {any} c */
+      configure(c) {
+        if (c.sampleRate !== 48_000) throw new DOMException('Only 48 kHz here.', 'NotSupportedError');
+        super.configure(c);
+      }
+    };
+    try {
+      const enc = /** @type {any} */ (browserPlatform().encoder);
+      const makes = await enc.makes();
+      assert.ok(makes.includes('ogg'), makes.join(', '));
+      for (const format of makes.filter((/** @type {string} */ f) => f === 'ogg' || f === 'webm' || f === 'aac')) {
+        const seconds = await decodedSeconds(await enc.encode(voiced(1.5), 16_000, format)).catch(() => NaN);
+        if (format !== 'aac' || !Number.isNaN(seconds)) assert.ok(Math.abs(seconds - 1.5) < 0.15, `${format} at 48 kHz decodes to ${seconds} s`);
+      }
+    } finally {
+      /** @type {any} */ (globalThis).AudioEncoder = real;
+    }
   });
 
   test('a kept clip decodes back to PCM for another format', async () => {

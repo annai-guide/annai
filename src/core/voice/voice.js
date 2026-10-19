@@ -437,6 +437,7 @@ export class Voice {
     const { pauseMs } = await this.settings();
     const local = kind === 'dictation' && (await this.dictationLocal());
     const recording = kind === 'record' ? await this.#recordWith() : undefined;
+    platform.encoder?.makes().catch(() => {}); // tried now, while she listens, rather than when the first segment goes
     platform.session('play-and-record');
     try {
       const session = await listen({
