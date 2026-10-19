@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 17961,
+      "size": 17934,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -44,7 +44,7 @@
       },
       "files": {
         "annai-plugin.json": "00f959aa9abb83c8066188f0dafc67daa7ca807a592a3fd740cc76a808528f11",
-        "index.js": "134b3adcb0ec83efde8953c2f253f95788d8422c449bb110994fa560cbcfb4ab"
+        "index.js": "c65d646fa510179e48e70a3f4b704172bc7ad80d81b869e952e99c530c03d0c3"
       }
     },
     {
@@ -274,7 +274,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1402,
+      "size": 1508,
       "requires": [
         {
           "id": "speech-openai",
@@ -283,7 +283,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "98028638997488408868241b5753728cd211a07323573a639a99930a127c9b9a"
+        "annai-plugin.json": "a476804001c49cba0729c279633e31d5b9927ce2b0c328b9c48b2d4a494fd152"
       }
     },
     {

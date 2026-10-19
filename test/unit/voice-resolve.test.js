@@ -213,12 +213,13 @@ test('a failed transcription retries with the identical bytes', async () => {
   assert.ok(down.llm.bench.until('groq') > Date.now());
 });
 
-test('a receiver that refuses the format it declared gets WAV, and WAV from then on; a format that fails to encode gives way to the next', async () => {
+test('a transcription model that refuses a file (any bad request, as whisper.cpp says only "Invalid request") gets WAV once, and WAV from then on; a format that fails to encode gives way to the next', async () => {
   const k = await phone({}, { refuses: { groq: 'audio/webm' } });
   assert.deepEqual((await k.to(await k.hear(), 'txt')).text, 'what was said');
   assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav']);
   await k.to(await k.hear(), 'txt');
   assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav', 'audio/wav'], 'straight to WAV');
+  assert.equal(k.llm.bench.until('groq'), 0);
   const h = await k.hear();
   assert.equal((await k.to(h, 'or', true)).mediaType, 'audio/wav', 'a chat model that refused (plain) gets WAV');
   assert.equal((await k.to(h, 'or')).mediaType, 'audio/wav', 'and keeps getting it');
@@ -226,6 +227,26 @@ test('a receiver that refuses the format it declared gets WAV, and WAV from then
   assert.equal((await broken.to(await broken.hear(), 'or')).mediaType, 'audio/wav', "OpenRouter's next format the phone makes: WAV, the last resort");
   const none = await phone({ makes: [] });
   assert.equal((await none.to(await none.hear(), 'or')).mediaType, 'audio/wav', 'no encoder: WAV, as before');
+});
+
+test("a refusal that isn't the format (WAV refused too, such as OpenAI's \"Audio file is too short\") doesn't pin WAV: the model fails as before", async () => {
+  const k = await phone({}, { refuses: { groq: '*' } });
+  await assert.rejects(k.to(await k.hear(), 'txt'), /nothing in the speech-in list can hear it/);
+  assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav']);
+  assert.ok(!k.voice.wavOnly.has('groq'));
+});
+
+test("a turn that stops stops the transcription's retries: the signal goes with each upload, and no further one is sent", async () => {
+  const k = await phone({}, { flaky: { groq: 5 } });
+  k.voice.retryMs = [50, 50];
+  const h = await k.hear();
+  const stop = new AbortController();
+  const asking = k.voice.resolver('trip-1', 'w-1')({ id: 'txt', name: 'txt', input: ['text'] }, asked([{ type: 'speech', id: h.id }]), false, stop.signal);
+  await new Promise((r) => setTimeout(r, 10));
+  stop.abort();
+  await assert.rejects(asking);
+  assert.equal(k.llm.uploads.length, 1);
+  assert.equal(k.llm.uploads[0].signal, stop.signal);
 });
 
 test('where the encoder makes nothing a receiver takes but MediaRecorder does, it records alongside and that file is sent', async () => {

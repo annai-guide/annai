@@ -41,7 +41,13 @@
         "kind": "voice",
         "type": "openai-speech",
         "baseUrl": "http://localhost:8880/v1",
-        "note": "Kokoro or Speaches, at its own address. Add a voice model by id."
+        "note": "Kokoro or Speaches, at its own address. Add a voice model by id.",
+        "tunables": {
+          "audioOut": [
+            "mp3",
+            "wav"
+          ]
+        }
       }
     }
   }
