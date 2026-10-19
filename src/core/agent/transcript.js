@@ -26,6 +26,8 @@ export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
 /** Wake reasons that are lines of their own elsewhere. */
 const OWN_LINES = ['user', 'heard', 'note', 'halves'];
+/** Words not annai's, as Koe reads them: no line of them starts like one of annai's labels. @param {string} s */
+const unbracket = (s) => s.replace(/^(\s*)\[/gm, '$1\\[');
 
 export class Transcript {
   /** @type {Message[]} */
@@ -107,7 +109,8 @@ export class Transcript {
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
-        this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }, ...r.images]);
+        const typed = koe ? unbracket(texts.text) : texts.text;
+        this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;
@@ -183,7 +186,7 @@ export class Transcript {
       }
     } else if (e.type === 'heard.text') {
       // A segment's words, written down later: every place it is sent now sends them (spec §10.3).
-      const text = koe ? escapeTags(String(d.text ?? '')) : String(d.text ?? '');
+      const text = koe ? unbracket(escapeTags(String(d.text ?? ''))) : String(d.text ?? '');
       const had = this.#heard.get(d.of);
       if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
       this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'speech' && p.id === d.of ? { ...p, text } : p)) }));
@@ -261,9 +264,9 @@ export class Transcript {
   #unmarked(p) {
     if (this.#wrapped.has(p)) return p;
     if (p.type === 'text') return { ...p, text: escapeTags(p.text) };
-    // And a result's line can't start like one of annai's labels.
-    if (p.type === 'tool_result') return { ...p, content: escapeTags(p.content).replace(/^(\s*)\[/gm, '$1\\[') };
-    if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: escapeTags(p.text) };
+    // And a result's or heard words' line can't start like one of annai's labels.
+    if (p.type === 'tool_result') return { ...p, content: unbracket(escapeTags(p.content)) };
+    if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: unbracket(escapeTags(p.text)) };
     return p;
   }
 
