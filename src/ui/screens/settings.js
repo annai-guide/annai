@@ -1,4 +1,4 @@
-import { h, field, checkbox } from '../dom.js';
+import { h, field, savedField, savedCheck, numberIn } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { photoSettings } from '../../core/photos.js';
 import { canEncode } from '../photo-codec.js';
@@ -38,7 +38,7 @@ export async function renderSettings(ctx) {
     update: () => section('Update',
       h('p', { class: 'sub', text: `A new version of annai is ready. It is used the next time annai starts. This is annai ${ctx.version}.` }),
       h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => ctx.update.apply() }, 'Restart annai'))),
-    models: () => section('Models', ...goTo('The endpoints and models Shiori uses, and the order each role tries them in.', '#/models', 'Models')),
+    models: () => section('Models', ...goTo('The endpoints and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.', '#/models', 'Models')),
     voice: () => section('Voice', ...goTo('How Shiori speaks and hears you, with a test for each.', '#/voice', 'Voice')),
     notifications: () => section('Notifications', ...goTo('Reminders while annai is closed, through the push relay, and what it learns.', '#/notifications', 'Notifications')),
     backup: () => section('Backup',
@@ -51,7 +51,7 @@ export async function renderSettings(ctx) {
       exportSlot,
       h('p', { class: 'sub', text: 'A trip someone sent you, or a backup to bring back:' }),
       openFileButton(ctx, 'Open an annai file')),
-    shiori: () => section('Shiori', ...goTo('Her personality, budgets and housekeeping.', '#/shiori', 'Shiori')),
+    shiori: () => section('Shiori', ...goTo('How she looks, her personality, and how often she acts on her own.', '#/shiori', 'Shiori')),
     photos: async () => section('Photos', ...(await photoControls(ctx, app))),
     tools: () => section('Tools', ...goTo('Switches for every tool Shiori has, web search and fetch, and the Jina key.', '#/tools', 'Tools')),
     plugins: async () => [section('Plugins', ...goTo('Skills and code plugins: install, update, switch off or remove.', '#/plugins', 'Manage plugins')), await pluginPages(ctx)],
@@ -82,72 +82,57 @@ export async function renderSettings(ctx) {
 
 /**
  * Settings → Photos (spec §4.8): Keep originals, how photos are encoded when they come in, and how
- * large the copies Shiori is sent may be.
+ * large the copies Shiori is sent may be. Each saves as it changes (§16.1).
  * @param {any} ctx @param {Record<string, any>} app
  */
 async function photoControls(ctx, app) {
   const s = photoSettings(app);
   const webp = await canEncode('image/webp');
-  const keep = checkbox('Keep originals: store photos exactly as taken', s.keepOriginals);
-  const format = h('select', { id: 'photo-format' },
-    h('option', { value: 'webp' }, "WebP, or JPEG where this browser can't write WebP"),
-    h('option', { value: 'jpeg' }, 'JPEG'));
-  format.value = s.ingest.formats[0] === 'image/jpeg' ? 'jpeg' : 'webp';
-  const quality = h('input', { id: 'photo-quality', type: 'number', min: '0.5', max: '1', step: '0.05', value: String(s.ingest.quality) });
-  const edge = h('input', { id: 'photo-edge', type: 'number', min: '256', step: '1', placeholder: 'No limit', value: s.ingest.maxEdge === null ? '' : String(s.ingest.maxEdge) });
-  const size = h('input', { id: 'photo-size', type: 'number', min: '0.1', step: '0.1', placeholder: 'No limit', value: s.ingest.maxBytes === null ? '' : String(s.ingest.maxBytes / 1_000_000) });
+  const save = (/** @type {Record<string, any>} */ photos) => updateAppSettings(ctx.ws, { photos });
+  const keep = savedCheck('Keep originals: store photos exactly as taken', s.keepOriginals, (on) => save({ keepOriginals: on }));
+  const formats = (/** @type {HTMLSelectElement} */ x) => (x.value === 'jpeg' ? ['image/jpeg'] : ['image/webp', 'image/jpeg']);
+  const formatPick = (/** @type {string} */ id, /** @type {string[]} */ now) => {
+    const x = h('select', { id }, h('option', { value: 'webp' }, "WebP, or JPEG where this browser can't write WebP"), h('option', { value: 'jpeg' }, 'JPEG'));
+    x.value = now[0] === 'image/jpeg' ? 'jpeg' : 'webp';
+    return x;
+  };
+  const number = (/** @type {string} */ id, /** @type {Record<string, string>} */ more, /** @type {number | null} */ value) =>
+    h('input', { id, type: 'number', placeholder: 'No limit', ...more, value: value === null ? '' : String(value) });
+  const format = formatPick('photo-format', s.ingest.formats);
+  const quality = number('photo-quality', { min: '0.5', max: '1', step: '0.05', placeholder: '' }, s.ingest.quality);
+  const edge = number('photo-edge', { min: '256', step: '1' }, s.ingest.maxEdge);
+  const size = number('photo-size', { min: '0.1', step: '0.1' }, s.ingest.maxBytes === null ? null : s.ingest.maxBytes / 1_000_000);
   const asMB = (/** @type {number | null} */ b) => (b === null ? '' : String(Math.round(b / 10_000) / 100));
-  const sentEdge = h('input', { id: 'photo-sent-edge', type: 'number', min: '256', step: '1', placeholder: 'No limit', value: s.request.maxEdge === null ? '' : String(s.request.maxEdge) });
+  const sentEdge = number('photo-sent-edge', { min: '256', step: '1' }, s.request.maxEdge);
   const sentSize = h('input', { id: 'photo-sent-size', type: 'number', min: '0.1', step: '0.01', placeholder: 'No limit', value: asMB(s.request.maxBytes) });
-  const sentFormat = h('select', { id: 'photo-sent-format' },
-    h('option', { value: 'webp' }, "WebP, or JPEG where this browser can't write WebP"),
-    h('option', { value: 'jpeg' }, 'JPEG'));
-  sentFormat.value = s.request.formats[0] === 'image/jpeg' ? 'jpeg' : 'webp';
-  const sentQuality = h('input', { id: 'photo-sent-quality', type: 'number', min: '0.5', max: '1', step: '0.05', value: String(s.request.quality) });
-  const error = h('p', { class: 'error', role: 'alert', hidden: true });
-  const save = h('button', {
-    class: 'btn pri', type: 'button',
-    onclick: async () => {
-      const q = Number(quality.value);
-      const e = edge.value.trim() === '' ? null : Number(edge.value);
-      const mb = size.value.trim() === '' ? null : Number(size.value);
-      if (!(q >= 0.5 && q <= 1) || (e !== null && !(Number.isInteger(e) && e >= 256)) || (mb !== null && !(mb >= 0.1))) {
-        error.textContent = 'Quality goes from 0.5 to 1, the longest side is at least 256 pixels, and the largest file at least 0.1 MB. Leave a limit empty for none.';
-        error.hidden = false;
-        return;
-      }
-      const sq = Number(sentQuality.value);
-      const se = sentEdge.value.trim() === '' ? null : Number(sentEdge.value);
-      const smb = sentSize.value.trim() === '' ? null : Number(sentSize.value);
-      if (!(sq >= 0.5 && sq <= 1) || (se !== null && !(Number.isInteger(se) && se >= 256)) || (smb !== null && !(smb >= 0.1))) {
-        error.textContent = 'For photos sent to Shiori, quality goes from 0.5 to 1, the longest side is at least 256 pixels, and the largest photo at least 0.1 MB. Leave a limit empty for none.';
-        error.hidden = false;
-        return;
-      }
-      error.hidden = true;
-      // A size shown rounded and left as it was keeps its exact value (1 MiB shows as 1.05).
-      const sentBytes = sentSize.value.trim() === asMB(s.request.maxBytes) ? s.request.maxBytes : smb === null ? null : Math.round(smb * 1_000_000);
-      await updateAppSettings(ctx.ws, {
-        photos: {
-          keepOriginals: keep.input.checked,
-          ingest: { formats: format.value === 'jpeg' ? ['image/jpeg'] : ['image/webp', 'image/jpeg'], quality: q, maxEdge: e, maxBytes: mb === null ? null : Math.round(mb * 1_000_000) },
-          request: { formats: sentFormat.value === 'jpeg' ? ['image/jpeg'] : ['image/webp', 'image/jpeg'], quality: sq, maxEdge: se, maxBytes: sentBytes },
-        },
-      });
-      ctx.notices.toast('Photo settings saved');
-    },
-  }, 'Save photo settings');
+  const sentFormat = formatPick('photo-sent-format', s.request.formats);
+  const sentQuality = number('photo-sent-quality', { min: '0.5', max: '1', step: '0.05', placeholder: '' }, s.request.quality);
+  const QUALITY = 'Quality goes from 0.5 to 1.';
+  const EDGE = 'The longest side is a whole number of pixels, at least 256. Leave it empty for no limit.';
+  // No limit is saved as 0 (photoSettings).
+  const bytesOf = (/** @type {HTMLInputElement} */ x, /** @type {string} */ words) => {
+    const mb = numberIn(x, 0.1, Infinity, words);
+    return mb === null ? null : Math.round(mb * 1_000_000);
+  };
+  // A size shown rounded and left as it was keeps its exact value (1 MiB shows as 1.05).
+  const sentBytes = () => (sentSize.value.trim() === asMB(s.request.maxBytes) ? s.request.maxBytes : bytesOf(sentSize, 'The largest photo sent is at least 0.1 MB. Leave it empty for no limit.'));
   return [
     h('p', { class: 'sub', text: `Each photo you add is stored once. ${webp ? 'This browser writes WebP.' : "This browser can't write WebP, so photos are saved as JPEG."} The originals stay in your phone's photo library.` }),
     keep.el,
-    h('div', { class: 'row' }, field('Save photos as', format), field('Quality (0.5 to 1)', quality)),
-    h('div', { class: 'row' }, field('Longest side, pixels', edge), field('Largest file, MB', size)),
+    h('div', { class: 'row' },
+      savedField('Save photos as', format, () => formats(format), (f) => save({ ingest: { formats: f } })),
+      savedField('Quality (0.5 to 1)', quality, () => numberIn(quality, 0.5, 1, QUALITY, { need: true }), (q) => save({ ingest: { quality: q } }))),
+    h('div', { class: 'row' },
+      savedField('Longest side, pixels', edge, () => numberIn(edge, 256, 65535, EDGE, { whole: true }), (e) => save({ ingest: { maxEdge: e ?? 0 } })),
+      savedField('Largest file, MB', size, () => bytesOf(size, 'The largest file is at least 0.1 MB. Leave it empty for no limit.'), (b) => save({ ingest: { maxBytes: b ?? 0 } }))),
     h('h3', { text: 'Photos for Shiori' }),
     h('p', { class: 'sub', text: 'The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.' }),
-    h('div', { class: 'row' }, field('Longest side sent, pixels', sentEdge), field('Largest photo sent, MB', sentSize)),
-    h('div', { class: 'row' }, field('Send photos as', sentFormat), field('Quality sent (0.5 to 1)', sentQuality)),
-    error,
-    h('div', { class: 'acts' }, save),
+    h('div', { class: 'row' },
+      savedField('Longest side sent, pixels', sentEdge, () => numberIn(sentEdge, 256, 65535, EDGE, { whole: true }), (e) => save({ request: { maxEdge: e ?? 0 } })),
+      savedField('Largest photo sent, MB', sentSize, sentBytes, (b) => save({ request: { maxBytes: b ?? 0 } }))),
+    h('div', { class: 'row' },
+      savedField('Send photos as', sentFormat, () => formats(sentFormat), (f) => save({ request: { formats: f } })),
+      savedField('Quality sent (0.5 to 1)', sentQuality, () => numberIn(sentQuality, 0.5, 1, QUALITY, { need: true }), (q) => save({ request: { quality: q } }))),
   ];
 }
 

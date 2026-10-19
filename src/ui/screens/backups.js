@@ -1,4 +1,4 @@
-import { h, field, checkbox, radios, twoStep } from '../dom.js';
+import { h, field, checkbox, twoStep, savedField, savedCheck, savedRadios } from '../dom.js';
 import { placeStatus, placeHref, newerText, withArticle, relTime, bytes, limitFromField, limitField, limitText } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
@@ -148,32 +148,20 @@ async function renderPlace(ctx, id) {
         h('p', { text: `This backup uploads ${bytes(hold.bytes)}. annai can't tell whether this ${noun} is on Wi-Fi, so larger backups wait for your OK.` }),
         h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => backUpNow({}) }, 'Back up now')))
       : null;
-  const auto = radios('Back up automatically', [
+  const auto = savedRadios('Back up automatically', [
     ['changes', type.stores === 'tree' ? 'After changes, within the hour' : 'After changes, at most every 6 hours'],
     ['daily', 'Once a day'],
     ['off', 'Off'],
-  ], t.auto, async (v) => {
-    await ctx.backups.update(id, { auto: /** @type {any} */ (v) });
-    ctx.notices.toast('Saved');
-  });
-  const mobile = checkbox('Also over mobile data', t.mobileData);
-  mobile.input.addEventListener('change', async () => {
-    await ctx.backups.update(id, { mobileData: mobile.input.checked });
-    ctx.notices.toast('Saved');
-  });
+  ], t.auto, (v) => ctx.backups.update(id, { auto: /** @type {any} */ (v) }));
+  const mobile = savedCheck('Also over mobile data', t.mobileData, (on) => ctx.backups.update(id, { mobileData: on }));
   // Where the browser can't say whether it is on Wi-Fi (Safari on iPhone), how much goes without asking: the user's choice.
   const limit = h('input', { id: 'place-ask-above', type: 'number', min: '0', step: 'any', inputmode: 'decimal', placeholder: 'No limit', value: limitField(t.askAbove) });
   const limitNote = h('p', { class: 'sub', text: limitNoteText(t.askAbove, connectionOf(navigator)) });
-  limit.addEventListener('change', async () => {
-    const value = limitFromField(limit.value);
-    if (value === undefined) {
-      ctx.notices.toast('Type a number of megabytes, or leave it empty for no limit.');
-      return;
-    }
-    await ctx.backups.update(id, { askAbove: value });
-    limitNote.textContent = limitNoteText(value, connectionOf(navigator));
-    ctx.notices.toast('Saved');
-  });
+  const readLimit = () => {
+    const value = limit.validity?.badInput ? undefined : limitFromField(limit.value);
+    if (value === undefined) throw new Error('Type a number of megabytes, or leave it empty for no limit.');
+    return value;
+  };
   const list = h('ul', { class: 'cards' });
   const show = h('button', {
     class: 'btn', type: 'button',
@@ -217,7 +205,10 @@ async function renderPlace(ctx, id) {
     accessPanel(ctx, type),
     h('section', { class: 'panel', 'aria-label': 'When' },
       auto, mobile.el,
-      field('Upload without asking up to, MB', limit),
+      savedField('Upload without asking up to, MB', limit, readLimit, async (value) => {
+        await ctx.backups.update(id, { askAbove: value });
+        limitNote.textContent = limitNoteText(value, connectionOf(navigator));
+      }),
       limitNote,
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => backUpNow({}) }, 'Back up now'), stop)),
     h('section', { class: 'panel', 'aria-label': 'Restore' },

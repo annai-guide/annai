@@ -80,6 +80,21 @@ export async function turnOnSwipes(page) {
   await expect(page.locator('main.view')).toHaveClass(/\bswipes\b/);
 }
 
+/**
+ * The quiet "Saved" by a setting that saves as it changes (spec §16.1). Saves run one after another,
+ * so once a setting's says Saved, every change before it is written too.
+ * @param {import('@playwright/test').Locator} control
+ */
+export function savedBy(control) {
+  return control.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status');
+}
+
+/** Commits a field (leaving it) and waits for its "Saved". @param {import('@playwright/test').Locator} control */
+export async function leaveSaved(control) {
+  await control.blur();
+  await expect(savedBy(control)).toHaveText('Saved');
+}
+
 /** @param {import('@playwright/test').Page} page */
 export async function waitForServiceWorker(page) {
   await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 30_000 });
