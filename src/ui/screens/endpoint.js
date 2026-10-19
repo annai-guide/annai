@@ -3,6 +3,7 @@ import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, s
 import { templateUpdates, applyTemplate, addListedModel, useSuggestion } from '../../core/llm/templates.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
+import { addOpenRouterVoice, voiceMissing, BEHIND } from '../openrouter.js';
 
 /** An error in plain words; for a ValidationError, its own words without the field path. @param {any} e */
 export function messageOf(e) {
@@ -83,6 +84,7 @@ export async function renderEndpoint(ctx, id) {
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
       status),
     from?.roles ? suggestionsPanel(ctx, id, from) : null,
+    rec.template?.id === 'openrouter' && voiceMissing(cfg, catalog).length ? voicePanel(ctx, id, hasKey, catalog) : null,
     modelsSection(ctx, id, models),
     models[0] && type?.speech ? speechTestPanel(ctx, models[0], type.speech, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
     models[0] && !type?.speech ? testPanel(ctx, models[0].id, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
@@ -195,6 +197,32 @@ function listedModels(ctx, endpointId, listed, have) {
   filter.addEventListener('input', show);
   show();
   return h('div', {}, field('Filter the list', filter), list);
+}
+
+/**
+ * Signed in before sign-in added OpenRouter's voice: added when asked, with this endpoint's key.
+ * @param {any} ctx @param {string} id @param {boolean} hasKey @param {import('../../core/llm/templates.js').TemplateCatalog} catalog
+ */
+function voicePanel(ctx, id, hasKey, catalog) {
+  const status = h('p', { class: 'sub', role: 'status', text: hasKey ? '' : "Save this endpoint's key first: they use the same one." });
+  const add = h('button', {
+    class: 'btn', type: 'button', disabled: !hasKey,
+    onclick: async () => {
+      add.disabled = true;
+      try {
+        await addOpenRouterVoice(ctx, await ctx.llm.keyFor(id), catalog);
+        ctx.notices.toast("OpenRouter's transcription and voice added, behind the phone's own");
+        ctx.render();
+      } catch (e) {
+        status.textContent = messageOf(e);
+        add.disabled = false;
+      }
+    },
+  }, "Add OpenRouter's voice");
+  return h('section', { class: 'panel', 'aria-label': "OpenRouter's voice" },
+    h('p', { text: `OpenRouter can also write down what you say, and give Shiori a voice. annai adds them with this endpoint's key, ${BEHIND} in Settings → Models.` }),
+    h('div', { class: 'acts' }, add),
+    status);
 }
 
 /** Buttons that put a template's suggested models in the roles ("free", "recommended"). @param {any} ctx @param {string} id @param {import('../../core/llm/templates.js').EndpointTemplate} tpl */

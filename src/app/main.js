@@ -207,7 +207,7 @@ async function boot() {
   });
   setInterval(lookForUpdates, 24 * 60 * 60 * 1000);
   // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).
-  finishSignIn({ llm, ws, store, notices: shell.notices }).then((was) => { if (was) shell.render(); });
+  finishSignIn({ llm, ws, store, notices: shell.notices, render: shell.render }).then((was) => { if (was) shell.render(); });
 }
 
 /** annai's own personalities as shipped, for installing and "reset to original" (spec §14.1). @returns {Promise<Record<string, string>>} */

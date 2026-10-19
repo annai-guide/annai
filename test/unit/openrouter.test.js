@@ -5,7 +5,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { readConfig, modelOf, getKey } from '../../src/core/llm/config.js';
-import { signInUrl, codeSignIn, callbackFrom, exchange, finishSignIn, AUTH_URL, KEYS_URL } from '../../src/ui/openrouter.js';
+import { signInUrl, codeSignIn, callbackFrom, exchange, finishSignIn, signingIn, AUTH_URL, KEYS_URL } from '../../src/ui/openrouter.js';
 
 /** A Storage-like map. */
 function memoryStorage() {
@@ -26,10 +26,12 @@ test('the sign-in address carries a PKCE challenge of the stored verifier, and a
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
   assert.equal(url.searchParams.get('callback_url'), 'https://annai.guide/');
   assert.equal(url.searchParams.get('state'), saved.state);
+  assert.equal(url.searchParams.get('key_label'), 'annai', "the key is named annai in the user's OpenRouter keys");
   assert.equal(saved.at, 1000);
   const code = new URL(await signInUrl({ callback: null, storage }));
   assert.equal(code.searchParams.get('callback_url'), null, 'without a callback, OpenRouter shows a code to paste');
   assert.equal(code.searchParams.get('state'), null);
+  assert.equal(code.searchParams.get('key_label'), 'annai');
 });
 
 test('the callback is read from the address', () => {
@@ -45,14 +47,30 @@ test('exchange: the code and the verifier buy a key; a strange state, an old sig
   let sent = null;
   const fetch = async (/** @type {any} */ url, /** @type {any} */ init) => { sent = { url, body: JSON.parse(init.body) }; return new Response(JSON.stringify({ key: 'sk-or-new' })); };
   await assert.rejects(exchange({ code: 'c', state: 'not-ours', fetch, storage, now: 2000 }), /didn't start in this browser/);
-  await assert.rejects(exchange({ code: 'c', state: saved.state, fetch, storage, now: 1000 + 16 * 60_000 }), /expired/);
   assert.equal(await exchange({ code: ' c ', state: saved.state, fetch, storage, now: 2000 }), 'sk-or-new');
   assert.equal(sent.url, KEYS_URL);
   assert.deepEqual(sent.body, { code: 'c', code_verifier: saved.verifier, code_challenge_method: 'S256' });
   assert.equal(storage.getItem('annai.openrouter'), null, 'the verifier is used once');
   await signInUrl({ callback: null, storage, now: 3000 });
   await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: async () => new Response('{}'), storage, now: 3000 }), /didn't send a key/);
-  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: async () => new Response('no', { status: 403 }), storage, now: 3000 }), /HTTP 403/);
+  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: async () => new Response('no', { status: 500 }), storage, now: 3000 }), /HTTP 500/);
+  await signInUrl({ callback: 'https://annai.guide/', storage, now: 1000 });
+  await assert.rejects(exchange({ code: 'c', state: 'any', fetch, storage, now: 1000 + 16 * 60_000 }), /expired/);
+});
+
+test("a code OpenRouter won't take, an old sign-in and an empty paste each say what to do next, in words", async () => {
+  const storage = memoryStorage();
+  await signInUrl({ callback: null, storage, now: 1000 });
+  const expired = async () => Response.json({ error: { code: 403, message: 'Authorization code expired' } }, { status: 403 });
+  // OpenRouter's codes work once, for 10 minutes: a 403 says so, and the same sign-in takes a new code.
+  await assert.rejects(exchange({ code: 'old', state: null, pasted: true, fetch: expired, storage, now: 2000 }), /works once, for 10 minutes.*Tap Sign in with OpenRouter/);
+  assert.ok(storage.getItem('annai.openrouter'), 'kept: a new code from the same sign-in still fits');
+  await assert.rejects(exchange({ code: '  ', state: null, pasted: true, fetch: expired, storage, now: 2000 }), /Paste the code/);
+  // Past annai's own limit: the waiting sign-in is dropped, so the next tap starts a new one.
+  await assert.rejects(exchange({ code: 'late', state: null, pasted: true, fetch: expired, storage, now: 1000 + 16 * 60_000 }), /expired.*Tap Sign in with OpenRouter to start again/);
+  assert.equal(storage.getItem('annai.openrouter'), null);
+  // Nothing waiting (the code was used already, or the sign-in began in another browser): signed in or not, there is nothing to start again.
+  await assert.rejects(exchange({ code: 'again', state: 'x', fetch: expired, storage, now: 2000 }), /^Error: annai has no sign-in waiting for this code: it was used already, or began in another browser\.$/);
 });
 
 test('finishing a sign-in: the address is cleaned, the endpoint, key and free models are set up, and the user is told', async () => {
@@ -62,14 +80,18 @@ test('finishing a sign-in: the address is cleaned, the endpoint, key and free mo
   const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
   const storage = memoryStorage();
   const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
-  /** @type {string[]} */
-  const toasts = [];
+  /** @type {any[]} */
+  const cards = [];
   /** @type {string[]} */
   const replaced = [];
+  /** @type {boolean[]} */
+  const drawn = [];
   const ctx = {
     ws, store,
     llm: { templates: async () => catalog, ensureType: async () => {} },
-    notices: { toast: (/** @type {string} */ t) => toasts.push(t), card: (/** @type {any} */ c) => { throw new Error(c.body); } },
+    notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) },
+    // The Models screen is drawn as soon as the address is clean, saying the sign-in is being finished.
+    render: () => drawn.push(signingIn()),
   };
   const was = await finishSignIn(ctx, {
     location: /** @type {any} */ ({ search: `?code=abc&state=${url.searchParams.get('state')}`, pathname: '/' }),
@@ -79,13 +101,34 @@ test('finishing a sign-in: the address is cleaned, the endpoint, key and free mo
   });
   assert.equal(was, true);
   assert.deepEqual(replaced, ['/#/models']);
+  assert.deepEqual(drawn, [true]);
+  assert.equal(signingIn(), false);
   const cfg = await readConfig(ws);
-  const [endpoint] = Object.values(cfg.endpoints);
-  assert.equal(endpoint.template?.id, 'openrouter');
+  const endpoint = /** @type {any} */ (Object.values(cfg.endpoints).find((e) => e.template?.id === 'openrouter'));
   assert.equal(await getKey(store, endpoint.id), 'sk-or-signed-in');
   assert.deepEqual(cfg.roles.main.models.map((id) => modelOf(cfg.models[id]).name), ['Google: Gemma 4 31B (free)']);
-  assert.match(toasts[0], /Signed in with OpenRouter/);
+  assert.deepEqual(cards.map((c) => [c.tone, c.title]), [['ok', 'Signed in with OpenRouter']]);
   assert.equal(await finishSignIn(ctx, { location: /** @type {any} */ ({ search: '', pathname: '/' }) }), false);
+});
+
+test("a sign-in that came back but didn't finish says why on a card, and isn't left finishing", async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const storage = memoryStorage();
+  const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
+  /** @type {any[]} */
+  const cards = [];
+  const ctx = { ws, store, llm: { templates: async () => ({ format: 1, endpoints: [] }), ensureType: async () => {} }, notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) } };
+  await finishSignIn(ctx, {
+    location: /** @type {any} */ ({ search: `?code=abc&state=${url.searchParams.get('state')}`, pathname: '/' }),
+    history: /** @type {any} */ ({ replaceState: () => {} }),
+    fetch: async () => Response.json({ error: { code: 403, message: 'Invalid code or code_verifier' } }, { status: 403 }),
+    storage,
+  });
+  assert.equal(cards[0].tone, 'warn');
+  assert.match(cards[0].body, /didn't take the code/);
+  assert.equal(signingIn(), false);
 });
 
 test('a callback without the state is refused, and a code may be pasted only in a sign-in that asked for one (login CSRF)', async () => {

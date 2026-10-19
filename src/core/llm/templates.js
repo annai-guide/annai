@@ -104,18 +104,30 @@ export function speechAdd(list, id, role) {
 }
 
 /**
- * Roles with a template's suggestion filled in. With onlyEmpty, chat roles the user has set are
- * kept. A speech list keeps its stand-ins and the user's order: the suggested models join it.
- * @param {Roles} roles @param {Map<string, string>} byProvider provider model id → model id
- * @param {Record<string, string[]> | undefined} suggestion @param {boolean} onlyEmpty
+ * A speech list with models added at its end, behind everything in it, the stand-ins too: how Sign
+ * in with OpenRouter adds its transcription and voice, so the free path stays first (the user,
+ * 2026-10-18: "Add, behind phone"). A list the user emptied stays empty.
+ * @param {readonly string[]} list @param {string[]} add @returns {string[]}
  */
-function suggested(roles, byProvider, suggestion, onlyEmpty) {
+export function speechBehind(list, add) {
+  return list.length ? [...list, ...add.filter((id, i) => !list.includes(id) && add.indexOf(id) === i)] : [...list];
+}
+
+/**
+ * Roles with a template's suggestion filled in. With onlyEmpty, chat roles the user has set are
+ * kept. A speech list keeps its stand-ins and the user's order: the suggested models join it,
+ * where a template's go (withSpeech), or behind everything in it.
+ * @param {Roles} roles @param {Map<string, string>} byProvider provider model id → model id
+ * @param {Record<string, string[]> | undefined} suggestion @param {boolean} onlyEmpty @param {boolean} [behind]
+ */
+function suggested(roles, byProvider, suggestion, onlyEmpty, behind = false) {
   const next = structuredClone(roles);
   for (const [role, providers] of Object.entries(suggestion ?? {})) {
     const models = providers.map((p) => byProvider.get(p)).filter((x) => typeof x === 'string');
     if (!models.length) continue;
     if (SPEECH_ROLES.includes(role)) {
-      next[role] = { ...next[role], level: next[role]?.level ?? 'off', models: withSpeech(next[role]?.models ?? SPEECH_DEFAULTS[role] ?? [], models, role) };
+      const list = next[role]?.models ?? SPEECH_DEFAULTS[role] ?? [];
+      next[role] = { ...next[role], level: next[role]?.level ?? 'off', models: behind ? speechBehind(list, models) : withSpeech(list, models, role) };
       continue;
     }
     if (onlyEmpty && next[role]?.models.length) continue;
@@ -128,10 +140,11 @@ function suggested(roles, byProvider, suggestion, onlyEmpty) {
  * Adds an endpoint from a template: the endpoint, its models (each under a name no other model
  * has), its key, and the template's suggested models for roles that are still empty.
  * @param {{ ws: Workspace, store: Store }} c @param {EndpointTemplate} tpl
- * @param {{ key?: string | null, roles?: string | null }} [opts] roles: which suggestion ("recommended", "free"), or none
+ * @param {{ key?: string | null, roles?: string | null, behind?: boolean }} [opts] roles: which suggestion ("recommended", "free"), or none;
+ *   behind: its speech models go at the end of their lists (speechBehind)
  * @returns {Promise<string>} the endpoint's id
  */
-export async function addFromTemplate({ ws, store }, tpl, { key = null, roles = 'recommended' } = {}) {
+export async function addFromTemplate({ ws, store }, tpl, { key = null, roles = 'recommended', behind = false } = {}) {
   const cfg = await readConfig(ws);
   const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
   const endpoint = newEndpoint(tpl.type, { template: { id: tpl.id, version: tpl.version, values: endpointValues(tpl) } });
@@ -148,7 +161,7 @@ export async function addFromTemplate({ ws, store }, tpl, { key = null, roles = 
   const suggestion = roles ? tpl.roles?.[roles] : undefined;
   if (suggestion) {
     const byProvider = new Map(models.map((m) => [modelOf(m).providerId, m.id]));
-    await saveRoles(ws, suggested(cfg.roles, byProvider, suggestion, true));
+    await saveRoles(ws, suggested(cfg.roles, byProvider, suggestion, true, behind));
   }
   return endpoint.id;
 }

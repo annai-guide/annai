@@ -508,7 +508,10 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   - It refreshes when the app is online.
   - Users' settings are copies. When a template changes, they're offered the update, never changed silently.
 - **Default onboarding is "Sign in with OpenRouter"** (OAuth PKCE, with no client registration on our side). It creates the endpoint and suggests models for each role.
-  - OpenRouter's free models allow 50 requests per day (1,000 per day after $10 of lifetime purchases), enough to try annai.
+  - OpenRouter's free models allow 50 requests per day (1,000 per day after $10 of lifetime purchases), enough to try annai. The chat roles get free models.
+  - It also adds OpenRouter's transcription and a voice (its OpenAI-compatible audio API), as endpoints of their own, each with its own copy of the key. Their models go at the end of the speech lists, behind phone dictation and the browser voice, so trying annai stays free; using them first is the user's choice, by moving them up under Roles (the user, 2026-10-18). The speech models annai suggests there cost money: they need credits bought at OpenRouter. The card that says sign-in finished says what it set up and how to move the voice up.
+  - Someone who signed in before the voice was added is offered it on the OpenRouter endpoint's page, with that endpoint's key. It is never added silently.
+  - The key OpenRouter makes is labelled "annai" in the user's OpenRouter keys. Back from OpenRouter, Settings → Models shows at once and says the sign-in is being finished.
   - Templates cover Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral and local servers. The local-server template notes that a phone needs an HTTPS address, such as a tunnel.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
@@ -539,7 +542,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 ### 10.1 Speaking
 
 - **Sentence by sentence.** The text of `speak` streams in as the model generates it (read from partial tool arguments), and `Intl.Segmenter` cuts it into sentences.
-- **Each sentence goes to the first working entry in the speech-out list.** The list is user-ordered; the browser voice sits last by default.
+- **Each sentence goes to the first working entry in the speech-out list.** The list is user-ordered; the browser voice sits last by default. A voice a template adds goes ahead of it; the one Sign in with OpenRouter adds goes behind it, until the user moves it up (§9.8).
 - **No gaps.** With API voices, the next sentence's audio is fetched while the current one plays.
 - **Mid-answer fallback.** If a voice fails partway through, the same sentence replays on the next voice in the list, and the failed voice is benched.
 - **Audio unlock.** Playback goes through one audio player, unlocked by the first tap of each session (an iOS rule).
@@ -572,7 +575,7 @@ Entries:
 - one stand-in entry, **"Send audio to the model"**
 - phone dictation, where available. The browser's own speech service hears it (Google on Chrome, Apple on Safari), unless it recognizes speech on the device (§11.7).
 
-The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template. With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
+The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template, after "Send audio to the model"; the one Sign in with OpenRouter adds goes after phone dictation (§9.8). With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
 
 **The list is resolved again for each model attempt, against the model actually receiving the speech.** That applies to any role, including quick decision.
 - "Send audio to the model" is used only if that model accepts audio. Otherwise it's skipped.
