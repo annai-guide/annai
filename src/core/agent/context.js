@@ -94,32 +94,36 @@ function localTime(now, timeZone) {
 }
 
 const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)', auto: 'auto' });
+/** Koe's state, as Kokoro's now block says it (the Koe and Kokoro design). */
+const KOE = /** @type {Record<string, string>} */ ({ text: 'talking with the user (use tell_koe)', live: 'talking with the user live (use tell_koe)', down: "can't speak now: talk to the user directly" });
 
 /**
  * The now block (spec §6.3, item 4): sent last, never cached.
- * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][], place?: string, activity?: string, voiceWhy?: string }} c
- *   voiceWhy: why voice is what it is, for Auto (spec §10.5)
+ * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][] | null, place?: string, activity?: string, voiceWhy?: string, koe?: string }} c
+ *   voiceWhy: why voice is what it is, for Auto (spec §10.5); plan null: no plan line (Koe's view has the plan); koe: Koe's state, for Kokoro
  */
-export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '' }) {
+export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '', koe }) {
   const lines = [
     `time: ${localTime(now, timeZone)}`,
     `place: ${place}`,
     `activity: ${activity}`,
     `voice: ${VOICE[voice] ?? voice}${voiceWhy ? ` (${voiceWhy})` : ''}`,
+    ...(koe ? [`koe: ${KOE[koe] ?? koe}`] : []),
     `connection: ${online ? 'online' : 'offline'}`,
     `woke for: ${reasons.length ? reasons.join('; ') : 'a reason annai did not record'}`,
-    plan.length ? `next in the plan:\n${tsv(['start', 'title', 'fixed', 'place'], plan)}` : 'next in the plan: nothing',
+    ...(plan === null ? [] : [plan.length ? `next in the plan:\n${tsv(['start', 'title', 'fixed', 'place'], plan)}` : 'next in the plan: nothing']),
   ];
   return `<now>\n${lines.join('\n')}\n</now>`;
 }
 
 /**
- * @param {{ snapshot: Snapshot, tools: import('../llm/contract.js').ToolDef[], transcript: { messages: import('../llm/contract.js').Message[] },
+ * @param {{ snapshot: Snapshot, system?: string, tools: import('../llm/contract.js').ToolDef[], transcript: { messages: import('../llm/contract.js').Message[] },
  *   tail: string, cacheTtl: '5m' | '1h', maxOutput?: number }} c
+ *   system: a half's own system text, in place of Shiori's
  * @returns {Request}
  */
-export function buildRequest({ snapshot, tools, transcript, tail, cacheTtl, maxOutput }) {
-  return { system: systemText(snapshot), tools, messages: transcript.messages, tail, cacheTtl, ...(maxOutput ? { maxOutput } : {}) };
+export function buildRequest({ snapshot, system, tools, transcript, tail, cacheTtl, maxOutput }) {
+  return { system: system ?? systemText(snapshot), tools, messages: transcript.messages, tail, cacheTtl, ...(maxOutput ? { maxOutput } : {}) };
 }
 
 /**

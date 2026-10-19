@@ -6,8 +6,9 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then every running plugin's, in the
  * order they registered; switches come from the app settings, so they cover any plugin's tool.
  * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, region?: number[], name?: string }} Media
- * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean, heard?: string[], endTurn?: boolean }} ToolOutput
- *   heard: segments the user said in answer, which follow the result (spec §10.3); endTurn: the turn ends after this step (chatter heard, §10.4)
+ * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean, heard?: string[], endTurn?: boolean, told?: boolean }} ToolOutput
+ *   heard: segments the user said in answer, which follow the result (spec §10.3); endTurn: the turn ends after this step (chatter heard, §10.4);
+ *   told: a gated call that became a note to the other half (the Koe and Kokoro design)
  * @typedef {{ id: string, scope: string, trip: string | null, signal: AbortSignal, model: import('../llm/config.js').Model | null, wake: string,
  *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[], voice?: boolean, sleeping?: boolean,
  *   photos?: { copy(source: import('../request-photos.js').Source, crop?: import('../request-photos.js').Crop): Promise<import('../request-photos.js').Copy> } }} ToolCall
