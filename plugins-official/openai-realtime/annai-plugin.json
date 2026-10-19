@@ -1,0 +1,12 @@
+{
+  "id": "openai-realtime",
+  "name": "OpenAI Realtime",
+  "version": "0.1.0",
+  "api": 1,
+  "entry": "index.js",
+  "files": [
+    "g711.js"
+  ],
+  "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.",
+  "provides": { "endpoint-type": ["openai-realtime"] }
+}
