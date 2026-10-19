@@ -41,3 +41,6 @@ export const pickFormat = (accepts, makes) => pick(accepts, [...makes, 'wav']);
 
 /** What to ask a voice for: the smallest format it offers that the device plays. @param {string[]} offers @param {string[]} plays */
 export const pickOut = (offers, plays) => pick(offers, plays);
+
+/** Whether a provider's refusal (a bad request) is about the audio's format: then WAV is sent instead. @param {string} message */
+export const formatRefused = (message) => /audio|format|codec|wav|mp3|ogg|webm|m4a|mp4|flac|aac/i.test(message);

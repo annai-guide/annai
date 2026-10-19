@@ -99,7 +99,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'msg.user' || e.type === 'out.speak') return cut(d.text);
   if (e.type === 'heard') {
     return [d.source === 'dictation' ? 'phone dictation' : `${((d.ms ?? 0) / 1000).toFixed(1)} s from the microphone`, d.text ? `"${cut(d.text)}"` : null,
-      d.answer ? 'an answer' : d.meanwhile ? 'while she was thinking' : null, d.dismissed ? 'not for Shiori' : null, d.clip ? 'clip kept' : null].filter(Boolean).join(' · ');
+      d.answer ? 'an answer' : d.meanwhile ? 'while she was thinking' : null, d.dismissed ? 'not for Shiori' : null,
+      d.clip ? `clip kept${d.clipFormat ? `: ${d.clipFormat}, ${bytes(d.clipBytes ?? 0)}` : ''}` : null].filter(Boolean).join(' · ');
   }
   if (e.type === 'heard.text') return `"${cut(d.text)}"${d.by ? ` · written down by ${d.by}` : ''}`;
   if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
@@ -126,7 +127,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
     const n = (d.attempts ?? []).length;
     return `${d.role}: ${d.answeredBy ?? 'no answer'} · ${n} attempt${n === 1 ? '' : 's'}${d.cost !== undefined ? ` · ${formatCost(d.cost)}` : ''}`;
   }
-  if (e.type === 'net.request') return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'net.request') {
+    // Each clip's format and size (Koe and Kokoro design, "Audio formats").
+    const clips = d.format ? ` · ${d.format}, ${bytes(d.bytes ?? 0)}` : d.audio?.length ? ` · audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${bytes(a.bytes)}`).join('; ')}` : '';
+    return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms${clips}`;
+  }
   if (e.type === 'pack.download') {
     return [`${d.files ?? 0} files`, bytes(d.bytes ?? 0), `${d.guides ?? 0} guide${d.guides === 1 ? '' : 's'}`, d.failed ? `${d.failed} failed` : null,
       d.full ? 'at its limit' : null, d.stopped ? 'stopped' : null, d.auto ? 'by itself on Wi-Fi' : null].filter(Boolean).join(' · ');
@@ -157,6 +162,8 @@ function storedText(ctx, e) {
       const texts = [];
       for (const [i, hash] of e.refs.entries()) {
         const b = await ctx.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(hash));
+        // A kept voice clip plays here, as it was kept (spec §10.2).
+        if (b?.type.startsWith('audio/')) out.after(h('audio', { controls: true, src: URL.createObjectURL(new Blob([b.data], { type: b.type })) }));
         const body = !b ? '(no longer stored)'
           : /^text\/|json/.test(b.type) ? new TextDecoder().decode(new Uint8Array(b.data).subarray(0, 200_000))
             : `(${b.type}, ${b.size} bytes)`;

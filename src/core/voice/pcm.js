@@ -9,7 +9,7 @@ const tag = (b, at, s) => { for (let i = 0; i < 4; i++) b[at + i] = s.charCodeAt
 /** @param {Uint8Array} b @param {number} at */
 const tagAt = (b, at) => String.fromCharCode(b[at], b[at + 1], b[at + 2], b[at + 3]);
 
-/** A 16-bit mono WAV file. Samples outside -1..1 are clipped. @param {Float32Array} pcm @param {number} sampleRate @returns {Uint8Array} */
+/** A 16-bit mono WAV file, of float samples (outside -1..1 clipped) or 16-bit ones. @param {Float32Array | Int16Array} pcm @param {number} sampleRate @returns {Uint8Array} */
 export function encodeWav(pcm, sampleRate) {
   const out = new Uint8Array(44 + pcm.length * 2);
   const dv = new DataView(out.buffer);
@@ -26,9 +26,10 @@ export function encodeWav(pcm, sampleRate) {
   dv.setUint16(34, 16, true);
   tag(out, 36, 'data');
   dv.setUint32(40, pcm.length * 2, true);
+  const whole = pcm instanceof Int16Array;
   for (let i = 0; i < pcm.length; i++) {
-    const x = Math.max(-1, Math.min(1, pcm[i]));
-    dv.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true);
+    const x = whole ? pcm[i] : Math.max(-1, Math.min(1, pcm[i]));
+    dv.setInt16(44 + i * 2, whole ? x : x < 0 ? x * 0x8000 : x * 0x7fff, true);
   }
   return out;
 }
@@ -60,6 +61,17 @@ export function decodeWav(bytes) {
   const pcm = new Float32Array(n);
   for (let i = 0; i < n; i++) pcm[i] = dv.getInt16(body + i * 2 * fmt.channels, true) / 0x8000;
   return { sampleRate: fmt.sampleRate, pcm };
+}
+
+/**
+ * The 16-bit samples of a mono WAV file (the first channel of others), with no copy where they
+ * can be read in place, as the microphone's are. @param {Uint8Array} bytes @returns {{ pcm: Int16Array, rate: number }}
+ */
+export function pcm16(bytes) {
+  const { dv, fmt, body, size } = chunks(bytes);
+  const n = Math.floor(size / 2 / fmt.channels);
+  if (fmt.channels === 1 && (bytes.byteOffset + body) % 2 === 0) return { pcm: new Int16Array(bytes.buffer, bytes.byteOffset + body, n), rate: fmt.sampleRate };
+  return { pcm: Int16Array.from({ length: n }, (_, i) => dv.getInt16(body + i * 2 * fmt.channels, true)), rate: fmt.sampleRate };
 }
 
 /** How long a WAV file plays, in seconds. @param {Uint8Array} bytes */

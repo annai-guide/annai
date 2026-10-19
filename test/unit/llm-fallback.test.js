@@ -269,3 +269,31 @@ test("fix pass: a key sent in a header of its own (keyHeader) never reaches the 
   assert.ok(events.length > 0);
   assert.ok(!JSON.stringify(events).includes(KEY), 'no trace entry holds it');
 });
+
+test('a model that refuses the audio format it was sent gets the same request again with WAV, once; the trace says what each attempt carried (Koe and Kokoro design, "Audio formats")', async () => {
+  const refusal = { error: 'bad-request', status: 400, message: 'Invalid value: ogg. Valid formats are: [wav, mp3]' };
+  const s = setup([[refusal, { text: 'Heard you.' }], [{ text: 'B heard you.' }]], { models: [{ input: ['text', 'audio'] }, { input: ['text', 'audio'] }] });
+  /** @type {boolean[]} */
+  const plain = [];
+  /** The heard speech as a resolver gives it: Ogg, or WAV when plain. @param {any} _m @param {any} _r @param {boolean} [wav] */
+  const speech = async (_m, _r, wav) => {
+    plain.push(Boolean(wav));
+    return { messages: [{ role: 'user', parts: [{ type: 'audio', mediaType: wav ? 'audio/wav' : 'audio/ogg', data: wav ? 'UklGRgAAAAA=' : 'T2dnUw==' }] }] };
+  };
+  const heard = { messages: [{ role: 'user', parts: [{ type: 'speech', id: 's-1' }] }] };
+  const r = await call(s, { request: heard, speech });
+  assert.equal(r.reply.text, 'Heard you.');
+  assert.deepEqual(plain, [false, true]);
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['bad-request', 'ok']);
+  const sent = (await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['net.request'] }))).map((e) => e.data.audio);
+  assert.deepEqual(sent, [[{ format: 'ogg', bytes: 4 }], [{ format: 'wav', bytes: 8 }]]);
+  // WAV refused too, or a refusal of something else: the next model, as before.
+  const t = setup([[refusal, refusal], [{ text: 'B heard you.' }]], { models: [{ input: ['text', 'audio'] }, { input: ['text', 'audio'] }] });
+  plain.length = 0;
+  assert.equal((await call(t, { request: heard, speech })).reply.text, 'B heard you.');
+  assert.deepEqual(plain, [false, true, false]);
+  const u = setup([[{ error: 'bad-request', status: 400, message: 'tools[0] is not valid' }], [{ text: 'B.' }]], { models: [{ input: ['text', 'audio'] }, { input: ['text', 'audio'] }] });
+  plain.length = 0;
+  assert.equal((await call(u, { request: heard, speech })).reply.text, 'B.');
+  assert.deepEqual(plain, [false, false]);
+});

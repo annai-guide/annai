@@ -3,6 +3,7 @@ import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
+import { formatRefused } from '../voice/formats.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -126,12 +127,13 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
- *   speech?: (model: Model, request: Request) => Promise<Request>, models?: string[] }} c
+ *   speech?: (model: Model, request: Request, plain?: boolean) => Promise<Request>, models?: string[] }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
- *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped
+ *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
+ *   plain: the model refused the audio format it was sent, so send WAV
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -181,12 +183,13 @@ export async function callRole(c) {
     const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), own, provider.keyHeader);
     let repairs = 0;
     let uploadRetries = 0;
+    let plain = false;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
       let sendable = request;
       if (c.speech) {
         try {
-          sendable = await c.speech(model, request);
+          sendable = await c.speech(model, request, plain);
         } catch (e) {
           attempts.push({ model: id, name: model.name, outcome: 'no-speech', ms: 0, error: String(/** @type {any} */ (e)?.message ?? e) });
           break;
@@ -224,6 +227,11 @@ export async function callRole(c) {
           // An expired or unknown upload (spec §9.9): upload again, once.
           await c.uploads.forget(endpoint.id);
           uploadRetries++;
+          continue;
+        }
+        if (err.kind === 'bad-request' && !plain && formatRefused(err.message) && sendable.messages.some((m) => m.parts.some((p) => p.type === 'audio' && p.mediaType !== 'audio/wav'))) {
+          // An audio format the model refused (Koe and Kokoro design, "Audio formats"): the same model again, with WAV, once.
+          plain = true;
           continue;
         }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
