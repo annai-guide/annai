@@ -183,7 +183,7 @@ Removing a trip deletes it from the device and frees its space at once. There is
   2. Only if the trip has changed since its last backup: "This trip hasn't been backed up since it last changed. Remove it anyway?"
 - **Backed up** means a Backup with everything ticked (§12.2), of the trip or of everything, was saved after the trip's last change: the share sheet finished, or the download started. A Share doesn't count, since it leaves out the conversation and the history. annai records the time on the trip, and trip cards show it (§16.2).
 - **What goes:** the trip's record, files and history, and all stored content nothing else uses. Content another trip also uses stays. The system log records `trip.remove {title, bytes}`.
-- **So everything stored must be named.** Removing any trip deletes all stored content that no file and no log entry names, wherever it came from. Whatever annai or a plugin keeps (request copies, trace bodies, audio clips) is a file, or is listed in the `refs` of the log entry that made it.
+- **So everything stored must be named.** Removing any trip deletes all stored content that no file and no log entry names, wherever it came from. Whatever annai or a plugin keeps (request copies, trace bodies, audio clips) is a file, or is listed in the `refs` of the log entry that made it. A kept audio clip, now compressed (§10.6), is still named by its `heard` event.
 - **Inside a trip, deleting keeps the history.** A deleted photo or file can be brought back from its history (§4.2), and its space comes back when the trip is removed.
 - **Finding what nothing else uses reads every file and log entry on the device.** That is quick while logs are small. Before milestone 2 makes them large (trace bodies, request copies), log entries get an index of the content they point at, so removing a trip reads only what that trip used.
 
@@ -604,12 +604,14 @@ A speech-in provider implements a **listening session**: start, stop, and a stre
   2. An `AudioWorklet` captures PCM audio.
   3. Our end-of-sentence detector measures energy in the speech band against a background-noise floor that keeps adapting. Speech followed by a pause of about 700 ms (tunable) becomes a segment.
   4. The detector only cuts audio; it never decides to stop listening.
+  5. A segment stays 16-bit PCM at 16 kHz in memory. It's encoded only when a receiver needs it, in the format §10.6 picks.
 - **Phone dictation.** The browser's speech recognition produces the segments itself. It can't run alongside recording.
 
 Privacy:
 - Audio leaves the phone only when speech was detected, and only to the configured speech-in entry.
 - Transcripts go into the log.
 - Audio is discarded unless the user turns on "keep voice clips".
+- A kept clip is stored compressed: the smallest format the phone both makes and plays (§10.6), Opus where it can. It's named by its `heard` event, as everything stored is (§4.9).
 
 ### 10.3 Speech-in list resolution
 
@@ -651,6 +653,30 @@ The setting is always one tap away. **Auto:**
 - otherwise, on the phone speaker → off
 
 Where the browser can't detect headphones, Auto falls back to the user's last explicit choice in that situation.
+
+### 10.6 Audio formats
+
+The user: "use the most efficient codec each provider supports … to cut down data usage and increase reliability on trips". The Koe and Kokoro design (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md, "Audio formats") has the measurements.
+
+- **Each ability says what it takes and gives,** as tunables in the protocol plugin's defaults and the provider description (docs/plugins.md, "Audio formats"):
+  - `audioIn`: what a transcription or a chat model takes;
+  - `audioOut`: what a voice gives.
+
+  Formats are named by file kind: `ogg` and `webm` (Opus), `mp4` and `aac` (AAC), `mp3`, `flac`, `wav`; `opus` is OpenAI's name for Ogg Opus. A model whose ability says nothing gets WAV, as before.
+- **annai sends the smallest format both sides handle.** The order is by codec: Opus, then AAC, MP3, FLAC, and WAV last. Within a codec, the receiver's own order counts.
+  - It's chosen again for each receiver: a transcription model, or a chat model for "Send audio to the model" (§10.3).
+  - Each format is made once per segment and kept with it.
+- **What the phone makes:**
+  1. WebCodecs' `AudioEncoder`, at 16 kHz, with annai's own small Ogg, WebM, ADTS and FLAC files (no library). Each codec is tried once on a tenth of a second, with a time limit, since a browser may say it has one that then fails or hangs. An encoding that fails or runs past its limit falls to the next format, and its codec isn't used again until annai restarts.
+  2. Where the encoder makes nothing a receiver takes, `MediaRecorder` records alongside. It's cut with each segment, and starts again every 2 s while nobody speaks.
+  3. WAV, which annai always makes itself.
+
+  The choice is made at run time, by trying, never by the browser's name.
+- **Speech out:** a voice whose `format` is `auto` is asked for the smallest format it offers that the phone plays. A voice that refuses it (Speaches refuses Opus and AAC) is asked for MP3, then WAV, until annai restarts.
+- **Reliability:**
+  - A failed upload (network or server) is sent again twice, with the same bytes. A turn that's stopped stops them.
+  - A transcription model that refuses any other format gets WAV at once (whisper.cpp's server says only "Invalid request"). A chat model gets it when its refusal names the audio or its format. If WAV works, that model gets WAV until annai restarts; if WAV is refused too, it fails as before.
+- **The Trace** shows each clip's format and size: kept, sent to be written down, sent to a model, and what a voice sent back. Settings → Voice says what this phone makes and plays.
 
 ## 11. Triggers and live mode
 

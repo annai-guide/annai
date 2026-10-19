@@ -41,3 +41,32 @@ test('closing keeps speech that was still going; nothing comes after', async () 
   s.close();
   assert.equal(got.length, 1);
 });
+
+test('recording alongside (MediaRecorder, decision 24): each segment brings the file cut with it; while nobody speaks the file starts again every 2 s, never during speech', async () => {
+  const p = fakePlatform();
+  let t = 0;
+  /** @type {any[]} */
+  const got = [];
+  const s = await record({ mic: p.mic, now: () => t, recording: { type: 'audio/mp4', format: 'mp4' }, onSegment: (seg) => got.push(seg) });
+  /** Feeds sound at 16 kHz, the clock moving with it. @param {Float32Array} pcm */
+  const feed = (pcm) => {
+    for (let i = 0; i < pcm.length; i += 2048) {
+      t += (Math.min(2048, pcm.length - i) / 16_000) * 1000;
+      p.mic.feed(pcm.subarray(i, i + 2048), 16_000);
+    }
+  };
+  feed(quiet(5));
+  assert.deepEqual(p.log, ['mic open, recording audio/mp4', 'mic again', 'mic again'], 'at about 2 s and 4 s');
+  p.log.length = 1;
+  feed(cat(lunch, quiet(1)));
+  assert.deepEqual(p.log.slice(1), ['mic take'], 'cut with the segment, and not started again while she spoke');
+  assert.equal(got.length, 1);
+  assert.deepEqual([...got[0].encoded.keys()], ['mp4']);
+  assert.equal(new TextDecoder().decode(await got[0].encoded.get('mp4')), 'audio/mp4 file 1');
+  assert.equal(got[0].audio.mediaType, 'audio/wav', 'the samples are kept for other formats');
+  feed(quiet(0.8));
+  assert.deepEqual(p.log.slice(1), ['mic take'], 'the new file is younger than 2 s');
+  s.close();
+  const plain = await record({ mic: fakePlatform().mic, onSegment: () => {} });
+  plain.close();
+});

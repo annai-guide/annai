@@ -1,7 +1,7 @@
 {
   "id": "provider-groq",
   "name": "Groq",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 1,
   "description": "Fast open models, and fast Whisper transcription.",
   "category": "providers",
@@ -46,7 +46,17 @@
               "minSeconds": 10
             }
           }
-        ]
+        ],
+        "tunables": {
+          "audioIn": [
+            "webm",
+            "ogg",
+            "mp4",
+            "mp3",
+            "flac",
+            "wav"
+          ]
+        }
       }
     },
     "roles": {

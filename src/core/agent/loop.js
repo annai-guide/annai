@@ -1774,17 +1774,17 @@ export class Agent {
    * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log]
    */
   async #logHeard(h, o, log = (ev) => this.#log(ev)) {
-    // The sound is kept only with "keep voice clips" (spec §10.2), as a blob the event names (§4.9).
-    const keep = h.audio && this.voice ? (await this.voice.settings()).keepClips : false;
-    const clip = keep && h.audio ? await sha256Hex(h.audio.data) : undefined;
+    // The sound is kept only with "keep voice clips" (spec §10.2), as a blob the event names (§4.9), in the smallest format this phone makes and plays.
+    const kept = h.audio && this.voice && (await this.voice.settings()).keepClips ? await this.voice.clipOf(h) : null;
+    const clip = kept ? await sha256Hex(kept.data) : undefined;
     await log({
       type: 'heard', actor: 'user',
       data: {
         id: h.id, ...(o.wake ? { wake: o.wake } : {}), ms: h.ms, source: h.source, ...(typeof h.text === 'string' ? { text: h.text } : {}),
         ...(o.meanwhile ? { meanwhile: true } : {}), ...(o.answer ? { answer: o.answer } : {}), ...(o.dismissed ? { dismissed: true } : {}), ...(o.gate ? { gate: o.gate } : {}),
-        ...(clip ? { clip } : {}),
+        ...(clip && kept ? { clip, clipFormat: kept.format, clipBytes: kept.data.length } : {}),
       },
-      blobs: clip && h.audio ? [{ hash: clip, bytes: h.audio.data, type: 'audio/wav' }] : [],
+      blobs: clip && kept ? [{ hash: clip, bytes: kept.data, type: kept.mediaType }] : [],
     });
   }
 }

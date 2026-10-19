@@ -5,6 +5,7 @@ import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { UPLOAD_TTL_S } from './uploads.js';
 import { ttlFor } from '../agent/warmth.js';
+import { formatOf } from '../voice/formats.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -127,7 +128,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     }
     onEvent(ev);
   };
-  const info = () => ({ endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url, status, ms: now() - started, firstMs, usage });
+  // Heard speech sent as audio: each clip's format and size (spec §10.6).
+  const audio = request.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'audio' ? [{ format: formatOf(p.mediaType) ?? p.mediaType, bytes: Math.floor((p.data.length * 3) / 4) - (p.data.match(/=*$/)?.[0].length ?? 0) }] : [])));
+  const info = () => ({ endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url, status, ms: now() - started, firstMs, usage, ...(audio.length ? { audio } : {}) });
   try {
     if (type.run) {
       for await (const ev of untilAborted(type.run({ ...spec, signal: linked }), linked)) take(ev);

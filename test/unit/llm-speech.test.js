@@ -83,6 +83,42 @@ test('a voice clip: its bytes and type, priced per character; a key in the addre
   assert.ok(!JSON.stringify(await traced(store)).includes('sk-say-secret'));
 });
 
+test("the trace says each clip's format and size: what was sent to be written down, and what a voice sent back (Koe and Kokoro design, \"Audio formats\")", async () => {
+  const { store } = await setup();
+  const trace = modelTrace(store, SYS);
+  await speechCall({
+    type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(null), key: null, trace,
+    audio: { data: new Uint8Array(5283), mediaType: 'audio/webm', seconds: 1.7 }, fetch: async () => Response.json({ text: 'hi' }),
+  });
+  await speechCall({
+    type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(null), key: null, trace,
+    audio: { data: new Uint8Array(900), mediaType: 'audio/ogg', seconds: 0.3 }, fetch: async () => new Response('down', { status: 500 }),
+  }).catch(() => {});
+  await speechCall({
+    type: /** @type {any} */ (speaks), endpoint: endpoint('test-out'), model: model(null), key: null, text: 'Hello.', trace,
+    fetch: async () => new Response(new Uint8Array(4000), { headers: { 'content-type': 'audio/ogg' } }),
+  });
+  const reqs = await traced(store);
+  assert.deepEqual(reqs.map((/** @type {any} */ e) => [e.data.kind, e.data.outcome, e.data.format, e.data.bytes]),
+    [['speech-in', 'ok', 'webm', 5283], ['speech-in', 'server', 'ogg', 900], ['speech-out', 'ok', 'ogg', 4000]]);
+});
+
+test("a voice whose format is auto is asked for the smallest it offers that the device plays: Opus where Ogg plays, else MP3", async () => {
+  /** @type {any[]} */
+  const asked = [];
+  const voice = { ...speaks, speechRequest: (/** @type {any} */ c) => { asked.push(c.tunables.format); return speaks.speechRequest(c); } };
+  const auto = { ...endpoint('test-out'), tunables: { format: 'auto', audioOut: ['opus', 'aac', 'mp3', 'flac', 'wav'] } };
+  const ok = async () => new Response(new Uint8Array(4), { headers: { 'content-type': 'audio/ogg' } });
+  const call = (/** @type {any} */ c) => speechCall({ type: /** @type {any} */ (voice), model: model(null), key: null, text: 'Hi.', fetch: ok, ...c });
+  await call({ endpoint: auto, plays: ['ogg', 'webm', 'mp3', 'wav'] });
+  await call({ endpoint: auto, plays: ['webm', 'mp4', 'aac', 'mp3', 'wav'] });
+  await call({ endpoint: auto });
+  await call({ endpoint: { ...auto, tunables: { format: 'auto', audioOut: ['mp3'] } }, plays: ['ogg', 'mp3'] });
+  await call({ endpoint: { ...auto, tunables: { ...auto.tunables, format: 'wav' } }, plays: ['ogg', 'mp3'] });
+  await call({ endpoint: { ...auto, tunables: { format: 'auto' } }, plays: ['ogg'] });
+  assert.deepEqual(asked, ['opus', 'aac', 'mp3', 'mp3', 'wav', 'mp3'], "a format chosen by the user is left alone; with nothing to go on, MP3");
+});
+
 test('speech errors come back as the usual kinds, with an echoed key blanked out', async () => {
   const { store } = await setup();
   /** @param {any} fetch @param {any} [more] */

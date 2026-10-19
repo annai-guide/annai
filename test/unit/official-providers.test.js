@@ -207,3 +207,39 @@ test('catalogFacts: abilities in order, free from zero prices, local, code, the 
   // The one-tap start's provider (spec §9.8), marked in annai's own catalog only.
   assert.deepEqual(catalog.filter((/** @type {any} */ p) => p.featured).map((/** @type {any} */ p) => [p.id, p.featured]), [['provider-openrouter', 'Sign in with OpenRouter is the quickest way, and it starts you on free models.']]);
 });
+
+test('every official transcription and Chat Completions ability declares the audio it takes (audioIn), every voice what it gives (audioOut), WAV and MP3 always among them (Koe and Kokoro design, "Audio formats")', async () => {
+  /** @type {Record<string, any>} */
+  const defaults = {};
+  const register = (/** @type {any} */ t) => { defaults[t.type] = t.tunables ?? {}; return () => {}; };
+  const helpers = { ProviderError: Error, errorFromResponse: () => new Error(), mergePatch: (/** @type {any} */ a, /** @type {any} */ b) => ({ ...a, ...b }), sse: () => {} };
+  (await import('../../plugins-official/speech-openai/index.js')).activate({ providers: { register }, helpers });
+  (await import('../../plugins-official/chat-completions/index.js')).activate({ providers: { register }, helpers });
+  assert.deepEqual(defaults['chat-completions'].audioIn, ['wav', 'mp3'], "Chat Completions' input_audio: OpenAI's takes WAV and MP3 only");
+  const known = ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'];
+  /** @type {Record<string, any>} */
+  const declared = {};
+  for (const m of (await officialManifests()).filter((x) => x.provider)) {
+    for (const [id, a] of Object.entries(/** @type {Record<string, any>} */ (m.provider.abilities))) {
+      const t = { ...defaults[a.type], ...a.tunables };
+      if (a.kind === 'transcription' || a.type === 'chat-completions') {
+        assert.ok(t.audioIn.includes('wav') && t.audioIn.every((/** @type {string} */ f) => known.includes(f)), `${m.id}/${id}: ${t.audioIn}`);
+        declared[`${m.id}/${id}`] = t.audioIn;
+      }
+      if (a.kind === 'voice') {
+        assert.ok(t.audioOut.includes('mp3') && t.format === 'auto', `${m.id}/${id}`);
+        declared[`${m.id}/${id}`] = t.audioOut;
+      }
+    }
+  }
+  const opus = ['webm', 'ogg', 'mp4', 'mp3', 'flac', 'wav'];
+  assert.deepEqual(declared['provider-groq/transcription'], opus);
+  assert.deepEqual(declared['provider-local-speech/transcription'], opus);
+  assert.deepEqual(declared['provider-vllm/transcription'], opus);
+  assert.deepEqual(declared['provider-openai/transcription'], ['webm', 'mp4', 'mp3', 'wav']);
+  assert.deepEqual(declared['provider-openrouter/chat'], ['ogg', 'aac', 'mp4', 'mp3', 'flac', 'wav']);
+  assert.deepEqual(declared['provider-gemini/chat'], ['wav', 'mp3'], 'measured: Gemini through Chat Completions refuses the rest');
+  assert.deepEqual(declared['provider-openrouter/voice'], ['mp3'], "OpenRouter's voices send MP3 (or raw PCM) only");
+  assert.deepEqual(declared['provider-openai/voice'], ['opus', 'aac', 'mp3', 'flac', 'wav']);
+  assert.deepEqual(declared['provider-local-speech/voice'], ['mp3', 'wav'], 'Speaches refuses opus and aac; Kokoro-FastAPI takes MP3 too');
+});
