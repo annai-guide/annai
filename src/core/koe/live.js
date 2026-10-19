@@ -563,7 +563,8 @@ export class LiveKoe {
       await this.#answered(false);
       const out = await this.c.koe.liveCall(e, this.#wake);
       const silent = SILENT.includes(e.name);
-      if (s === this.#s) s.answer(e.id, e.name, out.content, { silent });
+      // Escaped, as a text Koe reads a result: no file can carry a note, nor start a line like annai's.
+      if (s === this.#s) s.answer(e.id, e.name, theirs(out.content), { silent });
       // Answered without more speech, a turn of a call alone is over.
       if (silent && this.#t === t && !t.bytes && !t.said) this.#t = null;
     } finally {
