@@ -27,7 +27,6 @@ export async function renderPlugins(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Plugins' }),
-    h('p', { class: 'risk-note', text: "A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust." }),
     h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add' }, 'Add')),
     finder({ label: 'Search your plugins', entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);
 }

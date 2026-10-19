@@ -7,9 +7,7 @@ import { refuseBreaking, installRequirements } from '../requires.js';
  * SHA-256 of every file, fetched from /plugins-official/<id>/ on annai's own origin, checked, then
  * installed like any plugin. Choosing an endpoint type whose plugin is missing installs it.
  * @typedef {import('../plugins.js').PluginHost} PluginHost
- * @typedef {{ id: string, name: string, version: string, provides: Record<string, string[]>, files: Record<string, string>,
- *   description?: string, category?: string, keywords?: string[], abilities?: string[], free?: boolean, local?: boolean, code?: boolean, size?: number,
- *   requires?: import('../packages.js').Requirement[] }} CatalogPlugin  the facts catalogFacts gives (src/core/catalog-facts.js), and its files' hashes
+ * @typedef {import('../catalog-facts.js').CatalogFacts & { provides: Record<string, string[]>, files: Record<string, string>, featured?: string }} CatalogPlugin
  * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, keepOff?: boolean }} FetchOptions
  *   keepOff: a plugin the user switched off is never switched on by this (security review): it stops, saying how to turn it on
  */

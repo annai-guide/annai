@@ -2,6 +2,7 @@ import { h, messageOf as message } from '../dom.js';
 import { bytes } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
+import { NO_SERVICE } from './plugin-install.js';
 import { officialPlugins } from '../../core/llm/official.js';
 import { addFromCatalog } from '../../core/requires.js';
 import { searchCatalog, squash } from '../../core/search.js';
@@ -13,23 +14,24 @@ import { addressParts } from '../../core/address.js';
 import { SYS } from '../../core/scopes.js';
 
 /**
+ * The Add screen (spec §16.2).
  * @typedef {import('../../core/search.js').SearchEntry & { provides?: Record<string, string[]> }} Facts
  * @typedef {{ facts: Facts, official: boolean, added: number, action: 'add' | 'add-another' | 'install' | 'set-up' | 'open', from: string, href?: string, note?: string }} Row
- *   added: the providers set up from it; from: where it comes from, in words; href: where Set up and Open go; note: why it can't be added
+ *   added: the providers set up from it; from: where it comes from, in words; note: why it can't be added
  * @typedef {import('../../core/search.js').Rank} Rank
  */
 
-/** The six kinds, by their names on screen (decision 13 of the provider plan). @type {Record<string, string>} */
-export const KIND_NAMES = { providers: 'Model providers', speech: 'Voices and transcription', backup: 'Backup places', tools: 'Tools and MCP', skills: 'Skills and personalities', developer: 'Developer' };
+/** @type {Record<string, string>} */
+const KIND_NAMES = { providers: 'Model providers', speech: 'Voices and transcription', backup: 'Backup places', tools: 'Tools and MCP', skills: 'Skills and personalities', developer: 'Developer' };
 /** @type {Record<string, string>} */
 const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice' };
-/** Another address is the catch-all, so it comes after the providers annai knows when browsing. */
+/** Another address is the catch-all: browsing, it comes after the providers annai knows. */
 const ANOTHER = 'provider-another-address';
 const NOT_INSTALLABLE = "That file isn't something annai can install";
 
 /** An MCP server, added on its own screen: a fixed row whose id no manifest can have. @type {Row} */
 const MCP_ROW = {
-  facts: { id: '#mcp', name: 'An MCP server', version: '', description: "Tools from a server that speaks MCP (the Model Context Protocol), added by its address.", category: 'tools',
+  facts: { id: '#mcp', name: 'An MCP server', version: '', description: 'Tools from a server that speaks MCP, by its address.', category: 'tools',
     keywords: ['MCP', 'Model Context Protocol'], abilities: [], free: false, local: false, code: false, size: 0, requires: [], official: true },
   official: true, added: 0, action: 'set-up', from: 'Built into annai', href: '#/mcp',
 };
@@ -45,11 +47,9 @@ function fromWords(s) {
 }
 
 /**
- * The Add screen's rows (spec §16.2): annai's catalog, then what is installed that it doesn't list,
- * then the fixed row for an MCP server. annai's own entry wins over an installed copy of its id: a copy
- * from elsewhere is never shown as annai's (security review), and its row says why annai's can't be
- * added. Offline (no catalog), installed items still list, each as what it is. annai's built-in parts
- * aren't something to add.
+ * The rows: annai's catalog, what is installed that it doesn't list (built-ins aren't added), and the
+ * fixed row. annai's own entry wins over an installed copy of its id, and says why it can't be added
+ * (security review); offline, each installed copy is listed as what it is.
  * @param {import('../../core/llm/official.js').CatalogPlugin[] | null} catalog @param {(Facts & { source: string, url?: string, builtin?: boolean })[]} installed
  * @param {Record<string, number>} configured the providers set up, by plugin id @returns {Row[]}
  */
@@ -70,19 +70,19 @@ export function addRows(catalog, installed, configured) {
     return r;
   };
   for (const p of catalog ?? []) {
-    rows.push(row(/** @type {Facts} */ ({ description: '', keywords: [], abilities: [], ...p }), true, mine.get(p.id)));
+    rows.push(row(p, true, mine.get(p.id)));
     mine.delete(p.id);
   }
-  // featured counts only in annai's own catalog (the plan's risk 13).
+  // featured counts only in annai's own catalog.
   for (const s of mine.values()) rows.push(row({ ...s, featured: undefined }, s.source === 'official', s));
   rows.push(MCP_ROW);
   return rows;
 }
 
 /**
- * The search box and chips over a list: the Add screen's and the Plugins page's. Typing and tapping
+ * The search box and chips over a list, the Add screen's and the Plugins page's. Typing and tapping
  * draw the list again, never the screen, so the box keeps its focus. A chip shows when it would keep
- * some of the list and not all of it, or when it is on (the screen may open with one on).
+ * some of the list and not all of it, or when it is on.
  * @template {import('../../core/search.js').SearchEntry} T
  * @param {{ label: string, entries: T[], filters?: import('../../core/search.js').Filters, draw: (found: ({ entry: T } & Rank)[], typed: boolean) => (Node | null)[] }} o
  * @returns {{ el: HTMLElement, update: () => void }}
@@ -94,7 +94,7 @@ export function finder({ label, entries, filters = {}, draw }) {
   const list = h('div', { class: 'found' });
   /** @type {[HTMLElement, string, any][]} */
   const chips = [];
-  /** A chip for one filter's value; tapping it again, or another value of that filter, takes it off. @param {string} key @param {any} value @param {string} text */
+  /** One filter's value; tapping it again, or another value of that filter, takes it off. @param {string} key @param {any} value @param {string} text */
   const chip = (key, value, text) => {
     const keeps = searchCatalog(entries, '', { [key]: value }).length;
     if (f[key] !== value && (!keeps || keeps === entries.length)) return null;
@@ -117,11 +117,7 @@ export function finder({ label, entries, filters = {}, draw }) {
   return { el, update };
 }
 
-/**
- * What was found, grouped by kind when nothing is typed (only kinds with something in them), else in
- * the search's order; or words for nothing.
- * @template {{ entry: { category: string } }} F @param {F[]} found @param {boolean} typed @param {(x: F) => Node} item
- */
+/** Grouped by kind when nothing is typed, else in the search's order. @template {{ entry: { category: string } }} F @param {F[]} found @param {boolean} typed @param {(x: F) => Node} item */
 export function byKind(found, typed, item) {
   if (!found.length) return [h('p', { class: 'empty', text: 'Nothing here matches. Try other words, or take a chip off.' })];
   if (typed) return [h('ul', { class: 'cards' }, ...found.map(item))];
@@ -131,12 +127,7 @@ export function byKind(found, typed, item) {
   });
 }
 
-/**
- * Settings → Add (spec §16.2): one screen for everything a user can add, searchable and browsable.
- * Models → Add a provider opens it on model providers (?kind=providers), a speech role's Add on what
- * has its ability (?ability=transcription or voice), and Plugins → Add on everything.
- * @param {any} ctx @param {{ params: Record<string, string> }} route
- */
+/** Settings → Add: ?kind= and ?ability= open it filtered (spec §16.2). @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderAdd(ctx, route) {
   const { kind, ability } = route.params;
   const [catalog, installed, cfg] = await Promise.all([officialPlugins().catch(() => null), ctx.plugins.describe(), ctx.llm?.config().catch(() => null)]);
@@ -145,8 +136,7 @@ export async function renderAdd(ctx, route) {
   for (const p of Object.values(cfg?.providers ?? {})) configured[p.plugin] = (configured[p.plugin] ?? 0) + 1;
   const rows = addRows(catalog, installed, configured);
   const byId = new Map(rows.map((r) => [r.facts.id, r]));
-  // Browsing, the catch-alls come last in their kind: Another address, and an MCP server.
-  const last = (/** @type {{ entry: Facts }} */ x) => (x.entry.id === ANOTHER || x.entry.id === MCP_ROW.facts.id ? 1 : 0);
+  const last = (/** @type {{ entry: Facts }} */ x) => (x.entry.id === ANOTHER || x.entry === MCP_ROW.facts ? 1 : 0);
   const redraw = () => view.update(); // after an install, the row it changed
   const view = finder({
     label: 'Search the catalog', entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
@@ -162,11 +152,7 @@ export async function renderAdd(ctx, route) {
     fromElsewhere(ctx));
 }
 
-/**
- * One row: its name, why it matched when it was a keyword, its abilities, free and local, where it
- * comes from, data only or code, its size, and what can be done with it.
- * @param {any} ctx @param {Row} r @param {string | undefined} why @param {() => void} update
- */
+/** One row (spec §16.2), with "Also for" when a keyword matched. @param {any} ctx @param {Row} r @param {string | undefined} why @param {() => void} update */
 function rowItem(ctx, r, why, update) {
   const f = r.facts;
   const badges = [...f.abilities.map((a) => ABILITY_NAMES[a] ?? a), f.free ? 'Free' : null, f.local ? 'Local' : null].filter((b) => b !== null);
@@ -180,50 +166,45 @@ function rowItem(ctx, r, why, update) {
     h('div', { class: 'acts' }, ...actions(ctx, r, update)));
 }
 
+/** A button's work, once at a time: what fails is said on a card, and the button comes back. @param {any} ctx @param {HTMLButtonElement} b @param {string} title @param {() => Promise<void>} work */
+async function run(ctx, b, title, work) {
+  const label = b.textContent;
+  b.disabled = true;
+  try {
+    await work();
+  } catch (e) {
+    b.disabled = false;
+    b.textContent = label;
+    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title, body: message(e) });
+  }
+}
+
 /** What a row's button or link does. @param {any} ctx @param {Row} r @param {() => void} update */
 function actions(ctx, r, update) {
-  const name = r.facts.name;
-  if (r.action === 'set-up' || r.action === 'open') {
+  const { id, name } = r.facts;
+  if (r.href) {
     const text = r.action === 'open' ? 'Open' : 'Set up';
     return [h('a', { class: 'btn', href: r.href, 'aria-label': `${text} ${name}` }, text)];
   }
-  if (r.action === 'install') {
-    return [h('button', {
-      class: 'btn', type: 'button', 'aria-label': `Install ${name}`,
-      onclick: async (/** @type {Event} */ e) => {
-        const b = /** @type {HTMLButtonElement} */ (e.currentTarget);
-        b.disabled = true;
-        try {
-          if (!navigator.serviceWorker?.controller) throw new Error("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.");
-          await addFromCatalog(ctx.plugins, r.facts.id, { tap: true }); // with what it requires
-          ctx.notices.toast(`Installed ${name}.`);
-          Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(r.facts.id)}` });
-          update();
-        } catch (err) {
-          b.disabled = false;
-          if (!explainStorageFull(ctx, err)) ctx.notices.card({ tone: 'warn', title: `${name} wasn't installed`, body: message(err) });
-        }
-      },
-    }, 'Install')];
-  }
-  // A provider: its plugin with what it needs, then the provider, then its page (spec §9.8).
-  const label = r.action === 'add-another' ? 'Add another' : 'Add';
-  const add = h('button', {
-    class: r.added ? 'btn' : 'btn pri', type: 'button', 'aria-label': `${label} ${name}`,
-    onclick: async () => {
-      add.disabled = true;
-      add.textContent = 'Adding…';
-      try {
-        const id = await ctx.llm.addProvider(r.facts.id, { roles: 'recommended', official: r.official });
-        ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
-      } catch (err) {
-        add.disabled = false;
-        add.textContent = label;
-        if (!explainStorageFull(ctx, err)) ctx.notices.card({ tone: 'warn', title: `${name} wasn't added`, body: message(err) });
+  const install = r.action === 'install';
+  const label = install ? 'Install' : r.added ? 'Add another' : 'Add';
+  const b = h('button', {
+    class: install || r.added ? 'btn' : 'btn pri', type: 'button', 'aria-label': `${label} ${name}`,
+    onclick: () => run(ctx, b, `${name} wasn't ${install ? 'installed' : 'added'}`, install
+      ? async () => {
+        if (!navigator.serviceWorker?.controller) throw new Error(NO_SERVICE);
+        await addFromCatalog(ctx.plugins, id, { tap: true }); // with what it requires
+        ctx.notices.toast(`Installed ${name}.`);
+        Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(id)}` });
+        update();
       }
-    },
+      // A provider: its plugin with what it needs, then the provider and its page (spec §9.8).
+      : async () => {
+        b.textContent = 'Adding…';
+        ctx.go(`#/models/provider?id=${encodeURIComponent(await ctx.llm.addProvider(id, { roles: 'recommended', official: r.official }))}`);
+      }),
   }, label);
-  return [r.added ? h('span', { class: 'sub', text: 'Added' }) : null, add];
+  return [r.added ? h('span', { class: 'sub', text: 'Added' }) : null, b];
 }
 
 /** Installing from an address or a file: the install screen comes first (choice 8 of milestone 8a). @param {any} ctx */
