@@ -161,7 +161,8 @@ test("the command line refuses annai's own ports, a short token and missing part
   assert.match(short.stderr, /at least 16 characters/);
   const none = run([]);
   assert.equal(none.status, 1);
-  assert.match(none.stderr, /node scripts\/trace-sink\.mjs --port <p> --token <t> --out <file\.jsonl> \[--origin <allowed origin>\]/);
+  assert.match(none.stderr, /node scripts\/trace-sink\.mjs --port <p> \(--token-file <path> \| --token <t>\) --out <file\.jsonl> \[--origin <allowed origin>\]/);
+  assert.match(none.stderr, /TRACE_SINK_TOKEN/);
   const bad = run(['--port', 'eighty', '--token', TOKEN, '--out', join(tmpdir(), 'never.jsonl')]);
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /--port must be a port number/);
@@ -189,6 +190,65 @@ test('the command line says where it listens and how to put https in front of it
     assert.equal(res.status, 200);
   } finally {
     if (child.exitCode === null && child.signalCode === null) await new Promise((r) => { child.once('exit', r); child.kill(); });
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('the token can come from a file (--token-file) or TRACE_SINK_TOKEN, so it stays out of shell history and ps; a file that is missing is said plainly', async () => {
+  const { spawn } = await import('node:child_process');
+  const { writeFile } = await import('node:fs/promises');
+  const dir = await mkdtemp(join(tmpdir(), 'annai-trace-sink-'));
+  try {
+    await writeFile(join(dir, 'token'), `${TOKEN}\n`, { mode: 0o600 });
+    const missing = run(['--port', '0', '--token-file', join(dir, 'nope'), '--out', join(dir, 'trace.jsonl')]);
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /can't read the token file/);
+    for (const how of [{ args: ['--token-file', join(dir, 'token')], env: {} }, { args: [], env: { TRACE_SINK_TOKEN: TOKEN } }]) {
+      const child = spawn(process.execPath, [script, '--port', '0', ...how.args, '--out', join(dir, 'trace.jsonl'), '--origin', PAGE], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ...how.env } });
+      try {
+        const port = await new Promise((resolve, reject) => {
+          let said = '';
+          child.stdout.on('data', (d) => {
+            said += String(d);
+            const m = /http:\/\/127\.0\.0\.1:(\d+)\//.exec(said);
+            if (m) resolve(Number(m[1]));
+          });
+          child.once('exit', () => reject(new Error(`the sink exited: ${said}`)));
+        });
+        assert.equal((await post(`http://127.0.0.1:${port}/`, { device: 'd', entries: [entry(1)] })).status, 200, JSON.stringify(how.args));
+      } finally {
+        if (child.exitCode === null && child.signalCode === null) await new Promise((r) => { child.once('exit', r); child.kill(); });
+      }
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('a write that fails half way (a full disk) leaves its cut line on a line of its own: the next batch starts a new line, and the plugin is told to send again', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-trace-sink-'));
+  const out = join(dir, 'trace.jsonl');
+  const { appendFile: append } = await import('node:fs/promises');
+  let full = true;
+  const s = await startSink({
+    port: 0, token: TOKEN, out, origins: [PAGE],
+    append: async (/** @type {string} */ file, /** @type {string} */ text) => {
+      if (!full) return append(file, text);
+      full = false;
+      await append(file, text.slice(0, 20));
+      throw Object.assign(new Error('no space left on device'), { code: 'ENOSPC' });
+    },
+  });
+  try {
+    assert.equal((await post(s.origin, { device: 'd', entries: [entry(1)] })).status, 500);
+    assert.equal((await post(s.origin, { device: 'd', entries: [entry(1)] })).status, 200);
+    const lines = (await readFile(out, 'utf8')).split('\n');
+    assert.equal(lines.length, 3);
+    assert.throws(() => JSON.parse(lines[0]), 'the cut line, alone');
+    assert.equal(JSON.parse(lines[1]).seq, 1);
+    assert.equal(lines[2], '');
+  } finally {
+    await s.close();
     await rm(dir, { recursive: true, force: true });
   }
 });
