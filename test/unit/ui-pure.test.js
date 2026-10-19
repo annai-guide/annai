@@ -419,6 +419,18 @@ test('Settings → Notifications offers what each state needs; when the phone to
   assert.deepEqual(buttonsFor({ ...fine, supported: 'install' }), []);
 });
 
+test("security review: the Add a provider list never shows a copy from elsewhere as annai's own option, and says why it isn't there", async () => {
+  const { addOptions } = await import('../../src/ui/screens/models.js');
+  const catalog = /** @type {any} */ ([{ id: 'provider-openrouter', name: 'OpenRouter', abilities: ['chat'] }, { id: 'provider-openai', name: 'OpenAI', abilities: ['chat'] }, { id: 'provider-another-address', name: 'Another address', abilities: ['chat'] }, { id: 'chat-completions', name: 'Chat Completions', abilities: [] }]);
+  const running = /** @type {any} */ ([{ plugin: 'provider-openrouter', name: 'OpenRouter' }, { plugin: 'trail-kit', name: 'Trail LLM' }]);
+  const installed = { 'provider-openrouter': { source: 'url', url: 'https://evil.example/p/annai-plugin.json' }, 'trail-kit': { source: 'file' } };
+  const r = addOptions(catalog, running, installed);
+  assert.deepEqual(r.options.map((o) => [o.id, o.name, o.official]), [['provider-openai', 'OpenAI', true], ['provider-another-address', 'Another address', true], ['trail-kit', 'Trail LLM (from a file)', false]]);
+  assert.match(r.notes.join(), /OpenRouter.*came from elsewhere.*annai won't use it/);
+  // Offline, a copy from elsewhere is shown as what it is.
+  assert.deepEqual(addOptions(null, running, installed).options.map((o) => [o.name, o.official]), [['OpenRouter (from evil.example)', false], ['Trail LLM (from a file)', false]]);
+});
+
 test('the install screen says what a package brings and where it came from', async () => {
   const { whatItBrings, sourceLine, keysNote } = await import('../../src/ui/screens/plugin-install.js');
   assert.deepEqual(whatItBrings({ code: true, skills: [{ name: 'trail-safety', description: 'Before a hike.' }], personalities: [{ name: 'ranger' }],

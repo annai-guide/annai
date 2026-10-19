@@ -7,6 +7,7 @@ import { endpointTypes, ProviderError, errorFromResponse } from './contract.js';
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune } from '../requires.js';
+import { officialPlugins } from './official.js';
 import { PluginError } from '../registry.js';
 import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
@@ -102,16 +103,24 @@ export function createLlm({
     ensureType: ensure,
     /**
      * A provider plugin, running, with what it requires (spec §5.3): an official one from annai's
-     * catalog, hash-checked, with no question; a third-party one must be installed already.
-     * @param {string} plugin @returns {Promise<import('./providers.js').ProviderSource>}
+     * catalog, hash-checked, with no question; a third-party one must be installed already. official:
+     * it must be annai's own (sign-in, the catalog's Add): a copy from elsewhere with that id is never
+     * used (security review), and annai's own whose files no longer match the catalog is fetched again.
+     * @param {string} plugin @param {{ official?: boolean }} [o] @returns {Promise<import('./providers.js').ProviderSource>}
      */
-    async installProvider(plugin) {
+    async installProvider(plugin, { official = false } = {}) {
       await ready;
       const running = () => providers().find((p) => p.plugin === plugin);
-      if (running()) return /** @type {import('./providers.js').ProviderSource} */ (running());
       const state = (await plugins.installed())[plugin];
       if (state && state.source !== 'official') {
+        if (official) throw new PluginError(plugin, "annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.");
+        if (running()) return /** @type {import('./providers.js').ProviderSource} */ (running());
         throw new PluginError(plugin, state.enabled === false ? 'is turned off. Turn it on in Settings → Plugins, then try again.' : "isn't running. Look at it in Settings → Plugins.");
+      }
+      if (state && running()) {
+        // Hash-checked against the catalog when it can be reached; offline, it was checked when it was installed.
+        const entry = (await officialPlugins({ fetch: get, base }).catch(() => []))?.find((p) => p.id === plugin);
+        if (!entry || entry.version !== state.version || (await plugins.verifyOfficial(plugin, entry))) return /** @type {import('./providers.js').ProviderSource} */ (running());
       }
       await pluginsCanLoad();
       await addFromCatalog(plugins, plugin, { fetch: get, base, tap: true });
@@ -122,10 +131,11 @@ export function createLlm({
     /**
      * Adds a provider (spec §9.8): its plugin and what it requires, the protocols of the abilities
      * that start on, then the provider with its models and one key.
-     * @param {string} plugin @param {import('./providers.js').AddOptions} [o] @returns {Promise<string>} the provider's id
+     * @param {string} plugin @param {import('./providers.js').AddOptions & { official?: boolean }} [o] official: it must be annai's own
+     * @returns {Promise<string>} the provider's id
      */
-    async addProvider(plugin, o = {}) {
-      const src = await service.installProvider(plugin);
+    async addProvider(plugin, { official, ...o } = {}) {
+      const src = await service.installProvider(plugin, { official });
       for (const [id, a] of Object.entries(src.provider.abilities)) if (o.abilities?.[id]?.on ?? a.on !== false) await ensure(a.type);
       return addProviderRecords({ ws, store }, src, o);
     },

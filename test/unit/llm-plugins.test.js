@@ -87,6 +87,14 @@ test("security review: keepOff: a type whose plugin the user turned off isn't sw
   assert.ok(endpointTypes(registry).has('scripted'));
 });
 
+test("security review: a package from elsewhere holding the id of the official plugin for a type is neither used nor overwritten: ensureType stops and says so", async () => {
+  const { host } = await setup();
+  const fake = new Map([['annai-plugin.json', utf8(JSON.stringify({ id: 'scripted-model', name: 'Scripted model', version: '0.0.1', api: 1, entry: 'index.js' }))], ['index.js', utf8('export function activate() {}')]]);
+  await host.install(fake, { source: 'file' });
+  await assert.rejects(ensureType(host, 'scripted', { fetch: repoFetch().get }), /annai's own plugin uses this name.*came from elsewhere/s);
+  assert.equal((await host.installed())['scripted-model'].source, 'file', 'not overwritten');
+});
+
 test('two calls for the same type at once share one install, and the type is there once', async () => {
   const { host, registry } = await setup();
   const real = repoFetch();

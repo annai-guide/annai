@@ -1,6 +1,6 @@
 import { fetchPackage, addedParts, addsAnything, agreedTo, addedWords } from './packages.js';
 import { PluginError } from './registry.js';
-import { installRequirements } from './requires.js';
+import { installRequirements, checkPackageId } from './requires.js';
 
 /**
  * Updates for packages installed from an address (spec §5.3: "those installed from a URL get the
@@ -55,6 +55,7 @@ export async function updateFromAddress(host, id, { fetch, agreed, official = {}
   if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`);
   const added = pkg.replaces?.added ?? addedParts(await host.installedParts(id), pkg);
   if (!agreedTo(agreed, added)) throw new PluginError(id, `this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.`);
+  await checkPackageId(host, id, 'url', official); // annai's own names stay annai's (security review)
   if (pkg.requires.length) await installRequirements(host, pkg.requires, { ...official, tap: true }, { who: pkg.name, id }); // Update is the user's tap
   const wasOn = s.enabled !== false;
   await host.install(files, { source: 'url', url: address });

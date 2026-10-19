@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { satisfies, checkRequires, installWith, addFromCatalog, prune, dependents } from '../../src/core/requires.js';
+import { satisfies, checkRequires, installWith, addFromCatalog, prune, dependents, checkPackageId } from '../../src/core/requires.js';
 import { updateOfficial } from '../../src/core/llm/official.js';
 import { files, hostKit } from './package-kit.js';
 import { PROTO, PROVIDER, site } from './provider-kit.js';
@@ -176,4 +176,22 @@ test('security review: a package that requires itself is refused; its own id is 
   const s = await CATALOG();
   await assert.rejects(installWith(host, files(PROVIDER('provider-q', [{ id: 'provider-q', version: '^1' }], ['type-a'])), { source: 'file' }, { fetch: s.fetch }), /requires itself/);
   assert.deepEqual(await checkRequires(host, [{ id: 'provider-q', version: '^1' }], s.entries, { except: 'provider-q' }), []);
+});
+
+test("security review: a package from a file or an address can't take the id of annai's own plugin: it is refused at install, in plain words", async () => {
+  const { host } = await hostKit();
+  const s = await CATALOG();
+  const fake = files(PROVIDER('provider-x', [], ['type-a']));
+  for (const source of /** @type {const} */ (['file', 'url'])) {
+    await assert.rejects(installWith(host, fake, { source, url: 'https://evil.example/annai-plugin.json' }, { fetch: s.fetch }), /annai's own plugin uses this name/);
+  }
+  await assert.rejects(checkPackageId(host, 'provider-x', 'file', { fetch: s.fetch }), /annai's own plugin uses this name/);
+  await checkPackageId(host, 'provider-mine', 'file', { fetch: s.fetch });
+  assert.deepEqual(Object.keys(await host.installed()), []);
+  // Offline, annai's own installed copy still keeps its name: the host refuses to put another over it.
+  await addFromCatalog(host, 'proto-a', { fetch: s.fetch });
+  s.offline = true;
+  await assert.rejects(checkPackageId(host, 'proto-a', 'file', { fetch: s.fetch }), /annai's own plugin uses this name/);
+  await assert.rejects(host.install(files(PROTO('proto-a', 'type-a', '0.9.0')), { source: 'file' }), /annai's own plugin uses this name/);
+  assert.equal((await host.installed())['proto-a'].source, 'official');
 });

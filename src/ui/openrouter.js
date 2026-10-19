@@ -135,7 +135,7 @@ export async function exchange({ code, state, pasted = false, fetch: get = (url,
  */
 export async function readyForSignIn(ctx) {
   try {
-    await ctx.llm.installProvider(PLUGIN);
+    await ctx.llm.installProvider(PLUGIN, { official: true }); // annai's own, never a copy from elsewhere (security review)
   } catch (e) {
     throw new Error(`${String(/** @type {any} */ (e)?.message ?? e)} Nothing was sent to OpenRouter yet: try again.`);
   }
@@ -157,7 +157,7 @@ export async function signIn(ctx, get) {
  * the phone's own (decision 6). @param {any} ctx llm @param {string} key @returns {Promise<string>} the provider's id
  */
 export function connectOpenRouter(ctx, key) {
-  return ctx.llm.addProvider(PLUGIN, { key, roles: 'free' });
+  return ctx.llm.addProvider(PLUGIN, { key, roles: 'free', official: true });
 }
 
 /** Where OpenRouter's speech models go, and how to use them. */

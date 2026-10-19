@@ -142,6 +142,8 @@ async function ensureNow(host, kind, type, opts) {
   const entry = (await officialPlugins(opts)).find((p) => p.provides?.[kind]?.includes(type));
   if (!entry) throw new PluginError(type, `isn't ${what} annai knows. Install a plugin that provides it.`);
   const state = (await host.installed())[entry.id];
+  // A package from elsewhere with annai's own id is neither used nor overwritten (security review).
+  if (state && state.source !== 'official') throw new PluginError(entry.id, `annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.`);
   // Only files that match the catalog run as an official plugin; anything else, such as a copy a
   // restored backup brought, is fetched again from annai and checked (spec §5.3).
   if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
