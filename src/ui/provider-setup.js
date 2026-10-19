@@ -88,21 +88,25 @@ let featured = null;
 
 /**
  * The featured provider (only annai's catalog marks one), its plugin installed in the background while no
- * provider exists, so its sign-in is there before the tap (spec §9.8); annai's own, running already, is used
- * as it is (a sign-in coming back may be adding with it). null: none, or a provider exists. @param {any} ctx
+ * provider exists, so its sign-in is there before the tap (spec §9.8). annai's own, installed and running,
+ * is used as it is, with no wait on the catalog (a flaky connection, a sign-in coming back adding with it);
+ * its manifest came from annai's catalog. null: none, or a provider exists. @param {any} ctx
  */
 export async function readyFeatured(ctx) {
-  const entry = featured ?? (await officialPlugins().catch(() => {
+  await ctx.llm.ready;
+  const state = await ctx.plugins.installed();
+  const own = (/** @type {string} */ id) => state[id]?.source === 'official' && setupOf(ctx.registry, id)?.panel;
+  if (featured && own(featured.id)) return featured;
+  for (const e of ctx.registry.entries('provider-setup')) {
+    const m = own(e.pluginId) ? await ctx.plugins.manifestOf(e.pluginId) : null;
+    if (typeof m?.featured === 'string' && m.featured) return (featured = { id: e.pluginId, name: String(m.name), featured: m.featured });
+  }
+  const entry = (await officialPlugins().catch(() => {
     throw new Error('Connect to the internet to sign in.');
   })).find((p) => typeof p.featured === 'string' && p.featured);
-  if (!entry) return null;
-  await ctx.llm.ready;
-  const running = (await ctx.plugins.installed())[entry.id]?.source === 'official' && setupOf(ctx.registry, entry.id);
-  if (!running && !(await ctx.llm.prepareStart(entry.id))) return null;
-  featured = { id: entry.id, name: entry.name, featured: String(entry.featured) };
-  return featured;
+  if (!entry || !(await ctx.llm.prepareStart(entry.id))) return null;
+  return (featured = { id: entry.id, name: entry.name, featured: String(entry.featured) });
 }
-
 
 /** The one-tap start: the featured provider's panel; until it is in, a disabled button, never a link without an address. @param {any} ctx */
 export function featuredStart(ctx) {
