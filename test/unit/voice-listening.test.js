@@ -59,6 +59,7 @@ async function voiceKit(o, { dictation = false } = {}) {
   registry.add('voice-browser', 'voice-platform', platform);
   const llm = fakeLlm(o);
   const voice = new Voice({ llm, ws, registry, store, locale: 'en', where: 'ios' });
+  voice.retryMs = [0, 0];
   return { voice, platform, llm, ws };
 }
 
@@ -84,14 +85,14 @@ test('how to listen is judged against the main model expected to hear it (spec Â
   assert.equal((await resting.voice.howToListen()).kind, 'record', 'the first main model that is not resting is the one expected to hear');
 });
 
-test('open() keeps what it hears in memory, plays and records; the resolver transcribes for a text-only model and benches one that fails', async () => {
+test('open() keeps what it hears in memory, plays and records; the resolver transcribes for a text-only model, and benches one that still fails after two more tries', async () => {
   const k = await voiceKit({ asr: ['t1', 't2'], speechIn: ['send-audio', 't1', 't2'], failing: ['t1'], hears: ['where should we stop for lunch'] });
   const h = await hearLunch(k);
   assert.equal(k.voice.memory.get(h.id)?.id, h.id);
   assert.deepEqual(k.platform.sessions, ['play-and-record']);
   const r = await k.voice.resolver('trip-1', 'w-1')({ name: 'm1', input: ['text'] }, { messages: [{ role: 'user', parts: [{ type: 'speech', id: h.id }] }] });
   assert.deepEqual(r.messages[0].parts, [{ type: 'text', text: 'where should we stop for lunch' }]);
-  assert.deepEqual(k.llm.calls, ['hear t1 audio/wav trip-1 w-1', 'hear t2 audio/wav trip-1 w-1']);
+  assert.deepEqual(k.llm.calls, ['hear t1 audio/wav trip-1 w-1', 'hear t1 audio/wav trip-1 w-1', 'hear t1 audio/wav trip-1 w-1', 'hear t2 audio/wav trip-1 w-1']);
   assert.ok(k.llm.bench.until('t1') > Date.now());
 });
 

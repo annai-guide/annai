@@ -61,7 +61,8 @@ test('keep voice clips: each clip is kept with the conversation, named by its he
   assert.match(heard.data.clip, /^[0-9a-f]{64}$/);
   assert.deepEqual(heard.refs, [heard.data.clip]);
   const blob = await kept.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(heard.data.clip));
-  assert.equal(blob?.type, 'audio/wav');
+  assert.equal(blob?.type, 'audio/wav', 'a phone with no encoder keeps WAV');
+  assert.deepEqual([heard.data.clipFormat, heard.data.clipBytes], ['wav', blob?.size]);
   const plain = await agentKit([[say('Noted.')]], { voice: { speechIn: ['m-hear'] } });
   await tapAndSay(plain, 'where-eat');
   const [unkept] = await plain.events(['heard']);
@@ -70,6 +71,25 @@ test('keep voice clips: each clip is kept with the conversation, named by its he
   const types = [];
   for (const b of await plain.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.listBlobs())) types.push((await plain.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(b.hash)))?.type);
   assert.ok(!types.some((t) => String(t).startsWith('audio/')), 'no sound is stored');
+});
+
+test('a kept clip is stored as the smallest format the device makes and plays, named by its heard event (§4.9); after a restart it is heard again from that file', async () => {
+  const k = await agentKit([[say('Noted.'), say('Again.')]], { voice: { speechIn: ['m-hear'], keepClips: true, encoder: { makes: ['ogg', 'webm'] }, plays: ['ogg', 'webm', 'mp3', 'wav'] } });
+  await tapAndSay(k, 'where-eat');
+  const [heard] = await k.events(['heard']);
+  const blob = await k.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(heard.data.clip));
+  assert.equal(blob?.type, 'audio/ogg');
+  assert.match(new TextDecoder().decode(new Uint8Array(blob.data)), /^ogg<\d+@16000>$/);
+  assert.deepEqual(heard.refs, [heard.data.clip]);
+  assert.deepEqual([heard.data.clipFormat, heard.data.clipBytes], ['ogg', blob.size]);
+  const webm = await agentKit([[say('Noted.')]], { voice: { speechIn: ['m-hear'], keepClips: true, encoder: { makes: ['ogg', 'webm'] }, plays: ['webm', 'mp3', 'wav'] } });
+  await tapAndSay(webm, 'where-eat');
+  assert.equal((await webm.events(['heard']))[0].data.clipFormat, 'webm', "a phone that can't play Ogg keeps WebM");
+  // annai restarted: the sound left memory, and the kept Ogg file is read back for a transcription model that takes WAV.
+  k.voice.memory.drop(heard.data.id);
+  const r = await k.voice.resolver(heard.scope)({ id: 'm-0', name: 'E0', input: ['text'] }, { messages: [{ role: 'user', parts: [{ type: 'speech', id: heard.data.id, clip: heard.data.clip }] }] });
+  assert.deepEqual(r.messages[0].parts, [{ type: 'text', text: 'what was said' }]);
+  assert.ok(k.platform.log.includes('decode'));
 });
 
 test('after a reload, the conversation has the same heard speech (spec §6.7)', async () => {

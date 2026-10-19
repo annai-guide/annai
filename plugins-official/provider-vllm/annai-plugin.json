@@ -1,7 +1,7 @@
 {
   "id": "provider-vllm",
   "name": "vLLM",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 1,
   "description": "Models on a vLLM server you run, with their thinking switched through the chat template, and Whisper models for transcription.",
   "category": "providers",
@@ -58,7 +58,17 @@
         "kind": "transcription",
         "type": "openai-transcription",
         "on": false,
-        "note": "For a Whisper model on a vLLM server of its own: give that server's address as this ability's own, and add the model by id."
+        "note": "For a Whisper model on a vLLM server of its own: give that server's address as this ability's own, and add the model by id.",
+        "tunables": {
+          "audioIn": [
+            "webm",
+            "ogg",
+            "mp4",
+            "mp3",
+            "flac",
+            "wav"
+          ]
+        }
       }
     }
   }

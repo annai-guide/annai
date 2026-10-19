@@ -9,7 +9,7 @@ const wav = { status: 200, type: 'audio/wav', body: Buffer.from(encodeWav(Float3
 /** @param {import('@playwright/test').Page} page @param {string} heading */
 const roleItems = (page, heading) => page.locator('.role', { has: page.getByRole('heading', { name: heading }) }).locator('.role-item > span');
 
-test("a voice in the speech-out list: added, put first, and its Test plays a sample (spec §9.6, §10.1)", async ({ page }) => {
+test("a voice in the speech-out list: added, put first, and its Test plays a sample, asked for in the smallest format the phone plays (spec §9.6, §10.1)", async ({ page }) => {
   const speech = await startModelServer({ '/v1/audio/speech': wav });
   try {
     await openApp(page, '#/models');
@@ -27,7 +27,8 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
     await page.getByRole('button', { name: 'Play a sample' }).click();
     await expect(page.getByText('It works: that was this voice.')).toBeVisible();
     const [body] = speech.bodies('/v1/audio/speech');
-    expect(body).toMatchObject({ model: 'tts-test', voice: 'marin', response_format: 'mp3' });
+    // Both browsers play Ogg Opus: OpenAI's "opus" (Koe and Kokoro design, "Audio formats").
+    expect(body).toMatchObject({ model: 'tts-test', voice: 'marin', response_format: 'opus' });
     expect(body.input).toContain('This is how I sound');
     expect(JSON.stringify(await page.content())).not.toContain('sk-voice-test');
   } finally {
@@ -35,7 +36,7 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
   }
 });
 
-test("a transcription model's Test: you say something and it writes it down (spec §10.2)", async ({ page }) => {
+test("a transcription model's Test: you say something and it writes it down, sent as the smallest file both sides handle, and the Trace says which and how big (spec §10.2)", async ({ page }) => {
   const asr = await startModelServer({ '/v1/audio/transcriptions': { status: 200, type: 'application/json', body: JSON.stringify({ text: 'Where should we stop for lunch?' }) } });
   try {
     await fakeMicrophone(page, [clipPath('where-lunch')]);
@@ -50,8 +51,17 @@ test("a transcription model's Test: you say something and it writes it down (spe
     const raw = Buffer.from(body).toString('latin1');
     expect(raw).toContain('name="model"');
     expect(raw).toContain('asr-test');
-    expect(raw).toContain('RIFF');
+    // Both browsers' AudioEncoder makes Opus, and OpenAI's transcription takes it in WebM.
+    expect(raw).toContain('filename="speech.webm"');
+    expect(raw).toContain('Content-Type: audio/webm');
+    expect(raw).toContain('\x1a\x45\xdf\xa3');
+    expect(raw).not.toContain('RIFF');
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
+    await page.goto('/#/trace');
+    await filterTrace(page, { kind: 'Web' });
+    const line = page.locator('.trace li').filter({ hasText: 'asr-test' }).first().locator('.d');
+    await expect(line).toHaveText(/^asr-test · ok \(200\) · \d+ ms · webm, \d+(\.\d)? KB$/);
+    expect(Number(/webm, ([\d.]+) KB/.exec(await line.innerText())?.[1])).toBeLessThan(15); // the same speech as WAV is about 70 KB
   } finally {
     await asr.stop();
   }
@@ -83,6 +93,8 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await page.getByRole('link', { name: 'Voice', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Voice', exact: true })).toBeVisible();
     await expect(page.getByText('Voices, tried in order: voice-a, voice-b, Browser voice.')).toBeVisible();
+    // What the phone makes and plays, read at run time: Opus in both browsers' builds, WAV always (Koe and Kokoro design, "Audio formats").
+    await expect(page.getByText(/^Speech leaves this phone in the smallest format each service takes\. Made here: ogg, webm, (.+, )?wav( \(recorded: [a-z0-9, ]+\))?\. Played here: .*\bogg\b.*\.$/)).toBeVisible();
     await page.getByRole('button', { name: 'Test the voice' }).click();
     await expect(page.getByText('Spoken by voice-b.')).toBeVisible({ timeout: 20_000 });
     expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
