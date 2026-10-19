@@ -16,8 +16,12 @@ export const CREDENTIAL = /key|token|secret|sig|auth|pass|session|credential|app
 const SECRET_MIN = 8;
 const BLANK = '«key»';
 
-/** Every secret value annai keeps (keys for models and plugins), longest first. @param {Store} store @returns {Promise<string[]>} */
-export async function knownSecrets(store) {
+/**
+ * Every secret value annai keeps (keys for models and plugins), longest first. strict: when they can't be
+ * read, reject rather than give none (annai.secrets.blank, for what leaves the device).
+ * @param {Store} store @param {{ strict?: boolean }} [o] @returns {Promise<string[]>}
+ */
+export async function knownSecrets(store, { strict = false } = {}) {
   /** @type {Set<string>} */
   const out = new Set();
   const add = (/** @type {unknown} */ v) => {
@@ -31,7 +35,8 @@ export async function knownSecrets(store) {
     await store.tx(['secrets'], 'readonly', async (t) => {
       for (const id of await t.listSecretIds()) add(await t.getSecret(id));
     });
-  } catch {
+  } catch (e) {
+    if (strict) throw new Error("annai couldn't read the keys it keeps, so it couldn't blank them. Try again.", { cause: e });
     // no secrets to read: nothing to blank
   }
   return [...out].sort((a, b) => b.length - a.length);
@@ -82,9 +87,12 @@ export async function withoutSecrets(store, text) {
   return leaks(out, secrets) ? HIDDEN : out;
 }
 
-/** A value with every text in it as withoutSecrets would show it. @param {Store} store @param {any} value @returns {Promise<any>} */
-export async function withoutSecretsIn(store, value) {
-  const secrets = await knownSecrets(store);
+/**
+ * A value with every text in it as withoutSecrets would show it. strict: reject when the secrets can't be read.
+ * @param {Store} store @param {any} value @param {{ strict?: boolean }} [o] @returns {Promise<any>}
+ */
+export async function withoutSecretsIn(store, value, { strict = false } = {}) {
+  const secrets = await knownSecrets(store, { strict });
   /** @param {any} v @returns {any} */
   const walk = (v) => {
     if (typeof v === 'string') {

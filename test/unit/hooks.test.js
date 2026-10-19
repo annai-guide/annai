@@ -159,3 +159,19 @@ test('8b-1 (M1): a write the store tries again reports its entries once', async 
   });
   assert.deepEqual(seen.map((evs) => evs.map((e) => e.type)), [['x']]);
 });
+test("a plugin switched off at the hooks' limit and turned on again starts with a window of its own, not the one that switched it off", async () => {
+  const registry = new Registry();
+  let got = 0;
+  registry.add('busy', 'hook', { fn: () => { got++; } });
+  const at = () => 1_000; // all within one window
+  const ev = (/** @type {number} */ seq) => ({ scope: SYS, seq, ts: 1, type: 'x', actor: 'system' });
+  deliverHooks(registry, Array.from({ length: HOOK_LIMIT + 1 }, (_, i) => ev(i + 1)), at);
+  await settle();
+  assert.equal(registry.isDisabled('busy'), true);
+  assert.equal(got, HOOK_LIMIT);
+  registry.enable('busy');
+  deliverHooks(registry, [ev(5000)], at);
+  await settle();
+  assert.equal(got, HOOK_LIMIT + 1);
+  assert.equal(registry.isDisabled('busy'), false);
+});
