@@ -167,6 +167,8 @@ function eraseControls(ctx) {
     class: 'btn danger', type: 'button', disabled: true,
     onclick: async () => {
       go.disabled = true;
+      // A live session closes and is forgotten first: its microphone with it (security review).
+      ctx.agent?.hush?.('erase');
       ctx.store.close();
       await eraseDatabase();
       try { await caches.delete('annai-inbox'); } catch { /* no caches */ }

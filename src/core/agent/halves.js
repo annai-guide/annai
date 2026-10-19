@@ -511,6 +511,11 @@ export class Halves {
   hush(why) {
     this.live.close(why, { forget: why === 'erase' });
   }
+
+  /** The page is back in view: what waited for it is said; the microphone opens only at a tap. */
+  shown() {
+    if (this.koeState === 'live') this.#route(() => this.live.shown());
+  }
   /** The sign's Stop: Kokoro's turn alone. */
   stopKokoro() { this.kokoro.interrupt(); }
 

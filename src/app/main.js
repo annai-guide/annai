@@ -201,7 +201,12 @@ async function boot() {
     agent.leaving();
     setTimeout(() => agent.leaving(false), 3000);
   });
-  addEventListener('pagehide', () => agent.leaving());
+  addEventListener('pagehide', () => {
+    agent.leaving();
+    agent.hush('away');
+  });
+  // A live session (K5) closes when the page goes out of view: its microphone never runs unseen. What comes meanwhile waits for it.
+  document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? agent.hush('away') : agent.shown()));
   addEventListener('pageshow', (e) => { if (e.persisted) agent.leaving(false); });
   offerPersonalityUpdates({ ws, agent, presets, notices: shell.notices });
   // Live mode's own failures (a log it can't write) are reported like any unexpected error (spec §17 rule 4).

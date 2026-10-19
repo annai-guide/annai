@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
-import { liveKit, lives, blocks, got, texts, soon, tone, sleep } from './koe-live-kit.js';
+import { liveKit, lives, blocks, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
 
 // Task 1: choosing the pathway.
 test("a realtime model first in Koe for talking: Koe is live; resting, the text model after it talks", async () => {
@@ -127,6 +127,89 @@ test('GoAway: a new connection with the handle, and the conversation carries on 
     assert.deepEqual((await lives(k)).map((/** @type {any} */ e) => e.data.state), ['open', 'ready', 'goaway', 'open', 'resumed', 'closed']);
     assert.equal((await lives(k, 'closed'))[0].data.why, 'goaway');
     assert.deepEqual(await blocks(k), ['live-open'], 'one session as Kokoro sees it');
+  } finally {
+    await k.done();
+  }
+});
+
+// Security review: the page's lifecycle. The app hushes Shiori when the page goes out of view or away, and before Erase.
+/** The page out of view, or back, as the browser says it. @param {boolean} on */
+function hidden(on) {
+  if (on) /** @type {any} */ (globalThis).document = { visibilityState: 'hidden' };
+  else delete (/** @type {any} */ (globalThis).document);
+}
+
+test('the page out of view: the session closes and its microphone stops; a page out of view never streams a sound (security review)', async () => {
+  const k = await liveKit([]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    hidden(true);
+    k.agent.hush('away'); // the app, on visibilitychange to hidden and on pagehide
+    assert.equal(k.agent.live.state, 'closed');
+    assert.equal(k.platform.log.at(-1), 'mic close');
+    assert.equal(k.platform.sessions.at(-1), 'playback');
+    // Hidden without a word from the app: the first sound it would send closes the session instead.
+    hidden(false);
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const before = got(k, 'realtimeInput').length;
+    hidden(true);
+    await say(k, 'where-eat');
+    assert.equal(k.agent.live.state, 'closed');
+    assert.equal(got(k, 'realtimeInput').length, before, 'nothing was sent');
+    assert.equal(k.platform.log.at(-1), 'mic close');
+    await soon(async () => (await lives(k, 'closed')).length === 2);
+    assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['away', 'away']);
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
+test('a trigger or a note while the page is out of view opens nothing; back in view, it is said, and the microphone waits for a tap (security review)', async () => {
+  const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(0.3) }]);
+  try {
+    await k.voice.unlock(); // an earlier tap
+    hidden(true);
+    await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
+    await k.agent.channel.send('kokoro', 'It leaves from platform 4.', 'immediate', 'tool');
+    await k.agent.idle();
+    assert.equal(k.server.connections().length, 0, 'no session');
+    assert.ok(!k.platform.log.includes('mic open'), 'no microphone');
+    assert.equal(k.agent.live.state, 'closed');
+    hidden(false);
+    k.agent.shown(); // the app, on visibilitychange to visible
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    // Both in one text turn, so neither cuts the other off.
+    assert.equal(texts(k).length, 1);
+    assert.deepEqual(texts(k)[0].split('\n').sort(), [`<from_kokoro id="${k.agent.nonce}">It leaves from platform 4.</from_kokoro>`, '[annai] "Train in 20 minutes"']);
+    assert.equal((await k.events(['out.speak']))[0].data.voice, true, 'said aloud: sound was unlocked');
+    assert.ok(!k.platform.log.includes('mic open'), 'the microphone waits for a tap');
+    assert.equal(k.agent.live.listening, false);
+    k.agent.shown();
+    await k.agent.idle();
+    assert.equal(k.server.connections().length, 1, 'nothing waits: nothing opens');
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
+test('Erase closes the session and forgets it before anything is wiped: what comes next starts afresh (security review)', async () => {
+  const k = await liveKit([{ said: 'Hi.', audio: tone(0.2), handle: 'h-9' }]);
+  try {
+    k.agent.send('Hello');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    k.agent.hush('erase');
+    assert.equal(k.agent.live.state, 'closed');
+    await soon(async () => (await lives(k, 'closed')).length === 1);
+    assert.equal((await lives(k, 'closed'))[0].data.why, 'erase');
+    k.agent.send('Hello again');
+    await until(() => got(k, 'setup').length === 2);
+    assert.deepEqual(got(k, 'setup')[1].setup.sessionResumption, {}, 'no handle: nothing of the erased conversation resumes');
   } finally {
     await k.done();
   }
