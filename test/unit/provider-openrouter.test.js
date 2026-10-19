@@ -67,7 +67,7 @@ async function device({ chat = /** @type {() => Response} */ (() => new Response
   const cards = [];
   /** @type {number[]} */
   const renders = [];
-  const ctx = { llm, ws: k.ws, store: k.store, registry: k.registry, go: () => {}, render: () => renders.push(1), notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} } };
+  const ctx = { llm, ws: k.ws, store: k.store, registry: k.registry, plugins: k.host, go: () => {}, render: () => renders.push(1), notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} } };
   return { ...k, llm, ctx, cards, renders, seen };
 }
 

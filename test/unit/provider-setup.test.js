@@ -48,6 +48,11 @@ const ACME = {
     });
   }`,
 };
+/** A provider for any address (catchAll), as Another address is. */
+const ANY = {
+  'annai-plugin.json': JSON.stringify({ id: 'provider-any', name: 'Any', version: '1.0.0', api: 1, catchAll: true,
+    provider: { baseUrl: '', key: 'optional', abilities: { chat: { kind: 'chat', type: 'type-h', on: false } } } }),
+};
 /** A provider with code from another plugin, for keep's refusal. */
 const OTHER = {
   'annai-plugin.json': JSON.stringify({ id: 'provider-other', name: 'Other', version: '1.0.0', api: 1, requires: [{ id: 'proto-h', version: '^0' }],
@@ -62,7 +67,7 @@ const OTHER = {
  */
 async function kit(answer) {
   const k = await hostKit();
-  const s = await site({ 'proto-h': PROTO_H, 'proto-r': PROTO_R, 'provider-acme': ACME, 'provider-other': OTHER });
+  const s = await site({ 'proto-h': PROTO_H, 'proto-r': PROTO_R, 'provider-acme': ACME, 'provider-other': OTHER, 'provider-any': ANY });
   /** @type {{ url: string, init: any }[]} */
   const reached = [];
   const get = async (/** @type {any} */ url, /** @type {any} */ init = {}) => {
@@ -76,7 +81,7 @@ async function kit(answer) {
   k.registry.log = (/** @type {any} */ ev) => { events.push(ev); };
   /** @type {any[]} */
   const cards = [];
-  const ctx = { llm, store: k.store, registry: k.registry, notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} }, render: () => {}, go: () => {} };
+  const ctx = { llm, store: k.store, registry: k.registry, plugins: k.host, notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} }, render: () => {}, go: () => {} };
   return { ...k, s, llm, reached, ctx, cards, events };
 }
 
@@ -301,4 +306,23 @@ test("the featured start doesn't wait on annai's catalog when annai's own featur
   } finally {
     globalThis.fetch = was;
   }
+});
+
+test("ui.add gives a provider an address only where its description sends keys, unless it is for any address; an address annai refuses is said in its words (fix pass)", async () => {
+  const k = await kit();
+  await k.llm.prepareStart('provider-acme');
+  const ui = setupUi(k.ctx, 'provider-acme');
+  let asked = 0;
+  const key = async () => { asked++; return 'sk-x'; };
+  await assert.rejects(ui.add({ baseUrl: 'https://elsewhere.test/v1', key }), /Acme can't add a provider at https:\/\/elsewhere\.test: it sends keys only to https:\/\/acme\.test\./);
+  await assert.rejects(ui.add({ abilities: { chat: { on: true, baseUrl: 'https://elsewhere.test/v1' } }, key }), /elsewhere\.test/);
+  await assert.rejects(ui.add({ baseUrl: 'http://192.168.1.5/v1', key }), /A server on another computer needs HTTPS/);
+  assert.equal(asked, 0, 'no key asked for');
+  assert.deepEqual(Object.keys((await readConfig(k.ws)).providers), []);
+  const id = await ui.add({ baseUrl: 'https://acme.test/v2' });
+  assert.equal(providerOf((await readConfig(k.ws)).providers[id]).baseUrl, 'https://acme.test/v2');
+  // A provider for any address takes one.
+  await k.llm.addProvider('provider-any', {});
+  const any = await setupUi(k.ctx, 'provider-any').add({ baseUrl: 'https://router.example/v1' });
+  assert.equal(providerOf((await readConfig(k.ws)).providers[any]).baseUrl, 'https://router.example/v1');
 });
