@@ -81,6 +81,9 @@ export function candidates(config, role) {
   return config.roles?.main?.models ?? [];
 }
 
+/** The models of a role a chat call can use: those of a chat ability switched on (Koe's realtime models are passed over). @param {ModelConfig} cfg @param {string} role */
+export const chatCandidates = (cfg, role) => candidates(cfg, role).filter((id) => { const a = abilityOf(cfg, id); return a?.on && a.kind !== 'realtime'; });
+
 /** Whether Shiori is two halves: Koe's list holds a model. @param {ModelConfig} cfg */
 export const splitOn = (cfg) => candidates(cfg, KOE_ROLE).length > 0;
 

@@ -10,7 +10,7 @@ import { candidates } from '../../src/core/llm/fallback.js';
 import { ROLE_KINDS, checkProviderDesc } from '../../src/core/llm/provider-desc.js';
 import { nearestLevel } from '../../src/core/llm/reasoning.js';
 import { addProvider, useSuggestion } from '../../src/core/llm/providers.js';
-import { splitOn, koePath } from '../../src/core/llm/fallback.js';
+import { splitOn, koePath, chatCandidates } from '../../src/core/llm/fallback.js';
 import { ROUTER_SRC } from './provider-kit.js';
 
 /** @param {Record<string, string[]>} lists @returns {any} */
@@ -138,8 +138,13 @@ test("Koe's pathway, voice on: the first model in its list that can answer; a re
   assert.equal(splitOn(liveOnly), true);
   assert.deepEqual(koePath(liveOnly, on), { kind: 'live', modelId: 'live' });
   assert.equal(koePath(liveOnly, { ...on, until: () => 5000 }), null, 'resting, and nothing after it: Koe is down');
-  // A text Koe calls the same list; its realtime models are passed over by callRole as not-chat.
+  // A text Koe calls the same list; its realtime models are passed over by callRole as not-chat, and by chatCandidates,
+  // which says which model is a text Koe's first (to hear, to upload to), with those of an ability switched off.
   assert.deepEqual(candidates(cfg, 'koe'), ['live', 'fast']);
+  assert.deepEqual(chatCandidates(cfg, 'koe'), ['fast']);
+  const chatOff = structuredClone(cfg);
+  chatOff.providers.pv.user.abilities.chat.on = false;
+  assert.deepEqual(chatCandidates(chatOff, 'koe'), []);
 });
 
 test("Koe's pathway, voice off: a chat model that can answer comes before a realtime one ahead of it in the list (a live session's reply is sound nobody hears); with none, the realtime one runs muted", () => {

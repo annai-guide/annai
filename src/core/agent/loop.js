@@ -1,6 +1,6 @@
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
-import { AllFailedError, estimateTokens, candidates } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, candidates, chatCandidates } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf, saveModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
@@ -779,7 +779,7 @@ export class Agent {
 
   /** Whether the main role's first model gets photos by upload, so they count as their id (spec §6.5). */
   async #uploading() {
-    const id = candidates(await this.llm.config(), this.#half.role)[0];
+    const id = chatCandidates(await this.llm.config(), this.#half.role)[0];
     return Boolean(id && this.llm.uploading && (await this.llm.uploading(id)));
   }
 
@@ -788,10 +788,10 @@ export class Agent {
     return this.#roleModel(this.#half.role);
   }
 
-  /** A role's first model, by its fallback (spec §9.6). @param {string} role */
+  /** A role's first chat model, by its fallback (spec §9.6). @param {string} role */
   async #roleModel(role) {
     const cfg = await this.llm.config();
-    const id = candidates(cfg, role)[0];
+    const id = chatCandidates(cfg, role)[0];
     return id && cfg.models[id] ? modelOf(cfg.models[id]) : null;
   }
 
@@ -2118,7 +2118,7 @@ export class Agent {
   async #hearer(role) {
     if (this.#heardBy) return this.#heardBy;
     const cfg = await this.llm.config();
-    return candidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
+    return chatCandidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
   }
 
   /**
