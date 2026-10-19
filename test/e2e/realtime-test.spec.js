@@ -31,7 +31,7 @@ test("Gemini's Live voice: switched on, gemini-live installs; Test opens a sessi
     await expect(live.getByRole('link', { name: /^Gemini 3\.8 Live\b/ }).first()).toBeVisible();
     await live.getByRole('button', { name: 'Test', exact: true }).click();
     await expect(live.getByText('It answered aloud: OK.')).toBeVisible({ timeout: 30_000 });
-    await expect(live.getByText('It works.')).toBeVisible();
+    await expect(live.getByText('Everything works.')).toBeVisible();
     const [c] = s.connections();
     expect(c.key, 'the key went to the stand-in, in the address').toBe(KEY);
     expect(c.version).toBe('v1alpha');

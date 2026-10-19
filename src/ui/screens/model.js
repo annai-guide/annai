@@ -1,6 +1,6 @@
 import { h, savedField, savedCheck, autosave, twoStep, jsonField, numberIn } from '../dom.js';
 import { modelOf, modelBase, providerOf, endpointOf, saveModel, removeModel, diffLayer } from '../../core/llm/config.js';
-import { testPanel, liveTestPanel } from '../model-check.js';
+import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
 
@@ -143,7 +143,7 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
       modelJson(save, { in: 'Prices, USD (JSON: perMinute, minSeconds)', out: 'Prices, USD (JSON: perMillionChars)', live: 'Prices, USD per million tokens (JSON: input, audioIn, output, audioOut)' }[kind], 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
       h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => showTunables(await save('tunables', withVoice(t))))),
       modelJson(save, 'Extra request fields (JSON)', 'model-extra', 'extraBody', m.extraBody)),
-    kind === 'live' ? liveTestPanel(ctx, rec.id, rec.verified) : speechTestPanel(ctx, m, kind, rec.verified),
+    kind === 'live' ? testPanel(ctx, rec.id, rec.verified, 'Test', true) : speechTestPanel(ctx, m, kind, rec.verified),
     h('div', { class: 'acts' }, twoStep('Remove model', 'Tap again to remove it', async () => {
       await removeModel(ctx.ws, rec.id);
       ctx.go(back);

@@ -253,34 +253,23 @@ export function safeId(id) {
  * @property {(res: Response, c: SpeechSpec) => Promise<{ text: string }>} [readTranscript]
  * @property {(c: SpeechSpec & { text: string }) => { url: string, headers: Record<string, string>, body: any }} [speechRequest]
  * @property {(res: Response, c: SpeechSpec) => Promise<{ data: Uint8Array, mediaType: string }>} [readSpeech]
- * @property {true} [realtime]  a realtime voice type (K4): open and attach, for abilities of kind realtime
- * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what a realtime type sends and takes, preferred first
- * @property {(c: SpeechSpec) => { url: string, protocols?: string[] }} [open]  a session's ws: or wss: address, and its subprotocols
+ * @property {true} [realtime]  a realtime voice type (K4), with audio, open and attach: annai opens the socket, the type drives it
+ * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what it sends and takes, preferred first
+ * @property {(c: SpeechSpec) => { url: string, protocols?: string[] }} [open]  a session's address and subprotocols
  * @property {(socket: LiveSocket, c: { endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, tunables: Record<string, any>,
- *   setup: LiveSetup, emit: (e: LiveEvent) => void }) => LiveDriver} [attach]  drives the socket annai opened
- * @property {(code: number, reason: string) => ErrorKind | null} [classifyClose]  a sharper kind for a close, or null
- * @property {(code: number, reason: string, tunables: Record<string, any>) => Record<string, any> | null} [reopen]
- *   tunables to open again with, once, when a session closes before it is ready (Gemini's v1beta without proactive audio)
- */
-
-/**
- * The realtime contract (the Koe and Kokoro plan, K4): a live session streams audio both ways over a WebSocket.
- * annai opens the socket at the ability's origin, counts its bytes, traces its life and prices its usage; the
- * protocol speaks the wire format.
+ *   setup: LiveSetup, emit: (e: LiveEvent) => void }) => LiveDriver} [attach]
+ * @property {(code: number, reason: string) => ErrorKind | null} [classifyClose]
+ * @property {(code: number, reason: string, tunables: Record<string, any>) => Record<string, any> | null} [reopen]  tunables to open with once more, before ready
  * @typedef {{ format: 'pcm16' | 'pcmu' | 'pcma', rate: number }} AudioFormat
- * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat }} LiveSetup
- *   resume: a handle from an earlier session of the same conversation
- * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket
- *   the opened socket as a protocol sees it: what it sends, and each message the server sends (text, or bytes), to a handler set in attach
+ * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat }} LiveSetup  resume: a handle
+ * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket  on: set as it attaches
  * @typedef {{ ready: Promise<void>, audio(chunk: Uint8Array): void, activity(edge: 'start' | 'end'): void, text(t: string, o?: { interrupt?: boolean }): void,
  *   image(i: { mediaType: string, data: string }): void, answer(id: string, name: string, output: string, o?: { silent?: boolean }): void,
  *   cancel?(): void, close?(): void }} LiveDriver
- *   ready: the server took the setup; audio: 16-bit PCM in setup.audioIn; image data is base64; answer: a tool call's result, silent: say nothing more for it;
- *   close: anything to say before annai closes the socket
+ *   ready: the setup was taken; audio: 16-bit PCM in audioIn; image: base64; silent: no more speech for that answer
  * @typedef {{ type: 'audio', data: Uint8Array } | { type: 'heard' | 'said', text: string, final?: boolean } | { type: 'tool', id: string, name: string, input: any }
  *   | { type: 'turn', end: 'complete' | 'interrupted' } | { type: 'usage', usage: Partial<Usage> } | { type: 'resume', handle: string }
- *   | { type: 'goaway', ms: number }} LiveEvent
- *   audio: 16-bit PCM in setup.audioOut; heard and said: transcripts, in pieces; usage: one turn's
+ *   | { type: 'goaway', ms: number }} LiveEvent  audio: 16-bit PCM in audioOut; heard, said: transcripts in pieces; usage: a turn's
  */
 
 /**
