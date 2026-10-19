@@ -210,6 +210,7 @@ export function activate(annai) {
 - **Errors are answers.** Throw an `Error` with plain words and what to do; Shiori sees it and adapts. Only a crash (a `TypeError` and the like) counts against your plugin, which annai switches off when it keeps crashing.
 - **Keep results short.** A result over 40 000 characters is cut. Return a page of results, and take a `from` or `page` input for more.
 - **Every tool can be switched off** in Settings → Tools, and every call, its input and its result are in the trace.
+- **When Shiori is two halves** (Koe and Kokoro, spec §6.8), a plugin's tools are Kokoro's: the half that thinks and works. Koe, the half that talks, has annai's own quick set (reads, the offline pack's places, light changes), and asks Kokoro for the rest. annai's places tools are called with `call.offline` for Koe: read only what is on the device, and say so when it isn't there. A tool switched off is off for both halves.
 
 ## Model providers
 
