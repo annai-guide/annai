@@ -117,8 +117,12 @@ const KIND_WORDS = /** @type {Record<string, string>} */ ({ tool: 'the tool', 'e
 const COMPONENT_WORDS = /** @type {Record<string, string>} */ ({ avatar: 'how Shiori looks', dock: 'the dock', 'now-card': 'the Now card', 'plan-row': "how the plan's rows look" });
 /** @param {string} kind @param {string} name */
 export const thingWords = (kind, name) => (kind === 'ui:component' ? COMPONENT_WORDS[name] ?? `the part ${name}` : `${KIND_WORDS[kind] ?? kind} ${name}`);
-/** Who owns a name, as the user knows it: annai, or a plugin's name. @param {any[]} rows describe()'s @param {string} id */
-export const ownerName = (rows, id) => (id === 'annai' ? 'annai' : rows.find((r) => r.id === id)?.name ?? id);
+/** Who owns a name: annai, or a plugin's name, with its id when the name is annai's or another plugin's (manifest text). @param {any[]} rows describe()'s @param {string} id */
+export function ownerName(rows, id) {
+  const r = id === 'annai' ? null : rows.find((x) => x.id === id);
+  const same = (/** @type {any} */ x) => String(x).toLowerCase() === String(r?.name).toLowerCase();
+  return !r ? id : !r.builtin && (same('annai') || rows.some((x) => x !== r && same(x.name))) ? `${r.name} (${id})` : r.name;
+}
 
 /**
  * What a package's replaces would replace now (milestone 6): each of its names that has an owner, in each
