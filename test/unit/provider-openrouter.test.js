@@ -329,3 +329,24 @@ test("a chat model whose free requests are used up is resting for a while, not o
   await signIn(d);
   await assert.rejects(d.llm.call({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } }), (/** @type {any} */ e) => e.attempts?.[0]?.outcome === 'rate');
 });
+
+test("Sign in with OpenRouter's address is made before annai is told to expect it back: one that can't be made leaves no 15-minute note (fix pass)", async () => {
+  /** A stand-in for annai's DOM builder: plain objects. @param {string} tag @param {any} attrs @param {...any} children */
+  const h = (tag, attrs = {}, ...children) => ({ tag, attrs, children: children.flat() });
+  /** @param {any} node @returns {any} */
+  const button = (node) => (node?.tag === 'button' ? node : (node?.children ?? []).map(button).find(Boolean));
+  /** @type {string[]} */
+  const happened = [];
+  const ui = { h, returnsElsewhere: false, render: () => {}, expectReturn: () => happened.push('expected') };
+  const at = /** @type {any} */ (globalThis);
+  at.location = { origin: 'https://annai.guide', assign: (/** @type {string} */ url) => happened.push(`went to ${new URL(url).origin}`) };
+  try {
+    const full = { getItem: () => null, setItem: () => { throw new DOMException('The storage is full.', 'QuotaExceededError'); }, removeItem: () => {} };
+    await button(openRouter({ storage: full }).panel(ui, null)).attrs.onclick();
+    assert.deepEqual(happened, [], 'no address, so nothing expected back');
+    await button(openRouter({ storage: memoryStorage() }).panel(ui, null)).attrs.onclick();
+    assert.deepEqual(happened, ['expected', 'went to https://openrouter.ai']);
+  } finally {
+    delete at.location;
+  }
+});

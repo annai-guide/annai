@@ -235,8 +235,9 @@ export function openRouter(env = {}) {
           class: provider ? 'btn' : 'btn pri', type: 'button', disabled: finishing,
           onclick: async () => {
             try {
-              ui.expectReturn();
-              location.assign(await signInUrl({ callback: `${location.origin}/`, provider: target, storage: store() }));
+              const url = await signInUrl({ callback: `${location.origin}/`, provider: target, storage: store() });
+              ui.expectReturn(); // once there is an address to go to: a failed one leaves no return expected
+              location.assign(url);
             } catch (e) {
               status.textContent = words(e);
             }
