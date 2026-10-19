@@ -2,18 +2,18 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf } from './mode.js';
 import { SYS } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS } from '../llm/fallback.js';
-import { speechKind, modelOf, STAND_INS } from '../llm/config.js';
+import { COOLDOWN_MS, NETWORK_RETRIES } from '../llm/fallback.js';
+import { speechKind, modelOf, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries } from './speaker.js';
 import { voicePlatform } from './platform.js';
 import { voiceSettings } from './settings.js';
 import { record } from './recorder.js';
-import { HeardMemory, listenKind, resolveSpeech, textVersion } from './resolve.js';
+import { HeardMemory, listenKind, resolveSpeech, textVersion, audioFor } from './resolve.js';
+import { pickFormat, formatRefused, CODEC_ORDER } from './formats.js';
 import { listen } from './listening.js';
 import { micProblem } from './mic.js';
 import { browserVoiceFor } from './where.js';
-import { blobBytes, record as logEvent } from '../agent/log.js';
-import { toBase64 } from '../bytes.js';
+import { record as logEvent } from '../agent/log.js';
 
 /**
  * Voice (spec §10): annai's speaking and hearing, for the screens, and in milestone 3b for
@@ -29,6 +29,19 @@ export function restFor(e) {
   return e instanceof ProviderError && e.retryAfter !== undefined ? e.retryAfter : COOLDOWN_MS;
 }
 
+/**
+ * The formats a model takes (Koe and Kokoro design, "Audio formats"): the audioIn tunable of its
+ * type, its ability and itself; WAV, as always before, where none says.
+ * @param {any} cfg @param {Map<string, { tunables?: Record<string, any> }>} types @param {string} id @returns {string[]}
+ */
+export function audioIn(cfg, types, id) {
+  const a = abilityOf(cfg, id);
+  const rec = cfg.models?.[id];
+  const t = { ...types.get(a?.type ?? '')?.tunables, ...a?.tunables, ...(rec ? modelOf(rec).tunables : {}) };
+  return Array.isArray(t.audioIn) ? t.audioIn.map(String) : ['wav'];
+}
+
+
 /** What the model that heard a segment as audio is asked, to write it down (spec §10.3). */
 export const WRITE_DOWN = 'Write down exactly what is said in this audio, in the language it is spoken. Reply with the words only, nothing else. If nothing clear is said, reply with nothing.';
 
@@ -39,6 +52,10 @@ export class Voice {
   memory = new HeardMemory();
   /** Phone dictation failed in this session: listening records instead (spec §10.3). */
   dictationFailed = false;
+  /** How long to wait before sending a failed upload's same bytes again. */
+  retryMs = NETWORK_RETRIES;
+  /** Models that refused a format they said they take: they get WAV until annai restarts. @type {Set<string>} */
+  wavOnly = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'auto', on: false, why: 'not sure' };
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
@@ -68,7 +85,7 @@ export class Voice {
     this.speaker = new Speaker({
       locale,
       entries: () => this.outEntries(),
-      synthesize: async (entry, text, signal) => (await this.llm.synthesize({ modelId: entry.id, text, signal, scope: this.scope })).clip,
+      synthesize: async (entry, text, signal) => (await this.llm.synthesize({ modelId: entry.id, text, signal, scope: this.scope, plays: this.plays() })).clip,
       platform: () => this.platform,
       bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
       browserOptions: async () => {
@@ -114,6 +131,48 @@ export class Voice {
 
   get platform() {
     return voicePlatform(this.registry);
+  }
+
+  /** What this device plays (Koe and Kokoro design, "Audio formats"): every browser plays MP3 and WAV. @returns {string[]} */
+  plays() {
+    try {
+      return this.platform?.player.plays?.() ?? ['mp3', 'wav'];
+    } catch {
+      return ['mp3', 'wav'];
+    }
+  }
+
+  /** What this device makes from speech: its encoder's, then WAV. @returns {Promise<string[]>} */
+  async makes() {
+    return [...(await this.platform?.encoder?.makes().catch(() => []) ?? []), 'wav'];
+  }
+
+  /**
+   * A heard segment as it is kept (spec §10.2, "keep voice clips"): the smallest format this device
+   * makes and plays, so it plays back here and costs the least room. @param {import('./resolve.js').Heard} h
+   */
+  async clipOf(h) {
+    const kept = this.memory.get(h.id) ?? { ...h, transcripts: new Map(), encoded: new Map(h.encoded) };
+    return audioFor(kept, CODEC_ORDER.flat().filter((f) => this.plays().includes(f)), this.platform?.encoder);
+  }
+
+  /**
+   * A MediaRecorder type to record alongside, when it makes a format some receiver would take over
+   * what the encoder makes (decision 24: expected on an iPhone without WebCodecs audio), else undefined.
+   */
+  async #recordWith() {
+    const enc = this.platform?.encoder;
+    const records = enc?.records?.() ?? [];
+    if (!records.length) return undefined;
+    const cfg = await this.llm.config();
+    const types = this.llm.types();
+    const list = cfg.roles['speech-in']?.models ?? [];
+    const takers = [...(list.includes('send-audio') ? cfg.roles.main?.models ?? [] : []), ...list.filter((/** @type {string} */ id) => speechKind(cfg, types, id) === 'in')];
+    const makes = await this.makes();
+    return records.find((r) => takers.some((/** @type {string} */ id) => {
+      const accepts = audioIn(cfg, types, id);
+      return pickFormat(accepts, [...makes, r.format]) === r.format && pickFormat(accepts, makes) !== r.format;
+    }));
   }
 
   /**
@@ -189,7 +248,7 @@ export class Voice {
     const platform = this.platform;
     if (!platform) throw new Error("This browser can't play sound here.");
     platform.session('playback');
-    const { clip } = await this.llm.synthesize({ modelId, text, scope: this.scope });
+    const { clip } = await this.llm.synthesize({ modelId, text, scope: this.scope, plays: this.plays() });
     return platform.player.play(clip, { signal: new AbortController().signal, onLevel: (x) => this.#level(x, 'her') });
   }
 
@@ -202,6 +261,7 @@ export class Voice {
     const platform = this.platform;
     if (!platform) throw new Error("This browser can't use the microphone here.");
     const { pauseMs } = voiceSettings(await readAppSettings(this.ws));
+    const recording = await this.#recordWith();
     return new Promise((resolve, reject) => {
       /** @type {{ close(): void } | null} */
       let session = null;
@@ -219,7 +279,7 @@ export class Voice {
       const timer = setTimeout(() => finish(null), seconds * 1000);
       signal?.addEventListener('abort', () => finish(null), { once: true });
       platform.session('play-and-record');
-      record({ mic: platform.mic, pauseMs, now: this.now, onSpeech, onLevel: (x) => this.#level(x, 'you'), onSegment: (s) => finish(s), onError: (e) => finish(null, e) })
+      record({ mic: platform.mic, pauseMs, now: this.now, recording, onSpeech, onLevel: (x) => this.#level(x, 'you'), onSegment: (s) => finish(s), onError: (e) => finish(null, e) })
         .then((s) => {
           session = s;
           if (done) s.close();
@@ -227,9 +287,35 @@ export class Voice {
     });
   }
 
-  /** What a transcription model hears in a segment. @param {Segment} segment @param {string} modelId */
+  /** What a transcription model hears in a segment, sent in its smallest format. @param {Segment} segment @param {string} modelId */
   async transcribe(segment, modelId) {
-    return (await this.llm.transcribe({ modelId, audio: segment.audio, scope: this.scope })).text;
+    return this.#hear(modelId, { ...segment, source: 'mic', transcripts: new Map(), encoded: new Map(segment.encoded) }, this.scope);
+  }
+
+  /**
+   * One transcription (Koe and Kokoro design, "Audio formats"): the segment in the smallest format
+   * both sides handle. A failed upload sends the same bytes again; a format the provider refuses
+   * gives way to WAV, which it then gets until annai restarts.
+   * @param {string} id @param {import('./resolve.js').Kept} kept @param {string} scope @param {string} [wake]
+   */
+  async #hear(id, kept, scope, wake) {
+    const cfg = await this.llm.config();
+    const accepts = this.wavOnly.has(id) ? ['wav'] : audioIn(cfg, this.llm.types(), id);
+    const audio = await audioFor(kept, accepts, this.platform?.encoder);
+    if (!audio) throw new ProviderError('bad-request', `${modelOf(cfg.models[id]).name} takes no audio format this phone makes (${accepts.join(', ')}).`);
+    for (let retry = 0; ; retry++) {
+      try {
+        return String((await this.llm.transcribe({ modelId: id, audio: { ...audio, seconds: kept.audio?.seconds }, scope, wake })).text ?? '');
+      } catch (e) {
+        if (e instanceof ProviderError && e.kind === 'bad-request' && formatRefused(e.message) && audio.format !== 'wav' && accepts.includes('wav')) {
+          this.wavOnly.add(id);
+          return this.#hear(id, kept, scope, wake);
+        }
+        const kind = e instanceof ProviderError ? e.kind : '';
+        if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length) throw e;
+        await new Promise((r) => setTimeout(r, this.retryMs[retry]));
+      }
+    }
   }
 
   /** Settings → Voice. */
@@ -355,10 +441,11 @@ export class Voice {
     if (!platform) throw new Error("This browser can't use the microphone here.");
     const { pauseMs } = await this.settings();
     const local = kind === 'dictation' && (await this.dictationLocal());
+    const recording = kind === 'record' ? await this.#recordWith() : undefined;
     platform.session('play-and-record');
     try {
       const session = await listen({
-        platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError, local,
+        platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError, local, recording,
         onLevel: (x) => this.#level(x, 'you'),
         onSegment: (h) => {
           this.memory.keep(h);
@@ -378,12 +465,17 @@ export class Voice {
 
   /**
    * The speech hook for llm.call (spec §10.3): heard speech resolved for each model attempt.
-   * Transcriptions are traced in scope, for the wake.
-   * @param {string} scope @param {string} [wake]
-   * @returns {(model: { name: string, input: string[] }, request: import('../llm/contract.js').Request) => Promise<import('../llm/contract.js').Request>}
+   * Transcriptions are traced in scope, for the wake. plain: the model refused the format it was sent,
+   * so it gets WAV, until annai restarts.
+   * @param {string} scope @param {string} [wake] @param {string[]} [list] the speech-in list, when not the role's
+   * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean) => Promise<import('../llm/contract.js').Request>}
    */
-  resolver(scope, wake) {
-    return async (model, request) => resolveSpeech(request, model, await this.#resolve(scope, wake));
+  resolver(scope, wake, list) {
+    return async (model, request, plain) => {
+      if (plain && model.id) this.wavOnly.add(model.id);
+      const c = await this.#resolve(scope, wake);
+      return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)) });
+    };
   }
 
   /** @param {string} scope @param {string} [wake] @returns {Promise<import('./resolve.js').Resolve>} */
@@ -394,9 +486,14 @@ export class Voice {
       list: cfg.roles['speech-in']?.models ?? [],
       memory: this.memory,
       asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now(),
-      transcribe: async (id, kept) => String((await this.llm.transcribe({ modelId: id, audio: kept.audio, scope, wake })).text ?? ''),
-      clip: (hash) => (this.store ? blobBytes(this.store, hash) : Promise.resolve(null)),
+      transcribe: (id, kept) => this.#hear(id, kept, scope, wake),
+      clip: async (hash) => {
+        const b = await this.store?.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
+        return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
+      },
       onFail: (id, e) => this.llm.bench.bench(id, restFor(e), this.now()),
+      accepts: (id) => audioIn(cfg, types, id),
+      encoder: this.platform?.encoder,
     };
   }
 
@@ -415,10 +512,10 @@ export class Voice {
       ...(await this.#resolve(scope, wake)),
       ...(hearer ? {
         hearer: async (/** @type {import('./resolve.js').Kept} */ k) => {
-          const audio = /** @type {NonNullable<typeof k.audio>} */ (k.audio);
+          // The sound goes as each model it reaches takes it, and only as sound.
           const out = await this.llm.call({
-            role: 'main', prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) },
-            request: { system: WRITE_DOWN, messages: [{ role: 'user', parts: [{ type: 'audio', mediaType: audio.mediaType, data: toBase64(audio.data) }] }], maxOutput: 400 },
+            role: 'main', prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
+            request: { system: WRITE_DOWN, messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
           });
           who = out.modelId ?? hearer;
           return String(out.reply.text ?? '').trim();

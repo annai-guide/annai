@@ -7,10 +7,11 @@ import { newId } from '../scopes.js';
  * gives the words itself. They can't run together. When dictation fails, the session records from
  * the next segment on (§10.3). A session never decides to stop listening: its owner does.
  * @typedef {import('./resolve.js').Heard} Heard
- * @param {{ platform: import('./platform.js').VoicePlatform, kind: 'record' | 'dictation', pauseMs: number, lang?: string, now?: () => number, local?: boolean,
+ * @param {{ platform: import('./platform.js').VoicePlatform, kind: 'record' | 'dictation', pauseMs: number, lang?: string, now?: () => number, local?: boolean, recording?: { type: string, format: string },
  *   onSegment: (h: Heard) => void, onSpeech?: () => void, onQuiet?: () => void, onLevel?: (x: number) => void,
  *   onError: (e: Error) => void, onSwitch?: (e: Error) => void }} c
- *   onQuiet: what began like speech wasn't (a click); onSwitch: dictation failed and recording took over; local: dictation stays on the phone
+ *   onQuiet: what began like speech wasn't (a click); onSwitch: dictation failed and recording took over; local: dictation stays on the phone;
+ *   recording: a MediaRecorder type to record alongside (recorder.js)
  * @returns {Promise<{ readonly kind: 'record' | 'dictation', stop(): void }>}
  */
 export async function listen(c) {
@@ -23,8 +24,8 @@ export async function listen(c) {
   const recording = async () => {
     kind = 'record';
     const r = await record({
-      mic: c.platform.mic, pauseMs: c.pauseMs, now, onSpeech: c.onSpeech, onDiscard: c.onQuiet, onLevel: c.onLevel, onError: c.onError,
-      onSegment: (s) => c.onSegment({ id: s.id, source: 'mic', audio: s.audio, ms: s.ms, at: s.at }),
+      mic: c.platform.mic, pauseMs: c.pauseMs, now, recording: c.recording, onSpeech: c.onSpeech, onDiscard: c.onQuiet, onLevel: c.onLevel, onError: c.onError,
+      onSegment: (s) => c.onSegment({ id: s.id, source: 'mic', audio: s.audio, ms: s.ms, at: s.at, ...(s.encoded ? { encoded: s.encoded } : {}) }),
     });
     if (stopped) r.close();
     else running = r;
