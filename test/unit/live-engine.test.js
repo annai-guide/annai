@@ -420,6 +420,25 @@ test("a log write that fails doesn't hold a reminder back or make it fire again:
   assert.match(String(/** @type {any} */ (problems[0])?.message), /disk is full/);
 });
 
+test('a failure told is the same problem when only its numbers change: a card for it once, not one a minute', async () => {
+  /** @type {unknown[]} */
+  const problems = [];
+  const k = await liveKit({ problem: (e) => problems.push(e) });
+  await k.live.setWatch(k.trip, { when: { type: 'every', minutes: 1 }, fallback: 'Look up.' });
+  let free = 4096;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+    get(o, key) {
+      const v = o[key];
+      if (key === 'appendEvent') return (/** @type {string} */ scope, /** @type {any} */ e) => (e.type === 'trigger.fired' ? Promise.reject(new Error(`The disk is full: ${free--} bytes left.`)) : o.appendEvent(scope, e));
+      return typeof v === 'function' ? v.bind(o) : v;
+    },
+  })));
+  await k.to(at('08:36'));
+  assert.ok(free < 4093, 'it failed every minute');
+  assert.equal(problems.length, 1);
+});
+
 test("live mode keeps memories and firings only for the watches there are: a watch that is gone, or a plan item removed, leaves nothing behind", async () => {
   const k = await liveKit({ plan: { bixby: BIX, nepenthe: NEP } });
   const tea = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:00') }, fallback: 'Tea.' });

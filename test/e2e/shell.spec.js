@@ -40,8 +40,20 @@ test('an unexpected error shows a card and annai keeps running', async ({ page }
   await openApp(page);
   await page.evaluate(() => { setTimeout(() => { throw new Error('test boom'); }, 0); });
   await expect(page.getByText('Something went wrong')).toBeVisible();
+  await expect(page.getByText('annai kept running. The details are in Trace.')).toBeVisible();
   await page.getByRole('link', { name: 'Trips' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+});
+
+test("an unexpected error whose details can't be written down says so, rather than that they are in Trace", async ({ page }) => {
+  await openApp(page);
+  await page.evaluate(() => {
+    // Nothing more can be written (the database is closing, as an iPhone's can).
+    for (const m of /** @type {const} */ (['add', 'put'])) IDBObjectStore.prototype[m] = () => { throw new DOMException('The database connection is closing.', 'InvalidStateError'); };
+    setTimeout(() => { throw new Error('test boom'); }, 0);
+  });
+  await expect(page.getByText("annai kept running, but couldn't write down what happened, so it isn't in Trace either.", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText('The details are in Trace.')).toHaveCount(0);
 });
 
 test('a mangled link opens Trips', async ({ page }) => {
