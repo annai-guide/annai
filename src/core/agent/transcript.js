@@ -1,6 +1,6 @@
 import { TALK_TAG, KOE_TAG, record, storedTexts, blobBytes } from './log.js';
 import { toBase64 } from '../bytes.js';
-import { blockFor, saidWithout, wrapNote } from './blocks.js';
+import { blockFor, saidWithout, wrapNote, stripMarkers } from './blocks.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -55,6 +55,8 @@ export class Transcript {
   #last = [];
   /** Lines that came while the last calls were open, added once they all have results (plan decision 3). @type {Part[][]} */
   #held = [];
+  /** Koe's notes as annai wrapped them: the only words in Koe's transcript that may carry the marker (security review). @type {WeakSet<Part>} */
+  #wrapped = new WeakSet();
 
   /** @param {{ half?: HalfName }} [o] */
   constructor({ half = 'one' } = {}) {
@@ -114,7 +116,10 @@ export class Transcript {
     } else if (e.type === 'note') {
       // A note from the other half: Kokoro's block, or Koe's marked text.
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
-      this.#line([{ type: 'text', text: koe ? wrapNote(texts.text ?? '') : /** @type {string} */ (blockFor(e, texts)) }]);
+      /** @type {Part} */
+      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '') : /** @type {string} */ (blockFor(e, texts)) };
+      if (koe) this.#wrapped.add(part);
+      this.#line([part]);
       this.unanswered = true;
       this.waiting = 'wake';
     } else if (e.type === 'halves') {
@@ -163,7 +168,7 @@ export class Transcript {
       }
     } else if (e.type === 'heard.text') {
       // A segment's words, written down later: every place it is sent now sends them (spec §10.3).
-      const text = String(d.text ?? '');
+      const text = koe ? stripMarkers(String(d.text ?? '')) : String(d.text ?? '');
       const had = this.#heard.get(d.of);
       if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
       this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'speech' && p.id === d.of ? { ...p, text } : p)) }));
@@ -229,8 +234,21 @@ export class Transcript {
     return [...this.#calls].filter(([id]) => !this.#answered.has(id)).map(([id, name]) => ({ id, name }));
   }
 
-  /** @param {'user' | 'assistant'} role @param {Part[]} parts */
-  #add(role, parts) {
+  /**
+   * Koe's user lines lose any note marker but annai's own wrapper, wherever their words came from: a
+   * page, a file, a card, a reminder, what was heard or typed (security review). @param {Part} p @returns {Part}
+   */
+  #unmarked(p) {
+    if (this.#wrapped.has(p)) return p;
+    if (p.type === 'text') return { ...p, text: stripMarkers(p.text) };
+    if (p.type === 'tool_result') return { ...p, content: stripMarkers(p.content) };
+    if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: stripMarkers(p.text) };
+    return p;
+  }
+
+  /** @param {'user' | 'assistant'} role @param {Part[]} given */
+  #add(role, given) {
+    const parts = this.half === 'koe' && role === 'user' ? given.map((p) => this.#unmarked(p)) : given;
     const last = this.messages.at(-1);
     if (last?.role === role) this.messages[this.messages.length - 1] = { role, parts: [...last.parts, ...parts] };
     else this.messages.push({ role, parts });

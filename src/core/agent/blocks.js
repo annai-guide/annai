@@ -1,15 +1,34 @@
 /**
  * What one half reads of the other (the Koe and Kokoro design, "What each half sees"): Kokoro reads
- * the conversation as labelled blocks, and Koe reads Kokoro's notes inside markers that nobody else
- * can write, since they are stripped from everything else (plan decision 14).
+ * the conversation as labelled blocks, the words in them quoted, and Koe reads Kokoro's notes inside
+ * markers that nobody else can write, since they are stripped from everything else it reads (plan
+ * decision 14; the security review of K1).
  */
 
-const MARKER = /<\s*\/?\s*from_kokoro\s*\/?\s*>/gi;
+/** Brackets a model may read as a tag's. */
+const OPEN = '<‹〈＜《⟨';
+const CLOSE = '>›〉＞》⟩';
+/** A marker-like tag: any bracket, a slash, the name with any separator and case, attributes, and the closing bracket if there is one. */
+const TAG = new RegExp(`[${OPEN}]\\s*\\/?\\s*from[\\s_-]*kokoro\\b[^${OPEN}${CLOSE}]*[${CLOSE}]?`, 'gi');
+/** The marker's own name, bare: never in prose, so it goes too, with the brackets around it. */
+const NAME = new RegExp(`[${OPEN}]?\\s*\\/?\\s*from_kokoro\\b\\s*\\/?\\s*[${CLOSE}]?`, 'gi');
 
-/** Text without the note markers, in any case or spacing, so a note can't be faked or broken out of. @param {string} text */
+/**
+ * Text without the note markers, in any case, spacing or bracket, so a note can't be faked or broken
+ * out of. Stripped until nothing changes: a marker hidden inside another is taken out too.
+ * @param {string} text
+ */
 export function stripMarkers(text) {
-  return String(text ?? '').replace(MARKER, '');
+  let out = String(text ?? '');
+  for (let was = ''; was !== out;) {
+    was = out;
+    out = out.replace(TAG, '').replace(NAME, '');
+  }
+  return out;
 }
+
+/** Words inside a label, quoted, so a label or a new line in them can't pass for annai's. @param {unknown} text */
+export const quote = (text) => JSON.stringify(String(text ?? ''));
 
 /** A note from Kokoro as Koe reads it, wrapped once. @param {string} text */
 export function wrapNote(text) {
@@ -29,8 +48,8 @@ export function cardText(card) {
   return out.length > 300 ? `${out.slice(0, 300)}…` : out;
 }
 
-/** An ask in a line: the question and its options. @param {any} d */
-const askText = (d) => `${String(d.question ?? '')} (${(Array.isArray(d.options) ? d.options : []).join(', ')})`;
+/** An ask in a line: the question and its options, quoted. @param {any} d */
+const askText = (d) => `${quote(d.question)} (options: ${JSON.stringify((Array.isArray(d.options) ? d.options : []).map(String))})`;
 
 /**
  * Kokoro's block for an event of the conversation it didn't write: what the user typed (to Koe), what
@@ -42,14 +61,14 @@ export function blockFor(e, texts) {
   const d = e.data ?? {};
   const text = String(texts.text ?? '');
   if (e.type === 'msg.user' && d.split) {
-    if (d.chose) return `[the user chose] ${text}`;
-    if (d.images?.length) return text && text !== '(a photo)' ? `[the user sent a photo] ${text}` : '[the user sent a photo]';
-    return `[the user typed] ${text}`;
+    if (d.chose) return `[the user chose] ${quote(text)}`;
+    if (d.images?.length) return text && text !== '(a photo)' ? `[the user sent a photo] ${quote(text)}` : '[the user sent a photo]';
+    return `[the user typed] ${quote(text)}`;
   }
-  if (d.half === 'koe' && e.type === 'out.speak') return `${d.voice ? '[Koe said aloud]' : '[Koe said]'} ${text}`;
-  if (d.half === 'koe' && e.type === 'out.show') return `[Koe showed] ${cardText(d.card)}`;
+  if (d.half === 'koe' && e.type === 'out.speak') return `${d.voice ? '[Koe said aloud]' : '[Koe said]'} ${quote(text)}`;
+  if (d.half === 'koe' && e.type === 'out.show') return `[Koe showed] ${quote(cardText(d.card))}`;
   if (d.half === 'koe' && e.type === 'out.ask') return `[Koe asked] ${askText(d)}`;
-  if (e.type === 'note' && d.from === 'koe') return `[Koe ${asksOrNotes(text)}] ${text}`;
+  if (e.type === 'note' && d.from === 'koe') return `[Koe ${asksOrNotes(text)}] ${quote(text)}`;
   if (e.type === 'halves') return `[annai] ${text}`;
   return null;
 }
@@ -62,8 +81,8 @@ export function blockFor(e, texts) {
 export function saidWithout(e, texts) {
   const d = e.data ?? {};
   if (d.half === 'koe') return null;
-  if (e.type === 'out.speak') return `[said to the user] ${String(texts.text ?? '')}`;
-  if (e.type === 'out.show') return `[shown to the user] ${cardText(d.card)}`;
+  if (e.type === 'out.speak') return `[said to the user] ${quote(texts.text)}`;
+  if (e.type === 'out.show') return `[shown to the user] ${quote(cardText(d.card))}`;
   if (e.type === 'out.ask') return `[asked the user] ${askText(d)}`;
   return null;
 }
