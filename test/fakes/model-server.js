@@ -15,10 +15,11 @@ import http from 'node:http';
  * @typedef {{ method: string, path: string, headers: Record<string, any>, body: any }} Seen
  *   body: parsed JSON, or the text ('' for none)
  * @typedef {{ flavour: Flavour, key?: string, cors?: '*' | string[] | false, spa?: boolean, authEverywhere?: boolean,
- *   models?: object[], replies?: Reply[] }} Options
+ *   models?: object[], replies?: Reply[], gapMs?: number }} Options
  *   key: asked for as a bearer token; cors: '*' allows any origin (reflected, as llama.cpp does), a list those origins,
  *   false none (default: the flavour's own); spa: 200 text/html for any unknown path, as a web app's fallback does;
- *   authEverywhere: 401 for every /v1 path without the key, real or not, as auth in front of a server does
+ *   authEverywhere: 401 for every /v1 path without the key, real or not, as auth in front of a server does;
+ *   gapMs: a pause between a stream's chunks, as a model writing at its own pace makes
  */
 
 /** Hosts Ollama allows by default (OLLAMA_ORIGINS adds to them), whatever the scheme and port. */
@@ -141,8 +142,15 @@ export async function startFakeServer(o) {
       const ids = (reply.calls ?? []).map(() => `call_${++calls}`);
       if (f.whole || body.stream !== true) return send(200, 'application/json', JSON.stringify(completion(f, body, reply, ids)));
       res.writeHead(200, { ...allow, 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache' });
-      for (const c of streamed(f, body, reply, ids)) res.write(`data: ${JSON.stringify(c)}\n\n`);
-      res.end('data: [DONE]\n\n');
+      const out = [...[...streamed(f, body, reply, ids)].map((c) => `data: ${JSON.stringify(c)}\n\n`), 'data: [DONE]\n\n'];
+      const next = (/** @type {number} */ i) => {
+        if (res.destroyed) return;
+        if (i === out.length - 1) return void res.end(out[i]);
+        res.write(out[i]);
+        if (o.gapMs) setTimeout(() => next(i + 1), o.gapMs);
+        else next(i + 1);
+      };
+      next(0);
     });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
