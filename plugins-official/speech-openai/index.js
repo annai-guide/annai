@@ -2,10 +2,12 @@
  * OpenAI-compatible speech (spec §9.1, §10): transcription through /audio/transcriptions and
  * voices through /audio/speech. OpenAI, OpenRouter, Groq and local servers (Speaches, whisper.cpp's
  * server, Kokoro) speak this API; their differences are tunables. OpenRouter lists its speech models
- * apart from its chat models (listPath: /models?output_modalities=…).
+ * apart from its chat models (listPath: /models?output_modalities=…). audioIn says what audio a
+ * transcription takes, and audioOut what a voice gives, as OpenAI's documents them (Koe and Kokoro
+ * design, "Audio formats"); with format 'auto', annai asks for the smallest the phone plays.
  */
 const MEDIA = /** @type {Record<string, string>} */ ({ mp3: 'audio/mpeg', opus: 'audio/ogg', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav', pcm: 'audio/L16' });
-const EXT = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg' });
+const EXT = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/aac': 'aac', 'audio/flac': 'flac' });
 const CODES = /** @type {Record<string, string>} */ ({ invalid_api_key: 'auth', insufficient_quota: 'credit', model_not_found: 'not-found' });
 
 /** @param {string} base @param {string} path */
@@ -36,7 +38,7 @@ export function activate(annai) {
       type: 'openai-transcription',
       name: 'OpenAI-compatible transcription',
       speech: 'in',
-      tunables: { path: '/audio/transcriptions', listPath: '/models', language: '', prompt: '' },
+      tunables: { path: '/audio/transcriptions', listPath: '/models', language: '', prompt: '', audioIn: ['webm', 'mp4', 'mp3', 'wav'] },
       /** @param {any} c */
       transcribeRequest: ({ endpoint, model, key, tunables: t, audio }) => {
         const form = new FormData();
@@ -60,11 +62,11 @@ export function activate(annai) {
       type: 'openai-speech',
       name: 'OpenAI-compatible voice',
       speech: 'out',
-      tunables: { path: '/audio/speech', listPath: '/models', voice: 'marin', format: 'mp3', instructions: '', speed: null },
+      tunables: { path: '/audio/speech', listPath: '/models', voice: 'marin', format: 'auto', audioOut: ['opus', 'aac', 'mp3', 'flac', 'wav'], instructions: '', speed: null },
       /** @param {any} c */
       speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
         /** @type {Record<string, any>} */
-        let body = { model: model.providerId, input: text, response_format: t.format };
+        let body = { model: model.providerId, input: text, response_format: t.format === 'auto' ? 'mp3' : t.format }; // auto: annai chose none
         if (t.voice) body.voice = t.voice; // none: the provider's default voice (Fish Audio's on OpenRouter)
         if (t.instructions) body.instructions = t.instructions;
         if (t.speed) body.speed = t.speed;

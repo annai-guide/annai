@@ -41,7 +41,6 @@ export function audioIn(cfg, types, id) {
   return Array.isArray(t.audioIn) ? t.audioIn.map(String) : ['wav'];
 }
 
-
 /** What the model that heard a segment as audio is asked, to write it down (spec §10.3). */
 export const WRITE_DOWN = 'Write down exactly what is said in this audio, in the language it is spoken. Reply with the words only, nothing else. If nothing clear is said, reply with nothing.';
 
@@ -135,11 +134,7 @@ export class Voice {
 
   /** What this device plays (Koe and Kokoro design, "Audio formats"): every browser plays MP3 and WAV. @returns {string[]} */
   plays() {
-    try {
-      return this.platform?.player.plays?.() ?? ['mp3', 'wav'];
-    } catch {
-      return ['mp3', 'wav'];
-    }
+    return this.platform?.player.plays?.() ?? ['mp3', 'wav'];
   }
 
   /** What this device makes from speech: its encoder's, then WAV. @returns {Promise<string[]>} */

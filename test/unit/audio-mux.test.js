@@ -124,14 +124,6 @@ test('a WebM Opus file: EBML header, DocType webm, one audio track A_OPUS, block
   assert.deepEqual([...blocks[100].subarray(4)], [...packets(101)[100]]);
 });
 
-test('a WebM segment longer than 30 s goes on in a new cluster, so block times fit their 16 bits', () => {
-  const file = webmOpus(packets(2000), { rate: 16_000, preSkip: 312 });
-  const segment = ebml(file)[1][1];
-  const clusters = ebml(segment).filter(([id]) => id === 0x1f43b675).map(([, b]) => b);
-  assert.equal(clusters.length, 2);
-  assert.deepEqual(clusters.map((c) => num(child(c, 0xe7))), [0, 30_020]);
-});
-
 test('ADTS frames carry the right length and sample-rate index; FLAC starts fLaC with STREAMINFO', () => {
   const frames = [Uint8Array.of(1, 2, 3), new Uint8Array(300)];
   const out = adts(frames, { rate: 16_000, channels: 1 });

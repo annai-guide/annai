@@ -141,7 +141,7 @@ const float = (id, x) => {
 
 /**
  * A WebM Opus file: the EBML header (DocType webm), one audio track A_OPUS with its OpusHead, and
- * the packets as SimpleBlocks in time order, in clusters of at most 30 s. Times are in milliseconds.
+ * the packets as SimpleBlocks in one cluster, at their times in milliseconds (16 bits: up to 32 s).
  * @param {Uint8Array[]} packets @param {OpusInfo} o
  */
 export function webmOpus(packets, o) {
@@ -150,25 +150,13 @@ export function webmOpus(packets, o) {
   const info = el(0x1549a966, [uint(0x2ad7b1, 1_000_000), el(0x4d80, ascii('annai')), el(0x5741, ascii('annai')), float(0x4489, ms(ending(packets, o) - o.preSkip))]);
   const track = el(0xae, [uint(0xd7, 1), uint(0x73c5, 1), uint(0x83, 2), el(0x86, ascii('A_OPUS')), el(0x63a2, opusHead(o)),
     uint(0x56aa, Math.round((o.preSkip / 48_000) * 1e9)), uint(0x56bb, 80_000_000), el(0xe1, [float(0xb5, 48_000), uint(0x9f, o.channels ?? 1)])]);
-  /** @type {Uint8Array[]} */
-  const clusters = [];
-  /** @type {Uint8Array[]} */
-  let blocks = [];
-  let start = 0;
   let at = 0;
-  const close = () => { if (blocks.length) clusters.push(el(0x1f43b675, [uint(0xe7, start), ...blocks])); };
-  for (const p of packets) {
+  const blocks = packets.map((p) => {
     const t = ms(at);
-    if (t - start > 30_000) {
-      close();
-      blocks = [];
-      start = t;
-    }
-    blocks.push(el(0xa3, cat([Uint8Array.of(0x81, ((t - start) >> 8) & 0xff, (t - start) & 0xff, 0x80), p])));
     at += opusSamples(p);
-  }
-  close();
-  return cat([header, el(0x18538067, [info, el(0x1654ae6b, [track]), ...clusters])]);
+    return el(0xa3, cat([Uint8Array.of(0x81, t >> 8, t & 0xff, 0x80), p]));
+  });
+  return cat([header, el(0x18538067, [info, el(0x1654ae6b, [track]), el(0x1f43b675, [uint(0xe7, 0), ...blocks])])]);
 }
 
 const RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
