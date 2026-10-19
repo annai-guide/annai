@@ -145,7 +145,7 @@ export async function renderVoice(ctx) {
       h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' }),
       h('p', { class: 'sub', text: formats })),
     section('Live voice',
-      h('p', { class: 'sub', text: `While a live session is open, what you say goes straight to ${live.join(' or ') || 'the live model\u2019s provider'} as audio, only while someone speaks; the chip says "Listening live". A session opens when you tap Shiori or type, or when a reminder or Kokoro's note needs saying, and closes after the quiet below, when voice goes off, or when annai leaves the screen.${live.length ? '' : ' Put a live voice model, such as Gemini Live, in Koe for talking (Settings → Models) to use one.'}` }),
+      h('p', { class: 'sub', text: `While a live session listens, what you say goes straight to ${live.join(' or ') || 'its provider'} as audio, only while someone speaks, and the chip says "Listening live". It closes after the quiet below, on voice off, or when annai leaves the screen.` }),
       savedField('Close a live session after (seconds of quiet)', closeAfter, () => numberIn(closeAfter, 10, 300, 'Close after 10 to 300 seconds of quiet.', { whole: true, need: true }), (n) => save({ closeAfterSeconds: n })),
       bargeIn.el,
       h('p', { class: 'sub', text: 'Off: only a tap cuts her off, for a car whose speakers echo her voice back.' })),
