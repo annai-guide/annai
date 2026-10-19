@@ -65,12 +65,12 @@ export function blockFor(e, texts) {
 
 /**
  * Koe's line for what Shiori said to the user without it (Kokoro talking directly, while Koe was down
- * or before Shiori was two halves), so Koe knows what was said. Null: not one.
+ * or before Shiori was two halves, or Koe in a live session), so Koe knows what was said. Null: not one.
  * @param {any} e @param {Record<string, string>} texts @returns {string | null}
  */
 export function saidWithout(e, texts) {
   const d = e.data ?? {};
-  if (d.half === 'koe') return null;
+  if (d.half === 'koe' && !d.live) return null;
   if (e.type === 'out.speak') return `[said to the user] ${quote(texts.text)}`;
   if (e.type === 'out.show') return `[shown to the user] ${quote(cardText(d.card))}`;
   if (e.type === 'out.ask') return `[asked the user] ${askText(d)}`;
