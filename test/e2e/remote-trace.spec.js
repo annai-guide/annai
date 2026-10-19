@@ -100,8 +100,10 @@ test('Remote trace, installed from the catalog, sends a conversation to a sink t
     // Its own requests are in annai's trace, and never in what it sent.
     expect(lines.some((l) => l.data?.tool === 'plugin:remote-trace')).toBe(false);
 
-    // Off: the chip goes at once, and nothing more arrives.
+    // Its page shows the device id the lines carry, so two phones can be told apart.
     await page.goto('/#/plugins/remote-trace');
+    await expect(page.getByLabel('Device id')).toHaveValue(lines[0].device);
+    // Off: the chip goes at once, and nothing more arrives.
     await page.getByRole('checkbox', { name: 'Send', exact: true }).uncheck();
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('button', { name: 'Sending trace' })).toHaveCount(0);

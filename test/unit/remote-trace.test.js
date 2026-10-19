@@ -6,7 +6,7 @@ import { utf8 } from '../../src/core/bytes.js';
 import { logEvent } from '../../src/core/events.js';
 import { withoutSecretsIn } from '../../src/core/agent/net.js';
 import { SYS, SYS_SETTINGS, SYS_PLUGINS } from '../../src/core/scopes.js';
-import { start, activate, serverProblem, shellBuild, BATCH_MS, BATCH_MAX, KEEP_MAX, BATCH_BYTES, ENTRY_BYTES, RETRY_MS, RETRY_MAX_MS, REFUSALS, SETTINGS_FILE } from '../../plugins-official/remote-trace/index.js';
+import { start, activate, serverProblem, shellBuild, BATCH_MS, BATCH_MAX, KEEP_MAX, KEEP_BYTES, BATCH_BYTES, ENTRY_BYTES, RETRY_MS, RETRY_MAX_MS, REFUSALS, SETTINGS_FILE } from '../../plugins-official/remote-trace/index.js';
 import { hostKit } from './package-kit.js';
 
 const root = new URL('../../', import.meta.url);
@@ -18,6 +18,18 @@ const SERVER = 'https://sink.example/trace';
 const settle = async () => {
   for (let i = 0; i < 30; i++) await new Promise((r) => setImmediate(r));
 };
+
+/**
+ * Waits, in real time, until what a test expects has happened. The host's writes hash their content with WebCrypto, which
+ * Node runs on its thread pool, so a busy machine can take longer than any number of turns of the event loop.
+ * @param {() => boolean} ok @param {string} what
+ */
+async function until(ok, what, ms = 5000) {
+  for (const end = Date.now() + ms; !ok(); ) {
+    if (Date.now() > end) assert.fail(`waited ${ms} ms for ${what}`);
+    await new Promise((r) => setTimeout(r, 5));
+  }
+}
 
 /** A clock the test moves on by hand; timers run only then, in time order. */
 function virtualClock(t0 = T0) {
@@ -57,9 +69,13 @@ const entry = (seq, type = 'msg.user', data = { text: `hello ${seq}` }) => Objec
 /**
  * The plugin, started on a stand-in of the annai object: its settings and token, a server that answers
  * as told, and what it drew and said. answer(n): the nth post's answer (a Response, or an Error to throw).
- * @param {{ settings?: any, token?: string | null, answer?: (n: number, init: any) => Response | Error | Promise<Response>, secrets?: Record<string, string> }} [o]
+ * online: whether the browser says it is online, which the test changes with goOnline/goOffline.
+ * @param {{ settings?: any, token?: string | null, answer?: (n: number, init: any) => Response | Error | Promise<Response>, secrets?: Record<string, string>, online?: boolean }} [o]
  */
-async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, answer = () => new Response('{}'), secrets = {} } = {}) {
+async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, answer = () => new Response('{}'), secrets = {}, online = true } = {}) {
+  let isOnline = online;
+  /** @type {Set<() => void>} */
+  const backOnline = new Set();
   const clock = virtualClock();
   const store = createMemoryStore();
   await store.tx(['secrets'], 'readwrite', async (t) => {
@@ -88,7 +104,7 @@ async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, a
     secrets: {
       get: async (/** @type {string} */ n) => (await store.tx(['secrets'], 'readonly', (t) => t.getSecret(`plugin:remote-trace:${n}`))) ?? null,
       // What annai.secrets.blank does (src/core/plugins.js).
-      blank: (/** @type {any} */ v) => withoutSecretsIn(store, v),
+      blank: (/** @type {any} */ v) => withoutSecretsIn(store, v, { strict: true }),
     },
     net: {
       fetch: async (/** @type {string} */ url, /** @type {any} */ init) => {
@@ -107,12 +123,22 @@ async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, a
       card: (/** @type {any} */ c) => cards.push(c),
     },
   };
-  const stop = start(annai, { timers: clock.timers, now: clock.now, cacheNames: async () => ['annai-inbox', 'annai-shell-0.1.0-96fe727820fb'] });
+  const stop = start(annai, {
+    timers: clock.timers, now: clock.now, cacheNames: async () => ['annai-inbox', 'annai-shell-0.1.0-96fe727820fb'],
+    online: () => isOnline, onOnline: (/** @type {() => void} */ fn) => { backOnline.add(fn); return () => backOnline.delete(fn); },
+  });
   await settle();
   return {
     clock, store, saved, posts, cards, chips, went, stop,
     /** Hands the plugin's hook log entries, as annai would. @param {any[]} es */
     give: (...es) => { for (const e of es) hook?.(e); },
+    goOffline: () => { isOnline = false; },
+    goOnline: async () => {
+      isOnline = true;
+      for (const fn of backOnline) fn();
+      await clock.advance(0);
+    },
+    listening: () => backOnline.size,
     hooked: () => hook !== null,
     /** The user saves the plugin's form: its settings file changes, and the hook sees that. @param {any} changes */
     save: async (changes) => {
@@ -371,12 +397,101 @@ test('off until configured: no Send, no address, an address annai may not use, o
     assert.match(k.cards[0].body, words);
     k.stop();
   }
-  const noToken = await kit({ token: null });
-  noToken.give(entry(1));
-  await noToken.clock.advance(BATCH_MS * 2);
-  assert.deepEqual([noToken.posts.length, noToken.chips.size, noToken.cards.length], [0, 0, 1]);
-  assert.match(noToken.cards[0].body, /needs the server's token/);
-  noToken.stop();
+  {
+    // Send on with no token: it stays on, says so once, and keeps what waits.
+    const k = await kit({ token: null });
+    k.give(entry(1));
+    await k.clock.advance(BATCH_MS + RETRY_MS + 6000 + 12_000);
+    assert.deepEqual([k.posts.length, k.chips.size, k.cards.length], [0, 1, 1]);
+    assert.equal(k.cards[0].body, "It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).");
+    assert.equal(k.drawChip().attrs.get('aria-label'), 'Sending trace: 1 waiting, it has no token');
+    // The form saves only the token: the settings file doesn't change, so no entry tells the plugin. The next try reads it.
+    await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:remote-trace:token', TOKEN));
+    await k.clock.advance(RETRY_MAX_MS);
+    assert.equal(k.posts.length, 1);
+    assert.deepEqual(k.posts[0].body.entries.map((/** @type {any} */ e) => e.seq), [1]);
+    assert.equal(k.cards.length, 1);
+    k.stop();
+  }
+});
+
+test("a token or address a request can't carry gives one card and no request: a name and password in the address, a token with letters a header can't hold; a token's spaces are trimmed", async () => {
+  assert.match(String(serverProblem('https://me:secret@sink.example/trace')), /name or password/);
+  const odd = await kit({ token: 'tökén-0123456789abcdef' });
+  odd.give(entry(1));
+  await odd.clock.advance(BATCH_MS + RETRY_MS + 6000 + 12_000);
+  assert.deepEqual([odd.posts.length, odd.cards.length], [0, 1]);
+  assert.match(odd.cards[0].body, /^Its token has characters a request can't carry/);
+  odd.stop();
+  const padded = await kit({ token: `  ${TOKEN}\n` });
+  padded.give(entry(1));
+  await padded.clock.advance(BATCH_MS);
+  assert.equal(new Headers(padded.posts[0].init.headers).get('authorization'), `Bearer ${TOKEN}`);
+  padded.stop();
+});
+
+test('offline, what waits is capped by size too: past 4 MiB the oldest go first, and are counted', async () => {
+  let fail = true;
+  const k = await kit({ answer: () => (fail ? new Error('Load failed') : new Response('{}')) });
+  const big = (/** @type {number} */ seq) => entry(seq, 'tool.call', { name: 'write', input: { text: 'x'.repeat(60 * 1024) } });
+  k.give(...Array.from({ length: 200 }, (_, i) => big(i + 1)));
+  await k.clock.advance(BATCH_MS);
+  fail = false;
+  const tried = k.posts.length;
+  await k.clock.advance(2 * RETRY_MAX_MS);
+  const sent = k.posts.slice(tried);
+  const seqs = sent.flatMap((p) => p.body.entries.map((/** @type {any} */ e) => e.seq));
+  const bytes = sent.flatMap((p) => p.body.entries).reduce((n, e) => n + utf8(JSON.stringify(e)).length, 0);
+  assert.ok(bytes <= KEEP_BYTES, `${bytes} bytes kept`);
+  assert.ok(seqs.length > 50 && seqs.length < 200, `${seqs.length} kept`);
+  assert.equal(seqs.at(-1), 200, 'the newest are kept');
+  assert.deepEqual(seqs, Array.from({ length: seqs.length }, (_, i) => 200 - seqs.length + 1 + i), 'the oldest went first');
+  assert.equal(sent.reduce((n, p) => n + p.body.dropped, 0), 200 - seqs.length);
+  k.stop();
+});
+
+test("while the browser says it is offline, it doesn't try; when it is back online, it tries at once", async () => {
+  let fail = true;
+  const k = await kit({ online: false, answer: () => (fail ? new Error('Load failed') : new Response('{}')) });
+  k.give(entry(1));
+  await k.clock.advance(10 * RETRY_MAX_MS);
+  assert.equal(k.posts.length, 0, 'no tries while offline');
+  assert.equal(k.drawChip().attrs.get('aria-label'), 'Sending trace: 1 waiting, the phone is offline');
+  fail = false;
+  await k.goOnline();
+  assert.equal(k.posts.length, 1, 'at once');
+  // Offline after a failed try: the retry that comes due waits for the browser to be online.
+  fail = true;
+  k.give(entry(2));
+  await k.clock.advance(BATCH_MS);
+  assert.equal(k.posts.length, 2);
+  k.goOffline();
+  await k.clock.advance(5 * RETRY_MAX_MS);
+  assert.equal(k.posts.length, 2);
+  fail = false;
+  await k.goOnline();
+  assert.equal(k.posts.length, 3);
+  assert.deepEqual(k.posts[2].body.entries.map((/** @type {any} */ e) => e.seq), [2]);
+  k.stop();
+  assert.equal(k.listening(), 0, 'stopped, it no longer listens');
+});
+
+test('a server that answers 413 or 400 gets half the batch, and an entry it still refuses alone is dropped and counted, so one bad entry never blocks the rest', async () => {
+  const k = await kit({ answer: (_n, init) => {
+    const { entries } = JSON.parse(init.body);
+    if (entries.length > 10) return new Response('too big', { status: 413 });
+    if (entries.some((/** @type {any} */ e) => e.data?.text === 'poison')) return new Response('bad', { status: 400 });
+    return new Response('{}');
+  } });
+  k.give(...Array.from({ length: 100 }, (_, i) => entry(i + 1, 'msg.user', { text: i === 41 ? 'poison' : `hello ${i + 1}` })));
+  await k.clock.advance(30 * RETRY_MS);
+  const took = k.posts.filter((p) => p.body.entries.length <= 10 && !p.body.entries.some((/** @type {any} */ e) => e.data.text === 'poison'));
+  const seqs = took.flatMap((p) => p.body.entries.map((/** @type {any} */ e) => e.seq));
+  assert.deepEqual(seqs, Array.from({ length: 100 }, (_, i) => i + 1).filter((n) => n !== 42), 'all but the one it refused, in order');
+  assert.deepEqual(k.posts.slice(0, 4).map((p) => p.body.entries.length), [100, 50, 25, 12]);
+  assert.equal(took.reduce((n, p) => n + p.body.dropped, 0), 1);
+  for (let i = 1; i < 6; i++) assert.ok(k.posts[i].at - k.posts[i - 1].at <= RETRY_MS, 'halving waits no longer than a first retry');
+  k.stop();
 });
 
 test('the server address: https anywhere, http only on this device (annai\'s CSP)', () => {
@@ -440,6 +555,7 @@ test("in annai's plugin host: everything the user does reaches the server, never
   await h.ws.write('me', '/notes/a.md', 'hi', { author: 'user' });
   await logEvent(h.store, SYS, { type: 'error', data: { message: 'boom' } });
   await h.clock.advance(BATCH_MS);
+  await until(() => h.posts.length >= 1, '1 post');
   assert.equal(h.posts.length, 1);
   assert.equal(h.posts[0].url, SERVER);
   const sent = JSON.parse(h.posts[0].body).entries;
@@ -464,6 +580,7 @@ test("in annai's plugin host: a key typed into a message never reaches the serve
   await configure(h.ws, h.store);
   await logEvent(h.store, 'me', { type: 'msg.user', actor: 'user', data: { text: `key ${MODEL_KEY} token ${TOKEN}` } });
   await h.clock.advance(BATCH_MS);
+  await until(() => h.posts.length >= 1, '1 post');
   assert.equal(h.posts.length, 1);
   assert.ok(!h.posts[0].body.includes(MODEL_KEY) && !h.posts[0].body.includes(TOKEN));
   assert.match(h.posts[0].body, /key «key» token «key»/);
@@ -481,13 +598,80 @@ test("in annai's plugin host: a key typed into a message never reaches the serve
   assert.equal(await h.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret('endpoint:stand-in:key')), MODEL_KEY, "others' keys stay");
 });
 
+test("in annai's plugin host: annai.secrets.blank fails closed, so when the secrets can't be read nothing is posted; the batch waits and goes once they can", async () => {
+  const MODEL_KEY = 'sk-planted-model-key-0123456789';
+  const h = await hosted();
+  await h.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('endpoint:stand-in:key', MODEL_KEY));
+  await configure(h.ws, h.store);
+  const tx = h.store.tx;
+  // Reading one secret works (the token); listing them all, which blanking needs, fails.
+  h.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => tx.call(h.store, stores, mode, (/** @type {any} */ t) => fn(stores.includes('secrets') ? { ...t, listSecretIds: () => Promise.reject(new Error('The database connection is closing.')) } : t)));
+  await logEvent(h.store, 'me', { type: 'msg.user', actor: 'user', data: { text: `key ${MODEL_KEY}` } });
+  await h.clock.advance(BATCH_MS + RETRY_MS + 6000);
+  assert.equal(h.posts.length, 0, 'nothing went out unblanked');
+  h.store.tx = tx;
+  await h.clock.advance(RETRY_MAX_MS);
+  await until(() => h.posts.length >= 1, '1 post');
+  assert.equal(h.posts.length, 1);
+  assert.match(h.posts[0].body, /key «key»/);
+  assert.ok(!h.posts[0].body.includes(MODEL_KEY));
+  await h.host.stop('remote-trace');
+});
+
+test("in annai's plugin host: switched off by annai (its hooks handed over 1,000 entries in 10 s), it stops at once and sends nothing more; turned on again, it works", async () => {
+  const h = await hosted();
+  await configure(h.ws, h.store);
+  for (let i = 0; i < 1001; i++) await logEvent(h.store, 'me', { type: 'msg.user', actor: 'user', data: { text: `m${i}` } });
+  await settle();
+  assert.equal(h.registry.isDisabled('remote-trace'), true);
+  assert.equal(h.host.active.has('remote-trace'), false, 'stopped, so its cleanup ran');
+  await h.clock.advance(20 * BATCH_MS);
+  assert.equal(h.posts.length, 0);
+  await h.host.setEnabled('remote-trace', true);
+  assert.equal(h.registry.isDisabled('remote-trace'), false);
+  assert.equal(h.registry.entries('ui:status-chip').length, 1);
+  await logEvent(h.store, 'me', { type: 'msg.user', actor: 'user', data: { text: 'back' } });
+  await h.clock.advance(BATCH_MS);
+  await until(() => h.posts.length >= 1, '1 post');
+  assert.equal(h.posts.length, 1);
+  assert.deepEqual(JSON.parse(h.posts[0].body).entries.map((/** @type {any} */ e) => e.data.text), ['back']);
+  await h.host.stop('remote-trace');
+});
+
+test("in annai's plugin host: Reset turns it off at once and forgets its device id; set up again, it sends as a new device", async () => {
+  const h = await hosted();
+  await configure(h.ws, h.store);
+  await logEvent(h.store, 'me', { type: 'msg.user', actor: 'user', data: { text: 'one' } });
+  await h.clock.advance(BATCH_MS);
+  await until(() => h.posts.length >= 1, 'the first post');
+  const first = JSON.parse(h.posts[0].body).device;
+  await logEvent(h.store, 'me', { type: 'msg.user', actor: 'user', data: { text: 'waiting' } });
+  await h.host.reset('remote-trace');
+  await settle();
+  assert.equal(h.registry.entries('ui:status-chip').length, 0);
+  assert.equal(await h.ws.readJSON(SYS_SETTINGS, SETTINGS_FILE), undefined);
+  await h.clock.advance(10 * BATCH_MS);
+  assert.equal(h.posts.length, 1, 'what waited went with it');
+  await configure(h.ws, h.store);
+  await logEvent(h.store, 'me', { type: 'msg.user', actor: 'user', data: { text: 'two' } });
+  await h.clock.advance(BATCH_MS);
+  await until(() => h.posts.length >= 2, '2 posts');
+  assert.equal(h.posts.length, 2);
+  const again = JSON.parse(h.posts[1].body);
+  assert.deepEqual(again.entries.map((/** @type {any} */ e) => e.data.text), ['two']);
+  assert.match(again.device, /^[0-9a-f]{16}$/);
+  assert.notEqual(again.device, first);
+  await h.host.stop('remote-trace');
+});
+
 test('the package: an official plugin with the settings form the brief asks for, and activate', async () => {
   const manifest = JSON.parse(await readFile(new URL('plugins-official/remote-trace/annai-plugin.json', root), 'utf8'));
   assert.equal(manifest.id, 'remote-trace');
   assert.equal(manifest.name, 'Remote trace (for developers)');
   assert.equal(manifest.api, 1);
   assert.equal(manifest.entry, 'index.js');
-  assert.deepEqual(Object.keys(manifest.settings.properties), ['server', 'token', 'location', 'send']);
+  assert.deepEqual(Object.keys(manifest.settings.properties), ['server', 'token', 'location', 'send', 'device']);
+  assert.deepEqual([manifest.settings.properties.device.type, manifest.settings.properties.device.title, manifest.settings.properties.device.maxLength], ['string', 'Device id', 64]);
   const p = manifest.settings.properties;
   assert.deepEqual([p.server.type, p.token.type, p.token.writeOnly, p.location.default, p.send.default], ['string', 'string', true, false, false]);
   assert.deepEqual([p.server.title, p.token.title, p.location.title, p.send.title], ['Server address', 'Token', 'Send location points', 'Send']);

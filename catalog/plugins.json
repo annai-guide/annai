@@ -35,8 +35,8 @@
       "version": "0.1.0",
       "provides": {},
       "files": {
-        "annai-plugin.json": "6505232cc840bb711e9543d39c80f42086b0ff3f85fea850735842253b4a8f38",
-        "index.js": "f935cd9d19ca9fb3a0cbd7f09cbf5d39959459362ea770e21aa26b120fb8b3d5"
+        "annai-plugin.json": "24fc3deeda8ac000ad296d8fca21e32a1fdf05c9456265e9d471cb652eab442c",
+        "index.js": "f92387d45592c957b3a1f914eacb42512d4d59158b79fb5f184d00897126282d"
       }
     },
     {

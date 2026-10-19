@@ -31,6 +31,12 @@
         "default": false,
         "title": "Send",
         "description": "On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once."
+      },
+      "device": {
+        "type": "string",
+        "maxLength": 64,
+        "title": "Device id",
+        "description": "Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own."
       }
     }
   }
