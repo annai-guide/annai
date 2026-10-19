@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkProviderDesc, descOrigins, addressProblem, ABILITY_KINDS, CATEGORIES, ROLE_KIND } from '../../src/core/llm/provider-desc.js';
+import { checkProviderDesc, descOrigins, addressProblem, ABILITY_KINDS, CATEGORIES, ROLE_KINDS } from '../../src/core/llm/provider-desc.js';
 import { OPENAI_LIKE, LOCAL_SPEECH } from './provider-kit.js';
 
 /** @param {any} desc @param {string} id @param {any} ability */
@@ -42,7 +42,7 @@ test('security review: every address must parse, and be https, or http only for 
 test('the kinds, categories and which ability kind each role takes', () => {
   assert.deepEqual(ABILITY_KINDS, ['chat', 'transcription', 'voice']);
   assert.deepEqual(CATEGORIES, ['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
-  assert.deepEqual(ROLE_KIND, { main: 'chat', utility: 'chat', decide: 'chat', 'koe-talk': 'chat', 'koe-type': 'chat', 'speech-in': 'transcription', 'speech-out': 'voice' });
+  assert.deepEqual(ROLE_KINDS, { main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat'], 'koe-type': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'] });
 });
 
 test('fix pass: an address typed on a provider\'s page is checked by the same rule: https, or http only for localhost or 127.0.0.1, in words', () => {

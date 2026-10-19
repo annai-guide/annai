@@ -1,12 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp } from './helpers.js';
+import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
-/** Installs a package from a zip through Settings → Plugins and its install screen. @param {any} page @param {Buffer} zip @param {string} name */
+/** Installs a package from a zip through the Add screen and its install screen. @param {any} page @param {Buffer} zip @param {string} name */
 export async function install(page, zip, name) {
-  await page.goto('/#/plugins');
-  await page.getByLabel('Install from a file').setInputFiles({ name: `${name}.zip`, mimeType: 'application/zip', buffer: zip });
+  await pickFile(page, { name: `${name}.zip`, mimeType: 'application/zip', buffer: zip });
   await page.getByRole('button', { name: 'Install', exact: true }).click();
   await expect(page.locator('.card', { hasText: name }).getByText('On', { exact: true })).toBeVisible();
 }

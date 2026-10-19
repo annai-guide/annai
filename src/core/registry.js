@@ -7,6 +7,22 @@ export const NOT_OWN = `${OWN}, but the one installed came from elsewhere, so an
 /** A plugin the user switched off stays off (security review). */
 export const TURN_ON = 'Turn it on in Settings → Plugins, then try again.';
 
+/** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
+const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
+
+/**
+ * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the
+ * browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer (§17).
+ * @param {unknown} e
+ */
+export function isPluginBug(e) {
+  if (!(e instanceof Error)) return true;
+  const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
+  // An address the user typed that isn't one is the user's to fix, not a bug.
+  const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
+  return !offline && !address && BUGS.some((B) => e instanceof B);
+}
+
 export class PluginError extends Error {
   /** @param {string} pluginId @param {string} message @param {unknown} [cause] */
   constructor(pluginId, message, cause) {

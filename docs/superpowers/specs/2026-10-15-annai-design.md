@@ -183,7 +183,7 @@ Removing a trip deletes it from the device and frees its space at once. There is
   2. Only if the trip has changed since its last backup: "This trip hasn't been backed up since it last changed. Remove it anyway?"
 - **Backed up** means a Backup with everything ticked (§12.2), of the trip or of everything, was saved after the trip's last change: the share sheet finished, or the download started. A Share doesn't count, since it leaves out the conversation and the history. annai records the time on the trip, and trip cards show it (§16.2).
 - **What goes:** the trip's record, files and history, and all stored content nothing else uses. Content another trip also uses stays. The system log records `trip.remove {title, bytes}`.
-- **So everything stored must be named.** Removing any trip deletes all stored content that no file and no log entry names, wherever it came from. Whatever annai or a plugin keeps (request copies, trace bodies, audio clips) is a file, or is listed in the `refs` of the log entry that made it.
+- **So everything stored must be named.** Removing any trip deletes all stored content that no file and no log entry names, wherever it came from. Whatever annai or a plugin keeps (request copies, trace bodies, audio clips) is a file, or is listed in the `refs` of the log entry that made it. A kept audio clip, now compressed (§10.6), is still named by its `heard` event.
 - **Inside a trip, deleting keeps the history.** A deleted photo or file can be brought back from its history (§4.2), and its space comes back when the trip is removed.
 - **Finding what nothing else uses reads every file and log entry on the device.** That is quick while logs are small. Before milestone 2 makes them large (trace bodies, request copies), log entries get an index of the content they point at, so removing a trip reads only what that trip used.
 
@@ -213,12 +213,14 @@ A plugin is a folder, zip or URL containing `annai-plugin.json`:
 - `requires`: the plugins it needs, `[{ id, version: "^N", homepage? }]` (at most 10); `^N` is the same major, which for a protocol plugin is its interface version. A package can't require itself.
 - `category`: its kind in the catalog: `providers`, `speech`, `backup`, `tools`, `skills` or `developer`; derived when absent
 - `keywords`: other names it is searched by, as shown ("LM Studio")
+- `featured`: a sentence for the one-tap start (§9.8); it counts only in annai's own catalog, never from a third party's manifest
+- `catchAll`: a provider for any address (Another address), listed after the others when browsing
 - `settings`: a JSON Schema, from which we render a settings form automatically
 - `templates` (endpoint templates) is refused: "Endpoint templates were replaced by `provider`".
 
 ### 5.3 Installing and loading
 
-- **Sources:** the official catalog (`annai.guide/catalog/plugins.json`), a URL, or a zip.
+- **Sources:** the official catalog (`annai.guide/catalog/plugins.json`), a URL, or a zip, all from one Add screen (§16.2). The catalog's entries carry each plugin's kind, abilities, keywords, whether it is free, local or code, and its size, so it is searched before anything is installed; an installed plugin's are read from its manifest the same way. annai lists only its own catalog and what is installed: no third party's entries hosted elsewhere.
 - **Files are copied into storage.** They work offline, and they change only when the user accepts an update.
 - **The service worker serves installed plugin files** from storage at `/plugins/<id>/…` on our own origin. Multi-file plugins can use relative imports, and the security policy stays `script-src 'self'`.
 - **Official on-demand plugins** have a SHA-256 for every file in the catalog, and downloads are checked against it.
@@ -237,7 +239,7 @@ A module exports `activate(annai)`, which returns a cleanup function.
 
 - **What plugins can add:**
   - `tools` (name, description, input JSON Schema, `run`)
-  - `providers` (chat, speech-in, speech-out, search, fetch-reader, decision, and endpoint types)
+  - `providers` (chat, speech-in, speech-out, search, fetch-reader, decision, and endpoint types), and a provider plugin's own setup (`providers.setup`, below)
   - `sensors`, `triggers`
   - `schemas`
   - `ui` (§16.4)
@@ -251,6 +253,11 @@ A module exports `activate(annai)`, which returns a cleanup function.
   - `wake(reason)`
   - `ui.card`, `ui.toast`
   - shared helpers: the streamed-response reader, the half-finished-JSON reader, retry with backoff, TSV, merge patch
+- **A provider plugin with code has one setup** (`annai.providers.setup`, milestone 4 of the provider plan), the small contract for quirks that data can't carry:
+  - `panel(ui, provider)`: its own part of the setup, drawn in the key's place on its provider's page (provider null: its own start, which the featured one-tap start is, §9.8); `keyField: false` leaves the standard key field out. What it throws counts against it (§5.5), and the standard screen draws without it.
+  - `ui.add({ key, roles, … })` adds a provider of its own, installing what that needs; `ui.keep(providerId, key)` sets the key of one of its own providers. The key goes to annai's secrets for that provider alone (§9.9), never into the plugin's files; given as a function, it is asked for only once all else is in place, so no key is made that annai can't keep.
+  - `ui.expectReturn()` then `returned(params, ui)`: the next load of annai's address with a query, within 15 minutes, goes to the plugin that expected it, once; any other query (or one past the 15 minutes) is removed from the address, and a card says the sign-in came back too late, to start it again from Settings → Models.
+  - `classify(status, body, ability)` sharpens an error's kind before the protocol's; `headers(ability)` adds headers to an ability's requests, never one that carries the key (`authorization`, `x-api-key`, the provider's `keyHeader`); `list({ ability, endpoint, key, fetch, protocolList })` lists an ability's models in the protocol's place, through a fetch that reaches only the ability's address and never follows a redirect.
 - **Content a plugin keeps is a file, or is named in a log entry's `refs`.** Anything stored another way is deleted the next time a trip is removed (§4.9). The plugin guide (`docs/plugins.md`) says so too.
 - **Built-ins are plugins.** The core is storage, registry, scheduler, loop and context builder; everything else is a built-in plugin in the same format.
 - **Switches and trace come from the registry,** so they cover third-party tools automatically.
@@ -458,13 +465,13 @@ There's no special machinery:
 
 **Protocol plugins** are the endpoint types: they know how to talk (request and reply formats, streaming, error kinds). **Provider plugins** describe one provider each, as data: its address, how its key is sent (`keyHeader` when not the protocol's way), its abilities, each with its kind (chat, transcription, voice), its protocol's type, its own address if it has one, tunables, extra fields, `modelDefaults` (what a model added by id or from a list starts with) and models; the roles it suggests (`recommended`, `free`); its key page and notes. annai's catalog has OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, a local speech server, the scripted model and "Another address" (any other server, its abilities switched on by hand), each requiring the protocol plugins its abilities need.
 
-**Servers you run** have provider plugins of their own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama and LM Studio. Each is data, marked `local`, and its quirks are data too:
+**Servers you run** have provider plugins of their own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama and LM Studio. Each is marked `local`, and its quirks are data where they can be:
 - its default address and port, and whether it takes a key (Ollama takes none);
-- how its thinking is switched, as `modelDefaults.reasoning`: llama.cpp's `reasoning_effort` with `chat_template_kwargs.enable_thinking`, vLLM's and SGLang's `reasoning_effort` with `chat_template_kwargs` (`enable_thinking` and `thinking`), Ollama's `reasoning_effort: "none"` for off alone, its other levels empty (Ollama decides how hard a model thinks, and refuses a named level for a model that can't think). Level off sends the switch, so a quick decision doesn't think. LM Studio doesn't document its switch, so it has none;
+- how its thinking is switched, as `modelDefaults.reasoning`: llama.cpp's `reasoning_effort` with `chat_template_kwargs.enable_thinking`, vLLM's and SGLang's `reasoning_effort` with `chat_template_kwargs` (`enable_thinking` and `thinking`), Ollama's `reasoning_effort: "none"` for off alone, its other levels empty (Ollama refuses a named level for a model that can't think), while a model whose capabilities list thinking gets low, medium and high from its list (below). Level off sends the switch, so a quick decision doesn't think. LM Studio doesn't document its switch, so it has none;
 - forced tool calls: llama-server accepts a `tool_choice` naming a tool but doesn't force it, so llama.cpp's plugin turns on Chat Completions' `enforceToolCall` tunable, which sends `"required"` where the forced tool is the only one offered (the user, 2026-10-19). The user's Unsloth Studio server forced neither (2026-10-19); there the quick decision reads the letter the model writes. Ollama doesn't support `tool_choice`, so a quick decision may go to the main model;
 - the reasoning field: the protocol's `auto` reads `reasoning_content` and `reasoning`, which covers them all;
 - usage in the stream: the protocol asks for it (`stream_options`), which llama.cpp, vLLM, SGLang and Ollama answer (LM Studio doesn't say);
-- the context window: vLLM's and SGLang's lists give it as `max_model_len`. llama.cpp's list gives only the training context, and Ollama's and LM Studio's give none, so until their plugins read it from the server (milestone 4 of the provider plan) it is set on each model's page;
+- the context window: vLLM's and SGLang's lists give it as `max_model_len`. llama.cpp's list gives only the training context, and Ollama's and LM Studio's give none, so their plugins have a little code (the user, 2026-10-18), their provider setup's `list` (§5.4): llama.cpp reads `/props` (the loaded model's context per conversation, and whether it reads images); Ollama a loaded model's context (`/api/ps`), else its Modelfile's `num_ctx`, never its training context, with its photos, tools and thinking from `/api/show`; LM Studio a loaded instance's context, with its vision and tool flags, from `/api/v1/models`. A model not loaded when the list was fetched has its context set on its page;
 - notes in plain words: how to let annai's address in (Ollama's `OLLAMA_ORIGINS`, LM Studio's Enable CORS, llama.cpp's `--cors-origins` when `--tools` narrows it), the flags tool calls need (vLLM, SGLang), Ollama's small default context.
 
 A server you run is reached at `http://localhost` (or `127.0.0.1`) on the device annai runs on, or at an `https://` address. A plain `http://` address on another computer is refused: browsers block it from annai's https page, and the security policy (§15) allows http only for localhost. From a phone, the server needs HTTPS in front of it, such as Tailscale Serve or a tunnel, and the words where an address is typed say so.
@@ -565,15 +572,19 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 
 ### 9.8 Providers and onboarding
 
-- **Providers come from the catalog** (`annai.guide/catalog/plugins.json`): each provider plugin's description holds its models, capabilities, prices, TTLs, reasoning maps, provider tools and quirks. Adding one (Settings → Models → Add a provider) installs it and what it requires, with no question for annai's own.
+- **Providers come from the catalog** (`annai.guide/catalog/plugins.json`): each provider plugin's description holds its models, capabilities, prices, TTLs, reasoning maps, provider tools and quirks. Adding one (Settings → Models → Add a provider, which opens the catalog on model providers, §16.2) installs it and what it requires, with no question for annai's own.
   - Users' settings are copies: the description is a provider's template layer. A provider plugin's update (new models, new prices) is offered like any plugin update (§5.3) and applies on the user's tap; then the user's own changes stay, new models join no role, and a new ability arrives switched off, said on the provider's page.
   - Its speech models join behind the free entries when it is added: transcription after phone dictation, voices after the browser voice (§10.1, §10.3). "Use the recommended models" on its page puts them first, on that tap only.
 - **Default onboarding is "Sign in with OpenRouter"** (OAuth PKCE, with no client registration on our side). It makes one OpenRouter provider, with one key, and suggests models for each role.
+  - **It is OpenRouter's plugin's own setup** (§5.4), and the core names no provider: annai's catalog marks OpenRouter `featured`, and the one-tap start is that provider's panel. It shows on Settings → Models while there is no provider, and the welcome's last step says the featured sentence.
+  - **Its link exists before the tap.** An iPhone Home Screen app opens a page only from the tap itself, never after an await, so a screen offering the start installs the featured provider's plugin in the background as it opens (once the service worker controls the page; annai's own, hash-checked; never as a tap, so a plugin the user or annai switched off stays off). Until its panel is in, the start is a disabled "Getting the sign-in ready…", never a link without an address; offline, it says to connect. Adding another provider removes annai's own provider plugins no provider comes from, the start's among them, unless the user turned them off.
+  - On a provider's page, its panel offers Sign in again, whose new key replaces the one saved.
   - OpenRouter's free models allow 50 requests per day (1,000 per day after $10 of lifetime purchases), enough to try annai. The chat roles get free models.
   - Its transcription and voices (OpenRouter's OpenAI-compatible audio API) are abilities of the same provider, on the same key. Their models go at the end of the speech lists, behind phone dictation and the browser voice, so trying annai stays free; using them first is the user's choice, by moving them up under Roles (the user, 2026-10-18).
   - Nothing that costs money goes ahead of something free. OpenRouter's free voice (Fish Audio's, in its default voice) comes first among its voices: each sentence it says uses one of the free requests a day that the free chat models use too (the user, 2026-10-18: free audio is worth having). OpenRouter has no free transcription model. The others need credits bought at OpenRouter.
   - The card that says sign-in finished says what it set up, that the free voice shares the free requests, and how to move them up.
-  - The key OpenRouter makes is labelled "annai" in the user's OpenRouter keys. Back from OpenRouter, Settings → Models shows at once and says the sign-in is being finished.
+  - The key OpenRouter makes is labelled "annai" in the user's OpenRouter keys. Back from OpenRouter, the address goes to the plugin that started the sign-in (§5.4), and Settings → Models shows at once and says the sign-in is being finished; a failure is said on a card. On an iPhone Home Screen app OpenRouter shows a code instead, which is pasted in its panel.
+  - OpenRouter's free models used up for the day read as too many requests, not an account out of credit: its plugin's `classify`, not the protocol's.
   - Endpoints from before providers are removed at the next start, with their models, keys and uploads, and a card says to add providers again (no conversion; the user, 2026-10-18). A backup from before, restored later, is moved over again.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
@@ -625,12 +636,14 @@ A speech-in provider implements a **listening session**: start, stop, and a stre
   2. An `AudioWorklet` captures PCM audio.
   3. Our end-of-sentence detector measures energy in the speech band against a background-noise floor that keeps adapting. Speech followed by a pause of about 700 ms (tunable) becomes a segment.
   4. The detector only cuts audio; it never decides to stop listening.
+  5. A segment stays 16-bit PCM at 16 kHz in memory. It's encoded only when a receiver needs it, in the format §10.6 picks.
 - **Phone dictation.** The browser's speech recognition produces the segments itself. It can't run alongside recording.
 
 Privacy:
 - Audio leaves the phone only when speech was detected, and only to the configured speech-in entry.
 - Transcripts go into the log.
 - Audio is discarded unless the user turns on "keep voice clips".
+- A kept clip is stored compressed: the smallest format the phone both makes and plays (§10.6), Opus where it can. It's named by its `heard` event, as everything stored is (§4.9).
 
 ### 10.3 Speech-in list resolution
 
@@ -672,6 +685,30 @@ The setting is always one tap away. **Auto:**
 - otherwise, on the phone speaker → off
 
 Where the browser can't detect headphones, Auto falls back to the user's last explicit choice in that situation.
+
+### 10.6 Audio formats
+
+The user: "use the most efficient codec each provider supports … to cut down data usage and increase reliability on trips". The Koe and Kokoro design (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md, "Audio formats") has the measurements.
+
+- **Each ability says what it takes and gives,** as tunables in the protocol plugin's defaults and the provider description (docs/plugins.md, "Audio formats"):
+  - `audioIn`: what a transcription or a chat model takes;
+  - `audioOut`: what a voice gives.
+
+  Formats are named by file kind: `ogg` and `webm` (Opus), `mp4` and `aac` (AAC), `mp3`, `flac`, `wav`; `opus` is OpenAI's name for Ogg Opus. A model whose ability says nothing gets WAV, as before.
+- **annai sends the smallest format both sides handle.** The order is by codec: Opus, then AAC, MP3, FLAC, and WAV last. Within a codec, the receiver's own order counts.
+  - It's chosen again for each receiver: a transcription model, or a chat model for "Send audio to the model" (§10.3).
+  - Each format is made once per segment and kept with it.
+- **What the phone makes:**
+  1. WebCodecs' `AudioEncoder`, at 16 kHz, with annai's own small Ogg, WebM, ADTS and FLAC files (no library). Each codec is tried once on a tenth of a second, with a time limit, since a browser may say it has one that then fails or hangs. An encoding that fails or runs past its limit falls to the next format, and its codec isn't used again until annai restarts.
+  2. Where the encoder makes nothing a receiver takes, `MediaRecorder` records alongside. It's cut with each segment, and starts again every 2 s while nobody speaks.
+  3. WAV, which annai always makes itself.
+
+  The choice is made at run time, by trying, never by the browser's name.
+- **Speech out:** a voice whose `format` is `auto` is asked for the smallest format it offers that the phone plays. A voice that refuses it (Speaches refuses Opus and AAC) is asked for MP3, then WAV, until annai restarts.
+- **Reliability:**
+  - A failed upload (network or server) is sent again twice, with the same bytes. A turn that's stopped stops them.
+  - A transcription model that refuses any other format gets WAV at once (whisper.cpp's server says only "Invalid request"). A chat model gets it when its refusal names the audio or its format. If WAV works, that model gets WAV until annai restarts; if WAV is refused too, it fails as before.
+- **The Trace** shows each clip's format and size: kept, sent to be written down, sent to a model, and what a voice sent back. Settings → Voice says what this phone makes and plays.
 
 ## 11. Triggers and live mode
 
@@ -940,14 +977,21 @@ Reference: mockups draft 6.
   - **Files**
   - **Trace:** filters plus tool switches. Model turns say whose they are (Koe, Kokoro or Shiori), notes and blocks have lines of their own, and a Halves kind shows them.
   - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then Updates, About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, of annai or of a plugin, Updates comes first, with a line saying what waits.
-    - **Models:** Sign in with OpenRouter (until there is an OpenRouter provider), the providers (each with the abilities switched on and its number of models) and Add a provider, the roles (§9.6), Koe's two lists right after Main, chat roles taking chat models and speech roles transcription models or voices, then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead. A provider's page has its name; its key (written once, with Get a key), address and extra headers, saved together; its note; the suggestion buttons; one panel per ability with its switch, its own address, tunables, extra fields, photo uploads, its models (Add a model by id, Fetch model list) and Test; and Remove, which takes its key, models and their places in roles, and its plugin when it is the last made from it. Settings → Plugins names the providers made from each provider plugin and the plugins that need each protocol.
+    - **Models:** the one-tap start, the featured provider's sign-in, while there is no provider (§9.8), the providers (each with the abilities switched on and its number of models) and Add a provider (the catalog, on model providers), the roles (§9.6), Koe's two lists right after Main, chat roles taking chat models and speech roles transcription models or voices (each speech role with Add a provider: the catalog, on what has transcription, or a voice), then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead. A provider's page has its name; its key (written once, with Get a key), address and extra headers, saved together, with its plugin's own panel in the key's place where it has one (OpenRouter's Sign in again, §5.4); its note; the suggestion buttons; one panel per ability with its switch, its own address, tunables, extra fields, photo uploads, its models (Add a model by id, Fetch model list) and Test; and Remove, which takes its key, models and their places in roles, and its plugin when it is the last made from it.
+    - **Add** (the catalog): one screen for everything a user can add, from model providers to skills. It lists annai's official catalog, everything installed (third-party plugins too, each as what it is: from its address's host, or a file), the fixed row An MCP server, and at its foot installing from an address or a file (the install screen first, §5.1). annai's built-in parts aren't listed: they are there already.
+      - **Search** (a must) covers the name, then the plugin's `keywords`, then its description; an ability ("voice", "voices") and "free" match too. A name match ranks above a keyword match, so the more specific plugin comes first ("lm studio": LM Studio, then llama.cpp), and a row that matched on a keyword says why ("Also for: LM Studio"). Matching ignores case, spaces and punctuation ("lm studio" is "lmstudio"), and starts at a word (a capital after a small letter starts one, so "router" finds OpenRouter). A query with spaces that matches nowhere whole needs each word to match somewhere ("free voice"). Results rank by match, then featured, then official, then name. It is a few lines of annai's own, with no search library.
+      - **With nothing typed** it is browsable, grouped by kind (Model providers, Voices and transcription, Backup places, Tools and MCP, Skills and personalities, Developer), showing only kinds with something in them; the catch-alls, Another address and An MCP server, come last in theirs.
+      - **Chips** filter by kind, ability (Chat, Transcription, Voice), Free, Local, and Official or Third-party. A chip shows when it would keep some of the list and not all of it, or when it is on.
+      - **Each row** shows the name, its abilities, Free and Local, where it comes from (Official, or from an address's host or a file), data only or has code, and its size, and what can be done: Add (a provider: its plugin and what it requires, then the provider's page), Added with Add another once one is set up, Set up (a backup place, on Backups with its kind chosen; an MCP server, on its screen), Install (another official plugin), or Open (an installed plugin's page). A copy from elsewhere that holds an official plugin's id is never listed as annai's: annai's row says to remove that copy first.
+      - **It opens filtered to where the user came from:** Models → Add a provider on Model providers; a speech role's Add a provider on Transcription or Voice; Plugins → Add on everything; Experimental's Remote trace on Developer. Its crumb goes back there, and the install screen's crumb and Cancel go back to Add. Offline, it says annai's catalog couldn't be loaded, and what is installed still lists.
+    - **Plugins:** what is installed, each with its state, update and actions, searched and filtered as the catalog is, grouped by kind with nothing typed. Provider plugins are under Model providers, naming the providers made from them; protocol plugins name what needs them. Add opens the catalog.
     - **Shiori:** how she looks, her personality, and how often she acts on her own (§14.1).
     - **Updates:** annai's version and the build running; when annai last checked, and Check now, which checks annai and every plugin, those from an address too; a new version of annai that waits, with Restart now; each plugin update with its own Update. It says plainly when everything is up to date, when annai is offline, and what a check couldn't reach.
     - **About:** annai's version and the build of the service worker that runs it, with a link to Updates; the licence (AGPL-3.0, its text shipped and readable offline) and the source; where to report a problem; the privacy summary (what annai does with keys and data, and where that stops, in the welcome's words); the fine print; "Show the welcome again"; and the credits (§15), the fonts' licences and Shiori's art.
     - **Experimental:** features still being tried, each off until turned on. The first is swiping between tabs.
   - **Onboarding:**
-    - **the welcome,** once per device, at annai's plain start (`/`): what annai is, what it can do, your keys and data, the fine print, then the install guide where annai isn't installed and Settings → Models with Sign in with OpenRouter. It is in annai's voice, not Shiori's, and its steps can be skipped. A link that opens a screen (a shared trip, a share, the sign-in coming back) is never interrupted; the welcome waits for the next plain start. It is noted in the app's settings, so Erase brings it back, as on a new device.
-    - the install guide, OpenRouter sign-in, profile
+    - **the welcome,** once per device, at annai's plain start (`/`): what annai is, what it can do, your keys and data, the fine print, then the install guide where annai isn't installed and Settings → Models with the featured provider's sign-in, whose sentence it says (§9.8). It is in annai's voice, not Shiori's, and its steps can be skipped. A link that opens a screen (a shared trip, a share, the sign-in coming back) is never interrupted; the welcome waits for the next plain start. It is noted in the app's settings, so Erase brings it back, as on a new device.
+    - the install guide, the featured provider's sign-in, profile
   - **Import preview**
   - **Recap and Replay**
 - **Swiping sideways between the top bar's tabs** is experimental and off by default (Settings → Experimental). On, swiping into a tab brings back the screen last open in it, where you were on it.

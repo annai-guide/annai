@@ -3,13 +3,15 @@ import { markWelcomed } from '../welcome.js';
 import { keysAndData, finePrint } from '../privacy.js';
 import { STEPS as INSTALL_STEPS, installButton } from '../install.js';
 import { platform, isStandalone } from '../platform.js';
+import { readyFeatured } from '../provider-setup.js';
+import { officialPlugins } from '../../core/llm/official.js';
 
 /**
  * The welcome (the user, 2026-10-18): five short steps in annai's own words, not Shiori's, at
  * #/welcome and #/welcome/2 to 5. It shows once per device at annai's plain start (../welcome.js), and
  * again from Settings → About. Each step's heading takes the focus; Next, Back and Skip are buttons, so
  * a keyboard reaches them in every browser; the last step is the onboarding: installing annai where
- * it isn't, then Settings → Models with Sign in with OpenRouter.
+ * it isn't, then Settings → Models with the catalog's featured provider's sign-in (spec §9.8).
  */
 
 const TITLES = ['Welcome to annai', 'What annai can do', 'Your keys and your data', 'The fine print', 'Get started'];
@@ -21,8 +23,8 @@ const stepHash = (n) => (n === 1 ? '#/welcome' : `#/welcome/${n}`);
 /** @param {string} lead @param {string} text */
 const can = (lead, text) => h('li', {}, h('strong', { text: lead }), ' ', text);
 
-/** @param {number} n @returns {any[]} */
-function body(n) {
+/** @param {number} n @param {any} ctx @returns {any[]} */
+function body(n, ctx) {
   if (n === 1) {
     return [
       h('p', { class: 'lead', text: 'annai is a free, open-source travel guide that lives on your phone.' }),
@@ -44,22 +46,26 @@ function body(n) {
   }
   if (n === 3) return [h('p', { class: 'lead', text: 'annai is built so your keys and data stay yours. Here is exactly how, and where that stops.' }), ...keysAndData('h2')];
   if (n === 4) return finePrint();
-  return start();
+  return start(ctx);
 }
 
 /** Whether this is Safari on an iPhone, where a model set up here stays in Safari, apart from the Home Screen app. */
 const inSafari = () => platform() === 'ios' && !isStandalone();
 
-/** The last step: install where annai isn't installed, then connect a model. */
-function start() {
+/**
+ * The last step: install where annai isn't installed, then connect a model, with the featured provider's
+ * sentence from annai's catalog. Its plugin installs now, in the background, so its sign-in on Models is
+ * ready before the tap; not in Safari on an iPhone, where the model is set up in the Home Screen app. @param {any} ctx
+ */
+function start(ctx) {
   const p = platform();
-  const model = [
-    h('p', {
-      text: inSafari()
-        ? 'Connect a model there, so Shiori can think. Sign in with OpenRouter is the quickest way, and it starts you on free models. A model set up here, in Safari, stays in Safari.'
-        : 'Connect a model, so Shiori can think. Sign in with OpenRouter is the quickest way, and it starts you on free models.',
-    }),
-  ];
+  const lead = h('p', {});
+  const say = (/** @type {string} */ featured) => {
+    lead.textContent = [inSafari() ? 'Connect a model there, so Shiori can think.' : 'Connect a model, so Shiori can think.', featured, inSafari() ? 'A model set up here, in Safari, stays in Safari.' : ''].filter(Boolean).join(' ');
+  };
+  say('');
+  (inSafari() ? officialPlugins().then((list) => list.find((x) => x.featured)) : readyFeatured(ctx)).then((f) => { if (f?.featured) say(String(f.featured)); }, () => {});
+  const model = [lead];
   if (isStandalone() || p === 'desktop') {
     return [...model, ...(p === 'desktop' && !isStandalone() ? [h('p', { class: 'sub', text: 'You can also install annai as an app from your browser\'s menu.' })] : [])];
   }
@@ -105,7 +111,7 @@ export async function renderWelcome(ctx, route) {
   const screen = h('div', { class: 'screen welcome', dataset: { step: String(n) } },
     h('p', { class: 'step', text: `${n} of ${LAST}` }),
     title,
-    ...body(n),
+    ...body(n, ctx),
     h('div', { class: 'acts' }, ...nav));
   // Once the shell has put the step on screen, its heading takes the focus, so a screen reader starts there.
   setTimeout(() => { if (title.isConnected) title.focus(); }, 0);

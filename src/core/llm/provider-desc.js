@@ -23,8 +23,6 @@ export const CATEGORIES = Object.freeze(['providers', 'speech', 'backup', 'tools
 export const ROLE_KINDS = Object.freeze({
   main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat'], 'koe-type': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
 });
-/** Each role's first kind: what the catalog offers for it. @type {Readonly<Record<string, string>>} */
-export const ROLE_KIND = Object.freeze(Object.fromEntries(Object.entries(ROLE_KINDS).map(([role, kinds]) => [role, kinds[0]])));
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;
 /** The tunables protocols join onto an ability's address. */

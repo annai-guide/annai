@@ -15,7 +15,7 @@ import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { moveOver } from '../core/llm/move-over.js';
-import { finishSignIn } from '../ui/openrouter.js';
+import { finishReturn } from '../ui/provider-setup.js';
 import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
 import { disabledCard } from '../ui/plugin-cards.js';
 import { Updates, DAILY } from '../ui/updates.js';
@@ -222,8 +222,9 @@ async function boot() {
   // An iPhone Home Screen app that comes back from the background only resumes: the browser checks nothing then.
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updates.auto().catch(() => {}); });
   setInterval(() => updates.auto().catch(() => {}), DAILY);
-  // OpenRouter's sign-in comes back to annai's address with a code (spec §9.8).
-  finishSignIn({ llm, ws, store, notices: shell.notices, render: shell.render }).then((was) => { if (was) shell.render(); });
+  // A sign-in comes back to annai's address, for the plugin that started it (decision 16).
+  finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, go: (/** @type {string} */ hash) => { location.hash = hash; } })
+    .then((was) => { if (was) shell.render(); });
 }
 
 /** annai's own personalities as shipped, for installing and "reset to original" (spec §14.1). @returns {Promise<Record<string, string>>} */

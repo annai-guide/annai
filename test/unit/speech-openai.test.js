@@ -14,6 +14,7 @@ import { ensureType } from '../../src/core/llm/official.js';
 import { addProvider, withSpeech, speechAdd } from '../../src/core/llm/providers.js';
 import { official } from './provider-kit.js';
 import { readConfig, modelOf } from '../../src/core/llm/config.js';
+import { speechCall } from '../../src/core/llm/speech.js';
 
 /** @type {Record<string, any>} */
 const types = {};
@@ -58,6 +59,35 @@ test('voice: the text as JSON, the audio back as it came (spec §10.1)', async (
   const wav = await say.readSpeech(new Response(new Uint8Array([3]), { headers: { 'content-type': 'application/octet-stream' } }), { ...s, tunables: { ...s.tunables, format: 'wav' } });
   assert.equal(wav.mediaType, 'audio/wav');
   await assert.rejects(say.readSpeech(new Response(new Uint8Array([])), s), (e) => e instanceof ProviderError && e.kind === 'server');
+});
+
+test("formats (Koe and Kokoro design, \"Audio formats\"): transcription takes OpenAI's webm, mp4, mp3 and wav, each named for its kind; a voice offers opus, aac, mp3, flac and wav, and answers in the one annai chose", async () => {
+  assert.deepEqual(hear.tunables.audioIn, ['webm', 'mp4', 'mp3', 'wav']);
+  assert.deepEqual(say.tunables.audioOut, ['opus', 'aac', 'mp3', 'flac', 'wav']);
+  assert.equal(say.tunables.format, 'auto');
+  const names = [];
+  for (const mediaType of ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/aac', 'audio/mpeg', 'audio/flac', 'audio/wav']) {
+    names.push(/** @type {File} */ (hear.transcribeRequest({ ...spec(hear), audio: { data: new Uint8Array(1), mediaType } }).body.get('file')).name);
+  }
+  assert.deepEqual(names, ['speech.webm', 'speech.ogg', 'speech.m4a', 'speech.aac', 'speech.mp3', 'speech.flac', 'speech.wav']);
+  const opus = { ...spec(say), tunables: { ...say.tunables, format: 'opus' } };
+  assert.equal(JSON.parse(say.speechRequest({ ...opus, text: 'Hi.' }).body).response_format, 'opus');
+  assert.equal((await say.readSpeech(new Response(new Uint8Array([1]), { headers: { 'content-type': 'application/octet-stream' } }), opus)).mediaType, 'audio/ogg', "OpenAI's opus is Ogg Opus");
+  assert.equal(JSON.parse(say.speechRequest({ ...spec(say), text: 'Hi.' }).body).response_format, 'mp3', 'auto that annai left unresolved (an older annai): MP3, as before');
+});
+
+test("format auto asks OpenAI for opus when the device plays Ogg Opus, mp3 when it plays only mp3", async () => {
+  /** @type {string[]} */
+  const asked = [];
+  const fetch = async (/** @type {string} */ _url, /** @type {any} */ init) => {
+    asked.push(JSON.parse(init.body).response_format);
+    return new Response(new Uint8Array([1]), { headers: { 'content-type': 'audio/ogg' } });
+  };
+  const s = spec(say);
+  for (const plays of [['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'], ['mp4', 'aac', 'mp3', 'wav'], ['mp3', 'wav']]) {
+    await speechCall({ type: say, endpoint: { ...s.endpoint, baseUrl: 'https://api.openai.com/v1' }, model: /** @type {any} */ (s.model), key: null, text: 'Hi.', fetch, plays });
+  }
+  assert.deepEqual(asked, ['opus', 'aac', 'mp3']);
 });
 
 test('errors by their codes; model lists from /models', () => {

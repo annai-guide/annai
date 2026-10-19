@@ -1,4 +1,6 @@
 import { toBase64 } from '../bytes.js';
+import { pickFormat, formatOf, mediaTypeOf, rankOf } from './formats.js';
+import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
 
 /**
  * Speech-in list resolution (spec §10.3). What was heard stays in memory as a segment until the
@@ -6,14 +8,18 @@ import { toBase64 } from '../bytes.js';
  * again against the model actually receiving it: "Send audio to the model" when that model takes
  * audio; a transcription model's words, made once per segment; or phone dictation's words, which
  * are all a dictated segment has. Text versions are made lazily (textVersion).
- * @typedef {{ id: string, source: 'mic' | 'dictation', audio?: { data: Uint8Array, mediaType: string, seconds: number }, text?: string, ms: number, at: number }} Heard
- * @typedef {Heard & { transcripts: Map<string, string> }} Kept  a segment in memory, with its words by each transcription model
+ * @typedef {{ id: string, source: 'mic' | 'dictation', audio?: { data: Uint8Array, mediaType: string, seconds: number }, text?: string, ms: number, at: number,
+ *   encoded?: Map<string, Promise<Uint8Array | null>> }} Heard  audio: the microphone's 16 kHz WAV, or a kept clip; encoded: its other files, by format
+ * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }> }} Kept
  * @typedef {import('../llm/contract.js').Request} Request
  * @typedef {import('../llm/contract.js').Part} Part
- * @typedef {{ name: string, input: string[] }} Hearer  the model a request goes to
+ * @typedef {import('./platform.js').Encoder} Encoder
+ * @typedef {{ id?: string, name: string, input: string[] }} Hearer  the model a request goes to
  * @typedef {{ list: string[], memory: HeardMemory, asr: (id: string) => boolean, transcribe: (id: string, kept: Kept) => Promise<string>,
- *   clip?: (hash: string) => Promise<Uint8Array | null>, onFail?: (id: string, error: unknown) => void }} Resolve
- *   list: the speech-in list; asr: whether an entry is a transcription model that can work now; onFail: one failed (bench it)
+ *   clip?: (hash: string) => Promise<{ data: Uint8Array, mediaType: string } | null>, onFail?: (id: string, error: unknown) => void,
+ *   accepts?: (id: string) => string[], encoder?: Encoder | null, plain?: boolean }} Resolve
+ *   list: the speech-in list; asr: whether an entry is a transcription model that can work now; onFail: one failed (bench it);
+ *   accepts: a model's audioIn; plain: send WAV (another format was refused)
  */
 
 /** A segment nothing could write down (spec §10.3). */
@@ -43,7 +49,7 @@ export class HeardMemory {
   /** @param {Heard} h */
   keep(h) {
     if (this.#all.has(h.id)) return;
-    this.#all.set(h.id, { ...h, transcripts: new Map() });
+    this.#all.set(h.id, { ...h, transcripts: new Map(), encoded: new Map(h.encoded) });
     this.#bytes += bytesOf(h);
     for (const id of this.#all.keys()) {
       if (this.#bytes <= this.maxBytes || id === h.id) break;
@@ -66,6 +72,49 @@ export class HeardMemory {
   get size() {
     return this.#all.size;
   }
+}
+
+/**
+ * A segment in the smallest format both sides handle (spec §10.6), made once and kept, so a retry
+ * sends the same bytes; one of the same codec made already goes instead. A format that can't be
+ * made gives way to the next, down to WAV. null: the receiver takes nothing annai can make.
+ * @param {Kept} kept @param {string[]} accepts @param {Encoder | null} [encoder]
+ * @returns {Promise<{ data: Uint8Array, mediaType: string, format: string } | null>}
+ */
+export async function audioFor(kept, accepts, encoder) {
+  const audio = kept.audio;
+  if (!audio) return null;
+  const own = formatOf(audio.mediaType);
+  const makes = (await encoder?.makes().catch(() => null)) ?? [];
+  for (let wants = accepts; ;) {
+    const best = pickFormat(wants, [...makes, ...kept.encoded.keys(), ...(own ? [own] : [])]);
+    if (!best) return null;
+    const format = wants.find((f) => rankOf(f) === rankOf(best) && (f === own || kept.encoded.has(f))) ?? best;
+    if (format === own) return { data: audio.data, mediaType: audio.mediaType, format };
+    let made = kept.encoded.get(format);
+    if (!made) kept.encoded.set(format, (made = make(kept, format, encoder).catch(() => null)));
+    const data = await made;
+    if (data) return { data, mediaType: mediaTypeOf(format), format };
+    wants = wants.filter((f) => f !== format);
+  }
+}
+
+/** @param {Kept} kept @param {string} format @param {Encoder | null | undefined} encoder */
+async function make(kept, format, encoder) {
+  kept.pcm ??= pcmOf(/** @type {NonNullable<Kept['audio']>} */ (kept.audio), encoder);
+  const { pcm, rate } = await kept.pcm;
+  if (format === 'wav') return encodeWav(pcm, rate);
+  if (!encoder) throw new Error(`annai can't make ${format} here.`);
+  return encoder.encode(pcm, rate, format);
+}
+
+/** @param {NonNullable<Kept['audio']>} audio @param {Encoder | null | undefined} encoder */
+async function pcmOf(audio, encoder) {
+  if (formatOf(audio.mediaType) === 'wav') return pcm16(audio.data);
+  if (!encoder?.decode) throw new Error("This device can't read a kept clip back.");
+  const { pcm, rate } = await encoder.decode(audio.data, audio.mediaType);
+  const at = resample(pcm, rate, SEND_RATE);
+  return { pcm: Int16Array.from(at, (x) => Math.max(-32768, Math.min(32767, Math.round(x * 32768)))), rate: SEND_RATE };
 }
 
 /**
@@ -118,15 +167,17 @@ async function resolvePart(p, model, c) {
   if (p.text !== undefined) return { type: 'text', text: said(p.text) };
   if (!c.memory.get(p.id) && p.clip) {
     // A kept voice clip (spec §10.2) stands in for audio that has left memory.
-    const data = await c.clip?.(p.clip);
-    if (data) c.memory.keep({ id: p.id, source: 'mic', audio: { data, mediaType: 'audio/wav', seconds: 0 }, ms: 0, at: 0 });
+    const got = await c.clip?.(p.clip);
+    if (got) c.memory.keep({ id: p.id, source: 'mic', audio: { ...got, seconds: 0 }, ms: 0, at: 0 });
   }
   const kept = c.memory.get(p.id);
   if (!kept) return { type: 'text', text: NOT_TRANSCRIBED };
   if (!kept.audio) return { type: 'text', text: said(kept.text ?? '') };
   for (const id of c.list) {
     if (id === 'send-audio') {
-      if (model.input.includes('audio')) return { type: 'audio', mediaType: kept.audio.mediaType, data: toBase64(kept.audio.data) };
+      if (!model.input.includes('audio')) continue;
+      const a = await audioFor(kept, c.plain ? ['wav'] : (model.id && c.accepts?.(model.id)) || ['wav'], c.encoder);
+      if (a) return { type: 'audio', mediaType: a.mediaType, data: toBase64(a.data) };
       continue;
     }
     if (id === 'dictation' || !c.asr(id)) continue; // dictation can't read recorded audio

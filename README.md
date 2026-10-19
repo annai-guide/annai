@@ -9,7 +9,7 @@ memories afterwards.
 
 > **Status:** milestones 1 to 4 are built: trips with
 > versioned files, export and import (optionally encrypted), plugins, offline use and the trace;
-> photos; removing trips; and models (providers such as OpenRouter, Anthropic or OpenAI, each one address and one key for its chat, transcription and voice, added from annai's catalog or by Sign in with OpenRouter, through Chat Completions, Anthropic Messages and OpenAI Responses; roles
+> photos; removing trips; and models (providers such as OpenRouter, Anthropic or OpenAI, each one address and one key for its chat, transcription and voice, added from annai's searchable catalog or by Sign in with OpenRouter, through Chat Completions, Anthropic Messages and OpenAI Responses; roles
 > with fallback, the Test button, and every request in the trace); and Shiori herself: the dock and
 > her avatar, a conversation through her output tools, file, web and places tools that can each be
 > switched off, personalities and memory, budgets, and housekeeping for long conversations. Shiori sees
@@ -27,7 +27,7 @@ memories afterwards.
 
 ## Models
 
-- A server you run has a provider of its own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama or LM Studio. Each knows its usual address, and its page says what the server needs to let annai in. llama.cpp's, vLLM's, SGLang's and Ollama's also switch thinking off for quick decisions; LM Studio doesn't document how, so give a model that thinks its Reasoning levels on its page. annai reaches a server at `localhost` on the device it runs on; from a phone, the server needs an HTTPS address, such as Tailscale Serve or a tunnel puts in front of it.
+- A server you run has a provider of its own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama or LM Studio. Each knows its usual address, and its page says what the server needs to let annai in. llama.cpp's, vLLM's, SGLang's and Ollama's also switch thinking off for quick decisions; LM Studio doesn't document how, so give a model that thinks its Reasoning levels on its page. llama.cpp's, Ollama's and LM Studio's Fetch model list also reads the context the server gives a loaded model, and whether it reads images, so Shiori knows how long a conversation can get. annai reaches a server at `localhost` on the device it runs on; from a phone, the server needs an HTTPS address, such as Tailscale Serve or a tunnel puts in front of it.
 - A server that never streams, such as an LLM router that sends each answer whole, works through Chat Completions or OpenAI Responses. annai sees nothing of an answer until all of it has come, so the wait for her first words must cover the whole answer: with voice on, Settings → Voice → Wait for her first words (15 seconds unless changed); otherwise the role's "Wait for the first words" in Settings → Models (30 seconds unless changed). Raise it if long answers stop with "No output started in time."
 
 ## Plan and bookings
@@ -64,7 +64,8 @@ memories afterwards.
 
 ## Skills, MCP servers and plugins
 
-- **Skills** in the open [Agent Skills](https://agentskills.io/specification) format teach Shiori a kind of situation: install one from a zip, a `SKILL.md` file or its address in Settings → Plugins. Only its name and description sit in her context until she loads it; annai never runs anything in it. annai's own skills (`skills/`) are in the same format.
+- **One catalog:** everything you can add, from model providers and voices to backup places, tools and skills, is on one Add screen: annai's own catalog and what you have installed, searched by name, other names ("lmstudio" finds LM Studio, then llama.cpp, "Also for: LM Studio") and what it does ("free voice"), or browsed by kind with filters. Models → Add a provider opens it on model providers, a speech role's on what has transcription or a voice, and Settings → Plugins → Add on everything. Settings → Plugins searches and filters what is installed the same way.
+- **Skills** in the open [Agent Skills](https://agentskills.io/specification) format teach Shiori a kind of situation: install one from a zip, a `SKILL.md` file or its address, at the foot of the Add screen. Only its name and description sit in her context until she loads it; annai never runs anything in it. annai's own skills (`skills/`) are in the same format.
 - **MCP servers** give Shiori tools of their own: Settings → Tools → MCP servers takes a name, the server's address and a bearer token or headers, which stay on this device. Each tool can be switched off, and every request to the server is in the trace. The server must let web apps call it (CORS). For testing, `node scripts/mcp-stand-in.mjs --port <port>` runs annai's own stand-in server.
 - **Code plugins** run with full access to your trips and keys, and the install screen says so. They can add tools, endpoint types, backup places, status chips, Now sections, dock actions, trip tabs, settings pages, card types, screens and themes ([docs/plugins.md](docs/plugins.md)).
 - **Model providers** are plugins too, usually data only: a description of the provider's address, abilities and models, and the protocol plugins it requires, which come with it. Data-only plugins can't run anything, so they get no full-access warning; their install screen says where keys go.

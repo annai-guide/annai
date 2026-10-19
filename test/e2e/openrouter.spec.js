@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone, pickProvider } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Sign in with OpenRouter sets up one provider, OpenRouter, with one key for its chat, transcription and
@@ -104,7 +104,8 @@ test("Sign in with OpenRouter makes one provider with one key: free chat models,
     expect(said).toMatchObject({ model: 'x-ai/grok-voice-tts-1.0', voice: 'ara', response_format: 'mp3' });
     const raw = Buffer.from(server.bodies('/api/v1/audio/transcriptions')[0]).toString('latin1');
     expect(raw).toContain('openai/whisper-large-v3-turbo');
-    expect(raw).toContain('RIFF');
+    // The smallest file both sides take: Opus in WebM, from the browser's own encoder (Koe and Kokoro design, "Audio formats").
+    expect(raw).toContain('filename="speech.webm"');
     // One key, the sign-in's, on each request, with annai's attribution as on the chat endpoint.
     expect(sent).toHaveLength(2);
     for (const h of sent) expect(h).toMatchObject({ authorization: `Bearer ${KEY}`, 'x-title': 'annai', 'http-referer': 'https://annai.guide' });
@@ -120,9 +121,7 @@ test("OpenRouter added from Add a provider with a key: one provider whose chat, 
     await fakeMicrophone(page, [clipPath('where-lunch')]);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await page.getByLabel('Add a provider').selectOption({ label: 'OpenRouter' });
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
+    await pickProvider(page, 'OpenRouter');
     await expect(page.getByRole('link', { name: 'Get a key' })).toHaveAttribute('href', 'https://openrouter.ai/settings/keys');
     for (const ability of ['Chat', 'Transcription', 'Voice']) await expect(page.getByLabel(`Use ${ability}`)).toBeChecked();
     // Its one address: the stand-in, for every ability.
@@ -219,4 +218,47 @@ test('iPhone Home Screen app: after a refused code and then annai\'s 15 minutes,
   await s.tap();
   await s.paste('new-code');
   await expect(page.locator('.notice', { hasText: 'Signed in with OpenRouter' })).toBeVisible({ timeout: 30_000 });
+});
+
+test("OpenRouter's page has its plugin's sign-in in the key's place, the key field after it; Sign in again keeps the new key on that provider; its plugin page says it has code", async ({ page, browserName }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'OpenRouter');
+  const conn = page.getByRole('region', { name: 'Provider' });
+  await expect(conn.getByText('Sign in with OpenRouter for a key, or give one below.')).toBeVisible();
+  await expect(conn.getByRole('button', { name: 'Sign in with OpenRouter' })).toBeVisible();
+  await conn.getByLabel('API key').fill('sk-or-typed-key-123');
+  await conn.getByRole('button', { name: 'Save' }).click();
+  await expect(conn.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  await expect(conn.getByText('Sign in again for a new key, in place of the one saved.')).toBeVisible();
+  await page.goto('/#/plugins/provider-openrouter');
+  await expect(page.getByText(/^A model provider · has code · version 2\.0\.0/)).toBeVisible();
+  if (browserName === 'webkit') return; // WebKit can't stand in for OpenRouter's sign-in; the unit tests cover the rest
+  let authUrl = '';
+  await page.route('https://openrouter.ai/auth**', (route) => {
+    authUrl = route.request().url();
+    return route.fulfill({ status: 200, contentType: 'text/html', body: '<p>OpenRouter</p>' });
+  });
+  await page.route('https://openrouter.ai/api/v1/auth/keys', (route) => {
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST' };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ key: KEY }) });
+  });
+  await page.goto('/#/models');
+  await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await page.getByRole('region', { name: 'Provider' }).getByRole('button', { name: 'Sign in again' }).click();
+  await expect.poll(() => authUrl).toContain('code_challenge_method=S256');
+  await page.goto(`/?code=test-code&state=${new URL(authUrl).searchParams.get('state')}`);
+  await expect(page.locator('.notice', { hasText: 'Signed in with OpenRouter' })).toContainText('annai keeps the new key');
+  await expect(page.getByRole('region', { name: 'Providers' }).getByRole('listitem')).toHaveCount(1);
+  expect(await secretIds(page)).toHaveLength(1);
+  const kept = await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const store = await createIdbStore();
+    const ids = await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.listSecretIds());
+    const value = await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(ids[0]));
+    store.close();
+    return value;
+  });
+  expect(kept).toBe(KEY);
 });

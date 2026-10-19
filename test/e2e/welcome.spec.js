@@ -41,14 +41,25 @@ test('a fresh device is welcomed at its first plain start, and only once', async
   await expect(h1(page)).toHaveText('Trips');
 });
 
-test('Erase starts annai again as on a new device: the welcome shows again', async ({ page }) => {
+test('Erase starts annai again as on a new device: the welcome shows again, and no sign-in or other annai state is left in the browser', async ({ page }) => {
   await openApp(page, '#/welcome');
   await expect.poll(async () => typeof (await appSettings(page)).welcomedAt).toBe('number');
+  // A sign-in waiting (its verifier) and a return expected, as a provider plugin keeps them; scroll positions kept for this tab.
+  await page.evaluate(() => {
+    localStorage.setItem('annai.openrouter', JSON.stringify({ verifier: 'v', state: 's', at: Date.now(), mode: 'code', url: 'https://openrouter.ai/auth?x' }));
+    localStorage.setItem('annai.return', JSON.stringify({ plugin: 'provider-openrouter', at: Date.now() }));
+    localStorage.setItem('annai.backupTimings', '{}');
+    localStorage.setItem('elsewhere', 'kept');
+    sessionStorage.setItem('annai-scrolls', '[]');
+  });
   await page.evaluate(() => { location.hash = '#/settings'; });
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
   await expect(h1(page)).toHaveText(STEPS[0]);
   expect(new URL(page.url()).hash).toBe('#/welcome');
+  // annai.forceDownload is this test's own, set again at each load.
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k !== 'annai.forceDownload').sort())).toEqual(['elsewhere']);
+  expect(await page.evaluate(() => sessionStorage.getItem('annai-scrolls'))).toBeNull();
 });
 
 // The tap on Erase can be a start's first, whose sound unlock starts a silent clip (spec §10.1). WebKit on
@@ -67,7 +78,8 @@ test("Erase as a start's first tap, five times over: the welcome shows each time
       p.then(done, done);
       return p;
     };
-    addEventListener('beforeunload', () => sessionStorage.setItem('clips', `${sessionStorage.getItem('clips') ?? ''}${plays} played, ${starting} starting; `));
+    // Kept where Erase leaves it: a key of the test's own, not annai's.
+    addEventListener('beforeunload', () => localStorage.setItem('test-clips', `${localStorage.getItem('test-clips') ?? ''}${plays} played, ${starting} starting; `));
   });
   await openApp(page, '#/welcome');
   for (let i = 1; i <= 5; i++) {
@@ -76,7 +88,7 @@ test("Erase as a start's first tap, five times over: the welcome shows each time
     await page.getByRole('button', { name: 'Erase now' }).click();
     await expect(h1(page), `Erase ${i}`).toHaveText(STEPS[0]);
   }
-  const clips = String(await page.evaluate(() => sessionStorage.getItem('clips'))).split('; ').filter(Boolean);
+  const clips = String(await page.evaluate(() => localStorage.getItem('test-clips'))).split('; ').filter(Boolean);
   expect(clips).toHaveLength(5);
   for (const c of clips) expect(c).toMatch(/^[1-9]\d* played, 0 starting$/);
 });
@@ -96,6 +108,29 @@ test("the last step, where annai isn't installed: on an iPhone in Safari, look a
     await expect(install).toBeHidden();
     await page.evaluate(() => dispatchEvent(new Event('beforeinstallprompt')));
     await expect(install).toBeVisible();
+  }
+});
+
+test("the welcome's last step names the featured provider's sign-in from annai's catalog; outside Safari on an iPhone, its plugin installs in the background, so Models' sign-in is ready before the tap", async ({ page, browserName }) => {
+  await openApp(page, '#/welcome/5');
+  await waitForServiceWorker(page);
+  const lead = page.locator('.welcome p', { hasText: 'so Shiori can think' });
+  await expect(lead).toContainText('Sign in with OpenRouter is the quickest way, and it starts you on free models.');
+  const installed = () => page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const state = await new Workspace(store).readJSON('sys:plugins', '/installed.json');
+    store.close();
+    return Object.keys(state ?? {}).sort();
+  });
+  if (browserName === 'webkit') {
+    // The iPhone project is Safari, not the Home Screen app: the model is set up there, so nothing installs here.
+    await expect(lead).toContainText('A model set up here, in Safari, stays in Safari.');
+    await page.waitForTimeout(1000);
+    expect(await installed()).toEqual([]);
+  } else {
+    await expect.poll(installed, { timeout: 30_000 }).toEqual(['chat-completions', 'provider-openrouter', 'speech-openai']);
   }
 });
 
@@ -151,7 +186,8 @@ test('every step is reached with the keyboard alone, its heading taking the focu
   await tabTo('Set up a model');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' }).or(page.getByRole('link', { name: 'Sign in with OpenRouter' }))).toBeVisible();
+  // From the featured provider's plugin, installed in the background once the offline service runs.
+  await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' }).or(page.getByRole('link', { name: 'Sign in with OpenRouter' }))).toBeVisible({ timeout: 30_000 });
 });
 
 test('the welcome fits a phone 320 px wide: no step scrolls sideways', async ({ page }) => {
