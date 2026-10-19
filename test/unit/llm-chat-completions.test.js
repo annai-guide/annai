@@ -406,4 +406,8 @@ test("classify: Gemini's RESOURCE_EXHAUSTED (its free tier's limit a minute, in 
   const body = JSON.stringify([{ error: { code: 429, message: 'You exceeded your current quota, please check your plan and billing details.', status: 'RESOURCE_EXHAUSTED',
     details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '23s' }] } }]);
   assert.equal(type.classify(429, body), 'rate');
+  // Fix pass: a 402 RESOURCE_EXHAUSTED is prepaid credit used up: out of credit, as the status says, never tried again and again.
+  const prepaid = JSON.stringify([{ error: { code: 402, message: 'Your Prepay credit balance is depleted. Add credits to your billing account.', status: 'RESOURCE_EXHAUSTED' } }]);
+  assert.equal(type.classify(402, prepaid), null);
+  assert.equal(errorFromResponse(402, prepaid).kind, 'credit');
 });
