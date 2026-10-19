@@ -10,7 +10,7 @@ test('Settings lists what a user reaches for most often first, and Erase last', 
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   expect(await sections(page)).toEqual(['Models', 'Voice', 'Notifications', 'Backup', 'Shiori', 'Photos', 'Tools', 'Plugins', 'Storage',
-    'About', 'Diagnostics', 'Developer', 'Experimental', 'Erase']);
+    'Updates', 'About', 'Diagnostics', 'Developer', 'Experimental', 'Erase']);
   // Open an annai file sits with Backup.
   await expect(page.locator('section.panel', { has: page.getByRole('heading', { name: 'Backup' }) }).getByText('Open an annai file')).toBeVisible();
   // The version, which the App section showed, is on About's line.

@@ -13,10 +13,10 @@ import { PluginError } from './registry.js';
 
 /**
  * The packages installed from an address that have changed there. One that can't be checked now
- * (offline, broken, now another package) is left out quietly.
- * @param {PluginHost} host @param {{ fetch: Fetch }} o @returns {Promise<AddressUpdate[]>}
+ * (offline, broken, now another package) is left out quietly, or said in failed when it's given (Check now).
+ * @param {PluginHost} host @param {{ fetch: Fetch, failed?: string[] }} o @returns {Promise<AddressUpdate[]>}
  */
-export async function addressUpdates(host, { fetch }) {
+export async function addressUpdates(host, { fetch, failed }) {
   /** @type {AddressUpdate[]} */
   const out = [];
   for (const [id, s] of Object.entries(await host.installed())) {
@@ -29,8 +29,9 @@ export async function addressUpdates(host, { fetch }) {
       if (pkg.id !== id || pkg.fingerprint === s.fingerprint) continue;
       const added = pkg.replaces?.added ?? addedParts(await host.installedParts(id), pkg);
       out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added });
-    } catch {
+    } catch (e) {
       // not now: the next check asks again
+      failed?.push(`${s.name ?? id} couldn't be checked: ${/** @type {any} */ (e)?.message ?? e}`);
     }
   }
   return out;

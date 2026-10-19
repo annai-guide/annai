@@ -215,7 +215,7 @@ A plugin is a folder, zip or URL containing `annai-plugin.json`:
 - **Files are copied into storage.** They work offline, and they change only when the user accepts an update.
 - **The service worker serves installed plugin files** from storage at `/plugins/<id>/…` on our own origin. Multi-file plugins can use relative imports, and the security policy stays `script-src 'self'`.
 - **Official on-demand plugins** have a SHA-256 for every file in the catalog, and downloads are checked against it.
-- **Updates are checked for, and offered.** At each start, and once a day while annai is open, annai compares the official plugins it has installed with its catalog. A newer version is offered on a card and in Settings → Plugins; nothing changes until the user taps Update, and the new code runs from the next start. Plugins installed from a file have nowhere to check; those installed from a URL get the same check when that arrives (milestone 8).
+- **Updates are checked for, and offered.** annai compares the official plugins it has installed with its catalog at each start, when it comes back to the screen (at most every 15 minutes), once a day while it stays open, and on Check now in Settings → Updates. Plugins installed from a URL are checked at their address at each start, on coming back at most once a day (so a third party's server isn't asked at every return), and on Check now. Nothing is checked while offline. A newer version is offered on a card (once, not at every return), in Settings → Updates and in Settings → Plugins; nothing changes until the user taps Update, and new code that replaces code already running runs from the next start. Plugins installed from a file have nowhere to check.
 - **Choosing an unavailable type installs its plugin.** When a user picks an endpoint type, search provider or speech provider whose plugin isn't installed, it installs automatically.
 - **Plugins can add new types,** which become selectable once the plugin is installed.
 
@@ -880,10 +880,11 @@ Reference: mockups draft 6.
   - **Conversation**
   - **Files**
   - **Trace:** filters plus tool switches
-  - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, "Restart annai" comes first.
+  - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then Updates, About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, of annai or of a plugin, Updates comes first, with a line saying what waits.
     - **Models:** Sign in with OpenRouter (until there is an OpenRouter endpoint), the endpoints and their models, the roles (§9.6), then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead.
     - **Shiori:** how she looks, her personality, and how often she acts on her own (§14.1).
-    - **About:** annai's version and the build of the service worker that runs it; the licence (AGPL-3.0, its text shipped and readable offline) and the source; where to report a problem; the privacy summary (what annai does with keys and data, and where that stops, in the welcome's words); the fine print; "Show the welcome again"; and the credits (§15), the fonts' licences and Shiori's art.
+    - **Updates:** annai's version and the build running; when annai last checked, and Check now, which checks annai and every plugin, those from an address too; a new version of annai that waits, with Restart now; each plugin update with its own Update. It says plainly when everything is up to date, when annai is offline, and what a check couldn't reach.
+    - **About:** annai's version and the build of the service worker that runs it, with a link to Updates; the licence (AGPL-3.0, its text shipped and readable offline) and the source; where to report a problem; the privacy summary (what annai does with keys and data, and where that stops, in the welcome's words); the fine print; "Show the welcome again"; and the credits (§15), the fonts' licences and Shiori's art.
     - **Experimental:** features still being tried, each off until turned on. The first is swiping between tabs.
   - **Onboarding:**
     - **the welcome,** once per device, at annai's plain start (`/`): what annai is, what it can do, your keys and data, the fine print, then the install guide where annai isn't installed and Settings → Models with Sign in with OpenRouter. It is in annai's voice, not Shiori's, and its steps can be skipped. A link that opens a screen (a shared trip, a share, the sign-in coming back) is never interrupted; the welcome waits for the next plain start. It is noted in the app's settings, so Erase brings it back, as on a new device.
@@ -980,7 +981,7 @@ Eyes-free voice mode also serves users with low vision.
 
 3. **Plain errors with a next step.** Denied permissions get instructions specific to iPhone or Android.
 4. **A global catch.** `error` and `unhandledrejection` are recorded as `error` events with a small card, and the app keeps running. "Copy diagnostics" produces a redacted report.
-5. **Updates never land mid-trip.** The service worker installs new versions in the background. They activate on the next start, and never during a turn.
+5. **Updates never land mid-trip.** The service worker installs new versions in the background. They activate on the next start, and never during a turn. Checking isn't installing: annai asks the browser to look for a new version when it comes back to the screen (at most every 15 minutes, never offline; an iPhone Home Screen app that resumes from the background is otherwise never checked) and on Check now, and what it finds waits for the next start or for Restart now. Restart now, tapped during Shiori's turn, waits for the turn to end and says so.
 
 ## 18. Testing
 

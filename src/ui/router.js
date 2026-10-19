@@ -2,7 +2,7 @@
  * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
  * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate", plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>",
  * "#/trip/<id>/ext/<plugin>/<tab>",
- * "#/welcome" (and "#/welcome/2" to 5), "#/about" (and "#/about/licence", "#/about/fonts"), "#/experimental",
+ * "#/welcome" (and "#/welcome/2" to 5), "#/about" (and "#/about/licence", "#/about/fonts"), "#/experimental", "#/updates",
  * "#/plugins", "#/plugin-install" (the package picked on Plugins), "#/models", "#/voice", "#/shiori" (?edit=, ?compare=), "#/talk", "#/tools", "#/mcp" (MCP servers), "#/models/endpoint?id=…", "#/models/model?id=…", "#/trace", "#/notifications", "#/import?inbox=1". "#import=<url>" (spec §12.3)
  * becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash

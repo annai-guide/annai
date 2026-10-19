@@ -165,18 +165,27 @@ function row(ctx, r, update) {
     r.builtin ? null : pluginActions(ctx, r, update));
 }
 
+/** Restarts annai, after Shiori's turn and into a new version that waits (Updates.restart). @param {any} ctx */
+export const restartAnnai = (ctx) => ctx.updates?.restart() ?? location.reload();
+
+/** "Update to 1.1.0": here, on a plugin's page and on Settings → Updates. @param {any} ctx @param {any} update */
+export function updateButton(ctx, update) {
+  return h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async (/** @type {Event} */ e) => {
+      /** @type {HTMLButtonElement} */ (e.currentTarget).disabled = true;
+      await applyUpdates(ctx, [update], { addressFetch: tracedFetch(ctx.store, SYS, { tool: 'plugin updates' }), reload: () => restartAnnai(ctx) });
+      ctx.render();
+    },
+  }, `Update to ${update.available}`);
+}
+
 /** Update, Restart, Turn off or on, and Remove, for an installed plugin. @param {any} ctx @param {any} r @param {any} [update] */
 export function pluginActions(ctx, r, update) {
   const on = r.enabled && !r.failing;
   return h('div', { class: 'acts' },
-      update ? h('button', {
-        class: 'btn pri', type: 'button',
-        onclick: async () => {
-          await applyUpdates(ctx, [update], { addressFetch: tracedFetch(ctx.store, SYS, { tool: 'plugin updates' }) });
-          ctx.render();
-        },
-      }, `Update to ${update.available}`) : null,
-      r.restart ? h('button', { class: 'btn pri', type: 'button', onclick: () => location.reload() }, 'Restart annai') : null,
+      update ? updateButton(ctx, update) : null,
+      r.restart ? h('button', { class: 'btn pri', type: 'button', onclick: () => restartAnnai(ctx) }, 'Restart annai') : null,
       h('button', {
         class: 'btn', type: 'button',
         onclick: async () => {
