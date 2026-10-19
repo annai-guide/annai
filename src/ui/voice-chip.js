@@ -11,12 +11,15 @@ const SETTINGS = /** @type {const} */ ([['auto', 'Auto'], ['on', 'On'], ['off', 
  */
 export function voiceChip(ctx) {
   const voice = ctx.voice;
-  const chip = h('button', { class: 'chip voice-chip', type: 'button', 'aria-expanded': 'false', text: chipText(voice.mode) });
-  const menu = h('div', { class: 'voice-menu', role: 'group', 'aria-label': 'Voice', hidden: true });
+  const chip = h('button', { class: 'chip voice-chip', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true', 'aria-controls': 'voice-menu', text: chipText(voice.mode) });
+  const menu = h('div', { id: 'voice-menu', class: 'voice-menu', role: 'group', 'aria-label': 'Voice', hidden: true });
+  /** A tap anywhere else closes it, as the live menu does. @param {Event} e */
+  const outside = (e) => { if (!el.contains(/** @type {Node} */ (e.target))) close(); };
   const close = () => {
     menu.hidden = true;
     menu.replaceChildren();
     chip.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
   };
   const open = () => {
     menu.replaceChildren(...SETTINGS.map(([setting, label]) => h('button', {
@@ -28,6 +31,7 @@ export function voiceChip(ctx) {
     }, label)));
     menu.hidden = false;
     chip.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
   };
   chip.addEventListener('click', () => (menu.hidden ? open() : close()));
   menu.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
@@ -36,6 +40,8 @@ export function voiceChip(ctx) {
       chip.focus();
     }
   });
-  const dispose = voice.onChange((/** @type {import('../core/voice/mode.js').VoiceMode} */ m) => { chip.textContent = chipText(m); });
-  return { el: h('div', { class: 'voice-chip-wrap' }, chip, menu), dispose };
+  const off = voice.onChange((/** @type {import('../core/voice/mode.js').VoiceMode} */ m) => { chip.textContent = chipText(m); });
+  const el = h('div', { class: 'voice-chip-wrap' }, chip, menu);
+  // dispose: the dock is remade; an open menu's listener for a tap elsewhere goes with it.
+  return { el, dispose: () => { close(); off(); } };
 }

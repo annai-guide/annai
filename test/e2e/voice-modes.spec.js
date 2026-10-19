@@ -32,6 +32,24 @@ test('the voice chip: Auto turns voice on with headphones; On and Off are one ta
   await expect(page.getByRole('radio', { name: 'On', exact: true })).toBeChecked();
 });
 
+test('the voice menu says it pops up, and a tap elsewhere closes it', async ({ page }) => {
+  await fakeDevices(page, ['iPhone Microphone', 'AirPods Pro']);
+  await openApp(page, '#/trips');
+  const chip = page.locator('.voice-chip');
+  const menu = page.getByRole('group', { name: 'Voice' });
+  await expect(chip).toHaveAttribute('aria-haspopup', 'true');
+  await chip.click();
+  await expect(menu).toBeVisible();
+  await expect(chip).toHaveAttribute('aria-controls', String(await menu.getAttribute('id')));
+  await page.getByRole('heading', { name: 'Trips', exact: true }).click();
+  await expect(menu).toBeHidden();
+  await expect(chip).toHaveAttribute('aria-expanded', 'false');
+  // A tap inside it still chooses.
+  await chip.click();
+  await menu.getByRole('button', { name: 'Off' }).click();
+  await expect(chip).toHaveText('Voice off');
+});
+
 test('where annai cannot tell what audio is connected, Auto follows your last choice (spec §10.5)', async ({ page }) => {
   await fakeDevices(page, ['', '']);
   await openApp(page, '#/trips');
