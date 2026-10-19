@@ -7,6 +7,9 @@ import { ME } from '../scopes.js';
 import { candidates } from '../llm/fallback.js';
 import { koeList, splitOn } from '../koe/path.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
+import { koeTools } from '../koe/tools.js';
+import { compactView } from '../koe/context.js';
+import { modelOf } from '../llm/config.js';
 
 /**
  * Shiori as two halves (the Koe and Kokoro design): Koe talks with the user at once, Kokoro thinks and
@@ -66,6 +69,8 @@ export class Halves {
   #working = false;
   /** @type {KoeState | null} */
   #lastKoe = null;
+  /** The next reminder of the open conversation, for Koe's view (live mode's, set by the app). @type {(() => Promise<{ due: number, text: string } | null>) | null} */
+  next = null;
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set() };
 
@@ -119,6 +124,7 @@ export class Halves {
         voice: () => false,
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
+        sendable: (messages) => this.#koeSendable(messages),
         mark: (type) => (type === 'msg.user' ? { split: true } : MARKED.has(type) ? { half: 'koe' } : {}),
         serial,
         logged: (e, r) => this.#koeLogged(e, r),
@@ -127,7 +133,9 @@ export class Halves {
       },
     });
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.koeState === 'text' ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
-    this.koe.addLoopTools([channelTool('koe', this.channel)]);
+    // Koe's quick tools are Shiori's own, found by name: Kokoro's (timers, recall), else the plugins' (reads, places, light changes).
+    const find = (/** @type {string} */ name) => this.kokoro.loopTools().find((t) => t.name === name) ?? c.registry.entries('tool').find((e) => e.item?.name === name)?.item;
+    this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel)]);
     for (const kind of /** @type {const} */ (['event', 'notice'])) for (const a of [this.kokoro, this.koe]) a.on(kind, (x) => this.#emit(kind, x));
     this.kokoro.on('open', (x) => this.#emit('open', x));
     this.kokoro.on('state', (s) => this.#stateOf(this.kokoro, s));
@@ -362,7 +370,22 @@ export class Halves {
    */
   async #koeTail(now) {
     const block = nowBlock({ ...now, plan: null, reasons: now.reasons.map(escapeTags), place: escapeTags(now.place ?? 'unknown'), activity: escapeTags(now.activity ?? 'unknown') });
-    return `${block}\nKokoro's notes carry id="${this.nonce}".`;
+    // Live mode's reminders wait for its own work: a slow answer is none, so Koe never waits on it.
+    const next = this.next ? await Promise.race([this.next().catch(() => null), new Promise((r) => { setTimeout(() => r(null), 150); })]) : null;
+    const view = await compactView({ ws: this.ws, trip: this.koe.trip, now: now.now, timeZone: now.timeZone, next: /** @type {any} */ (next) });
+    return `${block}\n${view}\nKokoro's notes carry id="${this.nonce}".`;
+  }
+
+  /**
+   * What Koe is sent: a photo only when every model of its list takes photos (plan decision 22), else a
+   * line saying Kokoro sees it, so no model of Koe's is skipped for a photo it can't take.
+   * @param {import('../llm/contract.js').Message[]} messages
+   */
+  async #koeSendable(messages) {
+    const cfg = await this.llm.config();
+    const ids = candidates(cfg, koeList(cfg, false).role);
+    if (ids.every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return messages;
+    return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: '[a photo; Kokoro sees it]' } : p)) }));
   }
 
   /** What Koe wrote: Kokoro reads it, and wakes for what the user typed to Koe. @param {any} e @param {import('./loop.js').Resolved} r */

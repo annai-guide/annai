@@ -65,6 +65,7 @@ import { validate } from '../schema.js';
  *   its tail, in place of the now block
  * @property {() => string | null} [koe]  Koe's state, for Kokoro's now block
  * @property {() => Promise<string[]>} [hidden]  its loop tools left out now
+ * @property {(messages: import('../llm/contract.js').Message[]) => Promise<import('../llm/contract.js').Message[]>} [sendable]  its conversation as sent (Koe: photos its models can't take as words)
  * @property {(type: string) => Record<string, any>} [mark]  what it adds to the events it writes of a type ({ half: 'koe' })
  * @property {<T>(fn: () => Promise<T>) => Promise<T>} [serial]  writes of both halves, one at a time, so both read them in the log's order
  * @property {(e: any, r: Resolved) => Promise<void> | void} [logged]  an event it wrote, for the other half to observe
@@ -264,7 +265,9 @@ export class Agent {
     const cfg = await this.llm.config();
     /** @type {import('./refusals.js').Learned} */
     let images = {};
-    for (const id of candidates(cfg, (await this.#half.role(this.#voiceNow)).role)) {
+    // Koe's copies of the user's photos are Kokoro's too: they fit the main models as well.
+    const role = (await this.#half.role(this.#voiceNow)).role;
+    for (const id of [...candidates(cfg, role), ...(role === 'main' ? [] : candidates(cfg, 'main'))]) {
       const m = cfg.models[id] ? modelOf(cfg.models[id]) : null;
       if (m?.input?.includes('image')) images = stricter(images, m.images ?? {});
     }
@@ -726,7 +729,8 @@ export class Agent {
    */
   async #sendable() {
     const messages = this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing) }));
-    return limitImages(messages, (await this.#mainImages()).maxCount);
+    const out = limitImages(messages, (await this.#mainImages()).maxCount);
+    return this.#half.sendable ? this.#half.sendable(out) : out;
   }
 
   /** Whether the main role's first model gets photos by upload, so they count as their id (spec §6.5). */

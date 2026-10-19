@@ -124,6 +124,8 @@ async function boot() {
   push = new PushMirror({ store, ws, live, source: browserSource(), notice: (n) => pushCard(n), online: () => navigator.onLine !== false });
   agent.addLoopTools(watchTools(live));
   agent.sense = () => live.nowInfo();
+  // Koe's view of the trip names the open conversation's next reminder.
+  agent.next = async () => (await live.reminders())?.find((r) => r.scope === agent.scope && r.due >= Date.now()) ?? null;
   const awake = keepAwake({ live, ws });
   // Developer → Simulate a trip (spec §13): one at a time, shared by its screen and the live chip.
   const sim = new SimRun({ store, ws, registry, agent, live });
