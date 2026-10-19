@@ -7,6 +7,42 @@ export const NOT_OWN = `${OWN}, but the one installed came from elsewhere, so an
 /** A plugin the user switched off stays off (security review). */
 export const TURN_ON = 'Turn it on in Settings → Plugins, then try again.';
 
+/**
+ * The kinds whose items have a name only one plugin may hold (the provider plan's milestone 6), each with
+ * how its name is read. Hooks and the slots that add things up (chips, sections, tabs, screens) never clash.
+ * @type {Record<string, (item: any) => string>}
+ */
+export const NAMED = Object.freeze({
+  tool: (x) => String(x?.name), 'endpoint-type': (x) => String(x?.type), 'storage-type': (x) => String(x?.type), skill: (x) => String(x?.name),
+  personality: (x) => String(x?.name), 'ui:component': (x) => String(x?.name), 'ui:card-type': (x) => String(x?.type), search: (x) => String(x?.id),
+});
+/** Kinds handed the keys the user gives: a protocol gets a provider's, a kind of backup place a place's. Rank alone owns them, never a choice. */
+const KEYED = new Set(['endpoint-type', 'storage-type']);
+
+/**
+ * How a name's owner is found. rank: lower comes first (the host's: built-ins 0, official 1, third-party 2, then
+ * install time, then id); choice: the plugin the user chose for a name; reserved: 'only' for a name annai keeps
+ * (the loop's own tools: nothing replaces them), 'own' for one annai has its own of (its components, a built-in's
+ * provides), used unless the user chooses a plugin's.
+ * @typedef {{ rank: (pluginId: string) => (number | string)[], choice: (kind: string, name: string) => string | undefined,
+ *   reserved: (kind: string, name: string) => 'only' | 'own' | null }} Rules
+ * @typedef {{ kind: string, name: string, owner: string, used: boolean, reserved: boolean, chosen: boolean }} Clash
+ *   reserved: no choice can change the owner
+ */
+/** @type {Rules} before setRules: the first to register owns a name */
+const FIRST = { rank: () => [], choice: () => undefined, reserved: () => null };
+
+/** Two ranks compared element by element: below 0 when a comes first. @param {(number | string)[]} a @param {(number | string)[]} b */
+function before(a, b) {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (a[i] === b[i]) continue;
+    if (a[i] === undefined) return -1;
+    if (b[i] === undefined) return 1;
+    return a[i] < b[i] ? -1 : 1;
+  }
+  return 0;
+}
+
 /** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
@@ -39,7 +75,9 @@ export class PluginError extends Error {
  * switched off until enable() is called (spec §5.5).
  */
 export class Registry {
-  /** @type {Map<string, { pluginId: string, item: any }[]>} */ #items = new Map();
+  /** @type {Map<string, { pluginId: string, item: any, seq: number }[]>} */ #items = new Map();
+  #seq = 0;
+  /** @type {Rules} */ #rules = FIRST;
   /** @type {Map<string, number>} */ #failures = new Map();
   /** @type {Set<string>} */ #disabled = new Set();
   /** @type {Set<() => void>} */ #listeners = new Set();
@@ -53,7 +91,7 @@ export class Registry {
 
   /** @param {string} pluginId @param {string} kind @param {any} item @returns {() => void} removes this contribution */
   add(pluginId, kind, item) {
-    const entry = { pluginId, item };
+    const entry = { pluginId, item, seq: this.#seq++ };
     const list = this.#items.get(kind) ?? [];
     list.push(entry);
     this.#items.set(kind, list);
@@ -68,18 +106,74 @@ export class Registry {
     };
   }
 
-  /** Contributions of a kind from plugins that are not switched off. @param {string} kind */
+  /** Contributions of a kind from plugins that are not switched off; of a named kind, each name's owner's. @param {string} kind */
   list(kind) {
-    return (this.#items.get(kind) ?? []).filter((e) => !this.#disabled.has(e.pluginId)).map((e) => e.item);
+    return this.entries(kind).map((e) => e.item);
   }
 
   /**
-   * Contributions of a kind with the plugin each came from. all: also those of plugins switched off after
-   * repeated errors (they still hold the names they registered).
+   * Contributions of a kind with the plugin each came from: of a named kind, one per name, its owner's. all:
+   * every one, also those not used and those of plugins switched off after repeated errors.
    * @param {string} kind @param {{ all?: boolean }} [o] @returns {{ pluginId: string, item: any }[]}
    */
   entries(kind, { all = false } = {}) {
-    return (this.#items.get(kind) ?? []).filter((e) => all || !this.#disabled.has(e.pluginId)).map((e) => ({ pluginId: e.pluginId, item: e.item }));
+    const name = NAMED[kind];
+    /** @type {Map<string, string | undefined>} */
+    const owners = new Map();
+    const live = (this.#items.get(kind) ?? []).filter((e) => all || !this.#disabled.has(e.pluginId));
+    return live.filter((e) => {
+      if (all || !name) return true;
+      const n = name(e.item);
+      if (!owners.has(n)) owners.set(n, this.owner(kind, n)?.pluginId);
+      if (owners.get(n) !== e.pluginId) return false;
+      owners.set(n, undefined); // one per name: a second of the owner's own isn't used
+      return true;
+    }).map((e) => ({ pluginId: e.pluginId, item: e.item }));
+  }
+
+  /** How owners are found from now on (see Rules); screens draw again. @param {Rules} rules */
+  setRules(rules) {
+    this.#rules = rules;
+    this.#emit();
+  }
+
+  /**
+   * Who owns a name of a named kind: annai for a reserved name, else the plugin the user chose while it runs and
+   * registers it, else the lowest rank among those running (annai, for a name it has its own of, when no
+   * built-in registered it). null: nobody. @param {string} kind @param {string} name
+   * @returns {{ pluginId: string, chosen: boolean } | null}
+   */
+  owner(kind, name) {
+    const how = this.#rules.reserved(kind, name);
+    if (how === 'only') return { pluginId: 'annai', chosen: false };
+    const read = NAMED[kind] ?? (() => '');
+    const live = (this.#items.get(kind) ?? []).filter((e) => !this.#disabled.has(e.pluginId) && read(e.item) === name);
+    const chosen = KEYED.has(kind) ? undefined : this.#rules.choice(kind, name);
+    if (chosen && live.some((e) => e.pluginId === chosen)) return { pluginId: chosen, chosen: true };
+    const rank = (/** @type {{ pluginId: string, seq: number }} */ e) => [...this.#rules.rank(e.pluginId), e.seq];
+    const [first] = live.map((e) => ({ e, r: rank(e) })).sort((a, b) => before(a.r, b.r)).map((x) => x.e);
+    if (how === 'own' && (!first || this.#rules.rank(first.pluginId)[0] !== 0)) return { pluginId: 'annai', chosen: false };
+    return first ? { pluginId: first.pluginId, chosen: false } : null;
+  }
+
+  /**
+   * The names a plugin registers that someone else also has, or that the user chose for, with their owners: what
+   * its page says (Not used, or used by choice). @param {string} pluginId @returns {Clash[]}
+   */
+  clashes(pluginId) {
+    /** @type {Clash[]} */
+    const out = [];
+    for (const [kind, read] of Object.entries(NAMED)) {
+      const all = this.#items.get(kind) ?? [];
+      for (const name of new Set(all.filter((e) => e.pluginId === pluginId).map((e) => read(e.item)))) {
+        const o = this.owner(kind, name);
+        const others = all.some((e) => e.pluginId !== pluginId && !this.#disabled.has(e.pluginId) && read(e.item) === name);
+        if (o?.pluginId === pluginId && !o.chosen && !others) continue;
+        const reserved = KEYED.has(kind) || this.#rules.reserved(kind, name) === 'only';
+        out.push({ kind, name, owner: o?.pluginId ?? pluginId, used: o?.pluginId === pluginId, reserved, chosen: Boolean(o?.chosen) });
+      }
+    }
+    return out;
   }
 
   /** @param {string} pluginId */
