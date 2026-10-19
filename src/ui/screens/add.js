@@ -25,6 +25,8 @@ import { SYS } from '../../core/scopes.js';
 const KIND_NAMES = { providers: 'Model providers', speech: 'Voices and transcription', backup: 'Backup places', tools: 'Tools and MCP', skills: 'Skills and personalities', developer: 'Developer' };
 /** @type {Record<string, string>} */
 const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice' };
+/** Where Add was opened from (?from=), for its crumb; Plugins otherwise. @type {Record<string, [string, string]>} */
+const FROM = { models: ['#/models', '← Models'], experimental: ['#/experimental', '← Experimental'] };
 /** Another address is the catch-all: browsing, it comes after the providers annai knows. */
 const ANOTHER = 'provider-another-address';
 const NOT_INSTALLABLE = "That file isn't something annai can install";
@@ -129,7 +131,8 @@ export function byKind(found, typed, item) {
 
 /** Settings → Add: ?kind= and ?ability= open it filtered (spec §16.2). @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderAdd(ctx, route) {
-  const { kind, ability } = route.params;
+  const { kind, ability, from } = route.params;
+  const [back, backText] = Object.hasOwn(FROM, from) ? FROM[from] : ['#/plugins', '← Plugins'];
   const [catalog, installed, cfg] = await Promise.all([officialPlugins().catch(() => null), ctx.plugins.describe(), ctx.llm?.config().catch(() => null)]);
   /** @type {Record<string, number>} */
   const configured = {};
@@ -142,9 +145,8 @@ export async function renderAdd(ctx, route) {
     label: 'Search the catalog', entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
     draw: (found, typed) => byKind(typed ? found : found.sort((a, b) => last(a) - last(b)), typed, (x) => rowItem(ctx, /** @type {Row} */ (byId.get(x.entry.id)), x.why, redraw)),
   });
-  const models = Boolean(kind || ability);
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: models ? '#/models' : '#/plugins' }, models ? '← Models' : '← Plugins')),
+    h('p', { class: 'crumbs' }, h('a', { href: back }, backText)),
     h('h1', { class: 'title', text: 'Add' }),
     h('p', { class: 'sub', text: "Model providers, voices, backup places, tools and skills: annai's own, and what you have installed." }),
     catalog === null ? h('p', { class: 'sub warn', text: "annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows." }) : null,
@@ -245,7 +247,7 @@ async function fromFile(ctx, f) {
       }
     }
     const pkg = await ctx.plugins.inspect(files);
-    setPendingPackage({ files, pkg, from: { source: 'file', file: f.name } });
+    setPendingPackage({ files, pkg, from: { source: 'file', file: f.name }, back: location.hash });
     ctx.go('#/plugin-install');
   } catch (e) {
     if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: NOT_INSTALLABLE, body: message(e) });
@@ -279,7 +281,7 @@ async function fromAddress(ctx, value, button, error) {
     // A key in the address isn't a secret yet: the trace blanks it all the same (fix pass 8a-1).
     const files = await fetchPackage(url, { fetch: tracedFetch(ctx.store, SYS, { tool: 'plugins', blank: keysIn(url) }) });
     const pkg = await ctx.plugins.inspect(files);
-    setPendingPackage({ files, pkg, from: { source: 'url', url } });
+    setPendingPackage({ files, pkg, from: { source: 'url', url }, back: location.hash });
     ctx.go('#/plugin-install');
   } catch (e) {
     error.textContent = message(e);

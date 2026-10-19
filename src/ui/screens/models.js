@@ -85,7 +85,7 @@ function providersSection(ctx, cfg) {
   return h('section', { class: 'panel', 'aria-label': 'Providers' },
     h('h2', { class: 'section', text: 'Providers' }),
     rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: 'No providers yet. Add one below.' }),
-    h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add?kind=providers' }, 'Add a provider')));
+    h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add?kind=providers&from=models' }, 'Add a provider')));
 }
 
 /** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
@@ -155,7 +155,7 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
     h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
     // The catalog, on providers that can hear you, or speak (spec §16.2).
-    speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KIND[role]}`, 'aria-label': `Add a provider for ${role}` }, 'Add a provider')) : null,
+    speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KIND[role]}&from=models`, 'aria-label': `Add a provider for ${role}` }, 'Add a provider')) : null,
     h('div', { class: 'row' },
       others.length ? field(`Add a model to ${role}`, pick) : null,
       others.length ? h('div', { class: 'acts' }, h('button', {

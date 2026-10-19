@@ -26,5 +26,5 @@ export async function renderExperimental(ctx) {
       h('p', { class: 'sub', text: "Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends." }),
       h('div', { class: 'acts' }, traceInstalled
         ? h('a', { class: 'btn', href: '#/plugins/remote-trace' }, 'Open Remote trace')
-        : h('a', { class: 'btn', href: '#/add' }, "Get it from annai's catalog"))));
+        : h('a', { class: 'btn', href: '#/add?kind=developer&from=experimental' }, "Get it from annai's catalog"))));
 }

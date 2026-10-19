@@ -117,6 +117,12 @@ test('installing from an address is on the Add screen and goes to the install sc
     await elsewhere.getByRole('button', { name: 'Get it' }).click();
     await expect(page.getByRole('heading', { name: 'Install tide-pools?' })).toBeVisible();
     expect(await installedIds(page), 'nothing is stored before Install').toEqual([]);
+    // Its crumb and Cancel go back to the Add screen it came from, not to Plugins.
+    await expect(page.getByRole('link', { name: '← Add' })).toHaveAttribute('href', '#/add');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Add' })).toBeVisible();
+    await elsewhere.getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/tide-pools/SKILL.md`);
+    await elsewhere.getByRole('button', { name: 'Get it' }).click();
     await page.getByRole('button', { name: 'Install', exact: true }).click();
     await expect(page.getByText('tide-pools 1.2')).toBeVisible();
 
@@ -131,4 +137,26 @@ test('installing from an address is on the Add screen and goes to the install sc
   } finally {
     await site.stop();
   }
+});
+
+test("Add's crumb goes back where it was opened from: Models, Plugins, or Experimental, whose Remote trace opens it on Developer", async ({ page }) => {
+  await openApp(page, '#/experimental');
+  await waitForServiceWorker(page);
+  await page.getByRole('link', { name: "Get it from annai's catalog" }).click();
+  await expect(chip(page, 'Developer')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Install Remote trace (for developers)' })).toBeVisible();
+  await page.getByRole('link', { name: '← Experimental' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Experimental' })).toBeVisible();
+  await page.goto('/#/models');
+  await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
+  await page.getByRole('link', { name: '← Models' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  // The crumb follows where it came from, not its filters: a chip off still goes back to Models.
+  await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
+  await chip(page, 'Model providers').click();
+  await expect(page.getByRole('link', { name: '← Models' })).toHaveAttribute('href', '#/models');
+  await page.goto('/#/plugins');
+  await page.getByRole('link', { name: 'Add', exact: true }).click();
+  await page.getByRole('link', { name: '← Plugins' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Plugins' })).toBeVisible();
 });
