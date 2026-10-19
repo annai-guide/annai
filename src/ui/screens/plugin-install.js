@@ -1,4 +1,5 @@
-import { h } from '../dom.js';
+import { h, messageOf as message } from '../dom.js';
+import { andList } from '../format.js';
 import { pendingPackage, setPendingPackage } from '../plugin-pending.js';
 import { explainStorageFull } from '../storage-full.js';
 import { addressParts } from '../../core/address.js';
@@ -9,7 +10,6 @@ import { satisfies, installWith, checkPackageId } from '../../core/requires.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
-const message = (/** @type {any} */ e) => String(e?.message ?? e);
 
 /**
  * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
@@ -26,8 +26,6 @@ export function whatItBrings(pkg) {
   return out.length ? out : ['Nothing annai uses yet'];
 }
 
-/** "a, b and c". @param {string[]} list */
-const andList = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] ?? '');
 
 /**
  * Where a provider sends the keys a user gives it, by origin with its scheme (security review): said on

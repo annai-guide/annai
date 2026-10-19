@@ -1,7 +1,6 @@
-import { h, field, twoStep } from '../dom.js';
+import { h, field, twoStep, messageOf as message } from '../dom.js';
 import { explainStorageFull } from '../storage-full.js';
 
-const message = (/** @type {any} */ e) => String(e?.message ?? e);
 const AUTH = /** @type {Record<string, string>} */ ({ none: 'No key', token: 'A bearer token, kept on this device', headers: 'Headers, kept on this device' });
 
 /**

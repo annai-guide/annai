@@ -6,7 +6,7 @@ import { testModel, testLevels } from './check.js';
 import { endpointTypes, ProviderError, errorFromResponse, sameOrigin } from './contract.js';
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
-import { addFromCatalog, prune } from '../requires.js';
+import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins } from './official.js';
 import { PluginError } from '../registry.js';
 import { callRole, Bench, candidates } from './fallback.js';
@@ -172,6 +172,19 @@ export function createLlm({
         plugin = rec.plugin;
       }
       return { plugin, protocols: await prune(plugins, inUse(left)) };
+    },
+    /**
+     * What removing a provider would take with it, for the words by Remove: its plugin when it is the
+     * last made from it, and the protocol plugins nothing would need then. @param {string} id
+     * @returns {Promise<{ plugin: string | null, protocols: string[] }>}
+     */
+    async removalOf(id) {
+      const cfg = await readConfig(ws);
+      const rec = cfg.providers[id];
+      if (!rec) return { plugin: null, protocols: [] };
+      const left = Object.values(cfg.providers).filter((p) => p.id !== id);
+      const plugin = !left.some((p) => p.plugin === rec.plugin) && (await plugins.installed())[rec.plugin] ? rec.plugin : null;
+      return { plugin, protocols: await pruneable(plugins, inUse(left), new Set(plugin ? [plugin] : [])) };
     },
     /**
      * Uninstalls a provider plugin (spec §4.9): the providers made from it go first, each with its key,

@@ -1,4 +1,5 @@
-import { h, twoStep } from '../dom.js';
+import { h, twoStep, messageOf as message } from '../dom.js';
+import { andList } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { officialUpdates, officialPlugins } from '../../core/llm/official.js';
 import { addFromCatalog } from '../../core/requires.js';
@@ -13,7 +14,6 @@ import { addressParts } from '../../core/address.js';
 import { SYS } from '../../core/scopes.js';
 import { renderPlugin } from './plugin.js';
 
-const message = (/** @type {any} */ e) => String(e?.message ?? e);
 const NOT_INSTALLABLE = "That file isn't something annai can install";
 
 /**
@@ -160,8 +160,6 @@ export function stateOf(r) {
   return r.active ? 'On' : "On, but it didn't start";
 }
 
-/** "a, b and c". @param {string[]} list */
-const andList = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] ?? '');
 
 /**
  * What Plugins says of each installed plugin besides its state (milestone 1): a provider plugin's
