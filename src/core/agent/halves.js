@@ -184,6 +184,7 @@ export class Halves {
           this.#unseen = 0; // it reads every line so far
         },
         ended: (t) => this.#kokoroEnded(t),
+        hushed: () => this.live.voiced,
       },
     });
     this.koe = new Agent({

@@ -69,7 +69,7 @@ import { validate } from '../schema.js';
  * @property {() => void} [calling] @property {() => Promise<unknown>} [ready] waited for before each turn
  * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
- * @property {(t: TurnEnd) => void} [ended]
+ * @property {(t: TurnEnd) => void} [ended] @property {() => boolean} [hushed]  another voice plays (a live session): annai's reminders are shown, not said
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
  */
@@ -918,8 +918,8 @@ export class Agent {
     for (const r of list) {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
-      // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues).
-      const aloud = Boolean(this.voice?.on);
+      // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
+      const aloud = Boolean(this.voice?.on) && !this.#half.hushed?.();
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
       else {
