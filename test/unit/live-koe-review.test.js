@@ -62,3 +62,66 @@ test('item 2 (probe O): an append note that comes while a tool call is still bei
     await k.done();
   }
 });
+
+test('item 3 (probe E2): two listen() calls in flight open one microphone, and closing the session closes it', async () => {
+  const k = await liveKit([{ said: 'A long answer about the coast and its history that goes on for a while.', audio: tone(3) }, { said: 'Noted.', audio: tone(0.1) }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Tell me');
+    await until(() => k.agent.live.view.name === 'speaking', 3000);
+    slowSettings(k, 40);
+    k.agent.tap(); // she stops, and it listens
+    await k.agent.live.wake({ kind: 'trigger', text: 'Fuel is low' }); // a trigger opens with the microphone too
+    await wait(300);
+    const count = (/** @type {string} */ l) => k.platform.log.filter((/** @type {string} */ x) => x === l).length;
+    assert.equal(count('mic open'), 1, JSON.stringify(k.platform.log));
+    k.agent.hush('away');
+    assert.equal(count('mic close'), 1, 'every microphone opened is closed');
+    assert.equal(k.agent.live.listening, false);
+  } finally {
+    await k.done();
+  }
+});
+
+test('item 3 (probe A3): a close while listen() waits opens no microphone and throws nothing; a trigger that lost its session has its reminder shown, and is not said later', async () => {
+  /** @type {string[]} */
+  const rejections = [];
+  const onRejection = (/** @type {any} */ e) => { rejections.push(String(e?.message ?? e)); };
+  process.on('unhandledRejection', onRejection);
+  const k = await liveKit([{ said: 'Sunset soon.', audio: tone(0.1) }]);
+  try {
+    slowSettings(k, 60);
+    await k.voice.unlock();
+    const p = k.agent.live.open('tap', { mic: true });
+    await until(() => k.agent.live.state === 'open', 3000);
+    await wait(5);
+    hidden(true);
+    k.agent.hush('away');
+    assert.equal(await p, true);
+    await wait(120);
+    hidden(false);
+    assert.ok(!k.platform.log.includes('mic open'), JSON.stringify(k.platform.log));
+    assert.equal(k.agent.live.listening, false);
+    assert.deepEqual(rejections, []);
+    // A trigger whose session closes as its microphone opens (the quiet spell, say).
+    k.agent.send('x');
+    await until(() => k.agent.live.state === 'open', 3000);
+    await k.agent.idle();
+    const listen = k.agent.live.listen.bind(k.agent.live);
+    k.agent.live.listen = async () => { k.agent.live.close('quiet'); return listen(); };
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
+    await k.agent.idle();
+    await until(() => k.notices.some((/** @type {any} */ n) => n.body === 'Sunset at 18:40'), 2000); // its reminder is shown
+    k.agent.live.listen = listen;
+    k.agent.send('y');
+    await until(() => k.server.connections().length === 3, 3000);
+    await k.agent.idle();
+    assert.ok(!texts(k).some((t) => t.includes('Sunset in 30 minutes')), JSON.stringify(texts(k)));
+    assert.deepEqual(rejections, []);
+  } finally {
+    hidden(false);
+    process.off('unhandledRejection', onRejection);
+    await k.done();
+  }
+});
