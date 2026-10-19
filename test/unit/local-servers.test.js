@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readConfig, modelOf, saveRoles } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, saveRoles, saveModel } from '../../src/core/llm/config.js';
 import { addListedModel } from '../../src/core/llm/providers.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { startFakeServer } from '../fakes/model-server.js';
@@ -242,5 +242,53 @@ test('llama.cpp enforces tool calls: a quick decision forces its one tool as too
     } finally {
       await s.stop();
     }
+  }
+});
+
+test("Test also asks at the level a role will use: a model Main asks at medium that refuses it says so in plain words, and one that answers says that too; with no role asking more, there's no extra call (fix pass 7)", async () => {
+  const k = await kit();
+  const s = await startFakeServer({ flavour: 'ollama', cors: '*', replies: [{ text: 'OK' }, { calls: [{ name: 'report_color', input: { color: 'red' } }] }] });
+  try {
+    const { modelId } = await setUp(k, 'provider-ollama', s.origin, { model: 'llama3.2:latest' });
+    const posts = () => s.requests.filter((r) => r.method === 'POST').map((r) => r.body);
+    // Ollama's map before the fix pass: a named level, which a model that can't think refuses.
+    const rec = (await readConfig(k.ws)).models[modelId];
+    await saveModel(k.ws, { ...rec, user: { ...rec.user, reasoning: { off: { reasoning_effort: 'none' }, medium: { reasoning_effort: 'medium' } } } });
+    const refused = await k.llm.test(modelId);
+    assert.equal(refused.ok, false);
+    const step = refused.steps.find((x) => x.step === 'level');
+    assert.equal(step?.ok, false);
+    assert.equal(step?.detail, 'At Main\'s level (medium), this model refused: "llama3.2:latest" does not support thinking. Lower Main\'s level in Settings → Models, or change this model\'s Reasoning levels on its page.');
+    assert.deepEqual(posts().map((b) => b.reasoning_effort), ['none', 'none', 'medium'], 'one extra tiny call, at medium');
+    assert.equal(posts().at(-1).tools, undefined);
+    assert.equal((await readConfig(k.ws)).models[modelId].verified?.level, false);
+    // Ollama's map as it is now: medium sends nothing, and the model answers.
+    await saveModel(k.ws, { ...rec, user: { ...rec.user } });
+    const fine = await k.llm.test(modelId);
+    assert.equal(fine.ok, true);
+    assert.deepEqual(fine.steps.find((x) => x.step === 'level'), { step: 'level', ok: true, detail: "It also answers at Main's level (medium)." });
+    // Main at off, or the model in no role: Test asks at off alone.
+    const cfg = await readConfig(k.ws);
+    await saveRoles(k.ws, { ...cfg.roles, main: { models: [modelId], level: 'off' } });
+    const before = posts().length;
+    assert.equal((await k.llm.test(modelId)).steps.some((x) => x.step === 'level'), false);
+    await saveRoles(k.ws, { ...cfg.roles, main: { models: [], level: 'high' } });
+    assert.equal((await k.llm.test(modelId)).steps.some((x) => x.step === 'level'), false);
+    assert.equal(posts().length - before, 4, 'two calls each');
+  } finally {
+    await s.stop();
+  }
+});
+
+test("Test's extra call is made only where the role's level sends something other than off's: a model with no reasoning map is asked once (fix pass 7)", async () => {
+  const k = await kit();
+  const s = await startFakeServer({ flavour: 'lmstudio', cors: '*', replies: [{ text: 'OK' }, { calls: [{ name: 'report_color', input: { color: 'red' } }] }] });
+  try {
+    const { modelId } = await setUp(k, 'provider-lmstudio', s.origin);
+    const r = await k.llm.test(modelId);
+    assert.deepEqual([r.ok, r.steps.map((x) => x.step)], [true, ['access', 'key', 'tools']]);
+    assert.equal(s.requests.filter((x) => x.method === 'POST').length, 2);
+  } finally {
+    await s.stop();
   }
 });

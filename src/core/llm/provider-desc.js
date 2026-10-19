@@ -107,7 +107,7 @@ export function addressProblem(url) {
     return `${url} isn't a web address: give it with https:// in front.`;
   }
   if ((u.protocol === 'https:' && u.hostname) || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
-  // A server the user runs, on their network: the browser blocks plain http to it from annai's page, so say how to reach it.
+  // A server on the user's network: say how to reach it.
   return `An address must start with https:// (http:// only for localhost or 127.0.0.1).${u.protocol === 'http:' ? ' A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel.' : ''}`;
 }
 
