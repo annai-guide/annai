@@ -287,7 +287,16 @@ All wakes go into one queue:
 - User input goes ahead of triggers.
 - If the queue isn't empty when a turn ends, the next turn starts immediately.
 
-When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types goes to Koe, which writes it into the conversation; Kokoro reads it there and wakes for it. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. Kokoro also wakes for a note from Koe, unless it has told Koe since the user last typed: one typed question costs one Kokoro call. What Koe said by itself is in what Kokoro reads at its next call.
+When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types or says goes to Koe, which writes it into the conversation. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. A wake that asks for her voice (the recap told aloud, §13) goes to Koe alone.
+
+**Kokoro hears all and wakes on cue.** Everything heard, chatter included, and everything Koe says goes into Kokoro's transcript at once. Kokoro wakes when:
+- the user types or sends a photo;
+- Koe asks it something (a note). It doesn't, if Kokoro has told Koe since the user last typed or spoke: one question costs one Kokoro call;
+- Koe answers what was heard. A reply in which Koe also asks Kokoro wakes it with the question instead;
+- a trigger fires;
+- a review comes due: as a new line comes, 3 minutes or more of conversation have gone by since Kokoro last read it. That catches a request Koe took for chatter while it still matters on a drive, costs at most 20 calls in a chatty hour, and reads a cached prefix. Silence costs nothing.
+
+Kokoro doesn't wake for each passenger's sentence.
 
 ### 6.2 A turn
 
@@ -387,8 +396,9 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 **Failures.**
 - Kokoro's `speak`, `show` and `ask` while Koe talks aren't run: each becomes a note to Koe, and its result says to use `tell_koe`. Its `wait` is answered too: the microphone is Koe's. This is in code, not instructions alone.
 - When Koe's whole list fails, it rests at least a minute; Kokoro gets "Koe can't speak right now; talk to the user directly" (and whether its last notes reached the user), its output tools run again, and what the user types goes to Kokoro alone until Koe answers again ("Koe is speaking again; use tell_koe"). No card: Kokoro answers.
-- When Kokoro's whole list fails while Koe talks, Koe is told once, and tells the user it couldn't check and offers to try again. No card.
-- For now Koe types only: with voice on, Kokoro talks, told by a block, as Shiori as one half did. The voice pathway for Koe comes next.
+- When Kokoro's whole list fails while Koe talks, Koe is told once, and tells the user it couldn't check and offers to try again. No card. A check nobody waited for (Koe's own answer, a review) tells Koe nothing: the Trace has it.
+
+**Voice** is Koe's while it works (§10.7).
 
 ## 7. Output model and tools
 
@@ -710,6 +720,15 @@ The user: "use the most efficient codec each provider supports … to cut down d
   - A transcription model that refuses any other format gets WAV at once (whisper.cpp's server says only "Invalid request"). A chat model gets it when its refusal names the audio or its format. If WAV works, that model gets WAV until annai restarts; if WAV is refused too, it fails as before.
 - **The Trace** shows each clip's format and size: kept, sent to be written down, sent to a model, and what a voice sent back. Settings → Voice says what this phone makes and plays.
 
+### 10.7 Two halves
+
+While Shiori is two halves (§6.8), the one voice is Koe's:
+- **Koe talks and listens** through everything above. Its list is "Koe for talking" while voice is on and "Koe for typing" while it's off, an empty one using the other (§9.6), so a typing model can talk too. Listening is judged against Koe's own models: whether they take audio for "Send audio to the model". When Koe heard the sound, its model writes it down.
+- **Kokoro** never opens the microphone or speaks while Koe works; it speaks, as Shiori always did, only while Koe is down. The sign's Stop stops Kokoro, never Koe's voice. What was heard is written down once, after Koe's turn, and Kokoro reads it from there.
+- **Koe's `speak` listens only as its reply's last call,** so its question to Kokoro and its `wait` follow at once. With voice on, `wait` listens: it ends on Kokoro's note, the user speaking or typing, "Kokoro has nothing to add", or its time limit. Meanwhile the sign shows, and the user can keep talking.
+- **A note from Kokoro ends Koe's listening,** so Kokoro's answer is said without dead air. While the user is speaking, their words come first, and the note with them. An immediate note also cuts Koe's speech where it is; its `speak` result says where, and Koe corrects itself.
+- **Chatter** goes through the quick-decision gate (§10.4) as before. Dismissed, it still goes into both transcripts, labelled as not meant for Shiori even inside the result of Koe's listening, and wakes neither half.
+
 ## 11. Triggers and live mode
 
 ### 11.1 Live mode
@@ -874,7 +893,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 
 ## 13. After the trip
 
-- **Recap.** The utility model summarizes the event log, notes and photos into a recap stored as `/trip/recap.md`. Shiori can tell it by voice.
+- **Recap.** The utility model summarizes the event log, notes and photos into a recap stored as `/trip/recap.md`. Shiori can tell it by voice (Koe, while she is two halves, §6.1).
 - **Replay.** A timeline of the trip:
   - places, Shiori's cards, photos, and the user's messages
   - the route drawn as an SVG polyline from the location points, using a simple equirectangular projection and no map tiles
