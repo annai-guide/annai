@@ -347,7 +347,8 @@ export class Halves {
     this.#liveId = path?.kind === 'live' && this.koeState === 'live' ? path.modelId : null;
     // A live session closes when voice goes off, or Koe's pathway leaves its model: its microphone never stays open otherwise.
     const model = this.live.modelId;
-    if (this.live.state !== 'closed' && (!this.#liveId || (model && model !== this.#liveId) || (this.#voiceWas && !voiceOn))) this.live.close(voiceOn ? 'pathway' : 'voice off');
+    const voiceOff = this.#voiceWas && !voiceOn;
+    if (this.live.state !== 'closed' && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) this.live.close(voiceOff ? 'voice off' : 'pathway');
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
     if (this.state.name !== was) this.#emit('state', this.state);
