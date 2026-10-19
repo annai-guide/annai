@@ -2,7 +2,8 @@
  * The Chat Completions endpoint type (spec §9.1): annai's request in, an OpenAI-style streamed
  * chat completion out. Used by OpenAI, OpenRouter, Gemini's OpenAI-compatible endpoint, Groq,
  * DeepSeek, Mistral and local servers; their differences are tunables (spec §9.2). Audio a model takes goes as
- * input_audio (OpenRouter, Gemini, OpenAI's audio models).
+ * input_audio (OpenRouter, Gemini, OpenAI's audio models). A server that never streams answers with one
+ * whole JSON completion, which is read as the same events (item 24, 2026-10-18).
  */
 const TUNABLES = Object.freeze({
   path: '/chat/completions',
@@ -107,6 +108,10 @@ function wire(m, t) {
  * @param {Response} res @param {any} c @param {any} helpers
  */
 async function* read(res, { tunables: t }, { sse, ProviderError, errorFromResponse }) {
+  if (whole(res)) {
+    yield* readWhole(await jsonOf(res, ProviderError), t, { ProviderError, errorFromResponse });
+    return;
+  }
   /** @type {Map<number, { id: string, name: string, args: string }>} */
   const calls = new Map();
   let reasoning = '';
@@ -131,11 +136,7 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     } catch {
       continue;
     }
-    if (chunk.error) {
-      const e = errorFromResponse(typeof chunk.error.code === 'number' ? chunk.error.code : 500, JSON.stringify({ error: chunk.error }));
-      const sharper = classify(e.status ?? 500, JSON.stringify({ error: chunk.error }));
-      throw new ProviderError(sharper ?? e.kind, e.message, { status: e.status });
-    }
+    if (chunk.error) throw errorIn(chunk.error, { ProviderError, errorFromResponse });
     const choice = chunk.choices?.[0];
     const d = choice?.delta ?? {};
     const lp = choice?.logprobs?.content?.[0];
@@ -176,6 +177,66 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     yield { type: 'tool_call', id: c.id || `call_${i}`, name: c.name, input: parseArgs(c.args) };
   }
   yield { type: 'stop', reason: STOP[finish ?? 'stop'] ?? 'other' };
+}
+
+/** An error the reply holds, as an HTTP error's would be: by its code, sharpened by classify. @param {any} error @param {any} helpers */
+function errorIn(error, { ProviderError, errorFromResponse }) {
+  const e = errorFromResponse(typeof error.code === 'number' ? error.code : 500, JSON.stringify({ error }));
+  const sharper = classify(e.status ?? 500, JSON.stringify({ error }));
+  return new ProviderError(sharper ?? e.kind, e.message, { status: e.status });
+}
+
+/** Whether an answer is one whole JSON reply rather than a stream: a server that ignores stream: true. @param {Response} res */
+function whole(res) {
+  const kind = res.headers.get('content-type') ?? '';
+  return /json/i.test(kind) && !/event-stream/i.test(kind);
+}
+
+/** A whole reply's JSON. @param {Response} res @param {any} ProviderError */
+async function jsonOf(res, ProviderError) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new ProviderError('server', "The endpoint answered with a whole reply annai can't read, rather than a stream.");
+  }
+}
+
+/**
+ * The events of one whole chat completion, in a stream's order: logprobs, reasoning, words, calls, sources, usage, the stop reason.
+ * @param {any} j @param {any} t @param {any} helpers
+ */
+function* readWhole(j, t, helpers) {
+  if (isObject(j?.error)) throw errorIn(j.error, helpers);
+  const choice = j?.choices?.[0];
+  const m = choice?.message;
+  if (!isObject(m)) throw new helpers.ProviderError('server', 'The endpoint answered with a whole reply that had no answer in it.');
+  const lp = choice.logprobs?.content?.[0];
+  if (lp) {
+    const top = Array.isArray(lp.top_logprobs) && lp.top_logprobs.length ? lp.top_logprobs : [lp];
+    yield { type: 'logprobs', top: top.map((/** @type {any} */ x) => ({ token: String(x.token), logprob: Number(x.logprob) })) };
+  }
+  const r = t.reasoningField === 'auto' ? m.reasoning_content ?? m.reasoning : m[t.reasoningField];
+  if (typeof r === 'string' && r) {
+    yield { type: 'reasoning_delta', text: r };
+    yield { type: 'reasoning', text: r };
+  }
+  const text = typeof m.content === 'string' ? m.content
+    : Array.isArray(m.content) ? m.content.map((/** @type {any} */ p) => (typeof p?.text === 'string' ? p.text : '')).join('') : '';
+  if (text) yield { type: 'text', text };
+  for (const [i, tc] of (Array.isArray(m.tool_calls) ? m.tool_calls : []).entries()) {
+    const id = String(tc?.id || `call_${i}`);
+    const name = String(tc?.function?.name ?? '');
+    const args = tc?.function?.arguments;
+    yield { type: 'tool_input', id, name, partial: typeof args === 'string' ? args : JSON.stringify(args ?? {}) };
+    yield { type: 'tool_call', id, name, input: typeof args === 'string' ? parseArgs(args) : isObject(args) ? args : {} };
+  }
+  for (const a of Array.isArray(m.annotations) ? m.annotations : []) {
+    const c = a?.url_citation;
+    if (a?.type === 'url_citation' && c?.url) yield { type: 'citation', url: c.url, ...(c.title ? { title: c.title } : {}) };
+  }
+  if (isObject(j.usage)) yield { type: 'usage', usage: usageOf(j.usage) };
+  yield { type: 'stop', reason: STOP[choice.finish_reason ?? 'stop'] ?? 'other' };
 }
 
 /** A tool call's arguments; the raw text when they aren't valid JSON, for the tool to refuse. @param {string} args */

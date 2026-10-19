@@ -1,0 +1,20 @@
+{
+  "id": "chatcmpl-whole-1",
+  "object": "chat.completion",
+  "created": 1792500000,
+  "model": "router/model",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Kyoto is in Japan.",
+        "reasoning_content": "The user asks where Kyoto is.",
+        "annotations": [{ "type": "url_citation", "url_citation": { "url": "https://en.wikipedia.org/wiki/Kyoto", "title": "Kyoto" } }]
+      },
+      "logprobs": { "content": [{ "token": "Ky", "logprob": -0.01, "top_logprobs": [{ "token": "Ky", "logprob": -0.01 }, { "token": "It", "logprob": -4.2 }] }] },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 1200, "completion_tokens": 30, "prompt_tokens_details": { "cached_tokens": 1000 }, "completion_tokens_details": { "reasoning_tokens": 12 } }
+}
