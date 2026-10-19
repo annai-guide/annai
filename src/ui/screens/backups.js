@@ -111,10 +111,25 @@ async function renderPlace(ctx, id) {
   const pass2 = h('input', { id: 'place-passphrase2', type: 'password', autocomplete: 'new-password' });
   const keys = checkbox('Include API keys (only in encrypted backups)', Boolean(t.keys));
   const keep = h('input', { id: 'place-keep', type: 'number', min: '1', max: '30', step: '1', value: String(t.keep ?? 3) });
+  /** What the place offers for fields left empty (several repositories): a tap fills them in and tests again. */
+  const picks = h('div', { class: 'acts', hidden: true });
+  /** @param {any} e */
+  const offer = (e) => {
+    const choices = Array.isArray(e?.choices) ? e.choices : [];
+    picks.replaceChildren(...choices.map((/** @type {any} */ c) => h('button', {
+      class: 'btn', type: 'button',
+      onclick: () => {
+        for (const i of inputs) if (typeof c.config?.[i.f.key] === 'string') i.el.value = c.config[i.f.key];
+        save.click();
+      },
+    }, String(c.label))));
+    picks.hidden = !choices.length;
+  };
   const save = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
       save.disabled = true;
+      offer(null);
       say('Testing…');
       if (file && pass1.value !== pass2.value) {
         say("The passphrases don't match.");
@@ -131,6 +146,7 @@ async function renderPlace(ctx, id) {
         ctx.render();
       } catch (e) {
         say(String(/** @type {any} */ (e)?.message ?? e));
+        offer(e);
         save.disabled = false;
       }
     },
@@ -201,7 +217,7 @@ async function renderPlace(ctx, id) {
         h('p', { class: 'sub', text: "After each backup, older ones this device made here are deleted. Other devices' backups are never deleted." }),
       ] : []),
       h('div', { class: 'acts' }, save),
-      status),
+      status, picks),
     accessPanel(ctx, type),
     h('section', { class: 'panel', 'aria-label': 'When' },
       auto, mobile.el,

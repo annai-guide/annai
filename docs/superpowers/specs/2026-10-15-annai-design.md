@@ -765,6 +765,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - **Forgejo / Gitea**, such as the user's own server or Codeberg (which runs Forgejo): through its API, which accepts browser calls once the server allows annai's address. We show the lines to add to its app.ini.
     - Commits are made with ChangeFiles. Each update and delete names the file it replaces, so another device's backup made meanwhile is refused, never overwritten.
     - The user makes the private repository; the token needs only Repository: Read and write.
+    - Owner and Repository may be left empty. Save and test then looks through the private repositories the token can change: it fills in the only one, or lists them for the user to pick. It never offers a public one, and keeps what it filled in.
     - **Large backups:** one request carries at most 8 MiB and 200 files. A larger backup goes as several commits: the parts first, then the commit with the new `annai-archive.json`, which is the only one listed or restored. A backup cut off half way carries on from its parts. A request the server, or a proxy in front of it, refuses as too large goes again in halves; a single file too large is named, with the limit to raise.
   - **S3-compatible:** the user configures the bucket's browser-access (CORS) rules; we show the exact JSON to paste.
   - **WebDAV:** where the server allows browser access.

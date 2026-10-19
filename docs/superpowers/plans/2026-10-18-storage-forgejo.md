@@ -32,6 +32,22 @@ Checked 2026-10-18 against the current API descriptions (codeberg.org/swagger.v1
 | An archived repository answers 423. | swagger; probe |
 | CORS: `[cors] ENABLED = true` and `ALLOW_DOMAIN = <origin>` in app.ini. `Authorization` is always allowed; `HEADERS` adds to it (default `Content-Type`, `User-Agent`). The default methods cover GET and POST. Error answers carry the CORS headers too. Without it, a preflight gets 405 and answers carry none. Codeberg allows every origin. The user's server allows `Authorization`, `Content-Type` and `Accept` only, so annai sends no other header. | `modules/setting/cors.go`, Forgejo `routers/api/shared/middleware.go`, Gitea `routers/api/v1/api.go`; probe; codeberg.org; the coordinator |
 
+## Owner and repository left empty (the user's ask, 2026-10-18)
+
+Measured on throwaway Forgejo 16.0.6-rootless and Gitea 28.2.0 containers, with tokens made inside them. A user `me` with private repositories (one archived), a public one, a private repository of another user where `me` is a collaborator with write, one where `me` may only read, and an organization's private repository where `me` is a collaborator with write.
+
+| Fact | Probe |
+|---|---|
+| `GET /api/v1/user` (and `/user/repos`, `/users/{u}/repos`) need `read:user`. A token with only `write:repository` gets **403** "token does not have at least one of required scope(s): [read:user]" on both. | both servers |
+| `GET /api/v1/repos/search` needs only `read:repository` (so `write:repository` works); a token with only `read:user` gets 403. A token the server doesn't know gets 401. | both servers |
+| The search lists every repository the user may see: their own, ones shared with them, organizations', and public ones. `is_private=true` keeps only private ones and `archived=false` leaves out archived ones; `private=true` doesn't filter. `q` matches part of the name. Each comes with `private`, `archived`, `mirror`, `owner.login`, `name` and `permissions.push`. Answers are `{ ok, data }`, sorted by name, at most 50 a page, with `X-Total-Count`. | both servers |
+| `permissions.push` is the user's permission on the repository, not the token's: a `read:repository` token shows `push: true` too (its ChangeFiles is refused with 403, as before). A collaborator who may only read gets `push: false`. | both servers |
+| `owner.type` ("User", "Organization") is there on Gitea only. | both servers |
+
+So annai finds an empty owner or repository with the search (`is_private=true&archived=false`, page by page until a page is short, since browsers can read `X-Total-Count` only when the server exposes it), keeping those with `push`, not a mirror, and matching what the user typed. It asks `GET /user` first: with `read:user` the token's own account comes first; without it (the usual token), the 403 is passed over. One found is filled in and kept as the place's settings; several are listed for the user to pick (at most 20 shown); none says to create a private repository, `annai-backup` for example.
+
+The core change it needs: a storage type's `check` may return `config` (what it filled in), which annai keeps as the place's settings, and a `TargetError` may carry `choices`, which the place's screen shows as buttons.
+
 ## Decisions
 
 - **Pace: the git places', after changes within the hour** (`stores: 'tree'`), not S3's and WebDAV's six hours. A backup here sends only what changed, like GitHub's, and a self-hosted server has no rate limit to stay under. The six hours exist for places that take a whole archive file each time.

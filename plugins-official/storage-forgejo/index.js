@@ -7,7 +7,8 @@ import { blobId, nest, GitPathError } from './git.js';
  * their API, which takes browser calls once the server allows annai's address (CORS). A backup is
  * the archive's files as one commit on a branch of a private repository that holds nothing but
  * annai's backups (a README and the like stay); only changed files are sent, with ChangeFiles. The
- * token needs Repository: Read and write; the user makes the repository, annai never does.
+ * token needs Repository: Read and write; the user makes the repository, annai never does. An owner
+ * or a repository left empty is found from the token when the place is tested (fill).
  *
  * A backup larger than one request goes as several commits: parts first ("Part of an annai backup"),
  * then the one with the new annai-archive.json, the only one that is a backup. A backup cut off half
@@ -48,6 +49,9 @@ const MAX_PAGES = 100;
 const COMMITS_PAGE = 50;
 const COMMIT_PAGES = 40;
 const LISTED = 30;
+/** Search pages annai reads for the private repositories a token can change (1,000 of them), and how many it offers. */
+const SEARCH_PAGES = 20;
+const CHOICES = 20;
 const MANIFEST = 'annai-archive.json';
 /** The top-level files and folders of annai's backups. */
 const OURS = new Set([MANIFEST, 'me', 'trips', 'system', 'blobs']);
@@ -104,12 +108,12 @@ export function activate(annai) {
     stores: 'tree',
     fields: [
       { key: 'server', label: 'Server address', placeholder: 'https://git.example.com' },
-      { key: 'owner', label: 'Owner', placeholder: 'you' },
-      { key: 'repo', label: 'Repository', placeholder: 'annai-backup' },
+      { key: 'owner', label: 'Owner', placeholder: 'Found from the token if empty' },
+      { key: 'repo', label: 'Repository', placeholder: 'Found from the token if empty' },
       { key: 'branch', label: 'Branch', placeholder: "The repository's own", advanced: true },
     ],
     secret: [{ key: 'token', label: 'Access token' }],
-    help: "First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.",
+    help: "First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. Leave Owner and Repository empty, and annai finds the private repository the token can change. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.",
     where: (/** @type {any} */ config) => {
       const w = where(config);
       return w.owner && w.repo ? `${w.host}/${w.owner}/${w.repo}` : w.host;
@@ -181,25 +185,29 @@ function webAddress(u) {
   }
 }
 
-/** What can be told without asking the server. @param {F} g */
-function ready(g) {
+/** What can be told without asking the server. empty: an owner or repository may be empty, to be found (fill). @param {F} g */
+function ready(g, empty = false) {
   const E = g.TargetError;
+  const named = (/** @type {string} */ v) => /^[\w.-]+$/.test(v) || (empty && !v);
   if (!webAddress(g.server)) throw new E('setup', "Check the server's address: it must be a web address that starts with https://.");
-  if (!/^[\w.-]+$/.test(g.owner) || !/^[\w.-]+$/.test(g.repo)) throw new E('setup', "Type the owner and the repository's name, for example you and annai-backup.");
+  if (!g.owner || !g.repo) {
+    if (!empty) throw new E('setup', "Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.");
+  }
+  if (!named(g.owner) || !named(g.repo)) throw new E('setup', "Type the owner and the repository's name, for example you and annai-backup.");
   if (g.branch && !/^(?!\/|.*(?:\/\/|\.\.|\/$|\.lock$))[\w./-]+$/.test(g.branch)) throw new E('setup', "Check the branch's name, or leave it empty for the repository's own.");
   if (!g.token) throw new E('setup', 'Paste an access token for the repository, then save.');
   if (!/^[\x21-\x7e]+$/.test(g.token)) throw new E('setup', 'The access token has letters no token has. Paste it again, then save.');
 }
 
 /**
- * One request to the repository's API, with only the headers servers let web apps send:
+ * One request to the server's API, with only the headers servers let web apps send:
  * Authorization, and Content-Type for a body. No answer at all is unreachable.
- * @param {F} g @param {string} method @param {string} path after /repos/<owner>/<name>
+ * @param {F} g @param {string} method @param {string} path after /api/v1
  * @param {{ body?: any, signal?: AbortSignal }} [o] @returns {Promise<Response>}
  */
-async function call(g, method, path, { body, signal } = {}) {
+async function request(g, method, path, { body, signal } = {}) {
   try {
-    return await g.net(`${g.base}/repos/${encodeURIComponent(g.owner)}/${encodeURIComponent(g.repo)}${path}`, {
+    return await g.net(`${g.base}${path}`, {
       method,
       signal,
       headers: { authorization: `token ${g.token}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
@@ -210,6 +218,9 @@ async function call(g, method, path, { body, signal } = {}) {
     throw unreachable(g);
   }
 }
+
+/** A request to the repository. @param {F} g @param {string} method @param {string} path after /repos/<owner>/<name> @param {{ body?: any, signal?: AbortSignal }} [o] */
+const call = (g, method, path, o) => request(g, method, `/repos/${encodeURIComponent(g.owner)}/${encodeURIComponent(g.repo)}${path}`, o);
 
 /** Whether a 413 is Forgejo's quota rather than a limit on a request's size. @param {F} g @param {Response} res */
 async function overQuota(g, res) {
@@ -269,12 +280,65 @@ const branchOf = (g, repo) => g.branch || String(repo.default_branch);
 const noBranch = (g, repo, branch) => new g.TargetError('setup',
   `${repo.full_name} has no branch ${branch}. Leave Branch empty to use ${repo.default_branch}, or make the branch on ${g.host} first.`);
 
-/** @param {F} g */
+/** @param {string} a @param {string} b */
+const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * An owner or a repository left empty, found from the token (the user's ask, 2026-10-18): among the
+ * private repositories it can change, which the repository search lists for a token with only
+ * Repository: Read and write. Whose the token is (GET /user) needs User: Read as well, refused (403)
+ * without it on both servers; with it, the token's own account comes first. Public, archived and
+ * mirror repositories are never offered. The facts: docs/superpowers/plans/2026-10-18-storage-forgejo.md.
+ * @param {F} g @returns {Promise<{ owner: string, repo: string, of: string } | null>} what fills them in, or null when
+ *   neither is empty; of: the owner it was the only one of, when there was one
+ */
+async function fill(g) {
+  ready(g, true);
+  if (g.owner && g.repo) return null;
+  const E = g.TargetError;
+  let login = '';
+  if (!g.owner) {
+    const res = await request(g, 'GET', '/user');
+    if (res.status === 401) throw await failure(g, res);
+    if (res.ok) login = String((await g.read(res, 'json', g.host))?.login ?? '');
+  }
+  /** @type {{ owner: string, repo: string }[]} */
+  const found = [];
+  for (let page = 1; page <= SEARCH_PAGES; page++) {
+    const res = await request(g, 'GET', `/repos/search?is_private=true&archived=false&limit=${COMMITS_PAGE}&page=${page}${g.repo ? `&q=${encodeURIComponent(g.repo)}` : ''}`);
+    if (res.status === 403) throw new E('refused', `The access token can't list repositories on ${g.host}. Make one with Repository: Read and write, and paste it here.`);
+    if (!res.ok) throw await failure(g, res);
+    const data = (await g.read(res, 'json', g.host))?.data;
+    if (!Array.isArray(data)) throw unreadable(g);
+    for (const r of data) {
+      const owner = r?.owner?.login;
+      if (typeof owner !== 'string' || typeof r.name !== 'string' || r.private !== true || r.archived === true || r.mirror === true || r.permissions?.push !== true) continue;
+      if ((!g.owner || same(owner, g.owner)) && (!g.repo || same(r.name, g.repo))) found.push({ owner, repo: r.name });
+    }
+    if (data.length < COMMITS_PAGE) break;
+  }
+  const own = found.filter((r) => login && same(r.owner, login));
+  const pool = (own.length ? own : found).sort((a, b) => (`${a.owner}/${a.repo}` < `${b.owner}/${b.repo}` ? -1 : 1));
+  if (pool.length === 1) return { ...pool[0], of: own.length ? login : g.owner };
+  if (pool.length) {
+    throw new E('setup', `This token can change ${pool.length} private repositories on ${g.host}. Choose the one for annai's backups, or type its owner and name.`,
+      { choices: pool.slice(0, CHOICES).map((r) => ({ label: `${r.owner}/${r.repo}`, config: { owner: r.owner, repo: r.repo } })) });
+  }
+  if (g.repo) throw new E('missing', `There is no private repository named ${g.repo} on ${g.host} that this token can change. Create it there first (annai doesn't make one), or check the name.`);
+  throw new E('missing', `This token can't change any private repository${g.owner ? ` of ${g.owner}` : ''} on ${g.host}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.`);
+}
+
+/** Tests the place; what was found for an owner or repository left empty comes back as config, which annai keeps. @param {F} g */
 async function check(g) {
-  const r = await repoInfo(g);
-  const branch = branchOf(g, r);
-  if (!r.empty && !(await headOf(g, branch))) throw noBranch(g, r, branch);
-  return { note: `Works: annai can reach ${r.full_name} on ${g.host}, a private repository.` };
+  const filled = await fill(g);
+  const w = filled ? { ...g, owner: filled.owner, repo: filled.repo } : g;
+  const r = await repoInfo(w);
+  const branch = branchOf(w, r);
+  if (!r.empty && !(await headOf(w, branch))) throw noBranch(w, r, branch);
+  const note = `Works: annai can reach ${r.full_name} on ${g.host}, a private repository.`;
+  if (!filled) return { note };
+  const how = g.repo ? ` annai filled in its owner, ${filled.owner}.` : ` It is the only private repository${filled.of ? ` of ${filled.of}` : ''} this token can change, so annai filled it in.`;
+  return { note: note + how, config: { owner: filled.owner, repo: filled.repo } };
 }
 
 /** The branch's last commit, or null when there is no such branch. @param {F} g @param {string} branch @returns {Promise<Commit | null>} */
