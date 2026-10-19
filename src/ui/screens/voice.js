@@ -21,7 +21,7 @@ export async function renderVoice(ctx) {
   const synth = voice.platform?.synth;
   const cfg = await ctx.llm.config();
   const dictation = { available: Boolean(voice.platform?.dictation.available()), local: await voice.dictationLocal() };
-  // What this phone makes and plays (Koe and Kokoro design, "Audio formats"), for the device checks.
+  // What this phone makes and plays (spec §10.6), for the device checks.
   const records = (voice.platform?.encoder?.records?.() ?? []).map((/** @type {any} */ r) => r.format);
   const formats = `Speech leaves this phone in the smallest format each service takes. Made here: ${(await voice.makes()).join(', ')}${records.length ? ` (recorded: ${records.join(', ')})` : ''}. Played here: ${voice.plays().join(', ')}.`;
   /** Where your voice goes (spec §11.7), one entry a row. @param {import('../../core/voice/where.js').Where[]} rows */

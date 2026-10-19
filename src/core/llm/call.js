@@ -128,7 +128,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     }
     onEvent(ev);
   };
-  // Heard speech sent as audio: each clip's format and size (Koe and Kokoro design, "Audio formats").
+  // Heard speech sent as audio: each clip's format and size (spec §10.6).
   const audio = request.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'audio' ? [{ format: formatOf(p.mediaType) ?? p.mediaType, bytes: Math.floor((p.data.length * 3) / 4) - (p.data.match(/=*$/)?.[0].length ?? 0) }] : [])));
   const info = () => ({ endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url, status, ms: now() - started, firstMs, usage, ...(audio.length ? { audio } : {}) });
   try {

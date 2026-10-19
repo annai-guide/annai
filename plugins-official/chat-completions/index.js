@@ -13,7 +13,7 @@ const TUNABLES = Object.freeze({
   reasoningField: 'auto', // where reasoning text comes back: "reasoning" (OpenRouter), "reasoning_content" (DeepSeek), or either
   imageDetail: null, // e.g. "high"
   enforceToolCall: false, // a tool the model must call, when it is the one offered, goes as tool_choice "required": llama.cpp ignores one named
-  audioIn: ['wav', 'mp3'], // what input_audio takes: OpenAI's and Gemini's take only these; OpenRouter's say more (Koe and Kokoro design, "Audio formats")
+  audioIn: ['wav', 'mp3'], // what input_audio takes: OpenAI's and Gemini's take only these; OpenRouter's say more (spec §10.6)
 });
 const STOP = /** @type {Record<string, string>} */ ({ stop: 'end', tool_calls: 'tool', function_call: 'tool', length: 'length', content_filter: 'refusal' });
 const CODES = /** @type {Record<string, string>} */ ({ context_length_exceeded: 'context', insufficient_quota: 'credit', invalid_api_key: 'auth', model_not_found: 'not-found' });

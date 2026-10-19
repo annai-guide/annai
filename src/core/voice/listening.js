@@ -10,8 +10,7 @@ import { newId } from '../scopes.js';
  * @param {{ platform: import('./platform.js').VoicePlatform, kind: 'record' | 'dictation', pauseMs: number, lang?: string, now?: () => number, local?: boolean, recording?: { type: string, format: string },
  *   onSegment: (h: Heard) => void, onSpeech?: () => void, onQuiet?: () => void, onLevel?: (x: number) => void,
  *   onError: (e: Error) => void, onSwitch?: (e: Error) => void }} c
- *   onQuiet: what began like speech wasn't (a click); onSwitch: dictation failed and recording took over; local: dictation stays on the phone;
- *   recording: a MediaRecorder type to record alongside (recorder.js)
+ *   onQuiet: what began like speech wasn't (a click); onSwitch: dictation failed and recording took over; local: dictation stays on the phone
  * @returns {Promise<{ readonly kind: 'record' | 'dictation', stop(): void }>}
  */
 export async function listen(c) {

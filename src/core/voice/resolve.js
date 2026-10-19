@@ -9,9 +9,8 @@ import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
  * audio; a transcription model's words, made once per segment; or phone dictation's words, which
  * are all a dictated segment has. Text versions are made lazily (textVersion).
  * @typedef {{ id: string, source: 'mic' | 'dictation', audio?: { data: Uint8Array, mediaType: string, seconds: number }, text?: string, ms: number, at: number,
- *   encoded?: Map<string, Promise<Uint8Array | null>> }} Heard  audio: as recorded (16 kHz WAV), or a kept clip; encoded: files made already, by format
+ *   encoded?: Map<string, Promise<Uint8Array | null>> }} Heard  audio: the microphone's 16 kHz WAV, or a kept clip; encoded: its other files, by format
  * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }> }} Kept
- *   a segment in memory, with its words by each transcription model, and each format made of it once (a retry sends the same bytes)
  * @typedef {import('../llm/contract.js').Request} Request
  * @typedef {import('../llm/contract.js').Part} Part
  * @typedef {import('./platform.js').Encoder} Encoder
@@ -20,7 +19,7 @@ import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
  *   clip?: (hash: string) => Promise<{ data: Uint8Array, mediaType: string } | null>, onFail?: (id: string, error: unknown) => void,
  *   accepts?: (id: string) => string[], encoder?: Encoder | null, plain?: boolean }} Resolve
  *   list: the speech-in list; asr: whether an entry is a transcription model that can work now; onFail: one failed (bench it);
- *   accepts: the formats a model takes (its ability's audioIn); plain: send WAV, as a provider refused another format
+ *   accepts: a model's audioIn; plain: send WAV (another format was refused)
  */
 
 /** A segment nothing could write down (spec §10.3). */
@@ -76,24 +75,17 @@ export class HeardMemory {
 }
 
 /**
- * A segment in the smallest format both this device and the receiver handle (Koe and Kokoro design,
- * "Audio formats"): each format is made once and kept with the segment, so a retry sends the same
- * bytes. One made already, of the same codec, is sent rather than made again. A format that can't be
- * made gives way to the next, down to WAV, the last resort.
- * @param {Kept} kept @param {string[]} accepts the receiver's, its preferred first @param {Encoder | null} [encoder]
- * @returns {Promise<{ data: Uint8Array, mediaType: string, format: string } | null>} null: it takes nothing annai can make
+ * A segment in the smallest format both sides handle (spec §10.6), made once and kept, so a retry
+ * sends the same bytes; one of the same codec made already goes instead. A format that can't be
+ * made gives way to the next, down to WAV. null: the receiver takes nothing annai can make.
+ * @param {Kept} kept @param {string[]} accepts @param {Encoder | null} [encoder]
+ * @returns {Promise<{ data: Uint8Array, mediaType: string, format: string } | null>}
  */
 export async function audioFor(kept, accepts, encoder) {
   const audio = kept.audio;
   if (!audio) return null;
   const own = formatOf(audio.mediaType);
-  /** @type {string[]} */
-  let makes = [];
-  try {
-    makes = encoder ? await encoder.makes() : [];
-  } catch {
-    // no encoder after all: WAV
-  }
+  const makes = (await encoder?.makes().catch(() => null)) ?? [];
   for (let wants = accepts; ;) {
     const best = pickFormat(wants, [...makes, ...kept.encoded.keys(), ...(own ? [own] : [])]);
     if (!best) return null;
@@ -116,7 +108,7 @@ async function make(kept, format, encoder) {
   return encoder.encode(pcm, rate, format);
 }
 
-/** A segment's 16-bit samples: read from its WAV, or a kept clip decoded by the device. @param {NonNullable<Kept['audio']>} audio @param {Encoder | null | undefined} encoder */
+/** @param {NonNullable<Kept['audio']>} audio @param {Encoder | null | undefined} encoder */
 async function pcmOf(audio, encoder) {
   if (formatOf(audio.mediaType) === 'wav') return pcm16(audio.data);
   if (!encoder?.decode) throw new Error("This device can't read a kept clip back.");
