@@ -6,6 +6,7 @@ import { setupOf } from '../core/llm/setup.js';
 import { descOrigins, addressProblem } from '../core/llm/provider-desc.js';
 import { officialPlugins } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
+import { NO_SERVICE } from './screens/plugin-install.js';
 
 /**
  * Coming back to annai's address (decision 16): the plugin that sent the browser away expects the next load with a query, within 15 minutes, once.
@@ -133,7 +134,11 @@ export function featuredStart(ctx) {
   const section = h('section', { class: 'panel', 'aria-label': 'Sign in' }, h('h2', { class: 'section', text: 'The quickest start' }), slot, status);
   if (featured && setupOf(ctx.registry, featured.id)?.panel) show(featured);
   else {
-    slot.append(h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', disabled: true }, 'Getting the sign-in ready…')));
+    const wait = h('p', { class: 'sub' });
+    slot.append(h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', disabled: true }, 'Getting the sign-in ready…')), wait);
+    // Its plugin loads through the offline service: still none after a few seconds (or none in this browser), say so.
+    const sw = globalThis.navigator?.serviceWorker;
+    if (!sw?.controller) setTimeout(() => { if (!sw?.controller) wait.textContent = NO_SERVICE; }, sw ? 3000 : 0);
     readyFeatured(ctx).then((f) => (f ? show(f) : section.remove()), (e) => {
       slot.replaceChildren();
       status.textContent = messageOf(e);

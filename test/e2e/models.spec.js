@@ -205,7 +205,7 @@ test("on an iPhone Home Screen app, Models with no providers draws Sign in with 
 
 test.describe('without the offline service', () => {
   test.use({ serviceWorkers: 'block' });
-  test('while the featured provider\'s plugin installs, the start is a disabled button, never a link without an address', async ({ page }) => {
+  test('while the featured provider\'s plugin installs, the start is a disabled button, never a link without an address; without the offline service, it says so after a few seconds', async ({ page }) => {
     // An installed plugin's files load through the offline service: without it, the start waits.
     await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }));
     await openApp(page, '#/models');
@@ -214,6 +214,8 @@ test.describe('without the offline service', () => {
     await page.waitForTimeout(1000);
     await expect(start.getByRole('button', { name: 'Getting the sign-in ready…' })).toBeDisabled();
     await expect(start.getByRole('link')).toHaveCount(0);
+    await expect(start.getByText("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.")).toBeVisible();
+    await expect(start.getByRole('button', { name: 'Getting the sign-in ready…' })).toBeDisabled();
   });
 });
 
