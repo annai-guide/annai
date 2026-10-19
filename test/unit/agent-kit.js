@@ -62,15 +62,15 @@ export function fakeCodec(formats) {
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
- *   live?: { origin: string, roles?: string[], first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' } }} [opts]
+ *   live?: { origin: string, first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' } }} [opts]
  *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
- *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for Koe's models,
- *   "Koe for typing" (m-koe, model-koe) and "Koe for talking" (m-koet, model-koet), and the inputs Koe's models take;
- *   live: a realtime model (m-live, Gemini Live's protocol) at the stand-in realtime server's origin, first in roles (Koe for talking by
- *   default); first false puts it after the chat models there; key and tunables, for the real service (test/live); type: OpenAI's protocol
+ *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for two chat models in
+ *   Koe's list, talk's (m-koet, model-koet) before type's (m-koe, model-koe), and the inputs Koe's models take;
+ *   live: a realtime model (m-live, Gemini Live's protocol) at the stand-in realtime server's origin, first in Koe's list; first false
+ *   puts it after the chat models there; key and tunables, for the real service (test/live); type: OpenAI's protocol
  *   (gpt-realtime-2.1, at <origin>/v1) in place of Gemini's
  */
 export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe, live } = {}) {
@@ -102,22 +102,21 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
       { providerId: `model-${i}`, prices: { input: 1, output: 1 }, input: ['text', 'image'], ...(models[i] ?? {}) });
     config.roles.main.models.push(`m-${i}`);
   });
-  if (koe?.type) {
-    add('pv-koe', 'm-koe', 'Koe', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.type) ? { script: koe.type } : koe.type }, { providerId: 'model-koe', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'], ...(koe.model ?? {}) });
-    config.roles['koe-type'] = { models: ['m-koe'], level: 'off' };
-  }
+  config.roles.koe = { models: [], level: 'off' };
   if (koe?.talk) {
     add('pv-koet', 'm-koet', 'KoeT', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.talk) ? { script: koe.talk } : koe.talk }, { providerId: 'model-koet', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'] });
-    config.roles['koe-talk'] = { models: ['m-koet'], level: 'off' };
+    config.roles.koe.models.push('m-koet');
+  }
+  if (koe?.type) {
+    add('pv-koe', 'm-koe', 'Koe', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.type) ? { script: koe.type } : koe.type }, { providerId: 'model-koe', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'], ...(koe.model ?? {}) });
+    config.roles.koe.models.push('m-koe');
   }
   if (live) {
     const openai = live.type === 'openai-realtime';
     add('pv-live', 'm-live', openai ? 'OpenAI' : 'Gemini', { kind: 'realtime', type: openai ? 'openai-realtime' : 'gemini-live', baseUrl: openai ? `${live.origin}/v1` : live.origin },
       { providerId: openai ? 'gpt-realtime-2.1' : 'gemini-3.8-live', name: openai ? 'GPT Realtime 2.1' : 'Gemini 3.8 Live', prices: { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }, input: ['text', 'image'] });
-    for (const r of live.roles ?? ['koe-talk']) {
-      const had = config.roles[r]?.models ?? [];
-      config.roles[r] = { models: live.first === false ? [...had, 'm-live'] : ['m-live', ...had], level: 'off' };
-    }
+    const had = config.roles.koe.models;
+    config.roles.koe.models = live.first === false ? [...had, 'm-live'] : ['m-live', ...had];
   }
   if (utility) {
     add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] });

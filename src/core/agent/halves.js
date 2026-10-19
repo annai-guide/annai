@@ -4,13 +4,13 @@ import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js'
 import { systemText, nowBlock, takeSnapshot } from './context.js';
 import { ME, newId } from '../scopes.js';
 import { storedTexts } from './log.js';
-import { koeList, koePath, splitOn, AllFailedError, COOLDOWN_MS } from '../llm/fallback.js';
+import { candidates, koePath, splitOn, AllFailedError, COOLDOWN_MS } from '../llm/fallback.js';
 import { LiveKoe } from '../koe/live.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
 import { koeTools } from '../koe/tools.js';
 import { compactView } from '../koe/context.js';
-import { modelOf } from '../llm/config.js';
+import { modelOf, KOE_ROLE } from '../llm/config.js';
 
 /**
  * Shiori as two halves (the Koe and Kokoro design): Koe talks with the user at once, Kokoro (Shiori as
@@ -94,10 +94,8 @@ export class Halves {
   /** @type {KoeState} */
   koeState = 'off';
   #split = false;
-  /** Koe's list that failed whole, and until when it rests. */
-  #down = { role: '', until: 0 };
-  /** The Koe list Koe's last call used. */
-  #koeRole = '';
+  /** Until when Koe rests, after its list failed whole. */
+  #downUntil = 0;
   /** Koe is back, but waits for Kokoro's turn with the voice to end. */
   #later = false;
   /** What Kokoro was told last, in which conversation. @type {{ scope: string | null, state: Told }} */
@@ -130,8 +128,6 @@ export class Halves {
   #lastView = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
   #liveId = null;
-  /** The Koe list a text Koe calls: its own, or the other one's when its own can't answer. @type {string | null} */
-  #textRole = null;
   #voiceWas = false;
   #lastCard = { key: '', at: 0 };
   /** The open conversation's next reminder, for Koe's view (set by the app). @type {(() => Promise<{ due: number, text: string } | null>) | null} */
@@ -168,7 +164,7 @@ export class Halves {
     this.kokoro = new Agent({
       ...c,
       half: {
-        name: 'kokoro', tag: TALK_TAG, role: async () => ({ role: 'main' }), registryTools: true, logVoice: true, housekeeping: true, serial, ready,
+        name: 'kokoro', tag: TALK_TAG, role: 'main', registryTools: true, logVoice: true, housekeeping: true, serial, ready,
         voice: () => !this.#works(),
         rules: () => (this.#split ? 'kokoro' : 'one'),
         system: (s) => systemText(s, this.#split ? KOKORO_PART : ''),
@@ -190,9 +186,7 @@ export class Halves {
     this.koe = new Agent({
       ...c,
       half: {
-        name: 'koe', tag: KOE_TAG, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
-        // Voice on: Koe for talking; off: Koe for typing (the design).
-        role: async () => ({ role: (this.#koeRole = this.#textRole ?? koeList(await this.llm.config(), Boolean(this.voice?.on)).role) }),
+        name: 'koe', tag: KOE_TAG, role: KOE_ROLE, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
         voice: () => this.koeState === 'text',
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
@@ -263,7 +257,7 @@ export class Halves {
   set sense(fn) { this.kokoro.sense = fn; this.koe.sense = fn; }
   get sense() { return this.kokoro.sense; }
 
-  /** Whether Shiori is two halves: a Koe list holds a model. */
+  /** Whether Shiori is two halves: Koe's list holds a model. */
   async split() {
     await this.#refresh();
     return this.#split;
@@ -340,9 +334,9 @@ export class Halves {
     const cfg = await this.llm.config();
     this.#split = splitOn(cfg);
     const voiceOn = Boolean(this.voice?.on);
-    const path = koePath(cfg, { voiceOn, types: this.llm.types?.() ?? new Map(), until: (id) => this.llm.bench?.until(id) ?? 0, now: Date.now() });
-    // A text Koe's list that failed whole rests a while.
-    const resting = path?.kind === 'text' && this.#down.role === path.role && this.clock() < this.#down.until;
+    const path = koePath(cfg, { types: this.llm.types?.() ?? new Map(), until: (id) => this.llm.bench?.until(id) ?? 0, now: Date.now() });
+    // A text Koe whose list failed whole rests a while.
+    const resting = path?.kind === 'text' && this.clock() < this.#downUntil;
     /** @type {Told} */
     let told = resting || !path ? 'koe-down' : 'koe-up';
     // One voice at a time: Kokoro keeps it to the end of a turn that has it, then Koe takes over (#kokoroEnded asks again).
@@ -351,7 +345,6 @@ export class Halves {
     const was = this.state.name;
     this.koeState = !this.#split ? 'off' : told === 'koe-down' ? 'down' : path?.kind === 'live' ? 'live' : 'text';
     this.#liveId = path?.kind === 'live' && this.koeState === 'live' ? path.modelId : null;
-    this.#textRole = path?.kind === 'text' ? path.role : null;
     // A live session closes when voice goes off, or Koe's pathway leaves its model: its microphone never stays open otherwise.
     const model = this.live.modelId;
     if (this.live.state !== 'closed' && (!this.#liveId || (model && model !== this.#liveId) || (this.#voiceWas && !voiceOn))) this.live.close(voiceOn ? 'pathway' : 'voice off');
@@ -581,7 +574,7 @@ export class Halves {
   /** A photo reaches Koe only when every model of its list takes photos (plan decision 22). @param {import('../llm/contract.js').Message[]} messages */
   async #koeSendable(messages) {
     const cfg = await this.llm.config();
-    if (koeList(cfg, Boolean(this.voice?.on)).models.every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return messages;
+    if (candidates(cfg, KOE_ROLE).every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return messages;
     return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: '[a photo; Kokoro sees it]' } : p)) }));
   }
 
@@ -653,7 +646,7 @@ export class Halves {
   /** Koe's list rests; Kokoro is told to talk directly, and wakes to (its notes may not have reached the user). No card. */
   #koeFailed() {
     if (!this.#split) return false;
-    this.#down = { role: this.#koeRole, until: this.clock() + KOE_REST_MS };
+    this.#downUntil = this.clock() + KOE_REST_MS;
     this.#route(async () => {
       await this.#refresh();
       this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true });

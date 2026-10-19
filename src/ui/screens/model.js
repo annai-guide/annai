@@ -135,7 +135,7 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
     h('p', { class: 'crumbs' }, h('a', { href: back }, `← ${ep.name}`)),
     title,
     of,
-    h('p', { class: 'sub', text: { in: 'A transcription model: it turns what you say into text.', out: 'A voice: Shiori speaks with it.', live: 'A live voice: it hears and speaks in one stream, as Koe for talking.' }[kind] }),
+    h('p', { class: 'sub', text: { in: 'A transcription model: it turns what you say into text.', out: 'A voice: Shiori speaks with it.', live: 'A live voice: it hears and speaks in one stream, as Koe.' }[kind] }),
     h('section', { class: 'panel', 'aria-label': 'Model' },
       h('p', { class: 'sub', text: 'Each setting is saved as you change it.' }),
       ...nameFields(save, m, base.name, title),

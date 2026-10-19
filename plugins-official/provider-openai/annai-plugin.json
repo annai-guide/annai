@@ -1,7 +1,7 @@
 {
   "id": "provider-openai",
   "name": "OpenAI",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "api": 1,
   "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
   "category": "providers",
@@ -339,7 +339,7 @@
         "type": "openai-realtime",
         "name": "Realtime voice",
         "on": false,
-        "note": "A conversation in one stream, voice both ways, for Koe for talking (OpenAI Realtime). While a session is open, what you say goes to OpenAI as telephone audio (G.711, a sixth of the data of full quality; \"input\": \"pcm16\" in the tunables sends full quality), and gpt-transcribe writes it down, which OpenAI bills apart (about $0.0045 a minute) and Spend per day doesn't count. annai gives your key to OpenAI straight from the browser, where OpenAI suggests short-lived keys made by a server: if Test says the key was rejected, or the address can't be reached, while chat works with the same key, OpenAI is refusing keys from a browser, and its realtime voice would need a server, which annai doesn't have.",
+        "note": "A conversation in one stream, voice both ways, for Koe (OpenAI Realtime). While a session is open, what you say goes to OpenAI as telephone audio (G.711, a sixth of the data of full quality; \"input\": \"pcm16\" in the tunables sends full quality), and gpt-transcribe writes it down, which OpenAI bills apart (about $0.0045 a minute) and Spend per day doesn't count. annai gives your key to OpenAI straight from the browser, where OpenAI suggests short-lived keys made by a server: if Test says the key was rejected, or the address can't be reached, while chat works with the same key, OpenAI is refusing keys from a browser, and its realtime voice would need a server, which annai doesn't have.",
         "models": [
           {
             "providerId": "gpt-realtime-2.1",

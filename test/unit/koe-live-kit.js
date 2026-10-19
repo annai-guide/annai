@@ -8,7 +8,7 @@ export const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 export const tone = (seconds = 0.6) => new Uint8Array(Int16Array.from({ length: Math.round(24_000 * seconds) }, (_, i) => Math.round(6000 * Math.sin(i / 9))).buffer);
 
 /**
- * Shiori as two halves with a realtime model (m-live) first in Koe for talking, at a stand-in Gemini Live server
+ * Shiori as two halves with a realtime model (m-live) first in Koe's list, at a stand-in Gemini Live server
  * that answers with turns; a voice (on unless voice says otherwise), and Kokoro's scripts.
  * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any }} [o]
  */

@@ -16,7 +16,7 @@ function halfOf(name, over = {}) {
   const koe = name === 'koe';
   return {
     name, tag: koe ? KOE_TAG : TALK_TAG,
-    role: async () => ({ role: koe ? 'koe-type' : 'main' }),
+    role: koe ? 'koe' : 'main',
     registryTools: !koe, voice: () => !koe, logVoice: !koe, housekeeping: !koe,
     mark: (/** @type {string} */ type) => (type === 'msg.user' ? (koe ? { split: true } : {}) : { half: name }),
     ...(koe ? { nonce: 'testnonce' } : {}),
@@ -37,14 +37,14 @@ const lastUser = (req) => req.messages.filter((/** @type {any} */ m) => m.role =
 test("a half with registryTools false offers only its own loop tools, and calls the models roles() gives", async () => {
   const k = await agentKit([[{ text: 'main' }], [{ toolCalls: [{ name: 'sleep', input: {} }] }]], { agent: { half: halfOf('koe') } });
   const cfg = await readConfig(k.ws);
-  await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, 'koe-type': { models: ['m-1'], level: 'off' } });
+  await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, koe: { models: ['m-1'], level: 'off' } });
   k.agent.send('Hi');
   await k.agent.idle();
   const names = k.requests[0].tools.map((/** @type {any} */ t) => t.name);
   assert.ok(names.includes('speak') && names.includes('sleep'));
   assert.ok(!names.includes('read') && !names.includes('write'), "the files plugin's tools aren't Koe's: only its own");
   const [turn] = await k.events(['model.turn']);
-  assert.equal(turn.data.role, 'koe-type');
+  assert.equal(turn.data.role, 'koe');
   assert.equal(turn.data.tag, KOE_TAG);
   assert.equal(turn.data.answeredBy, 'model-1');
   const [msg] = await k.events(['msg.user']);
@@ -119,7 +119,7 @@ test("#applyTurn picks this half's model.turn when the other half wrote one sinc
   k.llm.call = async (/** @type {any} */ c) => {
     const r = await call(c);
     // Koe answers between this half's model.turn being written and its being read.
-    if (c.record?.tag === TALK_TAG) await modelTrace(k.store, k.trip).turn({ role: 'koe-type', level: 'off', answeredBy: 'K', attempts: [], usage: {}, cost: 0, tag: KOE_TAG, wake: c.record.wake }, 'Koe words', '', [{ type: 'text', text: 'Koe words' }]);
+    if (c.record?.tag === TALK_TAG) await modelTrace(k.store, k.trip).turn({ role: 'koe', level: 'off', answeredBy: 'K', attempts: [], usage: {}, cost: 0, tag: KOE_TAG, wake: c.record.wake }, 'Koe words', '', [{ type: 'text', text: 'Koe words' }]);
     return r;
   };
   k.agent.send('Hi');
@@ -180,7 +180,7 @@ test("Koe's wait ends when a note is queued, and when nothing-to-add is; the use
     { toolCalls: [{ name: 'sleep', input: {} }] },
   ]], { agent: { half: halfOf('koe') } });
   const cfg = await readConfig(k.ws);
-  await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, 'koe-type': { models: ['m-1'], level: 'off' } });
+  await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, koe: { models: ['m-1'], level: 'off' } });
   k.agent.send('Is Nepenthe open?');
   await until(() => k.agent.state.name === 'waiting');
   await noteFrom(k, 'kokoro', 'Nepenthe is open till 10 tonight.');
@@ -211,7 +211,7 @@ test("Kokoro's housekeeping during Koe's model call: Koe reads its window again 
     { toolCalls: [{ name: 'sleep', input: {} }] },
   ]], { agent: { half: halfOf('koe') } });
   const cfg = await readConfig(k.ws);
-  await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, 'koe-type': { models: ['m-1'], level: 'off' } });
+  await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, koe: { models: ['m-1'], level: 'off' } });
   const real = k.llm.call;
   let raced = false;
   k.llm.call = async (/** @type {any} */ c) => {
