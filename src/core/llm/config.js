@@ -181,8 +181,7 @@ function build(rec, tunablesFor, withUser) {
       tunables: eff.tunables ?? {}, extraBody: eff.extraBody ?? {}, modelDefaults: eff.modelDefaults ?? {},
     };
   }
-  /** @type {Record<string, string>} */
-  const headers = Object.fromEntries(Object.entries(v.headers ?? {}).filter(([, x]) => typeof x === 'string'));
+  const headers = /** @type {Record<string, string>} */ (Object.fromEntries(Object.entries(v.headers ?? {}).filter(([, x]) => typeof x === 'string')));
   return { id: rec.id, plugin: rec.plugin, name: v.name || rec.plugin, baseUrl: v.baseUrl ?? '', headers, keyHeader: v.keyHeader ?? '', abilities };
 }
 

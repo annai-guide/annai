@@ -1,12 +1,15 @@
 import { sha256Hex } from '../hash.js';
 import { PluginError } from '../registry.js';
+import { refuseBreaking, installRequirements } from '../requires.js';
 
 /**
  * annai's official on-demand plugins (spec §5.3, §9.1): listed in /catalog/plugins.json with the
  * SHA-256 of every file, fetched from /plugins-official/<id>/ on annai's own origin, checked, then
  * installed like any plugin. Choosing an endpoint type whose plugin is missing installs it.
  * @typedef {import('../plugins.js').PluginHost} PluginHost
- * @typedef {{ id: string, name: string, version: string, provides: Record<string, string[]>, files: Record<string, string> }} CatalogPlugin
+ * @typedef {{ id: string, name: string, version: string, provides: Record<string, string[]>, files: Record<string, string>,
+ *   description?: string, category?: string, keywords?: string[], abilities?: string[], free?: boolean, local?: boolean, code?: boolean, size?: number,
+ *   requires?: import('../packages.js').Requirement[] }} CatalogPlugin  the facts catalogFacts gives (src/core/catalog-facts.js), and its files' hashes
  * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string }} FetchOptions
  */
 
@@ -31,7 +34,7 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
  * unless all of them match.
  * @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<Map<string, Uint8Array>>}
  */
-async function download(entry, { fetch: get = defaultFetch, base = '' } = {}) {
+export async function download(entry, { fetch: get = defaultFetch, base = '' } = {}) {
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
   for (const [name, hash] of Object.entries(entry.files)) {
@@ -78,12 +81,17 @@ export async function officialUpdates(host, opts = {}) {
 
 /**
  * Installs the catalog's version of an official plugin the user chose to update, keeping their
- * on/off choice. New code that replaces code already running starts with the next start of annai.
+ * on/off choice. What the new version requires is installed first (spec §5.3), and a version another
+ * installed plugin doesn't accept is refused, naming it. New code that replaces code already running
+ * starts with the next start of annai.
  * @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<'started' | 'restart'>}
  */
 export async function updateOfficial(host, entry, opts = {}) {
+  await refuseBreaking(host, entry.id, entry.version, entry.name);
+  const files = await download(entry, opts);
+  if (entry.requires?.length) await installRequirements(host, entry.requires, opts, { who: entry.name, id: entry.id });
   const wasOn = (await host.installed())[entry.id]?.enabled !== false;
-  await host.install(await download(entry, opts), { source: 'official' });
+  await host.install(files, { source: 'official' });
   if (!wasOn) {
     await host.setEnabled(entry.id, false);
     return 'started';

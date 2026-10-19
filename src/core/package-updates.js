@@ -1,5 +1,6 @@
 import { fetchPackage, addedParts, addsAnything, agreedTo, addedWords } from './packages.js';
 import { PluginError } from './registry.js';
+import { installRequirements } from './requires.js';
 
 /**
  * Updates for packages installed from an address (spec §5.3: "those installed from a URL get the
@@ -40,10 +41,12 @@ export async function addressUpdates(host, { fetch, failed }) {
 /**
  * Installs what the address holds now, keeping the package off if it was off. Code that already ran
  * this session runs from the next start, as for annai's own plugins. What it brings that the installed
- * one didn't (code, skills, personalities, templates) must be what the user agreed to (agreed).
- * @param {PluginHost} host @param {string} id @param {{ fetch: Fetch, agreed?: import('./packages.js').Added }} o @returns {Promise<'started' | 'restart'>}
+ * one didn't (code, skills, personalities, where its provider sends keys) must be what the user agreed
+ * to (agreed). What it now requires is installed first, from annai's catalog (official: how to reach it).
+ * @param {PluginHost} host @param {string} id
+ * @param {{ fetch: Fetch, agreed?: import('./packages.js').Added, official?: import('./llm/official.js').FetchOptions }} o @returns {Promise<'started' | 'restart'>}
  */
-export async function updateFromAddress(host, id, { fetch, agreed }) {
+export async function updateFromAddress(host, id, { fetch, agreed, official = {} }) {
   const s = (await host.installed())[id];
   const address = await host.address(id);
   if (!s || !address) throw new PluginError(id, "wasn't installed from an address, so annai has nowhere to look for an update");
@@ -52,6 +55,7 @@ export async function updateFromAddress(host, id, { fetch, agreed }) {
   if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`);
   const added = pkg.replaces?.added ?? addedParts(await host.installedParts(id), pkg);
   if (!agreedTo(agreed, added)) throw new PluginError(id, `this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.`);
+  if (pkg.requires.length) await installRequirements(host, pkg.requires, official, { who: pkg.name, id });
   const wasOn = s.enabled !== false;
   await host.install(files, { source: 'url', url: address });
   if (!wasOn) {

@@ -91,7 +91,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
     }
     try {
       const how = u.url
-        ? await updateFromAddress(ctx.plugins, u.id, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), ...(u.agreed ? { agreed: u.added } : {}) })
+        ? await updateFromAddress(ctx.plugins, u.id, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), official: { fetch: env.fetch, base: env.base }, ...(u.agreed ? { agreed: u.added } : {}) })
         : await updateOfficial(ctx.plugins, u.entry, env);
       applied++;
       knownOf(ctx.plugins).delete(u.id);
