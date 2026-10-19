@@ -35,3 +35,17 @@ What the phone makes is found by trying at run time, never by its name, so these
 - [ ] **A weak signal: the same bytes again.** On cellular, somewhere the signal is weak (or turn on Airplane mode right after you finish a sentence, and off again within a second or two), talk to Shiori with a transcription model first in Speech in. Trace → Web: when an upload fails, the same model's line comes again, with the same format and the same size, at most twice more; then the next entry.
 - [ ] **Your own speech servers**, if you run them. A Speaches or Kokoro voice: **Play a sample** plays, and Trace → Web shows "· mp3, … KB" (Speaches refuses Opus and AAC). A whisper.cpp transcription: **Say something** writes it down; Trace → Web shows its first request refused and the next sent as "wav", and every later one as WAV.
 - [ ] **The microphone test.** Settings → Voice → **Test the microphone**: "Heard … seconds of speech", and the first transcription model's words.
+
+## K4: The realtime contract and Gemini Live
+
+You need your Gemini key from AI Studio (free). Before you start, open Settings → Updates: if it offers Google Gemini 1.3.0, update it. Live sessions don't talk to Shiori yet (that is K5): these checks are the connection, the sound and the Trace.
+
+- [ ] **Live voice arrives off.** Settings → Models → Google Gemini: a **Live voice** panel, its switch off, with a note that what you say goes to Google as audio while a session is open. Settings → Plugins has no Gemini Live yet.
+- [ ] **Switching it on installs it.** Turn **Use Live voice** on: "Saved", and its two models show (Gemini 3.8 Live, Gemini 3.8 Live Extended Thinking). Settings → Plugins now lists Gemini Live.
+- [ ] **Test, on Wi-Fi.** In the Live voice panel, tap **Test**: within a second or two you hear Shiori's Gemini voice say "OK" (through the phone's speaker, or the car's), and the panel says "✓ It answered aloud: OK." Write down roughly how long from the tap to the word.
+- [ ] **Test over cellular.** Turn Wi-Fi off and tap Test again: the same. If it says annai couldn't reach the address, write down the words.
+- [ ] **Sound after the tap only.** Close annai fully (swipe it away), open it, go straight to the Live voice panel and tap Test: you still hear "OK" (the tap itself unlocks sound).
+- [ ] **Bluetooth.** With the phone connected to the car (or headphones), tap Test: "OK" comes through them. Music playing before comes back afterwards.
+- [ ] **A locked screen.** Tap Test and lock the phone at once. Unlock: the panel says what happened (an answer, or that the session closed), and the next Test works.
+- [ ] **The Trace.** Trace → Kind **Models**, Type contains `live.session`: "live session open", "live session ready · Gemini 3.8 Live · … s", and "live session closed · … · test · … in, … out". Type contains `net.request`: a line for the turn, `ok (101)`. Search the page for your key: it isn't there (Copy diagnostics too).
+- [ ] **A wrong key.** On Google Gemini's page, change the key to something wrong and tap Test: "✗ The key was rejected." Put the right key back.

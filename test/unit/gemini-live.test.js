@@ -196,3 +196,20 @@ test("its address is the ability's own, as wss: for https and ws: for a server o
   assert.deepEqual(TYPE.audio, { in: [{ format: 'pcm16', rate: 16000 }], out: [{ format: 'pcm16', rate: 24000 }] });
   assert.deepEqual(TYPE.tunables, { apiVersion: 'v1alpha', proactive: true, voice: '', compression: true });
 });
+
+test("gemini-live is a protocol in annai's catalog: a keyed name, so a third party's never takes it, and its key, from annai's (Milestone 6)", async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { Registry, KEYED } = await import('../../src/core/registry.js');
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/plugins.json', import.meta.url), 'utf8')).plugins;
+  const entry = catalog.find((/** @type {any} */ p) => p.id === 'gemini-live');
+  assert.deepEqual(entry.provides, { 'endpoint-type': ['gemini-live'] });
+  assert.equal(entry.version, '0.1.0');
+  assert.ok(KEYED.has('endpoint-type'));
+  const r = new Registry();
+  const ranks = /** @type {Record<string, any[]>} */ ({ 'gemini-live': [1, 10, 'gemini-live'], other: [2, 5, 'other'] });
+  r.setRules({ rank: (id) => ranks[id], choice: () => 'other', reserved: () => null, official: (kind, name) => (kind === 'endpoint-type' && name === 'gemini-live' ? 'gemini-live' : undefined) });
+  r.add('other', 'endpoint-type', { type: 'gemini-live', by: 'other' });
+  assert.equal(r.owner('endpoint-type', 'gemini-live'), null, "while annai's isn't running, nobody's is used");
+  r.add('gemini-live', 'endpoint-type', { type: 'gemini-live', by: 'annai' });
+  assert.deepEqual(r.list('endpoint-type').map((t) => t.by), ['annai'], "annai's, whatever the user chose");
+});

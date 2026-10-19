@@ -475,7 +475,7 @@ There's no special machinery:
 
 ### 9.1 Protocols and providers are plugins
 
-**Protocol plugins** are the endpoint types: they know how to talk (request and reply formats, streaming, error kinds). **Provider plugins** describe one provider each, as data: its address, how its key is sent (`keyHeader` when not the protocol's way), its abilities, each with its kind (chat, transcription, voice), its protocol's type, its own address if it has one, tunables, extra fields, `modelDefaults` (what a model added by id or from a list starts with) and models; the roles it suggests (`recommended`, `free`); its key page and notes. annai's catalog has OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, a local speech server, the scripted model and "Another address" (any other server: it looks for what the address offers, at no cost, §9.8), each requiring the protocol plugins its abilities need.
+**Protocol plugins** are the endpoint types: they know how to talk (request and reply formats, streaming, error kinds). **Provider plugins** describe one provider each, as data: its address, how its key is sent (`keyHeader` when not the protocol's way), its abilities, each with its kind (chat, transcription, voice, realtime), its protocol's type, its own address if it has one, tunables, extra fields, `modelDefaults` (what a model added by id or from a list starts with) and models; the roles it suggests (`recommended`, `free`); its key page and notes. annai's catalog has OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, a local speech server, the scripted model and "Another address" (any other server: it looks for what the address offers, at no cost, §9.8), each requiring the protocol plugins its abilities need.
 
 **Servers you run** have provider plugins of their own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama and LM Studio. Each is marked `local`, and its quirks are data where they can be:
 - its default address and port, and whether it takes a key (Ollama takes none);
@@ -493,6 +493,7 @@ The core contains no protocol. These endpoint types are official on-demand plugi
 - Anthropic Messages
 - OpenAI Responses. Nothing is kept on the server (`store: false`): the whole conversation goes each time, and the model's encrypted reasoning goes back with it.
 - Gemini, not built yet. Until it is, Gemini's OpenAI-compatible endpoint works through Chat Completions.
+- Gemini Live, a **realtime** type (Koe and Kokoro, K4): a voice conversation in one stream, both ways, over a WebSocket. annai opens the socket itself, only at the origin of its ability's address (`wss:` for an `https` address; `ws:` only for `localhost` and `127.0.0.1`), and the protocol drives it: setup, 16-bit PCM in and out, both transcripts, tool calls and their answers, resumption. Gemini takes the key only in the address (`?key=`), the one way a browser's WebSocket can give it: the address is never traced, and the key is blanked wherever it could show. Closes are read by their words as well as their codes (Gemini's 1007 is both a bad field and a bad key). Each turn's usage is priced by its text and audio tokens (`audioIn`, `audioOut`) and counted in Spend per day; each session's opening, readiness, goaway and closing, with its data both ways, is a `live.session` entry in the Trace. Gemini's Live voice ability arrives switched off, and switching it on installs the protocol; a realtime model's Test opens a session that must say "OK" aloud. Realtime models go only in Koe's lists (§9.6); chat roles skip them.
 
 Chat Completions and OpenAI Responses also take a server that answers `stream: true` with one whole JSON reply, such as an LLM router that never streams. The wait for the first words then covers the whole reply, and Another address's note says which wait to raise.
 
@@ -515,7 +516,7 @@ Search and speech providers work the same way, as on-demand plugins with their o
 | | the type's tunables, e.g. `max_tokens` vs `max_completion_tokens`, `system` vs `developer`, usage in stream, image/PDF format | belongs to exactly one ability |
 | | `extraBody` for all its models | capabilities: tools, images (formats, longest edge, size, count per request; from the description, then corrected by refusals, §4.8), PDFs, audio input |
 | | provider tools offered ability-wide, through `modelDefaults` | context window, maximum output |
-| | photo uploads through the provider's files API: on by default where the type supports it (§4.8) | prices: input, output, cache read, cache write per TTL, per-call tool fees |
+| | photo uploads through the provider's files API: on by default where the type supports it (§4.8) | prices: input, output, cache read, cache write per TTL, per-call tool fees; for a realtime model, audio in and out |
 | | "fetch model list", Test | cache TTL options; reasoning map, provider tools it supports |
 | | | its own tunables and `extraBody`, which override the ability's |
 
@@ -619,7 +620,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 
 ### 9.9 Usage, cost, errors, keys
 
-- **Usage is normalized** to input, cache read, cache write, output and reasoning. Multiplied by the model's prices, that gives cost per call, wake and trip.
+- **Usage is normalized** to input, cache read, cache write, output and reasoning, and for a realtime model's turn its audio tokens in and out. Multiplied by the model's prices (audio at the input and output prices when a model has none of its own), that gives cost per call, wake and trip.
 - **Error kinds:**
 
   | Kind | Response |
@@ -945,7 +946,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - `default-src 'self'`
   - `script-src 'self'`
   - `style-src 'self'`
-  - `connect-src https: http://localhost:* http://127.0.0.1:*` (user-configured endpoints)
+  - `connect-src https: http://localhost:* http://127.0.0.1:* wss: ws://localhost:* ws://127.0.0.1:*` (user-configured endpoints; `wss:` for live voice sessions, plain `ws:` only on this device)
   - `img-src 'self' blob: data: https:`
   - `media-src 'self' blob:`
   - `worker-src 'self' blob:`
@@ -957,7 +958,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **The responsibility model (§2, principle 2):**
   - Imported and fetched content is the user's responsibility.
   - The trace makes everything the agent sent and read visible.
-  - A request a protocol plugin builds is sent only to the origin of its provider ability's address, so a description's tunables can't send a key to another host while the install screen names the right one.
+  - A request a protocol plugin builds is sent only to the origin of its provider ability's address, so a description's tunables can't send a key to another host while the install screen names the right one. A live voice session's WebSocket is held to the same rule (§9.1): annai opens it, never the protocol, and refuses any other origin before anything opens. A key a provider takes only in the address, as Gemini Live's, goes nowhere else, and is never traced.
   - Third-party code plugins run with full trust, and their install screen says so. Data-only plugins (a provider, skills, personalities) can't run anything and get no such warning; a provider's install screen says where keys go, and an update that sends them to a new origin asks first (§5.3).
 - **No telemetry.** "Copy diagnostics" produces a redacted report for the user to share if they choose.
 - **Credits.** Every data source annai contacts is credited in Settings → About, with the attribution its licence or policy asks for:
@@ -1127,6 +1128,7 @@ Eyes-free voice mode also serves users with low vision.
 - **Storage contract tests:** one suite, run against an in-memory store in Node and against real IndexedDB in a browser.
 - **Provider adapters:** recorded fixtures (streams, tool calls, errors, quirks) for every endpoint type. An opt-in live suite uses the developer's own keys and never runs in CI.
 - **Stand-in model servers** (`test/fakes/model-server.js`): real HTTP servers on a port of their own, one flavour each for llama.cpp, vLLM, SGLang, Ollama, LM Studio and a router that never streams. Each answers as its documents say, and llama.cpp's as a real one was measured to: its model list's shape, its reasoning field, a tool call in pieces, usage when asked, its CORS. Modes stand in for a key, auth in front of every path, and a web app's fallback page. Each refuses an empty request on a route it has, as the real ones do, so Another address's look (§9.8) is tested against all of them, and against servers that answer JSON for anything, 429 or 5xx, redirect elsewhere, block web apps, or aren't there. Unit tests reach them with a fetch that keeps a browser's CORS rules; end-to-end tests reach them from the page.
+- **Stand-in realtime server** (`test/fakes/realtime-server.js`): a WebSocket server of annai's own (no dependencies) on a port of its own, speaking Gemini Live as it was measured to: JSON in binary frames, the setup and its refusals (a wrong key, an unknown model, a field only v1alpha has), turns on `activityEnd` or a text turn, audio in a burst with both transcripts, a tool call, `interrupted` and the cut turn's own end, a resume handle, goAway and usage. It records what it got, and closes with a code and words when told. Unit tests reach it with Node's WebSocket; end-to-end tests from the page, through the security policy. An opt-in live suite (`test/live/gemini-live.test.js`) checks the same against the real API with the developer's own key.
 - **Scripted fake model:** a provider plugin that replies with predetermined text and tool calls, for deterministic, free end-to-end tests. Plugin authors can use it too.
 - **Trip simulation:** a GPS track plus a fake clock at 10× speed, with assertions on which triggers fired and what Shiori did.
 - **End-to-end (Playwright):** Chromium and WebKit, with simulated location, a fake microphone fed from a WAV file, pre-granted permissions, and phone-sized viewports.
