@@ -1,58 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { utf8 } from '../../src/core/bytes.js';
-import { sha256Hex } from '../../src/core/hash.js';
 import { satisfies, checkRequires, installWith, addFromCatalog, prune, dependents } from '../../src/core/requires.js';
 import { updateOfficial } from '../../src/core/llm/official.js';
 import { files, hostKit } from './package-kit.js';
-
-/** A protocol plugin: code that registers one endpoint type. @param {string} id @param {string} type @param {string} version */
-const PROTO = (id, type, version) => ({
-  'annai-plugin.json': JSON.stringify({ id, name: `Proto ${type}`, version, api: 1, entry: 'index.js', provides: { 'endpoint-type': [type] } }),
-  'index.js': `export function activate(annai) { return annai.providers.register({ type: '${type}', name: '${type}', run: async function* () { yield { type: 'text', text: 'hi' }; } }); }`,
-});
-/** A data-only provider plugin needing requires, with a chat ability per type. @param {string} id @param {any[]} requires @param {string[]} types @param {string} [version] */
-const PROVIDER = (id, requires, types, version = '1.0.0') => ({
-  'annai-plugin.json': JSON.stringify({
-    id, name: `Provider ${id}`, version, api: 1, requires,
-    provider: { baseUrl: 'https://llm.example/v1', key: 'required', abilities: Object.fromEntries(types.map((t, i) => [`chat-${i}`, { kind: 'chat', type: t }])) },
-  }),
-});
-
-/**
- * annai's catalog and official plugin files, stood in for: what fetch asked for is kept; failNext makes the next request
- * for one path fail as a dropped connection does; offline makes every request fail.
- * @param {Record<string, Record<string, string>>} plugins by id, each its files
- */
-async function site(plugins) {
-  const entries = [];
-  for (const [id, f] of Object.entries(plugins)) {
-    const m = JSON.parse(f['annai-plugin.json']);
-    /** @type {Record<string, string>} */
-    const hashes = {};
-    for (const [name, text] of Object.entries(f)) hashes[name] = await sha256Hex(utf8(text));
-    entries.push({ id, name: m.name, version: m.version, provides: m.provides ?? {}, requires: m.requires ?? [], files: hashes });
-  }
-  const s = {
-    /** @type {string[]} */ asked: [],
-    /** @type {Set<string>} */ failing: new Set(),
-    offline: false,
-    /** @param {string} path */ failNext: (path) => { s.failing.add(path); },
-    /** @param {any} url */
-    fetch: async (url) => {
-      const path = new URL(String(url), 'http://annai.test').pathname;
-      s.asked.push(path);
-      if (s.offline) throw new TypeError('Failed to fetch');
-      if (s.failing.delete(path)) throw new TypeError('Failed to fetch');
-      if (path === '/catalog/plugins.json') return new Response(JSON.stringify({ format: 1, plugins: entries }));
-      const m = /^\/plugins-official\/([^/]+)\/(.+)$/.exec(path);
-      const text = m ? plugins[m[1]]?.[m[2]] : undefined;
-      return text === undefined ? new Response('not found', { status: 404 }) : new Response(text);
-    },
-    entries,
-  };
-  return s;
-}
+import { PROTO, PROVIDER, site } from './provider-kit.js';
 
 const CATALOG = () => site({
   'proto-a': PROTO('proto-a', 'type-a', '0.3.0'),
@@ -181,4 +132,48 @@ test("dependents names the installed plugins that require one; an official insta
   assert.deepEqual(Object.keys(await other.installed()), ['proto-a']);
   await other.install(files(PROVIDER('provider-x', [], ['type-a'])), { source: 'file' });
   await assert.rejects(addFromCatalog(other, 'provider-x', { fetch: s.fetch }), /provider-x.*isn't annai's own/s);
+});
+
+test("security review: a requirement the user switched off isn't switched on: adding stops, says how to turn it on, and changes nothing", async () => {
+  const { host } = await hostKit();
+  const s = await CATALOG();
+  await addFromCatalog(host, 'proto-a', { fetch: s.fetch });
+  await host.setEnabled('proto-a', false);
+  s.asked.length = 0;
+  for (const tap of [false, true]) {
+    await assert.rejects(addFromCatalog(host, 'provider-x', { fetch: s.fetch, tap }), /Proto type-a.*you turned off.*Turn it on in Settings → Plugins/s);
+  }
+  const installed = await host.installed();
+  assert.deepEqual(Object.keys(installed), ['proto-a']);
+  assert.equal(installed['proto-a'].enabled, false);
+  assert.equal(host.active.has('proto-a'), false);
+  assert.ok(!s.asked.some((p) => p.startsWith('/plugins-official/')), 'nothing was downloaded');
+  // A provider plugin the user turned off isn't switched on by adding it either.
+  const { host: other } = await hostKit();
+  await addFromCatalog(other, 'provider-x', { fetch: s.fetch });
+  await other.setEnabled('provider-x', false);
+  await assert.rejects(addFromCatalog(other, 'provider-x', { fetch: s.fetch, tap: true }), /you turned off/);
+  assert.equal((await other.installed())['provider-x'].enabled, false);
+});
+
+test('security review: a requirement annai switched off after repeated errors starts again only on the user\'s tap; only what this call installed, or what was on, is started', async () => {
+  const { host, registry } = await hostKit();
+  const s = await CATALOG();
+  await addFromCatalog(host, 'proto-a', { fetch: s.fetch });
+  registry.disable('proto-a', 'failed 3 times in a row');
+  assert.equal(host.active.has('proto-a'), false);
+  await addFromCatalog(host, 'provider-x', { fetch: s.fetch }); // not a tap: a path in the background
+  assert.equal(registry.isDisabled('proto-a'), true);
+  assert.equal(host.active.has('proto-a'), false);
+  assert.ok(host.active.has('proto-b') && host.active.has('provider-x'), 'what this call installed is started');
+  await addFromCatalog(host, 'provider-x', { fetch: s.fetch, tap: true });
+  assert.equal(registry.isDisabled('proto-a'), false);
+  assert.ok(host.active.has('proto-a'));
+});
+
+test('security review: a package that requires itself is refused; its own id is never a requirement', async () => {
+  const { host } = await hostKit();
+  const s = await CATALOG();
+  await assert.rejects(installWith(host, files(PROVIDER('provider-q', [{ id: 'provider-q', version: '^1' }], ['type-a'])), { source: 'file' }, { fetch: s.fetch }), /requires itself/);
+  assert.deepEqual(await checkRequires(host, [{ id: 'provider-q', version: '^1' }], s.entries, { except: 'provider-q' }), []);
 });

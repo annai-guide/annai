@@ -1,4 +1,7 @@
 // Provider descriptions the provider tests share (M1).
+import { utf8 } from '../../src/core/bytes.js';
+import { sha256Hex } from '../../src/core/hash.js';
+
 /** @typedef {import('../../src/core/llm/provider-desc.js').ProviderDesc} ProviderDesc */
 
 /** A provider like OpenAI's: chat through Responses, chat through Chat Completions (off), a voice. */
@@ -77,3 +80,51 @@ export const ANOTHER_SRC = /** @type {ProviderSource} */ ({
     },
   },
 });
+
+/** A protocol plugin: code that registers one endpoint type. @param {string} id @param {string} type @param {string} version */
+export const PROTO = (id, type, version) => ({
+  'annai-plugin.json': JSON.stringify({ id, name: `Proto ${type}`, version, api: 1, entry: 'index.js', provides: { 'endpoint-type': [type] } }),
+  'index.js': `export function activate(annai) { return annai.providers.register({ type: '${type}', name: '${type}', run: async function* () { yield { type: 'text', text: 'hi' }; } }); }`,
+});
+/** A data-only provider plugin needing requires, with a chat ability per type. @param {string} id @param {any[]} requires @param {string[]} types @param {string} [version] */
+export const PROVIDER = (id, requires, types, version = '1.0.0') => ({
+  'annai-plugin.json': JSON.stringify({
+    id, name: `Provider ${id}`, version, api: 1, requires,
+    provider: { baseUrl: 'https://llm.example/v1', key: 'required', abilities: Object.fromEntries(types.map((t, i) => [`chat-${i}`, { kind: 'chat', type: t }])) },
+  }),
+});
+
+/**
+ * annai's catalog and official plugin files, stood in for: what fetch asked for is kept; failNext makes the next request
+ * for one path fail as a dropped connection does; offline makes every request fail.
+ * @param {Record<string, Record<string, string>>} plugins by id, each its files
+ */
+export async function site(plugins) {
+  const entries = [];
+  for (const [id, f] of Object.entries(plugins)) {
+    const m = JSON.parse(f['annai-plugin.json']);
+    /** @type {Record<string, string>} */
+    const hashes = {};
+    for (const [name, text] of Object.entries(f)) hashes[name] = await sha256Hex(utf8(text));
+    entries.push({ id, name: m.name, version: m.version, provides: m.provides ?? {}, requires: m.requires ?? [], files: hashes });
+  }
+  const s = {
+    /** @type {string[]} */ asked: [],
+    /** @type {Set<string>} */ failing: new Set(),
+    offline: false,
+    /** @param {string} path */ failNext: (path) => { s.failing.add(path); },
+    /** @param {any} url */
+    fetch: async (url) => {
+      const path = new URL(String(url), 'http://annai.test').pathname;
+      s.asked.push(path);
+      if (s.offline) throw new TypeError('Failed to fetch');
+      if (s.failing.delete(path)) throw new TypeError('Failed to fetch');
+      if (path === '/catalog/plugins.json') return new Response(JSON.stringify({ format: 1, plugins: entries }));
+      const m = /^\/plugins-official\/([^/]+)\/(.+)$/.exec(path);
+      const text = m ? plugins[m[1]]?.[m[2]] : undefined;
+      return text === undefined ? new Response('not found', { status: 404 }) : new Response(text);
+    },
+    entries,
+  };
+  return s;
+}
