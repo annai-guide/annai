@@ -148,3 +148,33 @@ test('the Plugins page names the providers made from a provider plugin, and its 
   await expect(page.getByText('No providers yet. Add one below.')).toBeVisible();
   expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toEqual([]);
 });
+
+test('moving over: endpoints from before providers, with their keys, are removed at the next start, and a card says so and opens Models', async ({ page }) => {
+  await openApp(page, '#/trips');
+  await waitForServiceWorker(page);
+  // What a device had before: an endpoint with a model in main, and its key.
+  await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    await ws.write('sys:settings', '/llm/endpoints/ep-old.json', { id: 'ep-old', type: 'chat-completions', template: null, user: { name: 'My old router', baseUrl: 'https://router.example/v1' }, created: 1 }, { author: 'user' });
+    await ws.write('sys:settings', '/llm/models/m-old.json', { id: 'm-old', endpoint: 'ep-old', template: null, user: { providerId: 'old-model' }, created: 1 }, { author: 'user' });
+    await ws.write('sys:settings', '/llm/roles.json', { main: { models: ['m-old'], level: 'medium' } }, { author: 'user' });
+    await store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('llm:ep-old', 'sk-old-endpoint-key-123'));
+    store.close();
+  });
+  await page.reload();
+  const card = page.locator('.notice', { hasText: 'Settings → Models changed' });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Your endpoints (My old router) and their keys were removed. Add them again in Settings → Models.');
+  await card.getByRole('button', { name: 'Open Models' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await expect(page.getByText('No providers yet. Add one below.')).toBeVisible();
+  await expect(page.getByText('No models yet. Add one.')).toBeVisible();
+  expect(await secretIds(page)).toEqual([]);
+  // Once moved over, the next start says nothing.
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await expect(page.locator('.notice', { hasText: 'Settings → Models changed' })).toHaveCount(0);
+});
