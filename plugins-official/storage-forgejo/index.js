@@ -1,3 +1,5 @@
+// git.js is the GitHub place's file, copied unchanged (hence its header and the helpers unused here): a plugin can't
+// import another's files, and a unit test keeps the two copies identical.
 import { blobId, nest, GitPathError } from './git.js';
 
 /**
@@ -229,7 +231,6 @@ async function failure(g, res) {
   if (res.status === 403) return new E('refused', `The access token isn't allowed to change ${named(g)} on ${g.host}. Make one with Repository: Read and write, and check that the branch isn't protected.`);
   if (res.status === 404) return new E('missing', `There is no repository ${named(g)} on ${g.host} that this token can see. Create a private repository named ${g.repo} there first (annai doesn't make one), or check the owner and the name.`);
   if (quota) return new E('refused', `Your account on ${g.host} is out of space: its quota is used up. Free some there, or ask whoever runs the server for more, then back up again.`);
-  if (res.status === 413) return new E('refused', `${g.host} refused a request this large (HTTP 413). Raise its limit on uploads, then back up again.`);
   if (res.status === 423) return new E('refused', `${named(g)} on ${g.host} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.`);
   if (res.status === 429 || res.status === 503) {
     const after = Number(res.headers.get('retry-after'));
