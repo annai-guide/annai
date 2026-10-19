@@ -205,6 +205,8 @@ export class Agent {
   #callCut = null;
   /** A note cut her speech: speak says so, and doesn't listen. */
   #noteCut = false;
+  /** A turn runs. */
+  #turning = false;
   /** What the running turn did (Half.ended). */
   #facts = { finalText: '', told: false, slept: false, spoke: false, kinds: /** @type {string[]} */ ([]) };
 
@@ -554,6 +556,11 @@ export class Agent {
       this.voice.speaker.stop();
       for (const u of this.#utterances.values()) u.stop();
     }
+  }
+
+  /** Its turn has the voice, or its tap's window is open: the other half waits to take the voice. */
+  get voicing() {
+    return (this.#turning && this.#voiceNow) || Boolean(this.#ear);
   }
 
   /** The wait tool runs (not speak's listening). */
@@ -1008,10 +1015,12 @@ export class Agent {
     // Shiori became two halves, or one again.
     if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
     let ok = false;
+    this.#turning = true;
     try {
       ok = await this.#steps(wakes, wakeId, abort);
     } finally {
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn('the end of a turn failed', e));
+      this.#turning = false;
       try {
         this.#half.ended?.({ wakeId, ok, ...this.#facts });
       } catch (e) {
@@ -1458,10 +1467,12 @@ export class Agent {
         input: { type: 'object', properties: { text: { type: 'string', minLength: 1 } }, required: ['text'] },
         run: async (/** @type {{ text: string }} */ i, /** @type {any} */ call) => {
           const text = String(i.text ?? '');
-          const unsaid = call.voice && this.voice ? this.#unsaid(call.id) : '';
-          await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(call.voice && !unsaid ? { voice: true } : {}) }, texts: [['text', text]] });
+          // The other half may have the voice now; words already playing are said to the end.
+          const voiced = call.voice && this.voice && (this.#half.voice() || this.#utterances.has(call.id));
+          const unsaid = voiced ? this.#unsaid(call.id) : '';
+          await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(voiced && !unsaid ? { voice: true } : {}) }, texts: [['text', text]] });
           if (unsaid) return unsaid;
-          if (call.voice && this.voice) return this.#say(text, call);
+          if (voiced) return this.#say(text, call);
           this.#setState('speaking');
           return call.sleeping ? 'shown' : SPEAK_RESULT;
         },
@@ -1501,7 +1512,7 @@ export class Agent {
           }
           if (typeof i.question !== 'string' || !i.question.trim()) return { content: 'Error: ask needs a question.', isError: true };
           await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: i.question, options: i.options } });
-          if (call.voice && this.voice && !this.#aloudOnly) return this.#askAloud(i.question, call);
+          if (call.voice && this.voice && !this.#aloudOnly && this.#half.voice()) return this.#askAloud(i.question, call);
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
           if (got.chosen !== undefined) {
@@ -1610,7 +1621,7 @@ export class Agent {
       this.#streaming = '';
       return;
     }
-    if (!this.#voiceNow || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
+    if (!this.#voiceNow || !this.#half.voice() || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
     let u = this.#utterances.get(ev.id);
     if (!u) {
       // Only the reply's first speak plays as it streams: a later one plays when its turn comes, after the first has listened.
@@ -1754,6 +1765,7 @@ export class Agent {
     if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
     const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
     if (note) return { note: note.from ?? 'kokoro' };
+    if (!this.#half.voice()) return { deaf: 'the other half has the microphone now.' };
     const deaf = await this.#openEar('turn');
     if (deaf) return { deaf };
     this.#setState('listening');
