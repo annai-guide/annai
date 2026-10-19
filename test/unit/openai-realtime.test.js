@@ -7,8 +7,7 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { openLive } from '../../src/core/realtime/open.js';
-import { activate, usageOf } from '../../plugins-official/openai-realtime/index.js';
-import { muLaw, fromMuLaw } from '../../plugins-official/openai-realtime/g711.js';
+import { activate, usageOf, muLaw, fromMuLaw } from '../../plugins-official/openai-realtime/index.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 // OpenAI Realtime (K6), against the stand-in's openai flavour: no OpenAI key was at hand, so these hold the plugin
@@ -323,7 +322,7 @@ test("openai-realtime is a protocol in annai's catalog: a keyed name, reserved a
   const catalog = JSON.parse(await readFile(new URL('../../catalog/plugins.json', import.meta.url), 'utf8')).plugins;
   const entry = catalog.find((/** @type {any} */ p) => p.id === 'openai-realtime');
   assert.deepEqual(entry.provides, { 'endpoint-type': ['openai-realtime'] });
-  assert.deepEqual(Object.keys(entry.files).sort(), ['annai-plugin.json', 'g711.js', 'index.js']);
+  assert.deepEqual(Object.keys(entry.files).sort(), ['annai-plugin.json', 'index.js']);
   const { OFFICIAL_NAMES } = await import('../../src/core/official-names.js');
   assert.equal(OFFICIAL_NAMES['endpoint-type']['openai-realtime'], 'openai-realtime');
 });

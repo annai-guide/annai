@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { muLaw, fromMuLaw, aLaw, fromALaw } from '../../plugins-official/openai-realtime/g711.js';
+import { muLaw, fromMuLaw, aLaw, fromALaw } from '../../plugins-official/openai-realtime/index.js';
 
 // G.711 (ITU-T G.711), which OpenAI Realtime takes as audio/pcmu and audio/pcma: 8 kHz, one byte a sample.
 

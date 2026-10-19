@@ -81,7 +81,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 18575,
+      "size": 18434,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -89,9 +89,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "9f8cdc6bd7ddf108bb4bbb2393f48ce1b9ea5ec6fb114c8610ee8c4342fed478",
-        "g711.js": "0815146297e07b0913c7a6cb1823b83e0bbfb92625e154633a835de76e716565",
-        "index.js": "e497c605d9b422a3032ad42471eefbe014a1d7fe5ba577610ebdd042c8c47448"
+        "annai-plugin.json": "43b1136c29a01d3d0541ee6223192e52e665a32b28866af13230ca6228c92ac0",
+        "index.js": "e01a4c06e65f7ae71831ef7ef0dfaad7e51322734421610d43631d89f97f8903"
       }
     },
     {
@@ -120,7 +119,7 @@
     {
       "id": "provider-another-address",
       "name": "Another address",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -132,17 +131,18 @@
       "abilities": [
         "chat",
         "transcription",
-        "voice"
+        "voice",
+        "realtime"
       ],
       "free": false,
       "local": false,
       "code": true,
-      "size": 24229,
+      "size": 24585,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "a3dc5cc465983b527ed0f8400c231c3562ee0f554e7ddabeb91728e031f99f35",
+        "annai-plugin.json": "c9ea35e4baa0255a37d50b57b4d08aaedad67aafad60709aac27838f6be5b0fd",
         "index.js": "2946dce8de1cced71c350f08f5fbfc3572886264beac0e8d7d4a47f67f14cbc3",
         "probe.js": "79c45207562253ab47bbdfe97da275fb0b175fc56c00d610f6ccb052dc5a1d79"
       }
@@ -393,19 +393,20 @@
     {
       "id": "provider-openai",
       "name": "OpenAI",
-      "version": "1.0.0",
-      "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, on one key.",
+      "version": "1.1.0",
+      "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
       "category": "providers",
       "keywords": [],
       "abilities": [
         "chat",
         "transcription",
-        "voice"
+        "voice",
+        "realtime"
       ],
       "free": false,
       "local": false,
       "code": false,
-      "size": 9765,
+      "size": 12010,
       "requires": [
         {
           "id": "openai-responses",
@@ -418,7 +419,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "07c48272b74198f3cdce06090a81b6173f8280a649f0707bb4dcc59af84a89f0"
+        "annai-plugin.json": "9b4e0a2bbc819e25616e3b8020cfe1215289ea22924094236ce00dde365a66e8"
       }
     },
     {
