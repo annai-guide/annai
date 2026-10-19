@@ -76,6 +76,9 @@ test("a list of the endpoint's own (OpenRouter lists speech models by what they 
   assert.deepEqual(say.listRequest({ endpoint, key: 'sk-test' }), { url: 'https://openrouter.ai/api/v1/models?output_modalities=speech', headers: { authorization: 'Bearer sk-test' } });
   assert.deepEqual(say.readList({ data: [{ id: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0' }, { id: 'tts-1', name: '' }] }),
     [{ providerId: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0' }, { providerId: 'tts-1' }]);
+  // A voice left empty is not sent: the provider's own default voice speaks (Fish Audio's free voice on OpenRouter).
+  const fish = { ...s, model: { ...s.model, providerId: 'fish-audio/s2.1-pro-free:free', tunables: { voice: '' } }, tunables: { ...say.tunables, voice: '' } };
+  assert.deepEqual(JSON.parse(say.speechRequest({ ...fish, text: 'Hi.' }).body), { model: 'fish-audio/s2.1-pro-free:free', input: 'Hi.', response_format: 'mp3' });
   // OpenRouter's error codes are numbers: its status decides the kind.
   assert.equal(say.classify(402, JSON.stringify({ error: { code: 402, message: 'Insufficient credits' } })), null);
 });

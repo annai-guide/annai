@@ -1,5 +1,5 @@
 import { h, field, twoStep, jsonField, checkbox } from '../dom.js';
-import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer } from '../../core/llm/config.js';
+import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { templateUpdates, applyTemplate, addListedModel, useSuggestion } from '../../core/llm/templates.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
@@ -220,17 +220,18 @@ function voicePanel(ctx, id, hasKey, catalog) {
     },
   }, "Add OpenRouter's voice");
   return h('section', { class: 'panel', 'aria-label': "OpenRouter's voice" },
-    h('p', { text: `OpenRouter can also write down what you say, and give Shiori a voice. annai adds them with this endpoint's key, ${BEHIND} in Settings → Models.` }),
+    h('p', { text: `OpenRouter can also write down what you say, and give Shiori a voice. annai adds its transcription and voices with this endpoint's key, ${BEHIND} in Settings → Models.` }),
     h('div', { class: 'acts' }, add),
     status);
 }
 
 /** Buttons that put a template's suggested models in the roles ("free", "recommended"). @param {any} ctx @param {string} id @param {import('../../core/llm/templates.js').EndpointTemplate} tpl */
 function suggestionsPanel(ctx, id, tpl) {
+  const speech = Object.values(tpl.roles ?? {}).some((r) => SPEECH_ROLES.some((role) => role in r));
   /** @type {Record<string, string>} */
   const labels = { free: 'Use the free models', recommended: 'Use the recommended models' };
   return h('section', { class: 'panel', 'aria-label': 'Suggested models' },
-    h('p', { class: 'sub', text: `annai's ${tpl.name} template suggests a model for each role.` }),
+    h('p', { class: 'sub', text: `annai's ${tpl.name} template suggests a model for each role.${speech ? " Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them." : ''}` }),
     h('div', { class: 'acts' }, ...Object.keys(tpl.roles ?? {}).map((which) => h('button', {
       class: 'btn', type: 'button',
       onclick: async () => {

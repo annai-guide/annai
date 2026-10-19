@@ -64,7 +64,8 @@ export function activate(annai) {
       /** @param {any} c */
       speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
         /** @type {Record<string, any>} */
-        let body = { model: model.providerId, input: text, voice: t.voice, response_format: t.format };
+        let body = { model: model.providerId, input: text, response_format: t.format };
+        if (t.voice) body.voice = t.voice; // none: the provider's default voice (Fish Audio's on OpenRouter)
         if (t.instructions) body.instructions = t.instructions;
         if (t.speed) body.speed = t.speed;
         body = mergePatch(mergePatch(body, endpoint.extraBody ?? {}), model.extraBody ?? {});

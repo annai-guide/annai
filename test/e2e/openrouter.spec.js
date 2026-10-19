@@ -17,7 +17,7 @@ const roleItems = (page, heading) => page.locator('.role', { has: page.getByRole
 const IN = 'Speech in: how Shiori hears you';
 const OUT = "Speech out: Shiori's voice";
 const PHONE_IN = ['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; usually goes to Google or Apple)", '3. OpenAI: Whisper Large V3 Turbo'];
-const PHONE_OUT = ["1. Browser voice (the browser's own; some voices go online)", '2. SpaceXAI: Grok Voice TTS 1.0 (Ara)'];
+const PHONE_OUT = ["1. Browser voice (the browser's own; some voices go online)", '2. Fish Audio: S2.1 Pro Free (free)', '3. SpaceXAI: Grok Voice TTS 1.0 (Ara)'];
 const KEY = 'sk-or-test-key-123';
 
 /** From the Models screen: plays the voice's sample, then has the transcription model write down what the (fake) microphone says. @param {import('@playwright/test').Page} page */
@@ -68,7 +68,7 @@ test("Sign in with OpenRouter sets up free chat models, and OpenRouter's transcr
     });
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await expect(page.getByText("It also adds OpenRouter's transcription and a voice")).toBeVisible();
+    await expect(page.getByText("It also adds OpenRouter's transcription and voices, a free one among them")).toBeVisible();
     await page.getByRole('button', { name: 'Sign in with OpenRouter' }).click();
     await expect.poll(() => authUrl).toContain('key_label=annai');
     await page.goto(`/?code=test-code&state=${new URL(authUrl).searchParams.get('state')}`);
@@ -78,7 +78,8 @@ test("Sign in with OpenRouter sets up free chat models, and OpenRouter's transcr
     release();
     const card = page.locator('.notice', { hasText: 'Signed in with OpenRouter' });
     await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(card).toContainText("behind the phone's own dictation and the browser voice, which are free");
+    await expect(card).toContainText("behind the phone's own dictation and the browser voice. Its free voice comes first");
+    await expect(card).toContainText('uses one of the free requests a day the chat models use too');
     await expect(card).toContainText('move them up under Roles');
     await card.getByRole('button', { name: 'Dismiss' }).click();
     await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' })).toBeHidden();
@@ -125,6 +126,8 @@ test("signed in before the voice came: the OpenRouter endpoint's page adds OpenR
     for (const name of ['OpenRouter: voice', 'OpenRouter: transcription']) {
       await page.getByRole('link', { name: new RegExp(`^${name}`) }).click();
       await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+      // Its suggestion would put them ahead of the phone's own: the button's line says so.
+      await expect(page.getByText('any that cost money are tried before them')).toBeVisible();
       await page.getByLabel('Base URL').fill(`${server.origin}/api/v1`);
       await page.getByRole('button', { name: 'Save' }).click();
       await expect(page.getByLabel('Base URL')).toHaveValue(`${server.origin}/api/v1`);
