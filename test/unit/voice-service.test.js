@@ -125,8 +125,11 @@ test('listenOnce(): nothing heard in time gives null, and the mic closes', async
 });
 
 test('Settings → Voice: defaults, and values outside their range fall back', async () => {
-  assert.deepEqual(voiceSettings({}), { mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, lastChoices: {} });
+  assert.deepEqual(voiceSettings({}), { mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, lastChoices: {}, closeAfterSeconds: 30, bargeIn: true });
   assert.deepEqual(voiceSettings({ voice: { pauseMs: 50, browserVoice: 'Samantha', rate: 1.2 } }), { ...voiceSettings({}), browserVoice: 'Samantha', rate: 1.2 });
+  // A live session's quiet spell is 10 to 300 seconds; cutting her off by speaking is on unless turned off (K5).
+  assert.deepEqual(voiceSettings({ voice: { closeAfterSeconds: 5, bargeIn: false } }), { ...voiceSettings({}), bargeIn: false });
+  assert.equal(voiceSettings({ voice: { closeAfterSeconds: 120 } }).closeAfterSeconds, 120);
   const k = await voiceKit();
   await updateAppSettings(k.ws, { voice: { browserVoice: 'v-en', rate: 0.9 } });
   await k.voice.say('Hi.');

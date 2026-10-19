@@ -12,10 +12,11 @@ import { createHash } from 'node:crypto';
  * clientContent comes before that, and then the cut turn's turnComplete. Unit tests reach it with Node's WebSocket, and end-to-end tests from the
  * page, at ws://127.0.0.1:<port> (WebKit can't stand in for a page's own requests).
  * @typedef {{ heard?: string, said?: string, audio?: Uint8Array, tool?: { name: string, args: any }, goAway?: number, handle?: string,
- *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity' }} Turn
+ *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', heardAfter?: string }} Turn
  *   one answer, played when a clientContent turn or an activityEnd comes; turns are given in order, and the last repeats.
  *   audio: 24 kHz 16-bit PCM; tool: a call it makes after its words; goAway: seconds left, sent after the turn;
- *   usage: Gemini's usageMetadata; interruptOn: only this cuts it off (default: either)
+ *   usage: Gemini's usageMetadata; interruptOn: only this cuts it off (default: either); heardAfter: the last words heard, sent after
+ *   turnComplete, as Gemini's input transcript sometimes comes
  * @typedef {{ flavour: 'gemini', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
  *   pace?: number, chunkBytes?: number }} Options
  *   key: the one key it takes (none: any); models: the ids it knows (none: any); closeWith: how it closes each session at its setup;
@@ -152,6 +153,7 @@ export async function startRealtimeServer(o) {
       const done = () => {
         playing = null;
         send({ serverContent: { turnComplete: true }, ...(turn.usage ? { usageMetadata: turn.usage } : {}) });
+        if (turn.heardAfter) send({ serverContent: { inputTranscription: { text: turn.heardAfter } } });
         if (turn.handle) send({ sessionResumptionUpdate: { newHandle: turn.handle, resumable: true } });
         if (turn.goAway !== undefined) send({ goAway: { timeLeft: `${turn.goAway}s` } });
       };

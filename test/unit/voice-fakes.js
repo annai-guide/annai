@@ -26,6 +26,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   let opens = 0;
   let files = 0;
   const platform = {
+    /** How much faster than real time a live stream plays here. */
+    streamSpeed: 20,
     /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
     voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
     /** Whether dictation recognizes speech on the phone. */
@@ -65,9 +67,41 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         },
       },
     } : {}),
+    /** Each live stream: what was pushed (ms of sound), and how it ended. @type {{ rate: number, ms: number, ended: boolean, stopped: boolean, playedMs: number | null }[]} */
+    streams: [],
     player: {
       async unlock() { log.push('unlock'); return true; },
       ...(plays ? { plays: () => plays } : {}),
+      /** A live session's voice: it "plays" streamSpeed times faster than real time, from its first piece. @param {{ rate: number }} o */
+      stream({ rate }) {
+        const s = { rate, ms: 0, ended: false, stopped: false, playedMs: /** @type {number | null} */ (null) };
+        platform.streams.push(s);
+        log.push('stream');
+        let started = 0;
+        /** @type {(r: { playedMs: number }) => void} */
+        let settle = () => {};
+        const done = new Promise((r) => { settle = r; });
+        const played = () => (started ? Math.min(s.ms, (Date.now() - started) * platform.streamSpeed) : 0);
+        const finish = () => {
+          if (s.playedMs !== null) return { playedMs: s.playedMs };
+          clearInterval(timer);
+          s.playedMs = Math.round(played());
+          settle({ playedMs: s.playedMs });
+          return { playedMs: s.playedMs };
+        };
+        const timer = setInterval(() => { if (s.ended && played() >= s.ms) finish(); }, 2);
+        return {
+          push(/** @type {Int16Array} */ pcm) {
+            if (s.playedMs !== null) return;
+            started ||= Date.now();
+            s.ms += (pcm.length / rate) * 1000;
+          },
+          end() { s.ended = true; log.push('stream end'); },
+          stop() { s.stopped = true; log.push('stream stop'); return finish(); },
+          queued: () => (s.playedMs === null ? 1 : 0),
+          done,
+        };
+      },
       /** @param {{ data: Uint8Array }} clip @param {{ signal: AbortSignal, onLevel?: (x: number) => void }} o */
       play(clip, { signal, onLevel }) {
         const name = dec.decode(clip.data);

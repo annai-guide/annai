@@ -76,9 +76,9 @@ export class AllFailedError extends Error {
  * list uses the other Koe list, and never Main: no Koe model means no Koe. @param {ModelConfig} config @param {string} role
  */
 export function candidates(config, role) {
-  const own = koeOwn(config, role);
+  const own = config.roles?.[role]?.models ?? [];
   if (own.length || role === 'main') return own;
-  if (KOE_ROLES.includes(role)) return koeOwn(config, KOE_ROLES.find((r) => r !== role) ?? '');
+  if (KOE_ROLES.includes(role)) return config.roles?.[KOE_ROLES.find((r) => r !== role) ?? '']?.models ?? [];
   if (!CHAT_ROLES.includes(role)) return own;
   return config.roles.main?.models ?? [];
 }
@@ -90,15 +90,23 @@ export function koeList(cfg, voiceOn) {
 }
 
 /** Whether Shiori is two halves: a Koe list holds a model. @param {ModelConfig} cfg */
-export const splitOn = (cfg) => KOE_ROLES.some((r) => koeOwn(cfg, r).length > 0);
+export const splitOn = (cfg) => KOE_ROLES.some((r) => (cfg.roles?.[r]?.models ?? []).length > 0);
 
 /**
- * A role's own models; in a Koe list, none that are realtime, until live sessions reach Koe (K5 drops this):
- * a list of only those counts as empty, so the other list answers. @param {ModelConfig} cfg @param {string} role @returns {string[]}
+ * Koe's pathway now (K5): the first model of its list that can answer. A realtime one runs a live session; a chat one,
+ * the loop, which passes realtime ones over. A realtime model off, resting or without its protocol running is passed over,
+ * and a chat model resting. null: none can. @param {ModelConfig} cfg
+ * @param {{ voiceOn: boolean, types: Map<string, { realtime?: boolean }>, until: (id: string) => number, now: number }} o
+ * @returns {{ kind: 'live', modelId: string } | { kind: 'text' } | null}
  */
-function koeOwn(cfg, role) {
-  const own = cfg.roles?.[role]?.models ?? [];
-  return KOE_ROLES.includes(role) ? own.filter((id) => abilityOf(cfg, id)?.kind !== 'realtime') : own;
+export function koePath(cfg, { voiceOn, types, until, now }) {
+  for (const id of koeList(cfg, voiceOn).models) {
+    const a = abilityOf(cfg, id);
+    if (!cfg.models[id] || until(id) > now) continue;
+    if (a?.kind !== 'realtime') return { kind: 'text' };
+    if (a.on && types.get(a.type)?.realtime) return { kind: 'live', modelId: id };
+  }
+  return null;
 }
 
 /** A rough token count, enough to skip models whose window is clearly too small. @param {Request} request */

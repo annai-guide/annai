@@ -9,7 +9,7 @@ import { candidates } from '../../src/core/llm/fallback.js';
 import { ROLE_LEVELS } from '../../src/core/llm/reasoning.js';
 import { ROLE_KINDS, checkProviderDesc } from '../../src/core/llm/provider-desc.js';
 import { addProvider, useSuggestion } from '../../src/core/llm/providers.js';
-import { koeList, splitOn } from '../../src/core/llm/fallback.js';
+import { koeList, splitOn, koePath } from '../../src/core/llm/fallback.js';
 import { ROUTER_SRC } from './provider-kit.js';
 
 /** @param {Record<string, string[]>} lists @returns {any} */
@@ -101,7 +101,7 @@ test("Koe's wait for the first words is 8 seconds unless the user set one (Koe a
   assert.ok(waits.includes(3000), 'koe-talk uses its own setting, with koe-type\'s models');
 });
 
-test("until live sessions reach Koe (K5), a realtime model in Koe's lists counts as none: the other list answers, and alone it splits nothing (review)", () => {
+test("a realtime model in Koe's lists is Koe's (K5): first, it runs a live session; resting, off or without its protocol, the next model answers", () => {
   /** @type {any} */
   const cfg = {
     providers: { pv: { id: 'pv', plugin: 'provider-gemini', template: null, created: 0, user: { name: 'Gemini', abilities: { live: { kind: 'realtime', type: 'gemini-live' }, chat: { kind: 'chat', type: 'chat-completions' } } } } },
@@ -109,15 +109,22 @@ test("until live sessions reach Koe (K5), a realtime model in Koe's lists counts
       live: { id: 'live', provider: 'pv', ability: 'live', template: null, created: 0, user: { providerId: 'gemini-3.8-live' } },
       fast: { id: 'fast', provider: 'pv', ability: 'chat', template: null, created: 0, user: { providerId: 'gemini-3.5-flash-lite' } },
     },
-    roles: { main: { models: [], level: 'off' }, 'koe-talk': { models: ['live'], level: 'off' }, 'koe-type': { models: ['fast'], level: 'off' } },
+    roles: { main: { models: [], level: 'off' }, 'koe-talk': { models: ['live', 'fast'], level: 'off' }, 'koe-type': { models: [], level: 'off' } },
   };
-  assert.deepEqual(koeList(cfg, true), { role: 'koe-talk', models: ['fast'] }, 'voice on: the typing model, through the speech pipeline');
-  assert.deepEqual(candidates(cfg, 'koe-talk'), ['fast']);
-  assert.equal(splitOn(cfg), true);
-  const liveOnly = { ...cfg, roles: { ...cfg.roles, 'koe-type': { models: [], level: 'off' } } };
-  assert.deepEqual(koeList(liveOnly, true).models, []);
-  assert.deepEqual(koeList(liveOnly, false).models, []);
-  assert.equal(splitOn(liveOnly), false, 'Shiori stays one half, rather than Koe going down every turn');
-  const mixed = { ...cfg, roles: { ...cfg.roles, 'koe-talk': { models: ['live', 'fast'], level: 'off' } } };
-  assert.deepEqual(candidates(mixed, 'koe-talk'), ['fast'], 'the chat models after it still answer');
+  const types = new Map([['gemini-live', { realtime: true }], ['chat-completions', {}]]);
+  const free = { types, until: () => 0, now: 1000 };
+  assert.deepEqual(koeList(cfg, true), { role: 'koe-talk', models: ['live', 'fast'] });
+  assert.deepEqual(koePath(cfg, { voiceOn: true, ...free }), { kind: 'live', modelId: 'live' });
+  assert.deepEqual(koePath(cfg, { voiceOn: true, ...free, until: (/** @type {string} */ id) => (id === 'live' ? 5000 : 0) }), { kind: 'text' }, 'resting: the text model after it');
+  assert.deepEqual(koePath(cfg, { voiceOn: true, ...free, types: new Map([['chat-completions', {}]]) }), { kind: 'text' }, 'its protocol not running');
+  const off = structuredClone(cfg);
+  off.providers.pv.user.abilities.live.on = false;
+  assert.deepEqual(koePath(off, { voiceOn: true, ...free }), { kind: 'text' }, 'Live voice switched off');
+  // Voice off with only a realtime model: the typing list is empty, so it uses the talking one: live, muted.
+  const liveOnly = { ...cfg, roles: { ...cfg.roles, 'koe-talk': { models: ['live'], level: 'off' } } };
+  assert.equal(splitOn(liveOnly), true);
+  assert.deepEqual(koePath(liveOnly, { voiceOn: false, ...free }), { kind: 'live', modelId: 'live' });
+  assert.equal(koePath(liveOnly, { voiceOn: false, ...free, until: () => 5000 }), null, 'resting, and nothing after it: Koe is down');
+  // A chat role still never sends a realtime model a request.
+  assert.deepEqual(candidates(liveOnly, 'koe-type'), ['live']);
 });

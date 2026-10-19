@@ -35,10 +35,10 @@ import { validate } from '../schema.js';
  * @typedef {{ watch: string, text: string }} Reminder  a watch's fallback (spec §11.3)
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
- *   logged?: boolean, from?: 'koe' | 'kokoro' }} Wake
+ *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate' }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
- *   logged: its lines are in the log already (the other half's), so only the wake is written; from: a note's half
+ *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -558,6 +558,32 @@ export class Agent {
       this.voice.speaker.stop();
       for (const u of this.#utterances.values()) u.stop();
     }
+  }
+
+  /** A live session takes the microphone and the speaker (K5): this half lets go of both now. */
+  release() {
+    this.#voiceNow = false;
+    this.#closeEar();
+    this.voice?.speaker.stop();
+  }
+
+  /**
+   * What the user typed or sent to a live session (K5), written as a turn writes it, photos as request copies.
+   * @param {string} text @param {SentPhoto[]} photos @param {boolean} [chose] a tap on a live ask's buttons
+   */
+  async logUser(text, photos, chose = false) {
+    const { images, blobs } = photos.length ? await this.#userPhotos(photos, this.trip) : { images: [], blobs: [] };
+    return this.#log({ type: 'msg.user', actor: 'user', data: { ...(images.length ? { images } : {}), ...(chose ? { chose: true } : {}) }, texts: [['text', String(text ?? '').trim() || '(a photo)']], blobs });
+  }
+
+  /** A live session's tools (K5): this half's now, less speak, wait and sleep (plan decision 29). */
+  async liveTools() {
+    return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait', 'sleep'].includes(t.name));
+  }
+
+  /** A live session's tool call, run and recorded as this half's own, and answered at once (plan decision 10). @param {{ id: string, name: string, input: any }} c @param {string} wake */
+  async liveCall(c, wake) {
+    return this.#runCall(c, await this.liveTools(), { wakeId: wake, signal: new AbortController().signal, model: null, sleeping: false, live: true });
   }
 
   /** Its turn has the voice, or its tap's window is open: the other half waits to take the voice. */
@@ -1401,7 +1427,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -1421,7 +1447,7 @@ export class Agent {
     else {
       const call = {
         id: c.id, scope: this.scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, ...(o.more ? { more: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
       };
       ({ output, ms } = await runTool(tool, input, call));
@@ -1517,6 +1543,7 @@ export class Agent {
           }
           if (typeof i.question !== 'string' || !i.question.trim()) return { content: 'Error: ask needs a question.', isError: true };
           await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: i.question, options: i.options } });
+          if (call.live) return 'Shown; their tap comes as their next turn.';
           if (call.voice && this.voice && !this.#aloudOnly && this.#half.voice()) return this.#askAloud(i.question, call);
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
