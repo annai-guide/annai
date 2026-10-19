@@ -222,7 +222,7 @@ test("Ollama: a model that can't think answers at every level, as only off is na
   }
 });
 
-test('llama.cpp enforces tool calls: a quick decision forces its one tool as tool_choice "required", which llama-server honours where it ignores a named one; the others keep the named form (fix pass 2; the user, 2026-10-19)', async () => {
+test('llama.cpp enforces tool calls: a quick decision forces its one tool as tool_choice "required", which llama-server parses where it drops a named one; the others keep the named form (fix pass 2; the user, 2026-10-19)', async () => {
   assert.deepEqual((await official('provider-llamacpp')).provider.abilities.chat.tunables, { enforceToolCall: true });
   // A model that answers in words unless the server forces a call, and doesn't start its words with a letter.
   const replies = [{ text: 'To someone else, I think.', forced: { name: 'decide', input: { option: 'B' } } }];
