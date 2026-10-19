@@ -262,3 +262,19 @@ test("a half that may no longer use the voice doesn't play a speak streaming in,
   assert.equal(k2.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic open')).length, 0);
   assert.match((await k2.events(['tool.result'])).find((e) => e.data.name === 'speak')?.data.content, /^Said aloud\. annai couldn't listen: /);
 });
+
+// Security review (fix pass 4): asked aloud with voice off, a turn that gets the voice mid-turn speaks, and never listens.
+test('voice off, a turn asked aloud that gets the voice mid-turn says it aloud and never opens the microphone', async () => {
+  let mine = false;
+  const k = await agentKit([[
+    { delayMs: 60, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'We drove the coast.' } }] },
+    { toolCalls: [{ name: 'sleep', input: {} }] },
+  ]], { voice: { mode: 'off', speechIn: ['m-hear'] }, agent: { half: halfOf('kokoro', { voice: () => mine }) } });
+  k.agent.wake({ kind: 'recap', aloud: true, text: 'The user asked to hear the recap.' });
+  await new Promise((r) => setTimeout(r, 20));
+  mine = true; // the voice is this half's now
+  await k.agent.idle();
+  assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('play ') || l.startsWith('mic ')), ['play m-say:We drove the coast.']);
+  assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'speak')?.data.content, "Said aloud. Voice mode is off, so you didn't listen; the user may type.");
+});
