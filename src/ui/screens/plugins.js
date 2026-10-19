@@ -41,7 +41,8 @@ export async function renderPlugins(ctx, route) {
   const get = h('button', { class: 'btn', type: 'button', onclick: () => fromAddress(ctx, address.value, get, error) }, 'Get it');
   address.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => { if (e.key === 'Enter') get.click(); });
   const installed = new Set(rows.map((/** @type {any} */ r) => r.id));
-  const offered = (catalog ?? []).filter((p) => !installed.has(p.id));
+  // Model providers are added in Settings → Models, which makes the provider too (Milestone 3 brings one Add screen for both).
+  const offered = (catalog ?? []).filter((p) => !installed.has(p.id) && !p.abilities?.length);
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Plugins' }),
@@ -56,6 +57,7 @@ export async function renderPlugins(ctx, route) {
       h('div', { class: 'acts' }, get)),
     h('section', { class: 'panel', 'aria-label': "From annai's catalog" },
       h('h2', { class: 'section', text: "From annai's catalog" }),
+      h('p', { class: 'sub' }, 'Model providers are added in ', h('a', { href: '#/models' }, 'Settings → Models'), '.'),
       catalog === null ? h('p', { class: 'sub', text: "annai's catalog couldn't be loaded. Check the connection and open this screen again." })
         : offered.length ? h('ul', { class: 'cards' }, ...offered.map((p) => catalogRow(ctx, p)))
           : h('p', { class: 'sub', text: "Every plugin in annai's catalog is installed." })));

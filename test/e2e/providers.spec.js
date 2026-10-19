@@ -137,6 +137,11 @@ test('the Plugins page names the providers made from a provider plugin, and its 
     await page.getByRole('link', { name: '← Models' }).click();
   }
   await page.goto('/#/plugins');
+  // annai's catalog section doesn't offer model providers, which are added (as providers) in Settings → Models.
+  const catalogPart = page.getByRole('region', { name: "From annai's catalog" });
+  await expect(catalogPart.getByRole('button', { name: 'Install OpenRouter' })).toHaveCount(0);
+  await expect(catalogPart.getByRole('button', { name: 'Install Remote trace (for developers)' })).toBeVisible();
+  await expect(catalogPart).toContainText('Model providers are added in Settings → Models.');
   /** An installed plugin's row on Plugins, by the link its name is. @param {string} name */
   const installedRow = (name) => page.locator('.card', { has: page.getByRole('link', { name, exact: true }) });
   const row = installedRow(`OpenAI ${await shipped('provider-openai')}`);
