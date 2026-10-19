@@ -5,7 +5,7 @@ import { addFromTemplate, templateUpdates, speechAdd } from '../../core/llm/temp
 import { renderEndpoint, messageOf } from './endpoint.js';
 import { renderModel } from './model.js';
 import { talkPanel } from '../talk-panel.js';
-import { needsCode, signInUrl, codeSignIn, exchange, connectOpenRouter, signedIn, signingIn } from '../openrouter.js';
+import { needsCode, signInUrl, codeSignIn, tapCode, exchange, signIn, signingIn } from '../openrouter.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
@@ -163,8 +163,15 @@ function signInSection(ctx, cfg) {
       else if (!codeSlot.firstChild) codeSlot.replaceChildren(pasteCode(ctx, status, prepare));
     }, (e) => { status.textContent = messageOf(e); });
     link.addEventListener('click', (e) => {
-      if (!link.getAttribute('href')) e.preventDefault();
-      else if (!codeSlot.firstChild) codeSlot.replaceChildren(pasteCode(ctx, status, prepare));
+      const href = link.getAttribute('href');
+      if (!href) return e.preventDefault();
+      // annai's 15 minutes start now. No sign-in waits for this address (it was used, or dropped): a new one, for the next tap.
+      if (!tapCode(href)) {
+        e.preventDefault();
+        status.textContent = 'annai has made a new sign-in: tap Sign in with OpenRouter again.';
+        return prepare();
+      }
+      if (!codeSlot.firstChild) codeSlot.replaceChildren(pasteCode(ctx, status, prepare));
     });
     prepare();
     btn = link;
@@ -202,7 +209,7 @@ function pasteCode(ctx, status, prepare) {
       go.disabled = true;
       status.textContent = 'Connecting to OpenRouter…';
       try {
-        signedIn(ctx, await connectOpenRouter(ctx, await exchange({ code: code.value, state: null, pasted: true })));
+        await signIn(ctx, () => exchange({ code: code.value, state: null, pasted: true }));
         ctx.render();
       } catch (e) {
         status.textContent = messageOf(e);

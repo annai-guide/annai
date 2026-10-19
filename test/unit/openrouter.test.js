@@ -5,7 +5,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { readConfig, modelOf, getKey } from '../../src/core/llm/config.js';
-import { signInUrl, codeSignIn, callbackFrom, exchange, finishSignIn, signingIn, AUTH_URL, KEYS_URL } from '../../src/ui/openrouter.js';
+import { signInUrl, codeSignIn, tapCode, callbackFrom, exchange, finishSignIn, signingIn, AUTH_URL, KEYS_URL } from '../../src/ui/openrouter.js';
 
 /** A Storage-like map. */
 function memoryStorage() {
@@ -119,7 +119,8 @@ test("a sign-in that came back but didn't finish says why on a card, and isn't l
   const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
   /** @type {any[]} */
   const cards = [];
-  const ctx = { ws, store, llm: { templates: async () => ({ format: 1, endpoints: [] }), ensureType: async () => {} }, notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) } };
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
+  const ctx = { ws, store, llm: { templates: async () => catalog, ensureType: async () => {} }, notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) } };
   await finishSignIn(ctx, {
     location: /** @type {any} */ ({ search: `?code=abc&state=${url.searchParams.get('state')}`, pathname: '/' }),
     history: /** @type {any} */ ({ replaceState: () => {} }),
@@ -163,4 +164,62 @@ test('the iPhone Home Screen sign-in is ready before the tap, and a pending one 
   // A sign-in that came back by itself (not a code) is not reused for a code.
   await signInUrl({ callback: 'https://annai.guide/', storage, now: 2_000_000 });
   assert.equal((await codeSignIn({ storage, now: 2_000_001 })).pending, false);
+});
+
+test("on an iPhone Home Screen app, annai's 15 minutes count from the tap, not from when Models was drawn (fix pass)", async () => {
+  const storage = memoryStorage();
+  const ok = async (/** @type {any} */ _url, /** @type {any} */ init) => new Response(JSON.stringify({ key: `sk-or-${JSON.parse(init.body).code}` }));
+  const { url } = await codeSignIn({ storage, now: 0 });
+  // Models left open 20 minutes, then the tap; the code OpenRouter shows comes back 4 minutes later.
+  assert.equal(tapCode(url, { storage, now: 20 * 60_000 }), true);
+  assert.deepEqual(await codeSignIn({ storage, now: 21 * 60_000 }), { url, pending: true }, 'drawn again after the tap: the same sign-in waits');
+  assert.equal(await exchange({ code: 'fresh', state: null, pasted: true, fetch: ok, storage, now: 24 * 60_000 }), 'sk-or-fresh');
+  assert.equal(tapCode(url, { storage, now: 25 * 60_000 }), false, 'used: no sign-in waits for this address any more');
+
+  // A code refused, then pasted again more than 15 minutes after the tap: the sign-in is dropped, and the
+  // next one has a new challenge whose verifier is the one stored, so its code works.
+  const second = await codeSignIn({ storage, now: 30 * 60_000 });
+  assert.equal(second.pending, false);
+  assert.equal(tapCode(second.url, { storage, now: 31 * 60_000 }), true);
+  const refused = async () => Response.json({ error: { code: 403, message: 'Invalid code or code_verifier' } }, { status: 403 });
+  await assert.rejects(exchange({ code: 'typo', state: null, pasted: true, fetch: refused, storage, now: 32 * 60_000 }), /works once/);
+  await assert.rejects(exchange({ code: 'late', state: null, pasted: true, fetch: ok, storage, now: 47 * 60_000 }), /expired/);
+  const third = await codeSignIn({ storage, now: 47 * 60_000 });
+  assert.equal(third.pending, false);
+  assert.notEqual(third.url, second.url);
+  const saved = JSON.parse(/** @type {string} */ (storage.getItem('annai.openrouter')));
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(saved.verifier)));
+  assert.equal(new URL(third.url).searchParams.get('code_challenge'), b64url(digest));
+  assert.equal(tapCode(third.url, { storage, now: 48 * 60_000 }), true);
+  assert.equal(await exchange({ code: 'new', state: null, pasted: true, fetch: ok, storage, now: 50 * 60_000 }), 'sk-or-new');
+});
+
+test('annai gets ready before it asks OpenRouter for a key: with no OpenRouter template, or a plugin that fails to install, no key is made that annai would lose (fix pass)', async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
+  /** @param {any} llm */
+  const attempt = async (llm) => {
+    const storage = memoryStorage();
+    const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
+    /** @type {any[]} */
+    const cards = [];
+    let asked = 0;
+    await finishSignIn({ ws, store, llm, notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) } }, {
+      location: /** @type {any} */ ({ search: `?code=abc&state=${url.searchParams.get('state')}`, pathname: '/' }),
+      history: /** @type {any} */ ({ replaceState: () => {} }),
+      fetch: async () => { asked++; return new Response(JSON.stringify({ key: 'sk-or-lost' })); },
+      storage,
+    });
+    return { asked, cards, waiting: storage.getItem('annai.openrouter') !== null };
+  };
+  const noTemplate = await attempt({ templates: async () => ({ format: 1, endpoints: [] }), ensureType: async () => {} });
+  assert.equal(noTemplate.asked, 0);
+  assert.match(noTemplate.cards[0].body, /template isn't available/);
+  const noPlugin = await attempt({ templates: async () => catalog, ensureType: async (/** @type {string} */ t) => { if (t === 'openai-speech') throw new Error("speech-openai couldn't be downloaded."); } });
+  assert.equal(noPlugin.asked, 0, 'the speech plugins are installed before the code is traded, too');
+  assert.match(noPlugin.cards[0].body, /couldn't be downloaded.*Nothing was sent to OpenRouter/);
+  assert.equal(noPlugin.waiting, true, 'the sign-in still waits, so trying again costs nothing');
+  assert.deepEqual(Object.keys((await readConfig(ws)).endpoints), []);
 });

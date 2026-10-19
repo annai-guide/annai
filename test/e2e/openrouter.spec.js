@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
@@ -136,4 +137,81 @@ test("signed in before the voice came: the OpenRouter endpoint's page adds OpenR
   } finally {
     await server.stop();
   }
+});
+
+/**
+ * Chromium dressed as an iPhone Home Screen app, so OpenRouter can be stood in for on the code path
+ * (WebKit can't route a page's requests while a service worker controls it). OpenRouter's key exchange
+ * takes a code only with the verifier of the challenge its sign-in page was last opened with.
+ * @param {import('@playwright/test').Page} page @param {{ refuseFirst?: boolean }} [o]
+ */
+async function iPhoneSignIn(page, { refuseFirst = false } = {}) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'standalone', { value: true, configurable: true });
+    Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1', configurable: true });
+  });
+  /** @type {string[]} */
+  const opened = [];
+  await page.context().route('https://openrouter.ai/auth**', (route) => {
+    opened.push(route.request().url());
+    return route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Your code</p>' });
+  });
+  let asked = 0;
+  await page.route('https://openrouter.ai/api/v1/auth/keys', (route) => {
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST' };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const { code_verifier: verifier } = route.request().postDataJSON();
+    const fits = createHash('sha256').update(verifier).digest('base64url') === new URL(opened.at(-1) ?? 'http://x/').searchParams.get('code_challenge');
+    if ((refuseFirst && asked++ === 0) || !fits) return route.fulfill({ status: 403, contentType: 'application/json', headers: cors, body: JSON.stringify({ error: { code: 403, message: 'Invalid code or code_verifier' } }) });
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ key: KEY }) });
+  });
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  const link = page.getByRole('link', { name: 'Sign in with OpenRouter' });
+  await expect(link).toHaveAttribute('href', /^https:\/\/openrouter\.ai\/auth\?/);
+  return {
+    link,
+    /** Taps the link: OpenRouter opens, and the user comes back. */
+    tap: async () => {
+      const [popup] = await Promise.all([page.waitForEvent('popup'), link.click()]);
+      await popup.close();
+    },
+    /** @param {string} code */
+    paste: async (code) => {
+      await page.getByLabel('Paste the code OpenRouter showed you').fill(code);
+      await page.getByRole('button', { name: 'Connect' }).click();
+    },
+    /** Time passes: the sign-in waiting is made older. @param {number} minutes */
+    age: (minutes) => page.evaluate((ms) => {
+      const s = JSON.parse(/** @type {string} */ (localStorage.getItem('annai.openrouter')));
+      localStorage.setItem('annai.openrouter', JSON.stringify({ ...s, at: s.at - ms }));
+    }, minutes * 60_000),
+  };
+}
+
+test("iPhone Home Screen app: Models left open longer than annai's 15 minutes still takes the code a tap brings back (fix pass)", async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', "Playwright can't stand in for OpenRouter's key exchange in WebKit");
+  const s = await iPhoneSignIn(page);
+  await s.age(20);
+  await s.tap();
+  await s.paste('fresh-code');
+  await expect(page.locator('.notice', { hasText: 'Signed in with OpenRouter' })).toBeVisible({ timeout: 30_000 });
+});
+
+test('iPhone Home Screen app: after a refused code and then annai\'s 15 minutes, the paste box goes and the next tap brings a new sign-in whose code works (fix pass)', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', "Playwright can't stand in for OpenRouter's key exchange in WebKit");
+  const s = await iPhoneSignIn(page, { refuseFirst: true });
+  await s.tap();
+  await s.paste('typo');
+  await expect(page.getByText('a code works once, for 10 minutes')).toBeVisible();
+  await expect(page.getByLabel('Paste the code OpenRouter showed you')).toBeVisible();
+  const before = await s.link.getAttribute('href');
+  await s.age(16);
+  await s.paste('late-code');
+  await expect(page.getByText('This sign-in has expired')).toBeVisible();
+  await expect(page.getByLabel('Paste the code OpenRouter showed you')).toBeHidden();
+  await expect(s.link).not.toHaveAttribute('href', /** @type {string} */ (before));
+  await s.tap();
+  await s.paste('new-code');
+  await expect(page.locator('.notice', { hasText: 'Signed in with OpenRouter' })).toBeVisible({ timeout: 30_000 });
 });
