@@ -49,7 +49,7 @@ export function nextSnapshot(prev, fresh, { cold }) {
   return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills };
 }
 
-/** The skill index (spec §6.3): each skill's name and description, once per name (its owner's: milestone 6). @param {import('../registry.js').Registry} registry */
+/** The skill index (spec §6.3): each skill's name and description, once per name (its owner's). @param {import('../registry.js').Registry} registry */
 function skillIndex(registry) {
   return registry.list('skill').filter((s) => s?.name).map((s) => ({ name: String(s.name), description: String(s.description ?? '') }));
 }

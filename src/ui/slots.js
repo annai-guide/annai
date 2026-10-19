@@ -169,7 +169,7 @@ export function slotEntries(ctx, kind) {
   return ctx.registry?.entries(kind) ?? [];
 }
 
-/** A plugin's replacement for a named component, when it owns the name (the user chose it: milestone 6), or null: annai's own. @param {any} ctx @param {string} name @returns {Entry | null} */
+/** A plugin's replacement for a named component, when it owns the name (the user chose it), or null: annai's own. @param {any} ctx @param {string} name @returns {Entry | null} */
 export function component(ctx, name) {
   return slotEntries(ctx, 'ui:component').find((e) => e.item?.name === name) ?? null;
 }

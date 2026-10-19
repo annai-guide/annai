@@ -73,7 +73,7 @@ export function checkStorageType(t) {
   return null;
 }
 
-/** The kinds of backup places running plugins provide, by type id: each type's owner (milestone 6), annai's own first, then by install time. @param {import('./registry.js').Registry} registry @returns {Map<string, StorageType>} */
+/** The kinds of backup places running plugins provide, by type id: each type's owner, annai's own first, then by install time. @param {import('./registry.js').Registry} registry @returns {Map<string, StorageType>} */
 export function storageTypes(registry) {
   return new Map(registry.list('storage-type').map((t) => [t.type, t]));
 }

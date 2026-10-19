@@ -20,7 +20,7 @@ import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.
  *   provider: import('./llm/provider-desc.js').ProviderDesc | null, requires: Requirement[], category: string, keywords: string[], replaces: string[],
  *   description: string, author?: string, homepage?: string, license?: string, fingerprint: string }} Package
  *   files: by name inside the package (its top folder taken off); shownVersion: '' for a skill without a version;
- *   provider: a model provider's description (data); category: '' when the manifest gives none; replaces: names it means to replace (milestone 6)
+ *   provider: a model provider's description (data); category: '' when the manifest gives none; replaces: names it means to replace
  */
 
 export const API_VERSION = 1;

@@ -4,7 +4,7 @@ import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
 import { endpointTypes, ProviderError, errorFromResponse, sameOrigin, noRedirect } from './contract.js';
-import { ensureType, ownProvides } from './official.js';
+import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins } from './official.js';
@@ -42,7 +42,6 @@ export function createLlm({
    */
   const ensure = async (type) => {
     await ready;
-    if (await ownProvides(plugins, 'endpoint-type', type)) return;
     await pluginsCanLoad();
     await ensureType(plugins, type, { fetch: get, base, keepOff: true });
   };

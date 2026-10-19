@@ -146,6 +146,7 @@ Some things plugins register have a name only one plugin can hold: tools, protoc
   - the agent loop's own tools (`speak`, `show`, `ask`, `wait`, `sleep`, `skill`, `tell_koe`, `tell_kokoro` and the rest of Shiori's own): a plugin's tool by one of those names is never used;
   - protocols and kinds of backup place: they are handed the keys the user gives (a provider's, a place's), so the one used is annai's own, else the one installed first. A name annai's own plugin provides is never yours: while annai's is off, nothing has it, and a call says its plugin isn't running. When a protocol annai has is needed, annai's own is installed, even if yours has its name. Give yours a name of its own.
 - **Your provider's id is your plugin's id,** and only your plugin's description and setup are its.
+- **Owners are named plainly:** annai, a built-in or an official plugin by its name, any other plugin by its name with its id, "Tides (tides)", so no manifest's name passes for annai's. A package named annai, or a built-in's name (whatever its case, spaces, width or invisible characters), isn't installed.
 - **A bug counts against the plugin that registered the thing,** as annai's registry knows it, never against an id the thing says it has.
 - **Removing a plugin** removes its tools' switches, but not one for a name another plugin, the loop or annai still has.
 

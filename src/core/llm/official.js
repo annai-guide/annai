@@ -109,7 +109,7 @@ const provided = (registry, kind) => new Set(registry.list(kind).map((/** @type 
 
 /**
  * Whether annai's own (a built-in, or an official plugin) provides a type now: a third party's by that name
- * doesn't keep annai's own out (milestone 6). @param {PluginHost} host @param {string} kind @param {string} type
+ * doesn't keep annai's own out. @param {PluginHost} host @param {string} kind @param {string} type
  */
 export async function ownProvides(host, kind, type) {
   const owner = host.registry.owner(kind, type)?.pluginId;
