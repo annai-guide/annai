@@ -182,7 +182,7 @@ Removing a trip deletes it from the device and frees its space at once. There is
   1. Always: "This removes everything in this trip from this device: its files, photos, notes and history. Remove it?"
   2. Only if the trip has changed since its last backup: "This trip hasn't been backed up since it last changed. Remove it anyway?"
 - **Backed up** means a Backup with everything ticked (§12.2), of the trip or of everything, was saved after the trip's last change: the share sheet finished, or the download started. A Share doesn't count, since it leaves out the conversation and the history. annai records the time on the trip, and trip cards show it (§16.2).
-- **What goes:** the trip's record, files and history, and all stored content nothing else uses. Content another trip also uses stays. The system log records `trip.remove {title, bytes}`.
+- **What goes:** the trip's record, files and history, and all stored content nothing else uses. Content another trip also uses stays. What was heard in it and is still held in memory (its sound, or its words kept for a moment, §10.3) goes too. The system log records `trip.remove {title, bytes}`.
 - **So everything stored must be named.** Removing any trip deletes all stored content that no file and no log entry names, wherever it came from. Whatever annai or a plugin keeps (request copies, trace bodies, audio clips) is a file, or is listed in the `refs` of the log entry that made it. A kept audio clip, now compressed (§10.6), is still named by its `heard` event.
 - **Inside a trip, deleting keeps the history.** A deleted photo or file can be brought back from its history (§4.2), and its space comes back when the trip is removed.
 - **Finding what nothing else uses reads every file and log entry on the device.** That is quick while logs are small. Before milestone 2 makes them large (trace bodies, request copies), log entries get an index of the content they point at, so removing a trip reads only what that trip used.
@@ -408,7 +408,7 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 **Failures.**
 - Kokoro's `speak`, `show` and `ask` while Koe talks aren't run: each becomes a note to Koe, and its result says to use `tell_koe`. Its `wait` is answered too: the microphone is Koe's. This is in code, not instructions alone.
 - When Koe's whole list fails, it rests at least a minute; Kokoro gets "Koe can't speak right now; talk to the user directly" (and whether its last notes reached the user), its output tools run again, and what the user types goes to Kokoro alone until Koe answers again ("Koe is speaking again; use tell_koe"). No card: Kokoro answers.
-- When Kokoro's whole list fails while Koe talks, Koe is told once, and tells the user it couldn't check and offers to try again. No card. A check nobody waited for (Koe's own answer, a review) tells Koe nothing: the Trace has it.
+- When Kokoro's whole list fails while Koe talks, and Koe waits for it (its question is out, or it is in `wait`), Koe is told once, and tells the user it couldn't check and offers to try again. No card. A check nobody waited for (Koe's own answer, a review, a typed question Koe answered itself) tells Koe nothing: the Trace has it.
 
 **Voice** is Koe's while it works (§10.7).
 
@@ -749,9 +749,9 @@ The user: "use the most efficient codec each provider supports … to cut down d
 
 While Shiori is two halves (§6.8), the one voice is Koe's:
 - **Koe talks and listens** through everything above. Its list is "Koe for talking" while voice is on and "Koe for typing" while it's off, an empty one using the other (§9.6), so a typing model can talk too. Listening is judged against Koe's own models: whether they take audio for "Send audio to the model". When Koe heard the sound, its model writes it down.
-- **Kokoro** never opens the microphone or speaks while Koe works; it speaks, as Shiori always did, only while Koe is down. The sign's Stop stops Kokoro, never Koe's voice. What was heard is written down once, after Koe's turn, and Kokoro reads it from there.
+- **Kokoro** never opens the microphone or speaks while Koe works; it speaks, as Shiori always did, only while Koe is down. One voice at a time: when Koe comes back while a Kokoro turn has the voice (or its tap's window is open), Kokoro keeps it to that turn's end, and Koe takes over after; when Koe goes down mid-turn, Kokoro's next step speaks aloud. The sign's Stop stops Kokoro, never Koe's voice. What was heard is written down once, after Koe's turn, and Kokoro reads it from there.
 - **Koe's `speak` doesn't listen when its question to Kokoro or its `wait` follows it** in the same reply: they run at once. Followed by anything else (a card, say), it listens as Shiori's always did. With voice on, `wait` listens: it ends on Kokoro's note, the user speaking or typing, "Kokoro has nothing to add", or its time limit. Meanwhile the sign shows, and the user can keep talking.
-- **A note from Kokoro ends Koe's listening,** so Kokoro's answer is said without dead air. While the user is speaking, their words come first, and the note with them. An immediate note also cuts Koe's speech where it is; its `speak` result says where, and Koe corrects itself.
+- **A note from Kokoro ends Koe's listening,** so Kokoro's answer is said without dead air. While the user is speaking, their words come first, and the note with them. An immediate note also cuts Koe's speech where it is; its `speak` result says where, and Koe corrects itself. Cut while the reply still streamed in, what Koe had said aloud is written into the conversation, marked cut, and Koe hears "a note stopped you after: …".
 - **Chatter** goes through the quick-decision gate (§10.4) as before. Dismissed, it still goes into both transcripts, labelled as not meant for Shiori even inside the result of Koe's listening, and wakes neither half.
 
 ## 11. Triggers and live mode
