@@ -29,8 +29,11 @@ async function voiceKit({ failing = false, retryAfter, micFails } = {}) {
     bench,
     types: () => new Map([['say', { speech: 'out' }], ['hear', { speech: 'in' }]]),
     config: async () => ({
-      endpoints: { eo: { id: 'eo', type: 'say' }, ei: { id: 'ei', type: 'hear' } },
-      models: { v1: { id: 'v1', endpoint: 'eo', template: null, user: { providerId: 'tts' } }, t1: { id: 't1', endpoint: 'ei', template: null, user: { providerId: 'asr' } } },
+      providers: {
+        po: { id: 'po', plugin: 'p', template: null, user: { abilities: { voice: { kind: 'voice', type: 'say' } } } },
+        pi: { id: 'pi', plugin: 'p', template: null, user: { abilities: { transcription: { kind: 'transcription', type: 'hear' } } } },
+      },
+      models: { v1: { id: 'v1', provider: 'po', ability: 'voice', template: null, user: { providerId: 'tts' } }, t1: { id: 't1', provider: 'pi', ability: 'transcription', template: null, user: { providerId: 'asr' } } },
       roles: { 'speech-out': { models: ['v1', 'browser-voice'], level: 'off' }, 'speech-in': { models: ['send-audio', 't1', 'dictation'], level: 'off' } },
     }),
     /** @param {{ modelId: string, text: string }} c */

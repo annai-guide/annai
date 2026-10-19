@@ -153,8 +153,11 @@ test('no voice works, or the page may not play sound yet: done says so, and a bl
 test('the speech-out entries that can speak now, in their order (spec §9.6)', () => {
   /** @type {any} */
   const cfg = {
-    endpoints: { 'ep-o': { id: 'ep-o', type: 'say' }, 'ep-i': { id: 'ep-i', type: 'hear' } },
-    models: { 'm-o': { id: 'm-o', endpoint: 'ep-o', template: null, user: { providerId: 'tts', name: 'Marin' } }, 'm-i': { id: 'm-i', endpoint: 'ep-i', template: null, user: { providerId: 'asr' } } },
+    providers: {
+      'pv-o': { id: 'pv-o', plugin: 'p', template: null, user: { abilities: { voice: { kind: 'voice', type: 'say' } } } },
+      'pv-i': { id: 'pv-i', plugin: 'p', template: null, user: { abilities: { transcription: { kind: 'transcription', type: 'hear' } } } },
+    },
+    models: { 'm-o': { id: 'm-o', provider: 'pv-o', ability: 'voice', template: null, user: { providerId: 'tts', name: 'Marin' } }, 'm-i': { id: 'm-i', provider: 'pv-i', ability: 'transcription', template: null, user: { providerId: 'asr' } } },
     roles: { 'speech-out': { models: ['m-o', 'browser-voice', 'm-i', 'm-gone'], level: 'off' } },
   };
   const types = new Map([['say', { speech: 'out' }], ['hear', { speech: 'in' }]]);

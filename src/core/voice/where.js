@@ -1,4 +1,4 @@
-import { modelOf, endpointOf, STAND_INS, SPEECH_DEFAULTS } from '../llm/config.js';
+import { modelOf, providerOf, STAND_INS, SPEECH_DEFAULTS } from '../llm/config.js';
 
 /**
  * Where your voice goes (spec §11.7): for each speech-in entry, where what you say is sent; for
@@ -21,13 +21,14 @@ function hostOf(url) {
   }
 }
 
-/** An endpoint in words: its name, and its host when it has one. @param {ModelConfig} cfg @param {string} endpointId */
-function placeOf(cfg, endpointId) {
-  const rec = cfg.endpoints[endpointId];
-  if (!rec) return 'its provider';
-  const ep = endpointOf(rec);
-  const host = hostOf(ep.baseUrl);
-  return host && host !== ep.name ? `${ep.name} (${host})` : ep.name;
+/** Where a model is called, in words: its provider's name, and the host of its ability's address. @param {ModelConfig} cfg @param {string} modelId */
+function placeOf(cfg, modelId) {
+  const rec = cfg.models[modelId];
+  const p = rec ? cfg.providers[rec.provider] : undefined;
+  if (!rec || !p) return 'its provider';
+  const provider = providerOf(p);
+  const host = hostOf(provider.abilities[rec.ability]?.baseUrl ?? provider.baseUrl);
+  return host && host !== provider.name ? `${provider.name} (${host})` : provider.name;
 }
 
 /** The model's name, for an entry. @param {ModelConfig} cfg @param {string} id */
@@ -44,14 +45,14 @@ export function whereHeard(cfg, { dictation }) {
     const name = nameOf(cfg, id);
     if (id === 'send-audio') {
       const hearers = ['main', 'decide'].flatMap((r) => cfg.roles?.[r]?.models ?? []).filter((m) => cfg.models[m] && modelOf(cfg.models[m]).input.includes('audio'));
-      const places = [...new Set(hearers.map((m) => placeOf(cfg, cfg.models[m].endpoint)))];
+      const places = [...new Set(hearers.map((m) => placeOf(cfg, m)))];
       return { id, name, where: places.length ? `As sound, to the model that hears it: ${places.join(', or ')}.` : 'Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.' };
     }
     if (id === 'dictation') {
       return { id, name, where: !dictation.available ? 'This browser has no dictation: it is skipped.' : dictation.local ? DICTATION_HERE : DICTATION_AWAY };
     }
     const rec = cfg.models[id];
-    return { id, name, where: rec ? `As sound, to ${placeOf(cfg, rec.endpoint)}, to be written down.` : 'This model is gone: it is skipped.' };
+    return { id, name, where: rec ? `As sound, to ${placeOf(cfg, id)}, to be written down.` : 'This model is gone: it is skipped.' };
   });
 }
 
@@ -71,7 +72,7 @@ export function whereSaid(cfg, { browser, voice }) {
       return { id, name, where: `Her words go to the service behind ${voice.name}${whose}, to be spoken; they aren't spoken on this phone.` };
     }
     const rec = cfg.models[id];
-    return { id, name, where: rec ? `Her words go to ${placeOf(cfg, rec.endpoint)}, which sends back the sound.` : 'This voice is gone: it is skipped.' };
+    return { id, name, where: rec ? `Her words go to ${placeOf(cfg, id)}, which sends back the sound.` : 'This voice is gone: it is skipped.' };
   });
 }
 

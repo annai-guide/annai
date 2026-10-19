@@ -1,7 +1,7 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
-import { modelOf, endpointOf, CHAT_ROLES } from './config.js';
+import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
 
 /**
@@ -121,7 +121,7 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  * Calls a role's models in order until one answers (spec §9.6), and records the whole call as
  * one model.turn in the trace.
  * @param {{ role: string, request: Request, level?: string, config: ModelConfig, types: Map<string, EndpointType>,
- *   keyFor: (endpointId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
+ *   keyFor: (providerId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
@@ -163,16 +163,19 @@ export async function callRole(c) {
   let began = false;
   for (const id of ordered) {
     const rec = config.models[id];
-    const epRec = rec ? config.endpoints[rec.endpoint] : undefined;
-    const type = epRec ? types.get(epRec.type) : undefined;
+    const pRec = rec ? config.providers[rec.provider] : undefined;
+    const provider = pRec ? providerOf(pRec) : null;
+    const ability = rec && provider ? provider.abilities[rec.ability] : undefined;
+    const type = ability ? types.get(ability.type) : undefined;
     const model = rec ? modelOf(rec) : null;
-    const skip = !rec || !epRec || !model ? 'removed' : !type ? 'type-missing' : type.speech ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
-    if (skip || !model || !type || !epRec) {
+    // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
+    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
+    if (skip || !model || !type || !pRec || !provider) {
       attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0 });
       continue;
     }
-    const endpoint = endpointOf(epRec, type.tunables);
-    const key = await c.keyFor(endpoint.id);
+    // One key per provider; a provider with keyHeader sends it in that header (decision 25).
+    const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), await c.keyFor(pRec.id), provider.keyHeader);
     let repairs = 0;
     let uploadRetries = 0;
     for (let retry = 0; ; retry++) {
@@ -216,7 +219,7 @@ export async function callRole(c) {
         }
         if (err.kind === 'upload' && c.uploads && uploadRetries < 1) {
           // An expired or unknown upload (spec §9.9): upload again, once.
-          await c.uploads.forget(epRec.id);
+          await c.uploads.forget(endpoint.id);
           uploadRetries++;
           continue;
         }

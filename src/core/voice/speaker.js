@@ -1,5 +1,5 @@
 import { Sentences } from './sentences.js';
-import { modelOf, SPEECH_DEFAULTS } from '../llm/config.js';
+import { modelOf, speechKind, SPEECH_DEFAULTS } from '../llm/config.js';
 
 /**
  * Speaking (spec §10.1). What Shiori says arrives as text, a piece at a time; each complete
@@ -24,7 +24,7 @@ import { modelOf, SPEECH_DEFAULTS } from '../llm/config.js';
 
 /**
  * The speech-out entries that can speak now, in the user's order (spec §9.6, §10.1): the browser
- * voice where the browser has one, and voices whose type runs and that aren't resting.
+ * voice where the browser has one, and voices whose ability is on, whose type runs and that aren't resting.
  * @param {import('../llm/config.js').ModelConfig} cfg
  * @param {{ types: Map<string, { speech?: string }>, until: (id: string) => number, now: number, browser: boolean }} c
  * @returns {VoiceEntry[]}
@@ -39,8 +39,7 @@ export function speechOutEntries(cfg, { types, until, now, browser }) {
       continue;
     }
     const rec = cfg.models[id];
-    const ep = rec ? cfg.endpoints[rec.endpoint] : undefined;
-    if (rec && ep && types.get(ep.type)?.speech === 'out') out.push({ id, name: modelOf(rec).name, kind: 'api' });
+    if (rec && speechKind(cfg, types, id) === 'out') out.push({ id, name: modelOf(rec).name, kind: 'api' });
   }
   return out;
 }

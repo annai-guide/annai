@@ -19,15 +19,17 @@ function scriptedType() {
 }
 
 /**
- * A config with one scripted endpoint per script, one model on each, and those models in main.
- * @param {any[][]} scripts @param {{ models?: any[], types?: [string, any][] , endpointTypes?: string[] }} [opts]
+ * A config with one provider per script, its chat ability scripted, one model on each, and those models in main.
+ * @param {any[][]} scripts @param {{ models?: any[], types?: [string, any][] , endpointTypes?: string[], off?: number[] }} [opts]
+ *   endpointTypes: each chat ability's type; off: the providers whose chat ability is switched off
  */
-function setup(scripts, { models = [], types = [], endpointTypes = [] } = {}) {
+function setup(scripts, { models = [], types = [], endpointTypes = [], off = [] } = {}) {
   /** @type {any} */
-  const config = { endpoints: {}, models: {}, roles: { main: { models: [], level: 'medium' }, utility: { models: [], level: 'low' }, decide: { models: [], level: 'off' } } };
+  const config = { providers: {}, models: {}, roles: { main: { models: [], level: 'medium' }, utility: { models: [], level: 'low' }, decide: { models: [], level: 'off' } } };
   scripts.forEach((script, i) => {
-    config.endpoints[`ep-${i}`] = { id: `ep-${i}`, type: endpointTypes[i] ?? 'scripted', template: null, user: { name: `E${i}`, tunables: { script } }, created: 0 };
-    config.models[`m-${i}`] = { id: `m-${i}`, endpoint: `ep-${i}`, template: null, user: { providerId: `model-${i}`, prices: { input: 1, output: 1 }, ...(models[i] ?? {}) }, created: 0 };
+    const chat = { kind: 'chat', type: endpointTypes[i] ?? 'scripted', tunables: { script }, ...(off.includes(i) ? { on: false } : {}) };
+    config.providers[`pv-${i}`] = { id: `pv-${i}`, plugin: 'provider-test', template: null, user: { name: `E${i}`, abilities: { chat } }, created: 0 };
+    config.models[`m-${i}`] = { id: `m-${i}`, provider: `pv-${i}`, ability: 'chat', template: null, user: { providerId: `model-${i}`, prices: { input: 1, output: 1 }, ...(models[i] ?? {}) }, created: 0 };
     config.roles.main.models.push(`m-${i}`);
   });
   /** @type {number[]} */
@@ -189,6 +191,28 @@ test('the trace keeps what the answering model reasoned', async () => {
 test('a model whose endpoint type is missing is skipped', async () => {
   const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { endpointTypes: ['gone', 'scripted'] });
   assert.deepEqual((await call(s)).attempts.map((a) => a.outcome), ['type-missing', 'ok']);
+});
+
+test('a model of a switched-off ability is skipped as off, and the next model answers', async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { off: [0], endpointTypes: ['gone', 'scripted'] });
+  const r = await call(s);
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['off', 'ok']);
+  assert.equal(r.reply.text, 'B.');
+});
+
+test("a provider's key goes to its abilities, once per provider; with keyHeader it goes in that header, and the protocol gets none (decision 25)", async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const spy = { type: 'spy', name: 'Spy', pluginId: 'spy', async *run(/** @type {any} */ c) { seen.push({ key: c.key, headers: c.endpoint.headers, id: c.endpoint.id }); yield { type: 'text', text: 'ok' }; } };
+  const s = setup([[]], { types: [['spy', spy]], endpointTypes: ['spy'] });
+  /** @type {string[]} */
+  const asked = [];
+  await call(s, { keyFor: async (/** @type {string} */ id) => { asked.push(id); return 'sk-test-1'; } });
+  assert.deepEqual(asked, ['pv-0']);
+  assert.deepEqual(seen.at(-1), { key: 'sk-test-1', headers: {}, id: 'pv-0/chat' });
+  s.config.providers['pv-0'].user.keyHeader = 'api-key';
+  await call(s, { keyFor: async () => 'sk-test-1' });
+  assert.deepEqual(seen.at(-1), { key: null, headers: { 'api-key': 'sk-test-1' }, id: 'pv-0/chat' });
 });
 
 test('a request that needs a provider tool skips models without one', async () => {

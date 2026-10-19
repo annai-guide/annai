@@ -10,7 +10,7 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { speechCall } from '../../src/core/llm/speech.js';
 import { speechCost } from '../../src/core/llm/cost.js';
-import { readConfig, saveEndpoint, saveRoles, newEndpoint, newModel, speechKind } from '../../src/core/llm/config.js';
+import { readConfig, saveProvider, saveRoles, newProvider, newModel, speechKind } from '../../src/core/llm/config.js';
 import { costs, spentToday } from '../../src/core/agent/budgets.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
@@ -35,9 +35,14 @@ async function setup() {
   return { registry, store, ws };
 }
 /** @param {string} type */
-const endpoint = (type) => ({ id: 'ep-1', type, name: 'Speech', baseUrl: 'https://speech.test/v1', headers: {}, tunables: {}, extraBody: {} });
+const endpoint = (type) => ({ id: 'pv-1/speech', provider: 'pv-1', ability: 'speech', type, name: 'Speech', baseUrl: 'https://speech.test/v1', headers: {}, tunables: {}, extraBody: {} });
+/** A provider with one speech ability, and one model on it. @param {'transcription' | 'voice'} kind @param {string} type @param {string} name @param {string} baseUrl @param {string} providerId */
+const speechProvider = (kind, type, name, baseUrl, providerId) => {
+  const p = newProvider('provider-test', { user: { name, baseUrl, abilities: { [kind]: { kind, type } } } });
+  return { p, m: newModel(p.id, kind, { user: { providerId } }) };
+};
 /** @param {any} prices @returns {any} */
-const model = (prices) => ({ id: 'm-1', endpoint: 'ep-1', name: 'Ears', providerId: 'ears-1', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {} });
+const model = (prices) => ({ id: 'm-1', provider: 'pv-1', ability: 'speech', name: 'Ears', providerId: 'ears-1', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {} });
 /** @param {any} store */
 const traced = async (store) => (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS, {}))).filter((/** @type {any} */ e) => e.type === 'net.request');
 const near = (/** @type {number} */ a, /** @type {number} */ b) => Math.abs(a - b) < 1e-12;
@@ -103,9 +108,8 @@ test('speech lists: the stand-ins by default, each only in its own list, and onl
   let cfg = await readConfig(ws);
   assert.deepEqual(cfg.roles['speech-in'].models, ['send-audio', 'dictation']);
   assert.deepEqual(cfg.roles['speech-out'].models, ['browser-voice']);
-  const ep = newEndpoint('test-in', { user: { name: 'Ears', baseUrl: 'https://speech.test/v1' } });
-  const m = newModel(ep.id, { user: { providerId: 'ears-1' } });
-  await saveEndpoint(ws, ep, [m]);
+  const { p: ep, m } = speechProvider('transcription', 'test-in', 'Ears', 'https://speech.test/v1', 'ears-1');
+  await saveProvider(ws, ep, [m]);
   await saveRoles(ws, { ...cfg.roles, 'speech-in': { models: ['dictation', m.id, 'browser-voice', 'm-gone'], level: 'off' }, 'speech-out': { models: [], level: 'off' } });
   cfg = await readConfig(ws);
   assert.deepEqual(cfg.roles['speech-in'].models, ['dictation', m.id]);
@@ -129,12 +133,10 @@ test('the service transcribes and speaks through speech models; a chat role neve
   const { registry, store, ws } = await setup();
   registry.add('test', 'endpoint-type', hears);
   registry.add('test', 'endpoint-type', speaks);
-  const inEp = newEndpoint('test-in', { user: { name: 'Ears', baseUrl: 'https://ears.test' } });
-  const inM = newModel(inEp.id, { user: { providerId: 'ears-1' } });
-  const outEp = newEndpoint('test-out', { user: { name: 'Voice', baseUrl: 'https://voice.test' } });
-  const outM = newModel(outEp.id, { user: { providerId: 'voice-1' } });
-  await saveEndpoint(ws, inEp, [inM]);
-  await saveEndpoint(ws, outEp, [outM]);
+  const { p: inEp, m: inM } = speechProvider('transcription', 'test-in', 'Ears', 'https://ears.test', 'ears-1');
+  const { p: outEp, m: outM } = speechProvider('voice', 'test-out', 'Voice', 'https://voice.test', 'voice-1');
+  await saveProvider(ws, inEp, [inM]);
+  await saveProvider(ws, outEp, [outM]);
   const fetch = async (/** @type {any} */ url) => (String(url).startsWith('https://ears.test') ? Response.json({ text: 'yes' }) : new Response(new Uint8Array([9]), { headers: { 'content-type': 'audio/wav' } }));
   const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch });
   assert.equal(/** @type {any} */ (await llm.transcribe({ modelId: inM.id, audio: { data: new Uint8Array(4), mediaType: 'audio/wav', seconds: 1 } })).text, 'yes');
@@ -144,6 +146,8 @@ test('the service transcribes and speaks through speech models; a chat role neve
   const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'hi' }] }] };
   await assert.rejects(callRole({ role: 'main', request, config: { ...cfg, roles: { ...cfg.roles, main: { models: [outM.id], level: 'off' } } }, types: llm.types(), keyFor: async () => null, bench: new Bench() }),
     (e) => /** @type {any} */ (e).attempts[0].outcome === 'not-chat');
+  await saveProvider(ws, { ...outEp, user: { ...outEp.user, abilities: { voice: { kind: 'voice', type: 'test-out', on: false } } } });
+  assert.equal(speechKind(await readConfig(ws), llm.types(), outM.id), null, 'a voice whose ability is off is no voice');
 });
 
 test('a plugin registers a speech type only with what its direction needs', async () => {

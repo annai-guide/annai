@@ -23,10 +23,10 @@ const scriptedType = typeOf(scripted);
 /** Scripted models in the main role, in order, each taking the inputs given. @param {{ script: any[], input: string[] }[]} list @returns {any} */
 function config(list) {
   /** @type {any} */
-  const cfg = { endpoints: {}, models: {}, roles: { main: { models: [], level: 'off' } } };
+  const cfg = { providers: {}, models: {}, roles: { main: { models: [], level: 'off' } } };
   list.forEach(({ script, input }, i) => {
-    cfg.endpoints[`ep-${i}`] = { id: `ep-${i}`, type: 'scripted', template: null, user: { name: `E${i}`, tunables: { script } }, created: 0 };
-    cfg.models[`m-${i}`] = { id: `m-${i}`, endpoint: `ep-${i}`, template: null, user: { providerId: `model-${i}`, input }, created: 0 };
+    cfg.providers[`pv-${i}`] = { id: `pv-${i}`, plugin: 'provider-test', template: null, user: { name: `E${i}`, abilities: { chat: { kind: 'chat', type: 'scripted', tunables: { script } } } }, created: 0 };
+    cfg.models[`m-${i}`] = { id: `m-${i}`, provider: `pv-${i}`, ability: 'chat', template: null, user: { providerId: `model-${i}`, input }, created: 0 };
     cfg.roles.main.models.push(`m-${i}`);
   });
   return cfg;
@@ -73,7 +73,7 @@ test('a model nothing in the speech-in list can reach is skipped as "no-speech";
 });
 
 test('audio goes only to a model that takes audio, and speech never reaches a provider unresolved', () => {
-  const model = modelOf({ id: 'm', endpoint: 'e', template: null, user: { providerId: 'x', input: ['text'] }, created: 0 });
+  const model = modelOf({ id: 'm', provider: 'p', ability: 'chat', template: null, user: { providerId: 'x', input: ['text'] }, created: 0 });
   /** @type {any} */
   const withAudio = { messages: [{ role: 'user', parts: [{ type: 'audio', mediaType: 'audio/wav', data: 'AA==' }] }] };
   assert.equal(gap(model, withAudio), 'no-audio');

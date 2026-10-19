@@ -89,7 +89,7 @@ test('the utility model writes /trip/recap.md, with request copies of the photos
 
 test('no photos go to a model that takes none; a model that answers nothing, or none at all, is a plain error and nothing is written', async () => {
   const k = await aTrip([{ text: RECAP }], { models: [{ input: ['text'] }] });
-  await saveModel(k.ws, { id: 'm-u', endpoint: 'ep-u', template: null, user: { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text'] }, created: 0 });
+  await saveModel(k.ws, { id: 'm-u', provider: 'pv-u', ability: 'chat', template: null, user: { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text'] }, created: 0 });
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, codec: fakeCodec() });
   assert.equal(k.requests.at(-1).messages[0].parts.length, 1);
 

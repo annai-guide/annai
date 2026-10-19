@@ -147,12 +147,16 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
   const calls = [];
   /** @type {any} */
   const cfg = {
-    endpoints: { ec: { id: 'ec', type: 'chat' }, eo: { id: 'eo', type: 'say' }, ei: { id: 'ei', type: 'hear' } },
-    models: { v1: { id: 'v1', endpoint: 'eo', template: null, user: { providerId: 'tts' }, created: 0 } },
+    providers: {
+      pc: { id: 'pc', plugin: 'p', template: null, user: { abilities: { chat: { kind: 'chat', type: 'chat' } } }, created: 0 },
+      po: { id: 'po', plugin: 'p', template: null, user: { abilities: { voice: { kind: 'voice', type: 'say' } } }, created: 0 },
+      pi: { id: 'pi', plugin: 'p', template: null, user: { abilities: { transcription: { kind: 'transcription', type: 'hear' } } }, created: 0 },
+    },
+    models: { v1: { id: 'v1', provider: 'po', ability: 'voice', template: null, user: { providerId: 'tts' }, created: 0 } },
     roles: { main: { models: main.map((m) => m.id), level: 'off' }, 'speech-in': { models: speechIn, level: 'off' }, 'speech-out': { models: speechOut, level: 'off' } },
   };
-  for (const m of main) cfg.models[m.id] = { id: m.id, endpoint: 'ec', template: null, user: { providerId: m.id, input: m.input }, created: 0 };
-  for (const id of asr) cfg.models[id] = { id, endpoint: 'ei', template: null, user: { providerId: id }, created: 0 };
+  for (const m of main) cfg.models[m.id] = { id: m.id, provider: 'pc', ability: 'chat', template: null, user: { providerId: m.id, input: m.input }, created: 0 };
+  for (const id of asr) cfg.models[id] = { id, provider: 'pi', ability: 'transcription', template: null, user: { providerId: id }, created: 0 };
   let heard = 0;
   return {
     bench,
