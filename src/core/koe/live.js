@@ -77,6 +77,8 @@ export class LiveKoe {
   /** @type {any} */
   #quiet = null;
   #quietMs = 30_000;
+  /** Koe's sound's sample rate. */
+  #rate = 24_000;
   #keep = false;
   #rotate = false;
   #tools = 0;
@@ -141,6 +143,7 @@ export class LiveKoe {
     const gen = ++this.#gen;
     this.state = 'opening'; // a close from now on wins
     this.#changed();
+    await this.c.koe.opening.catch(() => {}); // its lines go into Koe's conversation
     // One that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
     const s = (await this.#over()) ? null : await this.#connect(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
     if (gen !== this.#gen || !s) {
@@ -170,6 +173,7 @@ export class LiveKoe {
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
     this.#s = s;
+    this.#rate = s.formats.out.rate;
     for (const fn of this.#waiting.splice(0)) fn(s);
     return s;
   }
@@ -192,7 +196,7 @@ export class LiveKoe {
     this.c.release();
     const { pauseMs, bargeIn } = await v.settings();
     this.#input = new LiveInput({
-      mic: p.mic, rate: 16_000, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
+      mic: p.mic, rate: this.#s.formats.in.rate, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
     });
     this.listening = true;
@@ -370,7 +374,7 @@ export class LiveKoe {
       const h = (this.#hear ??= hearing());
       h.text += e.text;
       if (h.answered) this.#flushHeard(Boolean(h.dismissed)); // the last words can come after Koe's turn: added
-    } else if (e.type === 'usage') this.#over().then((over) => { if (over) this.close('budget'); });
+    } else if (e.type === 'usage') this.#over().then((over) => { if (over) this.close('budget'); }, () => {});
     else if (e.type === 'goaway') {
       this.#rotate = true;
       this.#idle();
@@ -404,7 +408,7 @@ export class LiveKoe {
     this.#answered(false);
     const v = this.c.voice;
     if (this.voiced && v?.platform?.player.stream && !t.cut) {
-      t.stream = v.platform.player.stream({ rate: 24_000, onLevel: (x) => v.level(x, 'her') });
+      t.stream = v.platform.player.stream({ rate: this.#rate, onLevel: (x) => v.level(x, 'her') });
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;
       t.stream.done.then(({ playedMs }) => this.#said(t, playedMs));
@@ -451,7 +455,7 @@ export class LiveKoe {
     t.logged = true;
     if (this.#sounding === t) this.#sounding = null;
     let text = cleanSaid(t.said);
-    const share = !t.cut || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / 48)); // 24 kHz, 2 bytes a sample
+    const share = !t.cut || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
     if (share < 1) {
       const end = Math.round(text.length * share);
       const space = text.lastIndexOf(' ', end);
@@ -511,7 +515,8 @@ export class LiveKoe {
     this.#tools++;
     try {
       await this.#answered(false);
-      const out = await this.c.koe.liveCall(e, this.#wake);
+      // Always answered: the model waits for it.
+      const out = await this.c.koe.liveCall(e, this.#wake).catch((err) => ({ content: `Error: ${err?.message ?? err}` }));
       const silent = SILENT.includes(e.name);
       if (s === this.#s) s.answer(e.id, e.name, theirs(out.content), { silent });
       if (silent && this.#t === t && !t.bytes && !t.said) this.#t = null; // a turn of a call alone, answered silently, is over

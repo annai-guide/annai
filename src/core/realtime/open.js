@@ -12,8 +12,10 @@ import { utf8 } from '../bytes.js';
  * @typedef {import('../llm/contract.js').EndpointType} EndpointType @typedef {import('../llm/contract.js').LiveDriver} LiveDriver
  * @typedef {import('../llm/contract.js').LiveEvent} LiveEvent @typedef {import('../llm/contract.js').ErrorKind} ErrorKind
  * @typedef {Omit<LiveDriver, 'close'> & { closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>, on(fn: (e: LiveEvent) => void): () => void,
- *   close(why?: string): void, bytes: { in: number, out: number }, handle?: string, tunables: Record<string, any> }} LiveSession
- *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with
+ *   close(why?: string): void, bytes: { in: number, out: number }, handle?: string, tunables: Record<string, any>,
+ *   formats: { in: import('../llm/contract.js').AudioFormat, out: import('../llm/contract.js').AudioFormat } }} LiveSession
+ *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with;
+ *   formats: the audio it sends and takes (its setup's)
  */
 
 /** How long a session may take to be ready. */
@@ -223,6 +225,7 @@ export function openLive(c) {
     closed,
     bytes,
     tunables: c.tunables,
+    formats: { in: setup.audioIn, out: setup.audioOut },
     on(/** @type {(e: LiveEvent) => void} */ fn) {
       listeners.add(fn);
       return () => { listeners.delete(fn); };

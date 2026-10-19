@@ -49,10 +49,11 @@ export function voiceChip(ctx) {
   };
   say();
   const off = voice.onChange(say);
-  const offLive = ctx.agent?.on?.('halves', (/** @type {{ live?: string | null }} */ x) => {
+  // Shiori as two halves (Halves) has live sessions; one half never does.
+  const offLive = ctx.agent?.live ? ctx.agent.on('halves', (/** @type {{ live?: string | null }} */ x) => {
     live = x.live ?? null;
     say();
-  });
+  }) : null;
   const el = h('div', { class: 'voice-chip-wrap' }, chip, menu);
   // dispose: the dock is remade; an open menu's listener for a tap elsewhere goes with it.
   return { el, dispose: () => { close(); off(); offLive?.(); } };
