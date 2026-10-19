@@ -9,7 +9,7 @@ memories afterwards.
 
 > **Status:** milestones 1 to 4 are built: trips with
 > versioned files, export and import (optionally encrypted), plugins, offline use and the trace;
-> photos; removing trips; and models (Chat Completions, Anthropic Messages and OpenAI Responses endpoints, from templates or Sign in with OpenRouter, roles
+> photos; removing trips; and models (providers such as OpenRouter, Anthropic or OpenAI, each one address and one key for its chat, transcription and voice, added from annai's catalog or by Sign in with OpenRouter, through Chat Completions, Anthropic Messages and OpenAI Responses; roles
 > with fallback, the Test button, and every request in the trace); and Shiori herself: the dock and
 > her avatar, a conversation through her output tools, file, web and places tools that can each be
 > switched off, personalities and memory, budgets, and housekeeping for long conversations. Shiori sees
@@ -34,7 +34,7 @@ memories afterwards.
 ## Voice
 
 - Tap Shiori and talk. With voice on she answers aloud, sentence by sentence as she writes, then listens for your answer; tap her while she speaks to cut her off.
-- Voices and transcription are lists you order in Settings → Models: OpenAI-compatible voices and transcription (OpenAI, Groq, local servers), "Send audio to the model" for models that take audio, phone dictation, and the browser's own voice.
+- Voices and transcription are lists you order in Settings → Models: the voices and transcription of the providers you add (OpenRouter, OpenAI, Groq, a local speech server, or another address), "Send audio to the model" for models that take audio, phone dictation, and the browser's own voice. A provider's speech models join behind the phone's own, so nothing that costs money comes first unless you move it up.
 - The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it. To keep your voice on the phone, type with your keyboard's microphone key instead: iPhone and most Android keyboards can dictate on the phone itself.
 
 ## After the trip
@@ -62,6 +62,7 @@ memories afterwards.
 - **Skills** in the open [Agent Skills](https://agentskills.io/specification) format teach Shiori a kind of situation: install one from a zip, a `SKILL.md` file or its address in Settings → Plugins. Only its name and description sit in her context until she loads it; annai never runs anything in it. annai's own skills (`skills/`) are in the same format.
 - **MCP servers** give Shiori tools of their own: Settings → Tools → MCP servers takes a name, the server's address and a bearer token or headers, which stay on this device. Each tool can be switched off, and every request to the server is in the trace. The server must let web apps call it (CORS). For testing, `node scripts/mcp-stand-in.mjs --port <port>` runs annai's own stand-in server.
 - **Code plugins** run with full access to your trips and keys, and the install screen says so. They can add tools, endpoint types, backup places, status chips, Now sections, dock actions, trip tabs, settings pages, card types, screens and themes ([docs/plugins.md](docs/plugins.md)).
+- **Model providers** are plugins too, usually data only: a description of the provider's address, abilities and models, and the protocol plugins it requires, which come with it. Data-only plugins can't run anything, so they get no full-access warning; their install screen says where keys go.
 - A package installed from an address is checked there for updates, which change nothing until you tap Update; one that would bring new code or skills says so first. Removing a plugin, skill or server removes everything it stored.
 
 ## Principles
@@ -71,7 +72,7 @@ memories afterwards.
 - **Local-first.** Trips, files and memory live in your browser. The site
   serves the app and stores as little about you as possible: no accounts, no
   passwords.
-- **Bring your own model.** You point annai at your own LLM API endpoint.
+- **Bring your own model.** You add the providers you have keys for, or point annai at your own server.
 - **A trip is a project,** the way a repo is a project to a coding agent.
 - **Your data is portable.** Export a trip or everything to an archive and
   import it on another device.

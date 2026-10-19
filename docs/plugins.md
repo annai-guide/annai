@@ -9,7 +9,7 @@ A code plugin is trusted fully. It runs on annai's own page, with the same power
 A package is one of two kinds:
 
 - **A skill**, in the open [Agent Skills](https://agentskills.io/specification) format: a folder with `SKILL.md`, and optional `references/`, `assets/` and `scripts/` (annai never runs scripts). No `annai-plugin.json` is needed. See "Skills" below.
-- **A plugin**: a folder or a zip with `annai-plugin.json` at its top, either directly or inside one top folder. It may have code (an `entry` module), and it may bring skills, personalities and endpoint templates without any code.
+- **A plugin**: a folder or a zip with `annai-plugin.json` at its top, either directly or inside one top folder. It may have code (an `entry` module), and it may bring skills, personalities and a model provider's description without any code. A plugin without code is **data only**: it can't run anything, and its install screen has no full-access warning.
 
 A plugin's manifest:
 
@@ -34,14 +34,18 @@ A plugin's manifest:
   - `entry`: an ES module inside the package, ending in `.js` or `.mjs`.
   - `skills`: skill folders in the package, each holding a `SKILL.md` (`"."` is the package's top).
   - `personalities`: Markdown files, each a personality named by its file (`ranger.md` is "ranger"). Settings → Shiori offers them; Add makes a copy the user owns.
-  - `templates`: JSON files of endpoint templates, `{ "endpoints": [{ "id", "version", "type", "name", … }] }`, in the format of annai's own `catalog/templates.json`. They join annai's in Settings → Models as "<template name> (from <your plugin's name>)"; annai's own win on the same id. A template decides where a key the user gives it is sent, and the install screen says so.
+  - `provider`: a model provider's description, inline. See "Model providers" below.
+  - `requires`: the plugins yours needs, `[{ "id": "chat-completions", "version": "^0" }, { "id": "acme-proto", "version": "^2", "homepage": "https://…" }]`, at most 10. A range is `^N`, the same major; for a protocol plugin the major is its interface version. annai's own come with yours from its catalog; a third party's must be installed first, and the install stops naming it, with its `homepage` (https). A package can't require itself.
+  - `category`: `providers`, `speech`, `backup`, `tools`, `skills` or `developer`, the kind it is listed under. When absent it is worked out: a provider with chat is `providers`, one with speech only `speech`, a backup place's plugin `backup`, a protocol `developer`, skills or personalities without code `skills`, other code `tools`.
+  - `keywords`: up to 20 other names it is searched by, written as they are shown (`["Unsloth", "LM Studio"]`).
+  - `templates` (endpoint templates, before providers) is refused: "Endpoint templates were replaced by `provider`".
   - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing"). A module you leave out isn't there once installed from an address, and the plugin won't start; the error is the browser's own, and it names your entry file, not the missing module (Chrome: "Failed to fetch dynamically imported module: …/index.js"; Safari names no file at all: "Importing a module script failed.").
   - `settings`: a JSON Schema object; annai draws a form from it on your plugin's page in Settings → Plugins. See "Settings" below.
 - **Size:** a package may unpack to at most 64 MiB.
 
 annai copies the package into its own storage, so the plugin works offline, and serves its files at `/plugins/<id>/…`. Relative imports between a plugin's own modules therefore just work. A package's files keep no history: installing it again replaces them.
 
-A package's id is one name space with every other package: a skill is installed under its own name, and a skill name Shiori already has (one of annai's own, or another package's, on or off) can't be installed again.
+A package's id is one name space with every other package: a skill is installed under its own name, and a skill name Shiori already has (one of annai's own, or another package's, on or off) can't be installed again. The id of one of annai's own plugins (any in its catalog) can't be taken by a package from a file or an address: "annai's own plugin uses this name".
 
 ## The entry module
 
@@ -67,11 +71,11 @@ export function activate(annai) {
 | `annai.tools.register(tool)` | a tool: a name (letters, digits, `_` and `-`, up to 64), a description, an input JSON Schema and `run(input, call)` (spec §5.4). `call` has `trip` (the open trip's scope, or null), `signal` (stop when it aborts), `model` (the model that called it) and `fetch` (traced). Errors become results Shiori sees. Every tool can be switched off in Settings → Tools. |
 | `annai.events.append(scope, type, data, keep?)` | appends an entry to a scope's log, signed `plugin:<id>`. `keep = { texts: [[name, text]], blobs: [{ bytes, type }] }` stores content and names it in the entry's refs; long texts are kept that way, short ones go in `data`. Returns the entry. |
 | `annai.files` | the files of every scope: `read`, `readText`, `readJSON`, `list`, `write`, `patch`, `delete`, `history`, `restore` |
-| `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Endpoint types" below |
+| `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Protocols (endpoint types)" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
 | `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
-| `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or endpoint's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
+| `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or provider's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
 | `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
 | `annai.wake(reason)` | wakes Shiori, with the reason she sees. Quiet hours and the per-hour limit apply (spec §6.6). |
@@ -117,14 +121,15 @@ Pools are safest from an hour before low tide until low tide. Read [the safety n
 - **From a file:** Settings → Plugins → Install from a file: a zip, or a `SKILL.md` on its own.
 - **From an address:** Settings → Plugins → Address of a plugin or skill. The address holds one of:
   - a zip file, whatever its name;
-  - an `annai-plugin.json`: annai fetches the files it names (`entry`, each skill's `SKILL.md`, `personalities`, `templates`, and `files`), relative to it;
+  - an `annai-plugin.json`: annai fetches the files it names (`entry`, each skill's `SKILL.md`, `personalities`, and `files`), relative to it;
   - a `SKILL.md`: annai fetches the files its links point to inside the skill's folder.
 
   The site must let web apps read it (GitHub's raw files do; a `github.com/…/blob/…` page is read from there). At most 200 files and 64 MB. A key in the address (a path segment or a query value that looks like one) is kept in a secret of annai's own, apart from your plugin's `annai.secrets`, which annai uses to look for updates; the address is shown and kept everywhere else with `«key»` in its place. An address with a name and password before an `@` is refused.
-- **From annai's catalog:** Settings → Plugins lists annai's own plugins that aren't installed.
-- **The install screen** comes first, for a file or an address: what the package is, where it came from, and what it brings. A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys."
-- **Updates:** a package installed from an address is checked there when annai starts, when it comes back to the screen at most once a day (so your site isn't asked at every return), and on Check now in Settings → Updates; a changed package (its files, not just its version) is offered on a card, in Settings → Updates and in Settings → Plugins. Nothing changes until the user taps Update. An update that brings something new (code where there was none, or new skills, personalities or templates) lists it and asks again, with the full-trust words for new code. Code that already ran runs the new version from the next start.
-- **Removing** removes everything the package stored: its files, its settings (`annai.settings`), its secrets (`annai.secrets`), its tools' switches, and what it kept in the system log with `annai.events.append('sys', …)`. What it wrote into a trip stays: that is the trip's.
+- **From annai's catalog:** Settings → Plugins lists annai's own plugins that aren't installed; a model provider is added from Settings → Models.
+- **The install screen** comes first, for a file or an address: what the package is, where it came from, what it brings, and what it needs ("It needs: Chat Completions (from annai, installed with it)"). A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys." A provider says where keys go, by origin: "Keys you give this provider are sent to https://llm.example." Install stays off while a requirement can't be had (a third party's not installed, or one the user switched off).
+- **Requirements** are installed with your plugin, all or nothing: if a download fails or the connection drops, nothing stays half-installed. A plugin the user switched off is never switched on for yours: the install stops and says how.
+- **Updates:** a package installed from an address is checked there when annai starts, when it comes back to the screen at most once a day (so your site isn't asked at every return), and on Check now in Settings → Updates; a changed package (its files, not just its version) is offered on a card, in Settings → Updates and in Settings → Plugins. Nothing changes until the user taps Update. An update that brings something new (code where there was none, new skills or personalities, or a provider that sends keys to a new origin: scheme, host and port) lists it and asks again, with the full-trust words for new code. What an update now requires is installed on Update. Code that already ran runs the new version from the next start.
+- **Removing** removes everything the package stored: its files, its settings (`annai.settings`), its secrets (`annai.secrets`), its tools' switches, and what it kept in the system log with `annai.events.append('sys', …)`. What it wrote into a trip stays: that is the trip's. Removing a provider plugin removes the providers made from it, with their keys and models; removing the last provider made from it removes the plugin. Then annai's own protocol plugins that nothing requires and no switched-on ability uses go too; a third party's stays.
 
 ## The UI
 
@@ -206,10 +211,38 @@ export function activate(annai) {
 - **Keep results short.** A result over 40 000 characters is cut. Return a page of results, and take a `from` or `page` input for more.
 - **Every tool can be switched off** in Settings → Tools, and every call, its input and its result are in the trace.
 
-## Endpoint types
+## Model providers
+
+A model provider is usually data: one `annai-plugin.json` with a `provider` description and no `entry`, requiring the protocol plugins its abilities speak through. annai's own are in `plugins-official/provider-*`. OpenAI's, trimmed:
+
+```json
+{
+  "id": "provider-openai", "name": "OpenAI", "version": "1.0.0", "api": 1, "category": "providers",
+  "requires": [{ "id": "openai-responses", "version": "^0" }, { "id": "speech-openai", "version": "^0" }],
+  "provider": {
+    "baseUrl": "https://api.openai.com/v1", "key": "required", "keyUrl": "https://platform.openai.com/api-keys",
+    "abilities": {
+      "chat": { "kind": "chat", "type": "openai-responses", "name": "Chat (Responses)",
+        "models": [{ "providerId": "gpt-6-luna", "name": "GPT-6 Luna", "prices": { "input": 0.1, "output": 0.5 } }] },
+      "chat-completions": { "kind": "chat", "type": "chat-completions", "on": false, "tunables": { "systemRole": "developer" } },
+      "voice": { "kind": "voice", "type": "openai-speech", "models": [{ "providerId": "tts-1", "name": "OpenAI: TTS-1 (Nova)", "tunables": { "voice": "nova" }, "prices": { "perMillionChars": 15 } }] }
+    },
+    "roles": { "recommended": { "main": ["gpt-6-luna"], "speech-out": ["tts-1"] } }
+  }
+}
+```
+
+- **The provider:** `baseUrl` (empty when the user gives one); `key`: `required`, `optional` or `none` (no key field); `keyHeader` when the key goes in a header of its own rather than the protocol's way (annai puts it there and gives the protocol no key); `keyUrl` and `note` for its page; `headers` sent with every ability's requests; `local: true` for a server the user runs. Every address must be https, or http only for `localhost` or `127.0.0.1`.
+- **Each ability** (an id of lowercase letters, digits and dashes) has a `kind` (`chat`, `transcription`, `voice`), a protocol's `type`, and optionally a `name`, `on: false` to start switched off, its own `baseUrl`, `tunables`, `extraBody`, a `note`, `modelDefaults` (what a model added by id or from a list starts with, such as `providerTools` or `cacheTtls`) and `models` (each with a `providerId`, and the model settings of spec §9.2).
+- **`roles`** suggests models: `recommended` and `free`, each role to provider model ids among the abilities of its kind (chat roles `main`, `utility`, `decide`; `speech-in` transcription; `speech-out` voices). Adding a provider fills chat roles still empty; its speech models go behind the free entries.
+- **`requires`** must cover every protocol of an ability that starts on. One that starts off brings its protocol when the user turns it on.
+- **One key per provider.** The user may add several providers from one plugin (two accounts); each has its own key, models and places in roles. annai keeps the key in its secrets; your plugin never sees it.
+- **Updates:** when your plugin's version changes, the providers made from it take the new description; the user's own changes stay, new models join no role, and a new ability arrives switched off.
+
+## Protocols (endpoint types)
 
 An endpoint type teaches annai one model protocol. The core contains none (spec §9.1).
-annai's own Chat Completions, Anthropic Messages and OpenAI Responses types are plugins too: see `plugins-official/`.
+annai's own Chat Completions, Anthropic Messages and OpenAI Responses types are plugins too: see `plugins-official/`. A protocol's `endpoint` is a provider's ability: `{ id: "<provider>/<ability>", provider, ability, type, name, baseUrl, headers, tunables, extraBody }`, its `name` the provider's. Providers require a protocol as `^N` of its version's major, so its major is its interface: change it only when a provider would have to change.
 
 ```js
 export function activate(annai) {
@@ -217,7 +250,7 @@ export function activate(annai) {
   return annai.providers.register({
     type: 'my-protocol',                 // lowercase letters, digits and dashes
     name: 'My protocol',
-    tunables: { path: '/v1/chat' },      // defaults the user can change per endpoint and model
+    tunables: { path: '/v1/chat' },      // defaults the user can change per ability and model
     build({ endpoint, model, key, tunables, request }) {
       return { url: endpoint.baseUrl + tunables.path, headers: { authorization: `Bearer ${key}` }, body: { model: model.providerId } };
     },
@@ -232,7 +265,7 @@ export function activate(annai) {
 ```
 
 - **What annai does around it:**
-  - It merges the endpoint's and the model's extra fields, and the reasoning level's patch, into the body `build()` returns.
+  - It merges the ability's and the model's extra fields, and the reasoning level's patch, into the body `build()` returns.
   - It sends the request and reads it until the first output arrives in time.
   - It assembles the reply, and works out its cost.
   - It falls back to the next model of the role when this one fails.
@@ -248,7 +281,7 @@ export function activate(annai) {
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.
   - `listRequest()` and `readList()` make "Fetch model list" work.
-  - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the endpoint's page (the `uploads` tunable).
+  - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the provider's page, per ability (the `uploads` tunable).
 
 ## Backup places
 
