@@ -100,3 +100,24 @@ test("Koe's wait for the first words is 8 seconds unless the user set one (Koe a
   assert.equal(waits[0], 8000);
   assert.ok(waits.includes(3000), 'koe-talk uses its own setting, with koe-type\'s models');
 });
+
+test("until live sessions reach Koe (K5), a realtime model in Koe's lists counts as none: the other list answers, and alone it splits nothing (review)", () => {
+  /** @type {any} */
+  const cfg = {
+    providers: { pv: { id: 'pv', plugin: 'provider-gemini', template: null, created: 0, user: { name: 'Gemini', abilities: { live: { kind: 'realtime', type: 'gemini-live' }, chat: { kind: 'chat', type: 'chat-completions' } } } } },
+    models: {
+      live: { id: 'live', provider: 'pv', ability: 'live', template: null, created: 0, user: { providerId: 'gemini-3.8-live' } },
+      fast: { id: 'fast', provider: 'pv', ability: 'chat', template: null, created: 0, user: { providerId: 'gemini-3.5-flash-lite' } },
+    },
+    roles: { main: { models: [], level: 'off' }, 'koe-talk': { models: ['live'], level: 'off' }, 'koe-type': { models: ['fast'], level: 'off' } },
+  };
+  assert.deepEqual(koeList(cfg, true), { role: 'koe-talk', models: ['fast'] }, 'voice on: the typing model, through the speech pipeline');
+  assert.deepEqual(candidates(cfg, 'koe-talk'), ['fast']);
+  assert.equal(splitOn(cfg), true);
+  const liveOnly = { ...cfg, roles: { ...cfg.roles, 'koe-type': { models: [], level: 'off' } } };
+  assert.deepEqual(koeList(liveOnly, true).models, []);
+  assert.deepEqual(koeList(liveOnly, false).models, []);
+  assert.equal(splitOn(liveOnly), false, 'Shiori stays one half, rather than Koe going down every turn');
+  const mixed = { ...cfg, roles: { ...cfg.roles, 'koe-talk': { models: ['live', 'fast'], level: 'off' } } };
+  assert.deepEqual(candidates(mixed, 'koe-talk'), ['fast'], 'the chat models after it still answer');
+});
