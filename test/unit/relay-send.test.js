@@ -8,7 +8,7 @@ import { encryptPush } from '../../src/core/push/webpush.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { createServer } from 'node:http';
 
-test('at its time the relay sends the reminder to its push service, signed, and keeps nothing of it (spec §11.6)', async () => {
+test('at its time the relay sends the reminder to its push service, signed, and keeps nothing of it but its id and token, a few minutes (spec §11.6)', async () => {
   const k = await relayKit();
   const rem = k.reminder();
   await k.call('POST', '/v1/schedule', { body: rem, token: token() });
@@ -27,8 +27,12 @@ test('at its time the relay sends the reminder to its push service, signed, and 
   assert.equal(claims.sub, 'https://annai.guide');
   assert.equal(claims.exp, Math.floor(k.now() / 1000) + 12 * 3600);
   assert.deepEqual(await k.waiting(), []);
+  const kept = await k.stored();
+  assert.deepEqual([kept.filter((key) => !key.startsWith('s:')), kept.filter((key) => key.startsWith('s:')).length], [['confirmed', 'jwt'], 1], 'its id and token, while the page may send it again');
+  const sentAt = k.now();
+  await k.after(5 * MIN);
   assert.deepEqual(await k.stored(), ['confirmed', 'jwt'], 'not its payload, not its token: only that a push reached the phone, and the VAPID token');
-  assert.equal(await k.alarm(), k.now() + KEEP_CONFIRMED, 'and that only for 60 days');
+  assert.equal(await k.alarm(), sentAt + KEEP_CONFIRMED, 'and that only for 60 days');
 });
 
 test('several reminders, each at its own time; the alarm moves on to the next', async () => {
@@ -37,10 +41,13 @@ test('several reminders, each at its own time; the alarm moves on to the next', 
   for (const m of [30, 10, 20]) await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + m * MIN, payload: toB64u(new Uint8Array(200).fill(m)) }), token: token() });
   await k.after(10 * MIN);
   assert.deepEqual(k.sent.map((s) => s.init.body[0]), [10]);
-  assert.equal(await k.alarm(), k.now() + 10 * MIN);
-  await k.after(10 * MIN);
+  assert.equal(await k.alarm(), k.now() + 5 * MIN, 'first, to forget the one sent');
+  await k.after(5 * MIN);
+  assert.equal(await k.alarm(), k.now() + 5 * MIN, 'then the next one');
+  await k.after(5 * MIN);
   await k.after(10 * MIN);
   assert.deepEqual(k.sent.map((s) => s.init.body[0]), [10, 20, 30]);
+  await k.after(5 * MIN);
   assert.deepEqual(await k.stored(), ['confirmed', 'jwt']);
 });
 
@@ -255,4 +262,20 @@ test('a reminder due now, sent again after its answer was lost, is not sent twic
   assert.equal(c.status, 409, 'another token for that id');
   await k.after(5 * MIN); // past when the relay would take its sendAt
   assert.deepEqual((await k.stored()).filter((key) => !['confirmed', 'jwt'].includes(key)), [], 'nothing of them is left');
+});
+
+test('a later reminder sent at its time, then scheduled again because its answer was lost, is not sent twice either', async () => {
+  const k = await relayKit();
+  await k.confirm();
+  const tok = token();
+  const later = k.reminder({ id: 'CCCCCCCCCCCCCCCCCCCCCC', sendAt: k.now() + 10 * MIN });
+  await k.call('POST', '/v1/schedule', { body: later, token: tok }); // the page never hears this answer
+  await k.after(10 * MIN);
+  assert.equal(k.sent.length, 1, 'sent at its time');
+  await k.after(2 * MIN);
+  const again = await k.call('POST', '/v1/schedule', { body: later, token: tok }); // the page sends it again, now past its time
+  assert.deepEqual([again.status, again.body.sent], [201, true]);
+  assert.equal(k.sent.length, 1);
+  await k.after(5 * MIN);
+  assert.deepEqual((await k.stored()).filter((key) => !['confirmed', 'jwt'].includes(key)), [], 'nothing of it is left');
 });

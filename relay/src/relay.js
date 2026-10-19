@@ -4,7 +4,8 @@ import { readVapidKey, vapidJwt, vapidAuthorization } from './vapid.js';
 /**
  * The push relay (spec §11.6): it keeps reminders the page encrypted, and sends each to its push
  * service at its time. A Cloudflare Worker with one Durable Object per push subscription, whose
- * alarm fires at the next sendAt. It never decrypts, logs or keeps anything after sending. No
+ * alarm fires at the next sendAt. It never decrypts or logs, and keeps nothing after sending but a
+ * sent reminder's id and token, for 5 minutes, in case the page sends it again. No
  * dependencies: the Workers runtime has fetch and WebCrypto, and so has Node, where relay/serve.mjs
  * runs the same code.
  * @typedef {{ get: (key: string) => Promise<any>, put: (key: string | Record<string, any>, value?: any) => Promise<void>,
@@ -400,8 +401,11 @@ export function makeRelay({ now = () => Date.now(), send = (url, init) => fetch(
       } else {
         await this.storage.delete([`m:${w.id}`, `p:${w.id}`]); // sent, or never will be
         if (r === 'sent') await this.storage.put('confirmed', { at: t }); // only a push service's 201 confirms
-        // Sent in its own request: remembered while the page may send it again, its answer lost (its sendAt is taken until LIMITS.behind after it).
-        if (asked && (r === 'sent' || r === 'taken')) await this.storage.put(`s:${w.id}`, { token: w.token, sendAt: w.sendAt, until: Math.max(w.sendAt, t) + LIMITS.behind });
+        // Sent, in its own request or at its time: remembered while the page may send it again, its answer lost
+        // (its sendAt is taken until LIMITS.behind after it); one sent later than that can't come again.
+        if ((r === 'sent' || r === 'taken') && (asked || w.sendAt + LIMITS.behind > t)) {
+          await this.storage.put(`s:${w.id}`, { token: w.token, sendAt: w.sendAt, until: Math.max(w.sendAt, t) + LIMITS.behind });
+        }
       }
       return r;
     }
