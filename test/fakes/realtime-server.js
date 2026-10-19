@@ -22,11 +22,13 @@ import { createHash } from 'node:crypto';
  * Unit tests reach it with Node's WebSocket, and end-to-end tests from the page, at ws://127.0.0.1:<port> (WebKit
  * can't stand in for a page's own requests).
  * @typedef {{ heard?: string, said?: string, audio?: Uint8Array, tool?: { name: string, args: any }, goAway?: number, handle?: string,
- *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string }} Turn
+ *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string, heardAfter?: string, heardFirst?: boolean, saidAfter?: string }} Turn
  *   one answer, played when a clientContent turn or an activityEnd comes (openai: a response.create); turns are given in order,
  *   and the last repeats. audio: 24 kHz 16-bit PCM (openai: in the session's output format); tool: a call it makes after its words;
  *   goAway, handle: Gemini's, seconds left, sent after the turn; usage: Gemini's usageMetadata, or OpenAI's response usage;
- *   interruptOn: only this cuts a Gemini turn off (default: either); refuse: OpenAI refuses the response.create with this error code
+ *   interruptOn: only this cuts a Gemini turn off (default: either); refuse: OpenAI refuses the response.create with this error code;
+ *   Gemini's (K5): heardAfter: the last words heard, sent after turnComplete, as Gemini's input transcript sometimes comes; heardFirst:
+ *   heard is sent as the user starts speaking, not with the answer; saidAfter: the last words said, sent after turnComplete
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
  *   pace?: number, chunkBytes?: number }} Options
  *   key: the one key it takes (none: any); models: the ids it knows (none: any); closeWith: how it closes each session at its setup (openai: its session.update);
@@ -121,6 +123,8 @@ export async function startRealtimeServer(o) {
   /** @type {Set<{ close(code: number, reason: string): void }>} */
   const open = new Set();
   const counter = { next: 0, calls: 0, ids: 0 };
+  /** Turns whose words heard first were sent: once, whatever connection. @type {Set<Turn>} */
+  const early = new Set();
   const turnAt = () => turns[Math.min(counter.next, turns.length - 1)];
   const server = http.createServer((_req, res) => {
     res.writeHead(426, { 'content-type': 'text/plain' });
@@ -147,7 +151,7 @@ export async function startRealtimeServer(o) {
     open.add(conn);
     socket.on('close', () => open.delete(conn));
     socket.on('error', () => {});
-    const c = { conn, received, turns, turnAt, counter, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '' };
+    const c = { conn, received, turns, turnAt, counter, early, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '' };
     const session = isOpenai ? openaiSession(c) : geminiSession(c);
     /** @type {Buffer} */
     let buf = Buffer.alloc(0);
@@ -211,13 +215,13 @@ export async function startRealtimeServer(o) {
 }
 
 /**
- * @typedef {{ conn: ReturnType<typeof link>, received: any[], turns: Turn[], turnAt: () => Turn | undefined, counter: { next: number, calls: number, ids: number },
+ * @typedef {{ conn: ReturnType<typeof link>, received: any[], turns: Turn[], turnAt: () => Turn | undefined, counter: { next: number, calls: number, ids: number }, early: Set<Turn>,
  *   key?: string, given: string | null, models?: string[], closeWith?: { code: number, reason: string }, pace: number, chunkBytes: number, url: URL, version: string }} Ctx
  */
 
 /** Gemini Live, as measured. @param {Ctx} c @returns {{ handle(m: any): void, stop(): void }} */
 function geminiSession(c) {
-  const { conn, turns, counter, key, models, closeWith, pace, chunkBytes, url, version } = c;
+  const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version } = c;
   const send = conn.send;
   let ready = false;
   /** The turn being played: its timers, and what cuts it off. @type {{ timers: NodeJS.Timeout[], turn: Turn } | null} */
@@ -230,7 +234,7 @@ function geminiSession(c) {
     stopTurn();
     const turn = turns[Math.min(counter.next++, turns.length - 1)];
     if (!turn) return;
-    if (turn.heard) send({ serverContent: { inputTranscription: { text: turn.heard } } });
+    if (turn.heard && !turn.heardFirst) send({ serverContent: { inputTranscription: { text: turn.heard } } });
     const audio = turn.audio ?? new Uint8Array(0);
     const words = turn.said ? turn.said.match(/\S+\s*/g) ?? [] : [];
     const pieces = Math.max(1, Math.ceil(audio.length / chunkBytes));
@@ -248,6 +252,8 @@ function geminiSession(c) {
     const done = () => {
       playing = null;
       send({ serverContent: { turnComplete: true }, ...(turn.usage ? { usageMetadata: turn.usage } : {}) });
+      if (turn.heardAfter) send({ serverContent: { inputTranscription: { text: turn.heardAfter } } });
+      if (turn.saidAfter) send({ serverContent: { outputTranscription: { text: turn.saidAfter } } });
       if (turn.handle) send({ sessionResumptionUpdate: { newHandle: turn.handle, resumable: true } });
       if (turn.goAway !== undefined) send({ goAway: { timeLeft: `${turn.goAway}s` } });
     };
@@ -281,6 +287,11 @@ function geminiSession(c) {
         return undefined;
       }
       const input = m?.realtimeInput;
+      const coming = turnAt();
+      if (input?.activityStart && coming?.heardFirst && coming.heard && !early.has(coming)) {
+        early.add(coming);
+        send({ serverContent: { inputTranscription: { text: coming.heard } } });
+      }
       if (input?.activityStart) cut('activity');
       else if (input?.activityEnd) play();
       else if (m?.clientContent) {
