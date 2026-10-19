@@ -52,13 +52,13 @@ test('a provider already set up is Added, with Add another; an official entry wi
   assert.equal(find(rows, 'tide-pools').facts.category, 'skills');
   assert.equal(find(rows, 'core-schemas'), undefined);
   // The fixed row: an MCP server, set up on its own screen.
-  assert.deepEqual(pick('mcp'), { official: true, added: 0, action: 'set-up', from: 'Built into annai', href: '#/mcp' });
-  assert.equal(find(rows, 'mcp').facts.category, 'tools');
+  assert.deepEqual(pick('#mcp'), { official: true, added: 0, action: 'set-up', from: 'Built into annai', href: '#/mcp' });
+  assert.equal(find(rows, '#mcp').facts.category, 'tools');
 });
 
 test("offline, installed items still list: a copy from elsewhere is shown as what it is, and annai's own installed ones as official", () => {
   const rows = addRows(null, INSTALLED, { 'provider-openai': 1 });
-  assert.deepEqual(rows.map((r) => r.facts.id).sort(), ['mcp', 'provider-openai', 'provider-openrouter', 'remote-trace', 'tide-pools', 'trail-kit']);
+  assert.deepEqual(rows.map((r) => r.facts.id).sort(), ['#mcp', 'provider-openai', 'provider-openrouter', 'remote-trace', 'tide-pools', 'trail-kit']);
   const copy = find(rows, 'provider-openrouter');
   assert.deepEqual([copy.official, copy.from, copy.action, copy.note], [false, 'From evil.example', 'add', undefined]);
   assert.deepEqual([find(rows, 'provider-openai').official, find(rows, 'provider-openai').action], [true, 'add-another']);
@@ -67,4 +67,12 @@ test("offline, installed items still list: a copy from elsewhere is shown as wha
 test("a third-party manifest's featured counts nowhere: only annai's catalog marks one", () => {
   const rows = addRows(null, [mine({ id: 'loud', name: 'Loud', provider: chat }, { source: 'file', featured: 'Pick me first.' })], {});
   assert.equal(find(rows, 'loud').facts.featured, undefined);
+});
+
+test("a plugin whose id is mcp is itself, never the fixed row An MCP server: that row's id is one no manifest can have", () => {
+  const rows = addRows(null, [mine({ id: 'mcp', name: 'MCP bridge', entry: 'index.js' }, { source: 'url', url: 'https://bridge.example/mcp/annai-plugin.json' })], {});
+  const byId = new Map(rows.map((r) => [r.facts.id, r]));
+  assert.equal(byId.size, rows.length);
+  assert.deepEqual([byId.get('mcp').facts.name, byId.get('mcp').from], ['MCP bridge', 'From bridge.example']);
+  assert.equal(rows.find((r) => r.href === '#/mcp').facts.name, 'An MCP server');
 });

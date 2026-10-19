@@ -27,9 +27,9 @@ const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Vo
 const ANOTHER = 'provider-another-address';
 const NOT_INSTALLABLE = "That file isn't something annai can install";
 
-/** An MCP server is added on its own screen: a fixed row, built into annai. @type {Row} */
+/** An MCP server, added on its own screen: a fixed row whose id no manifest can have. @type {Row} */
 const MCP_ROW = {
-  facts: { id: 'mcp', name: 'An MCP server', version: '', description: "Tools from a server that speaks MCP (the Model Context Protocol), added by its address.", category: 'tools',
+  facts: { id: '#mcp', name: 'An MCP server', version: '', description: "Tools from a server that speaks MCP (the Model Context Protocol), added by its address.", category: 'tools',
     keywords: ['MCP', 'Model Context Protocol'], abilities: [], free: false, local: false, code: false, size: 0, requires: [], official: true },
   official: true, added: 0, action: 'set-up', from: 'Built into annai', href: '#/mcp',
 };
