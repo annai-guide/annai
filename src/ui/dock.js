@@ -115,7 +115,7 @@ export function createDock(ctx) {
   // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
   const halves = h('span', { class: 'halves-sign', hidden: true },
     h('span', { class: 'chip', role: 'status', text: 'Kokoro is working' }),
-    h('button', { class: 'chip', type: 'button', 'aria-label': 'Stop Kokoro', onclick: () => ctx.agent.stopKokoro() }, 'Stop'));
+    h('button', { class: 'btn', type: 'button', 'aria-label': 'Stop Kokoro', onclick: () => ctx.agent.stopKokoro() }, 'Stop'));
   if ('kokoroWorking' in ctx.agent) {
     halves.hidden = !ctx.agent.kokoroWorking;
     offs.push(ctx.agent.on('halves', (/** @type {{ kokoroWorking: boolean }} */ x) => { halves.hidden = !x.kokoroWorking; }));

@@ -405,3 +405,17 @@ test("Fix pass 10: when Kokoro's model has used up its day, Koe hears it plainly
   assert.match(failed.data.text, /^Kokoro couldn't check: model-0: its daily limit is used up; it rests until .+\. Tell the user you couldn't check, and offer to try again\.$/);
   assert.doesNotMatch(failed.data.text, /billing/);
 });
+
+test("Fix pass 12: Kokoro's errors are set aside from the conversation only while Koe talks; while Koe is down, they are Shiori's", async () => {
+  const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [{ delayMs: 30, error: 'auth', message: 'bad key' }] } });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  // Koe is down now: what the user types is Kokoro's, and so is its error, shown.
+  k.agent.send('Hello?');
+  await k.agent.idle();
+  const kokoro = (await k.events(['error'])).filter((e) => e.data.half === 'kokoro');
+  assert.ok(kokoro.length >= 2);
+  assert.equal(kokoro[0].data.quiet && kokoro[0].data.aside, true, 'while Koe talked: Koe said it, and the line is set aside');
+  const last = kokoro.at(-1);
+  assert.equal(Boolean(last.data.quiet || last.data.aside), false, "Koe down: Kokoro's own error is the conversation's");
+});

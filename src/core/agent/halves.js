@@ -104,7 +104,8 @@ export class Halves {
         system: (s) => systemText(s, this.#split ? KOKORO_PART : ''),
         koe: () => (this.#split ? (this.koeState === 'text' ? 'text' : 'down') : null),
         hidden: async () => (this.#split ? [] : ['tell_koe']),
-        mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro' } : {}),
+        // Its errors while Koe talks are set aside: Koe tells the user, and a card says what needs saying.
+        mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.koeState === 'text' ? { aside: true } : {}) } : {}),
         serial,
         ready: () => this.#ready,
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
