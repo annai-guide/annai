@@ -135,3 +135,19 @@ test('an empty POST is 400 on a route it has, 404 elsewhere, 405 for GET on a PO
     await Promise.all([everywhere.stop(), spa.stop()]);
   }
 });
+
+test('gapMs spreads a stream out, so words can be seen arriving before it ends', async () => {
+  const s = await startFakeServer({ flavour: 'llamacpp', gapMs: 40, replies: [{ text: 'One two three four.' }] });
+  try {
+    const res = await fetchAs(`${s.origin}/v1/chat/completions`, chat());
+    const reader = /** @type {ReadableStream<Uint8Array>} */ (res.body).getReader();
+    const started = Date.now();
+    /** @type {number[]} */
+    const at = [];
+    for (let r = await reader.read(); !r.done; r = await reader.read()) at.push(Date.now() - started);
+    assert.ok(at.length > 3, 'in several reads');
+    assert.ok((at.at(-1) ?? 0) - at[0] >= 200, `spread out: ${at.join(', ')}`);
+  } finally {
+    await s.stop();
+  }
+});
