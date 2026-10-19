@@ -83,6 +83,21 @@
       }
     },
     {
+      "id": "storage-forgejo",
+      "name": "Forgejo / Gitea",
+      "version": "0.1.0",
+      "provides": {
+        "storage-type": [
+          "forgejo"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "a5807f36bce6257f30146fa1c5d599fb76c90e039f1a93d8b6d1b74bad29a6bc",
+        "git.js": "fe62d15bd1b8679ba15cbadd43cea1741c4df1b65a6500a803ceef737660ce80",
+        "index.js": "abd7c9c8ae4fefa5448cf2561bdbb967c641eb15ffa38c7f49f03ed131087368"
+      }
+    },
+    {
       "id": "storage-github",
       "name": "GitHub",
       "version": "0.1.0",
