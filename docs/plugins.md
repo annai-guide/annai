@@ -417,7 +417,7 @@ Speech travels in the smallest format both the phone and the provider handle (sp
 
 ### Realtime voice protocols
 
-A realtime protocol speaks to a model that hears and talks in one stream over a WebSocket, such as Gemini Live (`plugins-official/gemini-live`). annai opens the socket; your type builds its address and drives it. A provider's ability of kind `realtime` uses it, and Koe talks through it.
+A realtime protocol speaks to a model that hears and talks in one stream over a WebSocket, such as Gemini Live (`plugins-official/gemini-live`) or OpenAI Realtime (`plugins-official/openai-realtime`). annai opens the socket; your type builds its address and drives it. A provider's ability of kind `realtime` uses it, and Koe talks through it.
 
 ```js
 export function activate(annai) {
@@ -457,13 +457,21 @@ export function activate(annai) {
 - **What annai does around it:**
   - It opens the socket at the address `open()` gives, only at the origin of the ability's address: `wss:` for an `https` address, `ws:` only for `localhost` and `127.0.0.1`. Any other is refused before anything opens. A socket can't follow a redirect, so the key reaches only the provider.
   - It calls `attach()` once the socket is open. Set `socket.on()` there: messages before it are dropped.
-  - It waits for `ready` (15 s), then hands the session to Koe. Before `ready`, a close may ask for one more try: `reopen(code, reason, tunables)` gives the tunables to open with (Gemini Live answers v1alpha's proactive audio, refused on v1beta, so).
+  - It waits for `ready` (15 s), then hands the session to Koe. If the provider refuses the session in words before then (a key, a model, a field), reject `ready` with a `ProviderError` (`annai.helpers.ProviderError`) of the right kind and its words: the session ends with them, the key blanked, and it doesn't count against your plugin. Any other failure of `ready` does. Before `ready`, a close may ask for one more try: `reopen(code, reason, tunables)` gives the tunables to open with (Gemini Live answers v1alpha's proactive audio, refused on v1beta, so).
   - It reads a close into an error kind: your `classifyClose`, then annai's (a refused key is `auth`; quota `rate`; 1008 or "not found" `not-found`; 1011 `server`; anything else `network`).
-  - It prices each `usage` you emit (one per turn) by the model's prices, `audioIn`, `audioOut` and `image` (image and video tokens) among them, and counts it in Spend per day. It traces the session's life as `live.session` entries, with the data both ways, and never its address, subprotocols or key.
+  - It prices each `usage` you emit (one per turn) by the model's prices, `audioIn`, `audioOut`, `cacheReadAudio` (cached audio tokens, else priced as `cacheRead`) and `image` (image and video tokens) among them, and counts it in Spend per day. Once the session has closed, what you emit reaches no one: a timer of yours that fires late is harmless. It traces the session's life as `live.session` entries, with the data both ways, and never its address, subprotocols or key.
   - A crash in your code counts against your plugin, as for any protocol.
-- **Audio:** `audio()` gets 16-bit PCM at `setup.audioIn`'s rate, and `audio` events carry it at `setup.audioOut`'s. annai streams only speech: `activity('start')`, the audio, then `activity('end')` at the end of the sentence, from its own end-of-sentence detector. Nothing is sent while nobody speaks.
+- **Audio:** `audio` lists what your protocol takes and gives, preferred first; a tunable `input` or `output` that names one of them (`pcm16`, `pcmu`, `pcma`) chooses it instead, and the session says which (`audioIn`, `audioOut`). Either way annai speaks 16-bit PCM: `audio()` gets it at `setup.audioIn`'s rate, and `audio` events carry it at `setup.audioOut`'s. A G.711 format is yours to code at the wire, as OpenAI Realtime's `audio/pcmu` is (annai's microphone then sends 8 kHz). annai streams only speech: `activity('start')`, the audio, then `activity('end')` at the end of the sentence, from its own end-of-sentence detector. Nothing is sent while nobody speaks.
 - **Answers:** annai answers every tool call at once. `silent` means "say nothing more for this answer" (Gemini's `scheduling: "SILENT"`, without which it adds a filler turn).
-- **The stand-in** (`test/fakes/realtime-server.js`) speaks Gemini Live as it was measured to, for your tests: `startRealtimeServer({ flavour: 'gemini', key, turns })`.
+- **Cutting in:** `activity('start')` while Koe speaks, `text(…, { interrupt: true })` and `cancel()` cut her off. Gemini does it on its own (`interrupted`); a protocol whose server doesn't must do it and emit `{ type: 'turn', end: 'interrupted' }` itself. Emit `complete` when the turn's voice would have finished playing, not when the server has sent it all: annai plays audio as it comes, and a cut before then ends the turn as `interrupted` alone.
+- **OpenAI Realtime, the second example** (`plugins-official/openai-realtime`), differs from Gemini Live where the APIs do:
+  - the key goes as a subprotocol (`open()` gives `protocols: ['realtime', 'openai-insecure-api-key.<key>']`), not in the address;
+  - turns are by hand (`turn_detection: null`): `activity('end')` commits the audio and sends `response.create`;
+  - a response arrives faster than it plays, so the protocol reckons what was heard by the clock: a cut-in sends `response.cancel` while the response is still being made, and `conversation.item.truncate` at the point reached; `complete` waits for the voice to have played;
+  - OpenAI makes one response at a time, so what annai sends while one is being made waits, in order, for it to end; a silent answer is a `function_call_output` with no `response.create`;
+  - errors are `error` events; before `session.updated` they reject `ready`;
+  - there's no resume handle, and a session lasts at most an hour: it emits `goaway` after its `renewMinutes` (55), and Koe starts a fresh session from its setup.
+- **The stand-in** (`test/fakes/realtime-server.js`) speaks Gemini Live as it was measured to, and OpenAI Realtime as its docs describe it, for your tests: `startRealtimeServer({ flavour: 'gemini' | 'openai', key, turns })`.
 
 ## Backup places
 

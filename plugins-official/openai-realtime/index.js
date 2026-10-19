@@ -270,10 +270,11 @@ export function activate(annai) {
             const raw = base64.decode(String(m.delta ?? ''));
             const pcm = decode ? new Uint8Array(decode(raw).buffer) : raw;
             const ms = (pcm.byteLength / 2 / setup.audioOut.rate) * 1000;
-            const start = Math.max(Date.now(), clock);
+            const now = Date.now();
+            const start = Math.max(now, clock);
             clock = start + ms;
-            const it = items.at(-1)?.id === m.item_id ? items.at(-1) : items[items.push({ id: m.item_id, at: start, ms: 0 }) - 1];
-            if (it) it.ms += ms;
+            if (items.at(-1)?.id !== m.item_id) items = [...items.filter((x) => x.at + x.ms > now), { id: m.item_id, at: start, ms: 0 }]; // the ones played, let go
+            /** @type {{ ms: number }} */ (items.at(-1)).ms += ms;
             emit({ type: 'audio', data: pcm });
             break;
           }
