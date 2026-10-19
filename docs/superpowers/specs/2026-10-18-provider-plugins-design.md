@@ -72,6 +72,15 @@ What the code shows:
     - **OpenRouter:** sign-in, its free models, its speech list paths and its free-limit message. This moves annai's OpenRouter code out of the core.
     - **Anthropic:** the browser-access header, if that can't be data.
     - **"Another address":** the probing.
+  - **Local servers are separate provider plugins** (the user's suggestion, 2026-10-18: "maybe llama, vllm, SGLang etc can be separate plugins because maybe they are slightly different"). Candidates: llama.cpp (Unsloth Studio runs it), vLLM, SGLang, Ollama and LM Studio. Each is data first; their quirks are data where possible:
+    - the reasoning field's name;
+    - how thinking is switched (e.g. vLLM's and SGLang's `chat_template_kwargs`);
+    - whether tool calls and usage in the stream are supported;
+    - prompt-cache options such as llama.cpp's `cache_prompt`;
+    - the model list's shape;
+    - the default port.
+
+    The user's own llama.cpp server streams for real, which makes it a good test of these (maiGo, their router, doesn't stream).
 - **Dependencies are declared** in the manifest as `requires` (protocol plugin ids, with version ranges on the interface major version) and resolved when the plugin is installed or updated. Protocol plugins are small (today 4.6 to 16.1 KiB each, about 45 KiB for all four), so installing what a provider needs costs little.
 
 ### Provider plugins and configured providers (my call)
