@@ -78,6 +78,11 @@ test('a real Forgejo or Gitea server: backups in parts and whole, only changes s
   const posts = sent.filter((s) => s.method === 'POST');
   assert.ok(posts.length >= 3, `${posts.length} requests`);
   for (const s of sent) assert.equal(s.body.includes(token) || s.url.includes(token), false);
+  // A part, opened as if it were a backup, is refused.
+  const api0 = `${server.replace(/\/+$/, '')}/api/v1/repos/${owner}/${repo}`;
+  const commits = await (await fetch(`${api0}/commits?limit=10&stat=false&verification=false&files=false`, { headers: { authorization: `token ${token}` } })).json();
+  const part = commits.find((/** @type {any} */ x) => /^Part of an annai backup/.test(x.commit.message));
+  await assert.rejects(type.get(c, part.sha, { onProgress: () => {} }), (e) => e instanceof TargetError && e.kind === 'missing' && /only part of a backup/.test(e.message));
 
   // Only what changed; a file that becomes a folder.
   await ws.write(trip, '/notes/京都 day 1.md', '千本鳥居, at dawn\n', { author: 'user' });

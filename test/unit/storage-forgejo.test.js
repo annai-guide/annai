@@ -247,6 +247,29 @@ test('on Gitea, another device that deleted the same file first is a newer backu
   }
 });
 
+test('a backup cut off after more than 250 parts: the newest whole backup is still found beyond them, and a part is never restored', async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {} } });
+  try {
+    const { type } = forgejo();
+    const a = await archive(await device());
+    const theirs = await type.put(ctx(fj, { device: 'phone-b', label: 'Android phone' }), a, opts());
+    for (let i = 0; i < 260; i++) fj.commitAs(REPO, Object.fromEntries(fj.files(REPO)), 'Part of an annai backup from Android phone\n\nDevice: phone-b\nannai test\n');
+    const part = fj.commits(REPO)[0].sha;
+    // Listed: the whole one, beyond the parts.
+    assert.deepEqual((await type.list(ctx(fj))).map((/** @type {any} */ b) => b.id), [theirs.id]);
+    // A phone that never took it in is offered that one, not a part of the cut-off backup.
+    await assert.rejects(type.put(ctx(fj, { device: 'phone-c' }), a, opts()), (/** @type {any} */ e) => refused('newer')(e) && e.remote.id === theirs.id && e.remote.label === 'Android phone');
+    // A part, opened as if it were a backup, is refused in plain words.
+    await assert.rejects(type.get(ctx(fj), part, { onProgress: () => {} }), refused('missing', /only part of a backup that was cut off/));
+    // A phone that took it in builds on it.
+    const mine = await type.put(ctx(fj), a, opts({ base: theirs.id }));
+    assert.deepEqual(fj.commits(REPO)[0].parents, [part]);
+    assert.equal((await type.list(ctx(fj)))[0].id, mine.id);
+  } finally {
+    await fj.stop();
+  }
+});
+
 test('the wrong repository, token or address is refused in plain words, before anything is written', async () => {
   const fj = await startForgejo({ repos: {
     [REPO]: {}, 'me/code': { files: { 'src/index.js': 'x', 'package.json': '{}' } }, 'me/public': { private: false }, 'me/old': { archived: true },
