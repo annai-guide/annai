@@ -111,7 +111,7 @@ test("8a-1: a key in a skill's address: the install screen shows «key», and no
   }
 });
 
-test('a code plugin from a zip and from an address, behind the full-trust screen: Cancel installs nothing; installed, its tool and its status chip work and survive a reload', async ({ page }) => {
+test('a code plugin from a zip and from an address, behind the full-trust screen: Cancel installs nothing; installed, its tool and its status chip work, again at once when the same files come back, and survive a reload', async ({ page }) => {
   const tides = await fixtureFiles('tides');
   const site = await startModelServer(Object.fromEntries(Object.entries(tides).map(([n, b]) => [`/kits/tides/${n}`, file(b, n.endsWith('.js') ? 'text/javascript' : 'application/json')])));
   const llm = await startModelServer({ '/b/v1/messages': [
@@ -137,12 +137,13 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
     await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Tap again to remove' }).click();
     await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toHaveCount(0); // the list drawn again: its field is the new one
-    // From an address: its code ran this session already, so it runs from the next start.
+    // From an address: the same files as the code that ran this session, so it starts at once (other files would wait for a restart).
     await page.getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/tides/annai-plugin.json`);
     await page.getByRole('button', { name: 'Get it' }).click();
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
     await page.getByRole('button', { name: 'Install', exact: true }).click();
-    await expect(page.getByText('Restart annai to run the new version of Tides.')).toBeVisible();
+    await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
+    await expect(page.getByText('Restart annai to run the new version of Tides.')).toHaveCount(0);
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toBeVisible();
     await page.reload();
     // Installed plugins start after the first screen; the Plugins screen redraws once they have.
