@@ -19,8 +19,9 @@ export const BATCH_MAX = 100;
 export const BATCH_BYTES = 512 * 1024;
 /** An entry longer than this goes with its data cut. */
 export const ENTRY_BYTES = 64 * 1024;
-/** The most entries kept while the server can't take them; the oldest go first. */
+/** The most entries, and the most bytes of them, kept while the server can't take them; the oldest go first. */
 export const KEEP_MAX = 2000;
+export const KEEP_BYTES = 4 * 1024 * 1024;
 /** After a failed try, the next waits this long, twice as long each time, up to RETRY_MAX_MS. */
 export const RETRY_MS = 3000;
 export const RETRY_MAX_MS = 60_000;
@@ -31,11 +32,15 @@ const PAGE = `#/plugins/${ID}`;
 const WHERE = 'Settings → Plugins → Remote trace (for developers)';
 /** sw.js names its offline copy annai-shell-<version>-<build>. */
 const SHELL = /^annai-shell-(.+)-([0-9a-f]{12})$/;
+/** What a Bearer token can hold: visible ASCII, no spaces (anything else, a request can't carry). */
+const TOKEN_CHARS = /^[\x21-\x7e]+$/;
+/** A batch, or a single entry, the server found too big or not to its liking: it gets half, or that entry goes. */
+const TOO_MUCH = new Set([400, 413]);
 const encoder = new TextEncoder();
 
 /**
  * Why annai can't send to an address, in plain words, or null: https anywhere, http only on this
- * device (annai's CSP allows nothing else). @param {unknown} address
+ * device (annai's CSP allows nothing else), and no name or password in it. @param {unknown} address
  */
 export function serverProblem(address) {
   const text = String(address ?? '').trim();
@@ -47,6 +52,7 @@ export function serverProblem(address) {
   } catch {
     return 'Its server address must start with https:// (http:// only for localhost or 127.0.0.1).';
   }
+  if (u.username || u.password) return "Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.";
   if (u.protocol === 'https:' || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
   return 'Its server address must start with https:// (http:// only for localhost or 127.0.0.1).';
 }
@@ -80,26 +86,39 @@ function sized(e) {
   return { e: cut, bytes: encoder.encode(JSON.stringify(cut)).length };
 }
 
+/** @typedef {{ e: any, bytes: number, at: number }} Item */
+
 /**
- * Starts following the log and sending it. timers, now and cacheNames are the browser's, unless a test
- * gives its own. Returns the cleanup, which stops everything at once.
+ * Starts following the log and sending it. timers, now, cacheNames, online and onOnline are the browser's,
+ * unless a test gives its own. Returns the cleanup, which stops everything at once.
  * @param {any} annai
- * @param {{ timers?: { set: (fn: () => void, ms: number) => any, clear: (h: any) => void }, now?: () => number, cacheNames?: () => Promise<string[]> }} [o]
+ * @param {{ timers?: { set: (fn: () => void, ms: number) => any, clear: (h: any) => void }, now?: () => number, cacheNames?: () => Promise<string[]>,
+ *   online?: () => boolean, onOnline?: (fn: () => void) => () => void }} [o]
  */
 export function start(annai, {
   timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h) },
   now = () => Date.now(),
   cacheNames = async () => (typeof caches === 'undefined' ? [] : caches.keys()),
+  // Only "offline" is believed: a phone that says it is online may still not be.
+  online = () => typeof navigator === 'undefined' || navigator.onLine !== false,
+  onOnline = (fn) => {
+    if (typeof addEventListener !== 'function') return () => {};
+    addEventListener('online', fn);
+    return () => removeEventListener('online', fn);
+  },
 } = {}) {
   /** @type {{ server: string, location: boolean } | null} where it sends, while it is on */
   let on = null;
   /** @type {string | null} */
   let device = null;
-  /** @type {{ e: any, bytes: number, at: number }[]} entries waiting, oldest first */
+  /** @type {Item[]} entries waiting, oldest first */
   let queue = [];
-  /** @type {{ items: { e: any, bytes: number, at: number }[], abort: AbortController } | null} the batch being sent */
+  let queueBytes = 0;
+  /** @type {{ items: Item[], bytes: number, abort: AbortController } | null} the batch being sent */
   let flight = null;
   let dropped = 0;
+  /** The most entries a batch holds now: halved while the server finds batches too big, doubled back as it takes them. */
+  let limit = BATCH_MAX;
   /** @type {any} */
   let timer = null;
   let timerAt = 0;
@@ -107,6 +126,8 @@ export function start(annai, {
   let failures = 0;
   let refusals = 0;
   let carded = false;
+  /** @type {string | null} the card about its own settings shown last (no token, a token a request can't carry), so it shows once */
+  let told = null;
   /** @type {string | null} why entries wait, for the chip's name */
   let problem = null;
   /** Settings being read again: no batch starts meanwhile. */
@@ -172,6 +193,17 @@ export function start(annai, {
     }
   };
 
+  /** A fresh start on what the user changed: try now, and a new run of refusals may give a card. */
+  const afresh = () => {
+    failures = 0;
+    refusals = 0;
+    carded = false;
+    told = null;
+    retryAt = 0;
+    problem = null;
+    limit = BATCH_MAX;
+  };
+
   /** Off: no timer, no request, nothing waiting, no chip, at once. */
   const halt = () => {
     on = null;
@@ -181,28 +213,32 @@ export function start(annai, {
     flight?.abort.abort();
     flight = null;
     queue = [];
+    queueBytes = 0;
     dropped = 0;
-    retryAt = 0;
-    failures = 0;
-    refusals = 0;
-    carded = false;
-    problem = null;
+    afresh();
     showChip(false);
   };
 
-  /** Keeps what a batch didn't send, before what came since, within KEEP_MAX. @param {{ e: any, bytes: number, at: number }[]} items */
-  const giveBack = (items) => {
-    queue = [...items, ...queue];
-    const over = queue.length - KEEP_MAX;
-    if (over > 0) {
-      queue.splice(0, over);
-      dropped += over;
-    }
+  /** Drops the oldest entries waiting while there are more than KEEP_MAX, or more than KEEP_BYTES, counting them. */
+  const trim = () => {
+    const inFlight = flight?.items.length ?? 0;
+    const flightBytes = flight?.bytes ?? 0;
+    let n = 0;
+    while (n < queue.length && (queue.length - n + inFlight > KEEP_MAX || queueBytes + flightBytes > KEEP_BYTES)) queueBytes -= queue[n++].bytes;
+    if (!n) return;
+    queue.splice(0, n);
+    dropped += n;
   };
 
-  /** Sets the timer for the next batch: 3 s after the oldest entry waiting, at once for 100, never before a retry is due. */
+  /** Sets the timer for the next batch: 3 s after the oldest entry waiting, at once for 100, never before a retry is due; never while offline. */
   const schedule = () => {
     if (!on || holding || flight || stopped || !queue.length) return;
+    if (!online()) {
+      // The browser tells annai when it is back (onOnline below): no tries until then.
+      problem = 'the phone is offline';
+      label();
+      return;
+    }
     const t = now();
     const due = Math.max(queue.length >= BATCH_MAX ? t : queue[0].at + BATCH_MS, retryAt);
     if (timer !== null) {
@@ -223,25 +259,44 @@ export function start(annai, {
     problem = why;
   };
 
+  /** A setting of its own a request can't go without: one card, and tries again, since the form can fix it without a settings entry. @param {string} why @param {string} body */
+  const needs = (why, body) => {
+    failed(why);
+    if (told === body) return;
+    told = body;
+    card({ tone: 'warn', title: "Remote trace isn't sending", body });
+  };
+
   /** Sends the oldest entries waiting, one batch, and keeps them when the server doesn't take them. */
   const flush = async () => {
     if (!on || holding || flight || stopped || !queue.length) return;
+    if (!online()) {
+      schedule();
+      return;
+    }
     const to = on;
     let n = 0;
     let bytes = 0;
-    while (n < queue.length && n < BATCH_MAX && (n === 0 || bytes + queue[n].bytes <= BATCH_BYTES)) bytes += queue[n++].bytes;
+    while (n < queue.length && n < limit && (n === 0 || bytes + queue[n].bytes <= BATCH_BYTES)) bytes += queue[n++].bytes;
     const items = queue.splice(0, n);
+    queueBytes -= bytes;
     const abort = new AbortController();
     const mine = () => flight?.abort === abort;
-    flight = { items, abort };
-    const told = dropped;
-    let sent = false;
+    flight = { items, bytes, abort };
+    const toldDropped = dropped;
+    /** Whether the batch is done with: taken, or its one entry dropped. */
+    let done = false;
+    let asking = false;
     try {
-      const token = await annai.secrets.get('token');
+      // Read at every send: the form saves it apart from the settings file, so no entry says it changed.
+      const token = String((await annai.secrets.get('token')) ?? '').trim();
       if (!mine()) return;
       if (!token) {
-        halt();
-        card({ tone: 'warn', title: "Remote trace isn't sending", body: `It needs the server's token. Add it in ${WHERE}.` });
+        needs('it has no token', `It needs the server's token. Add it in ${WHERE}.`);
+        return;
+      }
+      if (!TOKEN_CHARS.test(token)) {
+        needs("its token can't be sent", `Its token has characters a request can't carry: letters, digits and punctuation only, no spaces. Change it in ${WHERE}.`);
         return;
       }
       if (!device) {
@@ -250,26 +305,41 @@ export function start(annai, {
       }
       const { app, build } = await shell;
       // annai's own blanking, a second guard: every secret annai keeps, and anything shaped like a credential (spec §9.9).
+      // It rejects when the secrets can't be read, so nothing goes out unchecked: the batch waits for the next try.
       const entries = await annai.secrets.blank(items.map((x) => x.e));
       if (!mine()) return;
+      asking = true;
       const res = await annai.net.fetch(to.server, {
         method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-        body: JSON.stringify({ app, build, device, dropped: told, entries }), signal: abort.signal,
+        body: JSON.stringify({ app, build, device, dropped: toldDropped, entries }), signal: abort.signal,
       });
       res.body?.cancel().catch(() => {});
       if (!mine()) return;
       if (res.ok) {
-        sent = true;
-        dropped -= told;
+        done = true;
+        dropped -= toldDropped;
         failures = 0;
         refusals = 0;
         carded = false;
+        told = null;
         retryAt = 0;
         problem = null;
+        limit = Math.min(BATCH_MAX, limit * 2);
         return;
       }
       refusals++;
-      failed(`the server answered ${res.status}`);
+      if (TOO_MUCH.has(res.status)) {
+        // Half the batch next, soon; one entry it still refuses alone goes, so it can't hold up the rest.
+        if (items.length > 1) limit = Math.max(1, Math.floor(items.length / 2));
+        else {
+          done = true;
+          dropped++;
+        }
+        retryAt = now() + RETRY_MS;
+        problem = `the server answered ${res.status}`;
+      } else {
+        failed(`the server answered ${res.status}`);
+      }
       if (refusals >= REFUSALS && !carded) {
         carded = true;
         const hint = res.status === 401 || res.status === 403 ? ': the token may be wrong' : '';
@@ -280,12 +350,17 @@ export function start(annai, {
         });
       }
     } catch {
-      // Offline, or no answer: tried again later. Anything else that throws is too, never at once.
-      if (mine()) failed("the server can't be reached");
+      // Offline, or no answer; or the batch couldn't be made ready (its keys unread): tried again later, never at once.
+      if (mine()) failed(asking ? "the server can't be reached" : "annai couldn't get the batch ready");
     } finally {
       if (mine()) {
         flight = null;
-        if (!sent) giveBack(items);
+        if (!done) {
+          // Kept, before what came since, within the caps.
+          queue = [...items, ...queue];
+          queueBytes += bytes;
+          trim();
+        }
         schedule();
       }
       label();
@@ -295,12 +370,10 @@ export function start(annai, {
   /** One log entry, as the hook hands it: kept to send while it is on, location points only when asked. @param {any} e */
   const take = (e) => {
     if (!on || (e.type === 'location' && !on.location)) return;
-    queue.push({ ...sized(e), at: now() });
-    const over = queue.length + (flight?.items.length ?? 0) - KEEP_MAX;
-    if (over > 0) {
-      queue.splice(0, over);
-      dropped += over;
-    }
+    const item = { ...sized(e), at: now() };
+    queue.push(item);
+    queueBytes += item.bytes;
+    trim();
     if (problem) label();
     schedule();
   };
@@ -318,14 +391,12 @@ export function start(annai, {
       return;
     }
     on = { server: String(s.server).trim(), location: s.location === true };
-    if (typeof s.device === 'string' && s.device) device = s.device;
-    if (!on.location) queue = queue.filter((x) => x.e.type !== 'location');
-    // The user changed something: try again now, and a new run of refusals may give a card.
-    failures = 0;
-    refusals = 0;
-    carded = false;
-    retryAt = 0;
-    problem = null;
+    if (typeof s.device === 'string' && s.device.trim()) device = s.device.trim();
+    if (!on.location) {
+      queue = queue.filter((x) => x.e.type !== 'location');
+      queueBytes = queue.reduce((sum, x) => sum + x.bytes, 0);
+    }
+    afresh();
     showChip(true);
     label();
   };
@@ -351,12 +422,21 @@ export function start(annai, {
     const saved = e.scope === SETTINGS_SCOPE && e.data?.path === SETTINGS_FILE;
     if (saved || (e.type === 'plugin.reset' && e.data?.plugin === ID)) reload();
   });
+  // Back online: what waits goes now, whatever retry was due.
+  const unlisten = onOnline(() => {
+    if (!on || stopped) return;
+    retryAt = 0;
+    if (problem === 'the phone is offline') problem = null;
+    schedule();
+    label();
+  });
   reload();
   return () => {
     stopped = true;
     reads++;
     halt();
     unhook();
+    unlisten();
   };
 }
 
