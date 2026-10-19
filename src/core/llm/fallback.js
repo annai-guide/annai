@@ -174,8 +174,11 @@ export async function callRole(c) {
       attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0 });
       continue;
     }
-    // One key per provider; a provider with keyHeader sends it in that header (decision 25).
-    const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), await c.keyFor(pRec.id), provider.keyHeader);
+    // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
+    // first, whatever the header's name, as the protocol then gets none to tell it (fix pass).
+    const own = await c.keyFor(pRec.id);
+    if (own) c.trace?.secret(own);
+    const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), own, provider.keyHeader);
     let repairs = 0;
     let uploadRetries = 0;
     for (let retry = 0; ; retry++) {

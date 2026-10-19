@@ -63,18 +63,22 @@ export function createLlm({
     else await ready;
     const type = types().get(ability.type);
     if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`);
-    const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), await getKey(store, pRec.id), provider.keyHeader);
-    return { rec, type, endpoint, model: modelOf(rec), key };
+    const secret = await getKey(store, pRec.id);
+    const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), secret, provider.keyHeader);
+    return { rec, type, endpoint, model: modelOf(rec), key, secret };
   };
   /**
    * A speech model with what calling it needs, and its role's time limit (spec §9.6: configurable).
    * @param {string} modelId @param {'in' | 'out'} dir
    */
-  const speechOf = async (modelId, dir) => {
-    const { type, endpoint, model, key } = await resolve(modelId);
+  const speechOf = async (modelId, dir, scope = SYS) => {
+    const { type, endpoint, model, key, secret } = await resolve(modelId);
     if (type.speech !== dir) throw new ProviderError('bad-request', dir === 'in' ? `${model.name} isn't a transcription model.` : `${model.name} isn't a voice.`);
     const role = (await readConfig(ws)).roles[dir === 'in' ? 'speech-in' : 'speech-out'];
-    return { type, endpoint, model, key, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
+    // The trace learns the key, though a keyHeader gives the protocol none (fix pass).
+    const trace = modelTrace(store, scope);
+    if (secret) trace.secret(secret);
+    return { type, endpoint, model, key, trace, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
   };
   /** The types the providers' switched-on abilities use: their protocol plugins stay. @param {import('./config.js').ProviderRecord[]} list */
   const inUse = (list) => new Set(list.flatMap((p) => Object.values(providerOf(p).abilities).filter((a) => a.on).map((a) => a.type)));
@@ -255,14 +259,14 @@ export function createLlm({
      * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string }} c
      */
     async transcribe({ modelId, audio, scope = SYS, signal, wake }) {
-      return speechCall({ ...(await speechOf(modelId, 'in')), audio, fetch: get, signal, trace: modelTrace(store, scope), registry: plugins.registry, wake });
+      return speechCall({ ...(await speechOf(modelId, 'in', scope)), audio, fetch: get, signal, registry: plugins.registry, wake });
     },
     /**
      * A voice clip of one text from one voice (spec §10.1), traced in scope.
      * @param {{ modelId: string, text: string, scope?: string, signal?: AbortSignal, wake?: string }} c
      */
     async synthesize({ modelId, text, scope = SYS, signal, wake }) {
-      return speechCall({ ...(await speechOf(modelId, 'out')), text, fetch: get, signal, trace: modelTrace(store, scope), registry: plugins.registry, wake });
+      return speechCall({ ...(await speechOf(modelId, 'out', scope)), text, fetch: get, signal, registry: plugins.registry, wake });
     },
     /**
      * The quick-decision gate (spec §10.4): one decision whose question may carry heard speech,
