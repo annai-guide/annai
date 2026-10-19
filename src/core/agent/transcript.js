@@ -276,7 +276,8 @@ export class Transcript {
   #unmarked(p) {
     if (this.#wrapped.has(p)) return p;
     if (p.type === 'text') return { ...p, text: escapeTags(p.text) };
-    if (p.type === 'tool_result') return { ...p, content: escapeTags(p.content) };
+    // A tool's words are data: a line in them that starts like one of annai's labels has its bracket escaped.
+    if (p.type === 'tool_result') return { ...p, content: escapeTags(p.content).replace(/^(\s*)\[/gm, '$1\\[') };
     if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: escapeTags(p.text) };
     return p;
   }
