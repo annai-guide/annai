@@ -4,7 +4,8 @@ import { Channel, channelTool } from './channel.js';
 import { cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock } from './context.js';
 import { ME } from '../scopes.js';
-import { candidates } from '../llm/fallback.js';
+import { candidates, AllFailedError } from '../llm/fallback.js';
+import { ProviderError, explain } from '../llm/contract.js';
 import { koeList, splitOn } from '../koe/path.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
 import { koeTools } from '../koe/tools.js';
@@ -100,14 +101,14 @@ export class Halves {
         name: 'kokoro', tag: TALK_TAG, role: async () => ({ role: 'main' }), registryTools: true, logVoice: true, housekeeping: true,
         voice: () => this.koeState !== 'text',
         rules: () => (this.#split ? 'kokoro' : 'one'),
-        system: (s) => (this.#split ? `${systemText(s)}\n\n${KOKORO_PART}` : systemText(s)),
+        system: (s) => systemText(s, this.#split ? KOKORO_PART : ''),
         koe: () => (this.#split ? (this.koeState === 'text' ? 'text' : 'down') : null),
         hidden: async () => (this.#split ? [] : ['tell_koe']),
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro' } : {}),
         serial,
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
         gate: (call) => this.#gate(call),
-        failed: (why) => this.#kokoroFailed(why),
+        failed: (why, e) => this.#kokoroFailed(why, e),
         calling: () => {
           this.#unseen = false;
           this.#nothingTold = false;
@@ -248,7 +249,9 @@ export class Halves {
     const benched = candidates(cfg, 'koe-type').length > 0 && candidates(cfg, 'koe-type').every((id) => (this.llm.bench?.until(id) ?? 0) > Date.now());
     /** @type {Told} */
     const told = this.voice?.on ? 'voice-later' : this.clock() < this.#downUntil || benched ? 'koe-down' : 'koe-up';
+    const was = this.talking;
     this.koeState = !this.#split ? 'off' : told === 'koe-up' ? 'text' : 'down';
+    if (this.talking !== was) this.#emit('state', this.talking.state); // the dock follows the half that talks now
     if (this.#split && tell) await this.#tell(told);
     this.#emitHalves();
   }
@@ -430,12 +433,18 @@ export class Halves {
     return { content: 'Koe is speaking for you; use tell_koe.', told: true };
   }
 
-  /** Kokoro's whole list failed while Koe talks: Koe tells the user, once, and no card (plan decision 21). @param {string} why */
-  #kokoroFailed(why) {
+  /**
+   * Kokoro's whole list failed while Koe talks: Koe tells the user, once, and no card (plan decision 21).
+   * Koe gets the reason in plain words, never the provider's own (long, and not Koe's business).
+   * @param {string} why @param {unknown} e
+   */
+  #kokoroFailed(why, e) {
     if (this.koeState !== 'text') return false;
     if (!this.#failTold) {
       this.#failTold = true;
-      this.channel.send('kokoro', `Kokoro couldn't check: ${why} Tell the user you couldn't check, and offer to try again.`, 'append', 'kokoro-failed').catch(() => {});
+      const kind = e instanceof AllFailedError ? e.attempts.map((a) => a.outcome).find((o) => o !== 'benched' && o !== 'ok') : undefined;
+      const plain = kind ? explain(new ProviderError(/** @type {any} */ (kind), why)) : e instanceof AllFailedError ? 'its models are resting after errors.' : why;
+      this.channel.send('kokoro', `Kokoro couldn't check: ${plain} Tell the user you couldn't check, and offer to try again.`, 'append', 'kokoro-failed').catch(() => {});
     }
     return true;
   }

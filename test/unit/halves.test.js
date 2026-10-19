@@ -52,7 +52,7 @@ test('a typed question: Koe answers at once and asks Kokoro; Kokoro\'s context h
   assert.ok(kokoro.length >= 1);
   assert.ok(userTexts(kokoro[0]).includes('[the user typed] "Is Nepenthe open?"'));
   assert.ok(kokoro.some((/** @type {any} */ r) => userTexts(r).includes('[Koe said] "I\'m checking."')), 'Kokoro reads what Koe said');
-  assert.ok(kokoro[0].system.endsWith(KOKORO_PART));
+  assert.ok(kokoro[0].system.includes(`\n\n${KOKORO_PART}\n\n`), 'after the personality');
   assert.ok(kokoro[0].tools.some((/** @type {any} */ t) => t.name === 'tell_koe'));
   assert.match(kokoro[0].tail, /koe: talking with the user \(use tell_koe\)/);
   const koe = k.sent['model-koe'];
@@ -124,7 +124,7 @@ test("Kokoro's list fails: Koe gets a note and tells the user it couldn't check;
   await k.agent.idle();
   const failed = (await k.events(['note'])).filter((e) => e.data.why === 'kokoro-failed');
   assert.equal(failed.length >= 1, true);
-  assert.match(failed[0].data.text, /^Kokoro couldn't check: .*Tell the user you couldn't check, and offer to try again\.$/);
+  assert.equal(failed[0].data.text, "Kokoro couldn't check: The key was rejected. Check it in Settings → Models. Tell the user you couldn't check, and offer to try again.");
   assert.equal(k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title)).length, 0);
   assert.ok((await k.events(['error'])).every((e) => e.data.quiet === true));
   assert.ok((await shown(k)).some(([, half, text]) => half === 'koe' && /couldn't check/.test(text)));

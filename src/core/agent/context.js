@@ -60,9 +60,9 @@ function skillIndex(registry) {
   return out;
 }
 
-/** The system text: core, personality, then the snapshot. @param {Snapshot} s */
-export function systemText(s) {
-  const parts = [CORE, s.personality.trim()];
+/** The system text: core, personality, a half's own part (Kokoro's, while Shiori is two halves), then the snapshot. @param {Snapshot} s @param {string} [part] */
+export function systemText(s, part = '') {
+  const parts = [CORE, s.personality.trim(), ...(part ? [part] : [])];
   if (s.profile.trim()) parts.push(`# About the user (/me/profile.md)\n${s.profile.trim()}`);
   if (s.memory.trim()) parts.push(`# What you remember (/me/memory.md)\n${s.memory.trim()}`);
   if (s.skills.length) parts.push(`# Skills (load one with the skill tool)\n${s.skills.map((k) => `${k.name}: ${k.description}`).join('\n')}`);
