@@ -51,7 +51,7 @@ test('a typed question: Koe answers at once and asks Kokoro; Kokoro\'s context h
   const kokoro = k.sent['model-0'];
   assert.ok(kokoro.length >= 1);
   assert.ok(userTexts(kokoro[0]).includes('[the user typed] "Is Nepenthe open?"'));
-  assert.ok(kokoro.some((/** @type {any} */ r) => userTexts(r).includes('[Koe said] "I\'m checking."')), 'Kokoro reads what Koe said');
+  assert.ok(texts(k.agent.kokoro).includes('[Koe said] "I\'m checking."'), 'Kokoro reads what Koe said (in its next call)');
   assert.ok(kokoro[0].system.includes(`\n\n${KOKORO_PART}\n\n`), 'after the personality');
   assert.ok(kokoro[0].tools.some((/** @type {any} */ t) => t.name === 'tell_koe'));
   assert.match(kokoro[0].tail, /koe: talking with the user \(use tell_koe\)/);
@@ -282,4 +282,39 @@ test('after a reload mid-turn, Kokoro reads by its two-half rules from its first
   assert.deepEqual(fresh.kokoro.transcript.open(), []);
   assert.equal(JSON.stringify(fresh.koe.transcript.messages), JSON.stringify((await Transcript.load(k.store, k.trip, { half: 'koe', nonce: fresh.nonce })).messages));
   assert.equal(JSON.stringify(fresh.kokoro.transcript.messages), JSON.stringify((await Transcript.load(k.store, k.trip, { half: 'kokoro' })).messages));
+});
+
+// Fix pass 4 (the review's kokoro-calls probe): one typed question, one Kokoro call.
+test('a live question and a stable question each cost one Kokoro call', async () => {
+  const k = await agentKit([KOKORO], { koe: { type: KOE } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 50));
+  await k.agent.idle();
+  assert.equal(k.sent['model-0'].length, 1, 'Koe asked what Kokoro had just answered: no second turn for it');
+  assert.ok((await k.events(['out.speak'])).some((e) => e.data.text === "Good news: it's open till 10 tonight."));
+  assert.ok(texts(k.agent.kokoro).includes('[Koe asks] "Is Nepenthe open now?"'), 'the note is still in what Kokoro reads next');
+  const k2 = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Bixby Bridge is a 1932 concrete arch.' }]) }] } } });
+  k2.agent.send('What is Bixby Bridge?');
+  await k2.agent.idle();
+  await new Promise((r) => setTimeout(r, 50));
+  await k2.agent.idle();
+  assert.equal(k2.sent['model-0'].length, 1, 'Kokoro was woken for the question itself: Koe answering it alone wakes it no more');
+});
+
+/** Every text of a transcript's messages. @param {any} agent */
+function texts(agent) {
+  return agent.transcript.messages.flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text));
+}
+
+test('Fix pass 9: Stop on Kokoro while Koe waits tells Koe that Kokoro was stopped, not that it had nothing to add', async () => {
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: { delayMs: 2000, toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me see.' } }, { name: 'wait', input: { seconds: 60 } }] }, then: sleep },
+  ] } } });
+  k.agent.send('Anything to see here?');
+  await until(() => k.agent.koe.waiting && k.agent.kokoro.busy);
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['note'])).map((e) => [e.data.from, e.data.text]), [['kokoro', 'Kokoro was stopped.']]);
+  assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'wait')?.data.content, 'Kokoro: see the note below.');
 });

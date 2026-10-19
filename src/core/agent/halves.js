@@ -56,10 +56,8 @@ export class Halves {
   #routes = 0;
   /** The trip Koe's conversation is open on; undefined: none yet. @type {string | null | undefined} */
   #koeTrip = undefined;
-  /** Koe's turn now answers what the user typed. */
-  #koeUser = false;
-  /** Koe said something to the user that no model call of Kokoro's has seen yet. */
-  #unseen = false;
+  /** Kokoro told Koe since the user last typed: Koe asking about it again wakes nobody. */
+  #answered = false;
   /** What Kokoro told Koe that no turn of Koe's has said since. @type {string[]} */
   #unsaid = [];
   /** Koe was told Kokoro couldn't check, and nothing new was asked since. */
@@ -92,7 +90,7 @@ export class Halves {
           this.#koeOpen();
           this.koe.enqueue(w);
         },
-        kokoro: (w) => this.kokoro.enqueue(w),
+        kokoro: (w) => { if (!(w.from === 'koe' && this.#answered)) this.kokoro.enqueue(w); },
       },
       cut: { koe: () => this.koe.cutIn(), kokoro: () => this.kokoro.cutIn() },
     });
@@ -112,10 +110,7 @@ export class Halves {
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
         gate: (call) => this.#gate(call),
         failed: (why, e) => this.#kokoroFailed(why, e),
-        calling: () => {
-          this.#unseen = false;
-          this.#nothingTold = false;
-        },
+        calling: () => { this.#nothingTold = false; },
         ended: (t) => this.#kokoroEnded(t),
       },
     });
@@ -427,13 +422,11 @@ export class Halves {
   /** What Koe wrote: Kokoro reads it, and wakes for what the user typed to Koe. @param {any} e @param {import('./loop.js').Resolved} r */
   async #koeLogged(e, r) {
     await this.kokoro.observe(e, r);
-    if (e.type === 'wake' && !e.data?.meanwhile) this.#koeUser = false;
     if (e.type === 'msg.user' && e.data?.split) {
-      this.#koeUser = true;
+      this.#answered = false;
       this.#failTold = false;
       this.kokoro.enqueue({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
     }
-    if (e.type.startsWith('out.') && this.#koeUser) this.#unseen = true;
   }
 
   /**
@@ -485,13 +478,13 @@ export class Halves {
   /** @param {TurnEnd} t */
   #koeEnded(t) {
     if (t.ok) this.#unsaid = [];
-    // Koe answered the user by itself, after Kokoro last looked: Kokoro checks what it said.
-    if (this.#unseen && !this.kokoro.busy && this.koeState === 'text') this.#review();
   }
 
   /**
    * Kokoro's turn ended while Koe talks: plain final text goes to Koe (decision 20); a Koe waiting
-   * for it hears there's nothing to add; what Koe said meanwhile, unseen, is looked at next.
+   * for it hears there's nothing to add, or that Kokoro was stopped. Kokoro is woken for what the user
+   * types, so what Koe said of it needs no turn of its own; and once Kokoro has told Koe, Koe's question
+   * about the same message, queued meanwhile, takes no second turn (it is in what Kokoro reads next).
    * @param {TurnEnd} t
    */
   #kokoroEnded(t) {
@@ -500,19 +493,18 @@ export class Halves {
     if (t.ok && t.finalText && !t.told && !t.slept) {
       told = true;
       this.channel.send('kokoro', t.finalText, 'append', 'final-text', t.wakeId).catch(() => {});
-    } else if (!told && this.koe.waiting) this.#nothingToAdd();
-    if (this.#unseen && !told) this.#review();
+    } else if (!told && this.koe.waiting) this.#nothingToAdd(t.ok ? 'Kokoro has nothing to add.' : 'Kokoro was stopped.');
+    if (told) {
+      this.#answered = true;
+      this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe');
+    }
   }
 
-  #nothingToAdd() {
+  /** @param {string} [text] */
+  #nothingToAdd(text = 'Kokoro has nothing to add.') {
     if (this.#nothingTold) return;
     this.#nothingTold = true;
-    this.channel.send('kokoro', 'Kokoro has nothing to add.', 'append', 'nothing-to-add').catch(() => {});
-  }
-
-  #review() {
-    this.#unseen = false;
-    this.kokoro.enqueue({ kind: 'cue', text: 'Koe answered the user; check what it said', logged: true });
+    this.channel.send('kokoro', text, 'append', 'nothing-to-add').catch(() => {});
   }
 }
 
