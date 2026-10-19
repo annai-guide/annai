@@ -238,6 +238,8 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
         : `PushRejected Error: exit status 1 - To /var/lib/gitea/git/repositories/${repo.name}.git\n ! [remote rejected] ${sha} -> ${branch} (incorrect old value provided)\nerror: failed to push some refs to '/var/lib/gitea/git/repositories/${repo.name}.git'`) };
     }
     repo.refs.set(branch, sha);
+    // An empty repository's first commit, on whatever branch, makes that branch its default.
+    if (empty) repo.defaultBranch = branch;
     const c = /** @type {any} */ (repo.objects.get(sha));
     return {
       status: 201,
@@ -246,7 +248,9 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
           if (f.operation === 'delete') return null;
           const kept = /** @type {{ sha: string }} */ (files.get(f.path));
           const data = /** @type {any} */ (repo.objects.get(kept.sha)).data;
-          return { name: f.path.split('/').pop(), path: f.path, sha: kept.sha, type: 'file', size: data.length, encoding: 'base64', content: data.length <= MAX_BLOB_SIZE ? data.toString('base64') : null };
+          // Over [api] DEFAULT_MAX_BLOB_SIZE, Forgejo gives "" for the content, Gitea null.
+          const content = data.length <= MAX_BLOB_SIZE ? data.toString('base64') : flavor === 'gitea' ? null : '';
+          return { name: f.path.split('/').pop(), path: f.path, sha: kept.sha, type: 'file', size: data.length, encoding: 'base64', content };
         }),
         commit: commitJson(sha, c),
         verification: { verified: false, reason: 'gpg.error.not_signed_commit', signature: '', signer: null, payload: '' },
