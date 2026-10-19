@@ -210,3 +210,58 @@ test('item 6 (probe M): a tool call being worked out when the session drops is a
     await k.done();
   }
 });
+
+test('item 7 (probe C): a session closed while it opens tells Kokoro nothing: no live-closed without its live-open', async () => {
+  const k = await liveKit([]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.state === 'opening', 3000);
+    k.agent.hush('away');
+    await k.agent.idle();
+    await wait(100);
+    assert.deepEqual(await blocks(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("item 8 (probe G): a close while the user speaks keeps their half line, marked ✂, as a drop does", async () => {
+  const k = await liveKit([{ heard: 'Where should we', heardFirst: true, said: 'x', audio: tone(0.1) }]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const { clip, quiet, cat } = await import('./voice-kit.js');
+    const words = await clip('where-eat');
+    k.platform.mic.feed(cat(quiet(0.3), words.subarray(0, Math.floor(words.length / 2))), 16_000);
+    await until(() => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
+    await wait(30);
+    k.agent.hush('away');
+    await soon(async () => (await k.events(['heard'])).length === 1);
+    assert.equal((await k.events(['heard']))[0].data.text, 'Where should we✂');
+  } finally {
+    await k.done();
+  }
+});
+
+test('item 10: a session hushed while it moves to a new connection (GoAway) closes the old one at once, not when the new one is ready', async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1), handle: 'h-2', goAway: 10 }]);
+  try {
+    const live = k.llm.live;
+    k.llm.live = async (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => {
+      if (k.sessions.length) await wait(400); // the new connection takes a while
+      return live(id, setup, o);
+    };
+    k.agent.send('Hi');
+    await until(() => k.agent.live.busy && k.sessions.length === 1, 3000);
+    await soon(async () => (await lives(k, 'goaway')).length === 1);
+    await wait(50); // the move has begun
+    /** @type {any} */
+    let closed = null;
+    k.sessions[0].closed.then((/** @type {any} */ c) => { closed = c; });
+    k.agent.hush('away');
+    await wait(100);
+    assert.ok(closed, 'the old connection closed at once');
+  } finally {
+    await k.done();
+  }
+});

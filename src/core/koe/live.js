@@ -84,6 +84,10 @@ export class LiveKoe {
   #tools = 0;
   /** Connections tried again since Koe's last turn ended. */
   #tries = 0;
+  /** Kokoro was told it opened. */
+  #toldOpen = false;
+  /** The connection being left for a new one. @type {LiveSession | null} */
+  #old = null;
   /** Each open or close: an opening that outlived it is let go. */
   #gen = 0;
   /** @type {Promise<boolean> | null} */
@@ -161,6 +165,7 @@ export class LiveKoe {
     this.modelId = id;
     this.state = 'open';
     this.c.told('live-open');
+    this.#toldOpen = true;
     this.unmute();
     this.#poke();
     this.#idle();
@@ -241,11 +246,14 @@ export class LiveKoe {
     }
     const was = this.state;
     this.state = 'closed';
-    // A microphone is always let go, whatever came before.
+    // A microphone is always let go, whatever came before; the user's words it cut off are kept, marked.
+    this.#cutHearing();
     const input = this.#input;
     this.#input = null;
     this.listening = false;
     input?.stop();
+    this.#old?.close(why); // one being left for a new connection
+    this.#old = null;
     if (was === 'closed') return this.#changed();
     this.#gen++;
     const s = this.#s;
@@ -261,7 +269,8 @@ export class LiveKoe {
     this.c.voice?.platform?.session('playback');
     s?.close(why);
     this.modelId = null;
-    this.c.told('live-closed');
+    if (this.#toldOpen) this.c.told('live-closed');
+    this.#toldOpen = false;
     this.#changed();
   }
 
@@ -565,13 +574,14 @@ export class LiveKoe {
 
   /** A new connection with the handle, the conversation going on. @param {string} why @returns {Promise<boolean>} */
   async #reconnect(why) {
-    const old = this.#s;
+    const old = (this.#old = this.#s);
     const gen = this.#gen;
     this.#rotate = false;
     this.#s = null; // what is said meanwhile waits for the new one, speech going on starting again there first
     if (this.#input?.active) this.#waiting.unshift((x) => x.activity('start'));
     const s = await this.#connect(/** @type {string} */ (this.modelId), old?.handle ?? this.#handle, why).catch(() => null);
     old?.close(why);
+    this.#old = null;
     if (gen !== this.#gen) {
       s?.close('closed');
       return false;
