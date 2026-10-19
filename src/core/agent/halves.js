@@ -72,6 +72,8 @@ export class Halves {
   #lastKoe = null;
   /** The next reminder of the open conversation, for Koe's view (live mode's, set by the app). @type {(() => Promise<{ due: number, text: string } | null>) | null} */
   next = null;
+  /** The settings read as annai starts: no turn runs before. @type {Promise<unknown>} */
+  #ready;
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set() };
 
@@ -106,6 +108,7 @@ export class Halves {
         hidden: async () => (this.#split ? [] : ['tell_koe']),
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro' } : {}),
         serial,
+        ready: () => this.#ready,
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
         gate: (call) => this.#gate(call),
         failed: (why, e) => this.#kokoroFailed(why, e),
@@ -128,6 +131,12 @@ export class Halves {
         sendable: (messages) => this.#koeSendable(messages),
         mark: (type) => (type === 'msg.user' ? { split: true } : MARKED.has(type) ? { half: 'koe' } : {}),
         serial,
+        ready: () => this.#ready,
+        // After a restart, Kokoro takes up what is owed and tells Koe; Koe's calls left open are answered quietly.
+        restart: async () => {
+          await this.kokoro.opening.catch(() => {});
+          return !this.kokoro.owed;
+        },
         logged: (e, r) => this.#koeLogged(e, r),
         failed: () => this.#koeFailed(),
         ended: (t) => this.#koeEnded(t),
@@ -146,7 +155,7 @@ export class Halves {
     this.koe.on('state', (s) => this.#stateOf(this.koe, s));
     // Voice turned on or off: Kokoro is told (K1: Koe types only), and the dock follows the half that talks.
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
-    this.#refresh({ tell: false }).catch(() => {});
+    this.#ready = this.#refresh({ tell: false }).catch(() => {});
   }
 
   get store() { return this.kokoro.store; }
@@ -291,6 +300,7 @@ export class Halves {
     }
     this.#route(async () => {
       await this.#refresh();
+      await opening.catch(() => {}); // Koe opens once Kokoro knows what is owed
       if (this.#split) this.#koeOpen();
     });
     return opening;

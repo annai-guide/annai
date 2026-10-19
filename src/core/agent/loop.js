@@ -72,6 +72,8 @@ import { validate } from '../schema.js';
  * @property {(call: { id: string, name: string, input: any, wake: string }) => Promise<import('./tools.js').ToolOutput | null>} [gate]  a call not run, and its result
  * @property {(why: string, e: unknown) => boolean} [failed]  every model failed: true when the other half tells the user, so no card
  * @property {() => void} [calling]  a model call starts
+ * @property {() => Promise<unknown>} [ready]  waited for before each turn
+ * @property {() => Promise<boolean>} [restart]  whether it takes up what a conversation owes as it opens (Koe: not when Kokoro does)
  * @property {(t: TurnEnd) => void} [ended]  a turn ended
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
  *   finalText: the text of a last reply with no tool calls; told: it told the other half (or a gated call did); kinds: the wakes it took
@@ -107,6 +109,8 @@ export class Agent {
   transcript = new Transcript();
   /** The conversation being opened, if any: screens wait for it before they read it. @type {Promise<void>} */
   opening = Promise.resolve();
+  /** The conversation opened last owed an answer, which a restart wake takes up. */
+  owed = false;
   /** @type {import('./context.js').Snapshot | null} */
   #snapshot = null;
   #warmth = new Warmth();
@@ -370,6 +374,9 @@ export class Agent {
     if (generation !== this.#generation) return;
     await this.#keepElsewhere(scope);
     if (generation !== this.#generation) return;
+    // Something owed when it opens: a restart wake, unless the other half takes it up (Half.restart).
+    const owed = Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
+    if (generation !== this.#generation) return;
     this.trip = trip;
     this.scope = scope;
     this.transcript = transcript;
@@ -382,7 +389,8 @@ export class Agent {
     this.#due = false;
     this.#lastPrompt = 0;
     this.#clearTimer();
-    if (repaired || transcript.unanswered) {
+    this.owed = owed;
+    if (owed) {
       const text = repaired ? 'annai restarted while you were working, so your unfinished tool calls were stopped.'
         : transcript.waiting === 'wake' ? "You haven't answered this yet: it came while this conversation was closed, or before annai restarted."
           : 'The conversation closed before you answered (annai restarted, or another one was opened).';
@@ -1002,6 +1010,7 @@ export class Agent {
 
   /** @param {Wake[]} wakes */
   async #turn(wakes) {
+    await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     const wakeId = newId('w');
     const abort = new AbortController();
     this.#abort = abort;
