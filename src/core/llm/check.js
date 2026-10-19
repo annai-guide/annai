@@ -1,5 +1,5 @@
 import { callOnce } from './call.js';
-import { ProviderError, explain, sameOrigin } from './contract.js';
+import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
 
@@ -103,12 +103,13 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
       endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: 'annai-test.png', expiresInSeconds: 3600,
     });
     sameOrigin(endpoint, r.url);
-    const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body });
+    const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
+    noRedirect(res, endpoint);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
     return { step: 'upload', ok: true, detail: 'Photo uploads work: each photo is uploaded once, and expires after 48 hours.' };
-  } catch {
-    return { step: 'upload', ok: false, detail: "Uploading photos didn't work with this key. annai will send photos in each request instead." };
+  } catch (e) {
+    return { step: 'upload', ok: false, detail: `${e instanceof ProviderError && e.kind === 'redirect' ? e.message : "Uploading photos didn't work with this key."} annai will send photos in each request instead.` };
   }
 }
 

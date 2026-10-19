@@ -48,8 +48,8 @@
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
  *   model or the same one; what streamed before is void (only callRole sends it).
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
- *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing'} ErrorKind
- *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one
+ *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect'} ErrorKind
+ *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one; redirect: see noRedirect
  */
 
 /** What the user is told, by kind of error (spec §9.9). */
@@ -111,6 +111,13 @@ export function sameOrigin(endpoint, url) {
   const got = originOf(url);
   if (want && got === want) return;
   throw new ProviderError('bad-request', `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || url}, not its address ${want || endpoint.baseUrl || '(none)'}. Check its tunables.`);
+}
+
+/** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere (fix pass). @param {Response} res @param {{ name?: string }} endpoint */
+export function noRedirect(res, endpoint) {
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+    throw new ProviderError('redirect', `${endpoint.name ?? 'The provider'} answered with a redirect, which annai doesn't follow with your key. Check its address.`, { status: res.status });
+  }
 }
 
 /** Plain words for an error, by its kind. @param {ProviderError} e */

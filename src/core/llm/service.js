@@ -3,7 +3,7 @@ import { readConfig, getKey, endpointOf, modelOf, saveModel, saveProvider, provi
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
-import { endpointTypes, ProviderError, errorFromResponse, sameOrigin } from './contract.js';
+import { endpointTypes, ProviderError, errorFromResponse, sameOrigin, noRedirect } from './contract.js';
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
@@ -345,7 +345,7 @@ export function createLlm({
       /** @type {Response} */
       let res;
       try {
-        res = await get(r.url, { headers: r.headers });
+        res = await get(r.url, { headers: r.headers, redirect: 'manual' });
       } catch (e) {
         // In words, by host, never the browser's own ("Load failed"): a server that answers a check made
         // without the browser's access rules is there, but doesn't allow web apps (spec §9.8).
@@ -360,6 +360,7 @@ export function createLlm({
         }
         throw new ProviderError('unreachable', `annai couldn't reach ${host}. Check the address and your connection.`, { cause: e });
       }
+      noRedirect(res, endpoint);
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         const err = errorFromResponse(res.status, text, res.headers);
