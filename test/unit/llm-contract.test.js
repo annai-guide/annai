@@ -85,3 +85,13 @@ test("portable() drops a tool call's extra for another model, keeps it for the o
   const old = [{ role: /** @type {const} */ ('assistant'), parts: [{ type: /** @type {const} */ ('tool_call'), id: 'a', name: 'x', input: {}, extra: { s: 1 } }] }];
   assert.equal(/** @type {any} */ (portable(old, 'gemini-3.8-flash')[0].parts[0]).extra, undefined);
 });
+
+test("a Google API error (a list of one, as Gemini's compatible endpoint sends it) gives its message, and its RetryInfo's delay when no header does", () => {
+  const body = JSON.stringify([{ error: { code: 429, message: 'You exceeded your current quota.', status: 'RESOURCE_EXHAUSTED',
+    details: [{ '@type': 'type.googleapis.com/google.rpc.Help' }, { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '23.5s' }] } }]);
+  const e = errorFromResponse(429, body);
+  assert.equal(e.message, 'You exceeded your current quota.');
+  assert.equal(e.retryAfter, 23_500);
+  assert.equal(errorFromResponse(429, body, new Headers({ 'retry-after': '2' })).retryAfter, 2000, 'a header says first');
+  assert.equal(errorFromResponse(429, JSON.stringify({ error: { message: 'x' } })).retryAfter, undefined);
+});

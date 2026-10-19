@@ -388,3 +388,28 @@ test("standInCallExtra (Gemini's description sets it): a call in the current tur
   assert.deepEqual(calls({}), { old: undefined, theirs: undefined, mine: { google: { thought_signature: 'sig' } } });
   assert.equal(type.tunables.standInCallExtra, null);
 });
+
+// Found against Gemini (2026-10-19): its compatible endpoint streams each tool call whole, with an id of its own and
+// no index. Read by index alone, a reply's speak, tell_kokoro and sleep ran together into one call.
+test('read: tool calls streamed with no index (Gemini) are told apart by their ids', async () => {
+  const chunk = (/** @type {any} */ tc) => `data: ${JSON.stringify({ choices: [{ delta: { role: 'assistant', tool_calls: [tc] }, index: 0 }] })}`;
+  const text = [
+    chunk({ extra_content: { google: { thought_signature: 'sig' } }, function: { arguments: '{"text":"Let me check."}', name: 'speak' }, id: 'call_1', type: 'function' }),
+    chunk({ function: { arguments: '{"text":"Is it open now?"}', name: 'tell_kokoro' }, id: 'call_2', type: 'function' }),
+    chunk({ function: { arguments: '{}', name: 'sleep' }, id: 'call_3', type: 'function' }),
+    `data: ${JSON.stringify({ choices: [{ delta: { role: 'assistant' }, finish_reason: 'stop', index: 0 }] })}`,
+    'data: [DONE]', '',
+  ].join('\n\n');
+  const calls = (await read(text)).filter((e) => e.type === 'tool_call');
+  assert.deepEqual(calls, [
+    { type: 'tool_call', id: 'call_1', name: 'speak', input: { text: 'Let me check.' }, extra: { google: { thought_signature: 'sig' } } },
+    { type: 'tool_call', id: 'call_2', name: 'tell_kokoro', input: { text: 'Is it open now?' } },
+    { type: 'tool_call', id: 'call_3', name: 'sleep', input: {} },
+  ]);
+});
+
+test("classify: Gemini's RESOURCE_EXHAUSTED (its free tier's limit a minute, in an error list) is too many requests, not an account out of credit", () => {
+  const body = JSON.stringify([{ error: { code: 429, message: 'You exceeded your current quota, please check your plan and billing details.', status: 'RESOURCE_EXHAUSTED',
+    details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '23s' }] } }]);
+  assert.equal(type.classify(429, body), 'rate');
+});

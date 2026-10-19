@@ -180,7 +180,9 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     }
     for (const tc of d.tool_calls ?? []) {
       yield* flush();
-      const i = tc.index ?? 0;
+      // Gemini's compatible endpoint gives no index: each call comes whole, with an id of its own.
+      const i = typeof tc.index === 'number' ? tc.index
+        : tc.id ? ([...calls].find(([, c]) => c.id === tc.id)?.[0] ?? calls.size) : Math.max(0, calls.size - 1);
       const cur = calls.get(i) ?? { id: '', name: '', args: '' };
       if (tc.id) cur.id = tc.id;
       if (tc.function?.name && !cur.name) cur.name = tc.function.name;
@@ -305,12 +307,18 @@ function usageOf(u) {
   };
 }
 
-/** A sharper kind for an error: by its OpenAI-style code, or OpenRouter's free-model limits; or null. @param {number} _status @param {string} body */
+/**
+ * A sharper kind for an error: by its OpenAI-style code, OpenRouter's free-model limits or Google's status; or null.
+ * @param {number} _status @param {string} body
+ */
 function classify(_status, body) {
   try {
-    const e = JSON.parse(body)?.error;
+    const j = JSON.parse(body);
+    const e = (Array.isArray(j) ? j[0] : j)?.error;
     // OpenRouter's free models used up for the day: its words ask for credits, but no account ran out.
     if (/free-models-per-(day|min)/.test(String(e?.message))) return 'rate';
+    // Gemini's limits (its free tier's a minute among them) say "quota" too: they are too many requests for now.
+    if (e?.status === 'RESOURCE_EXHAUSTED') return 'rate';
     return CODES[String(e?.code ?? e?.type ?? '')] ?? null;
   } catch {
     return null;
