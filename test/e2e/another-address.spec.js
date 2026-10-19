@@ -102,3 +102,34 @@ test("a provider plugin's own Add flow, by hand: OpenRouter's Add shows its sign
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
   await expect(page.getByLabel('Use Chat', { exact: true })).toBeChecked();
 });
+
+/** The plugins installed, by id. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
+const installedIds = (page) => page.evaluate(async () => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+  const store = await createIdbStore();
+  const state = await new Workspace(store).readJSON('sys:plugins', '/installed.json');
+  store.close();
+  return Object.keys(state ?? {}).sort();
+});
+
+test("leaving Another address's Add flow without adding takes its plugin away again; a provider whose plugin draws no Add flow there still has Add by hand", async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await tapAdd(page, 'Another address');
+  await expect(page.getByRole('button', { name: 'Look for what it offers' })).toBeVisible({ timeout: 30_000 });
+  expect(await installedIds(page)).toContain('provider-another-address');
+  await page.getByRole('link', { name: '← Add' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Add' })).toBeVisible();
+  await expect.poll(() => installedIds(page)).not.toContain('provider-another-address');
+  // OpenAI's plugin is data only: its Add flow, asked for by address, has nothing of its own, and Add by hand still adds.
+  await page.goto('/#/models');
+  await tapAdd(page, 'OpenAI');
+  await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+  await page.goto('/#/models/provider?new=provider-openai');
+  await expect(page.getByText(/OpenAI has no way of its own to add it here/)).toBeVisible();
+  await page.getByRole('button', { name: 'Add by hand' }).click();
+  await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+  await page.goto('/#/models');
+  await expect(page.locator('a.card', { hasText: 'OpenAI' })).toHaveCount(2);
+});

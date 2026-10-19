@@ -92,6 +92,8 @@ export function createLlm({
     if ((await plugins.installed())[plugin]) await plugins.uninstall(plugin);
     return prune(plugins, inUse(Object.values((await readConfig(ws)).providers)));
   };
+  /** Plugins Add's tap installed for their own Add flow, until it is left. @type {Set<string>} */
+  const brought = new Set();
   /** @type {Promise<unknown>} adding and the featured start's install go one at a time: they share requirements */
   let line = Promise.resolve();
   /** @template T @param {() => Promise<T>} work @returns {Promise<T>} */
@@ -192,7 +194,10 @@ export function createLlm({
     async startAdd(plugin, { official, roles } = {}) {
       const had = (await plugins.installed())[plugin];
       await queued(() => service.installProvider(plugin, { official }));
-      if (setupOf(plugins.registry, plugin)?.panel) return null;
+      if (setupOf(plugins.registry, plugin)?.panel) {
+        if (!had) brought.add(plugin);
+        return null;
+      }
       try {
         return await service.addProvider(plugin, { official, roles });
       } catch (e) {
@@ -201,6 +206,10 @@ export function createLlm({
         throw e;
       }
     },
+    /** Leaving a plugin's own Add flow: one Add's tap installed, with no provider from it, goes, as before the tap. @param {string} plugin */
+    leaveAdd: (plugin) => queued(async () => {
+      if (brought.delete(plugin) && !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === plugin)) await drop(plugin);
+    }),
     /**
      * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
      * tap, so one switched off stays off. @param {string} plugin @returns {Promise<import('./providers.js').ProviderSource | null>} null: a provider exists

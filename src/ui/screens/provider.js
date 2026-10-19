@@ -1,4 +1,4 @@
-import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave } from '../dom.js';
+import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave, whenGone } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById, useSuggestion } from '../../core/llm/providers.js';
@@ -112,15 +112,15 @@ export async function renderProvider(ctx, id) {
 }
 
 /**
- * A provider plugin's own Add flow (decision 15), such as Another address's look at an address: its panel, whose
- * provider opens its page, or Add by hand. Add installed the plugin; nothing is installed here. @param {any} ctx @param {string} pluginId
+ * A provider plugin's own Add flow (decision 15), such as Another address's look: its panel, whose provider opens
+ * its page, and Add by hand. Nothing is installed here: Add did. @param {any} ctx @param {string} pluginId
  */
 export async function renderNewProvider(ctx, pluginId) {
   await ctx.llm.ready;
   const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId);
   const open = (/** @type {string} */ id) => ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
   const panel = src && drawPanel(ctx, pluginId, null, { added: open });
-  const status = h('p', { class: 'sub', role: 'status', text: panel ? '' : "This provider's plugin isn't running, or has no Add of its own. Add it from Add." });
+  const status = h('p', { class: 'sub', role: 'status', text: panel ? '' : src ? `${src.name} has no way of its own to add it here: add it by hand, and set it up on its page.` : "This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins." });
   const byHand = h('button', {
     class: 'btn', type: 'button',
     onclick: async () => {
@@ -133,13 +133,19 @@ export async function renderNewProvider(ctx, pluginId) {
       }
     },
   }, 'Add by hand');
-  return h('div', { class: 'screen' },
+  const screen = h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/add?kind=providers&from=models' }, '← Add')),
     h('h1', { class: 'title', text: src?.name ?? 'Add a provider' }),
     panel ? h('section', { class: 'panel', 'aria-label': src.name }, panel) : null,
     h('section', { class: 'panel', 'aria-label': 'By hand' },
-      panel ? [h('p', { class: 'sub', text: `Or add ${src.name} as it is, and set up its key and what it offers on its own page.` }), h('div', { class: 'acts' }, byHand)] : null,
+      panel ? h('p', { class: 'sub', text: `Or add ${src.name} as it is, and set up its key and what it offers on its own page.` }) : null,
+      src ? h('div', { class: 'acts' }, byHand) : null,
       status));
+  // Left for another screen, not drawn again: what Add's tap brought goes if unused.
+  whenGone(screen, () => {
+    if (new URLSearchParams(location.hash.split('?')[1] ?? '').get('new') !== pluginId) ctx.llm.leaveAdd(pluginId).catch((/** @type {unknown} */ e) => console.warn("a provider plugin with no provider couldn't be removed", e));
+  });
+  return screen;
 }
 
 /** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
