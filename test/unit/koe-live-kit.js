@@ -13,7 +13,7 @@ export const tone = (seconds = 0.6) => new Uint8Array(Int16Array.from({ length: 
  * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any }} [o]
  */
 export async function liveKit(turns, o = {}) {
-  const server = await startRealtimeServer({ flavour: 'gemini', turns, pace: o.pace ?? 0.05 });
+  const server = await startRealtimeServer({ flavour: o.live?.type === 'openai-realtime' ? 'openai' : 'gemini', turns, pace: o.pace ?? 0.05 });
   const k = await agentKit(o.kokoro ?? [{ rules: [{ match: '.', reply: sleep }] }], {
     live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], ...o.voice },
   });
