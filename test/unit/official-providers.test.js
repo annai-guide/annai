@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { checkProviderDesc } from '../../src/core/llm/provider-desc.js';
-import { catalogFacts } from '../../src/core/catalog-facts.js';
+import { catalogFacts } from '../../scripts/catalog-facts.mjs';
 import { satisfies } from '../../src/core/requires.js';
 import { readConfig, modelOf } from '../../src/core/llm/config.js';
 import { createLlm } from '../../src/core/llm/service.js';

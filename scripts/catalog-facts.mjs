@@ -1,9 +1,10 @@
 /**
- * What the catalog says of a plugin (spec §16.2), from its manifest: the same facts for annai's
- * official catalog (scripts/catalog.mjs writes them) and for an installed third-party plugin, so the
- * Add screen and the Plugins page read one shape.
+ * What the catalog says of a plugin (spec §16.2), from its manifest: the facts scripts/catalog.mjs
+ * writes for annai's official catalog. It isn't shipped yet: when the app reads the same facts for an
+ * installed third-party plugin (the Add screen and the Plugins page, milestone 3), it moves to
+ * src/core/catalog-facts.js and joins the service worker's shell.
  * @typedef {{ id: string, name: string, version: string, description: string, category: string, keywords: string[], abilities: string[],
- *   free: boolean, local: boolean, code: boolean, size: number, requires: import('./packages.js').Requirement[] }} CatalogFacts
+ *   free: boolean, local: boolean, code: boolean, size: number, requires: import('../src/core/packages.js').Requirement[] }} CatalogFacts
  *   abilities: the kinds of a provider's abilities, in order, once each; free: a model of it costs nothing; size: its files' bytes
  */
 

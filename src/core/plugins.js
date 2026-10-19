@@ -12,7 +12,7 @@ import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError } from './registry.js';
+import { PluginError, TAKEN } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
@@ -292,7 +292,7 @@ export class PluginHost {
     const state = await this.installed();
     const before = state[id];
     // annai's own plugin keeps its name: a package from elsewhere never replaces it (security review).
-    if (before?.source === 'official' && source !== 'official') throw new PluginError(id, "annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.");
+    if (before?.source === 'official' && source !== 'official') throw new PluginError(id, TAKEN);
     // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
     const shown = await this.#keepAddress(id, url);
     state[id] = {

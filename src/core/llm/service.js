@@ -8,7 +8,7 @@ import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins } from './official.js';
-import { PluginError } from '../registry.js';
+import { PluginError, NOT_OWN, TURN_ON } from '../registry.js';
 import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
@@ -82,6 +82,14 @@ export function createLlm({
   };
   /** The types the providers' switched-on abilities use: their protocol plugins stay. @param {import('./config.js').ProviderRecord[]} list */
   const inUse = (list) => new Set(list.flatMap((p) => Object.values(providerOf(p).abilities).filter((a) => a.on).map((a) => a.type)));
+  /**
+   * Uninstalls a provider plugin no provider comes from, then the protocol plugins nothing needs any
+   * more (decision 10). @param {string} plugin @returns {Promise<string[]>} the protocols removed
+   */
+  const drop = async (plugin) => {
+    if ((await plugins.installed())[plugin]) await plugins.uninstall(plugin);
+    return prune(plugins, inUse(Object.values((await readConfig(ws)).providers)));
+  };
   /** Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. */
   const sync = () => syncProviders({ ws }, providers());
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -117,9 +125,9 @@ export function createLlm({
       const running = () => providers().find((p) => p.plugin === plugin);
       const state = (await plugins.installed())[plugin];
       if (state && state.source !== 'official') {
-        if (official) throw new PluginError(plugin, "annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.");
+        if (official) throw new PluginError(plugin, NOT_OWN);
         if (running()) return /** @type {import('./providers.js').ProviderSource} */ (running());
-        throw new PluginError(plugin, state.enabled === false ? 'is turned off. Turn it on in Settings → Plugins, then try again.' : "isn't running. Look at it in Settings → Plugins.");
+        throw new PluginError(plugin, state.enabled === false ? `is turned off. ${TURN_ON}` : "isn't running. Look at it in Settings → Plugins.");
       }
       if (state && running()) {
         // Hash-checked against the catalog when it can be reached; offline, it was checked when it was installed.
@@ -147,10 +155,7 @@ export function createLlm({
       } catch (e) {
         // A failed add leaves no provider plugin it brought without a provider, nor what that alone required (fix pass).
         const cfg = await readConfig(ws).catch(() => null);
-        if (!had && cfg && !Object.values(cfg.providers).some((p) => p.plugin === plugin) && (await plugins.installed())[plugin]) {
-          await plugins.uninstall(plugin).catch(() => {});
-          await prune(plugins, inUse(Object.values(cfg.providers))).catch(() => {});
-        }
+        if (!had && cfg && !Object.values(cfg.providers).some((p) => p.plugin === plugin)) await drop(plugin).catch(() => {});
         throw e;
       }
     },
@@ -163,15 +168,9 @@ export function createLlm({
       const rec = (await readConfig(ws)).providers[id];
       if (!rec) return { plugin: null, protocols: [] };
       for (const m of await removeProviderRecords(ws, store, id)) bench.clear(m);
-      await uploads.forgetProvider(id);
-      const left = Object.values((await readConfig(ws)).providers);
-      /** @type {string | null} */
-      let plugin = null;
-      if (!left.some((p) => p.plugin === rec.plugin) && (await plugins.installed())[rec.plugin]) {
-        await plugins.uninstall(rec.plugin);
-        plugin = rec.plugin;
-      }
-      return { plugin, protocols: await prune(plugins, inUse(left)) };
+      uploads.reload(); // removeProviderRecords took its uploads out of the file
+      const last = !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === rec.plugin) && Boolean((await plugins.installed())[rec.plugin]);
+      return { plugin: last ? rec.plugin : null, protocols: last ? await drop(rec.plugin) : await prune(plugins, inUse(Object.values((await readConfig(ws)).providers))) };
     },
     /**
      * What removing a provider would take with it, for the words by Remove: its plugin when it is the
@@ -189,18 +188,11 @@ export function createLlm({
     /**
      * Uninstalls a provider plugin (spec §4.9): the providers made from it go first, each with its key,
      * models and places in roles, then the plugin, then the protocol plugins nothing needs any more.
-     * @param {string} plugin @returns {Promise<{ providers: number, protocols: string[] }>}
+     * @param {string} plugin
      */
     async removeProviderPlugin(plugin) {
-      const ids = Object.values((await readConfig(ws)).providers).filter((p) => p.plugin === plugin).map((p) => p.id);
-      /** @type {string[]} */
-      const protocols = [];
-      for (const id of ids) protocols.push(...(await service.removeProvider(id)).protocols);
-      if ((await plugins.installed())[plugin]) {
-        await plugins.uninstall(plugin);
-        protocols.push(...await prune(plugins, inUse(Object.values((await readConfig(ws)).providers))));
-      }
-      return { providers: ids.length, protocols };
+      for (const p of Object.values((await readConfig(ws)).providers)) if (p.plugin === plugin) await service.removeProvider(p.id);
+      await drop(plugin);
     },
     /**
      * Switches an ability on or off, saved at once. Turning one on installs its official protocol

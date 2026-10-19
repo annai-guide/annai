@@ -1,3 +1,12 @@
+/** Words said of plugins in several places. */
+const OWN = "annai's own plugin uses this name";
+/** A package from elsewhere can't take one of annai's own ids (security review). */
+export const TAKEN = `${OWN}, so a package from elsewhere can't have it. Ask its author to rename it.`;
+/** One from elsewhere that holds one is never used as annai's own (security review). */
+export const NOT_OWN = `${OWN}, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.`;
+/** A plugin the user switched off stays off (security review). */
+export const TURN_ON = 'Turn it on in Settings → Plugins, then try again.';
+
 export class PluginError extends Error {
   /** @param {string} pluginId @param {string} message @param {unknown} [cause] */
   constructor(pluginId, message, cause) {
