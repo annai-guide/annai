@@ -99,7 +99,7 @@ const samePlace = (a, b) => a?.source === b?.source && (b?.source !== 'url' || s
  */
 export function overLine(previous, from) {
   return samePlace(previous.from, from) ? `Version ${previous.version} is installed now. Installing replaces it.`
-    : `Version ${previous.version} is installed now, ${sourceLine(previous.from).replace(/^From/, 'from')}, not where this one comes from. Installing replaces it, and this one gets the settings and keys that one keeps.`;
+    : `Version ${previous.version} is installed now, ${sourceLine(previous.from).replace(/^From/, 'from')}, not where this one comes from. Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.`;
 }
 
 /** An http(s) address or null. @param {unknown} url */
@@ -164,9 +164,13 @@ export async function renderPluginInstall(ctx) {
   const swaps = replacing(ctx, pkg);
   const mine = swaps.filter((s) => s.may);
   const owners = [...new Set(mine.map((s) => ownerName(rows, s.owner)))];
+  // Over one from another place: keep what it keeps, or start fresh.
+  const elsewhere = Boolean(pkg.previous && !samePlace(pkg.previous.from, from));
+  /** @type {[string, { use?: typeof mine, fresh?: boolean }][]} */
+  const picks = elsewhere ? [['Install, keep its settings and keys', {}], ['Install fresh', { fresh: true }]]
+    : mine.length ? [['Install and use it', { use: mine }], [owners.length === 1 ? `Install, keep ${owners[0]}'s` : "Install, keep what's used now", {}]] : [['Install', {}]];
   /** @type {HTMLButtonElement[]} */
-  const buttons = (mine.length ? [['Install and use it', true], [owners.length === 1 ? `Install, keep ${owners[0]}'s` : "Install, keep what's used now", false]] : [['Install', false]])
-    .map(([label, use], i) => h('button', { class: i ? 'btn' : 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, buttons, use ? mine : []) }, String(label)));
+  const buttons = picks.map(([label, o], i) => h('button', { class: i ? 'btn' : 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, buttons, o) }, label));
   return h('div', { class: 'screen plugin-install' }, back,
     h('h1', { class: 'title', text: `Install ${pkg.name}?` }),
     h('p', { class: 'sub', text: line }),
@@ -188,7 +192,7 @@ export async function renderPluginInstall(ctx) {
         // A provider's own note, in place of the skill note (security review): what it can't do, and where keys go.
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: "It can't run anything: it is data that tells annai how to reach a model provider." }), h('p', { text: keysNote(pkg) }))
         : h('p', { class: 'skill-note', text: 'A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.' }),
-    pkg.previous ? h('p', { class: samePlace(pkg.previous.from, from) ? 'sub' : 'risk-note', text: overLine(pkg.previous, from) }) : null,
+    pkg.previous ? h('p', { class: elsewhere ? 'risk-note' : 'sub', text: overLine(pkg.previous, from) }) : null,
     // What a new version adds is said on its own, so nothing new slips in with an update (the coordinator's second finding).
     pkg.previous && addsAnything(pkg.previous.added) ? h('section', { class: 'panel', 'aria-label': 'New in this version' },
       h('h2', { class: 'section', text: 'New in this version' }),
@@ -198,17 +202,18 @@ export async function renderPluginInstall(ctx) {
 }
 
 /**
- * Installs the package on screen, then starts it; each step that fails says so. use: the names it replaces
- * that the user chose it for, stored before it starts. @param {any} ctx @param {HTMLButtonElement[]} buttons
- * @param {{ kind: string, name: string }[]} use
+ * Installs the package on screen, then starts it; each step that fails says so. use: the names it replaces that the
+ * user chose it for; fresh: what the installed one keeps goes first. Both before it starts.
+ * @param {any} ctx @param {HTMLButtonElement[]} buttons @param {{ use?: { kind: string, name: string }[], fresh?: boolean }} o
  */
-async function installPending(ctx, buttons, use) {
+async function installPending(ctx, buttons, { use = [], fresh = false }) {
   const p = pendingPackage();
   if (!p) return;
   const { pkg } = p;
   const choose = async () => { for (const s of use) await ctx.plugins.choose(s.kind, s.name, pkg.id); };
   buttons.forEach((b) => { b.disabled = true; });
   try {
+    if (fresh) await ctx.plugins.forgetKept(pkg.id);
     // What it needs (annai's own, from its catalog) may be code too.
     if ((pkg.code || pkg.requires?.length) && !navigator.serviceWorker?.controller) {
       throw new Error(NO_SERVICE);

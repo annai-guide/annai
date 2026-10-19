@@ -448,6 +448,25 @@ export class PluginHost {
     this.registry.removePlugin(id);
   }
 
+  /** The user's choices that name a plugin go. @param {string} id */
+  async #forgetChoices(id) {
+    const uses = (await readAppSettings(this.ws)).uses ?? {};
+    const mine = Object.keys(uses).filter((k) => uses[k] === id);
+    if (!mine.length) return;
+    await updateAppSettings(this.ws, { uses: Object.fromEntries(mine.map((k) => [k, null])) });
+    this.#uses = (await readAppSettings(this.ws)).uses ?? {};
+    this.registry.setRules(this.#rules);
+  }
+
+  /**
+   * Install fresh: a package from another place gets nothing the installed one keeps. Its settings with their history
+   * and its secrets go (Reset), and the user's choices for its names. @param {string} id
+   */
+  async forgetKept(id) {
+    await this.reset(id);
+    await this.#forgetChoices(id);
+  }
+
   /** @param {string} id @param {boolean} enabled */
   async setEnabled(id, enabled) {
     await this.#updateState(id, enabled ? { enabled, startFailures: 0 } : { enabled });
@@ -486,15 +505,13 @@ export class PluginHost {
       for (const s of await t.listSecretIds()) if (s.startsWith(`plugin:${id}:`)) await t.deleteSecret(s);
       await t.deleteSecret(ADDRESS(id));
     });
-    // Its tools' switches, and the choices that named it (milestone 6).
-    const app = await readAppSettings(this.ws);
-    const off = [...tools].filter((t) => Object.hasOwn(app.tools ?? {}, t)).map((t) => [t, null]);
-    const chose = Object.keys(app.uses ?? {}).filter((k) => app.uses[k] === id).map((k) => [k, null]);
+    // Its tools' switches, but not one another still has (a built-in, the loop, a plugin on or off), and the choices that named it.
+    const switches = (await readAppSettings(this.ws)).tools ?? {};
+    const others = (/** @type {string} */ t) => this.#rules.reserved('tool', t) === 'only' || this.registry.entries('tool', { all: true }).some((e) => e.item?.name === t)
+      || Object.values(state).some((x) => x?.tools?.includes(t));
+    const off = [...tools].filter((t) => Object.hasOwn(switches, t) && !others(t)).map((t) => [t, null]);
     if (off.length) await updateAppSettings(this.ws, { tools: Object.fromEntries(off) });
-    if (chose.length) {
-      await updateAppSettings(this.ws, { uses: Object.fromEntries(chose) });
-      this.#uses = (await readAppSettings(this.ws)).uses ?? {};
-    }
+    await this.#forgetChoices(id);
     await logEvent(this.ws.store, SYS, { type: 'plugin.remove', actor: 'user', data: { plugin: id, name: was?.name ?? id, kind: kindOfState(was), bytes } }).catch(() => {});
     return { bytes };
   }

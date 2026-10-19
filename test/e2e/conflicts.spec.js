@@ -73,3 +73,30 @@ test('a plugin that replaces the avatar asks "It replaces how Shiori looks" at i
     await llm.stop();
   }
 });
+
+test('a package from another place over an installed one says what it would get; Install fresh removes what that one kept, its choices too', async ({ page }) => {
+  const kit = await fixtureFiles('clash-tool');
+  const site = await startModelServer({ '/kits/clash-tool/annai-plugin.json': file(kit['annai-plugin.json'], 'application/json'), '/kits/clash-tool/index.js': file(kit['index.js'], 'text/javascript') });
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await pickAddress(page, `${site.origin}/kits/clash-tool/annai-plugin.json`);
+    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(page.locator('.card', { hasText: 'Clash tool' }).getByText('On', { exact: true })).toBeVisible();
+    await page.goto('/#/plugins/clash-tool');
+    const names = page.getByRole('region', { name: 'Names' });
+    await names.getByRole('button', { name: 'Use this one instead' }).click();
+    await expect(names.getByText('The tool weather: this one is used (your choice).')).toBeVisible();
+    // The same package, from a file.
+    await pickFile(page, { name: 'clash-tool.zip', mimeType: 'application/zip', buffer: await zipOf(kit) });
+    await expect(page.getByText(/not where this one comes from\. Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed\./)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Install, keep its settings and keys' })).toBeVisible();
+    await page.getByRole('button', { name: 'Install fresh' }).click();
+    await expect(page.locator('.card', { hasText: 'Clash tool' }).getByText('On', { exact: true })).toBeVisible();
+    await page.goto('/#/plugins/clash-tool');
+    await expect(names.getByText('Not used: the tool weather is already provided by Places tools.')).toBeVisible();
+  } finally {
+    await site.stop();
+    await llm.stop();
+  }
+});

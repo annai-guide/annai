@@ -295,6 +295,34 @@ test("M6 fix: after the upgrade, a name two plugins share stays with the one tha
   assert.deepEqual((await readAppSettings(ws)).uses, { 'tool:tides': 'zeta' });
 });
 
+test("M6 fix: fresh, a package from another place gets nothing the installed one keeps: its settings and their history, its secrets and the user's choices for its names are removed", async () => {
+  const { host, ws } = await hostKit();
+  await host.install(codePlugin('look', "annai.secrets.set('token', 'A-SECRET'); annai.settings.set({ colour: 'red' }); return annai.ui.component('avatar', { create: () => ({ el: {} }) });"), { source: 'url', url: 'https://a.example/annai-plugin.json' });
+  await host.start('look');
+  await new Promise((r) => setTimeout(r, 10));
+  await host.choose('ui:component', 'avatar', 'look');
+  await updateAppSettings(ws, { uses: { 'tool:weather': 'other' } });
+  assert.deepEqual(await host.saved('look'), { file: true, keys: ['colour'], secrets: ['token'] });
+  await host.forgetKept('look');
+  assert.deepEqual(await host.saved('look'), { file: false, keys: [], secrets: [] });
+  assert.deepEqual((await readAppSettings(ws)).uses, { 'tool:weather': 'other' });
+});
+
+test("M6 fix: removing a plugin keeps the switches of names others still have (a built-in's, the loop's own, an off plugin's); a name nobody else has loses its switch", async () => {
+  const { host, ws } = await hostKit();
+  await host.addBuiltin(builtinUrl('places', "return annai.tools.register({ name: 'weather', description: 'Built-in weather.', input: { type: 'object' }, run: () => 'sunny' });"));
+  host.connect({ agent: { loopTools: () => [{ name: 'recall' }] } });
+  const tools = (/** @type {string[]} */ names) => `const offs = ${JSON.stringify(names)}.map((name) => annai.tools.register({ name, description: 'Mine.', input: { type: 'object' }, run: () => 'mine' })); return () => offs.forEach((f) => f());`;
+  await host.install(codePlugin('other', tools(['moon'])));
+  await host.start('other');
+  await host.setEnabled('other', false);
+  await host.install(codePlugin('clash-tool', tools(['weather', 'recall', 'moon', 'tides'])));
+  await host.start('clash-tool');
+  for (const t of ['weather', 'recall', 'moon', 'tides']) await setToolSwitch(ws, t, false);
+  await host.uninstall('clash-tool');
+  assert.deepEqual((await readAppSettings(ws)).tools, { weather: false, recall: false, moon: false });
+});
+
 test("removing a plugin forgets the choices that named it", async () => {
   const { host, ws } = await hostKit();
   await host.install(codePlugin('look', "return annai.ui.component('avatar', { create: () => ({ el: {} }) });"));
