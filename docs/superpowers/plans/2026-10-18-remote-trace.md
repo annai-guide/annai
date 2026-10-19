@@ -32,6 +32,19 @@
 13. **Not changed:** the hooks' limit of 1,000 entries in 10 s applies to this plugin as to any. An import that logs more than that (a trip of over 1,000 files) switches it off with annai's card. That is core behaviour; the report notes it. So is this: no entry a plugin caused reaches any plugin's hooks (fix pass 8b-1), so another plugin's `plugin.error`, requests and model calls are never sent; docs/plugins.md says so.
 14. **Ledger** in the worktree's own git-ignored `.superpowers/sdd/remote-trace/progress.md`.
 
+## After review (fix pass, 2026-10-18)
+
+These change choices 1, 5, 7, 8, 9 and 11 above. Where they differ, the fix pass wins.
+
+1. **`annai.secrets.blank` fails closed:** it rejects when the secrets can't be read (`withoutSecretsIn(store, value, { strict: true })`). The plugin keeps the batch and tries again. annai's own cards still blank what they can.
+2. **Send on without a token stays on:** one card, the batch kept, and the token read again at each try. Saving only the token changes no settings file, so no entry tells the plugin.
+3. **A plugin annai switches off after repeated errors is stopped** (`PluginHost` listens to `registry.onDisabled`), so its cleanup runs, and Turn on starts it again. A built-in stays as it is, since it can only start with annai. The hooks' window ends when the limit switches a plugin off, so a plugin turned on again starts with a window of its own.
+4. **What a request can't carry gives one card and no request:** a name and password in the address (refused by `serverProblem`), and a token with anything but visible ASCII. A token is trimmed.
+5. **What waits is capped at 4 MiB too,** besides 2,000 entries, counted in `dropped`. While `navigator.onLine` is false it doesn't try, and it tries at once on `online`.
+6. **A 413 or 400 halves the batch,** and an entry still refused alone is dropped and counted. A batch that gets through doubles the size back, up to 100.
+7. **Device id is a field on the plugin's page** (`device`, at most 64 characters). The first send fills it, and the user may name the device.
+8. **The sink takes the token from `--token-file` or `TRACE_SINK_TOKEN`** as well. After a failed write (a full disk) it starts its next write on a new line, so a torn line stays alone.
+
 ## Tasks (test-first)
 
 1. **The sink:** `scripts/trace-sink.mjs` exporting `startSink({ port, token, out, origins })`, then the command line. `test/unit/trace-sink.test.js`:

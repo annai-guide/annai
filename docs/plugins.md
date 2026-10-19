@@ -71,7 +71,7 @@ export function activate(annai) {
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
 | `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
-| `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or endpoint's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. |
+| `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or endpoint's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
 | `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
 | `annai.wake(reason)` | wakes Shiori, with the reason she sees. Quiet hours and the per-hour limit apply (spec §6.6). |
@@ -299,11 +299,11 @@ annai's own MCP client (a built-in plugin) gives Shiori the tools of the MCP ser
 
 ## Remote trace (for developers)
 
-annai's official plugin **Remote trace (for developers)** sends annai's trace to a server you run, so you can watch a phone's entries, requests and errors as they happen. Install it from Settings → Plugins → From annai's catalog. It sends nothing until you give it a server address (https, or http only for `localhost` or `127.0.0.1`) and the server's token, and turn Send on. The token is kept with your keys, never in a file. Off, or removed, it stops at once; Remove also takes its settings and token.
+annai's official plugin **Remote trace (for developers)** sends annai's trace to a server you run, so you can watch a phone's entries, requests and errors as they happen. Install it from Settings → Plugins → From annai's catalog. It sends nothing until you give it a server address (https, or http only for `localhost` or `127.0.0.1`, with no name or password in it) and the server's token, and turn Send on. The token is kept with your keys, never in a file. Off, reset, removed, or switched off by annai after repeated errors, it stops at once; Reset and Remove also take its settings, device id and token.
 
 - **What it sends:** every entry the log records from the moment Send is on, in every scope, as an opened row of the Trace screen shows it: `{ scope, seq, ts, type, actor, data, refs }`. That is what you write, what Shiori says, her tool calls and results, model turns, web requests (their addresses as the trace keeps them) and errors.
   - It sends a batch 3 seconds after the first entry waiting, or at once when 100 wait.
-  - The batch is a POST of `{ app, build, device, dropped, entries }` with `Authorization: Bearer <token>`. `app` is "annai" and its version, `build` annai's build stamp, `device` a random id made at the first send and kept in the plugin's settings, and `dropped` how many entries it dropped since the last batch the server took.
+  - The batch is a POST of `{ app, build, device, dropped, entries }` with `Authorization: Bearer <token>`. `app` is "annai" and its version, `build` annai's build stamp, `device` an id made at the first send and kept in the plugin's settings (its page shows it as Device id, which you may change to a name of your own, so two phones are easy to tell apart), and `dropped` how many entries it dropped since the last batch the server took.
   - Its own requests are in annai's trace, as any plugin's are.
 - **What it never sends:**
   - **Keys and its token.** Every entry first goes through `annai.secrets.blank`, annai's own blanking, as annai's cards do, so a key you type into a message is blanked too.
@@ -311,24 +311,30 @@ annai's official plugin **Remote trace (for developers)** sends annai's trace to
   - **Location points,** unless you turn on Send location points. Other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.
   - **Entries from before Send was on, or after it went off.**
   - **Entries a plugin caused** (its own requests and model calls, its `plugin.error`), because no plugin's hooks get those (see "Following the log").
-- **Offline, or refused:** it keeps the newest 2,000 entries and counts the ones it drops. It tries again after 3 seconds, then twice as long each time, up to once a minute. A server that keeps refusing (any answer that isn't 2xx) gives one card, not one per batch.
+- **Offline, or refused:**
+  - It keeps the newest 2,000 entries, and at most 4 MiB of them, and counts the ones it drops.
+  - It tries again after 3 seconds, then twice as long each time, up to once a minute. While the browser says it is offline it doesn't try, and it tries at once when it is back online.
+  - A server that keeps refusing (any answer that isn't 2xx) gives one card, not one per batch.
+  - A server that answers 413 or 400 gets half the batch next, and an entry it still refuses on its own is dropped and counted, so one entry can't hold up the rest.
+  - Without a token, or with one a request can't carry (spaces, letters beyond ASCII), it says so on one card and keeps what waits; the token is read at every try, so saving it is enough.
 - **The dock** shows a "Trace" chip while it is sending; tapping it opens the plugin's page.
 
 **The sink.** `scripts/trace-sink.mjs` is a small receiving server with no dependencies:
 
 ```bash
-node scripts/trace-sink.mjs --port <p> --token <t> --out <file.jsonl> [--origin <allowed origin>]...
+node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out <file.jsonl> [--origin <allowed origin>]...
 ```
 
-- **The token** must be at least 16 characters; `openssl rand -hex 16` makes one.
+- **The token** must be at least 16 characters; `openssl rand -hex 16` makes one. Give it in a file (`--token-file`, which keeps it out of your shell's history and the process list) or in `TRACE_SINK_TOKEN`; `--token` works too.
 - **What it takes:** batches with that token, from `https://annai.guide` and each `--origin` you add (more than one is fine), at most 1 MiB each. It listens on 127.0.0.1 only. Ports 8765, 8790–8792, 8796, 8797 and 18010–18014 are annai's own, so it refuses them.
-- **What it writes:** each entry, appended to the file as one JSON line `{ received, device, build, ...entry }`, and one line `{ received, device, build, dropped }` when a batch says entries were dropped. Watch it with `tail -f trace.jsonl`, or pick from it with `jq`, such as `jq -c 'select(.type == "error")' trace.jsonl`.
+- **What it writes:** each entry, appended to the file as one JSON line `{ received, device, build, ...entry }`, and one line `{ received, device, build, dropped }` when a batch says entries were dropped. Watch it with `tail -f trace.jsonl`, or pick from it with `jq`, such as `jq -c 'select(.type == "error")' trace.jsonl`. A disk that fills up while it writes can leave a line cut short, a torn line: the sink answers 500, so the plugin sends that batch again, and the sink starts its next write on a new line, so the torn one stays alone. `jq -cR 'fromjson? // empty' trace.jsonl` reads the file past it.
 - **From a phone:** the phone needs https. On a tailnet, `tailscale serve` gives that:
 
   ```bash
-  TOKEN=$(openssl rand -hex 16); echo "$TOKEN"
-  node scripts/trace-sink.mjs --port 8798 --token "$TOKEN" --out trace.jsonl
+  (umask 077; openssl rand -hex 16 > trace-token)
+  node scripts/trace-sink.mjs --port 8798 --token-file trace-token --out trace.jsonl
   tailscale serve --bg --https=8443 http://127.0.0.1:8798
+  cat trace-token   # to type into annai on the phone
   ```
 
   Then, in annai on the phone, set the server address to `https://<this machine's name on your tailnet>:8443/`, give the same token, and turn Send on. `tailscale serve --https=8443 off` stops the https side.
