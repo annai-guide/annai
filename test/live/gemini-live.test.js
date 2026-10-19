@@ -10,7 +10,7 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { pcm16 } from '../../src/core/voice/pcm.js';
-import { openLive } from '../../src/core/realtime/open.js';
+import { openLive, testLive } from '../../src/core/realtime/open.js';
 import { activate } from '../../plugins-official/gemini-live/index.js';
 
 const KEY = process.env.GEMINI_KEY ?? '';
@@ -158,4 +158,13 @@ test('Gemini Live: an immediate note cuts Koe off mid-sentence, and the session 
   if (process.env.DUMP) console.log(r.events.filter((e) => e.type !== 'audio').map((e) => `${e.type}${e.end ? `:${e.end}` : ''}${e.text ? ` "${e.text}"` : ''}`).join('\n'));
   assert.match(r.said(), /bixby|bridge/i, 'the resumed session remembers');
   r.s.close();
+});
+
+test("Gemini Live: a realtime model's Test passes against the real model", { skip }, async () => {
+  const s = openLive({ type: TYPE, endpoint, model, key: KEY, tunables: { ...TYPE.tunables }, setup: { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [], audioIn: PCM(16000), audioOut: PCM(24000) }, trace: null });
+  opened.push(s);
+  let bytes = 0;
+  const r = await testLive(s, { onAudio: (d) => { bytes += d.length; } });
+  console.log(`  ${r.steps.map((x) => `${x.ok ? '✓' : '✗'} ${x.detail}`).join(' ')} (${bytes} bytes)`);
+  assert.ok(r.ok);
 });
