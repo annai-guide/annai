@@ -221,3 +221,26 @@ test("Ollama: a model that can't think answers at every level, as only off is na
     await s.stop();
   }
 });
+
+test('llama.cpp enforces tool calls: a quick decision forces its one tool as tool_choice "required", which llama-server honours where it ignores a named one; the others keep the named form (fix pass 2; the user, 2026-10-19)', async () => {
+  assert.deepEqual((await official('provider-llamacpp')).provider.abilities.chat.tunables, { enforceToolCall: true });
+  // A model that answers in words unless the server forces a call, and doesn't start its words with a letter.
+  const replies = [{ text: 'To someone else, I think.', forced: { name: 'decide', input: { option: 'B' } } }];
+  const options = [{ id: 'shiori', label: 'To the guide' }, { id: 'chatter', label: 'To someone else' }];
+  for (const [plugin, flavour, choice] of /** @type {const} */ ([['provider-llamacpp', 'llamacpp', 'required'], ['provider-vllm', 'vllm', 'named']])) {
+    const k = await kit();
+    const s = await startFakeServer({ flavour, cors: '*', replies });
+    try {
+      await setUp(k, plugin, s.origin);
+      const result = await k.llm.decide({ prompt: '"Pass me the water, please." Who was it said to?', options });
+      const sent = s.requests.filter((r) => r.method === 'POST').map((r) => r.body);
+      assert.deepEqual(sent[0].tool_choice, choice === 'required' ? 'required' : { type: 'function', function: { name: 'decide' } }, plugin);
+      assert.deepEqual([sent.length, result], [1, { shiori: 0, chatter: 1 }], `${plugin}: decided by its tool call, with no second call`);
+      // A turn offering Shiori's tools forces none, and is sent as it was.
+      await k.llm.call({ request: { ...HI, tools: [{ name: 'weather', description: 'Weather.', input: { type: 'object' } }, { name: 'show', description: 'Show.', input: { type: 'object' } }] } });
+      assert.equal('tool_choice' in s.requests.filter((r) => r.method === 'POST').at(-1).body, false, plugin);
+    } finally {
+      await s.stop();
+    }
+  }
+});
