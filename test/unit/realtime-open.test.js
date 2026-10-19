@@ -381,3 +381,23 @@ test('once a session has closed, nothing more is told: a protocol timer that fir
   assert.deepEqual(heard, []);
   assert.deepEqual((await events(store)).map((e) => e.data.state ?? e.type), ['open', 'ready', 'closed']);
 });
+
+test("a session that closes on its own lets its protocol go too: the driver's close() is called once, as when annai closes it (review)", async () => {
+  FakeSocket.made = [];
+  let closes = 0;
+  const type = { ...ECHO, attach: (/** @type {any} */ s, /** @type {any} */ c) => ({ ...ECHO.attach(s, c), close: () => { closes++; } }) };
+  const dropped = openLive({ type, endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket });
+  await tick();
+  FakeSocket.made[0].receive({ ready: true });
+  await dropped.ready;
+  FakeSocket.made[0].drop(1006, '');
+  await dropped.closed;
+  assert.equal(closes, 1, 'its timers stop with it');
+  const asked = openLive({ type, endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket });
+  await tick();
+  FakeSocket.made[1].receive({ ready: true });
+  await asked.ready;
+  asked.close();
+  await asked.closed;
+  assert.equal(closes, 2, 'once each');
+});
