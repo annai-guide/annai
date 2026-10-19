@@ -28,6 +28,15 @@ export function needsCode() {
   return platform() === 'ios' && isStandalone();
 }
 
+/** The sign-in waiting in storage, or null. @param {KeyValue} storage @returns {any} */
+function waiting(storage) {
+  try {
+    return JSON.parse(storage.getItem(SLOT) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
 /** @param {Uint8Array} bytes */
 const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
@@ -59,15 +68,22 @@ export async function signInUrl({ callback, storage = localStorage, now = Date.n
  * @returns {Promise<{ url: string, pending: boolean }>} pending: one was already waiting
  */
 export async function codeSignIn({ storage = localStorage, now = Date.now() } = {}) {
-  /** @type {any} */
-  let saved = null;
-  try {
-    saved = JSON.parse(storage.getItem(SLOT) ?? 'null');
-  } catch {
-    saved = null;
-  }
+  const saved = waiting(storage);
   if (saved?.mode === 'code' && typeof saved.url === 'string' && now - saved.at <= MAX_AGE) return { url: saved.url, pending: true };
   return { url: await signInUrl({ callback: null, storage, now }), pending: false };
+}
+
+/**
+ * The tap on that link: annai's 15 minutes count from here, not from when Models was drawn, so a page
+ * left open longer still takes the code this tap brings back (fix pass). Synchronous, as the tap must open the page.
+ * @param {string} url the link's address @param {{ storage?: KeyValue, now?: number }} [c]
+ * @returns {boolean} false: no sign-in waits for this address any more, so the link needs a new one
+ */
+export function tapCode(url, { storage = localStorage, now = Date.now() } = {}) {
+  const saved = waiting(storage);
+  if (saved?.mode !== 'code' || saved.url !== url) return false;
+  storage.setItem(SLOT, JSON.stringify({ ...saved, at: now }));
+  return true;
 }
 
 /** The code and state OpenRouter sent back, when this page load is its callback. @param {string} search */
@@ -86,13 +102,7 @@ export function callbackFrom(search) {
  */
 export async function exchange({ code, state, pasted = false, fetch: get = (url, init) => fetch(url, init), storage = localStorage, now = Date.now() }) {
   if (!code.trim()) throw new Error('Paste the code OpenRouter showed you, then tap Connect.');
-  /** @type {any} */
-  let saved = null;
-  try {
-    saved = JSON.parse(storage.getItem(SLOT) ?? 'null');
-  } catch {
-    saved = null;
-  }
+  const saved = waiting(storage);
   if (!saved) throw new Error('annai has no sign-in waiting for this code: it was used already, or began in another browser.');
   if (now - saved.at > MAX_AGE) {
     storage.removeItem(SLOT); // so the next tap starts a new one
@@ -121,16 +131,39 @@ export async function exchange({ code, state, pasted = false, fetch: get = (url,
 }
 
 /**
+ * What signing in needs before OpenRouter is asked for a key: annai's templates and the plugins for
+ * their endpoint types. None needs the key, so a failure here costs nothing: no key is made that
+ * annai would then lose (fix pass). @param {any} ctx llm @returns {Promise<{ endpoints: any[] }>} the catalog
+ */
+export async function readyForSignIn(ctx) {
+  const catalog = await ctx.llm.templates();
+  const tpls = ['openrouter', ...VOICE_TEMPLATES].map((id) => catalog.endpoints.find((/** @type {any} */ t) => t.id === id)).filter(Boolean);
+  if (tpls[0]?.id !== 'openrouter') throw new Error("annai's OpenRouter template isn't available yet. Connect to the internet and try again.");
+  try {
+    for (const type of new Set(tpls.map((t) => t.type))) await ctx.llm.ensureType(type);
+  } catch (e) {
+    throw new Error(`${String(/** @type {any} */ (e)?.message ?? e)} Nothing was sent to OpenRouter yet: try again.`);
+  }
+  return catalog;
+}
+
+/**
+ * Signs in: gets ready, trades the code for a key (get), sets annai up with it, and says on a card
+ * what it set up. @param {any} ctx @param {() => Promise<string>} get
+ */
+export async function signIn(ctx, get) {
+  const catalog = await readyForSignIn(ctx);
+  signedIn(ctx, await connectOpenRouter(ctx, await get(), catalog));
+}
+
+/**
  * Sets annai up with an OpenRouter key: the OpenRouter endpoint from annai's template, its key,
  * and free models in the roles that are still empty, so trying annai costs nothing; then its voice.
- * @param {any} ctx llm, ws and store @param {string} key
+ * @param {any} ctx llm, ws and store @param {string} key @param {{ endpoints: any[] }} catalog from readyForSignIn
  * @returns {Promise<{ id: string, voice: string[] | null }>} the endpoint's id; the voice templates added, null if that failed
  */
-export async function connectOpenRouter(ctx, key) {
-  const catalog = await ctx.llm.templates();
+export async function connectOpenRouter(ctx, key, catalog) {
   const tpl = catalog.endpoints.find((/** @type {any} */ t) => t.id === 'openrouter');
-  if (!tpl) throw new Error("annai's OpenRouter template isn't available yet. Connect to the internet and try again.");
-  await ctx.llm.ensureType(tpl.type);
   const id = await addFromTemplate(ctx, tpl, { key, roles: 'free' });
   // Chat is enough to start: the voice can be added later from the endpoint's page.
   const voice = await addOpenRouterVoice(ctx, key, catalog).catch(() => null);
@@ -190,8 +223,7 @@ export async function finishSignIn(ctx, env = {}) {
   finishing = true;
   try {
     ctx.render?.();
-    const key = await exchange({ code: cb.code, state: cb.state, fetch: env.fetch, storage: env.storage });
-    signedIn(ctx, await connectOpenRouter(ctx, key));
+    await signIn(ctx, () => exchange({ code: cb.code, state: cb.state, fetch: env.fetch, storage: env.storage }));
   } catch (e) {
     ctx.notices.card({ tone: 'warn', title: "Signing in with OpenRouter didn't finish", body: String(/** @type {any} */ (e)?.message ?? e) });
   } finally {
