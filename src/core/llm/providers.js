@@ -182,9 +182,12 @@ export async function syncProviders({ ws }, sources) {
     if (!src || !rec.template || rec.template.version === src.version) continue;
     const values = providerValues(src);
     const user = structuredClone(rec.user ?? {});
+    /** @type {string[]} */
+    const added = [];
     for (const id of Object.keys(values.abilities ?? {})) {
-      if (rec.template.values.abilities?.[id] || user.abilities?.[id]?.on !== undefined) continue;
-      user.abilities = { ...user.abilities, [id]: { ...user.abilities?.[id], on: false } };
+      if (rec.template.values.abilities?.[id]) continue;
+      added.push(id);
+      if (user.abilities?.[id]?.on === undefined) user.abilities = { ...user.abilities, [id]: { ...user.abilities?.[id], on: false } };
     }
     const listed = descModels(src);
     const known = new Set(rec.template.models ?? []);
@@ -199,7 +202,7 @@ export async function syncProviders({ ws }, sources) {
       if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}`)) continue;
       changed.push(named(newModel(rec.id, d.ability, { template: { id: `${src.plugin}/${d.key}`, version: src.version, values: d.values } }), taken));
     }
-    await saveProvider(ws, { ...rec, template: { version: src.version, values, models: listed.map((d) => d.key) }, user }, changed);
+    await saveProvider(ws, { ...rec, template: { version: src.version, values, models: listed.map((d) => d.key), ...(added.length ? { added } : {}) }, user }, changed);
     n++;
   }
   return n;

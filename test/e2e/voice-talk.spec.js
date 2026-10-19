@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply, fakeMicrophone } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, fakeMicrophone } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 const clipPath = (/** @type {string} */ name) => fileURLToPath(new URL(`../fixtures/voice/${name}.wav`, import.meta.url));
@@ -22,9 +22,9 @@ test('a spoken back-and-forth: tap, ask aloud, hear her answer, answer her, and 
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     // Every endpoint first: a role change re-renders the screen, and a choice made meanwhile is lost.
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
-    await addEndpoint(page, 'Other: OpenAI-compatible transcription', { name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
-    await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
+    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await expect(page.getByText('1. b-model')).toBeVisible();
@@ -74,10 +74,10 @@ const longWav = (seconds) => ({ status: 200, type: 'audio/wav', body: Buffer.fro
 async function setUpVoice(page, origin, { decide = false } = {}) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${origin}/b`, key: 'sk-chat-test', model: 'b-model' });
-  await addEndpoint(page, 'Other: OpenAI-compatible transcription', { name: 'Ears', url: `${origin}/ears`, key: 'sk-ears-test', model: 'ears' });
-  await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Voice', url: `${origin}/voice`, key: 'sk-voice-test', model: 'voice' });
-  if (decide) await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Decider', url: `${origin}/d`, key: 'sk-decide-test', model: 'd-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-chat-test', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Transcription', name: 'Ears', url: `${origin}/ears`, key: 'sk-ears-test', model: 'ears' });
+  await addProvider(page, 'Another address', { ability: 'Voice', name: 'Voice', url: `${origin}/voice`, key: 'sk-voice-test', model: 'voice' });
+  if (decide) await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Decider', url: `${origin}/d`, key: 'sk-decide-test', model: 'd-model' });
   /** @type {[string, string][]} */
   const roles = [['main', 'b-model'], ['speech-in', 'ears'], ['speech-out', 'voice'], ...(decide ? [/** @type {[string, string]} */ (['decide', 'd-model'])] : [])];
   for (const [role, model] of roles) {

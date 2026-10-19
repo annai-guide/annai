@@ -173,25 +173,32 @@ export async function startModelServer(routes) {
 }
 
 /**
- * From the Models screen: adds an endpoint from a template (installing its plugin), names it,
- * sets its base URL and key, adds one model by id, and comes back.
- * @param {import('@playwright/test').Page} page @param {string} template
- * @param {{ name: string, url: string, key: string, model: string }} o
+ * From the Models screen: adds a provider (installing its plugin and what it needs), names it, gives
+ * its address and key, switches on one ability, adds one model by id to it, and comes back. ability:
+ * the ability's name, such as "Anthropic Messages" for Another address; a provider's only chat ability is "Chat".
+ * @param {import('@playwright/test').Page} page @param {string} provider the option in Add a provider
+ * @param {{ ability?: string, name: string, url: string, key: string, model: string }} o
  */
-export async function addEndpoint(page, template, { name, url, key, model }) {
-  await expect(page.getByRole('heading', { name: 'Models', exact: true })).toBeVisible();
-  await page.getByLabel('Add an endpoint').selectOption({ label: template });
+export async function addProvider(page, provider, { ability = 'Chat', name, url, key, model }) {
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await page.getByLabel('Add a provider').selectOption({ label: provider });
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByRole('heading', { name: template })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { level: 1, name: provider })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByLabel('Base URL').fill(url);
+  await page.getByLabel('Address', { exact: true }).fill(url);
   await page.getByLabel('API key').fill(key);
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('heading', { name })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
   // Saving draws the screen again: wait for the new one (its key field says a key is saved), or what is typed next is lost.
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-  await page.getByLabel('Add a model by id').fill(model);
-  await page.getByRole('button', { name: 'Add model' }).click();
+  const panel = page.getByRole('region', { name: ability, exact: true });
+  const use = panel.getByLabel(`Use ${ability}`);
+  if (!(await use.isChecked())) {
+    await use.check();
+    await expect(savedBy(use)).toHaveText('Saved', { timeout: 30_000 }); // its protocol plugin, installed first
+  }
+  await panel.getByLabel('Add a model by id').fill(model);
+  await panel.getByRole('button', { name: 'Add model' }).click();
   await expect(page.getByRole('link', { name: new RegExp(`^${model}`) })).toBeVisible();
   await page.getByRole('link', { name: '← Models' }).click();
 }
@@ -347,13 +354,14 @@ export async function zipOf(files, top) {
 }
 
 /**
- * Shiori's main model on a stand-in Anthropic endpoint at origin (/b), and a trip, from a fresh start.
+ * Shiori's main model on a stand-in Anthropic server at origin (/b), through Another address and its
+ * Anthropic Messages ability, and a trip, from a fresh start.
  * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip]
  */
 export async function modelSetUp(page, origin, trip = 'Big Sur') {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');

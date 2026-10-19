@@ -18,18 +18,18 @@ function load(activate) {
   activate({ providers: { register: (/** @type {any} */ x) => { t = { ...x, pluginId: 'live' }; return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
   return t;
 }
-const model = (/** @type {any} */ over) => ({ id: 'live', endpoint: 'live', name: 'live', input: ['text', 'image'], tools: true, contextWindow: null, maxOutput: null, prices: null, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, ...over });
+const model = (/** @type {any} */ over) => ({ id: 'live', provider: 'live', ability: 'chat', name: 'live', input: ['text', 'image'], tools: true, contextWindow: null, maxOutput: null, prices: null, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, ...over });
 const orType = load(chat);
 const anType = load(anthropic);
 const cases = [
   {
     env: 'ANNAI_LIVE_OPENROUTER_KEY', type: orType,
-    endpoint: { id: 'live-or', type: 'chat-completions', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', headers: { 'X-Title': 'annai tests' }, tunables: { ...orType.tunables, reasoningField: 'reasoning' }, extraBody: {} },
+    endpoint: { id: 'live-or/chat', provider: 'live-or', ability: 'chat', type: 'chat-completions', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', headers: { 'X-Title': 'annai tests' }, tunables: { ...orType.tunables, reasoningField: 'reasoning' }, extraBody: {} },
     model: model({ providerId: 'anthropic/claude-haiku-5.5', reasoning: { low: { reasoning: { effort: 'low' } } } }),
   },
   {
     env: 'ANNAI_LIVE_ANTHROPIC_KEY', type: anType,
-    endpoint: { id: 'live-an', type: 'anthropic-messages', name: 'Anthropic', baseUrl: 'https://api.anthropic.com', headers: {}, tunables: { ...anType.tunables }, extraBody: {} },
+    endpoint: { id: 'live-an/chat', provider: 'live-an', ability: 'chat', type: 'anthropic-messages', name: 'Anthropic', baseUrl: 'https://api.anthropic.com', headers: {}, tunables: { ...anType.tunables }, extraBody: {} },
     model: model({ providerId: 'claude-haiku-5-5', reasoning: { off: { thinking: { type: 'disabled' } } } }),
   },
 ];

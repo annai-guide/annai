@@ -8,8 +8,8 @@ import { callOnce, applyPatches, withTail } from '../../src/core/llm/call.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { text as textOf } from '../../src/core/bytes.js';
 
-const endpoint = (over = {}) => ({ id: 'ep-1', type: 'test', name: 'Test endpoint', baseUrl: 'https://llm.test', headers: {}, tunables: {}, extraBody: {}, ...over });
-const model = (over = {}) => ({ id: 'm-1', endpoint: 'ep-1', name: 'Test model', providerId: 'test-1', input: ['text'], tools: true, contextWindow: 100000, maxOutput: 1000, prices: { input: 1, output: 2 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over });
+const endpoint = (over = {}) => ({ id: 'pv-1/chat', provider: 'pv-1', ability: 'chat', type: 'test', name: 'Test provider', baseUrl: 'https://llm.test', headers: {}, tunables: {}, extraBody: {}, ...over });
+const model = (over = {}) => ({ id: 'm-1', provider: 'pv-1', ability: 'chat', name: 'Test model', providerId: 'test-1', input: ['text'], tools: true, contextWindow: 100000, maxOutput: 1000, prices: { input: 1, output: 2 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over });
 /** @type {any} */
 const request = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] };
 
@@ -56,7 +56,7 @@ test('one call puts the reply together, with its usage and cost, and tells the t
   assert.equal(ev.type, 'net.request');
   assert.equal(ev.data.outcome, 'ok');
   assert.equal(ev.data.model, 'Test model');
-  assert.equal(ev.data.endpoint, 'Test endpoint');
+  assert.equal(ev.data.endpoint, 'Test provider');
   assert.equal(typeof ev.data.firstMs, 'number');
 });
 
@@ -300,13 +300,13 @@ test('uploads: each photo is uploaded once and sent by id; a failed upload sends
   assert.equal(posted.filter((u) => u.endsWith('/v1/files')).length, 1);
   assert.deepEqual(bodies.map((b) => b.images[0]), ['file_1', 'file_1']);
   fail = true;
-  await uploads.forget('ep-1');
+  await uploads.forget('pv-1/chat');
   await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (get), uploads });
   assert.equal(bodies.at(-1).images[0], 'bytes');
-  assert.equal(uploads.isOff('ep-1'), true);
+  assert.equal(uploads.isOff('pv-1/chat'), true);
   // Switched off on the endpoint: nothing is uploaded.
   const off = new Uploads(ws);
-  await callOnce({ type: t, endpoint: endpoint({ id: 'ep-2', tunables: { uploads: false } }), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (get), uploads: off });
+  await callOnce({ type: t, endpoint: endpoint({ id: 'pv-2/chat', tunables: { uploads: false } }), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (get), uploads: off });
   assert.equal(posted.filter((u) => u.endsWith('/v1/files')).length, 2);
   assert.equal(bodies.at(-1).images[0], 'bytes');
 });

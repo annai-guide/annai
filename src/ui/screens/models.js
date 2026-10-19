@@ -1,10 +1,12 @@
 import { h, field, savedField, savedRadios, numberIn, queueSave } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { wantedTtl } from '../../core/agent/warmth.js';
-import { endpointOf, modelOf, saveRoles, CHAT_ROLES, SPEECH_ROLES, STAND_INS, speechKind } from '../../core/llm/config.js';
+import { providerOf, modelOf, abilityOf, saveRoles, CHAT_ROLES, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
 import { LEVELS } from '../../core/llm/reasoning.js';
-import { addFromTemplate, templateUpdates, speechAdd } from '../../core/llm/templates.js';
-import { renderEndpoint, messageOf } from './endpoint.js';
+import { ROLE_KIND } from '../../core/llm/provider-desc.js';
+import { speechAdd } from '../../core/llm/providers.js';
+import { officialPlugins } from '../../core/llm/official.js';
+import { renderProvider, messageOf } from './provider.js';
 import { renderModel } from './model.js';
 import { needsCode, signInUrl, codeSignIn, tapCode, exchange, signIn, signingIn } from '../openrouter.js';
 
@@ -18,21 +20,22 @@ const ROLE_NAMES = {
 const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: "the phone's own; usually goes to Google or Apple", 'browser-voice': "the browser's own; some voices go online" };
 
 /**
- * Settings → Models (spec §9.2, §9.6, §9.8): the endpoints annai calls, their models, which models
- * each role tries, in order, and what Shiori's requests may cost and how large they grow (§6.4–6.6).
+ * Settings → Models (spec §9.2, §9.6, §9.8): the providers annai calls, each with its abilities and
+ * models, which models each role tries, in order, and what Shiori's requests may cost and how large
+ * they grow (§6.4–6.6). A provider's page is #/models/provider?id=, a model's #/models/model?id=.
  * @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
  */
 export async function renderModels(ctx, route) {
-  if (route.parts[1] === 'endpoint') return renderEndpoint(ctx, route.params.id ?? '');
+  if (route.parts[1] === 'provider') return renderProvider(ctx, route.params.id ?? '');
   if (route.parts[1] === 'model') return renderModel(ctx, route.params.id ?? '');
   await ctx.llm.ready;
-  const [cfg, catalog, app] = await Promise.all([ctx.llm.config(), ctx.llm.templates(), readAppSettings(ctx.ws)]);
+  const [cfg, offer, app] = await Promise.all([ctx.llm.config(), addable(ctx), readAppSettings(ctx.ws)]);
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Models' }),
-    h('p', { class: 'sub', text: 'Where Shiori thinks: the endpoints annai calls, their models, which models each role tries, in order, and what her requests may cost.' }),
+    h('p', { class: 'sub', text: 'Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.' }),
     signInSection(ctx, cfg),
-    endpointsSection(ctx, cfg, catalog),
+    providersSection(ctx, cfg, offer),
     rolesSection(ctx, cfg),
     ...requestSections(ctx, app.shiori ?? {}));
 }
@@ -66,31 +69,50 @@ function requestSections(ctx, s) {
   ];
 }
 
-/** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg @param {import('../../core/llm/templates.js').TemplateCatalog} catalog */
-function endpointsSection(ctx, cfg, catalog) {
+/**
+ * The providers that can be added (spec §9.8): annai's catalog's model providers, and the provider
+ * plugins installed from elsewhere; offline, the ones installed already. Another address comes last.
+ * @param {any} ctx @returns {Promise<{ options: { id: string, name: string }[], offline: boolean }>}
+ */
+async function addable(ctx) {
+  const catalog = await officialPlugins().catch(() => null);
+  const installed = await ctx.plugins.installed();
+  /** @type {{ id: string, name: string, own: boolean }[]} */
+  const options = (catalog ?? []).filter((p) => p.abilities?.length).map((p) => ({ id: p.id, name: p.name, own: true }));
+  for (const s of ctx.llm.providers()) {
+    if (options.some((o) => o.id === s.plugin)) continue;
+    const i = installed[s.plugin];
+    const from = i?.source === 'url' && i.url ? (() => { try { return `from ${new URL(i.url).host}`; } catch { return 'from an address'; } })() : i?.source === 'file' ? 'from a file' : '';
+    options.push({ id: s.plugin, name: from ? `${s.name} (${from})` : s.name, own: !from });
+  }
+  const rank = (/** @type {{ id: string, own: boolean }} */ o) => (o.id === 'provider-another-address' ? 1 : 0) + (o.own ? 0 : 2);
+  options.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  return { options, offline: catalog === null };
+}
+
+/** The providers, each with its abilities that are on and its models, and Add a provider. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg @param {Awaited<ReturnType<typeof addable>>} offer */
+function providersSection(ctx, cfg, offer) {
   const types = ctx.llm.types();
-  const updates = new Set(templateUpdates(cfg, catalog).map((u) => u.endpoint));
-  const rows = Object.values(cfg.endpoints).sort((a, b) => a.created - b.created).map((rec) => {
-    const e = endpointOf(rec, types.get(rec.type)?.tunables);
-    const n = Object.values(cfg.models).filter((m) => m.endpoint === rec.id).length;
-    const sub = [types.get(rec.type)?.name ?? rec.type, `${n} model${n === 1 ? '' : 's'}`, updates.has(rec.id) ? 'template update available' : null];
-    return h('li', {}, h('a', { class: 'card', href: `#/models/endpoint?id=${encodeURIComponent(rec.id)}` },
-      h('span', { class: 'name', text: e.name }),
-      h('span', { class: 'sub', text: sub.filter(Boolean).join(' · ') })));
+  const rows = Object.values(cfg.providers).sort((a, b) => a.created - b.created).map((rec) => {
+    const p = providerOf(rec, (t) => types.get(t)?.tunables ?? {});
+    const n = Object.values(cfg.models).filter((m) => m.provider === rec.id).length;
+    const on = Object.values(p.abilities).filter((a) => a.on).map((a) => a.name);
+    return h('li', {}, h('a', { class: 'card', href: `#/models/provider?id=${encodeURIComponent(rec.id)}` },
+      h('span', { class: 'name', text: p.name }),
+      h('span', { class: 'sub', text: [on.length ? on.join(', ') : 'Nothing switched on', `${n} model${n === 1 ? '' : 's'}`].join(' · ') })));
   });
   const status = h('p', { class: 'sub', role: 'status' });
-  const pick = h('select', { id: 'endpoint-template' }, ...catalog.endpoints.map((t) => h('option', { value: t.id, text: t.from ? `${t.name} (from ${t.from})` : t.name })));
+  const pick = h('select', { id: 'provider-add' }, ...offer.options.map((o) => h('option', { value: o.id, text: o.name })));
   const add = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
-      const tpl = catalog.endpoints.find((t) => t.id === pick.value);
-      if (!tpl) return;
+      const chosen = offer.options.find((o) => o.id === pick.value);
+      if (!chosen) return;
       add.disabled = true;
+      status.textContent = `Adding ${chosen.name}, with what it needs…`;
       try {
-        if (!types.has(tpl.type)) status.textContent = 'Installing the plugin for this endpoint…';
-        await ctx.llm.ensureType(tpl.type);
-        const id = await addFromTemplate(ctx, tpl, { roles: 'recommended' });
-        ctx.go(`#/models/endpoint?id=${encodeURIComponent(id)}`);
+        const id = await ctx.llm.addProvider(chosen.id, { roles: 'recommended' });
+        ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
       } catch (e) {
         status.textContent = messageOf(e);
       } finally {
@@ -98,20 +120,19 @@ function endpointsSection(ctx, cfg, catalog) {
       }
     },
   }, 'Add');
-  return h('section', { class: 'panel', 'aria-label': 'Endpoints' },
-    h('h2', { class: 'section', text: 'Endpoints' }),
-    rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: 'No endpoints yet. Add one below.' }),
-    catalog.endpoints.length
-      ? h('div', { class: 'row' }, field('Add an endpoint', pick), h('div', { class: 'acts' }, add))
-      : h('p', { class: 'sub', text: "annai's list of endpoints hasn't been loaded yet. Connect to the internet and open this screen again." }),
+  return h('section', { class: 'panel', 'aria-label': 'Providers' },
+    h('h2', { class: 'section', text: 'Providers' }),
+    rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: 'No providers yet. Add one below.' }),
+    offer.options.length ? h('div', { class: 'row' }, field('Add a provider', pick), h('div', { class: 'acts' }, add)) : null,
+    offer.offline ? h('p', { class: 'sub', text: "annai's list of providers couldn't be loaded. Connect to the internet and open this screen again." }) : null,
     status);
 }
 
 /** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
 function rolesSection(ctx, cfg) {
-  const types = ctx.llm.types();
   const models = Object.values(cfg.models).map(modelOf);
-  const kind = (/** @type {string} */ id) => speechKind(cfg, types, id);
+  /** The ability kind a model belongs to: a role takes models of its own kind. @param {string} id */
+  const kind = (id) => abilityOf(cfg, id)?.kind;
   const nameOf = (/** @type {string} */ id) => STAND_INS[id]?.name ?? models.find((m) => m.id === id)?.name ?? id;
   /**
    * Changes one role as it is saved now, read fresh so no other change is lost.
@@ -127,15 +148,15 @@ function rolesSection(ctx, cfg) {
     await queueSave(() => edit(role, (r) => ({ ...r, models: change(r.models) })));
     if (location.hash === here) ctx.render();
   };
-  /** A speech list can take its own stand-ins and the models of its direction. @param {string} role */
+  /** A speech list can take its own stand-ins and the models of its kind: transcription, or voices. @param {string} role */
   const speechChoices = (role) => [
     ...Object.entries(STAND_INS).filter(([, s]) => s.role === role).map(([id, s]) => ({ id, name: s.name })),
-    ...models.filter((m) => kind(m.id) === (role === 'speech-in' ? 'in' : 'out')),
+    ...models.filter((m) => kind(m.id) === ROLE_KIND[role]),
   ];
   return h('section', { class: 'panel', 'aria-label': 'Roles' },
     h('h2', { class: 'section', text: 'Roles' }),
     h('p', { class: 'sub', text: 'Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list.' }),
-    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models.filter((m) => !kind(m.id)), nameOf, list, edit)),
+    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models.filter((m) => kind(m.id) === 'chat'), nameOf, list, edit)),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
     ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
 }
@@ -187,9 +208,9 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
         (n) => edit(role, ({ firstOutputSeconds: _, ...x }) => (n === null ? x : { ...x, firstOutputSeconds: n })))));
 }
 
-/** The quickest start: Sign in with OpenRouter (spec §9.8), offered until an OpenRouter endpoint exists. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
+/** The quickest start: Sign in with OpenRouter (spec §9.8), offered until an OpenRouter provider exists. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
 function signInSection(ctx, cfg) {
-  if (Object.values(cfg.endpoints).some((e) => e.template?.id === 'openrouter')) return null;
+  if (Object.values(cfg.providers).some((p) => p.plugin === 'provider-openrouter')) return null;
   const status = h('p', { class: 'sub', role: 'status' });
   const codeSlot = h('div', {});
   /** @type {HTMLElement} */
@@ -229,7 +250,7 @@ function signInSection(ctx, cfg) {
         }
       },
     }, 'Sign in with OpenRouter');
-    // Back from OpenRouter: the code is being traded for a key, and the endpoints set up.
+    // Back from OpenRouter: the code is being traded for a key, and the provider set up.
     if (signingIn()) status.textContent = 'Finishing the sign-in with OpenRouter…';
   }
   return h('section', { class: 'panel', 'aria-label': 'Sign in' },
