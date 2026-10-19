@@ -91,6 +91,7 @@ test('voice off, a conversation switch, the page going and Erase each close it a
 test('a trigger opens a session, says it, then listens; its reminder is never said by annai too', async () => {
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone() }]);
   try {
+    await updateAppSettings(k.ws, { voice: { silenceSeconds: 60 } }); // it listens for an answer this long (0.6 s here)
     await k.voice.unlock(); // an earlier tap
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
