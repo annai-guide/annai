@@ -453,8 +453,8 @@ export async function modelSetUp(page, origin, trip = 'Big Sur', { look = true }
 }
 
 /**
- * Shiori as two halves (the Koe and Kokoro design), from a fresh start: Kokoro (main) and Koe (Koe for
- * typing) on stand-in Anthropic servers at origin (/kokoro and /koe), through two Another address
+ * Shiori as two halves (the Koe and Kokoro design), from a fresh start: Kokoro (main) and Koe on stand-in
+ * Anthropic servers at origin (/kokoro and /koe), through two Another address
  * providers, and a trip.
  * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip]
  */
@@ -466,8 +466,8 @@ export async function koeSetUp(page, origin, trip = 'Big Sur') {
   await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByText('1. kokoro-model')).toBeVisible();
-  await page.getByLabel('Add a model to Koe for typing').selectOption({ label: 'koe-model' });
-  await page.getByRole('button', { name: 'Add to Koe for typing' }).click();
+  await page.getByLabel('Add a model to Koe').selectOption({ label: 'koe-model' });
+  await page.getByRole('button', { name: 'Add to Koe' }).click();
   await expect(page.getByText('1. koe-model')).toBeVisible();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill(trip);

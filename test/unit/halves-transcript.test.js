@@ -10,7 +10,7 @@ import { blockFor, asksOrNotes, escapeTags, wrapNote, MAX_TEXT } from '../../src
 const SCOPE = 'trip-1';
 /** Koe's session nonce: only a note carrying it is Kokoro's. */
 const NONCE = 'n0nce42';
-const turnInfo = (/** @type {string} */ tag, /** @type {string} */ wake) => ({ role: tag === KOE_TAG ? 'koe-type' : 'main', level: 'off', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag, wake });
+const turnInfo = (/** @type {string} */ tag, /** @type {string} */ wake) => ({ role: tag === KOE_TAG ? 'koe' : 'main', level: 'off', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag, wake });
 
 /**
  * A log the two halves write together, applied live to a Kokoro and a Koe transcript as it is written.

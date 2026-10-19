@@ -367,7 +367,7 @@ test('a drop while the user speaks: their half-line is kept, marked ✂, and the
   }
 });
 
-test("a drop that can't resume: its model rests, Kokoro is told, and the text model after it finishes the answer through the speech pipeline", async () => {
+test("a drop that can't resume: its model rests, Kokoro is told, and the next model down Koe's list finishes the answer through the speech pipeline (the design, \"Failures\")", async () => {
   const k = await liveKit([{ said: 'Nepenthe is a restaurant high on the cliffs, and it has been there since 1949, with a view south along the coast.', audio: tone(5) }], {
     pace: 1,
     koe: { talk: { rules: [{ match: 'the live session dropped', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sorry, we got cut off: it has a view south along the coast.' } }, { name: 'sleep', input: {} }] } }] } },
@@ -387,30 +387,9 @@ test("a drop that can't resume: its model rests, Kokoro is told, and the text mo
     assert.match(JSON.stringify(k.sent['model-koet'][0].messages), /\[annai\] \\"the live session dropped while you were answering; finish briefly\\"/);
     assert.ok((await k.events(['halves'])).some((/** @type {any} */ e) => e.data.state === 'live-dropped'));
     assert.equal(k.agent.koeState, 'text');
-    assert.ok(k.llm.bench.until('m-live') > Date.now(), 'the live model rests');
-  } finally {
-    await k.done();
-  }
-});
-
-test("a drop that can't resume, with only the live model for talking: the typing list's model finishes the answer, through the speech pipeline (the design, \"Failures\")", async () => {
-  const k = await liveKit([{ said: 'Point Lobos is a state reserve just south of Carmel, known for its sea otters and its cypress groves.', audio: tone(5) }], {
-    pace: 1,
-    koe: { type: { rules: [{ match: 'the live session dropped', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sorry, we lost the line: sea otters and cypress groves.' } }, { name: 'sleep', input: {} }] } }] } },
-  });
-  try {
-    k.platform.streamSpeed = 1;
-    await k.voice.unlock();
-    k.agent.send('What is Point Lobos?');
-    await until(() => k.agent.live.view.name === 'speaking');
-    await new Promise((r) => setTimeout(r, 400));
-    await k.server.stop();
-    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
-    await k.agent.idle();
-    assert.equal(k.agent.koeState, 'text');
     const turn = (await k.events(['model.turn'])).find((/** @type {any} */ e) => e.data.tag === 'koe');
-    assert.deepEqual([turn?.data.role, turn?.data.answeredBy], ['koe-type', 'model-koe']);
-    assert.ok(k.platform.log.includes('play m-say:Sorry, we lost the line: sea otters and cypress groves.'));
+    assert.deepEqual([turn?.data.role, turn?.data.answeredBy], ['koe', 'model-koet']);
+    assert.ok(k.llm.bench.until('m-live') > Date.now(), 'the live model rests');
   } finally {
     await k.done();
   }

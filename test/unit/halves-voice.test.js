@@ -39,7 +39,7 @@ test('voice on: Koe speaks and listens with the speech pipeline; Kokoro never op
   assert.equal(micOpens(k), 2, "the tap's window, then the speak's");
   assert.equal(k.platform.log.at(-1), 'mic close');
   const turn = (await k.events(['model.turn'])).find((e) => e.data.tag === 'koe');
-  assert.equal(turn?.data.role, 'koe-talk');
+  assert.equal(turn?.data.role, 'koe');
   assert.equal((await k.events(['out.speak']))[0].data.voice, true);
   assert.ok(!kokoro.includes('listening') && !kokoro.includes('speaking') && !kokoro.includes('hearing'), JSON.stringify(kokoro));
   assert.equal(k.agent.koeState, 'text');
@@ -56,7 +56,7 @@ test("only the 'for typing' list set and voice on: that model talks, through the
   assert.deepEqual(plays(k), ["I'm checking."]);
   assert.ok(k.sent['model-koe']?.length >= 1);
   const turn = (await k.events(['model.turn'])).find((e) => e.data.tag === 'koe');
-  assert.deepEqual([turn?.data.role, turn?.data.answeredBy], ['koe-talk', 'model-koe']);
+  assert.deepEqual([turn?.data.role, turn?.data.answeredBy], ['koe', 'model-koe']);
   assert.match(k.sent['model-koe'][0].tail, /voice: on/);
 });
 
