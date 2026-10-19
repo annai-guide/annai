@@ -257,6 +257,16 @@ test('8a-2: installing a new version while the old one starts leaves the old one
   assert.equal((await host.installed()).slow.version, '1.1.0');
 });
 
+test("the plugins screen's rows say whether a plugin is a model provider's, and what it requires", async () => {
+  const { host } = await hostKit();
+  await host.install(KIT({ requires: [{ id: 'chat-completions', version: '^0' }] }));
+  await host.install(files({ 'SKILL.md': SKILL }));
+  const rows = await host.describe();
+  const kit = rows.find((r) => r.id === 'trail-kit');
+  assert.deepEqual([kit?.provider, kit?.requires], [true, [{ id: 'chat-completions', version: '^0' }]]);
+  assert.deepEqual([rows.find((r) => r.id === 'tide-pools')?.provider, rows.find((r) => r.id === 'tide-pools')?.requires], [false, []]);
+});
+
 test("a stored manifest with templates, from before providers, doesn't start, and says why", async () => {
   const { host, ws } = await hostKit();
   await host.install(KIT());

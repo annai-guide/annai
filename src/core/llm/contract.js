@@ -48,7 +48,8 @@
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
  *   model or the same one; what streamed before is void (only callRole sends it).
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
- *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin'} ErrorKind
+ *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing'} ErrorKind
+ *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one
  */
 
 /** What the user is told, by kind of error (spec §9.9). */
@@ -69,6 +70,7 @@ const PLAIN = Object.freeze({
   timeout: 'The model took too long to start answering.',
   cancelled: 'Stopped.',
   plugin: 'The plugin for this endpoint type failed.',
+  'type-missing': "This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.",
 });
 
 export class ProviderError extends Error {

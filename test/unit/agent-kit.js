@@ -10,7 +10,7 @@ import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
-import { readConfig, saveEndpoint, saveRoles } from '../../src/core/llm/config.js';
+import { readConfig, saveProvider, saveRoles } from '../../src/core/llm/config.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { readFile } from 'node:fs/promises';
@@ -48,12 +48,12 @@ export function fakeCodec(formats) {
 }
 
 /**
- * A memory-backed annai with the built-in file tools, one scripted endpoint and model per script
+ * A memory-backed annai with the built-in file tools, one scripted provider and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
  * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string } }} [opts]
- *   uploading: whether the main model's endpoint takes photos by upload
+ *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
@@ -74,33 +74,34 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   const requests = [];
   const watched = { ...type, run: (/** @type {any} */ c) => { requests.push(structuredClone(c.request)); return type.run(c); } };
   /** @type {any} */
-  const config = { endpoints: {}, models: {}, roles: { main: { models: [], level: 'medium' }, utility: { models: [], level: 'low' }, decide: { models: [], level: 'off' } } };
+  const config = { providers: {}, models: {}, roles: { main: { models: [], level: 'medium' }, utility: { models: [], level: 'low' }, decide: { models: [], level: 'off' } } };
+  /** A provider with one ability, and one model on it. @param {string} p @param {string} m @param {string} name @param {any} ability @param {any} user */
+  const add = (p, m, name, ability, user) => {
+    config.providers[p] = { id: p, plugin: 'provider-test', template: null, user: { name, abilities: { [ability.kind]: ability } }, created: 0 };
+    config.models[m] = { id: m, provider: p, ability: ability.kind, template: null, user, created: 0 };
+  };
   scripts.forEach((script, i) => {
-    config.endpoints[`ep-${i}`] = { id: `ep-${i}`, type: 'scripted', template: null, user: { name: `E${i}`, tunables: Array.isArray(script) ? { script } : script }, created: 0 };
-    config.models[`m-${i}`] = { id: `m-${i}`, endpoint: `ep-${i}`, template: null, user: { providerId: `model-${i}`, prices: { input: 1, output: 1 }, input: ['text', 'image'], ...(models[i] ?? {}) }, created: 0 };
+    add(`pv-${i}`, `m-${i}`, `E${i}`, { kind: 'chat', type: 'scripted', tunables: Array.isArray(script) ? { script } : script },
+      { providerId: `model-${i}`, prices: { input: 1, output: 1 }, input: ['text', 'image'], ...(models[i] ?? {}) });
     config.roles.main.models.push(`m-${i}`);
   });
   if (utility) {
-    config.endpoints['ep-u'] = { id: 'ep-u', type: 'scripted', template: null, user: { name: 'EU', tunables: { script: utility } }, created: 0 };
-    config.models['m-u'] = { id: 'm-u', endpoint: 'ep-u', template: null, user: { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] }, created: 0 };
+    add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] });
     config.roles.utility.models = ['m-u'];
   }
   if (v) {
-    config.endpoints['ep-say'] = { id: 'ep-say', type: 'say', template: null, user: { name: 'Say' }, created: 0 };
-    config.models['m-say'] = { id: 'm-say', endpoint: 'ep-say', template: null, user: { providerId: 'voice' }, created: 0 };
-    config.endpoints['ep-hear'] = { id: 'ep-hear', type: 'hear', template: null, user: { name: 'Hear' }, created: 0 };
-    config.models['m-hear'] = { id: 'm-hear', endpoint: 'ep-hear', template: null, user: { providerId: 'ears' }, created: 0 };
+    add('pv-say', 'm-say', 'Say', { kind: 'voice', type: 'say' }, { providerId: 'voice' });
+    add('pv-hear', 'm-hear', 'Hear', { kind: 'transcription', type: 'hear' }, { providerId: 'ears' });
     config.roles['speech-out'] = { models: ['m-say'], level: 'off' };
     config.roles['speech-in'] = { models: v.speechIn ?? ['send-audio', 'm-hear', 'dictation'], level: 'off' };
     if (v.decide) {
-      config.endpoints['ep-d'] = { id: 'ep-d', type: 'scripted', template: null, user: { name: 'ED', tunables: { script: v.decide } }, created: 0 };
-      config.models['m-d'] = { id: 'm-d', endpoint: 'ep-d', template: null, user: { providerId: 'model-d', prices: { input: 1, output: 1 }, input: ['text'] }, created: 0 };
+      add('pv-d', 'm-d', 'ED', { kind: 'chat', type: 'scripted', tunables: { script: v.decide } }, { providerId: 'model-d', prices: { input: 1, output: 1 }, input: ['text'] });
       config.roles.decide.models = ['m-d'];
     }
   }
 
   // Kept in the workspace like the app's, so what the Agent saves on a model (a photo limit) is what the next call reads.
-  for (const id of Object.keys(config.endpoints)) await saveEndpoint(ws, config.endpoints[id], Object.values(config.models).filter((/** @type {any} */ m) => m.endpoint === id));
+  for (const id of Object.keys(config.providers)) await saveProvider(ws, config.providers[id], Object.values(config.models).filter((/** @type {any} */ m) => m.provider === id));
   await saveRoles(ws, config.roles);
   /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
   const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);

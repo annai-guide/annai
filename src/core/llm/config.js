@@ -365,8 +365,8 @@ export async function getKey(store, providerId) {
 
 /** The ability a model belongs to, as calls see it, or null. @param {ModelConfig} cfg @param {string} modelId @returns {Ability | null} */
 export function abilityOf(cfg, modelId) {
-  const rec = cfg.models[modelId];
-  const p = rec ? cfg.providers[rec.provider] : undefined;
+  const rec = cfg.models?.[modelId];
+  const p = rec ? cfg.providers?.[rec.provider] : undefined;
   return (rec && p && providerOf(p).abilities[rec.ability]) || null;
 }
 

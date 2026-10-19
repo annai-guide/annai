@@ -81,10 +81,19 @@ export const ANOTHER_SRC = /** @type {ProviderSource} */ ({
   },
 });
 
-/** A protocol plugin: code that registers one endpoint type. @param {string} id @param {string} type @param {string} version */
-export const PROTO = (id, type, version) => ({
+/**
+ * A protocol plugin: code that registers one endpoint type, which answers "hi" with no network; with
+ * list, it lists models at <address>/models, sending the key as a bearer token.
+ * @param {string} id @param {string} type @param {string} version @param {{ list?: boolean, speech?: 'in' | 'out' }} [o]
+ */
+export const PROTO = (id, type, version, { list = false, speech } = {}) => ({
   'annai-plugin.json': JSON.stringify({ id, name: `Proto ${type}`, version, api: 1, entry: 'index.js', provides: { 'endpoint-type': [type] } }),
-  'index.js': `export function activate(annai) { return annai.providers.register({ type: '${type}', name: '${type}', run: async function* () { yield { type: 'text', text: 'hi' }; } }); }`,
+  'index.js': `export function activate(annai) { return annai.providers.register({ type: '${type}', name: '${type}',
+    ${speech === 'out' ? "speech: 'out', speechRequest: (c) => ({ url: c.endpoint.baseUrl + '/audio/speech', headers: c.endpoint.headers, body: '{}' }), readSpeech: async () => ({ data: new Uint8Array(4), mediaType: 'audio/mpeg' })," : ''}
+    ${speech === 'in' ? "speech: 'in', transcribeRequest: (c) => ({ url: c.endpoint.baseUrl + '/audio/transcriptions', headers: c.endpoint.headers, body: '{}' }), readTranscript: async () => ({ text: 'heard' })," : ''}
+    ${speech ? '' : "run: async function* (c) { yield { type: 'text', text: 'hi from ' + c.endpoint.id.split('/')[1] }; },"}
+    ${list ? "listRequest: ({ endpoint, key }) => ({ url: endpoint.baseUrl + '/models', headers: { ...endpoint.headers, ...(key ? { authorization: 'Bearer ' + key } : {}) } }), readList: (j) => j.data.map((m) => ({ providerId: m.id }))," : ''}
+  }); }`,
 });
 /** A data-only provider plugin needing requires, with a chat ability per type. @param {string} id @param {any[]} requires @param {string[]} types @param {string} [version] */
 export const PROVIDER = (id, requires, types, version = '1.0.0') => ({

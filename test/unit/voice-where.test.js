@@ -7,15 +7,16 @@ import { agentKit, until } from './agent-kit.js';
 /** A config with an audio main model on OpenRouter, a transcription model on Groq, a voice on OpenAI, and the stand-ins. @param {{ audio?: boolean, speechIn?: string[], speechOut?: string[] }} [o] */
 function config({ audio = true, speechIn = ['send-audio', 'asr', 'dictation'], speechOut = ['tts', 'browser-voice'] } = {}) {
   return /** @type {any} */ ({
-    endpoints: {
-      or: { id: 'or', type: 'chat-completions', template: null, user: { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' } },
-      gq: { id: 'gq', type: 'openai-transcription', template: null, user: { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1' } },
-      oa: { id: 'oa', type: 'openai-speech', template: null, user: { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' } },
+    providers: {
+      or: { id: 'or', plugin: 'provider-openrouter', template: null, user: { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', abilities: { chat: { kind: 'chat', type: 'chat-completions' } } } },
+      gq: { id: 'gq', plugin: 'provider-groq', template: null, user: { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', abilities: { transcription: { kind: 'transcription', type: 'openai-transcription' } } } },
+      // A voice at an address of its own: where her words go is that ability's host.
+      oa: { id: 'oa', plugin: 'provider-openai', template: null, user: { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', abilities: { voice: { kind: 'voice', type: 'openai-speech', baseUrl: 'https://voice.openai.example/v1' } } } },
     },
     models: {
-      main: { id: 'main', endpoint: 'or', template: null, user: { providerId: 'google/gemini-2.5-flash', input: audio ? ['text', 'audio'] : ['text'] } },
-      asr: { id: 'asr', endpoint: 'gq', template: null, user: { providerId: 'whisper-large-v3-turbo', name: 'Whisper on Groq' } },
-      tts: { id: 'tts', endpoint: 'oa', template: null, user: { providerId: 'gpt-4o-mini-tts', name: 'OpenAI voice' } },
+      main: { id: 'main', provider: 'or', ability: 'chat', template: null, user: { providerId: 'google/gemini-2.5-flash', input: audio ? ['text', 'audio'] : ['text'] } },
+      asr: { id: 'asr', provider: 'gq', ability: 'transcription', template: null, user: { providerId: 'whisper-large-v3-turbo', name: 'Whisper on Groq' } },
+      tts: { id: 'tts', provider: 'oa', ability: 'voice', template: null, user: { providerId: 'gpt-4o-mini-tts', name: 'OpenAI voice' } },
     },
     roles: { main: { models: ['main'], level: 'off' }, 'speech-in': { models: speechIn, level: 'off' }, 'speech-out': { models: speechOut, level: 'off' } },
   });
@@ -39,7 +40,7 @@ test('where what she says goes: a voice service, or the browser voice on this ph
   const online = { id: 'v2', name: 'Google US English', lang: 'en-US', local: false };
   const rows = whereSaid(config(), { browser: true, voice: local });
   assert.deepEqual(rows.map((r) => [r.name, r.where]), [
-    ['OpenAI voice', 'Her words go to OpenAI (api.openai.com), which sends back the sound.'],
+    ['OpenAI voice', 'Her words go to OpenAI (voice.openai.example), which sends back the sound.'],
     ['Browser voice', 'Spoken on this phone (Samantha): her words stay on it.'],
   ]);
   assert.equal(whereSaid(config(), { browser: true, voice: online })[1].where, "Her words go to the service behind Google US English (Google's), to be spoken; they aren't spoken on this phone.");

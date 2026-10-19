@@ -1,7 +1,8 @@
 import { SYS_SETTINGS } from '../scopes.js';
 
 /**
- * Photos uploaded to a provider's files API (spec §4.8): each request copy once, by endpoint.
+ * Photos uploaded to a provider's files API (spec §4.8): each request copy once, by endpoint
+ * ("<provider>/<ability>", since file ids belong to one protocol's files API).
  * Every upload expires after 48 hours; an id within an hour of that is uploaded again.
  * @typedef {import('../workspace.js').Workspace} Workspace
  */
@@ -40,6 +41,14 @@ export class Uploads {
     const map = await this.#load();
     if (!map[endpointId]) return;
     delete map[endpointId];
+    await this.ws.write(SYS_SETTINGS, PATH, map, { author: 'system' });
+  }
+  /** Forgets every upload to a provider's abilities, when it is removed (spec §4.9). @param {string} providerId */
+  async forgetProvider(providerId) {
+    const map = await this.#load();
+    const gone = Object.keys(map).filter((k) => k.startsWith(`${providerId}/`));
+    if (!gone.length) return;
+    for (const k of gone) delete map[k];
     await this.ws.write(SYS_SETTINGS, PATH, map, { author: 'system' });
   }
   /** @param {string} endpointId */
