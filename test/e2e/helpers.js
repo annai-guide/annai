@@ -116,8 +116,9 @@ export async function buildAndSave(page) {
  * A stand-in model server on its own port, for tests that need real CORS (WebKit can't route
  * requests from a page a service worker controls). A route is a reply, or a list of replies served
  * in turn (the last repeats); a reply may wait delayMs. bodies(path) gives what was posted: parsed JSON, or the bytes.
- * An empty request ({}: no model), as Another address sends to look for what a server offers, is refused with
- * 400 on a route it has, as a real server refuses it, and is neither served a reply nor kept among the bodies.
+ * An empty request (no model: {}, or only an output limit), as Another address sends to look for what a server
+ * offers, is refused with 400 on a route it has, as a real server refuses it, and is neither served a reply nor kept
+ * among the bodies.
  * @param {Record<string, { status: number, type: string, body: string | Buffer, delayMs?: number } | { status: number, type: string, body: string | Buffer, delayMs?: number }[]>} routes
  */
 export async function startModelServer(routes) {
@@ -150,7 +151,7 @@ export async function startModelServer(routes) {
         } catch {
           // not JSON (a multipart upload): kept as bytes
         }
-        if (route && body && typeof body === 'object' && !Array.isArray(body) && !(body instanceof Buffer) && !Object.keys(body).length) {
+        if (route && body && typeof body === 'object' && !Array.isArray(body) && !(body instanceof Buffer) && !('model' in body)) {
           res.writeHead(400, { ...cors, 'content-type': 'application/json' }).end('{"error":{"type":"invalid_request_error","message":"model: Field required"}}');
           return;
         }

@@ -15,10 +15,21 @@ const words = (e) => String(/** @type {any} */ (e)?.message ?? e);
 const after = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /**
- * One line of what was found: ✓ there, ✗ not there (or blocked), ? no telling.
- * @param {string} name @param {import('./probe.js').Finding} f
+ * The speech abilities: a server may answer their paths for every model it has (Ollama does), so a path there
+ * says only that; Test says whether a model there can listen or speak.
+ * @type {Record<string, { verb: string, noun: string }>}
  */
-export function findingLine(name, f) {
+const SPEECH = { transcription: { verb: 'listen', noun: 'transcription model' }, voice: { verb: 'speak', noun: 'voice' } };
+
+/**
+ * One line of what was found: ✓ there, ✗ not there (or blocked), ? no telling. speech: a speech path's, and
+ * whether it is added switched off. @param {string} name @param {import('./probe.js').Finding} f
+ * @param {{ verb: string, noun: string, off: boolean }} [speech]
+ */
+export function findingLine(name, f, speech) {
+  if (f.state === 'found' && speech) {
+    return `✓ ${name}: the path is there; Test says whether a model there can ${speech.verb}${f.why ? ` (${after(f.why).replace(/\.$/, '')})` : ''}${speech.off ? `. Its model list names no ${speech.noun}, so it's added switched off.` : ''}`;
+  }
   if (f.state === 'found') return `✓ ${name}${f.count !== undefined ? `: ${f.count} model${f.count === 1 ? '' : 's'}` : ''}${f.why ? `: ${after(f.why)}` : ''}`;
   if (f.state === 'absent') return `✗ ${name}: not found${f.why ? ` (${after(f.why).replace(/\.$/, '')})` : ''}`;
   if (f.state === 'blocked') return `✗ ${name}: blocked: it doesn't allow web apps (no CORS)`;
@@ -50,17 +61,21 @@ export function anotherAddress(io) {
       const status = h('p', { class: 'sub', role: 'status' });
       // A look is for the address and key it looked with: changing either, even while it runs, asks for another.
       let looks = 0;
-      const changed = () => {
+      let looked = false;
+      /** @param {string} [what] the field changed, said once there has been a look */
+      const changed = (what) => {
         looks += 1;
         results.replaceChildren();
-        status.textContent = '';
+        status.textContent = what && looked ? `The ${what} changed: look again.` : '';
       };
-      const address = h('input', { id: 'probe-address', type: 'url', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://…/v1', oninput: changed });
-      const key = h('input', { id: 'probe-key', type: 'password', autocomplete: 'off', placeholder: 'if it needs one', oninput: changed });
+      const address = h('input', { id: 'probe-address', type: 'url', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://…/v1', oninput: () => changed('address') });
+      const key = h('input', { id: 'probe-key', type: 'password', autocomplete: 'off', placeholder: 'if it needs one', oninput: () => changed('key') });
       /** @param {import('./probe.js').Probe} r @param {string | null} k */
       const show = (r, k) => {
         const host = new URL(r.base).host;
         const found = LOOKS.filter((l) => r.abilities[l.id].state === 'found');
+        // A speech path found is switched on only where the model list names a model for it.
+        const off = (/** @type {string} */ id) => id in SPEECH && !r.list.speech?.[/** @type {'transcription' | 'voice'} */ (id)];
         const add = h('button', {
           class: 'btn pri', type: 'button',
           onclick: async () => {
@@ -70,7 +85,7 @@ export function anotherAddress(io) {
               await ui.add({
                 name: host, baseUrl: r.base, key: k ?? undefined, roles: null,
                 // Anthropic Messages at the address without /v1, as that protocol adds /v1/messages itself.
-                abilities: Object.fromEntries(found.map((l) => [l.id, { on: true, ...(l.root && r.root !== r.base ? { baseUrl: r.root } : {}) }])),
+                abilities: Object.fromEntries(found.filter((l) => !off(l.id)).map((l) => [l.id, { on: true, ...(l.root && r.root !== r.base ? { baseUrl: r.root } : {}) }])),
               });
               status.textContent = `Added ${host}.`;
             } catch (e) {
@@ -83,8 +98,9 @@ export function anotherAddress(io) {
         results.replaceChildren(
           h('h3', { text: 'Found, at no cost' }),
           h('ul', { class: 'checks-result' },
-            ...[['Model list', r.list], ...LOOKS.map((l) => [l.name, r.abilities[l.id]])].map(([name, f]) => {
-              const line = findingLine(/** @type {string} */ (name), /** @type {any} */ (f));
+            h('li', { class: r.list.state === 'found' ? 'ok' : 'bad', text: findingLine('Model list', r.list) }),
+            ...LOOKS.map((l) => {
+              const line = findingLine(l.name, r.abilities[l.id], SPEECH[l.id] && { ...SPEECH[l.id], off: off(l.id) });
               return h('li', { class: line.startsWith('✓') ? 'ok' : 'bad', text: line });
             })),
           h('p', { class: 'sub', text: FREE }),
@@ -94,6 +110,7 @@ export function anotherAddress(io) {
         class: 'btn pri', type: 'button',
         onclick: async () => {
           look.disabled = true;
+          looked = true;
           changed();
           const mine = looks;
           status.textContent = 'Looking: the model list, then an empty request to each known path…';

@@ -24,8 +24,8 @@ test('a router that never streams, with a key: the list, Chat Completions and Re
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
     await expect(found(page)).toHaveText(['✓ Model list: 1 model', '✓ Chat Completions', '✓ OpenAI Responses', '✗ Anthropic Messages: not found', '✗ Transcription: not found', '✗ Voice: not found'], { timeout: 30_000 });
     await expect(page.getByText('Nothing here costs money; Test sends real requests.')).toBeVisible();
-    // Nothing that could generate was sent: no request carried a model.
-    expect(s.requests.filter((q) => q.method === 'POST').every((q) => JSON.stringify(q.body) === '{}')).toBe(true);
+    // Nothing that could generate was sent: no request carried a model or an input.
+    expect(s.requests.filter((q) => q.method === 'POST').every((q) => !['model', 'messages', 'input'].some((f) => f in q.body))).toBe(true);
 
     await page.getByRole('button', { name: 'Add with these' }).click();
     const host = new URL(s.origin).host;

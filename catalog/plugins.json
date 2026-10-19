@@ -90,14 +90,14 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 20527,
+      "size": 24229,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
         "annai-plugin.json": "a3dc5cc465983b527ed0f8400c231c3562ee0f554e7ddabeb91728e031f99f35",
-        "index.js": "3dde76f479ccf617977ab218a08a0a2ef86164a7d85ff6841b13de45812b36da",
-        "probe.js": "8b5b336749a70b7a88591556f857e0920227a26f819c0a0593755435cf36832c"
+        "index.js": "2946dce8de1cced71c350f08f5fbfc3572886264beac0e8d7d4a47f67f14cbc3",
+        "probe.js": "79c45207562253ab47bbdfe97da275fb0b175fc56c00d610f6ccb052dc5a1d79"
       }
     },
     {
