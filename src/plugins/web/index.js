@@ -137,7 +137,7 @@ export function activate(annai) {
       const why = [];
       const listed = annai.searchProvidersAsync ? await annai.searchProvidersAsync() : [];
       for (const p of listed.length ? listed : [jina]) {
-        // The key is for this plugin's own Jina alone, never another provider by that name (milestone 6).
+        // The key is for this plugin's own Jina alone, never another provider by that name.
         const k = p === jina ? await key() : null;
         if (p.needsKey && !k) {
           why.push(`${p.name} needs a key (Settings → Tools)`);

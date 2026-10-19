@@ -104,7 +104,7 @@ test('a protocol and a kind of backup place are handed keys: the owner is by ran
   assert.deepEqual(r.clashes('late').map((c) => [c.kind, c.owner, c.used, c.reserved, c.chosen]), [['endpoint-type', 'weather', false, true, false], ['storage-type', 'weather', false, true, false]]);
 });
 
-test('clashes lists what a plugin registers that it does not own, and who does; the owner sees the clash too', () => {
+test('clashes lists what a plugin registers that it does not own, and who does; a plugin a choice put aside sees it too', () => {
   const r = new Registry();
   r.setRules(rules({ 'search:jina': 'late' }, { 'tool:speak': 'only', 'ui:component:avatar': 'own' }));
   r.add('web', 'tool', tool('forecast', 'web'));
@@ -120,10 +120,7 @@ test('clashes lists what a plugin registers that it does not own, and who does; 
     { kind: 'ui:component', name: 'avatar', owner: 'annai', used: false, reserved: false, chosen: false },
     { kind: 'search', name: 'jina', owner: 'late', used: true, reserved: false, chosen: true },
   ]);
-  assert.deepEqual(r.clashes('web'), [
-    { kind: 'tool', name: 'forecast', owner: 'web', used: true, reserved: false, chosen: false },
-    { kind: 'search', name: 'jina', owner: 'late', used: false, reserved: false, chosen: true },
-  ]);
+  assert.deepEqual(r.clashes('web'), [{ kind: 'search', name: 'jina', owner: 'late', used: false, reserved: false, chosen: true }]);
   assert.deepEqual(r.clashes('nobody'), []);
 });
 

@@ -323,6 +323,16 @@ test("M6 fix: removing a plugin keeps the switches of names others still have (a
   assert.deepEqual((await readAppSettings(ws)).tools, { weather: false, recall: false, moon: false });
 });
 
+test("M6 fix: a package named annai, or a built-in's name, is refused however it is written: case, spaces, width, invisible characters", async () => {
+  const { host } = await hostKit();
+  await host.addBuiltin(builtinUrl('places', 'return () => {};'));
+  for (const name of ['an\u200bnai', 'ａｎｎａｉ', 'Annai ', ' built-in  PLACES', 'Built-in\u00ad places']) {
+    await assert.rejects(host.install(codePlugin('imp', 'return () => {};', { name })), /is annai's own name, or one of its parts'/, name);
+  }
+  // A look-alike from another alphabet isn't chased: it installs, and its pages show its id beside it.
+  await host.install(codePlugin('imp', 'return () => {};', { name: 'аnnai' }));
+});
+
 test("removing a plugin forgets the choices that named it", async () => {
   const { host, ws } = await hostKit();
   await host.install(codePlugin('look', "return annai.ui.component('avatar', { create: () => ({ el: {} }) });"));

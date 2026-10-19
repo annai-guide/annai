@@ -1,8 +1,7 @@
 import { h, twoStep } from '../dom.js';
 import { settingsForm, formFields } from '../settings-form.js';
 import { sourceLine, FULL_ACCESS, thingWords, ownerName } from './plugin-install.js';
-import { andList } from '../format.js';
-import { NAMED, KEYED } from '../../core/registry.js';
+import { KEYED } from '../../core/registry.js';
 import { pluginActions, stateOf, updateFor, removalWords } from './plugins.js';
 import { slotEntries } from '../slots.js';
 import { explainStorageFull } from '../storage-full.js';
@@ -48,34 +47,22 @@ function resetPart(ctx, r) {
     h('div', { class: 'acts' }, twoStep('Reset settings', 'Tap again to reset', () => resetSettings(ctx, r))));
 }
 
-/**
- * The names a plugin shares with others or with annai (milestone 6): Not used, with the switch; used by the
- * user's choice, with Undo, on both plugins' pages; or used, and who else has it. @param {any} ctx @param {string} id @param {any[]} rows
- */
+/** A plugin's Names: Not used, with the switch; used by the user's choice, with Undo (on both pages). @param {any} ctx @param {string} id @param {any[]} rows */
 function namesPart(ctx, id, rows) {
   const clashes = ctx.registry.clashes(id);
   if (!clashes.length) return null;
-  const named = (/** @type {string} */ p) => ownerName(rows, p);
   const act = (/** @type {string} */ label, /** @type {any} */ c, /** @type {string | null} */ to) => h('button', { class: 'btn', type: 'button', onclick: async () => {
     await ctx.plugins.choose(c.kind, c.name, to).catch((/** @type {any} */ e) => ctx.notices.toast(String(e?.message ?? e)));
     ctx.render();
   } }, label);
-  const line = (/** @type {import('../../core/registry.js').Clash} */ c) => {
-    const thing = thingWords(c.kind, c.name);
-    const Thing = thing[0].toUpperCase() + thing.slice(1);
-    if (c.chosen) return [`${Thing}: ${c.used ? 'this one' : `${named(c.owner)}'s`} is used (your choice).`, act('Undo', c, null)];
-    if (c.used) {
-      const others = new Set(ctx.registry.entries(c.kind, { all: true }).filter((/** @type {any} */ e) => e.pluginId !== id && NAMED[c.kind](e.item) === c.name).map((/** @type {any} */ e) => named(e.pluginId)));
-      return [`${Thing}: this one is used. Also from ${andList([...others])}, not used.`];
-    }
-    const not = `Not used: ${thing} is already provided by ${named(c.owner)}.`;
-    if (!c.reserved) return [not, act('Use this one instead', c, id)];
-    return [`${not} ${KEYED.has(c.kind) ? `It is handed the keys you give it, so annai doesn't switch it: remove ${named(c.owner)} to use this one.` : "annai keeps it for Shiori's own use."}`];
-  };
   return h('section', { class: 'panel', 'aria-label': 'Names' }, h('h2', { class: 'section', text: 'Names' }),
-    h('ul', { class: 'brings' }, ...clashes.map((c) => {
-      const [text, button] = line(c);
-      return h('li', {}, h('span', { text: String(text) }), button ? ' ' : null, button ?? null);
+    h('ul', { class: 'brings' }, ...clashes.map((/** @type {import('../../core/registry.js').Clash} */ c) => {
+      const thing = thingWords(c.kind, c.name);
+      const by = ownerName(rows, c.owner);
+      const text = c.chosen ? `${thing[0].toUpperCase()}${thing.slice(1)}: ${c.used ? 'this one' : `the one from ${by}`} is used (your choice).`
+        : `Not used: ${thing} is already provided by ${by}.${c.reserved ? ` ${KEYED.has(c.kind) ? `It is handed the keys you give it, so it isn't switched: remove ${by} to use this one.` : "annai keeps it for Shiori's own use."}` : ''}`;
+      const button = c.chosen ? act('Undo', c, null) : c.reserved ? null : act('Use this one instead', c, id);
+      return h('li', {}, h('span', { text }), button ? ' ' : null, button);
     })));
 }
 

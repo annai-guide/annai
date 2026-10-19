@@ -90,11 +90,7 @@ export class PluginHost {
   #known = {};
   /** @type {Record<string, string>} the user's choices of who owns a name, "<kind>:<name>" → plugin id (app settings' uses) */
   #uses = {};
-  /**
-   * Who owns a name (milestone 6): built-ins, then official plugins, then third-party ones by when they were first
-   * installed; the user's choice while it runs; the loop's own tools always annai's; annai's components and the names
-   * a built-in provides annai's until the user chooses. @type {import('./registry.js').Rules}
-   */
+  /** Who owns a name: ranks, the user's choices, annai's own names. @type {import('./registry.js').Rules} */
   #rules = {
     rank: (id) => (this.builtins.has(id) ? [0, 0, id] : [this.#known[id]?.source === 'official' ? 1 : 2, Number(this.#known[id]?.installed ?? 0), id]),
     choice: (kind, name) => this.#uses[`${kind}:${name}`],
@@ -137,7 +133,7 @@ export class PluginHost {
   /**
    * Each installed package's record, by id. kind: 'skill' for a bare skill (absent before milestone 8: a plugin); source: 'official', 'url'
    * or 'file' (before milestone 8, the file's name); skills: the skill names it claims; tools: its tools' names as of its last start;
-   * origins: where its provider sends keys, as installed; provides: what its manifest provides (milestone 6).
+   * origins: where its provider sends keys, as installed; provides: what its manifest provides.
    * @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string, kind?: string,
    *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], startFailures?: number, origins?: string[], provides?: Record<string, string[]> }>>}
    */
@@ -160,7 +156,7 @@ export class PluginHost {
   /**
    * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of annai's
    * own ids, not a package of the other kind. A skill name Shiori already has is no reason to refuse:
-   * the skill isn't used until the user chooses it (milestone 6). previous: the installed version this package would replace, and where it came from.
+   * the skill isn't used until the user chooses it. previous: the installed version this package would replace, and where it came from.
    * @param {Map<string, Uint8Array>} files
    * @returns {Promise<import('./packages.js').Package & { previous: { version: string, kind: string, added: import('./packages.js').Added, from: { source: string, file?: string, url?: string } } | null }>}
    */
@@ -170,6 +166,9 @@ export class PluginHost {
     if (this.builtins.has(id)) {
       throw new PluginError(id, pkg.kind === 'skill' ? 'is a name annai uses for one of its own parts, so a skill can\'t have it.' : 'has the same id as a plugin built into annai');
     }
+    // A name written as annai's, or a built-in's (look-alikes show their ids).
+    const plain = (/** @type {string} */ t) => String(t).normalize('NFKC').replace(/\p{Cf}/gu, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (['annai', ...[...this.builtins.values()].map((m) => m.name)].some((n) => plain(n) === plain(pkg.name))) throw new PluginError(id, `its name, "${pkg.name}", is annai's own name, or one of its parts'. Ask its author to rename it.`);
     const had = (await this.installed())[id];
     if (had && kindOfState(had) !== pkg.kind) throw new PluginError(id, `is installed already as a ${kindOfState(had)}. Remove it first.`);
     return { ...pkg, previous: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg), from: sourceOf(had) } : null };
@@ -217,12 +216,7 @@ export class PluginHost {
     return names;
   }
 
-  /**
-   * The user's choice of who owns a name (milestone 6), kept in the app settings as uses: a plugin's id, or null
-   * to undo it. It holds while that plugin runs and registers the name. A name annai keeps for itself, or a
-   * protocol or kind of backup place (handed keys), isn't chosen.
-   * @param {string} kind @param {string} name @param {string | null} pluginId
-   */
+  /** The user's choice of who owns a name (app settings' uses), or null to undo it. @param {string} kind @param {string} name @param {string | null} pluginId */
   async choose(kind, name, pluginId) {
     if (pluginId && !this.registry.choosable(kind, name)) {
       throw new PluginError(pluginId, KEYED.has(kind) ? `${name} is handed the keys you give it, so the one used is annai's own, else the one installed first.` : `${name} is annai's own, so no plugin replaces it.`);
@@ -249,13 +243,13 @@ export class PluginHost {
     await this.stop(id);
     const state = await this.installed();
     const before = state[id];
-    // annai's own plugin keeps its name: a package from elsewhere never replaces it (security review), nor annai's one from elsewhere (milestone 6).
+    // annai's own plugin keeps its name: a package from elsewhere never replaces it (security review), nor annai's one from elsewhere.
     if (before?.source === 'official' && source !== 'official') throw new PluginError(id, TAKEN);
     if (before && before.source !== 'official' && source === 'official') throw new PluginError(id, NOT_OWN);
     // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
     const shown = await this.#keepAddress(id, url);
     state[id] = {
-      // A new version of one that is off stays off (fix pass 8a-5); it keeps when it was first installed, its rank (milestone 6).
+      // A new version of one that is off stays off (fix pass 8a-5); it keeps when it was first installed, its rank.
       version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: before?.installed ?? this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
       // Where its provider sends keys, as agreed to now: an update is compared with this (security review).
       ...(pkg.provider ? { origins: descOrigins(pkg.provider) } : {}), ...(pkg.manifest.provides ? { provides: pkg.manifest.provides } : {}),
@@ -352,7 +346,7 @@ export class PluginHost {
 
   /**
    * Starts every enabled installed plugin, in rank order (official first, then by when each was first
-   * installed: milestone 6), and returns the ones that failed. A plugin that fails on MAX_START_FAILURES
+   * installed), and returns the ones that failed. A plugin that fails on MAX_START_FAILURES
    * launches in a row is turned off (disabled: true).
    * @returns {Promise<{ id: string, error: unknown, disabled: boolean }[]>}
    */
@@ -361,7 +355,7 @@ export class PluginHost {
     this.#uses = (await readAppSettings(this.ws)).uses ?? {};
     // An address kept raw before fix pass 8a-1 moves into its package's secret.
     for (const [id, s] of Object.entries(await this.installed())) if (s.source === 'url') await this.address(id).catch(() => {});
-    // What an official plugin provides is kept with its record (installed before that was, it is read now), so its names stay annai's while it is off.
+    // What an official plugin provides, kept with its record (read now for one installed before), stays annai's while it is off.
     for (const [id, s] of Object.entries(await this.installed())) {
       if (s.source === 'official' && !s.provides) await this.#updateState(id, { provides: (await this.manifestOf(id))?.provides ?? {} }).catch(() => {});
     }
@@ -385,11 +379,7 @@ export class PluginHost {
     return failures;
   }
 
-  /**
-   * At the first start with milestone 6, what the old rules used stays used, as the user's choice: a component, the last
-   * plugin's to start; another shared name, the first's (installed.json's order). Skills kept theirs by install time.
-   * @param {string[]} order installed.json's ids, as they started before
-   */
+  /** Once, what the old rules used stays used, as the user's choice: a component the last plugin's, another shared name the first's. @param {string[]} order installed.json's ids */
   async #keepOwners(order) {
     if ((await readAppSettings(this.ws)).ownersKept) return;
     const at = (/** @type {string} */ id) => (this.builtins.has(id) ? -1 : order.indexOf(id));
@@ -458,10 +448,7 @@ export class PluginHost {
     this.registry.setRules(this.#rules);
   }
 
-  /**
-   * Install fresh: a package from another place gets nothing the installed one keeps. Its settings with their history
-   * and its secrets go (Reset), and the user's choices for its names. @param {string} id
-   */
+  /** Install fresh: what the installed one keeps goes (Reset), and the choices naming it. @param {string} id */
   async forgetKept(id) {
     await this.reset(id);
     await this.#forgetChoices(id);
@@ -505,7 +492,7 @@ export class PluginHost {
       for (const s of await t.listSecretIds()) if (s.startsWith(`plugin:${id}:`)) await t.deleteSecret(s);
       await t.deleteSecret(ADDRESS(id));
     });
-    // Its tools' switches, but not one another still has (a built-in, the loop, a plugin on or off), and the choices that named it.
+    // Its tools' switches, but not one another still has, and the choices naming it.
     const switches = (await readAppSettings(this.ws)).tools ?? {};
     const others = (/** @type {string} */ t) => this.#rules.reserved('tool', t) === 'only' || this.registry.entries('tool', { all: true }).some((e) => e.item?.name === t)
       || Object.values(state).some((x) => x?.tools?.includes(t));
@@ -772,7 +759,7 @@ export class PluginHost {
     return Object.freeze({
       id,
       register: (/** @type {string} */ kind, /** @type {any} */ item) => {
-        // A kind with a call of its own is checked, and stamped with this plugin, there: never through here.
+        // A kind with a call of its own is checked and stamped there.
         const call = String(kind).startsWith('ui:') ? 'annai.ui' : Object.hasOwn(OWN_CALL, kind) ? OWN_CALL[kind] : '';
         if (call) throw new PluginError(id, `annai.register can't add ${kind}: use ${call}`);
         return registry.add(id, kind, item);

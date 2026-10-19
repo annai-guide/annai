@@ -24,7 +24,7 @@ test('a plugin whose tool name is taken: its page says Not used, naming who prov
     await expect(names.getByText('The tool weather: this one is used (your choice).')).toBeVisible();
     // The other's page says so too.
     await page.goto('/#/plugins/places');
-    await expect(page.getByRole('region', { name: 'Names' }).getByText("The tool weather: Clash tool's is used (your choice).")).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Names' }).getByText('The tool weather: the one from Clash tool (clash-tool) is used (your choice).')).toBeVisible();
     // Shiori uses it.
     await page.getByRole('navigation', { name: 'Shiori' }).getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill("What's the weather?");
@@ -33,10 +33,10 @@ test('a plugin whose tool name is taken: its page says Not used, naming who prov
     const [first, second] = llm.bodies('/b/v1/messages').map((b) => JSON.stringify(b));
     expect(first).toContain('The weather, from Clash tool.');
     expect(second).toContain('Clash weather: always sunny.');
-    // Undone on the other's page: Places is used again, and Clash tool's page says Not used.
+    // Undone on the other's page: Places is used again, with nothing to say, and Clash tool's page says Not used.
     await page.goto('/#/plugins/places');
     await page.getByRole('region', { name: 'Names' }).getByRole('button', { name: 'Undo' }).click();
-    await expect(page.getByRole('region', { name: 'Names' }).getByText('The tool weather: this one is used. Also from Clash tool, not used.')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Names' })).toHaveCount(0);
     await page.goto('/#/plugins/clash-tool');
     await expect(page.getByRole('region', { name: 'Names' }).getByText('Not used: the tool weather is already provided by Places tools.')).toBeVisible();
   } finally {

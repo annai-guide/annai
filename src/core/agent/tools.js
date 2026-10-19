@@ -4,7 +4,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 
 /**
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then each name's owner among running
- * plugins' (milestone 6); switches come from the app settings, so they cover any plugin's tool.
+ * plugins'; switches come from the app settings, so they cover any plugin's tool.
  * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, region?: number[], name?: string }} Media
  * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean, heard?: string[], endTurn?: boolean, told?: boolean }} ToolOutput
  *   heard: segments the user said in answer, which follow the result (spec §10.3); endTurn: the turn ends after this step (chatter heard, §10.4);
