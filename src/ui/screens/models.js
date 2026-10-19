@@ -5,7 +5,7 @@ import { addFromTemplate, templateUpdates, speechAdd } from '../../core/llm/temp
 import { renderEndpoint, messageOf } from './endpoint.js';
 import { renderModel } from './model.js';
 import { talkPanel } from '../talk-panel.js';
-import { needsCode, signInUrl, codeSignIn, exchange, connectOpenRouter } from '../openrouter.js';
+import { needsCode, signInUrl, codeSignIn, exchange, connectOpenRouter, signedIn, signingIn } from '../openrouter.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
@@ -155,19 +155,22 @@ function signInSection(ctx, cfg) {
     // On an iPhone Home Screen app: a real link, its address made before the tap, because Safari opens
     // a page only from the tap itself (the user, 2026-10-18: after an await, nothing opened).
     const link = h('a', { class: 'btn pri', target: '_blank', rel: 'noopener noreferrer', 'aria-disabled': 'true' }, 'Sign in with OpenRouter');
-    link.addEventListener('click', (e) => {
-      if (!link.getAttribute('href')) e.preventDefault();
-      else codeSlot.replaceChildren(pasteCode(ctx, status));
-    });
-    codeSignIn().then(({ url, pending }) => {
+    /** The address for the tap: the sign-in still waiting for its code, or a new one once that has expired. */
+    const prepare = () => codeSignIn().then(({ url, pending }) => {
       link.setAttribute('href', url);
       link.removeAttribute('aria-disabled');
-      if (pending) codeSlot.replaceChildren(pasteCode(ctx, status));
+      if (!pending) codeSlot.replaceChildren();
+      else if (!codeSlot.firstChild) codeSlot.replaceChildren(pasteCode(ctx, status, prepare));
     }, (e) => { status.textContent = messageOf(e); });
+    link.addEventListener('click', (e) => {
+      if (!link.getAttribute('href')) e.preventDefault();
+      else if (!codeSlot.firstChild) codeSlot.replaceChildren(pasteCode(ctx, status, prepare));
+    });
+    prepare();
     btn = link;
   } else {
     btn = h('button', {
-      class: 'btn pri', type: 'button',
+      class: 'btn pri', type: 'button', disabled: signingIn(),
       onclick: async () => {
         try {
           location.assign(await signInUrl({ callback: `${location.origin}/` }));
@@ -176,33 +179,39 @@ function signInSection(ctx, cfg) {
         }
       },
     }, 'Sign in with OpenRouter');
+    // Back from OpenRouter: the code is being traded for a key, and the endpoints set up.
+    if (signingIn()) status.textContent = 'Finishing the sign-in with OpenRouter…';
   }
   return h('section', { class: 'panel', 'aria-label': 'Sign in' },
     h('h2', { class: 'section', text: 'The quickest start' }),
-    h('p', { text: 'Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing.' }),
+    h('p', { text: "Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and a voice, which cost a little; the phone's own dictation and voice, which are free, stay first." }),
     h('div', { class: 'acts' }, btn),
     codeSlot,
     status);
 }
 
-/** On an iPhone Home Screen app: paste the code OpenRouter showed. @param {any} ctx @param {HTMLElement} status */
-function pasteCode(ctx, status) {
-  const code = h('input', { id: 'openrouter-code', autocomplete: 'off', autocapitalize: 'off' });
+/**
+ * On an iPhone Home Screen app: paste the code OpenRouter showed.
+ * @param {any} ctx @param {HTMLElement} status @param {() => Promise<void>} prepare makes the link's address again after a failure
+ */
+function pasteCode(ctx, status, prepare) {
+  const code = h('input', { id: 'openrouter-code', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
   const go = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
       go.disabled = true;
+      status.textContent = 'Connecting to OpenRouter…';
       try {
-        await connectOpenRouter(ctx, await exchange({ code: code.value, state: null, pasted: true }));
-        ctx.notices.toast('Signed in with OpenRouter.');
+        signedIn(ctx, await connectOpenRouter(ctx, await exchange({ code: code.value, state: null, pasted: true })));
         ctx.render();
       } catch (e) {
         status.textContent = messageOf(e);
         go.disabled = false;
+        await prepare(); // an expired sign-in makes way for a new one
       }
     },
   }, 'Connect');
   return h('div', {},
-    h('p', { class: 'sub', text: 'OpenRouter opens in Safari. Sign in there; it then shows a code. Copy it, come back to annai, and paste it here.' }),
+    h('p', { class: 'sub', text: 'OpenRouter opens in Safari. Sign in there; it then shows a code, which works for 10 minutes. Copy it, come back to annai, and paste it here.' }),
     h('div', { class: 'row' }, field('Paste the code OpenRouter showed you', code), h('div', { class: 'acts' }, go)));
 }

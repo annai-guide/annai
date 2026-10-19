@@ -1,4 +1,5 @@
 import { addFromTemplate } from '../core/llm/templates.js';
+import { readConfig } from '../core/llm/config.js';
 import { platform, isStandalone } from './platform.js';
 
 /**
@@ -6,7 +7,8 @@ import { platform, isStandalone } from './platform.js';
  * side. The browser goes to OpenRouter, which sends it back with a code; the code, with a secret
  * only this browser knows (the verifier), buys a key. An iPhone Home Screen app keeps its storage
  * apart from Safari, where OpenRouter would send it back, so there OpenRouter shows the code
- * and the user pastes it instead.
+ * and the user pastes it instead. Sign-in also adds OpenRouter's transcription and voice, behind
+ * the free ones (the user, 2026-10-18).
  * @typedef {{ getItem(k: string): string | null, setItem(k: string, v: string): void, removeItem(k: string): void }} KeyValue
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  */
@@ -14,6 +16,12 @@ export const AUTH_URL = 'https://openrouter.ai/auth';
 export const KEYS_URL = 'https://openrouter.ai/api/v1/auth/keys';
 const SLOT = 'annai.openrouter';
 const MAX_AGE = 15 * 60_000;
+/** OpenRouter's transcription and voice, which sign-in adds too. */
+export const VOICE_TEMPLATES = Object.freeze(['openrouter-transcription', 'openrouter-speech']);
+const AGAIN = 'Tap Sign in with OpenRouter to start again.';
+/** A sign-in that came back is being finished: the Models screen says so. */
+let finishing = false;
+export const signingIn = () => finishing;
 
 /** Whether sign-in must show a code to paste, rather than come back to annai by itself. */
 export function needsCode() {
@@ -31,7 +39,8 @@ export async function signInUrl({ callback, storage = localStorage, now = Date.n
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
   const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
   const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
-  const params = new URLSearchParams({ code_challenge: challenge, code_challenge_method: 'S256' });
+  // key_label names the key in the user's OpenRouter keys, where it can be found and revoked.
+  const params = new URLSearchParams({ code_challenge: challenge, code_challenge_method: 'S256', key_label: 'annai' });
   if (callback) {
     params.set('callback_url', callback);
     params.set('state', state);
@@ -76,6 +85,7 @@ export function callbackFrom(search) {
  * @returns {Promise<string>} the key
  */
 export async function exchange({ code, state, pasted = false, fetch: get = (url, init) => fetch(url, init), storage = localStorage, now = Date.now() }) {
+  if (!code.trim()) throw new Error('Paste the code OpenRouter showed you, then tap Connect.');
   /** @type {any} */
   let saved = null;
   try {
@@ -83,7 +93,11 @@ export async function exchange({ code, state, pasted = false, fetch: get = (url,
   } catch {
     saved = null;
   }
-  if (!saved || now - saved.at > MAX_AGE) throw new Error('This sign-in has expired. Start it again from Settings → Models.');
+  if (!saved) throw new Error('annai has no sign-in waiting for this code: it was used already, or began in another browser.');
+  if (now - saved.at > MAX_AGE) {
+    storage.removeItem(SLOT); // so the next tap starts a new one
+    throw new Error(`This sign-in has expired. ${AGAIN}`);
+  }
   const ours = pasted ? saved.mode === 'code' : saved.mode === 'callback' && typeof state === 'string' && state === saved.state;
   if (!ours) throw new Error("This sign-in didn't start in this browser, so annai ignored it.");
   /** @type {Response} */
@@ -97,30 +111,74 @@ export async function exchange({ code, state, pasted = false, fetch: get = (url,
   } catch {
     throw new Error("annai couldn't reach OpenRouter. Check the connection and try again.");
   }
-  if (!res.ok) throw new Error(`OpenRouter didn't accept the sign-in (HTTP ${res.status}). Start it again from Settings → Models.`);
+  // 403: the code is wrong, used or older than 10 minutes. The same sign-in takes a new code.
+  if (res.status === 403) throw new Error("OpenRouter didn't take the code: a code works once, for 10 minutes. Tap Sign in with OpenRouter to get a new one.");
+  if (!res.ok) throw new Error(`OpenRouter didn't accept the sign-in (HTTP ${res.status}). ${AGAIN}`);
   const body = await res.json().catch(() => ({}));
-  if (typeof body?.key !== 'string' || !body.key) throw new Error("OpenRouter didn't send a key. Start the sign-in again.");
+  if (typeof body?.key !== 'string' || !body.key) throw new Error(`OpenRouter didn't send a key. ${AGAIN}`);
   storage.removeItem(SLOT);
   return body.key;
 }
 
 /**
  * Sets annai up with an OpenRouter key: the OpenRouter endpoint from annai's template, its key,
- * and free models in the roles that are still empty, so trying annai costs nothing.
- * @param {any} ctx llm, ws and store @param {string} key @returns {Promise<string>} the endpoint's id
+ * and free models in the roles that are still empty, so trying annai costs nothing; then its voice.
+ * @param {any} ctx llm, ws and store @param {string} key
+ * @returns {Promise<{ id: string, voice: string[] | null }>} the endpoint's id; the voice templates added, null if that failed
  */
 export async function connectOpenRouter(ctx, key) {
   const catalog = await ctx.llm.templates();
   const tpl = catalog.endpoints.find((/** @type {any} */ t) => t.id === 'openrouter');
   if (!tpl) throw new Error("annai's OpenRouter template isn't available yet. Connect to the internet and try again.");
   await ctx.llm.ensureType(tpl.type);
-  return addFromTemplate(ctx, tpl, { key, roles: 'free' });
+  const id = await addFromTemplate(ctx, tpl, { key, roles: 'free' });
+  // Chat is enough to start: the voice can be added later from the endpoint's page.
+  const voice = await addOpenRouterVoice(ctx, key, catalog).catch(() => null);
+  return { id, voice };
+}
+
+/** The voice templates annai has that no endpoint was made from yet. @param {import('../core/llm/config.js').ModelConfig} cfg @param {{ endpoints: any[] }} catalog */
+export function voiceMissing(cfg, catalog) {
+  const have = new Set(Object.values(cfg.endpoints).map((e) => e.template?.id));
+  return VOICE_TEMPLATES.filter((id) => !have.has(id) && catalog.endpoints.some((t) => t.id === id));
+}
+
+/**
+ * Adds OpenRouter's transcription and voice, each endpoint with its own copy of the key, their models
+ * at the end of the speech lists, so nothing that costs money comes first.
+ * @param {any} ctx llm, ws and store @param {string} key @param {{ endpoints: any[] }} [catalog]
+ * @returns {Promise<string[]>} the templates added
+ */
+export async function addOpenRouterVoice(ctx, key, catalog) {
+  if (!key) throw new Error("This endpoint has no key yet. Save OpenRouter's key on it first.");
+  const cat = catalog ?? await ctx.llm.templates();
+  /** @type {string[]} */
+  const added = [];
+  for (const id of voiceMissing(await readConfig(ctx.ws), cat)) {
+    const tpl = cat.endpoints.find((t) => t.id === id);
+    await ctx.llm.ensureType(tpl.type);
+    await addFromTemplate(ctx, tpl, { key, roles: 'recommended', behind: true });
+    added.push(id);
+  }
+  return added;
+}
+
+/** Where OpenRouter's voice goes, and how to use it. */
+export const BEHIND = "behind the phone's own dictation and the browser voice, which are free. Those from OpenRouter cost a little, from credits you buy there: to use them first, move them up under Roles";
+
+/** Says on a card what sign-in set up. @param {any} ctx @param {{ voice: string[] | null }} done */
+export function signedIn(ctx, { voice }) {
+  const start = 'Shiori thinks with free models to start, so trying annai costs nothing.';
+  const body = voice === null ? `${start} annai couldn't add OpenRouter's voice just now: the OpenRouter endpoint's page can.`
+    : voice.length ? `${start} annai also added OpenRouter's transcription and a voice, ${BEHIND}.` : `${start} You can change them under Roles.`;
+  ctx.notices.card({ tone: 'ok', title: 'Signed in with OpenRouter', body });
 }
 
 /**
  * Finishes a sign-in when this page load is OpenRouter's callback: takes the code out of the
- * address, trades it for a key, sets up the endpoint, and says how it went.
- * @param {any} ctx llm, ws, store and notices
+ * address, shows Models (which says it is finishing), trades the code for a key, sets up the
+ * endpoints, and says how it went.
+ * @param {any} ctx llm, ws, store, notices and render
  * @param {{ fetch?: Fetch, storage?: KeyValue, location?: { search: string, pathname: string }, history?: { replaceState: History['replaceState'] } }} [env]
  * @returns {Promise<boolean>} whether this page load was a callback
  */
@@ -129,12 +187,15 @@ export async function finishSignIn(ctx, env = {}) {
   const cb = callbackFrom(loc.search);
   if (!cb) return false;
   (env.history ?? history).replaceState(null, '', `${loc.pathname}#/models`);
+  finishing = true;
   try {
+    ctx.render?.();
     const key = await exchange({ code: cb.code, state: cb.state, fetch: env.fetch, storage: env.storage });
-    await connectOpenRouter(ctx, key);
-    ctx.notices.toast('Signed in with OpenRouter. annai picked free models to start; you can change them under Roles.');
+    signedIn(ctx, await connectOpenRouter(ctx, key));
   } catch (e) {
     ctx.notices.card({ tone: 'warn', title: "Signing in with OpenRouter didn't finish", body: String(/** @type {any} */ (e)?.message ?? e) });
+  } finally {
+    finishing = false;
   }
   return true;
 }

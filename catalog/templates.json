@@ -104,6 +104,27 @@
     { "id": "custom-anthropic", "version": 1, "type": "anthropic-messages", "name": "Other: Anthropic Messages", "baseUrl": "https://api.anthropic.com" },
     { "id": "custom-openai-responses", "version": 1, "type": "openai-responses", "name": "Other: OpenAI Responses", "baseUrl": "",
       "note": "For servers that speak OpenAI's Responses API. If one refuses requests, try \"phase\": false, \"nowRole\": \"user\" or \"encryptedReasoning\": false in the tunables. Give a reasoning model its Reasoning levels on its page; without them it thinks without showing progress, and may run past the time limit." },
+    { "id": "openrouter-transcription", "version": 1, "type": "openai-transcription", "name": "OpenRouter: transcription",
+      "baseUrl": "https://openrouter.ai/api/v1", "headers": { "HTTP-Referer": "https://annai.guide", "X-Title": "annai" },
+      "tunables": { "listPath": "/models?output_modalities=transcription" }, "keyUrl": "https://openrouter.ai/settings/keys", "signIn": "openrouter",
+      "note": "Turns what you say into text, for models that don't take audio. Sign in with OpenRouter adds it with the same key. None of these models is free: they need credits you buy at OpenRouter. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.",
+      "models": [
+        { "providerId": "openai/whisper-large-v3-turbo", "name": "OpenAI: Whisper Large V3 Turbo", "prices": { "perMinute": 0.0002 } },
+        { "providerId": "openai/whisper-large-v3", "name": "OpenAI: Whisper Large V3", "prices": { "perMinute": 0.00045 } },
+        { "providerId": "x-ai/grok-stt-1.0", "name": "SpaceXAI: Grok STT 1.0", "prices": { "perMinute": 0.00167 } },
+        { "providerId": "mistralai/voxtral-mini-transcribe", "name": "Mistral: Voxtral Mini Transcribe", "prices": { "perMinute": 0.003 } }
+      ],
+      "roles": { "recommended": { "speech-in": ["openai/whisper-large-v3-turbo"] } } },
+    { "id": "openrouter-speech", "version": 1, "type": "openai-speech", "name": "OpenRouter: voice",
+      "baseUrl": "https://openrouter.ai/api/v1", "headers": { "HTTP-Referer": "https://annai.guide", "X-Title": "annai" },
+      "tunables": { "listPath": "/models?output_modalities=speech" }, "keyUrl": "https://openrouter.ai/settings/keys", "signIn": "openrouter",
+      "note": "Shiori's voice. Sign in with OpenRouter adds it with the same key. None of these voices is free: they need credits you buy at OpenRouter. Each model has voices of its own, listed on its page at openrouter.ai: put one in the model's Voice. OpenRouter sends MP3 or PCM only.",
+      "models": [
+        { "providerId": "x-ai/grok-voice-tts-1.0", "name": "SpaceXAI: Grok Voice TTS 1.0 (Ara)", "tunables": { "voice": "ara" }, "prices": { "perMillionChars": 15 } },
+        { "providerId": "mistralai/voxtral-mini-tts-2603", "name": "Mistral: Voxtral Mini TTS (Jane)", "tunables": { "voice": "gb_jane_neutral" }, "prices": { "perMillionChars": 16 } },
+        { "providerId": "hexgrad/kokoro-82m", "name": "hexgrad: Kokoro 82M (Heart, English)", "tunables": { "voice": "af_heart" }, "prices": { "perMillionChars": 0.62 } }
+      ],
+      "roles": { "recommended": { "speech-out": ["x-ai/grok-voice-tts-1.0"] } } },
     { "id": "openai-transcription", "version": 1, "type": "openai-transcription", "name": "OpenAI: transcription", "baseUrl": "https://api.openai.com/v1",
       "keyUrl": "https://platform.openai.com/api-keys", "note": "Turns what you say into text, for models that don't take audio.",
       "models": [
