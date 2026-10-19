@@ -8,7 +8,8 @@ import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins } from './official.js';
-import { PluginError, NOT_OWN, TURN_ON } from '../registry.js';
+import { PluginError, NOT_OWN, TURN_ON, isPluginBug } from '../registry.js';
+import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
@@ -64,8 +65,9 @@ export function createLlm({
     const type = types().get(ability.type);
     if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`);
     const secret = await getKey(store, pRec.id);
-    const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), secret, provider.keyHeader);
-    return { rec, type, endpoint, model: modelOf(rec), key, secret };
+    const set = adjusted(plugins.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables));
+    const { endpoint, key } = sendKey(set.endpoint, secret, provider.keyHeader);
+    return { rec, type: set.type, endpoint, model: modelOf(rec), key, secret };
   };
   /**
    * A speech model with what calling it needs, and its role's time limit (spec §9.6: configurable).
@@ -116,11 +118,12 @@ export function createLlm({
     /**
      * A provider plugin, running, with what it requires (spec §5.3): an official one from annai's
      * catalog, hash-checked, with no question; a third-party one must be installed already. official:
-     * it must be annai's own (sign-in, the catalog's Add): a copy from elsewhere with that id is never
+     * it must be annai's own (the featured start, the catalog's Add): a copy from elsewhere with that id is never
      * used (security review), and annai's own whose files no longer match the catalog is fetched again.
-     * @param {string} plugin @param {{ official?: boolean }} [o] @returns {Promise<import('./providers.js').ProviderSource>}
+     * tap: the user's, so one annai switched off after errors may start again (§5.5).
+     * @param {string} plugin @param {{ official?: boolean, tap?: boolean }} [o] @returns {Promise<import('./providers.js').ProviderSource>}
      */
-    async installProvider(plugin, { official = false } = {}) {
+    async installProvider(plugin, { official = false, tap = true } = {}) {
       await ready;
       const running = () => providers().find((p) => p.plugin === plugin);
       const state = (await plugins.installed())[plugin];
@@ -135,23 +138,24 @@ export function createLlm({
         if (!entry || entry.version !== state.version || (await plugins.verifyOfficial(plugin, entry))) return /** @type {import('./providers.js').ProviderSource} */ (running());
       }
       await pluginsCanLoad();
-      await addFromCatalog(plugins, plugin, { fetch: get, base, tap: true });
+      await addFromCatalog(plugins, plugin, { fetch: get, base, tap });
       const src = running();
       if (!src) throw new PluginError(plugin, "didn't provide a model provider.");
       return src;
     },
     /**
      * Adds a provider (spec §9.8): its plugin and what it requires, the protocols of the abilities
-     * that start on, then the provider with its models and one key.
-     * @param {string} plugin @param {import('./providers.js').AddOptions & { official?: boolean }} [o] official: it must be annai's own
-     * @returns {Promise<string>} the provider's id
+     * that start on, then the provider with its models and one key: a function giving it is called once
+     * all that is in, so a sign-in's key is never lost to a failed install.
+     * @param {string} plugin @param {Omit<import('./providers.js').AddOptions, 'key'> & { key?: string | null | (() => Promise<string>), official?: boolean }} [o]
+     *   official: it must be annai's own @returns {Promise<string>} the provider's id
      */
-    async addProvider(plugin, { official, ...o } = {}) {
+    async addProvider(plugin, { official, key, ...o } = {}) {
       const had = (await plugins.installed())[plugin];
       try {
         const src = await service.installProvider(plugin, { official });
         for (const [id, a] of Object.entries(src.provider.abilities)) if (o.abilities?.[id]?.on ?? a.on !== false) await ensure(a.type);
-        return await addProviderRecords({ ws, store }, src, o);
+        return await addProviderRecords({ ws, store }, src, { ...o, key: typeof key === 'function' ? await key() : key });
       } catch (e) {
         // A failed add leaves no provider plugin it brought without a provider, nor what that alone required (fix pass).
         const cfg = await readConfig(ws).catch(() => null);
@@ -340,39 +344,61 @@ export function createLlm({
       const ability = provider?.abilities[abilityId];
       if (!rec || !provider || !ability) throw new ProviderError('not-found', 'That provider or ability no longer exists.');
       await ensure(ability.type);
-      const type = /** @type {import('./contract.js').EndpointType} */ (types().get(ability.type));
-      const { endpoint, key } = sendKey(endpointOf(rec, abilityId, type.tunables), await getKey(store, providerId), provider.keyHeader);
-      if (type.list) return type.list({ endpoint, key });
-      if (!type.listRequest || !type.readList) throw new ProviderError('bad-request', `${ability.name} can't list its models here. Add them by id.`);
-      const r = type.listRequest({ endpoint, key });
-      sameOrigin(endpoint, r.url); // the key goes only to the ability's address
-      /** @type {Response} */
-      let res;
-      try {
-        res = await get(r.url, { headers: r.headers, redirect: 'manual' });
-      } catch (e) {
-        // In words, by host, never the browser's own ("Load failed"): a server that answers a check made
-        // without the browser's access rules is there, but doesn't allow web apps (spec §9.8).
-        let host = 'this address';
+      const was = /** @type {import('./contract.js').EndpointType} */ (types().get(ability.type));
+      const set = adjusted(plugins.registry, rec.plugin, was, endpointOf(rec, abilityId, was.tunables));
+      const { type } = set;
+      const { endpoint, key } = sendKey(set.endpoint, await getKey(store, providerId), provider.keyHeader);
+      /**
+       * A list request: to the ability's address only, never following a redirect (fix pass). Failing, it says in
+       * words, by host, whether the server doesn't allow web apps or can't be reached (spec §9.8). @param {string} url @param {RequestInit} [init]
+       */
+      const send = async (url, init = {}) => {
+        sameOrigin(endpoint, url);
+        /** @type {Response} */
+        let res;
         try {
-          host = new URL(r.url).host;
-        } catch {
-          // not an address: the words say "this address"
+          res = await get(url, { ...init, redirect: 'manual' });
+        } catch (e) {
+          let host = 'this address';
+          try {
+            host = new URL(url).host;
+          } catch {
+            // not an address: the words say "this address"
+          }
+          if (await probe(url)) {
+            throw new ProviderError('blocked', `${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.`, { cause: e });
+          }
+          throw new ProviderError('unreachable', `annai couldn't reach ${host}. Check the address and your connection.`, { cause: e });
         }
-        if (await probe(r.url)) {
-          throw new ProviderError('blocked', `${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.`, { cause: e });
+        noRedirect(res, endpoint);
+        return res;
+      };
+      /** The protocol's own list. @returns {Promise<import('./contract.js').ListedModel[]>} */
+      const protocolList = async () => {
+        if (type.list) return type.list({ endpoint, key });
+        if (!type.listRequest || !type.readList) throw new ProviderError('bad-request', `${ability.name} can't list its models here. Add them by id.`);
+        const r = type.listRequest({ endpoint, key });
+        const res = await send(r.url, { headers: r.headers });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          const err = errorFromResponse(res.status, text, res.headers);
+          const sharper = type.classify?.(res.status, text);
+          if (sharper) err.kind = /** @type {any} */ (sharper);
+          throw err;
         }
-        throw new ProviderError('unreachable', `annai couldn't reach ${host}. Check the address and your connection.`, { cause: e });
+        return type.readList(await res.json());
+      };
+      // A provider plugin's own list, in the protocol's place (decision 22); a bug in it counts against it.
+      const list = setupOf(plugins.registry, rec.plugin)?.list;
+      if (!list) return protocolList();
+      try {
+        const got = await list({ ability: abilityId, endpoint, key, fetch: send, protocolList });
+        return (Array.isArray(got) ? got : []).filter((m) => typeof m?.providerId === 'string' && m.providerId);
+      } catch (e) {
+        if (!isPluginBug(e)) throw e;
+        plugins.registry.fail(rec.plugin, 'provider list', e);
+        return protocolList();
       }
-      noRedirect(res, endpoint);
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        const err = errorFromResponse(res.status, text, res.headers);
-        const sharper = type.classify?.(res.status, text);
-        if (sharper) err.kind = sharper;
-        throw err;
-      }
-      return type.readList(await res.json());
     },
   };
   return service;

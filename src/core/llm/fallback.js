@@ -3,6 +3,7 @@ import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
+import { adjusted } from './setup.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -175,10 +176,12 @@ export async function callRole(c) {
       continue;
     }
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
-    // first, whatever the header's name, as the protocol then gets none to tell it (fix pass).
+    // first, whatever the header's name, as the protocol then gets none to tell it (fix pass). Its plugin's
+    // setup may add headers and sharpen error kinds (decision 15).
     const own = await c.keyFor(pRec.id);
     if (own) c.trace?.secret(own);
-    const { endpoint, key } = sendKey(endpointOf(pRec, rec.ability, type.tunables), own, provider.keyHeader);
+    const set = adjusted(c.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables));
+    const { endpoint, key } = sendKey(set.endpoint, own, provider.keyHeader);
     let repairs = 0;
     let uploadRetries = 0;
     for (let retry = 0; ; retry++) {
@@ -197,7 +200,7 @@ export async function callRole(c) {
       const started = now();
       try {
         const reply = await callOnce({
-          type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
+          type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
           trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads,
         });
         usage = addUsage(usage, reply.usage);
