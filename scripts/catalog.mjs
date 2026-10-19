@@ -44,7 +44,8 @@ for (const e of (await readdir(dir, { withFileTypes: true })).filter((x) => x.is
     size += (await stat(join(base, f))).size;
   }
   const facts = catalogFacts(manifest, { size });
-  plugins.push({ ...facts, provides: manifest.provides ?? {}, files: hashes });
+  // featured: the one-tap start's provider (spec §9.8); it counts only here, in annai's own catalog.
+  plugins.push({ ...facts, ...(manifest.featured ? { featured: manifest.featured } : {}), provides: manifest.provides ?? {}, files: hashes });
 }
 
 // What a provider needs is in the catalog, in range, and gives each of its abilities' types.
