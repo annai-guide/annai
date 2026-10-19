@@ -102,6 +102,20 @@ test('build: the tail joins the last user message, or follows tool results; docu
   assert.equal(type.tail, true);
 });
 
+test('build: enforceToolCall (off unless a provider turns it on) sends a forced tool as tool_choice "required" when it is the one tool offered; a request offering several tools, or forcing none, is unchanged (the user, 2026-10-19)', () => {
+  assert.equal(type.tunables.enforceToolCall, false);
+  const one = [{ name: 'decide', description: 'Pick one.', input: { type: 'object' } }];
+  const two = [...one, { name: 'look', description: 'Look.', input: { type: 'object' } }];
+  const on = { ...type.tunables, enforceToolCall: true };
+  const body = (/** @type {any} */ tunables, /** @type {any} */ request) => type.build(spec({ tunables, request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }], ...request } })).body;
+  assert.equal(body(on, { tools: one, toolChoice: 'decide' }).tool_choice, 'required');
+  assert.deepEqual(body(type.tunables, { tools: one, toolChoice: 'decide' }).tool_choice, { type: 'function', function: { name: 'decide' } });
+  assert.deepEqual(body(on, { tools: two, toolChoice: 'decide' }).tool_choice, { type: 'function', function: { name: 'decide' } });
+  assert.equal('tool_choice' in body(on, { tools: two }), false);
+  assert.equal('tool_choice' in body(on, { tools: one }), false);
+  assert.deepEqual(body(on, { tools: two }).tools, body(type.tunables, { tools: two }).tools);
+});
+
 test('read: the first token’s alternatives, once', async () => {
   const events = await read(await fixture('logprobs.sse'));
   assert.deepEqual(events.filter((e) => e.type === 'logprobs'), [{ type: 'logprobs', top: [{ token: 'B', logprob: -0.05 }, { token: 'A', logprob: -3.2 }] }]);

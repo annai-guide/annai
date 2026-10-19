@@ -25,6 +25,9 @@
       "chat": {
         "kind": "chat",
         "type": "chat-completions",
+        "tunables": {
+          "enforceToolCall": true
+        },
         "modelDefaults": {
           "reasoning": {
             "off": {
