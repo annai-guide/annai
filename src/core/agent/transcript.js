@@ -165,13 +165,16 @@ export class Transcript {
       // What the microphone heard (spec §10.3); its words come with it (dictation) or later (heard.text).
       /** @type {Part} */
       const speech = { type: 'speech', id: d.id, ...(typeof d.text === 'string' ? { text: d.text } : {}), ...(d.clip ? { clip: d.clip } : {}) };
-      if (d.answer) {
-        this.#heard.set(d.id, speech); // an answer: part of its tool's result
+      // Heard by this half: an answer is part of its call's result. Heard by the other: a line (Kokoro hears all).
+      const own = this.half === 'one' || this.#mine(d);
+      if (d.answer && own) {
+        this.#heard.set(d.id, speech);
         return;
       }
-      const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile ? '[heard while you were thinking]' : '[heard]';
+      const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
-      if (!d.dismissed) {
+      // Koe answers what it heard: Kokoro owes nothing for it.
+      if (!d.dismissed && (own || this.half === 'koe')) {
         this.unanswered = true;
         this.waiting = 'user';
       }
