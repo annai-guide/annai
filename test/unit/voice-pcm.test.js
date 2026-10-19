@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { encodeWav, decodeWav, wavSeconds, resample, SEND_RATE } from '../../src/core/voice/pcm.js';
+import { encodeWav, decodeWav, wavSeconds, resample, SEND_RATE, StreamResampler } from '../../src/core/voice/pcm.js';
 import { clip, RATE } from './voice-kit.js';
 
 test('WAV round-trips as 16-bit mono, and says how long it is', () => {
@@ -38,4 +38,36 @@ test('a file that is not a 16-bit WAV is refused in plain words', () => {
   const float = encodeWav(Float32Array.of(0.1), 8000);
   new DataView(float.buffer).setUint16(34, 32, true);
   assert.throws(() => decodeWav(float), /16-bit/);
+});
+
+/** A tone, s seconds at fs. @param {number} f @param {number} fs @param {number} s */
+const tone = (f, fs, s) => Float32Array.from({ length: fs * s }, (_, i) => Math.sin((2 * Math.PI * f * i) / fs));
+/** A tone's level in dB in x (1 = 0 dB), after the filter has settled. @param {Float32Array} x @param {number} fs @param {number} f */
+function level(x, fs, f) {
+  let re = 0;
+  let im = 0;
+  const from = Math.floor(x.length / 4);
+  for (let i = from; i < x.length; i++) {
+    re += x[i] * Math.cos((2 * Math.PI * f * i) / fs);
+    im += x[i] * Math.sin((2 * Math.PI * f * i) / fs);
+  }
+  return 20 * Math.log10((2 * Math.hypot(re, im)) / (x.length - from) + 1e-12);
+}
+
+test("bringing 48 kHz down keeps what is above the new rate's half out: 40 dB down past it, speech's band within 1 dB (G.711's 8 kHz and Gemini's 16 kHz) (review)", () => {
+  /** @type {[number, number, number, number[]][]} from, to, the top of the band kept flat, tones above the new rate's half */
+  const cases = [[48_000, 8000, 3000, [4400, 5000, 6000, 8000, 10_000]], [48_000, 16_000, 6000, [8800, 10_000, 12_000]], [44_100, 8000, 3000, [4400, 6000]]];
+  for (const [from, to, flat, gone] of cases) {
+    for (const f of [300, 1000, 2000, flat]) {
+      const db = level(new StreamResampler(from, to).push(tone(f, from, 1)), to, f);
+      assert.ok(db > -1 && db < 0.5, `${from} → ${to}: ${f} Hz at ${db.toFixed(2)} dB`);
+    }
+    for (const f of gone) {
+      const folded = Math.abs(((f + to / 2) % to) - to / 2);
+      const db = level(new StreamResampler(from, to).push(tone(f, from, 1)), to, folded);
+      assert.ok(db < -40, `${from} → ${to}: ${f} Hz folds to ${folded} Hz at ${db.toFixed(1)} dB`);
+    }
+  }
+  // The telephone band's top, 3.4 kHz, is kept too.
+  assert.ok(level(new StreamResampler(48_000, 8000).push(tone(3400, 48_000, 1)), 8000, 3400) > -1.5);
 });

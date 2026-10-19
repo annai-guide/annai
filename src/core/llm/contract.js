@@ -29,11 +29,11 @@
  *   providerTools: turn on the model's own tools of these kinds, except the ids switched off (spec §9.5);
  *   needsProviderTool: only models with such a tool of this kind may answer.
  * @typedef {{ input: number, cacheRead: number, cacheWrite: number, cacheWrite1h: number, output: number, reasoning: number, cost?: number,
- *   serverTools?: Record<string, number>, audioIn?: number, audioOut?: number, image?: number }} Usage
+ *   serverTools?: Record<string, number>, audioIn?: number, audioOut?: number, image?: number, cacheReadAudio?: number, cacheReadImage?: number }} Usage
  *   Tokens. input leaves out cache reads and writes; output includes reasoning, which is also
  *   counted on its own. cost is in USD, when the provider reports it. serverTools: the provider's own tool calls it
  *   counted, by its usage key (such as web_search_requests). audioIn, audioOut and image: a realtime model's audio, and
- *   image and video, tokens, counted apart from input and output (K4).
+ *   image and video, tokens, counted apart from input and output (K4); cacheReadAudio, cacheReadImage: cached audio and images (K6).
  * @typedef {'end' | 'tool' | 'length' | 'refusal' | 'pause' | 'other'} StopReason
  *   pause: the provider paused a long turn; send the reply back as it is, and it continues.
  * @typedef {{ type: 'text', text: string }
@@ -254,10 +254,10 @@ export function safeId(id) {
  * @property {(c: SpeechSpec & { text: string }) => { url: string, headers: Record<string, string>, body: any }} [speechRequest]
  * @property {(res: Response, c: SpeechSpec) => Promise<{ data: Uint8Array, mediaType: string }>} [readSpeech]
  * @property {true} [realtime]  a realtime voice type (K4), with audio, open and attach: annai opens the socket, the type drives it
- * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what it sends and takes, preferred first
+ * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what it sends and takes, preferred first (tunables input, output pick, K6)
  * @property {(c: SpeechSpec) => { url: string, protocols?: string[] }} [open]  a session's address and subprotocols
  * @property {(socket: LiveSocket, c: { endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, tunables: Record<string, any>,
- *   setup: LiveSetup, emit: (e: LiveEvent) => void }) => LiveDriver} [attach]
+ *   setup: LiveSetup, emit: (e: LiveEvent) => void }) => LiveDriver} [attach]  its ready may fail with a ProviderError saying why (K6); audio both ways is 16-bit PCM at the formats' rates
  * @property {(code: number, reason: string) => ErrorKind | null} [classifyClose]
  * @property {(code: number, reason: string, tunables: Record<string, any>) => Record<string, any> | null} [reopen]  tunables to open with once more, before ready
  * @typedef {{ format: 'pcm16' | 'pcmu' | 'pcma', rate: number }} AudioFormat

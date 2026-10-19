@@ -11,15 +11,18 @@ import { utf8 } from '../bytes.js';
  * neither holds its address, subprotocols or key.
  * @typedef {import('../llm/contract.js').EndpointType} EndpointType @typedef {import('../llm/contract.js').LiveDriver} LiveDriver
  * @typedef {import('../llm/contract.js').LiveEvent} LiveEvent @typedef {import('../llm/contract.js').ErrorKind} ErrorKind
+ * @typedef {import('../llm/contract.js').LiveSetup} LiveSetup
  * @typedef {Omit<LiveDriver, 'close'> & { closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>, on(fn: (e: LiveEvent) => void): () => void,
  *   close(why?: string): void, bytes: { in: number, out: number }, handle?: string, tunables: Record<string, any>,
- *   formats: { in: import('../llm/contract.js').AudioFormat, out: import('../llm/contract.js').AudioFormat } }} LiveSession
- *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with;
- *   formats: the audio it sends and takes (its setup's)
+ *   audioIn: LiveSetup['audioIn'], audioOut: LiveSetup['audioOut'] }} LiveSession
+ *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with; audioIn, audioOut: 16-bit PCM at their rates (K6)
  */
 
 /** How long a session may take to be ready. */
 export const READY_MS = 15_000;
+
+/** A session's format, unless its setup says: the one its tunable names, else its protocol's first (K6). @param {any[] | undefined} list @param {unknown} name */
+const pick = (list, name) => list?.find((f) => f.format === name) ?? list?.[0];
 
 /**
  * Refuses a session address not at the ability's origin, before anything opens: the one rule HTTP requests follow
@@ -57,12 +60,13 @@ export function closeKind(type, code, reason) {
  * Opens a live session; an address not at the ability's origin throws at once. A protocol may open once more, before
  * the session is ready, with the tunables its reopen() gives (decision 11).
  * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, model: import('../llm/config.js').Model, key: string | null,
- *   tunables: Record<string, any>, setup: import('../llm/contract.js').LiveSetup, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
+ *   tunables: Record<string, any>, setup: Omit<LiveSetup, 'audioIn' | 'audioOut'> & Partial<LiveSetup>, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
  *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number }} c
  * @returns {LiveSession}
  */
 export function openLive(c) {
-  const { type, endpoint, model, key, setup, trace, registry, wake, now = Date.now, readyMs = READY_MS } = c;
+  const { type, endpoint, model, key, trace, registry, wake, now = Date.now, readyMs = READY_MS } = c;
+  const setup = { ...c.setup, audioIn: c.setup.audioIn ?? pick(type.audio?.in, c.tunables.input), audioOut: c.setup.audioOut ?? pick(type.audio?.out, c.tunables.output) };
   const socket = c.socket ?? ((url, protocols) => new WebSocket(url, protocols));
   // The key as given, and as an address escapes it (a protocol may put it in the query): an echo of either is blanked.
   const forms = key ? [...new Set([key, encodeURIComponent(key), new URLSearchParams({ k: key }).toString().slice(2)])].sort((a, b) => b.length - a.length) : [];
@@ -114,6 +118,7 @@ export function openLive(c) {
   };
   /** Usage priced and traced, the handle kept, then every listener told. @param {LiveEvent} e */
   const emit = (e) => {
+    if (done) return; // a late timer's
     if (e?.type === 'usage') {
       const usage = { ...NO_USAGE, ...e.usage };
       const turnCost = costOf(usage, model.prices);
@@ -155,6 +160,8 @@ export function openLive(c) {
       const broke = (/** @type {string} */ what, /** @type {unknown} */ e) => {
         bug(what, e);
         st.broken = true;
+        // A refusal the protocol read (K6): the session ends with its kind and words.
+        if (e instanceof ProviderError) down(new ProviderError(e.kind, blank(e.message)), 1000, e.message);
         s.close(1000);
       };
       s.addEventListener('open', () => {
@@ -193,7 +200,10 @@ export function openLive(c) {
       s.addEventListener('close', (/** @type {CloseEvent} */ e) => {
         clearTimeout(timer);
         const reason = String(e.reason ?? '');
-        if (st.up) return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason));
+        if (st.up) {
+          if (!asked) call('close', []); // its own close: the protocol lets go too (annai's called it already)
+          return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason));
+        }
         try {
           const next = asked || !st.opened || again || st.late || st.broken ? null : type.reopen?.(e.code, reason, tunables);
           if (next) return attempt(build((session.tunables = next)), next, true);
@@ -225,7 +235,8 @@ export function openLive(c) {
     closed,
     bytes,
     tunables: c.tunables,
-    formats: { in: setup.audioIn, out: setup.audioOut },
+    audioIn: setup.audioIn,
+    audioOut: setup.audioOut,
     on(/** @type {(e: LiveEvent) => void} */ fn) {
       listeners.add(fn);
       return () => { listeners.delete(fn); };

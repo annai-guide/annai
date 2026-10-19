@@ -173,7 +173,7 @@ export class LiveKoe {
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
     this.#s = s;
-    this.#rate = s.formats.out.rate;
+    this.#rate = s.audioOut.rate;
     for (const fn of this.#waiting.splice(0)) fn(s);
     return s;
   }
@@ -196,7 +196,7 @@ export class LiveKoe {
     this.c.release();
     const { pauseMs, bargeIn } = await v.settings();
     this.#input = new LiveInput({
-      mic: p.mic, rate: this.#s.formats.in.rate, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
+      mic: p.mic, rate: this.#s.audioIn.rate, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
     });
     this.listening = true;

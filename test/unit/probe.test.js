@@ -362,7 +362,7 @@ test('Add with these turns on what was found, Messages at the root address, and 
     const rec = cfg.providers[d.added[0]];
     const p = providerOf(rec);
     assert.deepEqual([rec.plugin, p.name, p.baseUrl], ['provider-another-address', new URL(s.origin).host, `${s.origin}/v1`]);
-    assert.deepEqual(Object.fromEntries(Object.entries(p.abilities).map(([id, a]) => [id, a.on])), { 'chat-completions': true, responses: true, messages: true, transcription: false, voice: false });
+    assert.deepEqual(Object.fromEntries(Object.entries(p.abilities).map(([id, a]) => [id, a.on])), { 'chat-completions': true, responses: true, messages: true, transcription: false, voice: false, realtime: false }, 'a realtime voice is never looked for: it is switched on by hand (K6)');
     assert.equal(p.abilities.messages.baseUrl, s.origin, 'Messages at the address without /v1');
     assert.equal(p.abilities.responses.baseUrl, `${s.origin}/v1`);
     assert.deepEqual(Object.keys(await d.host.installed()).sort(), ['anthropic-messages', 'chat-completions', 'openai-responses', 'provider-another-address'], 'no speech plugin: nothing found needs it');
@@ -452,7 +452,7 @@ test("a speech path a server answers is there, but Test says whether a model the
     assert.ok(shown.includes("✓ Voice: the path is there; Test says whether a model there can speak. Its model list names no voice, so it's added switched off."), shown);
     await buttonOf(panel, 'Add with these').attrs.onclick();
     const p = providerOf((await readConfig(d.ws)).providers[d.added[0]]);
-    assert.deepEqual(Object.fromEntries(Object.entries(p.abilities).map(([id, a]) => [id, a.on])), { 'chat-completions': true, responses: false, messages: false, transcription: true, voice: false });
+    assert.deepEqual(Object.fromEntries(Object.entries(p.abilities).map(([id, a]) => [id, a.on])), { 'chat-completions': true, responses: false, messages: false, transcription: true, voice: false, realtime: false });
   } finally {
     await s.stop();
   }

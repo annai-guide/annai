@@ -1,7 +1,7 @@
 {
   "id": "provider-another-address",
   "name": "Another address",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "catchAll": true,
   "api": 1,
   "entry": "index.js",
@@ -58,6 +58,13 @@
         "type": "openai-speech",
         "name": "Voice",
         "on": false
+      },
+      "realtime": {
+        "kind": "realtime",
+        "type": "openai-realtime",
+        "name": "Realtime voice",
+        "on": false,
+        "note": "For a server that speaks OpenAI's Realtime API over a WebSocket, at this address plus /realtime. Add its models by id. annai gives the key as the browser's subprotocol, as OpenAI's own does."
       }
     }
   }
