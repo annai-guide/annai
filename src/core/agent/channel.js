@@ -39,8 +39,12 @@ export class Channel {
   }
 }
 
-/** The tool each half reaches the other with: Koe's tell_kokoro, Kokoro's tell_koe. @param {HalfName} from @param {Channel} channel @returns {import('./loop.js').LoopTool} */
-export function channelTool(from, channel) {
+/**
+ * The tool each half reaches the other with: Koe's tell_kokoro, Kokoro's tell_koe.
+ * @param {HalfName} from @param {Channel} channel @param {() => string | null} [refuse] why the other half can't take a note now
+ * @returns {import('./loop.js').LoopTool}
+ */
+export function channelTool(from, channel, refuse = () => null) {
   const koe = from === 'koe';
   return {
     name: koe ? 'tell_kokoro' : 'tell_koe', pluginId: 'core', group: 'Talk',
@@ -51,6 +55,8 @@ export function channelTool(from, channel) {
     run: async (/** @type {{ text: string, mode?: string }} */ i, /** @type {any} */ call) => {
       const text = String(i.text ?? '').trim();
       if (!text) return { content: `Error: ${koe ? 'tell_kokoro' : 'tell_koe'} needs the text to pass on.`, isError: true };
+      const no = refuse();
+      if (no) return { content: no, isError: true };
       return channel.send(from, text, i.mode === 'immediate' ? 'immediate' : 'append', 'tool', call.wake);
     },
   };

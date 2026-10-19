@@ -19,7 +19,7 @@ import { finishSignIn } from '../ui/openrouter.js';
 import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
 import { disabledCard } from '../ui/plugin-cards.js';
 import { Updates, DAILY } from '../ui/updates.js';
-import { Agent } from '../core/agent/loop.js';
+import { Halves } from '../core/agent/halves.js';
 import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
 import { loadLinks } from '../core/links.js';
@@ -98,11 +98,12 @@ async function boot() {
   // Sound may play only after a tap (an iPhone rule, spec §10.1): every tap tries until one works.
   armUnlock(window, () => voice.unlock());
 
-  // Shiori (spec §6): one agent, talking about the trip that was open last.
-  const agent = new Agent({ store, ws, llm, registry, codec, voice });
+  // Shiori (spec §6), talking about the trip that was open last: one half, or two when a Koe model is set
+  // (the Koe and Kokoro design). Her own tools are Kokoro's, the half that is Shiori as she always was.
+  const agent = new Halves({ store, ws, llm, registry, codec, voice });
   // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
   mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
-  agent.addLoopTools(selfTools(agent));
+  agent.addLoopTools(selfTools(agent.kokoro));
   // Live mode (spec §11): watches, the plan's own reminders, catch-up. The phone's sensors come in a plugin.
   // Notifications for a closed annai (spec §11.6): what the service worker saw is read at each
   // catch-up; the mirror keeps the push relay in step with live mode.
@@ -241,7 +242,7 @@ async function loadPresets() {
 /**
  * Installs missing personalities, updates unedited ones silently, and offers a new original to an
  * edited copy (spec §14.1).
- * @param {{ ws: Workspace, agent: Agent, presets: Record<string, string>, notices: any }} c
+ * @param {{ ws: Workspace, agent: Halves, presets: Record<string, string>, notices: any }} c
  */
 async function offerPersonalityUpdates({ ws, agent, presets, notices }) {
   for (const o of await syncPersonalities({ ws, presets }).catch(() => [])) {
