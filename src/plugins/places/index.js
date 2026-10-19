@@ -108,6 +108,11 @@ export function activate(annai) {
         // The offline pack first (spec §8): where it holds the whole circle, nothing is asked.
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
         if (pack?.covers(i, radius)) return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}.`;
+        // Koe's quick reads (the Koe and Kokoro design): the pack only, never the network.
+        if (call.offline) {
+          if (!pack?.touches(i)) return 'Not in the offline pack: ask Kokoro.';
+          return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}, which holds only part of this circle. Kokoro can look further.`;
+        }
         const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
         // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
         const query = `[out:json][timeout:20];(${overpassFilters(kinds).map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
@@ -227,6 +232,7 @@ export function activate(annai) {
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
         const saved = pack ? await pack.guide(i.place).catch(() => null) : null;
         if (pack && saved) return guideText(saved.title, saved.text, i.section, `Wikivoyage, offline pack${pack.day ? ` of ${pack.day}` : ''}`);
+        if (call.offline) return 'Not in the offline pack: ask Kokoro.';
         const base = 'https://en.wikivoyage.org/w/api.php';
         const r = await json(`${base}?action=query&prop=extracts&explaintext=1&exsectionformat=wiki&redirects=1&titles=${encodeURIComponent(i.place)}&format=json&origin=*`, call);
         const page = /** @type {any} */ (Object.values(r?.query?.pages ?? {})[0]);

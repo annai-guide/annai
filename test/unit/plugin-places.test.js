@@ -17,9 +17,9 @@ async function setup({ trip = false } = {}) {
   const tools = Object.fromEntries(registry.entries('tool').map((e) => [e.item.name, e.item]));
   /** @type {{ url: string, init: any, at: number }[]} */
   const asked = [];
-  /** @param {string} name @param {any} input @param {(url: string, init: any) => any} answer */
-  const run = (name, input, answer) => tools[name].run(input, {
-    scope: tripId ?? 'me', trip: tripId, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
+  /** @param {string} name @param {any} input @param {(url: string, init: any) => any} answer @param {Record<string, any>} [more] more of the call */
+  const run = (name, input, answer, more = {}) => tools[name].run(input, {
+    ...more, scope: tripId ?? 'me', trip: tripId, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
     fetch: async (/** @type {string} */ url, /** @type {any} */ init = {}) => {
       asked.push({ url, init, at: Date.now() });
       const a = await answer(url, init);
@@ -255,4 +255,18 @@ test("nearby online takes an Overpass answer that says \"runtime error\" as no a
   assert.match(second, /McWay Falls Overlook\tviewpoint/);
   const both = await run('nearby', { ...McWay, radius: 8000, kinds: ['sights'] }, (url) => (url.includes('overpass') ? timedOut : wiki));
   assert.match(both, /\nOpenStreetMap didn't answer, so its places come from the offline pack \(downloaded 2026-10-16\)\.$/);
+});
+
+test("Koe's places tools (call.offline) read the offline pack only: never a request; past its edge or off it, they say so (K1)", async () => {
+  const { run, ws, trip, asked } = await setup({ trip: true });
+  await mcwayPack(ws, /** @type {string} */ (trip));
+  const offline = { offline: true };
+  assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing, offline), /McWay Falls Overlook[\s\S]*\nFrom the offline pack \(downloaded 2026-10-16\)\.$/);
+  const edge = await run('nearby', { ...McWay, radius: 8000 }, nothing, offline);
+  assert.match(edge, /McWay Falls Overlook/);
+  assert.match(edge, /\nFrom the offline pack \(downloaded 2026-10-16\), which holds only part of this circle\. Kokoro can look further\.$/);
+  assert.equal(await run('nearby', { lat: 36.6, lng: -121.9 }, nothing, offline), 'Not in the offline pack: ask Kokoro.');
+  assert.match(await run('guide', { place: 'Cambria' }, nothing, offline), /offline pack of 2026-10-16/);
+  assert.equal(await run('guide', { place: 'Big Sur' }, nothing, offline), 'Not in the offline pack: ask Kokoro.');
+  assert.equal(asked.length, 0);
 });

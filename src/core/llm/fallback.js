@@ -1,7 +1,7 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
-import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES } from './config.js';
+import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES, KOE_ROLES } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
 import { adjusted } from './setup.js';
 import { formatRefused } from '../voice/formats.js';
@@ -27,18 +27,37 @@ export const NETWORK_RETRIES = Object.freeze([1000, 3000]);
 export class Bench {
   /** @type {Map<string, number>} */
   #until = new Map();
-  /** @param {string} id @param {number} ms */
-  bench(id, ms, now = Date.now()) {
+  /** Why a model rests, when that is worth saying while it does. @type {Map<string, string>} */
+  #why = new Map();
+  /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] */
+  bench(id, ms, now = Date.now(), why) {
     this.#until.set(id, Math.max(this.#until.get(id) ?? 0, now + ms));
+    if (why) this.#why.set(id, why);
+    else this.#why.delete(id);
   }
   /** @param {string} id */
   until(id) {
     return this.#until.get(id) ?? 0;
   }
   /** @param {string} id */
+  why(id) {
+    return this.#why.get(id);
+  }
+  /** @param {string} id */
   clear(id) {
     this.#until.delete(id);
+    this.#why.delete(id);
   }
+}
+
+/** A rest longer than this is a provider's day limit, said plainly (not in its billing words). */
+export const LONG_REST_MS = 10 * 60_000;
+
+/** A long rest in plain words, with the local time it ends. @param {number} until @param {number} now */
+export function restText(until, now) {
+  const end = new Date(until);
+  const time = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `its daily limit is used up; it rests until ${end.toDateString() === new Date(now).toDateString() ? time : `${end.toLocaleDateString([], { weekday: 'long' })} ${time}`}`;
 }
 
 /** Every model of a role failed. attempts says how; said is any text a reply had already given. */
@@ -52,12 +71,26 @@ export class AllFailedError extends Error {
   }
 }
 
-/** The models a role tries, in order: its own, or the main list for an empty chat role. @param {ModelConfig} config @param {string} role */
+/**
+ * The models a role tries, in order: its own, or the main list for an empty chat role. An empty Koe
+ * list uses the other Koe list, and never Main: no Koe model means no Koe. @param {ModelConfig} config @param {string} role
+ */
 export function candidates(config, role) {
   const own = config.roles[role]?.models ?? [];
-  if (own.length || role === 'main' || !CHAT_ROLES.includes(role)) return own;
+  if (own.length || role === 'main') return own;
+  if (KOE_ROLES.includes(role)) return config.roles[KOE_ROLES.find((r) => r !== role) ?? '']?.models ?? [];
+  if (!CHAT_ROLES.includes(role)) return own;
   return config.roles.main?.models ?? [];
 }
+
+/** Koe's list (the Koe and Kokoro design): voice on uses "Koe for talking", else "Koe for typing", an empty one the other. @param {ModelConfig} cfg @param {boolean} voiceOn */
+export function koeList(cfg, voiceOn) {
+  const role = voiceOn ? 'koe-talk' : 'koe-type';
+  return { role, models: candidates(cfg, role) };
+}
+
+/** Whether Shiori is two halves: a Koe list holds a model. @param {ModelConfig} cfg */
+export const splitOn = (cfg) => KOE_ROLES.some((r) => (cfg.roles?.[r]?.models?.length ?? 0) > 0);
 
 /** A rough token count, enough to skip models whose window is clearly too small. @param {Request} request */
 export function estimateTokens(request) {
@@ -158,8 +191,8 @@ export async function callRole(c) {
   const record = (answeredBy, text, stop, reasoning, parts, citations) => c.trace?.turn(
     { role, level, answeredBy, attempts, usage, cost, ...meta, ...(stop ? { stop } : {}), ...(citations?.length ? { citations } : {}) },
     text, reasoning, keepParts ? parts : undefined);
-  // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable).
-  const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? 30) * 1000;
+  // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable); Koe answers at once.
+  const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? (KOE_ROLES.includes(role) ? 8 : 30)) * 1000;
   const list = c.models ?? candidates(config, role);
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
@@ -174,7 +207,8 @@ export async function callRole(c) {
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
     const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
     if (skip || !model || !type || !pRec || !provider) {
-      attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0 });
+      const why = skip === 'benched' ? bench.why(id) : undefined;
+      attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}) });
       continue;
     }
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
@@ -250,7 +284,11 @@ export async function callRole(c) {
           await sleep(step.wait);
           continue;
         }
-        if (step.bench !== undefined) bench.bench(id, step.bench, now());
+        if (step.bench !== undefined) {
+          const long = err.kind === 'rate' && step.bench > LONG_REST_MS ? restText(now() + step.bench, now()) : undefined;
+          if (long) attempts[attempts.length - 1].error = long;
+          bench.bench(id, step.bench, now(), long);
+        }
         break;
       }
     }

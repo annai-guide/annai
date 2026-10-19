@@ -1,4 +1,4 @@
-import { h, whenGone } from '../dom.js';
+import { h, whenGone, checkbox } from '../dom.js';
 import { renderCard, cardWho } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
 import { storedTexts, blobBytes } from '../../core/agent/log.js';
@@ -6,7 +6,20 @@ import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
 
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error', 'reminder'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error', 'reminder', 'note', 'halves'];
+/** Wakes that are lines of their own: the user's, and what the halves tell each other. */
+const NOT_WOKE = ['user', 'choice', 'note', 'cue', 'halves'];
+const HALVES_KEY = 'annai.showHalves';
+
+/** Whether this device shows what Shiori's halves tell each other (off unless asked); for this visit where storage is blocked. */
+let halvesHere = false;
+function showingHalves() {
+  try {
+    return localStorage.getItem(HALVES_KEY) === '1';
+  } catch {
+    return halvesHere;
+  }
+}
 
 /**
  * The copy a photo ended up as, following its replacements (each refused copy names the next).
@@ -57,6 +70,9 @@ export async function follow(agent, scope, { read, show, state }) {
 export async function renderTalk(ctx) {
   const agent = ctx.agent;
   await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
+  // Shiori as two halves (the Koe and Kokoro design): their exchanges stay out of the conversation unless asked.
+  const halves = showingHalves();
+  let split = Boolean(agent.koeState && agent.koeState !== 'off');
   const scope = agent.scope;
   const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(agent.trip)))?.title ?? 'Trip' : 'No trip open';
   const list = h('ol', { class: 'convo', 'aria-live': 'polite' });
@@ -136,13 +152,22 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'reminder') return h('li', { class: 'system-line', text: `Reminder${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
+    if (e.type === 'note' || e.type === 'halves') {
+      split = true;
+      if (!halves) return null;
+      const who = e.type === 'halves' ? 'annai to Kokoro' : d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe';
+      return h('li', { class: 'system-line', text: `${who}: ${String(texts.text ?? '')}` });
+    }
     if (e.type === 'wake') {
-      // A watch's wake says a lot, for Shiori: the line is cut.
-      const others = (d.reasons ?? []).filter((/** @type {any} */ r) => r.kind !== 'user' && r.kind !== 'choice');
+      // Kokoro's wakes are its own: the conversation is Koe's. A watch's wake says a lot, for Shiori: the line is cut.
+      if (d.half === 'kokoro') return null;
+      const others = (d.reasons ?? []).filter((/** @type {any} */ r) => !NOT_WOKE.includes(r.kind));
       const why = others.map((/** @type {any} */ r) => r.text).join('; ');
       return others.length ? h('li', { class: 'system-line', text: `Shiori woke: ${why.length > 160 ? `${why.slice(0, 160)}…` : why}` }) : null;
     }
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
+    // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it).
+    if (e.type === 'error' && (d.quiet || d.aside)) return null;
     if (e.type === 'error') return h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? "Shiori couldn't reach her model" : d.kind === 'budget' ? 'A budget ended her turn' : 'Her turn ended' }), h('p', { text: String(d.message ?? '') }));
     return null;
   };
@@ -169,12 +194,23 @@ export async function renderTalk(ctx) {
   });
   built = true;
   showCost();
+  const toggle = checkbox('Show what the halves tell each other', halves);
+  toggle.input.addEventListener('change', () => {
+    halvesHere = toggle.input.checked;
+    try {
+      localStorage.setItem(HALVES_KEY, halvesHere ? '1' : '0');
+    } catch {
+      // storage blocked: for this visit only
+    }
+    ctx.render();
+  });
   const screen = h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Conversation' }),
     h('p', { class: 'sub', text: agent.trip ? title : 'No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.' }),
     cost,
     list.childElementCount ? list : h('p', { class: 'empty', text: 'Nothing yet. Tap Shiori or Type below to talk.' }),
-    list.childElementCount ? null : list);
+    list.childElementCount ? null : list,
+    split ? toggle.el : null);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
     wasShown = true;

@@ -6,19 +6,20 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then every running plugin's, in the
  * order they registered; switches come from the app settings, so they cover any plugin's tool.
  * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, region?: number[], name?: string }} Media
- * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean, heard?: string[], endTurn?: boolean }} ToolOutput
- *   heard: segments the user said in answer, which follow the result (spec §10.3); endTurn: the turn ends after this step (chatter heard, §10.4)
+ * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean, heard?: string[], endTurn?: boolean, told?: boolean }} ToolOutput
+ *   heard: segments the user said in answer, which follow the result (spec §10.3); endTurn: the turn ends after this step (chatter heard, §10.4);
+ *   told: a gated call that became a note to the other half (the Koe and Kokoro design)
  * @typedef {{ id: string, scope: string, trip: string | null, signal: AbortSignal, model: import('../llm/config.js').Model | null, wake: string,
- *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[], voice?: boolean, sleeping?: boolean,
+ *   fetch: (url: string, init?: RequestInit) => Promise<Response>, llm: any, author: 'shiori', providerOff?: string[], voice?: boolean, sleeping?: boolean, offline?: boolean,
  *   photos?: { copy(source: import('../request-photos.js').Source, crop?: import('../request-photos.js').Crop): Promise<import('../request-photos.js').Copy> } }} ToolCall
  *   photos: request copies and crops of stored photos (spec §4.8); voice: voice is on for this turn (§10.5); sleeping: sleep came in the same reply
- *   providerOff: the provider tools switched off, for a tool that asks a model to use its own (spec §9.5)
+ *   providerOff: the provider tools switched off, for a tool that asks a model to use its own (spec §9.5); offline: Koe's quick reads, the offline pack only
  * @typedef {{ name: string, description: string, input: Record<string, any>, run: (input: any, call: ToolCall) => any, group?: string }} Tool
  */
 
 export const TALK = Object.freeze(['speak', 'show', 'ask', 'wait', 'sleep']);
-/** "Every tool can be switched off, except show, ask, wait and sleep" (spec §7.2). */
-export const ALWAYS_ON = Object.freeze(['show', 'ask', 'wait', 'sleep']);
+/** "Every tool can be switched off, except show, ask, wait and sleep" (spec §7.2), and the halves' notes to each other: either off would leave a half no way to reach the other. */
+export const ALWAYS_ON = Object.freeze(['show', 'ask', 'wait', 'sleep', 'tell_koe', 'tell_kokoro']);
 /** A tool name every provider accepts. */
 export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 /** The most of a tool's result the model sees at once; the rest is cut, with a note. */

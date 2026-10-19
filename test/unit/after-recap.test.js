@@ -123,3 +123,16 @@ test('what the Recap screen says goes to the model is true of photos too: one ke
   assert.match(RECAP_SENDS.join('\n'), /rounded to about 100 m\. Never the GPS track itself\./);
   assert.match(RECAP_SENDS.join('\n'), /Up to 6 photos, if the model takes photos\. A photo kept as taken \(Settings → Photos → Keep originals\) can still hold where it was taken\./);
 });
+
+test('the recap reads what the user typed to Koe and the cards Koe showed, never the notes between the halves or annai\'s blocks (K1, anti-goal: losing words)', async () => {
+  const k = await aTrip();
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Is Nepenthe open tonight?', split: true } }, at('11:00'));
+  await logEvent(k.store, k.trip, { type: 'note', data: { from: 'koe', mode: 'append', why: 'tool', text: 'KOE-TO-KOKORO is it open' } }, at('11:00'));
+  await logEvent(k.store, k.trip, { type: 'note', data: { from: 'kokoro', mode: 'append', why: 'tool', text: 'KOKORO-TO-KOE open till 10' } }, at('11:01'));
+  await logEvent(k.store, k.trip, { type: 'halves', data: { state: 'koe-down', text: 'ANNAI-BLOCK' } }, at('11:01'));
+  await logEvent(k.store, k.trip, { type: 'out.show', data: { half: 'koe', card: { title: 'Nepenthe', text: 'Open till 10 tonight.' } } }, at('11:02'));
+  const text = recapText(await readJourney({ store: k.store, ws: k.ws, trip: k.trip }), { profile: '', memory: '', notes: [] });
+  assert.match(text, /\ttraveler\tIs Nepenthe open tonight\?/);
+  assert.match(text, /Shiori \(card\)\tNepenthe: Open till 10 tonight\./);
+  assert.doesNotMatch(text, /KOE-TO-KOKORO|KOKORO-TO-KOE|ANNAI-BLOCK/);
+});

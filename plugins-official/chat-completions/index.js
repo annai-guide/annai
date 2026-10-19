@@ -13,6 +13,9 @@ const TUNABLES = Object.freeze({
   reasoningField: 'auto', // where reasoning text comes back: "reasoning" (OpenRouter), "reasoning_content" (DeepSeek), or either
   imageDetail: null, // e.g. "high"
   enforceToolCall: false, // a tool the model must call, when it is the one offered, goes as tool_choice "required": llama.cpp ignores one named
+  // What a call in the current turn without its own extra_content carries (another model wrote it, before a fallback): Gemini 3
+  // refuses such a call, and its docs give a stand-in thought signature for it. Gemini's description sets it.
+  standInCallExtra: null,
   audioIn: ['wav', 'mp3'], // what input_audio takes: OpenAI's and Gemini's take only these; OpenRouter's say more (spec §10.6)
 });
 const STOP = /** @type {Record<string, string>} */ ({ stop: 'end', tool_calls: 'tool', function_call: 'tool', length: 'length', content_filter: 'refusal' });
@@ -53,7 +56,9 @@ function build({ endpoint, model, key, tunables: t, request }) {
   /** @type {any[]} */
   const messages = [];
   if (request.system) messages.push({ role: t.systemRole, content: request.system });
-  for (const m of request.messages) messages.push(...wire(m, t));
+  // The current turn starts after the last user message that isn't only tool results.
+  const turn = request.messages.findLastIndex((/** @type {any} */ m) => m.role === 'user' && m.parts.some((/** @type {any} */ p) => p.type !== 'tool_result'));
+  for (const [i, m] of request.messages.entries()) messages.push(...wire(m, t, i > turn));
   /** @type {Record<string, any>} */
   const body = { model: model.providerId, messages, stream: true };
   if (t.usageInStream) body.stream_options = { include_usage: true };
@@ -83,15 +88,25 @@ function addTail(messages, tail) {
   else last.content.push({ type: 'text', text: tail });
 }
 
-/** One of annai's messages as chat messages: tool results become "tool" messages ahead of the rest. @param {any} m @param {any} t */
-function wire(m, t) {
+/**
+ * One of annai's messages as chat messages: tool results become "tool" messages ahead of the rest.
+ * @param {any} m @param {any} t @param {boolean} [current] it is in the current turn
+ */
+function wire(m, t, current = false) {
   if (m.role === 'assistant') {
     const text = m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text).join('');
     const calls = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
     if (!text && !calls.length) return []; // only reasoning: an empty assistant message is refused by some servers
     /** @type {any} */
     const out = { role: 'assistant', content: text || null };
-    if (calls.length) out.tool_calls = calls.map((/** @type {any} */ c) => ({ id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(isObject(c.input) ? c.input : {}) } }));
+    if (calls.length) {
+      // The stand-in only for a reply another model wrote: one of the provider's own carries its signature on its first call.
+      const stand = current && isObject(t.standInCallExtra) && !calls.some((/** @type {any} */ c) => isObject(c.extra));
+      out.tool_calls = calls.map((/** @type {any} */ c) => ({
+        id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(isObject(c.input) ? c.input : {}) },
+        ...(isObject(c.extra) ? { extra_content: c.extra } : stand ? { extra_content: t.standInCallExtra } : {}),
+      }));
+    }
     return [out];
   }
   const results = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => ({ role: 'tool', tool_call_id: p.id, content: p.content }));
@@ -124,7 +139,7 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     }
     body = new Response(text).body;
   }
-  /** @type {Map<number, { id: string, name: string, args: string }>} */
+  /** @type {Map<number, { id: string, name: string, args: string, extra?: any }>} */
   const calls = new Map();
   let reasoning = '';
   /** @type {string | null} */
@@ -168,11 +183,14 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     }
     for (const tc of d.tool_calls ?? []) {
       yield* flush();
-      const i = tc.index ?? 0;
+      // Gemini's compatible endpoint gives no index: each call comes whole, with an id of its own.
+      const i = typeof tc.index === 'number' ? tc.index
+        : tc.id ? ([...calls].find(([, c]) => c.id === tc.id)?.[0] ?? calls.size) : Math.max(0, calls.size - 1);
       const cur = calls.get(i) ?? { id: '', name: '', args: '' };
       if (tc.id) cur.id = tc.id;
       if (tc.function?.name && !cur.name) cur.name = tc.function.name;
       if (typeof tc.function?.arguments === 'string') cur.args += tc.function.arguments;
+      if (isObject(tc.extra_content)) cur.extra = tc.extra_content;
       calls.set(i, cur);
       yield { type: 'tool_input', id: cur.id, name: cur.name, partial: cur.args };
     }
@@ -186,7 +204,7 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
   if (!done && !finish) throw new ProviderError('network', 'The reply stopped before it finished.');
   yield* flush();
   for (const [i, c] of [...calls].sort((a, b) => a[0] - b[0])) {
-    yield { type: 'tool_call', id: c.id || `call_${i}`, name: c.name, input: parseArgs(c.args) };
+    yield { type: 'tool_call', id: c.id || `call_${i}`, name: c.name, input: parseArgs(c.args), ...(c.extra ? { extra: c.extra } : {}) };
   }
   yield { type: 'stop', reason: STOP[finish ?? 'stop'] ?? 'other' };
 }
@@ -258,7 +276,7 @@ function* readWhole(j, t, helpers) {
     const name = String(tc?.function?.name ?? '');
     const args = tc?.function?.arguments;
     yield { type: 'tool_input', id, name, partial: typeof args === 'string' ? args : JSON.stringify(args ?? {}) };
-    yield { type: 'tool_call', id, name, input: typeof args === 'string' ? parseArgs(args) : isObject(args) ? args : {} };
+    yield { type: 'tool_call', id, name, input: typeof args === 'string' ? parseArgs(args) : isObject(args) ? args : {}, ...(isObject(tc?.extra_content) ? { extra: tc.extra_content } : {}) };
   }
   for (const a of Array.isArray(m.annotations) ? m.annotations : []) {
     const c = a?.url_citation;
@@ -292,10 +310,17 @@ function usageOf(u) {
   };
 }
 
-/** A sharper kind for an error, by its OpenAI-style code, or null. A provider's own limits are its plugin's (decision 15). @param {number} _status @param {string} body */
-function classify(_status, body) {
+/**
+ * A sharper kind for an error, by its OpenAI-style code or Google's status, or null. A provider's own limits are its
+ * plugin's (decision 15). @param {number} status @param {string} body
+ */
+function classify(status, body) {
   try {
-    const e = JSON.parse(body)?.error;
+    const j = JSON.parse(body);
+    const e = (Array.isArray(j) ? j[0] : j)?.error; // Google's APIs send a list of one
+    // Google's RESOURCE_EXHAUSTED on a 429 (its free tier's limits among them) says "quota", and is too many requests;
+    // on a 402 (prepaid credit used up) it is an account out of credit, as the status says.
+    if (status === 429 && e?.status === 'RESOURCE_EXHAUSTED') return 'rate';
     return CODES[String(e?.code ?? e?.type ?? '')] ?? null;
   } catch {
     return null;

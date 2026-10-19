@@ -38,7 +38,7 @@ test('mergeUsage keeps the latest number of each kind; addUsage and addCost sum 
 
 test("reasoning levels: the model's own, else the nearest, the cheaper on a tie (spec §9.3)", () => {
   assert.deepEqual(LEVELS, ['off', 'low', 'medium', 'high', 'max']);
-  assert.deepEqual(ROLE_LEVELS, { main: 'medium', utility: 'low', decide: 'off' });
+  assert.deepEqual(ROLE_LEVELS, { main: 'medium', utility: 'low', decide: 'off', 'koe-talk': 'off', 'koe-type': 'off' });
   const map = { low: { e: 'low' }, high: { e: 'high' } };
   assert.equal(nearestLevel(map, 'low'), 'low');
   assert.equal(nearestLevel(map, 'medium'), 'low', 'a tie goes to the cheaper level');
