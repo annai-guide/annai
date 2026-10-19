@@ -11,7 +11,12 @@ const REPORT = {
   input: { type: 'object', properties: { color: { type: 'string', description: 'one word' } }, required: ['color'] },
 };
 /** @type {import('./contract.js').Request} */
-const SAY_OK = { system: 'This is a connection test.', messages: [{ role: 'user', parts: [{ type: 'text', text: 'Reply with the word OK.' }] }], maxOutput: 256 };
+const SAY_OK = { system: 'This is a connection test.', messages: [{ role: 'user', parts: [{ type: 'text', text: 'Reply with the word OK.' }] }] };
+/**
+ * Room for a model that thinks before it answers, which some can't turn off (the user, 2026-10-18),
+ * or the model's own limit when it is lower. @param {import('./config.js').Model} model
+ */
+const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
 
 /**
  * @typedef {{ step: 'access' | 'key' | 'tools' | 'images' | 'upload', ok: boolean, detail: string }} TestStep
@@ -36,7 +41,7 @@ export async function testModel(c) {
   /** @type {TestStep[]} */
   const steps = [];
   try {
-    const r = await callOnce({ ...base, request: SAY_OK });
+    const r = await callOnce({ ...base, request: { ...SAY_OK, maxOutput: room(model) } });
     steps.push({ step: 'access', ok: true, detail: 'annai can reach this endpoint from the browser.' });
     steps.push({ step: 'key', ok: true, detail: `The key works. The model said: "${r.text.trim().slice(0, 60)}".` });
   } catch (e) {
@@ -58,8 +63,7 @@ export async function testModel(c) {
     /** @type {import('./contract.js').Part[]} */
     const parts = [...(useImage ? [/** @type {const} */ ({ type: 'image', mediaType: 'image/png', data: TEST_IMAGE })] : []), { type: 'text', text: ask }];
     try {
-      // Room for a model that thinks before it calls a tool, which can't always be turned off.
-      const r = await callOnce({ ...base, request: { messages: [{ role: 'user', parts }], ...(useTools ? { tools: [REPORT] } : {}), maxOutput: 2048 } });
+      const r = await callOnce({ ...base, request: { messages: [{ role: 'user', parts }], ...(useTools ? { tools: [REPORT] } : {}), maxOutput: room(model) } });
       const call = r.parts.find((p) => p.type === 'tool_call' && p.name === REPORT.name);
       const cut = r.stop === 'length';
       if (useTools) {
@@ -106,7 +110,7 @@ export async function testLevels(c) {
   const out = {};
   for (const level of LEVELS.filter((l) => Object.hasOwn(c.model.reasoning ?? {}, l))) {
     try {
-      await callOnce({ type: c.type, endpoint: c.endpoint, model: c.model, key: c.key, fetch: c.fetch, level, firstOutputMs: c.firstOutputMs ?? 60_000, request: SAY_OK });
+      await callOnce({ type: c.type, endpoint: c.endpoint, model: c.model, key: c.key, fetch: c.fetch, level, firstOutputMs: c.firstOutputMs ?? 60_000, request: { ...SAY_OK, maxOutput: room(c.model) } });
       out[level] = 'ok';
     } catch (e) {
       out[level] = asError(e).kind;
