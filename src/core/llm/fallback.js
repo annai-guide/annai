@@ -78,7 +78,7 @@ export class AllFailedError extends Error {
 export function candidates(config, role) {
   const own = config.roles?.[role]?.models ?? [];
   if (own.length || !CHAT_ROLES.includes(role)) return own;
-  return config.roles.main?.models ?? [];
+  return config.roles?.main?.models ?? [];
 }
 
 /** Whether Shiori is two halves: Koe's list holds a model. @param {ModelConfig} cfg */
