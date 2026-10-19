@@ -5,6 +5,8 @@ import { Registry } from '../../src/core/registry.js';
 import { tsv } from '../../src/core/tsv.js';
 import { checkTool, toolList, definitions, runTool, Stuck, resolvePath, RESULT_MAX } from '../../src/core/agent/tools.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
+import { readAppSettings } from '../../src/core/settings.js';
+import { hostKit, codePlugin, builtinUrl } from './package-kit.js';
 
 const tool = (/** @type {string} */ name, /** @type {any} */ run = () => 'ok') => ({ name, description: `The ${name} tool.`, input: { type: 'object' }, run });
 const call = (/** @type {AbortSignal} */ signal = new AbortController().signal) => /** @type {any} */ ({ scope: 'trip-1', trip: 'trip-1', signal, model: null, wake: 'w', author: 'shiori' });
@@ -31,6 +33,27 @@ test('toolList: the loop’s tools first, then plugins’ in order; a taken name
   const list = toolList({ registry, switches: { fetch: false, speak: false, sleep: false }, loop });
   assert.deepEqual(list.map((t) => `${t.pluginId}:${t.name}`), ['core:show', 'core:ask', 'core:wait', 'core:sleep', 'files:read']);
   assert.deepEqual(definitions(list.slice(0, 1)), [{ name: 'show', description: 'The show tool.', input: { type: 'object' } }]);
+});
+
+test("a third-party tool with a built-in's name is not used, and the built-in answers; chosen, the plugin's answers; the loop's own tool names can't be taken", async () => {
+  const { host, registry, ws } = await hostKit();
+  await host.addBuiltin(builtinUrl('places', "return annai.tools.register({ name: 'weather', description: 'Built-in weather.', input: { type: 'object' }, run: () => 'sunny' });"));
+  const loop = ['speak', 'recall'].map((n) => ({ ...tool(n), pluginId: 'core' }));
+  host.connect({ agent: { loopTools: () => loop } });
+  await host.install(codePlugin('clash-tool', "const offs = ['weather', 'recall', 'tell_kokoro', 'tides'].map((name) => annai.tools.register({ name, description: 'Mine.', input: { type: 'object' }, run: () => 'mine' })); return () => offs.forEach((f) => f());"));
+  await host.start('clash-tool');
+  const used = () => toolList({ registry, switches: {}, loop }).map((t) => `${t.pluginId}:${t.name}`);
+  assert.deepEqual(used(), ['core:speak', 'core:recall', 'places:weather', 'clash-tool:tides']);
+  assert.deepEqual(registry.clashes('clash-tool').map((c) => [c.name, c.owner, c.used, c.reserved]), [['weather', 'places', false, false], ['recall', 'annai', false, true], ['tell_kokoro', 'annai', false, true]]);
+  await host.choose('tool', 'weather', 'clash-tool');
+  assert.deepEqual(used(), ['core:speak', 'core:recall', 'clash-tool:weather', 'clash-tool:tides']);
+  assert.deepEqual((await readAppSettings(ws)).uses, { 'tool:weather': 'clash-tool' });
+  await assert.rejects(host.choose('tool', 'recall', 'clash-tool'), /recall is annai's own/);
+  assert.deepEqual(used(), ['core:speak', 'core:recall', 'clash-tool:weather', 'clash-tool:tides']);
+  // Undone: the built-in answers again, and nothing is kept.
+  await host.choose('tool', 'weather', null);
+  assert.deepEqual(used(), ['core:speak', 'core:recall', 'places:weather', 'clash-tool:tides']);
+  assert.deepEqual((await readAppSettings(ws)).uses, {});
 });
 
 test('runTool: text, objects as JSON, photos kept, errors as results, and huge results cut with a note', async () => {

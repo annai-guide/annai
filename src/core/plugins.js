@@ -12,12 +12,12 @@ import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError, TAKEN, isPluginBug } from './registry.js';
+import { PluginError, TAKEN, KEYED, isPluginBug, compareRanks } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
 import { retry } from './llm/retry.js';
-import { checkTool } from './agent/tools.js';
+import { checkTool, TALK, ALWAYS_ON } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { mergePatch } from './patch.js';
 import { descOrigins } from './llm/provider-desc.js';
@@ -82,8 +82,23 @@ export class PluginHost {
   #starting = new Map();
   /** @type {Set<string>} ids being removed: their start's later writes are skipped, and they don't start again (fix pass 8a-2) */
   #removing = new Set();
-  /** @type {{ state: Record<string, any>, names: Map<string, string[]> }} the installed packages and the skill names they claim, as of the last start */
-  #claimed = { state: {}, names: new Map() };
+  /** @type {Record<string, any>} installed.json as last read, for ranks */
+  #known = {};
+  /** @type {Record<string, string>} the user's choices of who owns a name, "<kind>:<name>" → plugin id (app settings' uses) */
+  #uses = {};
+  /**
+   * Who owns a name (milestone 6): built-ins, then official plugins, then third-party ones by when they were first
+   * installed; the user's choice while it runs; the loop's own tools always annai's; annai's components and the names
+   * a built-in provides annai's until the user chooses. @type {import('./registry.js').Rules}
+   */
+  #rules = {
+    rank: (id) => (this.builtins.has(id) ? [0, 0, id] : [this.#known[id]?.source === 'official' ? 1 : 2, Number(this.#known[id]?.installed ?? 0), id]),
+    choice: (kind, name) => this.#uses[`${kind}:${name}`],
+    reserved: (kind, name) => {
+      if (kind === 'tool' && [...TALK, ...ALWAYS_ON, ...(this.#services.agent?.loopTools?.() ?? []).map((/** @type {any} */ t) => t.name)].includes(name)) return 'only';
+      return kind === 'ui:component' || [...this.builtins.values()].some((m) => m.provides?.[kind]?.includes(name)) ? 'own' : null;
+    },
+  };
 
   /**
    * @param {{ registry: Registry, workspace: Workspace, importModule?: (url: string) => Promise<any>,
@@ -97,6 +112,7 @@ export class PluginHost {
     this.pluginUrl = pluginUrl;
     this.startTimeout = startTimeout;
     this.maxPackageBytes = maxPackageBytes;
+    registry.setRules(this.#rules);
     // Switched off after repeated errors (spec §5.5): an installed plugin is stopped too, so its timers and requests end
     // with its cleanup; Turn on starts it again. A built-in can only start with annai, so it stays as it is.
     registry.onDisabled(({ pluginId }) => {
@@ -121,7 +137,7 @@ export class PluginHost {
    *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], startFailures?: number, origins?: string[] }>>}
    */
   async installed() {
-    return (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {};
+    return (this.#known = (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {});
   }
 
   /** Installs (or replaces) a package from a zip file. @param {Uint8Array} bytes @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} [opts] */
@@ -137,9 +153,9 @@ export class PluginHost {
   }
 
   /**
-   * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of
-   * annai's own names, not a package of the other kind, no skill name Shiori already has from
-   * elsewhere. replaces: the installed version this package would replace.
+   * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of annai's
+   * own ids, not a package of the other kind. A skill name Shiori already has is no reason to refuse:
+   * the skill isn't used until the user chooses it (milestone 6). replaces: the installed version this package would replace.
    * @param {Map<string, Uint8Array>} files
    * @returns {Promise<import('./packages.js').Package & { replaces: { version: string, kind: string, added: import('./packages.js').Added } | null }>}
    */
@@ -149,17 +165,8 @@ export class PluginHost {
     if (this.builtins.has(id)) {
       throw new PluginError(id, pkg.kind === 'skill' ? 'is a name annai uses for one of its own parts, so a skill can\'t have it.' : 'has the same id as a plugin built into annai');
     }
-    const state = await this.installed();
-    const had = state[id];
+    const had = (await this.installed())[id];
     if (had && kindOfState(had) !== pkg.kind) throw new PluginError(id, `is installed already as a ${kindOfState(had)}. Remove it first.`);
-    // Every installed package's skills count, on or off, started or not, and annai's own (the coordinator's finding).
-    const claims = await this.#claims(state);
-    for (const s of pkg.skills) {
-      if (this.#builtinSkill(s.name)) throw new PluginError(id, `Shiori already has a skill called ${s.name}, built into annai.`);
-      const running = this.registry.entries('skill', { all: true }).find((e) => e.pluginId !== id && e.item?.name === s.name);
-      const holder = running?.pluginId ?? [...claims].find(([other, names]) => other !== id && names.includes(s.name))?.[0];
-      if (holder) throw new PluginError(id, `Shiori already has a skill called ${s.name}, from ${state[holder]?.name ?? holder}. Remove that one first.`);
-    }
     return { ...pkg, replaces: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg) } : null };
   }
 
@@ -178,7 +185,7 @@ export class PluginHost {
     if (kindOfState(s) === 'skill') return { ...none, skills: [id] };
     try {
       const m = await this.#stored(id);
-      const skills = (await this.#claims({ [id]: { kind: 'plugin' } })).get(id) ?? [];
+      const skills = await this.#skillNames(id);
       const personalities = (Array.isArray(m.personalities) ? m.personalities : []).map((p) => String(p).split('/').pop()?.replace(/\.md$/, '') ?? '');
       const origins = Array.isArray(s.origins) ? s.origins.map(String) : m.provider ? descOrigins(m.provider) : [];
       return { code: Boolean(m.entry), skills, personalities, origins };
@@ -187,78 +194,36 @@ export class PluginHost {
     }
   }
 
-  /** Whether a skill name is annai's own: one its built-in plugins provide or have registered. @param {string} name */
-  #builtinSkill(name) {
-    for (const m of this.builtins.values()) if (Array.isArray(m.provides?.skill) && m.provides.skill.includes(name)) return true;
-    return this.registry.entries('skill', { all: true }).some((e) => this.builtins.has(e.pluginId) && e.item?.name === name);
-  }
-
-  /**
-   * The skill names each installed package claims, on or off: from its record, or, for a record from
-   * before it was kept there, from its stored files.
-   * @param {Record<string, any>} state @returns {Promise<Map<string, string[]>>}
-   */
-  async #claims(state) {
-    /** @type {Map<string, string[]>} */
-    const out = new Map();
-    for (const [id, s] of Object.entries(state)) {
-      if (Array.isArray(s?.skills)) out.set(id, s.skills.map(String));
-      else if (kindOfState(s) === 'skill') out.set(id, [id]);
-      else {
-        /** @type {string[]} */
-        const names = [];
-        try {
-          const m = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${MANIFEST_FILE}`);
-          for (const f of Array.isArray(m?.skills) ? m.skills : []) {
-            const folder = skillFolder(String(f));
-            const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${folder ? `${folder}/` : ''}${SKILL_FILE}`);
-            if (t !== undefined) names.push(parseSkill(t).name);
-          }
-        } catch {
-          // a broken package claims nothing; it won't start anyway
-        }
-        out.set(id, names);
+  /** The skill names an installed package has, read from its stored files; a broken package has none. @param {string} id */
+  async #skillNames(id) {
+    if (kindOfState(this.#known[id]) === 'skill') return [id];
+    /** @type {string[]} */
+    const names = [];
+    try {
+      const m = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${MANIFEST_FILE}`);
+      for (const f of Array.isArray(m?.skills) ? m.skills : []) {
+        const folder = skillFolder(String(f));
+        const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${folder ? `${folder}/` : ''}${SKILL_FILE}`);
+        if (t !== undefined) names.push(parseSkill(t).name);
       }
+    } catch {
+      // a broken package has none; it won't start anyway
     }
-    return out;
+    return names;
   }
 
   /**
-   * Who already has a skill name, for a plugin about to register one (the coordinator's finding): annai
-   * itself, a plugin that registered it (on or off), or an installed package that comes first (installed
-   * earlier; on the same moment, by id), whether or not it has started. So the order packages start in
-   * never decides which one has a name. null: nobody.
-   * @param {string} id @param {string} name @returns {string | null}
+   * The user's choice of who owns a name (milestone 6), kept in the app settings as uses: a plugin's id, or null
+   * to undo it. It holds while that plugin runs and registers the name. A name annai keeps for itself, or a
+   * protocol or kind of backup place (handed keys), isn't chosen.
+   * @param {string} kind @param {string} name @param {string | null} pluginId
    */
-  #skillHolder(id, name) {
-    if (!this.builtins.has(id) && this.#builtinSkill(name)) return 'annai';
-    const running = this.registry.entries('skill', { all: true }).find((e) => e.pluginId !== id && e.item?.name === name);
-    if (running) return this.#nameOf(running.pluginId);
-    if (this.builtins.has(id)) return null;
-    const mine = this.#claimed.state[id];
-    const first = (/** @type {string} */ a, /** @type {string} */ b) => {
-      const ta = Number(this.#claimed.state[a]?.installed ?? 0);
-      const tb = Number(this.#claimed.state[b]?.installed ?? 0);
-      return ta !== tb ? ta < tb : a < b;
-    };
-    for (const [other, names] of this.#claimed.names) {
-      if (other !== id && names.includes(name) && (!mine || first(other, id))) return this.#nameOf(other);
-    }
-    return null;
-  }
-
-  /** A plugin's name as the user knows it. @param {string} id */
-  #nameOf(id) {
-    return this.builtins.get(id)?.name ?? this.#claimed.state[id]?.name ?? id;
-  }
-
-  /** Refuses a skill whose name another plugin has (see #skillHolder). @param {string} id @param {string} name */
-  #mayRegisterSkill(id, name) {
-    const holder = this.#skillHolder(id, name);
-    if (!holder) return;
-    throw new PluginError(id, holder === 'annai'
-      ? `its skill ${name} can't be used: annai has a skill by that name already. Ask the plugin's author to rename it.`
-      : `its skill ${name} can't be used: ${holder} has a skill by that name already. Remove one of them.`);
+  async choose(kind, name, pluginId) {
+    if (pluginId && this.#rules.reserved(kind, name) === 'only') throw new PluginError(pluginId, `${name} is annai's own, so no plugin replaces it.`);
+    if (pluginId && KEYED.has(kind)) throw new PluginError(pluginId, `${name} is handed the keys you give it, so the one used is annai's own, else the one installed first.`);
+    await updateAppSettings(this.ws, { uses: { [`${kind}:${name}`]: pluginId } });
+    this.#uses = (await readAppSettings(this.ws)).uses ?? {};
+    this.registry.setRules(this.#rules); // owners change: screens draw again
   }
 
   /**
@@ -283,8 +248,8 @@ export class PluginHost {
     // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
     const shown = await this.#keepAddress(id, url);
     state[id] = {
-      // A new version of one that is off stays off (fix pass 8a-5).
-      version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
+      // A new version of one that is off stays off (fix pass 8a-5); it keeps when it was first installed, its rank (milestone 6).
+      version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: before?.installed ?? this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
       // Where its provider sends keys, as agreed to now: an update is compared with this (security review).
       ...(pkg.provider ? { origins: descOrigins(pkg.provider) } : {}),
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
@@ -379,15 +344,18 @@ export class PluginHost {
   }
 
   /**
-   * Starts every enabled installed plugin and returns the ones that failed. A plugin that
-   * fails on MAX_START_FAILURES launches in a row is turned off (disabled: true).
+   * Starts every enabled installed plugin, in rank order (official first, then by when each was first
+   * installed: milestone 6), and returns the ones that failed. A plugin that fails on MAX_START_FAILURES
+   * launches in a row is turned off (disabled: true).
    * @returns {Promise<{ id: string, error: unknown, disabled: boolean }[]>}
    */
   async startInstalled() {
     const failures = [];
+    this.#uses = (await readAppSettings(this.ws)).uses ?? {};
     // An address kept raw before fix pass 8a-1 moves into its package's secret.
     for (const [id, s] of Object.entries(await this.installed())) if (s.source === 'url') await this.address(id).catch(() => {});
-    for (const [id, s] of Object.entries(await this.installed())) {
+    const rank = this.#rules.rank;
+    for (const [id, s] of Object.entries(await this.installed()).sort(([a], [b]) => compareRanks(rank(a), rank(b)))) {
       if (!s.enabled) continue;
       try {
         await this.start(id);
@@ -419,12 +387,11 @@ export class PluginHost {
     if (this.#stale.has(id)) throw new PluginError(id, 'was updated. Restart annai to run the new version.');
     const manifest = await this.#stored(id);
     const state = await this.installed();
-    this.#claimed = { state, names: await this.#claims(state) };
     if (manifest.entry) this.#loaded.set(id, state[id]?.fingerprint);
     const mod = manifest.entry ? await this.importModule(this.pluginUrl(id, manifest.entry)) : {};
     await this.#start(manifest, mod, false);
     // Its tools' names, kept so removing it removes their switches even while it is off (choice 4).
-    const tools = this.registry.entries('tool').filter((e) => e.pluginId === id).map((e) => String(e.item?.name)).sort();
+    const tools = this.registry.entries('tool', { all: true }).filter((e) => e.pluginId === id).map((e) => String(e.item?.name)).sort();
     const had = (await this.installed())[id]?.tools ?? [];
     if (JSON.stringify(had) !== JSON.stringify(tools)) await this.#updateState(id, { tools }).catch(() => {});
   }
@@ -481,9 +448,15 @@ export class PluginHost {
       for (const s of await t.listSecretIds()) if (s.startsWith(`plugin:${id}:`)) await t.deleteSecret(s);
       await t.deleteSecret(ADDRESS(id));
     });
-    const switches = (await readAppSettings(this.ws)).tools ?? {};
-    const off = [...tools].filter((t) => Object.hasOwn(switches, t));
-    if (off.length) await updateAppSettings(this.ws, { tools: Object.fromEntries(off.map((t) => [t, null])) });
+    // Its tools' switches, and the choices that named it (milestone 6).
+    const app = await readAppSettings(this.ws);
+    const off = [...tools].filter((t) => Object.hasOwn(app.tools ?? {}, t)).map((t) => [t, null]);
+    const chose = Object.keys(app.uses ?? {}).filter((k) => app.uses[k] === id).map((k) => [k, null]);
+    if (off.length) await updateAppSettings(this.ws, { tools: Object.fromEntries(off) });
+    if (chose.length) {
+      await updateAppSettings(this.ws, { uses: Object.fromEntries(chose) });
+      this.#uses = (await readAppSettings(this.ws)).uses ?? {};
+    }
     await logEvent(this.ws.store, SYS, { type: 'plugin.remove', actor: 'user', data: { plugin: id, name: was?.name ?? id, kind: kindOfState(was), bytes } }).catch(() => {});
     return { bytes };
   }
@@ -541,7 +514,7 @@ export class PluginHost {
    */
   async describe() {
     const rows = [];
-    const skillsOf = (/** @type {string} */ id) => this.registry.entries('skill').filter((e) => e.pluginId === id).map((e) => String(e.item?.name));
+    const skillsOf = (/** @type {string} */ id) => this.registry.entries('skill', { all: true }).filter((e) => e.pluginId === id).map((e) => String(e.item?.name));
     /** @type {Map<string, number>} each package's files' bytes, by its folder */
     const sizes = new Map();
     for (const f of await this.ws.list(SYS_PLUGINS, '/')) {
@@ -582,8 +555,8 @@ export class PluginHost {
         kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: m?.settings ?? null,
         // A model provider's plugin, and what it requires (milestone 1).
         provider: Boolean(m?.provider), requires: Array.isArray(m?.requires) ? m.requires : [],
-        // Off, the skills it claims (minors 18).
-        skills: active ? skillsOf(id) : (await this.#claims({ [id]: s })).get(id) ?? [],
+        // Off, the skills it has (minors 18).
+        skills: active ? skillsOf(id) : Array.isArray(s.skills) ? s.skills.map(String) : await this.#skillNames(id),
       });
     }
     return rows;
@@ -623,7 +596,6 @@ export class PluginHost {
         }
       };
       const skill = await read();
-      this.#mayRegisterSkill(id, skill.name);
       this.registry.add(id, 'skill', {
         name: skill.name, description: skill.description,
         text: async () => (await read()).body.trim(),
@@ -744,10 +716,7 @@ export class PluginHost {
     );
     return Object.freeze({
       id,
-      register: (/** @type {string} */ kind, /** @type {any} */ item) => {
-        if (kind === 'skill') this.#mayRegisterSkill(id, String(item?.name ?? ''));
-        return registry.add(id, kind, item);
-      },
+      register: (/** @type {string} */ kind, /** @type {any} */ item) => registry.add(id, kind, item),
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
       tools: Object.freeze({
         register: (/** @type {any} */ tool) => {
