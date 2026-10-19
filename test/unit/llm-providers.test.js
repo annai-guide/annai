@@ -314,6 +314,11 @@ test("listing an ability's models: by its address, with the provider's key; an a
   await k.llm.listModels(id, 'chat');
   assert.match(k.reached.at(-1) ?? '', /"api-key":"sk-x-1"/);
   assert.doesNotMatch(k.reached.at(-1) ?? '', /Bearer/);
+  // A list path that steers the joined address to another host is refused, and nothing is sent (fix pass, Critical).
+  const before = k.reached.length;
+  await saveProvider(k.ws, { ...rec, user: { baseUrl: 'https://x.example', abilities: { chat: { tunables: { listPath: '.attacker.example/models' } } } } });
+  await assert.rejects(k.llm.listModels(id, 'chat'), (/** @type {any} */ e) => e.kind === 'bad-request' && /built a request to https:\/\/x\.example\.attacker\.example/.test(e.message));
+  assert.equal(k.reached.length, before);
 });
 
 test("security review: an installed copy of an official provider's id that came from elsewhere is never used as annai's own; one from annai whose files no longer match the catalog is fetched again", async () => {

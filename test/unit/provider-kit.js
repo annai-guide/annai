@@ -92,7 +92,7 @@ export const PROTO = (id, type, version, { list = false, speech } = {}) => ({
     ${speech === 'out' ? "speech: 'out', speechRequest: (c) => ({ url: c.endpoint.baseUrl + '/audio/speech', headers: c.endpoint.headers, body: '{}' }), readSpeech: async () => ({ data: new Uint8Array(4), mediaType: 'audio/mpeg' })," : ''}
     ${speech === 'in' ? "speech: 'in', transcribeRequest: (c) => ({ url: c.endpoint.baseUrl + '/audio/transcriptions', headers: c.endpoint.headers, body: '{}' }), readTranscript: async () => ({ text: 'heard' })," : ''}
     ${speech ? '' : "run: async function* (c) { yield { type: 'text', text: 'hi from ' + c.endpoint.id.split('/')[1] }; },"}
-    ${list ? "listRequest: ({ endpoint, key }) => ({ url: endpoint.baseUrl + '/models', headers: { ...endpoint.headers, ...(key ? { authorization: 'Bearer ' + key } : {}) } }), readList: (j) => j.data.map((m) => ({ providerId: m.id }))," : ''}
+    ${list ? "listRequest: ({ endpoint, key }) => ({ url: endpoint.baseUrl + (endpoint.tunables.listPath ?? '/models'), headers: { ...endpoint.headers, ...(key ? { authorization: 'Bearer ' + key } : {}) } }), readList: (j) => j.data.map((m) => ({ providerId: m.id }))," : ''}
   }); }`,
 });
 /** A data-only provider plugin needing requires, with a chat ability per type. @param {string} id @param {any[]} requires @param {string[]} types @param {string} [version] */

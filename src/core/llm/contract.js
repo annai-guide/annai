@@ -90,6 +90,29 @@ export class ProviderError extends Error {
   }
 }
 
+/** @param {string} url */
+const originOf = (url) => {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.origin : '';
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * A request a protocol built goes only to its ability's address (fix pass, Critical): tunables such as
+ * path and listPath are joined into the URL, so a description could otherwise send the key to another
+ * host while every check names the right one. annai calls this before it fetches what a protocol built.
+ * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url
+ */
+export function sameOrigin(endpoint, url) {
+  const want = originOf(endpoint.baseUrl);
+  const got = originOf(url);
+  if (want && got === want) return;
+  throw new ProviderError('bad-request', `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || url}, not its address ${want || endpoint.baseUrl || '(none)'}. Check its tunables.`);
+}
+
 /** Plain words for an error, by its kind. @param {ProviderError} e */
 export function explain(e) {
   return PLAIN[e.kind] ?? e.message;

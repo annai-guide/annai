@@ -1,4 +1,4 @@
-import { ProviderError, errorFromResponse, portable } from './contract.js';
+import { ProviderError, errorFromResponse, portable, sameOrigin } from './contract.js';
 import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
@@ -134,6 +134,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     } else {
       const built = /** @type {NonNullable<EndpointType['build']>} */ (type.build)(spec);
       url = built.url;
+      sameOrigin(endpoint, built.url); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
       try {
@@ -241,6 +242,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
       const started = now();
       let traced = false;
       try {
+        sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
         const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal });
         traced = true;
         await trace?.upload({ endpoint: endpoint.name, url: r.url, status: res.status, ms: now() - started, ...(res.ok ? {} : { error: (await res.text().catch(() => '')).slice(0, 300) }) });

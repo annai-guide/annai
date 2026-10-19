@@ -851,6 +851,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **The responsibility model (§2, principle 2):**
   - Imported and fetched content is the user's responsibility.
   - The trace makes everything the agent sent and read visible.
+  - A request a protocol plugin builds is sent only to the origin of its provider ability's address, so a description's tunables can't send a key to another host while the install screen names the right one.
   - Third-party code plugins run with full trust, and their install screen says so. Data-only plugins (a provider, skills, personalities) can't run anything and get no such warning; a provider's install screen says where keys go, and an update that sends them to a new origin asks first (§5.3).
 - **No telemetry.** "Copy diagnostics" produces a redacted report for the user to share if they choose.
 - **Credits.** Every data source annai contacts is credited in Settings → About, with the attribution its licence or policy asks for:

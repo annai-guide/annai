@@ -1,5 +1,5 @@
 import { callOnce } from './call.js';
-import { ProviderError, explain } from './contract.js';
+import { ProviderError, explain, sameOrigin } from './contract.js';
 import { LEVELS } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
 
@@ -25,6 +25,16 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number }} TestCase
  */
 
+/** Whether a URL is at the endpoint's own address. @param {any} endpoint @param {string} url */
+const originOk = (endpoint, url) => {
+  try {
+    sameOrigin(endpoint, url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /** @param {unknown} e */
 const asError = (e) => (e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e)));
 
@@ -48,7 +58,7 @@ export async function testModel(c) {
     const err = asError(e);
     if (err.kind === 'unreachable' && probe && type.build) {
       const { url } = type.build({ endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { messages: [] } });
-      if (await probe(url)) err.kind = 'blocked';
+      if (originOk(endpoint, url) && (await probe(url))) err.kind = 'blocked';
     }
     steps.push({ step: err.kind === 'auth' || err.kind === 'credit' ? 'key' : 'access', ok: false, detail: explain(err) });
     return { ok: false, steps };
@@ -92,6 +102,7 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
     const r = /** @type {NonNullable<typeof type.uploadRequest>} */ (type.uploadRequest)({
       endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: 'annai-test.png', expiresInSeconds: 3600,
     });
+    sameOrigin(endpoint, r.url);
     const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());

@@ -23,6 +23,8 @@ export const CATEGORIES = Object.freeze(['providers', 'speech', 'backup', 'tools
 export const ROLE_KIND = Object.freeze({ main: 'chat', utility: 'chat', decide: 'chat', 'speech-in': 'transcription', 'speech-out': 'voice' });
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;
+/** The tunables protocols join onto an ability's address. */
+const PATH_TUNABLES = ['path', 'listPath'];
 const OBJECT = { type: 'object' };
 const MODEL = { type: 'object', required: ['providerId'], properties: { providerId: { type: 'string', minLength: 1, maxLength: 300 }, name: { type: 'string', maxLength: 120 } } };
 const ABILITY = {
@@ -61,6 +63,16 @@ export function checkProviderDesc(desc) {
   for (const [id, a] of abilities) {
     if (!ABILITY_ID.test(id)) errors.push(`$.abilities.${id}: an ability id is lowercase letters, digits and dashes, starting with a letter`);
     if (a.baseUrl !== undefined) addressProblem(`$.abilities.${id}.baseUrl`, a.baseUrl, errors);
+    // A protocol joins these onto the address: each must be a path from it (fix pass, Critical).
+    const paths = (/** @type {string} */ at, /** @type {any} */ t) => {
+      for (const k of PATH_TUNABLES) {
+        const v = t?.[k];
+        if (v !== undefined && (typeof v !== 'string' || !v.startsWith('/') || v.includes('//') || v.includes('@'))) errors.push(`${at}.tunables.${k}: a path from the address, starting with / (no // or @)`);
+      }
+    };
+    paths(`$.abilities.${id}`, a.tunables);
+    paths(`$.abilities.${id}.modelDefaults`, a.modelDefaults?.tunables);
+    (a.models ?? []).forEach((/** @type {any} */ m, /** @type {number} */ i) => paths(`$.abilities.${id}.models[${i}]`, m.tunables));
   }
   for (const [which, roles] of Object.entries(desc.roles ?? {})) {
     for (const [role, ids] of Object.entries(/** @type {Record<string, string[]>} */ (roles))) {
