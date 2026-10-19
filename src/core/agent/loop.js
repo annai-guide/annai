@@ -55,7 +55,7 @@ import { validate } from '../schema.js';
  * @property {(voiceOn: boolean) => Promise<{ role: string }>} role
  * @property {boolean} registryTools false: its own loop tools only @property {() => boolean} voice whether it may use the voice now
  * @property {boolean} logVoice @property {boolean} housekeeping @property {string} [nonce] Koe's, in its notes' marker
- * @property {boolean} [listenLast] its speak listens only as its reply's last call: a question to the other half, or a wait, runs at once
+ * @property {boolean} [listenLast] its speak doesn't listen when a question to the other half or a wait follows it: they run at once
  * @property {() => import('./transcript.js').HalfName} [rules] whose rules its transcript reads now
  * @property {(snapshot: import('./context.js').Snapshot) => string} [system]
  * @property {(c: { now: number, timeZone: string, voice: string, online: boolean, reasons: string[], place?: string, activity?: string, voiceWhy?: string }) => Promise<string>} [tail] in place of the now block
@@ -1166,7 +1166,7 @@ export class Agent {
       let stop = false;
       let endTurn = false;
       for (const [i, c] of ordered.entries()) {
-        const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name !== 'sleep');
+        const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
         const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more });
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
