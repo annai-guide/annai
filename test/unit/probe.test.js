@@ -331,10 +331,17 @@ test("Add with these doesn't switch on a protocol plugin the user turned off: it
     assert.equal((await d.host.installed())['chat-completions'].enabled, false);
     assert.deepEqual(Object.keys((await readConfig(d.ws)).providers), []);
     assert.deepEqual(d.added, []);
-    // A look is for the address it looked at.
+    // A look is for the address it looked at: one changed after it, or while it runs, asks for another.
     address.value = 'https://elsewhere.example/v1';
     address.attrs.oninput();
     assert.equal(buttonOf(panel, 'Add with these'), undefined);
+    address.value = `${s.origin}/v1`;
+    const looking = buttonOf(panel, 'Look for what it offers').attrs.onclick();
+    address.value = `${s.origin}/v2`;
+    address.attrs.oninput();
+    await looking;
+    assert.equal(buttonOf(panel, 'Add with these'), undefined, 'what was found at the address before is not shown');
+    assert.doesNotMatch(textOf(panel), /✓/);
   } finally {
     await s.stop();
   }
