@@ -411,3 +411,14 @@ test("classify: Gemini's RESOURCE_EXHAUSTED (its free tier's limit a minute, in 
   assert.equal(type.classify(402, prepaid), null);
   assert.equal(errorFromResponse(402, prepaid).kind, 'credit');
 });
+
+test("Koe fix pass 11: Gemini's own parallel calls (the first signed, the rest not) take no stand-in: only a reply none of whose calls is signed does", () => {
+  const stand = { google: { thought_signature: 'skip_thought_signature_validator' } };
+  const messages = [
+    { role: 'user', parts: [{ type: 'text', text: 'Now' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'a', name: 'speak', input: {}, extra: { google: { thought_signature: 'sig' } } }, { type: 'tool_call', id: 'b', name: 'sleep', input: {} }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'a', content: '1' }, { type: 'tool_result', id: 'b', content: '2' }] },
+  ];
+  const sent = type.build(spec({ tunables: { ...type.tunables, standInCallExtra: stand }, request: { messages } })).body.messages.find((/** @type {any} */ m) => m.tool_calls).tool_calls;
+  assert.deepEqual(sent.map((/** @type {any} */ c) => c.extra_content), [{ google: { thought_signature: 'sig' } }, undefined]);
+});
