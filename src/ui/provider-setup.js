@@ -3,6 +3,7 @@ import { made } from './slots.js';
 import { platform, isStandalone } from './platform.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
+import { descOrigins, addressProblem } from '../core/llm/provider-desc.js';
 import { officialPlugins } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 
@@ -57,7 +58,18 @@ export function setupUi(ctx, pluginId) {
       return platform() === 'ios' && isStandalone();
     },
     /** @param {{ key?: any, roles?: 'recommended' | 'free' | null, name?: string, baseUrl?: string, abilities?: Record<string, { on: boolean, baseUrl?: string }> }} [o] */
-    add: ({ key, roles, name, baseUrl, abilities } = {}) => ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities }),
+    add: async ({ key, roles, name, baseUrl, abilities } = {}) => {
+      // Keys go where its description says, which its install screen named (§5.3); anywhere only for a provider of any address.
+      const m = await ctx.plugins.manifestOf(pluginId);
+      const where = descOrigins(m?.provider);
+      for (const u of [baseUrl, ...Object.values(abilities ?? {}).map((a) => a?.baseUrl)].filter(Boolean)) {
+        const wrong = addressProblem(String(u));
+        if (wrong) throw new Error(wrong);
+        const at = new URL(String(u)).origin;
+        if (m?.catchAll !== true && !where.includes(at)) throw new Error(`${m?.name ?? pluginId} can't add a provider at ${at}: it sends keys only to ${where.join(', ') || 'none'}.`);
+      }
+      return ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities });
+    },
     /** @param {string} providerId @param {any} key */
     keep: async (providerId, key) => {
       const rec = (await ctx.llm.config()).providers[providerId];
