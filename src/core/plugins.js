@@ -21,6 +21,7 @@ import { checkTool } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { mergePatch } from './patch.js';
 import { descOrigins } from './llm/provider-desc.js';
+import { catalogFacts } from './catalog-facts.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -548,12 +549,22 @@ export class PluginHost {
     return { ...had, bytes };
   }
 
-  /** Rows for the plugins screen. problem: why an installed plugin can't start, if it can't. */
+  /**
+   * Rows for the plugins screen, each with the facts annai's catalog gives (its kind, abilities,
+   * keywords, size: catalogFacts) and what it provides. problem: why an installed plugin can't start, if it can't.
+   */
   async describe() {
     const rows = [];
     const skillsOf = (/** @type {string} */ id) => this.registry.entries('skill').filter((e) => e.pluginId === id).map((e) => String(e.item?.name));
+    /** @type {Map<string, number>} each package's files' bytes, by its folder */
+    const sizes = new Map();
+    for (const f of await this.ws.list(SYS_PLUGINS, '/')) {
+      const id = f.path.split('/')[1];
+      sizes.set(id, (sizes.get(id) ?? 0) + f.size);
+    }
     for (const m of this.builtins.values()) {
       rows.push({
+        ...catalogFacts(m), provides: m.provides ?? {},
         id: m.id, name: m.name, version: m.version, shownVersion: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id),
         failing: this.registry.isDisabled(m.id), problem: null, restart: false, kind: 'plugin', source: 'builtin', skills: skillsOf(m.id), code: true, settings: null,
         provider: false, requires: [],
@@ -579,6 +590,7 @@ export class PluginHost {
       }
       const active = this.active.has(id);
       rows.push({
+        ...catalogFacts(m ?? { id, name: s.name ?? id, version: s.version }, { size: sizes.get(id) ?? 0 }), provides: m?.provides ?? {},
         id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
         enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
         kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: m?.settings ?? null,

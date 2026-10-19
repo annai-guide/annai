@@ -173,17 +173,29 @@ export async function startModelServer(routes) {
 }
 
 /**
+ * From the Models screen: Add a provider opens the catalog on model providers; the provider is found by
+ * its name and added (Add, or Add another once one is set up), its plugin installed with what it needs;
+ * then its page. @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
+ * @param {string} [heading] its page's title, when it isn't the provider's name
+ */
+export async function pickProvider(page, provider, heading = provider) {
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
+  await page.getByLabel('Search the catalog').fill(provider);
+  const escaped = provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  await page.getByRole('button', { name: new RegExp(`^Add (another )?${escaped}$`) }).click();
+  await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible({ timeout: 30_000 });
+}
+
+/**
  * From the Models screen: adds a provider (installing its plugin and what it needs), names it, gives
  * its address and key, switches on one ability, adds one model by id to it, and comes back. ability:
  * the ability's name, such as "Anthropic Messages" for Another address; a provider's only chat ability is "Chat".
- * @param {import('@playwright/test').Page} page @param {string} provider the option in Add a provider
+ * @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
  * @param {{ ability?: string, name: string, url: string, key: string, model: string }} o
  */
 export async function addProvider(page, provider, { ability = 'Chat', name, url, key, model }) {
-  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
-  await page.getByLabel('Add a provider').selectOption({ label: provider });
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: provider })).toBeVisible({ timeout: 30_000 });
+  await pickProvider(page, provider);
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Address', { exact: true }).fill(url);
   await page.getByLabel('API key').fill(key);
@@ -201,6 +213,22 @@ export async function addProvider(page, provider, { ability = 'Chat', name, url,
   await panel.getByRole('button', { name: 'Add model' }).click();
   await expect(page.getByRole('link', { name: new RegExp(`^${model}`) })).toBeVisible();
   await page.getByRole('link', { name: '← Models' }).click();
+}
+
+/**
+ * Installing from a file starts at the Add screen: picks the file there, and the install screen opens.
+ * @param {import('@playwright/test').Page} page @param {{ name: string, mimeType: string, buffer: Buffer }} file
+ */
+export async function pickFile(page, file) {
+  await page.goto('/#/add');
+  await page.getByLabel('Install from a file').setInputFiles(file);
+}
+
+/** Installing from an address starts at the Add screen: Get it, and the install screen opens. @param {import('@playwright/test').Page} page @param {string} url */
+export async function pickAddress(page, url) {
+  await page.goto('/#/add');
+  await page.getByLabel('Address of a plugin or skill').fill(url);
+  await page.getByRole('button', { name: 'Get it' }).click();
 }
 
 /**
