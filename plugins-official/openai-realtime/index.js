@@ -26,20 +26,18 @@
 // G.711 (ITU-T G.711): the telephone's 8 kHz audio at a byte a sample, audio/pcmu (μ-law) and audio/pcma (A-law) to OpenAI.
 // annai's sessions speak 16-bit PCM; this codes it at the wire.
 
-/** μ-law's bias, and the largest sample it codes. */
+/** μ-law's bias. */
 const BIAS = 0x84;
-const CLIP = 32635;
 
-/** 16-bit PCM as μ-law. @param {Int16Array} pcm @returns {Uint8Array} */
+/** 16-bit PCM as μ-law, in G.711's 14-bit domain, as the reference g711.c codes it. @param {Int16Array} pcm @returns {Uint8Array} */
 export function muLaw(pcm) {
   const out = new Uint8Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) {
-    let s = pcm[i];
-    const sign = s < 0 ? 0x80 : 0;
-    s = Math.min(sign ? -s : s, CLIP) + BIAS;
-    let exp = 7;
-    while (exp > 0 && !(s & (0x80 << exp))) exp--;
-    out[i] = ~(sign | (exp << 4) | ((s >> (exp + 3)) & 0x0f)) & 0xff;
+    const v = pcm[i] >> 2;
+    const s = Math.min(Math.abs(v), 8159) + (BIAS >> 2);
+    let seg = 0;
+    while (seg < 8 && s >= 0x40 << seg) seg++;
+    out[i] = (seg >= 8 ? 0x7f : (seg << 4) | ((s >> (seg + 1)) & 0x0f)) ^ (v < 0 ? 0x7f : 0xff);
   }
   return out;
 }
