@@ -139,3 +139,20 @@ test('a click or a door slam leaves nothing: no activity and no audio, so no bil
   assert.ok(msOf(r.sent) > (lunch.length / RATE) * 1000, 'the whole sentence, not from where it was sure');
   r.input.stop();
 });
+
+test("given the session to send to, it sends at the session's rate: 8 kHz for one that takes G.711 (K6)", async () => {
+  /** @type {(string | Uint8Array)[]} */
+  const sent = [];
+  /** @type {((pcm: Float32Array, rate: number) => void) | null} */
+  let frames = null;
+  const mic = { async open(/** @type {any} */ c) { frames = c.onFrames; return { close() {} }; } };
+  const session = { audioIn: { format: 'pcmu', rate: 8000 }, activity: (/** @type {string} */ edge) => sent.push(edge), audio: (/** @type {Uint8Array} */ b) => sent.push(b) };
+  const input = new LiveInput({ mic, send: session });
+  await input.start();
+  const pcm = up3(cat(quiet(2), lunch, quiet(2)));
+  for (let i = 0; i < pcm.length; i += 2048) /** @type {any} */ (frames)(pcm.subarray(i, i + 2048), 48_000);
+  const chunks = /** @type {Uint8Array[]} */ (sent.filter((x) => typeof x !== 'string'));
+  assert.deepEqual([sent[0], sent.at(-1)], ['start', 'end']);
+  assert.ok(chunks.slice(0, -1).every((c) => c.length === 1600), '100 ms chunks of 8 kHz PCM16');
+  input.stop();
+});
