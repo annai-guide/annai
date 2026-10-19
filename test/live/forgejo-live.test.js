@@ -26,7 +26,7 @@ const ORIGIN = process.env.ANNAI_FORGEJO_ORIGIN;
 /** @param {number} n bytes that aren't text, made without getRandomValues' 64 KiB limit */
 const binary = (n) => new Uint8Array(n).map((_, i) => (i === 0 ? 0 : (i * 7919 + n) % 251));
 
-test('a real Forgejo or Gitea server: backups in parts and whole, only changes sent, a restore, another device at the same moment', { skip: !LIVE && 'set ANNAI_FORGEJO_LIVE to run', timeout: 300_000 }, async () => {
+test('a real Forgejo or Gitea server: backups in parts and whole, only changes sent, a restore, another device just before, and two at the very same moment', { skip: !LIVE && 'set ANNAI_FORGEJO_LIVE to run', timeout: 300_000 }, async () => {
   const [server, owner, repo, token] = String(LIVE).split('|');
   const get = ORIGIN ? browserFetch(ORIGIN) : (/** @type {string} */ u, /** @type {RequestInit} */ init) => fetch(u, init);
   /** @type {{ method: string, url: string, body: string }[]} */
@@ -119,4 +119,39 @@ test('a real Forgejo or Gitea server: backups in parts and whole, only changes s
   assert.equal(theirs.device, `${me}other`);
   const over = await type.put(c, await archive(), o({ base: theirs.id }));
   assert.equal((await type.list(c))[0].id, over.id);
+
+  // Two devices at the very same moment: their requests are released together. One lands; the other's push is
+  // refused (403 on both servers) or its file's id no longer matches, and either way it is offered the one that landed.
+  /** @type {(() => void)[]} */
+  let waiting = [];
+  const together = () => new Promise((resolve) => {
+    waiting.push(() => resolve(undefined));
+    if (waiting.length === 2) {
+      for (const go of waiting) go();
+      waiting = [];
+    }
+  });
+  const twin = (/** @type {string} */ device) => {
+    /** @type {any} */
+    let t = null;
+    activate({
+      helpers: { TargetError, readAnswer, zip: { ZipReader, ZipWriter } },
+      net: { fetch: async (/** @type {string} */ u, /** @type {RequestInit} */ init) => {
+        if (init?.method === 'POST') await together();
+        return get(u, init);
+      } },
+      storage: { register: (/** @type {any} */ x) => { t = x; } },
+    });
+    return { type: t, c: { ...c, device: { id: device, label: 'computer' } } };
+  };
+  await ws.write(trip, '/notes/race.md', 'Both at once', { author: 'user' });
+  const both = await archive();
+  const results = await Promise.allSettled([twin(`${me}a`), twin(`${me}b`)].map((x) => x.type.put(x.c, both, o({ base: over.id }))));
+  const won = results.filter((r) => r.status === 'fulfilled');
+  const lost = results.filter((r) => r.status === 'rejected');
+  assert.deepEqual([won.length, lost.length], [1, 1], JSON.stringify(results.map((r) => (r.status === 'rejected' ? String(r.reason?.message) : 'ok'))));
+  const reason = /** @type {any} */ (/** @type {PromiseRejectedResult} */ (lost[0]).reason);
+  assert.ok(reason instanceof TargetError && reason.kind === 'newer', String(reason?.message));
+  assert.equal(reason.remote.id, /** @type {any} */ (won[0]).value.id);
+  assert.equal((await type.list(c))[0].id, /** @type {any} */ (won[0]).value.id);
 });

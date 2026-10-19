@@ -196,16 +196,20 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
       if (!['create', 'update', 'delete'].includes(f.operation)) return { status: 500, json: err(`invalid file operation: ${f.operation} ${path}, supported operations are create, update, delete`) };
       if (f.operation === 'delete' && !head) return { status: 500, json: err(`branch does not exist [name: ${branch}]`) };
     }
+    // A file to delete, or to update, that the branch doesn't have: Forgejo answers 500, Gitea 404.
+    const gone = (/** @type {string} */ path, /** @type {string} */ forgejo) => (flavor === 'gitea'
+      ? { status: 404, json: err(`object does not exist [id: , rel_path: ${path}]`) } : { status: 500, json: err(forgejo) });
     for (const f of body.files) {
       if (f.operation !== 'delete') continue;
-      if (!base.has(f.path)) return { status: 500, json: err(`repository file does not exist [path: ${f.path}]`) };
+      if (!base.has(f.path)) return gone(f.path, `repository file does not exist [path: ${f.path}]`);
     }
     for (const f of body.files) {
       const had = base.get(f.path);
       if (f.operation === 'update' || f.operation === 'delete') {
-        if (!had) return { status: 500, json: err(`object does not exist [id: , rel_path: ${f.path}]`) };
-        if (!f.sha) return { status: 422, json: err('a SHA or commit ID must be provided when updating a file') };
-        if (f.sha !== had.sha) return { status: flavor === 'gitea' ? 422 : 409, json: err(`sha does not match [given: ${f.sha}, expected: ${had.sha}]`) };
+        if (!had) return gone(f.path, `object does not exist [id: , rel_path: ${f.path}]`);
+        // Without a file's id, Gitea checks against the branch's head as it is now, so it always passes; Forgejo refuses.
+        if (!f.sha && flavor !== 'gitea') return { status: 422, json: err('a SHA or commit ID must be provided when updating a file') };
+        if (f.sha && f.sha !== had.sha) return { status: flavor === 'gitea' ? 422 : 409, json: err(`sha does not match [given: ${f.sha}, expected: ${had.sha}]`) };
       }
       if (f.operation === 'create' || f.operation === 'update') {
         const parts = f.path.split('/');
@@ -225,9 +229,14 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
     const during = duringChange;
     duringChange = null;
     during?.();
-    // The push from Forgejo's temporary copy is never forced: a branch that moved meanwhile refuses it.
-    if (repo.refs.get(branch) !== head) return { status: 500, json: err('Failed to update branch: ! [rejected] HEAD -> main (fetch first)') };
     const sha = commitOf(repo, files, String(body.message ?? 'Update files'), head ? [head] : []);
+    // The push from the server's temporary copy is never forced: a branch that moved meanwhile refuses it, with 403.
+    const moved = repo.refs.get(branch);
+    if (moved !== head) {
+      return { status: 403, json: err(flavor === 'gitea'
+        ? `cannot lock ref 'refs/heads/${branch}': is at ${moved} but expected ${head}`
+        : `PushRejected Error: exit status 1 - To /var/lib/gitea/git/repositories/${repo.name}.git\n ! [remote rejected] ${sha} -> ${branch} (incorrect old value provided)\nerror: failed to push some refs to '/var/lib/gitea/git/repositories/${repo.name}.git'`) };
+    }
     repo.refs.set(branch, sha);
     const c = /** @type {any} */ (repo.objects.get(sha));
     return {
@@ -403,7 +412,7 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
     beforeChange(fn) {
       beforeChange = fn;
     },
-    /** Runs fn after the next ChangeFiles has checked the branch, before it pushes: another device's push lands in between. @param {() => void} fn */
+    /** Runs fn after the next ChangeFiles has checked the branch, before it pushes: another device's push lands in between, and this push is refused (403). @param {() => void} fn */
     duringChange(fn) {
       duringChange = fn;
     },
