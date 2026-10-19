@@ -267,6 +267,7 @@ export function activate(annai) {
             break;
           }
           case 'response.output_audio.delta': {
+            if (cuts) break; // the cancelled answer's, on its way before the cut: never heard
             const raw = base64.decode(String(m.delta ?? ''));
             const pcm = decode ? new Uint8Array(decode(raw).buffer) : raw;
             const ms = (pcm.byteLength / 2 / setup.audioOut.rate) * 1000;
@@ -279,10 +280,9 @@ export function activate(annai) {
             break;
           }
           case 'response.output_audio_transcript.delta':
-            words('said', m.item_id, String(m.delta ?? ''), false);
-            break;
           case 'response.output_audio_transcript.done':
-            words('said', m.item_id, String(m.transcript ?? ''), true);
+            if (cuts) so.delete(m.item_id);
+            else words('said', m.item_id, String(m.delta ?? m.transcript ?? ''), m.type.endsWith('done'));
             break;
           case 'conversation.item.input_audio_transcription.delta':
             words('heard', m.item_id, String(m.delta ?? ''), false);
