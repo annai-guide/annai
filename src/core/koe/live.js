@@ -543,7 +543,10 @@ export class LiveKoe {
       // Always answered: the model waits for it.
       const out = await this.c.koe.liveCall(e, this.#wake).catch((err) => ({ content: `Error: ${err?.message ?? err}` }));
       const silent = SILENT.includes(e.name);
-      if (s === this.#s) s.answer(e.id, e.name, theirs(out.content), { silent });
+      const answer = (/** @type {LiveSession} */ x) => x.answer(e.id, e.name, theirs(out.content), { silent });
+      // To its session, or to the one that resumed it with the handle, which carries the call; a fresh one never saw it.
+      if (s === this.#s) answer(s);
+      else if (this.state === 'open' && this.#handle) this.#send(answer);
       if (silent && this.#t === t && !t.bytes && !t.said) this.#t = null; // a turn of a call alone, answered silently, is over
     } finally {
       this.#tools--;

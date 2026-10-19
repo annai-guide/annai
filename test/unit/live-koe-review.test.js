@@ -185,3 +185,28 @@ test('item 14 (K6): a drop with no resume handle (OpenAI has none) still goes on
     await k.done();
   }
 });
+
+test('item 6 (probe M): a tool call being worked out when the session drops is answered in the session that resumes it', async () => {
+  const k = await liveKit([{ said: 'Looking.', audio: tone(0.1), tool: { name: 'list', args: { path: '/trip/' } } }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    const orig = k.agent.koe.liveCall.bind(k.agent.koe);
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((r) => { release = () => r(undefined); });
+    k.agent.koe.liveCall = async (/** @type {any} */ c, /** @type {string} */ w) => { await held; return orig(c, w); };
+    k.agent.send('List my trip');
+    await until(() => k.agent.live.busy && k.server.received().some((/** @type {any} */ m) => m.clientContent), 3000);
+    await wait(80); // the call has come, and is held
+    k.server.close(1011, 'Internal error encountered.');
+    await until(() => k.server.connections().length === 2, 3000);
+    await soon(async () => (await lives(k, 'resumed')).length === 1);
+    release();
+    await until(() => got(k, 'toolResponse').length === 1, 3000);
+    const at = k.server.received().findIndex((/** @type {any} */ m) => m.toolResponse);
+    const resumedAt = k.server.received().findLastIndex((/** @type {any} */ m) => m.setup);
+    assert.ok(at > resumedAt, 'answered in the resumed session');
+  } finally {
+    await k.done();
+  }
+});
