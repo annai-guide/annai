@@ -61,6 +61,8 @@ const EXTRAS = /^(readme|license|licence|copying|notice)(\.[\w-]+)?$|^\.(gitigno
 const BACKUP = /^annai backup\b/;
 /** A commit of a backup's parts, sent before the commit that is the backup. */
 const PARTIAL = /^Part of an annai backup\b/;
+/** A Git LFS pointer is about 130 bytes; a file the tree holds that small may be one. */
+const POINTER_MAX = 200;
 /** A git object's id, SHA-1 or SHA-256. */
 const HEX = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
@@ -173,6 +175,15 @@ async function sha256Id(bytes) {
   all.set(head);
   all.set(bytes, head.byteLength);
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', all)), (x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The Git LFS pointer the server commits in a file's place where .gitattributes says filter=lfs, as both
+ * servers write it (Forgejo's and Gitea's lfs.Pointer.StringContent; measured 2026-10-18). @param {Uint8Array} bytes
+ */
+async function lfsPointer(bytes) {
+  const oid = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', /** @type {BufferSource} */ (bytes))), (x) => x.toString(16).padStart(2, '0')).join('');
+  return new TextEncoder().encode(`version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize ${bytes.byteLength}\n`);
 }
 
 /** Whether text is a web address annai may use: https, or http on this computer (for testing). @param {string} u */
@@ -485,7 +496,12 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
   for (const [i, path] of names.entries()) {
     const n = zipped.size(path);
     if (n > maxFile) throw new E('refused', `annai sends files of up to ${size(maxFile)} to this kind of place, and ${shown(path)} is ${size(n)}. Remove it from annai, or back up to another kind of place.`);
-    entries.push({ path, sha: await idOf(await zipped.read(path)), size: n });
+    const bytes = await zipped.read(path);
+    let sha = await idOf(bytes);
+    // Kept with Git LFS, the file is a pointer to its content in the tree: the same content is the same pointer.
+    const had = old.get(path);
+    if (had && had.sha !== sha && had.size <= POINTER_MAX && had.size !== n && had.sha === (await idOf(await lfsPointer(bytes)))) sha = had.sha;
+    entries.push({ path, sha, size: n });
     onProgress({ phase: 'checking', done: i + 1, total: names.length });
   }
   const extras = [...old].filter(([path]) => EXTRAS.test(top(path)));

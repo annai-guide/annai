@@ -158,6 +158,26 @@ test('the next backup sends only what changed, deletes what is gone, and comes b
   }
 });
 
+test("a repository whose .gitattributes sends photos to Git LFS: a photo kept as an LFS pointer is still the same photo, so it isn't sent again, and comes back whole", async () => {
+  for (const flavor of /** @type {const} */ (['forgejo', 'gitea'])) {
+    const fj = await startForgejo({ flavor, lfs: true, repos: { [REPO]: { files: { '.gitattributes': '*.jpg filter=lfs diff=lfs merge=lfs -text\n' } } } });
+    try {
+      const { type } = forgejo();
+      const d = await device();
+      const first = await type.put(ctx(fj), await archive(d), opts());
+      const photo = /** @type {Buffer} */ (fj.files(REPO).get(`trips/${d.trip}/files/gate.jpg`));
+      assert.match(photo.toString('latin1'), /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:/, `${flavor}: the tree holds a pointer`);
+      await d.ws.write(d.trip, '/notes/bixby.md', 'Bixby Bridge, 1932, at dawn', { author: 'user' });
+      const second = await type.put(ctx(fj), await archive(d), opts({ base: first.id }));
+      assert.equal(fileOps(changes(fj)[1]).some((o) => o.endsWith('/files/gate.jpg')), false, `${flavor}: the photo is not sent again`);
+      const { ws, id } = await restored(await type.get(ctx(fj), second.id, { onProgress: () => {} }));
+      assert.deepEqual((await ws.read(id, '/files/gate.jpg'))?.bytes, (await d.ws.read(d.trip, '/files/gate.jpg'))?.bytes, `${flavor}: restored whole`);
+    } finally {
+      await fj.stop();
+    }
+  }
+});
+
 test("a large repository's tree is read page by page, whether the last page says truncated (Forgejo) or not (Gitea)", async () => {
   for (const flavor of /** @type {const} */ (['forgejo', 'gitea'])) {
     const fj = await startForgejo({ repos: { [REPO]: {} }, perPage: 4, flavor });
