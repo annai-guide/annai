@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
 import { SYS } from '../../src/core/scopes.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { withoutSecretsIn } from '../../src/core/agent/net.js';
 
 /** Starts a built-in test plugin and returns the annai object it was given. @param {any} k */
 async function api(k) {
@@ -84,4 +85,22 @@ test("annai.secrets.blank gives a copy with every secret annai keeps, and anythi
   assert.notEqual(out, value, 'a copy');
   assert.equal(await a.secrets.blank('nothing secret here'), 'nothing secret here');
   assert.equal(await a.secrets.blank(42), 42);
+});
+
+test("annai.secrets.blank fails closed: when annai can't read the secrets it keeps, it rejects rather than give back text it couldn't check; annai's own cards still blank what they can", async () => {
+  const k = await agentKit([[{ text: '' }]]);
+  const KEY = 'sk-planted-endpoint-key-0123456789';
+  await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('endpoint:stand-in:key', KEY));
+  const a = await api(k);
+  const tx = k.store.tx;
+  // The database dropped (an iPhone does that): the secrets can't be read.
+  k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (stores.includes('secrets') ? Promise.reject(new Error('The database connection is closing.')) : tx.call(k.store, stores, mode, fn)));
+  try {
+    await assert.rejects(a.secrets.blank({ text: `key ${KEY}` }), /couldn't read the keys it keeps/);
+    // On the device, a card's text is still shown with what can be blanked (net.js withoutSecretsIn, unchanged).
+    assert.deepEqual(await withoutSecretsIn(k.store, { text: 'Bearer abcdefghijklmnop' }), { text: 'Bearer «key»' });
+  } finally {
+    k.store.tx = tx;
+  }
+  assert.deepEqual(await a.secrets.blank({ text: `key ${KEY}` }), { text: 'key «key»' });
 });

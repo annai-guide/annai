@@ -105,6 +105,11 @@ export class PluginHost {
     this.pluginUrl = pluginUrl;
     this.startTimeout = startTimeout;
     this.maxPackageBytes = maxPackageBytes;
+    // Switched off after repeated errors (spec §5.5): an installed plugin is stopped too, so its timers and requests end
+    // with its cleanup; Turn on starts it again. A built-in can only start with annai, so it stays as it is.
+    registry.onDisabled(({ pluginId }) => {
+      if (!this.builtins.has(pluginId)) this.stop(pluginId).catch(() => {});
+    });
   }
 
   /** Starts a plugin that ships with the app. @param {string} moduleUrl */
@@ -855,8 +860,8 @@ export class PluginHost {
         /** null removes it. */
         set: (/** @type {string} */ name, /** @type {any} */ value) => this.ws.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => (value === null || value === undefined
           ? t.deleteSecret(`plugin:${id}:${name}`) : t.putSecret(`plugin:${id}:${name}`, value))),
-        /** A copy of value with every secret annai keeps, and anything shaped like a credential, blanked in every string (spec §9.9). */
-        blank: (/** @type {any} */ value) => withoutSecretsIn(this.ws.store, value),
+        /** A copy of value with every secret annai keeps, and anything shaped like a credential, blanked in every string (spec §9.9); it rejects when they can't be read. */
+        blank: (/** @type {any} */ value) => withoutSecretsIn(this.ws.store, value, { strict: true }),
       }),
     });
   }
