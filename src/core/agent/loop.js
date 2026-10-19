@@ -1008,11 +1008,7 @@ export class Agent {
     const wakeId = newId('w');
     const abort = new AbortController();
     this.#abort = abort;
-    const asked = wakes.some((w) => w.aloud);
-    this.#mayVoice = this.#half.voice();
-    this.#voiceNow = await this.#voiceOn(asked);
-    // Asked to hear her with voice mode off: she speaks, and the microphone stays off (spec §10.5, §6.2).
-    this.#aloudOnly = this.#voiceNow && asked && !this.voice?.on;
+    await this.#workOutVoice(wakes);
     this.#heardBy = null;
     this.#facts = { finalText: '', told: false, slept: false, spoke: false, kinds: wakes.map((w) => w.kind) };
     // Shiori became two halves, or one again.
@@ -1064,10 +1060,7 @@ export class Agent {
         break;
       }
       // The voice changed hands mid-turn (Koe down, or back): this step follows it.
-      if (this.#half.voice() !== this.#mayVoice) {
-        this.#mayVoice = !this.#mayVoice;
-        this.#voiceNow = await this.#voiceOn(wakes.some((w) => w.aloud));
-      }
+      if (this.#half.voice() !== this.#mayVoice) await this.#workOutVoice(wakes);
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
       const { tools, via, providerTools } = await this.#toolsNow();
@@ -1596,6 +1589,17 @@ export class Agent {
     if (!this.#busy) this.#setState(this.online() ? 'sleeping' : 'offline'); // a tap's window was listening: the dock says she sleeps again
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) p.listening = false; // a wait for an answer goes on, for typing
+  }
+
+  /**
+   * The turn's voice, and whether it only speaks: asked to hear her with voice mode off, she speaks, and the
+   * microphone stays off (spec §10.5, §6.2). Always worked out together. @param {Wake[]} wakes
+   */
+  async #workOutVoice(wakes) {
+    const asked = wakes.some((w) => w.aloud);
+    this.#mayVoice = this.#half.voice();
+    this.#voiceNow = await this.#voiceOn(asked);
+    this.#aloudOnly = this.#voiceNow && asked && !this.voice?.on;
   }
 
   /**
