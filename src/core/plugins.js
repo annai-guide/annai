@@ -20,6 +20,7 @@ import { retry } from './llm/retry.js';
 import { checkTool } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { mergePatch } from './patch.js';
+import { descHosts } from './llm/provider-desc.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -172,27 +173,21 @@ export class PluginHost {
 
   /**
    * What an installed package has, read from its stored files (its record may be older than this):
-   * code or not, and its skills', personalities' and endpoint templates' names. A package that can't be
-   * read has nothing, so anything a new version brings counts as new.
+   * code or not, its skills' and personalities' names, and the hosts its provider sends keys to. A
+   * package that can't be read has nothing, so anything a new version brings counts as new.
    * @param {string} id @returns {Promise<import('./packages.js').Parts>}
    */
   async installedParts(id) {
     /** @type {import('./packages.js').Parts} */
-    const none = { code: false, skills: [], personalities: [], templates: [] };
+    const none = { code: false, skills: [], personalities: [], hosts: [] };
     const s = (await this.installed())[id];
     if (!s) return none;
     if (kindOfState(s) === 'skill') return { ...none, skills: [id] };
     try {
       const m = await this.#stored(id);
       const skills = (await this.#claims({ [id]: { kind: 'plugin' } })).get(id) ?? [];
-      /** @type {string[]} */
-      const templates = [];
-      for (const t of Array.isArray(m.templates) ? m.templates : []) {
-        const json = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${t}`).catch(() => null);
-        for (const e of Array.isArray(json?.endpoints) ? json.endpoints : []) if (typeof e?.id === 'string') templates.push(e.id);
-      }
       const personalities = (Array.isArray(m.personalities) ? m.personalities : []).map((p) => String(p).split('/').pop()?.replace(/\.md$/, '') ?? '');
-      return { code: Boolean(m.entry), skills, personalities, templates };
+      return { code: Boolean(m.entry), skills, personalities, hosts: m.provider ? descHosts(m.provider) : [] };
     } catch {
       return none;
     }
@@ -598,7 +593,7 @@ export class PluginHost {
 
   /**
    * What a package brings besides code, registered under its id once it has started: its skills,
-   * read fresh from storage each time Shiori loads one; its personalities; its endpoint templates.
+   * read fresh from storage each time Shiori loads one; its personalities; its model provider's description.
    * @param {string} id @param {any} manifest
    */
   async #content(id, manifest) {
@@ -637,18 +632,8 @@ export class PluginHost {
       if (t === undefined) throw new PluginError(id, `its personality ${p} is missing`);
       this.registry.add(id, 'personality', { name: String(p).split('/').pop()?.replace(/\.md$/, ''), text: t, plugin: manifest.name });
     }
-    for (const t of manifest.templates ?? []) {
-      /** @type {any} */
-      let json;
-      try {
-        json = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${t}`);
-      } catch {
-        json = null;
-      }
-      if (!Array.isArray(json?.endpoints)) throw new PluginError(id, `its template file ${t} isn't valid`);
-      // Named by the package it came from, so the model picker never shows it as annai's own (fix pass 8a-3).
-      for (const tpl of json.endpoints) this.registry.add(id, 'template', { ...tpl, from: String(manifest.name ?? id) });
-    }
+    // A model provider's description (spec §9.1): its providers in Settings → Models are made from it.
+    if (manifest.provider) this.registry.add(id, 'provider', { plugin: id, name: String(manifest.name ?? id), version: String(manifest.version ?? ''), provider: manifest.provider });
   }
 
   /** The stored manifest, checked again: storage can hold one that was never installed through install(). @param {string} id */
