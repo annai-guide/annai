@@ -434,3 +434,17 @@ test("live mode keeps memories and firings only for the watches there are: a wat
   assert.ok(held.some((key) => key.includes(cambria.id)));
   assert.ok(held.some((key) => key.includes('plan:nepenthe:')));
 });
+
+test("a plan item removed and made again remembers what it fired, as the log does: its arrival doesn't fire a second time", async () => {
+  const k = await liveKit({ plan: { bixby: BIX } });
+  await k.stay(BIXBY, at('09:30'), at('09:33'));
+  const arrived = async () => (await k.events(['trigger.fired'])).filter((e) => e.data.watch === 'plan:bixby:arrived').length;
+  assert.equal(await arrived(), 1);
+  const item = await k.ws.readJSON(k.trip, '/plan/bixby.json');
+  await k.ws.delete(k.trip, '/plan/bixby.json', { author: 'user' });
+  await k.settle();
+  await k.ws.write(k.trip, '/plan/bixby.json', item, { author: 'user' });
+  await k.settle();
+  await k.stay(BIXBY, at('09:34'), at('09:40'));
+  assert.equal(await arrived(), 1);
+});

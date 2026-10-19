@@ -992,9 +992,15 @@ export class Live {
     this.#watches.clear();
     for (const scope of scopes) {
       await this.#loadScope(scope);
-      for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['trigger.fired'] }))) {
-        this.#fired.set(this.#key(scope, String(e.data?.watch)), { at: e.ts, place: e.data?.place ?? null, ...(typeof e.data?.for === 'number' ? { for: e.data.for } : {}) });
-      }
+      await this.#recall(scope);
+    }
+  }
+
+  /** Each watch's last firing in a conversation, from its log; only those of ids, when given. @param {string} scope @param {Set<string>} [ids] */
+  async #recall(scope, ids) {
+    for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['trigger.fired'] }))) {
+      const id = String(e.data?.watch);
+      if (!ids || ids.has(id)) this.#fired.set(this.#key(scope, id), { at: e.ts, place: e.data?.place ?? null, ...(typeof e.data?.for === 'number' ? { for: e.data.for } : {}) });
     }
   }
 
@@ -1042,6 +1048,9 @@ export class Live {
     const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
     const fallbackTz = [info?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
     this.#plan = planWatches(items, bookings, { fallbackTz });
+    // A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it.
+    const ids = new Set(this.#plan.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(trip, id))));
+    if (ids.size) await this.#recall(trip, ids);
     for (const { item } of items) {
       const p = item.place;
       if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? 'a plan place'), lat: p.lat, lng: p.lng });
