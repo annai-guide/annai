@@ -18,7 +18,7 @@ memories afterwards.
 > confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
 > search and directions links. And voice: Shiori speaks (OpenAI-compatible voices, or the phone's own) and listens
 > (recording with an end-of-sentence detector, a transcription model or the model itself, or phone dictation), with interruptions,
-> a quick check that talk is meant for her, and Auto, On and Off. And backups to GitHub, S3-compatible storage and WebDAV
+> a quick check that talk is meant for her, and Auto, On and Off. And backups to GitHub, Forgejo or Gitea, S3-compatible storage and WebDAV
 > (milestone 9). And live mode (milestone 5; its real-drive checklist is next): watches Shiori sets, the
 > plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode, the Live chip (the screen kept on as
