@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-for (const suite of ['store-idb', 'platform', 'photo-codec', 'voice', 'ui-slots']) {
+for (const suite of ['store-idb', 'platform', 'photo-codec', 'voice', 'audio-codecs', 'ui-slots']) {
   test(`browser suite: ${suite}`, async ({ page }) => {
     await page.goto(`/test/browser/index.html?suite=${suite}`);
     const handle = await page.waitForFunction(() => /** @type {any} */ (window).__results, null, { timeout: 120_000 });
