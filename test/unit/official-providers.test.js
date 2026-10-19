@@ -252,6 +252,7 @@ test("Gemini's Live voice: off until switched on, which installs gemini-live; Te
   assert.deepEqual([live.kind, live.type, live.name, live.on, live.baseUrl], ['realtime', 'gemini-live', 'Live voice', false, 'https://generativelanguage.googleapis.com']);
   assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking']);
   assert.deepEqual(live.models[0].prices, { input: 0.75, audioIn: 3, image: 1, output: 4.5, audioOut: 12 });
+  assert.ok(live.models.every((/** @type {any} */ m) => m.input.join() === 'text,image'), 'it takes photos (and prices their tokens)');
   assert.deepEqual(desc.roles?.recommended, { koe: ['gemini-3.8-live'] }, 'one Koe list (the user, 2026-10-19)');
   assert.ok(!(await official('provider-gemini')).provider.roles?.recommended?.main, 'Main stays as the user sets it');
   const GKEY = 'AIza-stand-in-gemini-key-0123456789';

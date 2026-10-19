@@ -200,7 +200,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "description": "Gemini models through Google's OpenAI-compatible endpoint, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
@@ -211,7 +211,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 2158,
+      "size": 2322,
       "requires": [
         {
           "id": "chat-completions",
@@ -220,7 +220,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "d7cb415ed5c8be92ce4a5dfa3d11231415466db1ff919dcef8ae7cd3ebc401ba"
+        "annai-plugin.json": "2da29501c03d288a82272acec569c94d9f51f0f7575b200e2c163c947b677c6e"
       }
     },
     {

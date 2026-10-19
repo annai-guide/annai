@@ -4,7 +4,7 @@ import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js'
 import { systemText, nowBlock, takeSnapshot } from './context.js';
 import { ME, newId } from '../scopes.js';
 import { storedTexts } from './log.js';
-import { candidates, koePath, splitOn, AllFailedError, COOLDOWN_MS } from '../llm/fallback.js';
+import { chatCandidates, koePath, splitOn, AllFailedError, COOLDOWN_MS } from '../llm/fallback.js';
 import { LiveKoe } from '../koe/live.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
@@ -571,10 +571,10 @@ export class Halves {
     return `${block}\n${view}\nKokoro's notes carry id="${this.nonce}".`;
   }
 
-  /** A photo reaches Koe only when every model of its list takes photos (plan decision 22). @param {import('../llm/contract.js').Message[]} messages */
+  /** A photo reaches a text Koe only when every chat model of its list takes photos (plan decision 22). @param {import('../llm/contract.js').Message[]} messages */
   async #koeSendable(messages) {
     const cfg = await this.llm.config();
-    if (candidates(cfg, KOE_ROLE).every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return messages;
+    if (chatCandidates(cfg, KOE_ROLE).every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return messages;
     return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: '[a photo; Kokoro sees it]' } : p)) }));
   }
 
