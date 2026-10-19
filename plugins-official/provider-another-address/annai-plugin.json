@@ -4,7 +4,11 @@
   "version": "2.0.0",
   "catchAll": true,
   "api": 1,
-  "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, then switch on what it offers.",
+  "entry": "index.js",
+  "files": [
+    "probe.js"
+  ],
+  "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
   "category": "providers",
   "keywords": [
     "OpenAI-compatible",

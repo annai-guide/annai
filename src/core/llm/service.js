@@ -185,6 +185,23 @@ export function createLlm({
       return id;
     }),
     /**
+     * Add's tap on a provider with code: its plugin, with what it requires; then null when the plugin has its own
+     * Add flow (a panel, decision 15), which adds it, or the provider added. @param {string} plugin
+     * @param {{ official?: boolean, roles?: 'recommended' | 'free' | null }} [o] @returns {Promise<string | null>} the provider's id
+     */
+    async startAdd(plugin, { official, roles } = {}) {
+      const had = (await plugins.installed())[plugin];
+      await queued(() => service.installProvider(plugin, { official }));
+      if (setupOf(plugins.registry, plugin)?.panel) return null;
+      try {
+        return await service.addProvider(plugin, { official, roles });
+      } catch (e) {
+        // As a failed add: the plugin it brought goes.
+        if (!had && !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === plugin)) await drop(plugin).catch(() => {});
+        throw e;
+      }
+    },
+    /**
      * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
      * tap, so one switched off stays off. @param {string} plugin @returns {Promise<import('./providers.js').ProviderSource | null>} null: a provider exists
      */

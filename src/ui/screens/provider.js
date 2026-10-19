@@ -111,6 +111,37 @@ export async function renderProvider(ctx, id) {
       }))));
 }
 
+/**
+ * A provider plugin's own Add flow (decision 15), such as Another address's look at an address: its panel, whose
+ * provider opens its page, or Add by hand. Add installed the plugin; nothing is installed here. @param {any} ctx @param {string} pluginId
+ */
+export async function renderNewProvider(ctx, pluginId) {
+  await ctx.llm.ready;
+  const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId);
+  const open = (/** @type {string} */ id) => ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
+  const panel = src && drawPanel(ctx, pluginId, null, { added: open });
+  const status = h('p', { class: 'sub', role: 'status', text: panel ? '' : "This provider's plugin isn't running, or has no Add of its own. Add it from Add." });
+  const byHand = h('button', {
+    class: 'btn', type: 'button',
+    onclick: async () => {
+      byHand.disabled = true;
+      try {
+        open(await ctx.llm.addProvider(pluginId, { roles: 'recommended', official: (await ctx.plugins.installed())[pluginId]?.source === 'official' }));
+      } catch (e) {
+        status.textContent = messageOf(e);
+        byHand.disabled = false;
+      }
+    },
+  }, 'Add by hand');
+  return h('div', { class: 'screen' },
+    h('p', { class: 'crumbs' }, h('a', { href: '#/add?kind=providers&from=models' }, '← Add')),
+    h('h1', { class: 'title', text: src?.name ?? 'Add a provider' }),
+    panel ? h('section', { class: 'panel', 'aria-label': src.name }, panel) : null,
+    h('section', { class: 'panel', 'aria-label': 'By hand' },
+      panel ? [h('p', { class: 'sub', text: `Or add ${src.name} as it is, and set up its key and what it offers on its own page.` }), h('div', { class: 'acts' }, byHand)] : null,
+      status));
+}
+
 /** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
 
 /**
