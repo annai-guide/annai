@@ -43,18 +43,13 @@ export function forget(store, scope, match) {
       for (const h of [e.data?.old, e.data?.new, ...(e.refs ?? [])]) if (typeof h === 'string') named.add(h);
     }
     let bytes = 0;
-    if (named.size) {
-      /** @type {string[]} */
-      const free = [];
-      for (const h of named) if (!(await t.blobInUse(h))) free.push(h);
-      if (free.length) {
-        const sizes = new Map((await t.listBlobs()).map((b) => [b.hash, b.size]));
-        for (const h of free) {
-          if (!sizes.has(h)) continue;
-          await t.deleteBlob(h);
-          bytes += sizes.get(h) ?? 0;
-        }
-      }
+    // Each content freed is read for its size alone: never a list of every blob, which a push sync would pay each time.
+    for (const h of named) {
+      if (await t.blobInUse(h)) continue;
+      const b = await t.getBlob(h);
+      if (!b) continue;
+      await t.deleteBlob(h);
+      bytes += Number(b.size) || 0;
     }
     return { files, events: doomed.size, bytes };
   });
