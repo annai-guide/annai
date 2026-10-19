@@ -1,5 +1,5 @@
-import { readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS } from './config.js';
-import { ROLE_KIND } from './provider-desc.js';
+import { readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES } from './config.js';
+import { ROLE_KINDS } from './provider-desc.js';
 
 /**
  * Providers made from provider plugins' descriptions (spec §9.8): its values are the template layer of
@@ -70,12 +70,15 @@ export function speechBehind(list, add) {
 
 /**
  * Roles with a suggestion filled in. onlyEmpty keeps chat roles the user set; speech models move ahead
- * of the stand-ins (withSpeech), or, behind, join the end. @param {Roles} roles @param {(role: string, providerModelId: string) => string | undefined} pick the model id
- * @param {Record<string, string[]> | undefined} suggestion @param {{ onlyEmpty: boolean, behind: boolean, speech: boolean, chat: boolean }} o
+ * of the stand-ins (withSpeech), or, behind, join the end. Koe's lists are filled only when koe is
+ * asked (the tap on "Use the recommended models"): the split is opt-in, so adding a provider never turns it on.
+ * @param {Roles} roles @param {(role: string, providerModelId: string) => string | undefined} pick the model id
+ * @param {Record<string, string[]> | undefined} suggestion @param {{ onlyEmpty: boolean, behind: boolean, speech: boolean, chat: boolean, koe?: boolean }} o
  */
 function suggested(roles, pick, suggestion, o) {
   const next = structuredClone(roles);
   for (const [role, ids] of Object.entries(suggestion ?? {})) {
+    if (KOE_ROLES.includes(role) && !o.koe) continue;
     const models = ids.map((p) => pick(role, p)).filter((x) => typeof x === 'string');
     if (!models.length) continue;
     if (SPEECH_ROLES.includes(role)) {
@@ -98,7 +101,7 @@ function picker(cfg, providerId) {
   const mine = Object.values(cfg.models).filter((m) => m.provider === providerId);
   return (/** @type {string} */ role, /** @type {string} */ pid) => {
     for (const a of abilities) {
-      if (a.kind !== ROLE_KIND[role]) continue;
+      if (!ROLE_KINDS[role]?.includes(a.kind)) continue;
       const m = mine.find((x) => x.ability === a.id && modelOf(x).providerId === pid);
       if (m) return m.id;
     }
@@ -187,7 +190,7 @@ export async function syncProviders({ ws }, sources) {
  */
 export async function useSuggestion({ ws }, providerId, src, which) {
   const cfg = await readConfig(ws);
-  await saveRoles(ws, suggested(cfg.roles, picker(cfg, providerId), src.provider.roles?.[which], { onlyEmpty: false, behind: false, speech: true, chat: true }));
+  await saveRoles(ws, suggested(cfg.roles, picker(cfg, providerId), src.provider.roles?.[which], { onlyEmpty: false, behind: false, speech: true, chat: true, koe: true }));
 }
 
 /** What a model added by id or from a list starts with: its ability's modelDefaults. @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId */

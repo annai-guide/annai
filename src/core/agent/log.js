@@ -10,8 +10,10 @@ import { utf8, text, ownBuffer } from '../bytes.js';
 
 /** Texts up to this many characters stay in the event; longer ones become blobs. */
 export const INLINE_MAX = 2000;
-/** The model.turn tag of Shiori's own turns: only these make up the conversation. */
+/** The model.turn tag of Shiori's own turns: only these make up the conversation (Kokoro's too, when she is two halves). */
 export const TALK_TAG = 'conversation';
+/** The model.turn tag of Koe's turns, when Shiori is two halves (the Koe and Kokoro design). */
+export const KOE_TAG = 'koe';
 
 /**
  * @param {Store} store @param {string} scope

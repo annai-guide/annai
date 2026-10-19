@@ -287,6 +287,8 @@ All wakes go into one queue:
 - User input goes ahead of triggers.
 - If the queue isn't empty when a turn ends, the next turn starts immediately.
 
+When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types goes to Koe, which writes it into the conversation; Kokoro reads it there and wakes for it. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. Kokoro also wakes for a note from Koe, unless it has told Koe since the user last typed: one typed question costs one Kokoro call. What Koe said by itself is in what Kokoro reads at its next call.
+
 ### 6.2 A turn
 
 1. Build the context.
@@ -309,6 +311,11 @@ The turn ends when the model calls no tool (the convention), calls `sleep`, or h
    - the next plan items, as TSV
    - connectivity
    - the wake reasons
+
+**Each half's context (§6.8):**
+- **Kokoro's** is the above. While Shiori is two halves, its system text gains the part about working behind Koe, and its tools `tell_koe`; both stay byte for byte the same whatever Koe does, so its cache holds. The conversation reads as labelled blocks: `[the user typed] "…"`, `[Koe said] "…"`, `[Koe showed] "…"`, `[Koe asked] "…"`, `[Koe asks] "…"`, `[Koe notes] "…"`, the words in them quoted, so a label or a new line inside can't pass for annai's. Koe's state changes (it can't speak, it speaks again, voice is on) arrive as `[annai] …` blocks in its messages, never as a change of system text or tools; its now block has a `koe:` line.
+- **Koe's** is small, for speed: its own instructions and Shiori's personality, with the user's profile; its quick tools; a window of the conversation, its last 12 exchanges, whose start moves forward 6 at a time, so its cached prefix holds between moves; and, in its tail, the now block and `<today>`: today's and tomorrow's plan, the bookings of the next 48 hours and the next reminder, at most 2,000 characters. Kokoro's notes arrive inside `<from_kokoro id="…">`, with a nonce made fresh each time annai starts, given in Koe's tail (never its cached prefix); every other text Koe reads has its angle brackets escaped, so no other text can be a note.
+- **A line that arrives while tool calls are open waits for their results,** and one the other half writes while a reply is being made follows that reply: the same rule live and from the log, so a reload sends the same messages.
 
 The provider adapter places cache markers where the provider needs them (Anthropic) or relies on automatic caching (OpenAI, Gemini). OpenAI's automatic breakpoint goes at the end of the latest user message or tool results, so OpenAI Responses sends the now block last as a developer message of its own. The cached prefix then ends where Anthropic's marker would.
 
@@ -365,6 +372,24 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
 | Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. |
 | Voice is off | `speak` becomes an on-screen bubble and doesn't listen. The now block tells Shiori the mode. |
 
+### 6.8 Two halves: Koe and Kokoro
+
+Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be two halves, as the user chooses:
+- **Koe** (声, voice) talks with the user and answers at once, from what it knows and what annai holds on the device. It never states anything that changes (hours, prices, directions, schedules, weather, anything about today) unless annai's data or a note says it: it says it's checking, and asks Kokoro.
+- **Kokoro** (心, heart and mind) is Shiori as she always was, on the main role, with all her tools. It hears everything, does the deep work, and talks only to Koe.
+
+**The split is opt-in:** Shiori is two halves only while a Koe list holds a model (§9.6). Otherwise she is one, exactly as before, at one call per message. One personality is in both.
+
+**Notes.** `tell_kokoro` (Koe's) and `tell_koe` (Kokoro's) return at once, after the note is written into the conversation. append reaches the other half before its next model call, or starts its turn; immediate also cuts its model call (or its speech). Both are always on. When Kokoro's turn ends in plain text, having told Koe nothing and never slept, that text goes to Koe as a note. A Koe waiting on Kokoro (`wait`) hears "Kokoro has nothing to add" when Kokoro is done with nothing to tell, or "Kokoro was stopped" after the sign's Stop.
+
+**Two transcripts from one log.** Each half writes its own model turns, tool calls and results, marked as its own; each reads only its own, and the other's lines as above.
+
+**Failures.**
+- Kokoro's `speak`, `show` and `ask` while Koe talks aren't run: each becomes a note to Koe, and its result says to use `tell_koe`. Its `wait` is answered too: the microphone is Koe's. This is in code, not instructions alone.
+- When Koe's whole list fails, it rests at least a minute; Kokoro gets "Koe can't speak right now; talk to the user directly" (and whether its last notes reached the user), its output tools run again, and what the user types goes to Kokoro alone until Koe answers again ("Koe is speaking again; use tell_koe"). No card: Kokoro answers.
+- When Kokoro's whole list fails while Koe talks, Koe is told once, and tells the user it couldn't check and offers to try again. No card.
+- For now Koe types only: with voice on, Kokoro talks, told by a block, as Shiori as one half did. The voice pathway for Koe comes next.
+
 ## 7. Output model and tools
 
 ### 7.1 Talking to the user
@@ -379,13 +404,17 @@ Shiori addresses the user **only** through output tools. Any plain text the mode
 | `wait(seconds)` | Keeps listening. | What was heard. |
 | `sleep()` | Ends the turn and turns the mic off. In the same response as `speak`, it stops `speak` from listening. | — |
 
+While Shiori is two halves (§6.8), these are Koe's; Kokoro's are gated in code while Koe talks, and Kokoro reaches the user through `tell_koe`.
+
 These rules make the loop work:
 - The `speak` result *is* the follow-up call, so there's always one unless she chose to sleep.
 - Every `speak` call gets a recorded result even if the loop ends without the main model seeing it, because both API styles reject an unmatched tool call.
 
 ### 7.2 Built-in tools
 
-Every tool can be switched off, except `show`, `ask`, `wait` and `sleep`. Turning off `speak` means voice off.
+Every tool can be switched off, except `show`, `ask`, `wait`, `sleep`, `tell_koe` and `tell_kokoro`. Turning off `speak` means voice off. A tool switched off is off for both halves.
+
+**Who has what, while Shiori is two halves (§6.8):** Kokoro has every tool, and `tell_koe`. Koe has its talk tools, the timers, `recall`, `list` and `read`, `nearby` and `guide` from the offline pack only (never the network), light changes, and `tell_kokoro`. A light change is one note in `/trip/notes/` (written or edited), a reminder set or cancelled, one flexible plan item's start, end, notes or priority, or one new flexible plan item: each is one file, undone from its history, and none touches a fixed commitment or money. Anything else (deleting, bookings, `trip.json`, memory, fixed items, importing, fetching, spending) is refused with "ask Kokoro". A photo reaches Koe only when every model of its list takes photos; otherwise Koe reads that Kokoro sees it.
 
 | Group | Tools |
 |---|---|
@@ -505,10 +534,11 @@ Request patches use JSON Merge Patch (RFC 7396), plus one extension: a key endin
 
 ### 9.6 Roles and fallback
 
-**Roles:** main (required), utility, quick decision, speech-in, speech-out, search.
+**Roles:** main (required), Koe for talking, Koe for typing, utility, quick decision, speech-in, speech-out, search.
 
 Each role is an **ordered list** of models, tried front to back:
 - Empty chat roles fall back to the main list.
+- **Koe's two lists** (§6.8) follow the voice setting (§10.5): voice on uses "for talking", voice off "for typing", and an empty one uses the other, never Main. Both empty: Shiori is one half. They're at level off, wait 8 s for the first words unless set, and are filled only by "Use the recommended models" on a provider's page, never when a provider is added: the split is opt-in.
 - Speech-out ends with the browser voice by default. Speech-in ends with phone dictation where available.
 - Users can reorder or remove these defaults.
 
@@ -528,6 +558,7 @@ Each role is an **ordered list** of models, tried front to back:
 - **The transcript stays portable.** It's stored in our own format. When the model changes:
   - tool-call ids are rewritten for the new provider
   - reasoning blocks signed for another model are dropped
+  - what a provider wrote on a tool call to have back (Gemini 3's thought signature, `extra_content` in Chat Completions) goes back only to the model that wrote it. (Gemini also streams parallel tool calls without an index, each whole with its own id; Chat Completions tells them apart by id.) Gemini 3 refuses a call in the current turn without one, so Gemini's description gives Chat Completions the stand-in its docs name for calls another model wrote (`standInCallExtra`): a fallback mid-turn isn't refused (checked against Gemini, 2026-10-19)
 - **A stream that breaks partway** is handled like an interruption. The next model gets "said so far: … ✂" and continues without repeating anything.
 - **The trace records every attempt,** which model answered, and the cost of each attempt.
 
@@ -591,6 +622,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   | bad request | hint: check the ability's tunables |
   | network | retry with backoff |
 
+  "Wait as instructed" reads a `retry-after` header, or a Google API error's RetryInfo (Gemini sends its errors as a list of one). Gemini's `RESOURCE_EXHAUSTED` on a 429, its free tier's limits included, is rate-limited, never "out of credit", though its words say "quota"; on a 402 (prepaid credit used up) it is out of credit (checked against Gemini, 2026-10-19). A rest of more than 10 minutes is said plainly, on the model's line in a card and to Koe: "its daily limit is used up; it rests until 07:30", not in the provider's billing words.
 - **Keys** live only in `secrets`. They're never in context and are redacted from the trace.
 
 ## 10. Voice
@@ -727,7 +759,7 @@ When the phone locks, the app freezes, and catch-up (§11.4) covers the gap.
 
 Plugins can add types.
 
-**Every watch has a fallback message.** When the watch fires and the model can't be reached, the fallback is shown or spoken directly.
+**Every watch has a fallback message.** When the watch fires and the model can't be reached, the fallback is shown or spoken directly. While Shiori is two halves, a firing wakes both (§6.1): Koe says what is simple at once and waits for Kokoro's note for anything that needs judgement, and the fallback goes with Koe's wake only, so it is said once.
 
 **Plan items create their own watches.** The system sets these, so they don't depend on Shiori remembering:
 - leave in X minutes
@@ -943,7 +975,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 
 Reference: mockups draft 6.
 
-- **The dock** sits at the bottom of every screen: camera · Shiori · type. Voice layouts, such as driving, enlarge the dock; they never move it.
+- **The dock** sits at the bottom of every screen: camera · Shiori · type. Voice layouts, such as driving, enlarge the dock; they never move it. While Kokoro works behind Koe (§6.8), a sign says "Kokoro is working", with Stop, which ends Kokoro's turn alone.
 - **One Shiori per screen.** Speech bubbles carry a "SHIORI" label instead of a second avatar.
 - **The top bar** shows the trip name (tap to switch trips) and a menu: Plan, Conversation, Files, Trace, Settings.
 - **Screens:**
@@ -954,11 +986,11 @@ Reference: mockups draft 6.
   - **Plan:** day tabs, a timetable with ● fixed and ○ flexible, drive legs between stops, and "Check this" chips
   - **Booking confirmation**
   - **Trips:** the install warning, trip cards with stamps, backup status (when each trip was last backed up), "Open a trip someone sent you"
-  - **Conversation**
+  - **Conversation:** what the user said and what Shiori said, showed and asked. While she is two halves (§6.8), that is Koe's: Kokoro's wakes and errors, the notes between the halves, annai's blocks and the errors the other half told the user of stay out (a card still says what needs saying), until "Show what the halves tell each other" (at the foot, remembered on this device) shows the notes as quiet lines.
   - **Files**
-  - **Trace:** filters plus tool switches
+  - **Trace:** filters plus tool switches. Model turns say whose they are (Koe, Kokoro or Shiori), notes and blocks have lines of their own, and a Halves kind shows them.
   - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then Updates, About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, of annai or of a plugin, Updates comes first, with a line saying what waits.
-    - **Models:** the one-tap start, the featured provider's sign-in, while there is no provider (§9.8), the providers (each with the abilities switched on and its number of models) and Add a provider (the catalog, on model providers), the roles (§9.6), chat roles taking chat models and speech roles transcription models or voices (each speech role with Add a provider: the catalog, on what has transcription, or a voice), then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead. A provider's page has its name; its key (written once, with Get a key), address and extra headers, saved together, with its plugin's own panel in the key's place where it has one (OpenRouter's Sign in again, §5.4); its note; the suggestion buttons; one panel per ability with its switch, its own address, tunables, extra fields, photo uploads, its models (Add a model by id, Fetch model list) and Test; and Remove, which takes its key, models and their places in roles, and its plugin when it is the last made from it.
+    - **Models:** the one-tap start, the featured provider's sign-in, while there is no provider (§9.8), the providers (each with the abilities switched on and its number of models) and Add a provider (the catalog, on model providers), the roles (§9.6), Koe's two lists right after Main, chat roles taking chat models and speech roles transcription models or voices (each speech role with Add a provider: the catalog, on what has transcription, or a voice), then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead. A provider's page has its name; its key (written once, with Get a key), address and extra headers, saved together, with its plugin's own panel in the key's place where it has one (OpenRouter's Sign in again, §5.4); its note; the suggestion buttons; one panel per ability with its switch, its own address, tunables, extra fields, photo uploads, its models (Add a model by id, Fetch model list) and Test; and Remove, which takes its key, models and their places in roles, and its plugin when it is the last made from it.
     - **Add** (the catalog): one screen for everything a user can add, from model providers to skills. It lists annai's official catalog, everything installed (third-party plugins too, each as what it is: from its address's host, or a file), the fixed row An MCP server, and at its foot installing from an address or a file (the install screen first, §5.1). annai's built-in parts aren't listed: they are there already.
       - **Search** (a must) covers the name, then the plugin's `keywords`, then its description; an ability ("voice", "voices") and "free" match too. A name match ranks above a keyword match, so the more specific plugin comes first ("lm studio": LM Studio, then llama.cpp), and a row that matched on a keyword says why ("Also for: LM Studio"). Matching ignores case, spaces and punctuation ("lm studio" is "lmstudio"), and starts at a word (a capital after a small letter starts one, so "router" finds OpenRouter). A query with spaces that matches nowhere whole needs each word to match somewhere ("free voice"). Results rank by match, then featured, then official, then name. It is a few lines of annai's own, with no search library.
       - **With nothing typed** it is browsable, grouped by kind (Model providers, Voices and transcription, Backup places, Tools and MCP, Skills and personalities, Developer), showing only kinds with something in them; the catch-alls, Another address and An MCP server, come last in theirs.

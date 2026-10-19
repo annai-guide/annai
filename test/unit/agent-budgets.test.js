@@ -97,3 +97,22 @@ test("today's spending is all counted, however many web requests the day made (s
   for (let i = 0; i < 4500; i++) await logEvent(store, ME, { type: 'net.request', data: { kind: 'web', tool: 'fetch' } }, at('2026-11-27T09:00:00Z') + i * 1000);
   assert.equal(await spentToday(store, now, 'UTC'), 0.75);
 });
+
+test("Spend per day counts both halves' turns, and stops either at the budget, with one card (K1)", async () => {
+  const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+  const dear = { prices: { input: 10_000, output: 10_000 } }; // 12 and 6 tokens: $0.18 a call
+  const k = await agentKit([[sleep]], { models: [dear], koe: { type: [sleep], model: dear } });
+  await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.3 } } });
+  k.agent.send('First');
+  await k.agent.idle();
+  const turns = await k.events(['model.turn']);
+  assert.deepEqual(turns.map((e) => e.data.tag).sort(), ['conversation', 'koe']);
+  assert.ok(Math.abs(await spentToday(k.store, Date.now(), 'UTC') - 0.36) < 1e-9);
+  const calls = k.requests.length;
+  k.agent.send('Second');
+  await k.agent.idle();
+  assert.equal(k.requests.length, calls, 'neither half calls past the budget');
+  assert.deepEqual((await k.events(['error'])).map((e) => e.data.which).sort(), ['spend', 'spend']);
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(k.notices.filter((/** @type {any} */ n) => n.title === "Shiori stopped: today's budget is spent").length, 1, 'one card, not one a half');
+});

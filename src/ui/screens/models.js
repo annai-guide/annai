@@ -1,9 +1,9 @@
 import { h, field, savedField, savedRadios, numberIn, queueSave } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { wantedTtl } from '../../core/agent/warmth.js';
-import { providerOf, modelOf, abilityOf, saveRoles, CHAT_ROLES, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
+import { providerOf, modelOf, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
 import { LEVELS } from '../../core/llm/reasoning.js';
-import { ROLE_KIND } from '../../core/llm/provider-desc.js';
+import { ROLE_KINDS } from '../../core/llm/provider-desc.js';
 import { speechAdd } from '../../core/llm/providers.js';
 import { renderProvider, renderNewProvider } from './provider.js';
 import { renderModel } from './model.js';
@@ -11,9 +11,12 @@ import { featuredStart } from '../provider-setup.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
-  main: 'Main: talks with you', utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks',
+  main: 'Main: talks with you', 'koe-talk': 'Koe for talking: answers you at once when voice is on', 'koe-type': 'Koe for typing: answers you at once when you type',
+  utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks',
   'speech-in': 'Speech in: how Shiori hears you', 'speech-out': "Speech out: Shiori's voice",
 };
+/** The chat roles in the order they are shown: Koe's two lists right after Main. */
+const CHAT_ORDER = ['main', 'koe-talk', 'koe-type', 'utility', 'decide'];
 /** What each stand-in entry is (spec §10.1, §10.3). @type {Record<string, string>} */
 /** Short notes on the stand-ins; Settings → Voice says where each sends your voice (spec §11.7). */
 const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: "the phone's own; usually goes to Google or Apple", 'browser-voice': "the browser's own; some voices go online" };
@@ -113,12 +116,12 @@ function rolesSection(ctx, cfg) {
   /** A speech list can take its own stand-ins and the models of its kind: transcription, or voices. @param {string} role */
   const speechChoices = (role) => [
     ...Object.entries(STAND_INS).filter(([, s]) => s.role === role).map(([id, s]) => ({ id, name: s.name })),
-    ...models.filter((m) => kind(m.id) === ROLE_KIND[role]),
+    ...models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')),
   ];
   return h('section', { class: 'panel', 'aria-label': 'Roles' },
     h('h2', { class: 'section', text: 'Roles' }),
-    h('p', { class: 'sub', text: 'Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list.' }),
-    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models.filter((m) => kind(m.id) === 'chat'), nameOf, list, edit)),
+    h('p', { class: 'sub', text: "Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list; Koe's two lists use each other." }),
+    ...CHAT_ORDER.map((role) => roleBlock(role, cfg.roles, models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')), nameOf, list, edit)),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
     ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
 }
@@ -131,6 +134,7 @@ function rolesSection(ctx, cfg) {
  */
 function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } = {}) {
   const r = roles[role];
+  const called = role.startsWith('koe') ? ROLE_NAMES[role].split(':')[0] : role; // Koe's lists by name, the rest by id
   /** Moves an entry up or down the list as it is when saved. @param {string} id @param {number} by */
   const move = (id, by) => list(role, (ids) => {
     const next = ids.slice();
@@ -142,13 +146,15 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
     h('span', { text: `${i + 1}. ${nameOf(id)}${STAND_IN_NOTES[id] ? ` (${STAND_IN_NOTES[id]})` : ''}` }),
     h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} up`, disabled: i === 0, onclick: () => move(id, -1) }, '↑'),
     h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} down`, disabled: i === r.models.length - 1, onclick: () => move(id, 1) }, '↓'),
-    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remove ${nameOf(id)} from ${role}`, onclick: () => list(role, (ids) => ids.filter((x) => x !== id)) }, '✕')));
+    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remove ${nameOf(id)} from ${called}`, onclick: () => list(role, (ids) => ids.filter((x) => x !== id)) }, '✕')));
   const others = choices.filter((m) => !r.models.includes(m.id));
   const pick = h('select', { id: `role-${role}-add` }, ...others.map((m) => h('option', { value: m.id, text: m.name })));
   const level = speech ? null : h('select', { id: `role-${role}-level` }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
   if (level) level.value = r.level;
-  const wait = h('input', { id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : '30', value: r.firstOutputSeconds ?? '' });
+  const koe = role === 'koe-talk' || role === 'koe-type';
+  const wait = h('input', { id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : koe ? '8' : '30', value: r.firstOutputSeconds ?? '' });
   const empty = role === 'main' ? 'No models yet. Add one.'
+    : koe ? 'Empty: Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.'
     : role === 'speech-in' ? "Nothing here, so annai can't hear you. Add an entry."
       : role === 'speech-out' ? "Nothing here, so Shiori can't speak aloud. Add a voice."
         : 'Uses the main list.';
@@ -157,17 +163,17 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
     h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
     // The catalog, on providers that can hear you, or speak (spec §16.2).
-    speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KIND[role]}&from=models`, 'aria-label': `Add a provider for ${role}` }, 'Add a provider')) : null,
+    speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KINDS[role][0]}&from=models`, 'aria-label': `Add a provider for ${role}` }, 'Add a provider')) : null,
     h('div', { class: 'row' },
-      others.length ? field(`Add a model to ${role}`, pick) : null,
+      others.length ? field(`Add a model to ${called}`, pick) : null,
       others.length ? h('div', { class: 'acts' }, h('button', {
         class: 'btn', type: 'button',
         onclick: () => {
           const id = pick.value; // as chosen at the tap
           list(role, (ids) => (ids.includes(id) ? ids : speech ? speechAdd(ids, id, role) : [...ids, id]));
         },
-      }, `Add to ${role}`)) : null,
-      level ? savedField(`Reasoning for ${role}`, level, () => level.value, (v) => edit(role, (x) => ({ ...x, level: v }))) : null,
+      }, `Add to ${called}`)) : null,
+      level ? savedField(`Reasoning for ${called}`, level, () => level.value, (v) => edit(role, (x) => ({ ...x, level: v }))) : null,
       savedField(waitLabel, wait, () => numberIn(wait, 1, 600, 'Wait from 1 to 600 seconds; leave it empty for the usual.', { whole: true }),
         (n) => edit(role, ({ firstOutputSeconds: _, ...x }) => (n === null ? x : { ...x, firstOutputSeconds: n })))));
 }

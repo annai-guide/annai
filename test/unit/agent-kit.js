@@ -12,6 +12,7 @@ import { modelTrace } from '../../src/core/llm/trace.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { readConfig, saveProvider, saveRoles } from '../../src/core/llm/config.js';
 import { Agent } from '../../src/core/agent/loop.js';
+import { Halves } from '../../src/core/agent/halves.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { readFile } from 'node:fs/promises';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
@@ -53,13 +54,16 @@ export function fakeCodec(formats) {
  * kept in `requests`.
  * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
- *     encoder?: { makes: string[] }, plays?: string[] } }} [opts]
+ *     encoder?: { makes: string[] }, plays?: string[] },
+ *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> } }} [opts]
  *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
+ *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for Koe's models,
+ *   "Koe for typing" (m-koe, model-koe) and "Koe for talking" (m-koet, model-koet), and the inputs Koe's models take
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -73,7 +77,9 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   scripted({ providers: { register: (/** @type {any} */ x) => { type = { ...x, pluginId: 'scripted-model' }; return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
   /** @type {any[]} */
   const requests = [];
-  const watched = { ...type, run: (/** @type {any} */ c) => { requests.push(structuredClone(c.request)); return type.run(c); } };
+  /** @type {Record<string, any[]>} the requests each provider model got */
+  const sent = {};
+  const watched = { ...type, run: (/** @type {any} */ c) => { requests.push(structuredClone(c.request)); (sent[c.model.providerId] ??= []).push(structuredClone(c.request)); return type.run(c); } };
   /** @type {any} */
   const config = { providers: {}, models: {}, roles: { main: { models: [], level: 'medium' }, utility: { models: [], level: 'low' }, decide: { models: [], level: 'off' } } };
   /** A provider with one ability, and one model on it. @param {string} p @param {string} m @param {string} name @param {any} ability @param {any} user */
@@ -86,6 +92,14 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
       { providerId: `model-${i}`, prices: { input: 1, output: 1 }, input: ['text', 'image'], ...(models[i] ?? {}) });
     config.roles.main.models.push(`m-${i}`);
   });
+  if (koe?.type) {
+    add('pv-koe', 'm-koe', 'Koe', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.type) ? { script: koe.type } : koe.type }, { providerId: 'model-koe', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'], ...(koe.model ?? {}) });
+    config.roles['koe-type'] = { models: ['m-koe'], level: 'off' };
+  }
+  if (koe?.talk) {
+    add('pv-koet', 'm-koet', 'KoeT', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.talk) ? { script: koe.talk } : koe.talk }, { providerId: 'model-koet', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'] });
+    config.roles['koe-talk'] = { models: ['m-koet'], level: 'off' };
+  }
   if (utility) {
     add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] });
     config.roles.utility.models = ['m-u'];
@@ -152,8 +166,11 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     voice.retryMs = [0, 0]; // a failed upload is sent again at once here
     await voice.refresh(); // as the app does when it starts
   }
-  const agent = new Agent({ store, ws, llm, registry, codec, voice, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
-  agent.addLoopTools(selfTools(agent));
+  /** @type {any} */
+  const agent = halves || koe
+    ? new Halves({ store, ws, llm, registry, codec, voice, timeZone: () => 'UTC', secondMs: 10, ...agentOpts })
+    : new Agent({ store, ws, llm, registry, codec, voice, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
+  agent.addLoopTools(selfTools(agent.kokoro ?? agent));
   agent.on('notice', (n) => notices.push(n));
   /** @type {Record<string, string>} annai's own personalities, as shipped */
   const presets = {};
@@ -161,7 +178,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */
   const events = (types) => store.tx(['events'], 'readonly', (t) => t.listEvents(trip, types ? { types } : {}));
-  return { store, ws, trip, registry, host, agent, llm, requests, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed };
+  return { store, ws, trip, registry, host, agent, llm, requests, sent, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed };
 }
 
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */

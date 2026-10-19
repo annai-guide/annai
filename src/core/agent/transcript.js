@@ -1,5 +1,6 @@
-import { TALK_TAG, record, storedTexts, blobBytes } from './log.js';
+import { TALK_TAG, KOE_TAG, record, storedTexts, blobBytes } from './log.js';
 import { toBase64 } from '../bytes.js';
+import { blockFor, saidWithout, wrapNote, escapeTags, quote } from './blocks.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -9,6 +10,7 @@ import { toBase64 } from '../bytes.js';
  * @typedef {import('../llm/contract.js').Part} Part
  * @typedef {import('../types.js').Store} Store
  * @typedef {{ texts: Record<string, string>, images: Part[] }} Resolved
+ * @typedef {'one' | 'kokoro' | 'koe'} HalfName  whose rules (the Koe and Kokoro design): Kokoro reads labelled blocks, Koe a window with Kokoro's notes
  */
 
 export const RESTARTED = 'interrupted by app restart';
@@ -18,11 +20,20 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
  * read by type: a day of location points is never walked (A6). A type apply() learns goes here too.
  */
-export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result']);
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask']);
+/** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
+export const KOE_WINDOW = 12;
+export const KOE_JUMP = 6;
+/** Wake reasons that are lines of their own elsewhere. */
+const OWN_LINES = ['user', 'heard', 'note', 'halves'];
 
 export class Transcript {
   /** @type {Message[]} */
   messages = [];
+  /** @type {HalfName} */
+  half = 'one';
+  /** Koe's session nonce. */
+  nonce = '';
   /** First and last event in context, for model.turn records (spec §4.5). */
   from = 0;
   to = 0;
@@ -40,38 +51,97 @@ export class Transcript {
   #answered = new Set();
   /** Heard answers (spec §10.3), by segment id: their tool's result carries them. @type {Map<string, Part>} */
   #heard = new Map();
+  /** @type {string[]} the last reply's calls: only their results follow until all have one */
+  #last = [];
+  /** @type {{ seq: number, parts: Part[] }[]} lines held until those results (plan decision 3) */
+  #held = [];
+  /** @type {{ seq: number, parts: Part[] }[]} lines since the last reply */
+  #since = [];
+  #at = 0;
+  /** @type {WeakSet<Part>} Koe's notes as annai wrapped them: the only words that may be tags */
+  #wrapped = new WeakSet();
+
+  /** @param {{ half?: HalfName, nonce?: string }} [o] */
+  constructor({ half = 'one', nonce = '' } = {}) {
+    this.half = half;
+    this.nonce = nonce;
+  }
+
+  /** Whether this half wrote it (Kokoro: whatever isn't Koe's). @param {any} d */
+  #mine(d) {
+    return this.half === 'koe' ? d.half === 'koe' : d.half !== 'koe';
+  }
 
   /** @param {any} e an event @param {Resolved} r its stored texts and images */
   apply(e, r) {
     const d = e.data ?? {};
     const texts = { ...d, ...r.texts };
+    const koe = this.half === 'koe';
+    this.#at = e.seq;
     if (e.type === 'compaction') {
       this.messages = [];
       this.#calls.clear();
       this.#answered.clear();
+      this.#last = [];
+      this.#held = [];
+      this.#since = [];
       this.compaction = e.seq;
       this.from = e.seq;
-      this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
+      // Koe starts again with its window; Kokoro has the summary.
+      if (!koe) this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
-      const others = (d.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user' && w.kind !== 'heard' && w.text);
+      if (!this.#mine(d)) return;
+      const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
-        this.#add('user', others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${w.text}` })));
+        // Two halves read it quoted, so it can't pass for a label; one half as before.
+        this.#line(others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${this.half === 'one' ? w.text : quote(w.text)}` })));
         this.unanswered = true;
         this.waiting = 'wake';
       }
+    } else if (e.type === 'msg.user' && this.half === 'kokoro' && d.split) {
+      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images]);
+      this.unanswered = true;
+      this.waiting = 'user';
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
-      if (texts.text && !d.answer) {
-        this.#add('user', [{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }, ...r.images]);
-        this.unanswered = true;
-        this.waiting = 'user';
+      if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
+        this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }, ...r.images]);
+        // Koe owes an answer only to what was typed to it.
+        if (!koe || d.split) {
+          this.unanswered = true;
+          this.waiting = 'user';
+        }
       }
-    } else if (e.type === 'model.turn' && d.tag === TALK_TAG && texts.parts) {
+    } else if (e.type === 'model.turn' && d.tag === (koe ? KOE_TAG : TALK_TAG) && texts.parts) {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
+      // What the other half wrote while this reply was being made follows it, live and from the log alike.
+      const to = this.half !== 'one' && typeof d.context?.to === 'number' ? d.context.to : Infinity;
+      const late = this.#since.filter((x) => x.seq > to);
+      if (late.length) this.#unadd(late.flatMap((x) => x.parts));
+      this.#since = [];
       if (parts.length) this.#add('assistant', parts);
+      this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
+      this.#held.push(...late);
+      this.#flushHeld();
       this.unanswered = false;
+    } else if (e.type === 'note') {
+      if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
+      /** @type {Part} */
+      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce) : /** @type {string} */ (blockFor(e, texts)) };
+      if (koe) this.#wrapped.add(part);
+      this.#line([part]);
+      this.unanswered = true;
+      this.waiting = 'wake';
+    } else if (e.type === 'halves') {
+      if (this.half !== 'kokoro') return;
+      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }]);
+    } else if (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask') {
+      const line = this.half === 'kokoro' ? (d.half === 'koe' ? blockFor(e, texts) : null) : koe ? saidWithout(e, texts) : null;
+      if (!line) return;
+      this.#line([{ type: 'text', text: line }]);
+      if (koe) this.unanswered = false;
     } else if (e.type === 'photo.replace') {
       // A refused photo's new copy (spec §4.8): every place it was sent now sends the copy. When that
       // copy was itself replaced later (its bytes gone), the swap still happens, so the next one finds it.
@@ -89,7 +159,7 @@ export class Transcript {
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
-      this.unanswered = false;
+      if (this.#mine(d)) this.unanswered = false;
       return;
     } else if (e.type === 'heard') {
       // What the microphone heard (spec §10.3); its words come with it (dictation) or later (heard.text).
@@ -100,14 +170,14 @@ export class Transcript {
         return;
       }
       const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile ? '[heard while you were thinking]' : '[heard]';
-      this.#add('user', [{ type: 'text', text: label }, speech]);
+      this.#line([{ type: 'text', text: label }, speech]);
       if (!d.dismissed) {
         this.unanswered = true;
         this.waiting = 'user';
       }
     } else if (e.type === 'heard.text') {
       // A segment's words, written down later: every place it is sent now sends them (spec §10.3).
-      const text = String(d.text ?? '');
+      const text = koe ? escapeTags(String(d.text ?? '')) : String(d.text ?? '');
       const had = this.#heard.get(d.of);
       if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
       this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'speech' && p.id === d.of ? { ...p, text } : p)) }));
@@ -115,16 +185,54 @@ export class Transcript {
     } else if (e.type === 'reminder') {
       // A reminder annai showed (and said) by itself, the model out of reach (spec §11.3): she knows, so she doesn't repeat it.
       if (!texts.text) return;
-      this.#add('user', [{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since you couldn't be reached: "${texts.text}"` }]);
-    } else if (e.type === 'tool.result' && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
+      const said = this.half === 'one' ? `"${texts.text}"` : quote(texts.text);
+      this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since you couldn't be reached: ${said}` }]);
+    } else if (e.type === 'tool.result' && this.#mine(d) && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       const heard = (Array.isArray(d.heard) ? d.heard : []).map((/** @type {string} */ id) => this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id }));
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
+      this.#flushHeld();
     } else {
       return;
     }
+    if (koe) this.#window();
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  #waitsForResults() {
+    return this.#last.some((id) => !this.#answered.has(id));
+  }
+
+  /** A line that isn't a result: held while calls are open, as providers refuse anything between (plan decision 3). @param {Part[]} parts */
+  #line(parts) {
+    if (this.#waitsForResults()) this.#held.push({ seq: this.#at, parts });
+    else this.#since.push({ seq: this.#at, parts: this.#add('user', parts) });
+  }
+
+  #flushHeld() {
+    if (this.#waitsForResults()) return;
+    for (const x of this.#held.splice(0)) this.#since.push({ seq: x.seq, parts: this.#add('user', x.parts) });
+  }
+
+  /** @param {Part[]} parts lines taken back out of the last message */
+  #unadd(parts) {
+    const last = this.messages.at(-1);
+    if (last?.role !== 'user') return;
+    const gone = new Set(parts);
+    const left = last.parts.filter((p) => !gone.has(p));
+    if (left.length) this.messages[this.messages.length - 1] = { role: 'user', parts: left };
+    else this.messages.pop();
+  }
+
+  /** An exchange starts with a user message that holds a line; results before the first line kept go with their calls. */
+  #window() {
+    const starts = this.messages.flatMap((m, i) => (m.role === 'user' && m.parts.some((p) => p.type === 'text') ? [i] : []));
+    if (starts.length < KOE_WINDOW + KOE_JUMP) return;
+    const kept = this.messages.slice(starts[KOE_JUMP]);
+    const parts = kept[0].parts;
+    kept[0] = { role: 'user', parts: parts.slice(parts.findIndex((p) => p.type === 'text')) };
+    this.messages = kept;
   }
 
   /** The heard segments here whose words aren't written down yet (spec §10.3). @returns {string[]} */
@@ -140,24 +248,36 @@ export class Transcript {
     return [...this.#calls].filter(([id]) => !this.#answered.has(id)).map(([id, name]) => ({ id, name }));
   }
 
-  /** @param {'user' | 'assistant'} role @param {Part[]} parts */
-  #add(role, parts) {
+  /** Koe's user lines have their angle brackets escaped, whatever their source (security reviews). @param {Part} p @returns {Part} */
+  #unmarked(p) {
+    if (this.#wrapped.has(p)) return p;
+    if (p.type === 'text') return { ...p, text: escapeTags(p.text) };
+    // And a result's line can't start like one of annai's labels.
+    if (p.type === 'tool_result') return { ...p, content: escapeTags(p.content).replace(/^(\s*)\[/gm, '$1\\[') };
+    if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: escapeTags(p.text) };
+    return p;
+  }
+
+  /** @param {'user' | 'assistant'} role @param {Part[]} given @returns {Part[]} the parts as added */
+  #add(role, given) {
+    const parts = this.half === 'koe' && role === 'user' ? given.map((p) => this.#unmarked(p)) : given;
     const last = this.messages.at(-1);
     if (last?.role === role) this.messages[this.messages.length - 1] = { role, parts: [...last.parts, ...parts] };
     else this.messages.push({ role, parts });
+    return parts;
   }
 
   /**
    * The conversation of a scope: the latest compaction's summary, then the events after the part
-   * it covers (spec §6.5), up to before (exclusive) when given.
-   * @param {Store} store @param {string} scope @param {{ before?: number }} [o]
+   * it covers (spec §6.5), up to before (exclusive) when given; by one half's rules.
+   * @param {Store} store @param {string} scope @param {{ before?: number, half?: HalfName, nonce?: string }} [o]
    */
   static async load(store, scope, o = {}) {
     const [latest] = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true, limit: 1, ...(o.before ? { before: o.before } : {}) }));
     const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, {
       types: [...SAID], ...(latest ? { after: latest.data.to } : {}), ...(o.before ? { before: o.before } : {}),
     }));
-    const t = new Transcript();
+    const t = new Transcript({ half: o.half ?? 'one', nonce: o.nonce ?? '' });
     if (latest) t.apply(latest, await resolveEvent(store, latest));
     for (const e of events) if (e.type !== 'compaction' && !NOT_SAID.has(e.type)) t.apply(e, await resolveEvent(store, e));
     t.through = Math.max(latest?.seq ?? 0, events.at(-1)?.seq ?? 0);
@@ -190,12 +310,13 @@ export async function resolveEvent(store, e) {
 /**
  * After a crash or reload mid-turn, every tool call without a result gets one (spec §6.7), so the
  * transcript stays valid for every provider. @param {Store} store @param {string} scope @param {Transcript} t
+ * @param {Record<string, string>} [mark] its results' half mark
  * @returns {Promise<number>} how many were answered
  */
-export async function repair(store, scope, t) {
+export async function repair(store, scope, t, mark = {}) {
   const open = t.open();
   for (const c of open) {
-    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, ms: 0, content: RESTARTED } });
+    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, ms: 0, ...mark, content: RESTARTED } });
     t.apply(ev, { texts: {}, images: [] });
   }
   return open.length;
