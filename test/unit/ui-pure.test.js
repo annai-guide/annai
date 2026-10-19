@@ -456,7 +456,7 @@ test("M6: a package over an installed one of its id says so: an update from wher
   assert.equal(overLine({ version: '1.0.0', from: at('https://trails.example/s/«key»/annai-plugin.json') }, at('https://trails.example/s/zap1a2b3c4d5e6f7g8h9/annai-plugin.json')), 'Version 1.0.0 is installed now. Installing replaces it.');
   for (const from of [at('https://other.example/kit/annai-plugin.json'), { source: 'file', file: 'kit.zip' }]) {
     assert.equal(overLine({ version: '1.0.0', from: at('https://trails.example/kit/annai-plugin.json') }, from),
-      "Version 1.0.0 is installed now, from trails.example/kit/annai-plugin.json, not where this one comes from. Installing replaces it, and this one gets the settings and keys that one keeps.");
+      "Version 1.0.0 is installed now, from trails.example/kit/annai-plugin.json, not where this one comes from. Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.");
   }
 });
 
