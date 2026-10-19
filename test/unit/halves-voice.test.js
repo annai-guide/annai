@@ -460,3 +460,17 @@ test("a note that comes while the user is speaking waits for their words, and fo
   const texts = userTexts(last);
   assert.ok(texts.includes('is it famous') && texts.some((t) => t.startsWith('<from_kokoro')), JSON.stringify(texts));
 });
+
+test('"Hear Shiori tell it" while Koe works: Koe tells the recap aloud, even with voice off, and does not listen', async () => {
+  const { TELL_RECAP } = await import('../../src/core/after/recap.js');
+  const k = await agentKit([{ rules: [{ match: '.', reply: calls(['speak', { text: 'Kokoro would tell it.' }]) }] }], {
+    koe: { type: { rules: [{ match: 'recap', reply: calls(['speak', { text: 'We drove the coast, and the fog lifted at ten.' }]) }] } },
+    voice: { mode: 'off', speechIn: ['m-hear'] },
+  });
+  await k.agent.wake({ kind: 'recap', aloud: true, text: TELL_RECAP });
+  await k.agent.idle();
+  assert.deepEqual(plays(k), ['We drove the coast, and the fog lifted at ten.']);
+  assert.equal(micOpens(k), 0);
+  assert.equal(k.sent['model-0'], undefined, 'Kokoro hears it in the conversation');
+  assert.ok(read(k.agent.kokoro).includes(`[Koe said aloud] ${JSON.stringify('We drove the coast, and the fog lifted at ten.')}`));
+});
