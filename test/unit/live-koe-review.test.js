@@ -41,3 +41,24 @@ test("item 1 (probe K2): a typed message when no live session can open: Kokoro i
     await server.stop();
   }
 });
+
+test('item 2 (probe O): an append note that comes while a tool call is still being worked out goes in once it is answered', async () => {
+  const k = await liveKit([{ said: 'Let me look.', audio: tone(0.1), tool: { name: 'list', args: { path: '/trip/' } } }, { said: 'Noted.', audio: tone(0.1) }], { pace: 0 });
+  try {
+    await k.voice.unlock();
+    const orig = k.agent.koe.liveCall.bind(k.agent.koe);
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((r) => { release = () => r(undefined); });
+    k.agent.koe.liveCall = async (/** @type {any} */ c, /** @type {string} */ w) => { await held; return orig(c, w); };
+    k.agent.send('List my trip');
+    await soon(async () => (await k.events(['out.speak'])).length === 1); // the turn ended; the call is still held
+    await k.agent.channel.send('kokoro', 'The trip has three days.', 'append', 'tool');
+    await wait(50);
+    assert.ok(!texts(k).some((t) => t.includes('three days')), 'not while the call is open');
+    release();
+    await until(() => texts(k).some((t) => t.includes('three days')), 3000);
+  } finally {
+    await k.done();
+  }
+});
