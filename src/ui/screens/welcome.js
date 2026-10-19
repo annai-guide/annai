@@ -38,7 +38,7 @@ function body(n) {
       can('Voice.', 'Talk with Shiori hands-free, in the car or on a trail.'),
       can('Offline places.', "OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal."),
       can('Photos.', 'Show Shiori what you see, and ask about it.'),
-      can('Backups.', 'Export a file, or back up automatically to GitHub, an S3 bucket or a WebDAV folder.'),
+      can('Backups.', 'Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.'),
       can('Plugins and MCP servers.', 'Skills, tools and screens that others make.'),
       can('Recap and replay.', 'Afterwards, a recap of the trip, and its route played back.'))];
   }

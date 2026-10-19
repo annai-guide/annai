@@ -46,10 +46,10 @@ memories afterwards.
 
 ## Backups
 
-- Back up everything automatically to a private GitHub repository, an S3-compatible bucket (AWS, Cloudflare R2, Backblaze B2 …) or a WebDAV folder: after changes or once a day, on Wi-Fi, while annai is open. On GitHub each backup is one commit of your files, and only what changed is uploaded; a bucket or a folder keeps each backup as one file, encrypted if you like.
+- Back up everything automatically to a private GitHub repository, a private repository on a Forgejo or Gitea server (your own, or Codeberg), an S3-compatible bucket (AWS, Cloudflare R2, Backblaze B2 …) or a WebDAV folder: after changes or once a day, on Wi-Fi, while annai is open. On GitHub, Forgejo and Gitea each backup is one commit of your files, and only what changed is uploaded; a bucket or a folder keeps each backup as one file, encrypted if you like.
 - Restore any backup onto a new or wiped phone from Settings → Automatic backups.
 - A newer backup from your other phone is never overwritten: annai pauses, and offers to import it as a copy.
-- The sign-ins for those places (the GitHub token, the bucket's keys, the WebDAV password) stay on the device and are never in a backup. API keys go into a backup only when you choose, and only into an encrypted one.
+- The sign-ins for those places (the GitHub or Forgejo token, the bucket's keys, the WebDAV password) stay on the device and are never in a backup. API keys go into a backup only when you choose, and only into an encrypted one.
 
 ## Notifications
 
