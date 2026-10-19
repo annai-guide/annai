@@ -121,7 +121,8 @@ function rolesSection(ctx, cfg) {
   return h('section', { class: 'panel', 'aria-label': 'Roles' },
     h('h2', { class: 'section', text: 'Roles' }),
     h('p', { class: 'sub', text: "Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe." }),
-    ...CHAT_ORDER.map((role) => roleBlock(role, cfg.roles, models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')), nameOf, list, edit)),
+    ...CHAT_ORDER.map((role) => roleBlock(role, cfg.roles, models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')), nameOf, list, edit,
+      { live: cfg.roles[role]?.models.some((id) => kind(id) === 'realtime') })),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
     ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
 }
@@ -130,9 +131,9 @@ function rolesSection(ctx, cfg) {
  * One role: its list, which buttons change, and its reasoning level and wait, which save as they change.
  * @param {string} role @param {import('../../core/llm/config.js').Roles} roles @param {{ id: string, name: string }[]} choices what can be added
  * @param {(id: string) => string} nameOf @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list
- * @param {(role: string, change: (r: any) => any) => Promise<void>} edit @param {{ speech?: boolean }} [o]
+ * @param {(role: string, change: (r: any) => any) => Promise<void>} edit @param {{ speech?: boolean, live?: boolean }} [o] live: its list holds a realtime model
  */
-function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } = {}) {
+function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, live = false } = {}) {
   const r = roles[role];
   const koe = role === 'koe';
   const called = koe ? 'Koe' : role; // Koe by name, the rest by id
@@ -162,7 +163,7 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
   return h('div', { class: 'role' },
     h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
-    koe ? h('p', { class: 'sub', text: "With voice off, a text model here answers before a live voice, whose sound nobody would hear." }) : null,
+    live ? h('p', { class: 'sub', text: "With voice off, a text model here answers before a live voice, whose sound nobody would hear." }) : null,
     // The catalog, on providers that can hear you, or speak (spec §16.2).
     speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KINDS[role][0]}&from=models`, 'aria-label': `Add a provider for ${role}` }, 'Add a provider')) : null,
     h('div', { class: 'row' },

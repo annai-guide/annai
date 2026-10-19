@@ -12,7 +12,6 @@ test('Models shows one Koe list right after Main, taking chat models (the user, 
     'Utility: summaries and small jobs', 'Quick decision: yes-or-no checks', 'Speech in: how Shiori hears you', "Speech out: Shiori's voice",
   ]);
   await expect(roles.getByText('Empty: Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toHaveCount(1);
-  await expect(roles.getByText('With voice off, a text model here answers before a live voice, whose sound nobody would hear.')).toBeVisible();
   await expect(page.getByLabel('Wait for the first words (seconds)').nth(1)).toHaveAttribute('placeholder', '8');
   await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Fast', url: 'https://fast.example.test/v1', key: 'sk-fast', model: 'fast-model', look: false });
   await page.getByLabel('Add a model to Koe').selectOption({ label: 'fast-model' });
@@ -20,6 +19,8 @@ test('Models shows one Koe list right after Main, taking chat models (the user, 
   await expect(roles.locator('.role').nth(1).getByText('1. fast-model')).toBeVisible();
   await page.reload();
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('1. fast-model')).toBeVisible();
+  // The note on voice off is for a list with a live voice in it (live-koe.spec): none here.
+  await expect(page.getByText('With voice off, a text model here answers before a live voice', { exact: false })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(0).getByText('No models yet. Add one.')).toBeVisible();
 });
 

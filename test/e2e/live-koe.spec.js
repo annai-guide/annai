@@ -44,6 +44,7 @@ async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await page.getByLabel('Add a model to Koe').selectOption({ label: p.model });
   await page.getByRole('button', { name: 'Add to Koe' }).click();
   await expect(page.getByLabel('Add a model to Koe').locator('option', { hasText: new RegExp(`^${p.model.replace(/\./g, '\\.')}$`) })).toHaveCount(0);
+  await expect(page.getByText('With voice off, a text model here answers before a live voice, whose sound nobody would hear.')).toBeVisible();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
   await page.getByRole('button', { name: 'Start trip' }).click();
