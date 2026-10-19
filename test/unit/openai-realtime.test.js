@@ -355,3 +355,87 @@ test('after a cut-in, what the cancelled answer still sends is dropped: its voic
   assert.equal(events.filter((e) => e.type === 'turn').length, 1);
   driver.close();
 });
+
+test('a response OpenAI refuses ends that turn and frees what waits behind it: the next turn goes, and is answered (review)', async () => {
+  const s = await startRealtimeServer({ flavour: 'openai', key: KEY, pace: 0, turns: [{ refuse: 'response_refused' }, { said: 'Yes, I am here.', audio: voice(200) }] });
+  try {
+    NOTES.length = 0;
+    const { session, events } = open(s);
+    await session.ready;
+    session.text('Hello');
+    await until(() => events.some((e) => e.type === 'turn'));
+    assert.deepEqual(events.filter((e) => e.type !== 'usage').map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type), ['turn:complete'], 'nothing waits for an answer that will never come');
+    session.text('Are you there?');
+    await until(() => events.filter((e) => e.type === 'turn').length === 2);
+    assert.equal(events.filter((e) => e.type === 'said').map((e) => e.text).join(''), 'Yes, I am here.');
+    const creates = s.received().filter((m) => m.type === 'response.create');
+    assert.equal(creates.length, 2);
+    assert.ok(creates.every((m) => typeof m.event_id === 'string' && m.event_id), 'each response.create says which it is, so a refusal can name it');
+    await sleep(20);
+    assert.deepEqual(NOTES.filter((n) => n[1] === 'live.error').map((n) => n[2].code), ['response_refused']);
+    session.close();
+  } finally {
+    await s.stop();
+  }
+});
+
+/** The driver on a fake socket, ready: what it sent, what it told, and a way to say what OpenAI says. @param {any} [setupOver] */
+async function bare(setupOver = {}) {
+  const { type, notes } = openaiRealtime();
+  /** @type {(d: string | Uint8Array) => void} */
+  let deliver = () => {};
+  /** @type {any[]} */
+  const sent = [];
+  /** @type {any[]} */
+  const events = [];
+  const driver = type.attach({ send: (/** @type {string} */ d) => sent.push(JSON.parse(d)), on: (/** @type {any} */ fn) => { deliver = fn; } },
+    { model: model(), tunables: type.tunables, setup: { ...setup(), audioIn: { format: 'pcmu', rate: 8000 }, audioOut: { format: 'pcm16', rate: 24000 }, ...setupOver }, emit: (/** @type {any} */ e) => events.push(e) });
+  const say = (/** @type {any} */ m) => deliver(JSON.stringify(m));
+  say({ type: 'session.updated', session: {} });
+  await driver.ready;
+  return { driver, sent, events, notes, say };
+}
+
+test("a refusal that names no event still frees a response.create OpenAI hadn't taken up (the reviewer's probe)", async () => {
+  const { driver, sent, events, say } = await bare();
+  driver.text('Hello');
+  say({ type: 'error', error: { type: 'invalid_request_error', code: 'some_refusal', message: 'The response could not be created.', param: null, event_id: null } });
+  driver.text('Are you there?');
+  driver.answer('call_x', 'tool', 'ok');
+  assert.deepEqual(sent.slice(3).map((m) => m.type), ['conversation.item.create', 'response.create'], 'the queue moves again');
+  assert.deepEqual(events.map((e) => e.end), ['complete']);
+  // Once OpenAI takes a response up, a refusal that names nothing is about something else.
+  say({ type: 'response.created', response: { id: 'resp_2' } });
+  say({ type: 'error', error: { type: 'invalid_request_error', code: 'invalid_value', message: 'Something else.', param: null, event_id: null } });
+  assert.equal(sent.length, 5, 'the rest waits for that response');
+  say({ type: 'response.done', response: { id: 'resp_2', status: 'completed', output: [] } });
+  assert.deepEqual(sent.slice(5).map((m) => m.type), ['conversation.item.create', 'response.create']);
+  driver.close();
+});
+
+test("a cancel that crosses an answer's natural end is no error: nothing noted, and the turn ends once, as cut (the reviewer's probe)", async () => {
+  const { driver, sent, events, notes, say } = await bare();
+  driver.text('Tell me a story');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(new Uint8Array(48_000)) });
+  driver.activity('start');
+  assert.deepEqual(sent.slice(3).map((m) => m.type), ['response.cancel', 'conversation.item.truncate']);
+  say({ type: 'response.done', response: { id: 'r1', status: 'completed', output: [] } });
+  say({ type: 'error', error: { type: 'invalid_request_error', code: 'response_cancel_not_active', message: 'Cancellation failed: no active response found', param: null, event_id: sent[3].event_id ?? null } });
+  driver.activity('end');
+  say({ type: 'error', error: { type: 'invalid_request_error', code: 'input_audio_buffer_commit_empty', message: 'Error committing input audio buffer: buffer too small.', param: null, event_id: null } });
+  await sleep(10);
+  assert.deepEqual(events.filter((e) => e.type === 'turn').map((e) => e.end), ['interrupted']);
+  assert.deepEqual(notes, [], 'races annai expects are not errors to report');
+  driver.close();
+});
+
+test('a transcript ends with a final piece even when its pieces said it all (review)', async () => {
+  const { driver, events, say } = await bare();
+  say({ type: 'response.output_audio_transcript.delta', item_id: 'i1', delta: 'Hi ' });
+  say({ type: 'response.output_audio_transcript.delta', item_id: 'i1', delta: 'there.' });
+  say({ type: 'response.output_audio_transcript.done', item_id: 'i1', transcript: 'Hi there.' });
+  say({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: 'Hello.' });
+  assert.deepEqual(events.map(({ type, text, final }) => [type, text, final]), [['said', 'Hi ', false], ['said', 'there.', false], ['said', '', true], ['heard', 'Hello.', true]]);
+  driver.close();
+});

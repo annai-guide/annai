@@ -160,11 +160,17 @@ export function activate(annai) {
       let responding = false;
       /** @type {any[]} */
       const held = [];
+      /** The response.create OpenAI hasn't taken up yet, by its event_id, which a refusal names; and how many were sent. */
+      let pending = '';
+      let made = 0;
       const flush = () => {
         while (held.length && !responding) {
           const m = held.shift();
+          if (m.type === 'response.create') {
+            responding = true;
+            pending = m.event_id = `annai_response_${++made}`;
+          }
           send(m);
-          if (m.type === 'response.create') responding = true;
         }
       };
       /** @param {any} m */
@@ -188,7 +194,7 @@ export function activate(annai) {
         const add = !final ? text : text.startsWith(before) ? text.slice(before.length) : '';
         if (final) so.delete(id);
         else so.set(id, before + add);
-        if (add) emit({ type, text: add, final });
+        if (add || final) emit({ type, text: add, final });
       };
       /** @param {string} id @param {string} name @param {string} args */
       const tool = (id, name, args) => {
@@ -259,13 +265,27 @@ export function activate(annai) {
             const e = m.error ?? {};
             const words = `${e.message ?? e.code ?? 'OpenAI refused the session.'}${e.param ? ` (${e.param})` : ''}`;
             if (!up) refused(new ProviderError(kindOf(e), words));
-            else {
-              // A response asked for while one was being made (it shouldn't be): asked for again once that one is done.
-              if (e.code === 'conversation_already_has_active_response') held.unshift({ type: 'response.create' });
+            // A cancel that crossed the answer's end, or a commit with nothing in it: races annai expects, not errors.
+            else if (!/^(response_cancel_not_active|input_audio_buffer_commit_empty)$/.test(e.code)) {
+              // A response.create refused (by name, or before OpenAI took it up, by none): what waits behind it goes, and its
+              // turn ends with nothing said; one refused as another was being made is asked for again once that one is done.
+              if (pending && (!e.event_id || e.event_id === pending)) {
+                pending = '';
+                if (e.code === 'conversation_already_has_active_response') held.unshift({ type: 'response.create' });
+                else {
+                  responding = false;
+                  if (cuts) cuts = 0;
+                  else emit({ type: 'turn', end: 'complete' });
+                  flush();
+                }
+              }
               note('live.error', { code: String(e.code ?? e.type ?? ''), message: words.slice(0, 300) });
             }
             break;
           }
+          case 'response.created':
+            pending = '';
+            break;
           case 'response.output_audio.delta': {
             if (cuts) break; // the cancelled answer's, on its way before the cut: never heard
             const raw = base64.decode(String(m.delta ?? ''));
