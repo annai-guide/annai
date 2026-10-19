@@ -20,7 +20,7 @@ export function squash(s) {
       prev = '';
       continue;
     }
-    // A capital after a small letter starts a word too ("OpenRouter").
+    // A capital after a small letter starts a word too ("KoboldCpp").
     if (!prev || (/\p{Lu}/u.test(c) && /\p{Ll}/u.test(prev))) starts.add(text.length);
     text += c.toLowerCase();
     prev = c;

@@ -2,6 +2,16 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider } from './helpers.js';
 
+/** The plugins installed, by id. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
+const installedIds = (page) => page.evaluate(async () => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+  const store = await createIdbStore();
+  const state = await new Workspace(store).readJSON('sys:plugins', '/installed.json');
+  store.close();
+  return Object.keys(state ?? {}).sort();
+});
+
 test('providers, models and roles are set in Settings → Models, survive a reload, and the key is never shown', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
@@ -167,14 +177,16 @@ test('Sign in with OpenRouter: the key arrives and free models fill the roles (O
   expect(await page.content()).not.toContain('sk-or-test-key-123');
 });
 
-test("on an iPhone Home Screen app, Sign in with OpenRouter is a link made before the tap: it opens OpenRouter for a code, and the paste box waits, also after annai reopens", async ({ page, context, browserName }) => {
+test("on an iPhone Home Screen app, Models with no providers draws Sign in with OpenRouter from its plugin, installed in the background: the link has its address before the tap, opens OpenRouter for a code, and the paste box waits, also after annai reopens", async ({ page, context, browserName }) => {
   test.skip(browserName !== 'webkit', 'the iPhone Home Screen path');
   // Safari opens a page only from the tap itself, not after an await (the user's bug, 2026-10-18).
   await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }));
   await context.route('https://openrouter.ai/auth**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Your code</p>' }));
   await openApp(page, '#/models');
   const link = page.getByRole('link', { name: 'Sign in with OpenRouter' });
-  await expect(link).toHaveAttribute('href', /^https:\/\/openrouter\.ai\/auth\?/);
+  // The featured provider's plugin comes from annai's catalog as the screen opens, once the offline service runs.
+  await expect(link).toHaveAttribute('href', /^https:\/\/openrouter\.ai\/auth\?/, { timeout: 30_000 });
+  expect(await installedIds(page)).toEqual(['chat-completions', 'provider-openrouter', 'speech-openai']);
   await expect(link).toHaveAttribute('target', '_blank');
   const href = /** @type {string} */ (await link.getAttribute('href'));
   const sent = new URL(href);
@@ -188,6 +200,20 @@ test("on an iPhone Home Screen app, Sign in with OpenRouter is a link made befor
   await page.reload();
   await expect(page.getByLabel('Paste the code OpenRouter showed you')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign in with OpenRouter' })).toHaveAttribute('href', href);
+});
+
+test.describe('without the offline service', () => {
+  test.use({ serviceWorkers: 'block' });
+  test('while the featured provider\'s plugin installs, the start is a disabled button, never a link without an address', async ({ page }) => {
+    // An installed plugin's files load through the offline service: without it, the start waits.
+    await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }));
+    await openApp(page, '#/models');
+    const start = page.getByRole('region', { name: 'Sign in' });
+    await expect(start.getByRole('button', { name: 'Getting the sign-in ready…' })).toBeDisabled();
+    await page.waitForTimeout(1000);
+    await expect(start.getByRole('button', { name: 'Getting the sign-in ready…' })).toBeDisabled();
+    await expect(start.getByRole('link')).toHaveCount(0);
+  });
 });
 
 test('an ability whose protocol stores files has a switch for photo uploads, kept when saved (spec §4.8)', async ({ page }) => {

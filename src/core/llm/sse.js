@@ -2,7 +2,7 @@ import { ProviderError } from './contract.js';
 
 /**
  * Server-sent events from a response body: "the streamed-response reader" (spec §9.1).
- * Comment lines (":", such as OpenRouter's keep-alives) are skipped. Lines may end in \n, \r\n or
+ * Comment lines (":", such as a router's keep-alives) are skipped. Lines may end in \n, \r\n or
  * \r, and a character may be split between chunks. Stopping early cancels the body. A connection
  * that drops mid-stream is a ProviderError of kind "network"; an abort stays an abort.
  * @param {ReadableStream<Uint8Array>} body

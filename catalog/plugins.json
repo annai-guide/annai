@@ -73,7 +73,7 @@
     {
       "id": "provider-another-address",
       "name": "Another address",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, then switch on what it offers.",
       "category": "providers",
       "keywords": [
@@ -90,11 +90,12 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 2146,
+      "size": 2166,
       "requires": [],
+      "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "511d00724b07a89f94fd2403e9b03306a4f8d2cc7e9b1df5680b585e35df0dfa"
+        "annai-plugin.json": "fbef424057f9200bcd4c5522c57ab40dfa7bff529329999eee69cb8ab12a57fb"
       }
     },
     {

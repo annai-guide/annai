@@ -1,8 +1,9 @@
 /**
  * A plugin's facts in the catalog (spec §5.3), for annai's and an installed one alike.
  * @typedef {{ id: string, name: string, version: string, description: string, category: string, keywords: string[], abilities: string[],
- *   free: boolean, local: boolean, code: boolean, size: number, requires: import('./packages.js').Requirement[] }} CatalogFacts
- *   abilities: the kinds of a provider's abilities, in order, once each; free: a model of it costs nothing; size: its files' bytes
+ *   free: boolean, local: boolean, code: boolean, size: number, requires: import('./packages.js').Requirement[], catchAll?: boolean }} CatalogFacts
+ *   abilities: the kinds of a provider's abilities, in order, once each; free: a model of it costs nothing; size: its files' bytes;
+ *   catchAll: a provider for any address, browsed after the others
  */
 
 /** Whether prices say a model costs nothing: every price there is 0. @param {any} prices */
@@ -32,5 +33,6 @@ export function catalogFacts(manifest, { size = 0 } = {}) {
     abilities: [...new Set(abilities.map((/** @type {any} */ a) => String(a?.kind)))],
     free: abilities.some((/** @type {any} */ a) => (a?.models ?? []).some((/** @type {any} */ m) => isFree(m?.prices))),
     local: Boolean(manifest.provider?.local), code: Boolean(manifest.entry), size, requires: Array.isArray(manifest.requires) ? manifest.requires : [],
+    ...(manifest.catchAll === true ? { catchAll: true } : {}),
   };
 }

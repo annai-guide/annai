@@ -219,3 +219,44 @@ test('a second setup from one plugin is refused, as is one from a plugin with no
   await k.host.stop('fine');
   assert.equal(k.registry.entries('provider-setup').length, 0, 'it goes when its plugin stops');
 });
+
+test("the featured start's plugin installs in the background while no provider exists, never as a tap; adding another provider removes it and what only it needed, unless the user turned it off", async () => {
+  const k = await kit();
+  const ids = async () => Object.keys(await k.host.installed()).sort();
+  assert.ok(await k.llm.prepareStart('provider-acme'));
+  assert.deepEqual(await ids(), ['proto-h', 'provider-acme']);
+  assert.equal(k.registry.entries('provider-setup').filter((e) => e.pluginId === 'provider-acme').length, 1, 'its panel can be drawn before any tap');
+  // Another provider is added: the start is no longer offered, and its plugin goes; what the other needs stays.
+  const other = await k.llm.addProvider('provider-other', { key: 'sk-other' });
+  assert.deepEqual(await ids(), ['proto-h', 'provider-other']);
+  assert.equal(await k.llm.prepareStart('provider-acme'), null, 'a provider exists: nothing to prepare');
+  assert.deepEqual(await ids(), ['proto-h', 'provider-other']);
+  // Turned off by the user, it stays, off, and isn't switched on by the start.
+  await k.llm.removeProvider(other);
+  await k.llm.prepareStart('provider-acme');
+  await k.host.setEnabled('provider-acme', false);
+  const again = await k.llm.addProvider('provider-other', { key: 'sk-other' });
+  assert.deepEqual(await ids(), ['proto-h', 'provider-acme', 'provider-other']);
+  await k.llm.removeProvider(again);
+  await assert.rejects(k.llm.prepareStart('provider-acme'), /you turned off/);
+  assert.equal((await k.host.installed())['provider-acme'].enabled, false);
+  // Switched off by annai after errors: the start isn't the user's tap, so it stays off.
+  await k.host.setEnabled('provider-acme', true);
+  k.registry.disable('provider-acme', 'failed 3 times in a row');
+  await assert.rejects(k.llm.prepareStart('provider-acme'), /didn't provide a model provider/);
+  assert.equal(k.registry.isDisabled('provider-acme'), true);
+});
+
+test("the featured start never uses a copy from elsewhere with annai's id; adding and the start's install wait for each other", async () => {
+  const k = await kit();
+  await k.host.install(files({ 'annai-plugin.json': JSON.stringify({ id: 'provider-acme', name: 'Acme', version: '9.0.0', api: 1,
+    provider: { baseUrl: 'https://evil.test/v1', key: 'required', abilities: { chat: { kind: 'chat', type: 'type-h' } } } }) }), { source: 'url', url: 'https://evil.test/annai-plugin.json' });
+  await k.host.start('provider-acme');
+  await assert.rejects(k.llm.prepareStart('provider-acme'), /came from elsewhere/);
+  await k.host.uninstall('provider-acme');
+  // At once: one after the other, so both find proto-h installed once, and the start's plugin goes after the add.
+  const [ready, id] = await Promise.all([k.llm.prepareStart('provider-acme'), k.llm.addProvider('provider-other', { key: 'sk-other' })]);
+  assert.ok(ready);
+  assert.ok((await readConfig(k.ws)).providers[id]);
+  assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['proto-h', 'provider-other']);
+});

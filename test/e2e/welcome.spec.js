@@ -99,6 +99,29 @@ test("the last step, where annai isn't installed: on an iPhone in Safari, look a
   }
 });
 
+test("the welcome's last step names the featured provider's sign-in from annai's catalog; outside Safari on an iPhone, its plugin installs in the background, so Models' sign-in is ready before the tap", async ({ page, browserName }) => {
+  await openApp(page, '#/welcome/5');
+  await waitForServiceWorker(page);
+  const lead = page.locator('.welcome p', { hasText: 'so Shiori can think' });
+  await expect(lead).toContainText('Sign in with OpenRouter is the quickest way, and it starts you on free models.');
+  const installed = () => page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const state = await new Workspace(store).readJSON('sys:plugins', '/installed.json');
+    store.close();
+    return Object.keys(state ?? {}).sort();
+  });
+  if (browserName === 'webkit') {
+    // The iPhone project is Safari, not the Home Screen app: the model is set up there, so nothing installs here.
+    await expect(lead).toContainText('A model set up here, in Safari, stays in Safari.');
+    await page.waitForTimeout(1000);
+    expect(await installed()).toEqual([]);
+  } else {
+    await expect.poll(installed, { timeout: 30_000 }).toEqual(['chat-completions', 'provider-openrouter', 'speech-openai']);
+  }
+});
+
 test.describe('a link that opens a screen is never interrupted', () => {
   test.use({ serviceWorkers: 'block' });
 
@@ -151,7 +174,8 @@ test('every step is reached with the keyboard alone, its heading taking the focu
   await tabTo('Set up a model');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' }).or(page.getByRole('link', { name: 'Sign in with OpenRouter' }))).toBeVisible();
+  // From the featured provider's plugin, installed in the background once the offline service runs.
+  await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' }).or(page.getByRole('link', { name: 'Sign in with OpenRouter' }))).toBeVisible({ timeout: 30_000 });
 });
 
 test('the welcome fits a phone 320 px wide: no step scrolls sideways', async ({ page }) => {

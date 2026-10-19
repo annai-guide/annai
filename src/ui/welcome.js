@@ -9,7 +9,7 @@ import { readAppSettings, updateAppSettings } from '../core/settings.js';
 
 /**
  * Whether annai opened at its start, "/" with no screen in its address. A link to a screen (a shared
- * trip, a share, the OpenRouter sign-in coming back, any "#/…") is never interrupted: the welcome waits
+ * trip, a share, a sign-in coming back, any "#/…") is never interrupted: the welcome waits
  * for the next plain start.
  * @param {Address} at
  */
