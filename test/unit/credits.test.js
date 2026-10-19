@@ -18,6 +18,8 @@ const NOT_SOURCES = {
   'api.github.com': 'a GitHub repository the user backs up to',
   's3.us-east-1.amazonaws.com': "a placeholder for the user's own bucket",
   'dav.example.com': "a placeholder for the user's own WebDAV folder",
+  'git.example.com': "a placeholder for the user's own Forgejo or Gitea server",
+  'codeberg.org': 'a Forgejo server the user may back up to',
   'maps.apple.com': 'a link the user opens in their maps app',
   'www.google.com': 'a link the user opens in their maps app',
   'www.openstreetmap.org': 'links to OpenStreetMap: its copyright page, and where a photo was taken',

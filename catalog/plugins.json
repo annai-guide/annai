@@ -18,15 +18,15 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "provides": {
         "endpoint-type": [
           "chat-completions"
         ]
       },
       "files": {
-        "annai-plugin.json": "7ddcdff92b786c5100dbe5162c1bb9a21207f50a611c6784919331fbb0684ed1",
-        "index.js": "323300c1342b0d01b06d3378f579fa48e8dd1b09b60f72a70cc928386e8e9114"
+        "annai-plugin.json": "63331a2b3c43458534005cdee92544e7a27abd0d69f6ebbf11055ed1d175867e",
+        "index.js": "9fe0ce60c029d89e55890b2946d9b21d4856064027484e346336db760bd58550"
       }
     },
     {
@@ -70,7 +70,7 @@
     {
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "provides": {
         "endpoint-type": [
           "openai-transcription",
@@ -78,8 +78,23 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "dbca4582d9573c785ee087c508bc49def4db52d9e970c93b089a2b0762656e31",
-        "index.js": "782c91d77097a925391ef962c6f214aff9402c7a1128ea14a5b223c1d2f4e548"
+        "annai-plugin.json": "8434d28413ef9a9f8f7842ae1cce4fee202d40907b406594d14c7112f78c72e0",
+        "index.js": "704573b61cb1660bea03947f873b18b2a33463ab77a91c41bf474cea33f5cb6d"
+      }
+    },
+    {
+      "id": "storage-forgejo",
+      "name": "Forgejo / Gitea",
+      "version": "0.1.0",
+      "provides": {
+        "storage-type": [
+          "forgejo"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "a5807f36bce6257f30146fa1c5d599fb76c90e039f1a93d8b6d1b74bad29a6bc",
+        "git.js": "fe62d15bd1b8679ba15cbadd43cea1741c4df1b65a6500a803ceef737660ce80",
+        "index.js": "abd7c9c8ae4fefa5448cf2561bdbb967c641eb15ffa38c7f49f03ed131087368"
       }
     },
     {
