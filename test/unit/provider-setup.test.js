@@ -240,7 +240,7 @@ test("the featured start's plugin installs in the background while no provider e
   // Switched off by annai after errors: the start isn't the user's tap, so it stays off.
   await k.host.setEnabled('provider-acme', true);
   k.registry.disable('provider-acme', 'failed 3 times in a row');
-  await assert.rejects(k.llm.prepareStart('provider-acme'), /didn't provide a model provider/);
+  await assert.rejects(k.llm.prepareStart('provider-acme'), (/** @type {any} */ e) => e.message === 'Acme was switched off after errors. Turn it on in Settings → Plugins, then try again.');
   assert.equal(k.registry.isDisabled('provider-acme'), true);
 });
 

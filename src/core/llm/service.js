@@ -156,6 +156,8 @@ export function createLlm({
       await pluginsCanLoad();
       await addFromCatalog(plugins, plugin, { fetch: get, base, tap });
       const src = running();
+      // Not a tap: one annai switched off after errors stays off (§5.5), said in words, by its name.
+      if (!src && plugins.registry.isDisabled(plugin)) throw new Error(`${(await plugins.installed())[plugin]?.name ?? plugin} was switched off after errors. ${TURN_ON}`);
       if (!src) throw new PluginError(plugin, "didn't provide a model provider.");
       return src;
     },
