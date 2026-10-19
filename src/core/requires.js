@@ -9,7 +9,8 @@ import { officialPlugins, download } from './llm/official.js';
  * again when any part of it fails. Calls never install (decision 9): only adding and setting up do.
  * @typedef {import('./plugins.js').PluginHost} PluginHost
  * @typedef {import('./llm/official.js').CatalogPlugin} CatalogPlugin
- * @typedef {import('./llm/official.js').FetchOptions & { catalog?: CatalogPlugin[] }} Env
+ * @typedef {import('./llm/official.js').FetchOptions & { catalog?: CatalogPlugin[], tap?: boolean }} Env
+ *   tap: the user's own tap asked for this, so a plugin annai switched off after repeated errors may start again (spec §5.5)
  * @typedef {import('./packages.js').Requirement} Requirement
  */
 
@@ -57,7 +58,9 @@ export async function refuseBreaking(host, id, version, name, except) {
  * The official plugins to install or update first, in order, for these requirements; nothing is
  * changed. It stops, naming the requirement, when one can't be met: a third-party one that isn't
  * installed (with its homepage, when given) or is out of range; no catalog version in range; an id of
- * annai's own held by a package from elsewhere; or an update another installed plugin doesn't accept.
+ * annai's own held by a package from elsewhere; one the user switched off (security review: never switched
+ * on without asking, so the words say how to turn it on); or an update another installed plugin doesn't
+ * accept. A package's own id is never its requirement.
  * @param {PluginHost} host @param {Requirement[]} requires @param {CatalogPlugin[]} catalog
  * @param {{ who?: string, except?: string }} [o] who: the plugin needing them, for the words; except: the one being installed
  * @returns {Promise<CatalogPlugin[]>}
@@ -67,8 +70,12 @@ export async function checkRequires(host, requires, catalog, { who = 'This plugi
   /** @type {CatalogPlugin[]} */
   const plan = [];
   for (const r of requires) {
+    if (r.id === except) continue;
     const entry = catalog.find((p) => p.id === r.id);
     const s = state[r.id];
+    if (s?.enabled === false) {
+      throw new PluginError(who, `needs ${entry?.name ?? s.name ?? r.id}, which you turned off. Turn it on in Settings → Plugins, then try again.`);
+    }
     if (!entry) {
       if (!s) throw new PluginError(who, `needs ${r.id}, which isn't installed. ${r.homepage ? `Install it from ${r.homepage} first` : 'Install it first'}, then try again.`);
       if (!satisfies(String(s.version), r.version)) throw new PluginError(who, `needs ${r.id} ${r.version}, and version ${s.version} is installed. Update it, then try again.`);
@@ -87,13 +94,21 @@ export async function checkRequires(host, requires, catalog, { who = 'This plugi
   return plan;
 }
 
-/** Starts an installed plugin, switching it back on if it was off: the user's tap needs it (spec §5.5). One updated after its code ran waits for a restart. @param {PluginHost} host @param {string} id */
-async function running(host, id) {
+/**
+ * Starts an installed plugin that is on (security review): one the user switched off stays off; one
+ * annai switched off after repeated errors starts again only on the user's tap, as Turn on does (spec
+ * §5.5), or when this call installed it. One updated after its code ran waits for a restart.
+ * @param {PluginHost} host @param {string} id @param {{ tap?: boolean, fresh?: boolean }} [o]
+ */
+async function running(host, id, { tap = false, fresh = false } = {}) {
   if (host.needsRestart(id)) return;
   const s = (await host.installed())[id];
-  if (!s) return;
-  if (s.enabled === false || host.registry.isDisabled(id)) await host.setEnabled(id, true);
-  else await host.start(id);
+  if (!s || s.enabled === false) return;
+  if (host.registry.isDisabled(id)) {
+    if (tap || fresh) await host.setEnabled(id, true);
+    return;
+  }
+  await host.start(id);
 }
 
 /**
@@ -139,8 +154,8 @@ async function withRequirements(host, requires, env, { who, id, install }) {
       await install();
       if (!before[id]) fresh.push(id);
     }
-    for (const r of requires) await running(host, r.id);
-    if (install) await running(host, id);
+    for (const r of requires) if (r.id !== id) await running(host, r.id, { tap: env.tap, fresh: fresh.includes(r.id) });
+    if (install) await running(host, id, { tap: env.tap, fresh: fresh.includes(id) });
   } catch (e) {
     for (const x of fresh.reverse()) await host.uninstall(x).catch(() => {});
     throw e;
@@ -177,12 +192,14 @@ export async function addFromCatalog(host, id, env = {}) {
   if (!entry) throw new PluginError(id, "isn't in annai's catalog.");
   const s = (await host.installed())[id];
   if (s && s.source !== 'official') throw new PluginError(id, "is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.");
+  if (s?.enabled === false) throw new PluginError(id, `${entry.name}, which you turned off, isn't switched on by adding it. Turn it on in Settings → Plugins, then try again.`);
   const requires = entry.requires ?? [];
   if (s && s.version === entry.version && (await host.verifyOfficial(id, entry))) {
     await withRequirements(host, requires, { ...env, catalog }, { who: entry.name, id });
-    await running(host, id);
+    await running(host, id, { tap: env.tap });
     return host.manifestOf(id);
   }
+  await checkRequires(host, requires, catalog, { who: entry.name, except: id }); // a requirement that can't be met stops it before any download
   return installWith(host, await download(entry, env), { source: 'official' }, { ...env, catalog });
 }
 

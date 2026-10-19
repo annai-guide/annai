@@ -75,6 +75,18 @@ test('ensureType starts an installed plugin instead of downloading it again, and
   await assert.rejects(ensureType(relaunched, 'no-such-type', { fetch: repoFetch().get }), /isn't an endpoint type annai knows/);
 });
 
+test("security review: keepOff: a type whose plugin the user turned off isn't switched on, and the words say how; one switched off after errors starts again", async () => {
+  const { host, registry } = await setup();
+  await ensureType(host, 'scripted', { fetch: repoFetch().get });
+  await host.setEnabled('scripted-model', false);
+  await assert.rejects(ensureType(host, 'scripted', { fetch: repoFetch().get, keepOff: true }), /you turned off.*Turn it on in Settings → Plugins/s);
+  assert.equal((await host.installed())['scripted-model'].enabled, false);
+  await host.setEnabled('scripted-model', true);
+  registry.disable('scripted-model', 'failed 3 times in a row');
+  await ensureType(host, 'scripted', { fetch: repoFetch().get, keepOff: true });
+  assert.ok(endpointTypes(registry).has('scripted'));
+});
+
 test('two calls for the same type at once share one install, and the type is there once', async () => {
   const { host, registry } = await setup();
   const real = repoFetch();

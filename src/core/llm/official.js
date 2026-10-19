@@ -10,7 +10,8 @@ import { refuseBreaking, installRequirements } from '../requires.js';
  * @typedef {{ id: string, name: string, version: string, provides: Record<string, string[]>, files: Record<string, string>,
  *   description?: string, category?: string, keywords?: string[], abilities?: string[], free?: boolean, local?: boolean, code?: boolean, size?: number,
  *   requires?: import('../packages.js').Requirement[] }} CatalogPlugin  the facts catalogFacts gives (src/core/catalog-facts.js), and its files' hashes
- * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string }} FetchOptions
+ * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, keepOff?: boolean }} FetchOptions
+ *   keepOff: a plugin the user switched off is never switched on by this (security review): it stops, saying how to turn it on
  */
 
 const defaultFetch = (/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init);
@@ -89,7 +90,8 @@ export async function officialUpdates(host, opts = {}) {
 export async function updateOfficial(host, entry, opts = {}) {
   await refuseBreaking(host, entry.id, entry.version, entry.name);
   const files = await download(entry, opts);
-  if (entry.requires?.length) await installRequirements(host, entry.requires, opts, { who: entry.name, id: entry.id });
+  // Update is the user's tap: a requirement annai switched off after errors may start again (spec §5.5).
+  if (entry.requires?.length) await installRequirements(host, entry.requires, { ...opts, tap: true }, { who: entry.name, id: entry.id });
   const wasOn = (await host.installed())[entry.id]?.enabled !== false;
   await host.install(files, { source: 'official' });
   if (!wasOn) {
@@ -143,7 +145,9 @@ async function ensureNow(host, kind, type, opts) {
   // Only files that match the catalog run as an official plugin; anything else, such as a copy a
   // restored backup brought, is fetched again from annai and checked (spec §5.3).
   if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
-    // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on.
+    // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on,
+    // except one the user turned off when the caller keeps it off (the model service's setup taps).
+    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, `${entry.name}, which you turned off, isn't switched on by this. Turn it on in Settings → Plugins, then try again.`);
     if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
   } else {

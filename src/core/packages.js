@@ -68,6 +68,7 @@ export function checkManifest(manifest) {
     throw new PluginError(id, `its entry "${manifest.entry}" isn't a file inside the plugin`);
   }
   if (manifest.templates !== undefined) throw new PluginError(id, 'Endpoint templates were replaced by `provider` (see docs/plugins.md)');
+  if (manifest.requires?.some((/** @type {any} */ r) => r?.id === id)) throw new PluginError(id, 'requires itself: take its own id out of requires');
   if (manifest.provider !== undefined) {
     const wrong = checkProviderDesc(manifest.provider);
     if (wrong.length) throw new PluginError(id, `its provider isn't valid: ${wrong.join('; ')}`);
