@@ -1,0 +1,55 @@
+{
+  "id": "provider-sglang",
+  "name": "SGLang",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Models on an SGLang server you run, with their thinking switched through the chat template.",
+  "category": "providers",
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "http://localhost:30000/v1",
+    "key": "optional",
+    "local": true,
+    "note": "SGLang listens on port 30000 unless --port says otherwise; give it a key with --api-key, or leave the key empty. From a phone, the server needs an HTTPS address: put HTTPS in front of it, such as Tailscale Serve or a tunnel. localhost only reaches the device annai runs on, and browsers block plain http:// to another computer.",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "modelDefaults": {
+          "reasoning": {
+            "off": {
+              "chat_template_kwargs": {
+                "enable_thinking": false,
+                "thinking": false
+              }
+            },
+            "low": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "thinking": true
+              }
+            },
+            "medium": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "thinking": true
+              }
+            },
+            "high": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "thinking": true
+              }
+            }
+          }
+        },
+        "note": "Add models with Fetch model list: each comes with the context the server holds. Tool calls need --tool-call-parser <name>, and a model that thinks needs --reasoning-parser <name>; without them Shiori can't use her tools, and her thinking shows in her words."
+      }
+    }
+  }
+}

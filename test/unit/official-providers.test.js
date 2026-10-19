@@ -19,7 +19,7 @@ const providedBy = (type, requires = []) => requires.some((r) => entry(r.id)?.pr
 
 test('every official provider is valid, its id is provider-*, and its requires cover the abilities that start on, in range of the catalog', async () => {
   const providers = (await officialManifests()).filter((m) => m.provider);
-  assert.equal(providers.length, 10);
+  assert.equal(providers.length, 15);
   for (const m of providers) {
     assert.match(m.id, /^provider-[a-z0-9-]+$/);
     assert.deepEqual(checkProviderDesc(m.provider), [], m.id);
