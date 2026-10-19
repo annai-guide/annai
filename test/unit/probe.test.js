@@ -105,7 +105,7 @@ test('a web app that answers 200 with a page for any path finds nothing (Review 
   } finally {
     await s.stop();
   }
-  // One that answers JSON to anything, the address that can't exist too, is no telling either.
+  // One that answers JSON to anything, the address that can't exist too, is no telling either; but a real list of models it gives is a list.
   const any = await tiny(() => [200, { 'content-type': 'application/json' }, '{"ok":true}']);
   try {
     const r = await probe(`${any.origin}/v1`, null, io());
@@ -113,6 +113,17 @@ test('a web app that answers 200 with a page for any path finds nothing (Review 
     assert.equal(r.abilities['chat-completions'].state, 'unknown');
   } finally {
     await any.stop();
+  }
+  const listed = await tiny((req) => {
+    if (req.method === 'GET' && req.url === '/v1/models') return [200, { 'content-type': 'application/json' }, '{"object":"list","data":[{"id":"m"}]}'];
+    if (req.method === 'POST' && req.url === '/v1/chat/completions') return [400, { 'content-type': 'application/json' }, '{"error":"model required"}'];
+    return [200, { 'content-type': 'application/json' }, '{"error":"not found"}'];
+  });
+  try {
+    const r = await probe(`${listed.origin}/v1`, null, io());
+    assert.deepEqual([r.list.state, r.list.count, r.abilities['chat-completions'].state, r.abilities.responses.state], ['found', 1, 'found', 'unknown']);
+  } finally {
+    await listed.stop();
   }
 });
 
@@ -135,12 +146,13 @@ test("a server that doesn't allow web apps is blocked, told apart from one that 
   assert.match(r.list.why ?? '', /couldn't reach/);
 });
 
-test('an address without /v1 is also tried with it; 429 and 5xx are unknown', async () => {
+test('an address without /v1 is looked at with /v1 first, and as given only when that finds nothing, its Messages asked once; 429 and 5xx are unknown, 501 is absent', async () => {
   const s = await startFakeServer({ flavour: 'llamacpp' });
   try {
     const r = await probe(s.origin, null, io());
     assert.deepEqual([r.base, r.root], [`${s.origin}/v1`, s.origin]);
     assert.deepEqual(states(r), { list: 'found', 'chat-completions': 'found', responses: 'found', messages: 'found', transcription: 'absent', voice: 'absent' });
+    assert.ok(!s.requests.some((q) => q.path === '/models' || q.path === '/chat/completions'), '/v1 found what it has: the address as given is not asked');
     // One that lists its models at both but talks only at /v1, as the user's Unsloth Studio does (measured 2026-10-19).
     const both = await tiny((req) => {
       const list = [200, { 'content-type': 'application/json' }, '{"object":"list","data":[{"id":"m"}]}'];
@@ -161,6 +173,29 @@ test('an address without /v1 is also tried with it; 429 and 5xx are unknown', as
   } finally {
     await s.stop();
   }
+  // A server that talks at the address as given, and not at /v1: looked at both ways, Messages (the same address either way) asked once.
+  const plain = await tiny((req) => {
+    if (req.method === 'GET' && req.url === '/models') return [200, { 'content-type': 'application/json' }, '{"data":[{"id":"m"}]}'];
+    return req.method === 'POST' && req.url === '/chat/completions' ? [400, { 'content-type': 'application/json' }, '{}'] : [404, {}, ''];
+  });
+  try {
+    const r = await probe(plain.origin, null, io());
+    assert.equal(r.base, plain.origin);
+    assert.deepEqual([r.list.state, r.abilities['chat-completions'].state, r.abilities.messages.state], ['found', 'found', 'absent']);
+    assert.equal(plain.requests.filter((q) => q.method === 'POST' && q.path === '/v1/messages').length, 1);
+    assert.equal(plain.requests.filter((q) => q.method === 'POST' && q.path.startsWith('/v1/annai-probe-') && q.headers['anthropic-version']).length, 1);
+  } finally {
+    await plain.stop();
+  }
+  // llama.cpp answers 501 for transcription with a model that can't listen: the server says it doesn't do this.
+  const no = await tiny((req) => (req.url === '/v1/audio/transcriptions' ? [501, { 'content-type': 'application/json' }, '{"error":{"code":501,"message":"This server does not support transcriptions."}}'] : [404, {}, '']));
+  try {
+    const r = await probe(`${no.origin}/v1`, null, io());
+    assert.equal(r.abilities.transcription.state, 'absent');
+    assert.match(r.abilities.transcription.why ?? '', /doesn't do this/);
+  } finally {
+    await no.stop();
+  }
   for (const status of [429, 500, 503]) {
     const t = await tiny(() => [status, { 'content-type': 'application/json' }, '{"error":{"message":"later"}}']);
     try {
@@ -173,7 +208,7 @@ test('an address without /v1 is also tried with it; 429 and 5xx are unknown', as
   }
 });
 
-test('no request carries a model or an input, so nothing can generate; the key goes only in its header, only to the address, never past a redirect, and is in no trace entry', async () => {
+test('no request carries a model or an input, and a chat path is asked for one token at most, so a lax server that runs it anyway makes next to nothing; the key goes only in its header, only to the address, never past a redirect, and is in no trace entry', async () => {
   const k = await hostKit();
   const s = await startFakeServer({ flavour: 'llamacpp', key: KEY });
   const elsewhere = await startFakeServer({ flavour: 'whole' });
@@ -181,10 +216,13 @@ test('no request carries a model or an input, so nothing can generate; the key g
   try {
     const traced = tracedFetch(k.store, SYS, { tool: 'plugin:provider-another-address' }, browserFetch(ANNAI));
     await probe(s.origin, KEY, io({ fetch: traced }));
-    assert.ok(s.requests.length >= 14, 'the address as given, then with /v1');
+    assert.ok(s.requests.filter((q) => q.method !== 'OPTIONS').length >= 8, 'with /v1, which found what it has');
+    assert.ok(s.requests.some((q) => q.method === 'POST' && q.path === '/v1/chat/completions'));
     for (const q of s.requests) {
-      if (q.method === 'POST') assert.deepEqual(q.body, {}, `${q.path}: an empty request`);
-      else assert.equal(q.body, '', `${q.method} ${q.path}`); // a GET, or a browser's preflight
+      if (q.method === 'POST') {
+        const limit = /\/(chat\/completions|messages)$/.test(q.path) ? { max_tokens: 1 } : /\/responses$/.test(q.path) ? { max_output_tokens: 1 } : {};
+        assert.deepEqual(q.body, limit, `${q.path}: empty but for its output limit`);
+      } else assert.equal(q.body, '', `${q.method} ${q.path}`); // a GET, or a browser's preflight
       assert.ok(!q.path.includes(KEY), q.path);
       const holding = Object.entries(q.headers).filter(([, v]) => String(v).includes(KEY)).map(([h, v]) => `${h}: ${v}`);
       assert.ok(holding.every((x) => x === `authorization: Bearer ${KEY}` || x === `x-api-key: ${KEY}`), holding.join(', '));
@@ -202,11 +240,34 @@ test('no request carries a model or an input, so nothing can generate; the key g
   }
 });
 
+test('at most four requests are out at once, each given its time from when it is sent; /V1 in capitals is a /v1', async () => {
+  let out = 0;
+  let most = 0;
+  const slow = await tiny(() => {
+    out += 1;
+    most = Math.max(most, out);
+    return [404, {}, ''];
+  });
+  const later = (/** @type {any} */ url, /** @type {any} */ init) => new Promise((resolve) => setTimeout(resolve, 30)).then(() => browserFetch(ANNAI)(url, init)).finally(() => { out -= 1; });
+  try {
+    const r = await probe(slow.origin, null, io({ fetch: later }));
+    assert.ok(most > 0 && most <= 4, `${most} at once`);
+    assert.equal(r.base, slow.origin, 'nothing found at /v1 either');
+    const caps = await probe(`${slow.origin}/V1`, null, io());
+    assert.equal(caps.root, slow.origin);
+    assert.ok(slow.requests.some((q) => q.path === '/v1/messages'), 'Messages at the root, without /V1');
+  } finally {
+    await slow.stop();
+  }
+});
+
 test('an address annai takes keys to, alone, is checked before anything is sent: https, or http only for this device', async () => {
   let sent = 0;
   const counting = io({ fetch: async () => { sent += 1; return new Response('{}'); } });
   await assert.rejects(probe('http://192.168.1.20:8080/v1', KEY, counting), /HTTPS in front of it/);
   await assert.rejects(probe('llm.example.com/v1', KEY, counting), /isn't a web address/);
+  // A key pasted into the address field isn't shown back.
+  await assert.rejects(probe(KEY, null, counting), (/** @type {any} */ e) => /isn't a web address/.test(e.message) && !e.message.includes(KEY));
   await assert.rejects(probe('https://me:secret@llm.example.com/v1', KEY, counting), /alone/);
   await assert.rejects(probe('https://llm.example.com/v1?key=abc', KEY, counting), /alone/);
   await assert.rejects(probe('', KEY, counting), /Give the server's address/);
@@ -293,7 +354,7 @@ test('Add with these turns on what was found, Messages at the root address, and 
     const shown = textOf(panel);
     for (const line of ['✓ Model list: 1 model', '✓ Chat Completions', '✓ OpenAI Responses', '✓ Anthropic Messages', '✗ Transcription: not found', '✗ Voice: not found']) assert.ok(shown.includes(line), `${line} in: ${shown}`);
     assert.match(shown, /Nothing here costs money; Test sends real requests/);
-    assert.ok(!s.requests.some((q) => q.method === 'POST' && q.body && typeof q.body === 'object' && Object.keys(q.body).length), 'only empty requests');
+    assert.ok(s.requests.filter((q) => q.method === 'POST').every((q) => !['model', 'messages', 'input', 'prompt'].some((f) => f in q.body)), 'only empty requests');
 
     await buttonOf(panel, 'Add with these').attrs.onclick();
     assert.equal(d.added.length, 1, 'the provider it added is opened');
@@ -323,6 +384,11 @@ test("Add with these doesn't switch on a protocol plugin the user turned off: it
     assert.equal(await d.llm.startAdd('provider-another-address', { official: true }), null);
     const panel = /** @type {any} */ (setupOf(d.registry, 'provider-another-address')).panel(d.ui(), null);
     const address = all(panel).find((x) => x.attrs.id === 'probe-address');
+    for (const typed of ['h', 'ht']) {
+      address.value = typed;
+      address.attrs.oninput();
+    }
+    assert.doesNotMatch(textOf(panel), /changed/, 'typing before any look says nothing');
     address.value = `${s.origin}/v1`;
     await buttonOf(panel, 'Look for what it offers').attrs.onclick();
     assert.ok(textOf(panel).includes('✓ Chat Completions'));
@@ -342,6 +408,7 @@ test("Add with these doesn't switch on a protocol plugin the user turned off: it
     await looking;
     assert.equal(buttonOf(panel, 'Add with these'), undefined, 'what was found at the address before is not shown');
     assert.doesNotMatch(textOf(panel), /✓/);
+    assert.match(textOf(panel), /The address changed: look again\./);
   } finally {
     await s.stop();
   }
@@ -366,4 +433,27 @@ test("the plugin asks whether a server is there at all as the Test button does: 
   assert.deepEqual([reach[0][1].method, reach[0][1].headers, reach[0][1].body, reach[0][1].credentials, reach[0][1].redirect], [undefined, undefined, undefined, 'omit', undefined]);
   for (const [url, init] of sent.filter(([, i]) => i.mode !== 'no-cors')) assert.equal(init.redirect, 'manual', `${url}: the requests that may carry the key never follow a redirect`);
   assert.match(textOf(panel), /annai couldn't reach llm\.example\.test/);
+});
+
+test("a speech path a server answers is there, but Test says whether a model there can listen or speak: Add with these switches it on only where the model list names such a model", async () => {
+  const d = await device();
+  const s = await tiny((req) => {
+    if (req.method === 'GET' && req.url === '/v1/models') return [200, { 'content-type': 'application/json' }, '{"object":"list","data":[{"id":"llama3.2"},{"id":"whisper-large-v3"}]}'];
+    if (req.method === 'POST' && ['/v1/chat/completions', '/v1/audio/transcriptions', '/v1/audio/speech'].includes(req.url ?? '')) return [400, { 'content-type': 'application/json' }, '{}'];
+    return [404, {}, ''];
+  });
+  try {
+    assert.equal(await d.llm.startAdd('provider-another-address', { official: true }), null);
+    const panel = /** @type {any} */ (setupOf(d.registry, 'provider-another-address')).panel(d.ui(), null);
+    all(panel).find((x) => x.attrs.id === 'probe-address').value = `${s.origin}/v1`;
+    await buttonOf(panel, 'Look for what it offers').attrs.onclick();
+    const shown = textOf(panel);
+    assert.ok(shown.includes('✓ Transcription: the path is there; Test says whether a model there can listen'), shown);
+    assert.ok(shown.includes("✓ Voice: the path is there; Test says whether a model there can speak. Its model list names no voice, so it's added switched off."), shown);
+    await buttonOf(panel, 'Add with these').attrs.onclick();
+    const p = providerOf((await readConfig(d.ws)).providers[d.added[0]]);
+    assert.deepEqual(Object.fromEntries(Object.entries(p.abilities).map(([id, a]) => [id, a.on])), { 'chat-completions': true, responses: false, messages: false, transcription: true, voice: false });
+  } finally {
+    await s.stop();
+  }
 });
