@@ -272,7 +272,9 @@ export async function readConfig(ws) {
  * @param {any} saved @param {Record<string, ModelRecord>} models @returns {Roles}
  */
 function rolesFrom(saved, models) {
-  const s = saved && typeof saved === 'object' ? saved : {};
+  const { 'koe-talk': talk, 'koe-type': type, ...s } = saved && typeof saved === 'object' ? saved : {};
+  // Koe's two lists before they were one (2026-10-19): the talking list's models, then the typing list's.
+  s.koe ??= talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))] } : undefined;
   /** @type {Roles} */
   const out = {};
   for (const role of new Set([...CHAT_ROLES, KOE_ROLE, ...SPEECH_ROLES, ...Object.keys(s)])) {

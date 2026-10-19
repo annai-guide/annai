@@ -43,6 +43,27 @@ test('roles.json has the one Koe list; a saved file without it reads it as empty
   assert.ok(!('koe-talk' in ROLE_KINDS) && !('koe-type' in ROLE_KINDS));
 });
 
+test("a stored config with Koe's two old lists reads as one: the talking list's models, then the typing list's, without repeats; the old keys are gone", async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  await addProvider({ ws, store }, structuredClone(ROUTER_SRC), { key: 'sk-r', roles: null });
+  const cfg = await readConfig(ws);
+  const idOf = (/** @type {string} */ name) => /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).name === name)?.id);
+  const [big, small] = [idOf('Big'), idOf('Small (free)')];
+  await ws.write(SYS_SETTINGS, '/llm/roles.json', {
+    main: { models: [big], level: 'medium' },
+    'koe-talk': { models: [small, big], level: 'off' }, 'koe-type': { models: [big, 'gone', small], level: 'off' },
+  }, { author: 'user' });
+  const { roles } = await readConfig(ws);
+  assert.deepEqual(roles.koe.models, [small, big]);
+  assert.ok(!('koe-talk' in roles) && !('koe-type' in roles));
+  // Saved again, the file holds the one list.
+  await saveRoles(ws, roles);
+  const file = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
+  assert.deepEqual([file.koe.models, 'koe-talk' in file, 'koe-type' in file], [[small, big], false, false]);
+});
+
 test('adding a provider whose description recommends a Koe model fills Main but not Koe; "Use the recommended models" fills it; the two old names are ignored', async () => {
   const store = createMemoryStore();
   const ws = new Workspace(store);
