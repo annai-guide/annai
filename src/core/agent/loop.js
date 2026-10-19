@@ -198,6 +198,10 @@ export class Agent {
   #calling = false;
   /** @type {{ e: any, r: Resolved }[]} */
   #inbox = [];
+  /** The other half tidied up during a model call: the conversation is read again once the call's turn is taken. */
+  #rereadDue = false;
+  /** The last of its own model turns taken: the next one the trace writes for a wake is newer. */
+  #lastTurn = 0;
   /** Cuts the model call running now, not the turn (cutIn). @type {AbortController | null} */
   #callCut = null;
   /** The other half cut in while she spoke: speak says so, and doesn't listen. */
@@ -371,6 +375,7 @@ export class Agent {
     this.transcript = transcript;
     this.#seen = transcript.through;
     this.#inbox = [];
+    this.#lastTurn = 0; // seqs are each conversation's own
     for (const l of this.#late.splice(0)) if (l.scope === scope) this.#joinLate(l.e, l.r);
     this.#snapshot = null;
     // The last conversation's housekeeping stays with it: it is checked again at its next turn.
@@ -564,7 +569,9 @@ export class Agent {
     }
     if (e.scope !== this.scope) return;
     if (e.type === 'compaction') {
-      if (this.#half.name === 'koe') await this.reread();
+      if (this.#half.name !== 'koe') return;
+      if (this.#calling) this.#rereadDue = true;
+      else await this.reread();
       return;
     }
     if (this.#calling) this.#inbox.push({ e, r });
@@ -1110,6 +1117,10 @@ export class Agent {
         this.#callCut = null;
         this.#calling = false;
         this.#flush();
+        if (this.#rereadDue) {
+          this.#rereadDue = false;
+          await this.#serially(() => this.reread());
+        }
         // Cut in by the other half (an immediate note): this call is void, and the turn goes on with what is queued.
         if (cut.signal.aborted && !abort.signal.aborted) {
           const more = this.#take();
@@ -1359,17 +1370,23 @@ export class Agent {
   async #applyTurn(parts, wakeId) {
     await this.#serially(async () => {
       const recent = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['model.turn'], reverse: true, limit: 8 }));
-      const turn = recent.find((x) => x.data?.wake === wakeId && x.data?.tag === this.#half.tag);
-      // The latest of this wake's own turns, unless it is one taken already (an earlier step's: this one's write failed).
-      if (turn && turn.seq > this.#seen && turn.data?.stored?.includes('parts')) {
-        this.#apply(turn, await resolveEvent(this.store, turn));
+      const turn = recent.find((x) => x.data?.wake === wakeId && x.data?.tag === this.#half.tag && x.data?.stored?.includes('parts'));
+      if (turn && turn.seq > this.#lastTurn) {
+        // This call's turn, as stored: taken once (a reading of the log since may have it already).
+        this.#lastTurn = turn.seq;
+        if (turn.seq > this.#seen) this.#apply(turn, await resolveEvent(this.store, turn));
         this.#emit('event', turn);
       } else {
+        // Only when its write failed: the stored turn found is an earlier step's.
         this.#flush();
         this.transcript.apply({ seq: this.transcript.to + 1, type: 'model.turn', data: { tag: this.#half.tag } }, { texts: { parts: JSON.stringify(parts) }, images: [] });
       }
       this.#calling = false;
       this.#flush();
+      if (this.#rereadDue) {
+        this.#rereadDue = false;
+        await this.reread();
+      }
     });
   }
 
