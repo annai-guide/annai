@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf } from './mode.js';
 import { SYS } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, NETWORK_RETRIES, candidates } from '../llm/fallback.js';
+import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates } from '../llm/fallback.js';
 import { speechKind, modelOf, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries } from './speaker.js';
 import { voicePlatform } from './platform.js';
@@ -458,7 +458,7 @@ export class Voice {
     const types = this.llm.types();
     const now = this.now();
     const free = (/** @type {string} */ id) => this.llm.bench.until(id) <= now;
-    const mainId = candidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && free(id));
+    const mainId = chatCandidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && free(id));
     return listenKind({
       list: cfg.roles['speech-in']?.models ?? [],
       model: mainId ? modelOf(cfg.models[mainId]) : null,

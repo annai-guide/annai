@@ -83,6 +83,14 @@ test('how to listen is judged against the main model expected to hear it (spec Â
   const resting = await voiceKit({ main: [{ id: 'm1', input: ['text'] }, { id: 'm2', input: ['text', 'audio'] }], speechIn: ['send-audio'] });
   resting.llm.bench.bench('m1', 60_000);
   assert.equal((await resting.voice.howToListen()).kind, 'record', 'the first main model that is not resting is the one expected to hear');
+  // Koe's text pathway hears with its first chat model: a realtime model ahead of it in the list is passed over (fix pass).
+  const koe = await voiceKit({ main: [{ id: 'm1', input: ['text'] }], speechIn: ['send-audio'] });
+  const cfg = await koe.llm.config();
+  cfg.providers.pl = { id: 'pl', plugin: 'p', template: null, user: { abilities: { live: { kind: 'realtime', type: 'live', on: false } } }, created: 0 };
+  cfg.models.live = { id: 'live', provider: 'pl', ability: 'live', template: null, user: { providerId: 'live', name: 'Gemini 3.8 Live' }, created: 0 };
+  cfg.models.k1 = { id: 'k1', provider: 'pc', ability: 'chat', template: null, user: { providerId: 'k1', input: ['text', 'audio'] }, created: 0 };
+  cfg.roles.koe = { models: ['live', 'k1'], level: 'low' };
+  assert.equal((await koe.voice.howToListen('koe')).kind, 'record', 'k1 hears it, not Gemini 3.8 Live');
 });
 
 test('open() keeps what it hears in memory, plays and records; the resolver transcribes for a text-only model, and benches one that still fails after two more tries', async () => {
