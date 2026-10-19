@@ -2,10 +2,10 @@ import { validate } from '../schema.js';
 
 /**
  * A provider description (spec §5.2, §9.1): what a provider plugin's annai-plugin.json says of one
- * provider, as data. One address and one key, and its abilities: chat, transcription and voice, each
- * through a protocol plugin's endpoint type, with the models annai knows and the roles it suggests.
+ * provider, as data. One address and one key, and its abilities: chat, transcription, voice and realtime voice
+ * (a live session, K4), each through a protocol plugin's endpoint type, with the models annai knows and the roles it suggests.
  * @typedef {import('./config.js').ModelValues} ModelValues
- * @typedef {{ kind: 'chat' | 'transcription' | 'voice', type: string, name?: string, on?: boolean, baseUrl?: string,
+ * @typedef {{ kind: 'chat' | 'transcription' | 'voice' | 'realtime', type: string, name?: string, on?: boolean, baseUrl?: string,
  *   tunables?: Record<string, any>, extraBody?: Record<string, any>, note?: string, modelDefaults?: ModelValues,
  *   models?: (ModelValues & { providerId: string })[] }} AbilityDesc
  *   on: whether it starts switched on (default true); baseUrl: its own address, else the provider's;
@@ -16,12 +16,12 @@ import { validate } from '../schema.js';
  *   key none: no key field; keyHeader: the key goes in this header, not the protocol's way; roles: "recommended" | "free" → role → provider model ids
  */
 
-export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice']);
+export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice', 'realtime']);
 /** A plugin's kind in the catalog and on the Plugins page (spec §16.2). */
 export const CATEGORIES = Object.freeze(['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
 /** Which abilities' models each role takes. @type {Readonly<Record<string, readonly string[]>>} */
 export const ROLE_KINDS = Object.freeze({
-  main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat'], 'koe-type': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
+  main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat', 'realtime'], 'koe-type': ['chat', 'realtime'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
 });
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;

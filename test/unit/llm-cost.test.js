@@ -36,6 +36,16 @@ test('mergeUsage keeps the latest number of each kind; addUsage and addCost sum 
   close(addCost(0.25, 0.5), 0.75);
 });
 
+test('audio tokens are priced by audioIn and audioOut, else as input and output; usage carries them only when a report gives them (K4)', () => {
+  const live = { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 };
+  close(costOf({ ...NO_USAGE, input: 1000, audioIn: 2000, output: 100, audioOut: 500 }, live), (1000 * 0.75 + 2000 * 3 + 100 * 4.5 + 500 * 12) / 1e6);
+  close(costOf({ ...NO_USAGE, input: 1000, audioIn: 2000, output: 100, audioOut: 500 }, { input: 1, output: 2 }), (3000 * 1 + 600 * 2) / 1e6);
+  assert.deepEqual(mergeUsage({ ...NO_USAGE }, { input: 5 }), { ...NO_USAGE, input: 5 }, 'no audio fields for a call without audio');
+  assert.deepEqual(mergeUsage({ ...NO_USAGE }, { audioIn: 7, audioOut: 9 }), { ...NO_USAGE, audioIn: 7, audioOut: 9 });
+  assert.deepEqual(addUsage({ ...NO_USAGE, audioIn: 7 }, { ...NO_USAGE, audioIn: 1, audioOut: 2 }), { ...NO_USAGE, audioIn: 8, audioOut: 2 });
+  assert.deepEqual(addUsage({ ...NO_USAGE, input: 1 }, { ...NO_USAGE, input: 2 }), { ...NO_USAGE, input: 3 });
+});
+
 test("reasoning levels: the model's own, else the nearest, the cheaper on a tie (spec §9.3)", () => {
   assert.deepEqual(LEVELS, ['off', 'low', 'medium', 'high', 'max']);
   assert.deepEqual(ROLE_LEVELS, { main: 'medium', utility: 'low', decide: 'off', 'koe-talk': 'off', 'koe-type': 'off' });

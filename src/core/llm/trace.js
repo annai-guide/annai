@@ -117,6 +117,14 @@ export function modelTrace(store, scope) {
       const data = { kind: 'model', ...i, ...(i.error ? { error: scrub(i.error) } : {}), url: scrub(safeUrl(i.url)) };
       return append({ ts: Date.now(), type: 'net.request', actor: 'system', data }, []);
     },
+    /**
+     * A live session's life (K4): open, ready or resumed, goaway, closed, with its data and cost. Never its address,
+     * subprotocols or key: why, the server's words, is blanked like an error. @param {Record<string, any>} i
+     */
+    live(i) {
+      const data = Object.fromEntries(Object.entries(i).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+      return append({ ts: Date.now(), type: 'live.session', actor: 'system', data: { ...data, ...(data.why ? { why: scrub(data.why) } : {}) } }, []);
+    },
     /** A photo uploaded to a provider's files API (spec §4.8). @param {{ endpoint: string, url: string, status: number, ms: number, error?: string }} i */
     upload(i) {
       for (const [v, min] of urlSecrets(i.url)) secret(v, min);

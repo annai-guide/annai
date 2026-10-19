@@ -205,7 +205,7 @@ export async function callRole(c) {
     const type = ability ? types.get(ability.type) : undefined;
     const model = rec ? modelOf(rec) : null;
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
-    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
+    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : undefined;
       attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}) });

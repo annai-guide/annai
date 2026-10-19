@@ -10,11 +10,12 @@ import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins } from './official.js';
 import { PluginError, NOT_OWN, TURN_ON, isPluginBug } from '../registry.js';
 import { adjusted, setupOf } from './setup.js';
-import { callRole, Bench, candidates } from './fallback.js';
+import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
+import { openLive } from '../realtime/open.js';
 
 /**
  * Everything the UI needs to talk to models (spec §9): providers and their settings, the protocol
@@ -22,16 +23,19 @@ import { withoutSecretsIn } from '../agent/net.js';
  * with fallback, traced.
  * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, plugins: import('../plugins.js').PluginHost,
  *   fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, ready?: Promise<unknown>, pluginsCanLoad?: () => Promise<unknown>,
- *   probe?: (url: string) => Promise<boolean> }} c
+ *   probe?: (url: string) => Promise<boolean>, openSocket?: (url: string, protocols: string[]) => any }} c
  *   ready: settles once the installed plugins have started; pluginsCanLoad: settles when a plugin's files can be loaded
  *   (in browsers, once a service worker controls the page); probe: whether a server answers at an address at all, asked
- *   in no-cors mode, which a browser lets through to any server, to tell "blocks web apps" from "down" (spec §9.8)
+ *   in no-cors mode, which a browser lets through to any server, to tell "blocks web apps" from "down" (spec §9.8);
+ *   openSocket: makes a live session's WebSocket (tests)
  */
 export function createLlm({
   store, ws, plugins, fetch: get = (url, init) => fetch(url, init), base = '', ready = Promise.resolve(), pluginsCanLoad = () => Promise.resolve(),
-  probe = (/** @type {string} */ url) => get(url, { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false),
+  probe = (/** @type {string} */ url) => get(url, { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false), openSocket,
 }) {
   const bench = new Bench();
+  /** Tunables a live model had to open with instead (decision 11: v1beta without proactive audio), until annai restarts. @type {Map<string, Record<string, any>>} */
+  const liveTunables = new Map();
   /** Photos uploaded to providers, by provider and ability (spec §4.8). */
   const uploads = new Uploads(ws);
   const types = () => endpointTypes(plugins.registry);
@@ -316,6 +320,28 @@ export function createLlm({
       const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs) });
       await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by, ...(tag ? { tag } : {}) } }).catch(() => {});
       return r.probabilities;
+    },
+    /**
+     * A live session with one realtime model (K4), traced in scope: annai opens it at the ability's origin, with the key
+     * in the trace's secrets. A key refused, a rate limit or a server failure rests the model, as a call's would.
+     * @param {string} modelId @param {Omit<import('./contract.js').LiveSetup, 'audioIn' | 'audioOut'> & Partial<import('./contract.js').LiveSetup>} setup
+     * @param {{ scope?: string, wake?: string }} [o] @returns {Promise<import('../realtime/open.js').LiveSession>}
+     */
+    async live(modelId, setup, { scope = SYS, wake } = {}) {
+      const { type, endpoint, model, key, secret } = await resolve(modelId);
+      if (!type.realtime || !type.audio) throw new ProviderError('bad-request', `${model.name} isn't a live voice model.`);
+      const trace = modelTrace(store, scope);
+      if (secret) trace.secret(secret);
+      const tunables = { ...endpoint.tunables, ...model.tunables, ...liveTunables.get(modelId) };
+      const session = openLive({
+        type, endpoint, model, key, tunables, setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace,
+        registry: plugins.registry, wake, ...(openSocket ? { socket: openSocket } : {}),
+      });
+      session.ready.then(() => { if (session.tunables !== tunables) liveTunables.set(modelId, session.tunables); }, () => {});
+      session.closed.then(({ kind }) => {
+        if (kind === 'auth' || kind === 'rate' || kind === 'server' || kind === 'not-found') bench.bench(modelId, COOLDOWN_MS);
+      });
+      return session;
     },
     /**
      * Speech to text with one transcription model (spec §10.2), traced in scope.

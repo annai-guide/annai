@@ -2,7 +2,8 @@
  * Usage and cost (spec §9.9). Prices are USD per million tokens. A tier replaces the base prices
  * when the prompt is longer than its `above` tokens, as some providers charge more for long prompts.
  * @typedef {import('./contract.js').Usage} Usage
- * @typedef {{ input?: number, output?: number, cacheRead?: number, cacheWrite?: number, cacheWrite1h?: number }} PriceSet
+ * @typedef {{ input?: number, output?: number, cacheRead?: number, cacheWrite?: number, cacheWrite1h?: number, audioIn?: number, audioOut?: number }} PriceSet
+ *   audioIn and audioOut: a realtime model's audio tokens (K4), else priced as input and output
  * @typedef {PriceSet & { tiers?: (PriceSet & { above: number })[], perMinute?: number, perMillionChars?: number, minSeconds?: number }} Prices
  *   perMinute: USD per minute of audio transcribed (at least minSeconds a request); perMillionChars: USD per million characters a voice says
  */
@@ -10,6 +11,8 @@
 /** @type {Readonly<Usage>} */
 export const NO_USAGE = Object.freeze({ input: 0, cacheRead: 0, cacheWrite: 0, cacheWrite1h: 0, output: 0, reasoning: 0 });
 const FIELDS = /** @type {const} */ (['input', 'cacheRead', 'cacheWrite', 'cacheWrite1h', 'output', 'reasoning']);
+/** A realtime model's audio tokens: in a usage only when a report gives them. */
+const AUDIO = /** @type {const} */ (['audioIn', 'audioOut']);
 
 /**
  * The usage a stream reported so far, updated by a later report: each number given replaces the
@@ -18,7 +21,7 @@ const FIELDS = /** @type {const} */ (['input', 'cacheRead', 'cacheWrite', 'cache
  */
 export function mergeUsage(acc, part) {
   const out = { ...acc };
-  for (const k of FIELDS) {
+  for (const k of [...FIELDS, ...AUDIO]) {
     const v = part[k];
     if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
   }
@@ -31,6 +34,7 @@ export function mergeUsage(acc, part) {
 export function addUsage(a, b) {
   const out = { ...NO_USAGE };
   for (const k of FIELDS) out[k] = (a[k] ?? 0) + (b[k] ?? 0);
+  for (const k of AUDIO) if (a[k] !== undefined || b[k] !== undefined) out[k] = (a[k] ?? 0) + (b[k] ?? 0);
   const tools = { ...(a.serverTools ?? {}) };
   for (const [k, n] of Object.entries(b.serverTools ?? {})) tools[k] = (tools[k] ?? 0) + n;
   if (Object.keys(tools).length) out.serverTools = tools;
@@ -55,7 +59,8 @@ export function costOf(usage, prices, providerTools = []) {
   const input = p.input ?? 0;
   const per = (/** @type {number} */ n, /** @type {number | undefined} */ price) => (n * (price ?? 0)) / 1e6;
   return per(usage.input, input) + per(usage.cacheRead, p.cacheRead ?? input) + per(usage.cacheWrite, p.cacheWrite ?? input)
-    + per(usage.cacheWrite1h, p.cacheWrite1h ?? p.cacheWrite ?? input) + per(usage.output, p.output) + calls;
+    + per(usage.cacheWrite1h, p.cacheWrite1h ?? p.cacheWrite ?? input) + per(usage.output, p.output)
+    + per(usage.audioIn ?? 0, p.audioIn ?? input) + per(usage.audioOut ?? 0, p.audioOut ?? p.output) + calls;
 }
 
 /** Two costs added up; unknown only when both are. @param {number | undefined} a @param {number | undefined} b */

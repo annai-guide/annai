@@ -849,7 +849,7 @@ export class PluginHost {
         return ordered();
       },
       providers: Object.freeze({
-        /** An endpoint type (spec §9.1): build() and read(), or run() for types that need no network. */
+        /** An endpoint type (spec §9.1): build() and read(), or run() for types that need no network; a realtime one open() and attach(). */
         register: (/** @type {any} */ type) => {
           if (typeof type?.type !== 'string' || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(type.type)) {
             throw new PluginError(id, 'an endpoint type needs a "type" id of lowercase letters, digits and dashes');
@@ -857,8 +857,13 @@ export class PluginHost {
           const chat = typeof type.run === 'function' || (typeof type.build === 'function' && typeof type.read === 'function');
           const hears = type.speech === 'in' && typeof type.transcribeRequest === 'function' && typeof type.readTranscript === 'function';
           const speaks = type.speech === 'out' && typeof type.speechRequest === 'function' && typeof type.readSpeech === 'function';
-          if (!chat && !hears && !speaks) {
-            throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech()`);
+          // A realtime voice type (K4): annai opens its socket; it builds the address and drives what is sent.
+          const formats = (/** @type {any} */ l) => Array.isArray(l) && l.length > 0 && l.every((f) => typeof f?.format === 'string' && Number.isInteger(f?.rate));
+          if (type.realtime && !(typeof type.open === 'function' && typeof type.attach === 'function' && formats(type.audio?.in) && formats(type.audio?.out))) {
+            throw new PluginError(id, `the realtime type "${type.type}" needs open() and attach(), and the audio it takes and gives`);
+          }
+          if (!chat && !hears && !speaks && !type.realtime) {
+            throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech(); a realtime type open() and attach()`);
           }
           return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
         },

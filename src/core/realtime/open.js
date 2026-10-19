@@ -1,0 +1,253 @@
+import { ProviderError, KINDS } from '../llm/contract.js';
+import { NO_USAGE, costOf, addCost } from '../llm/cost.js';
+import { addressProblem } from '../llm/provider-desc.js';
+import { isPluginBug } from '../registry.js';
+import { utf8 } from '../bytes.js';
+
+/**
+ * A live session (the Koe and Kokoro design, "Realtime sessions"; spec §15). annai opens the WebSocket itself,
+ * only at its ability's origin, and a protocol plugin drives it. A socket can't follow a redirect, so the key
+ * reaches no one else. Its life is traced as live.session entries, each turn's usage as a priced net.request
+ * of kind realtime; neither holds its address, subprotocols or key.
+ * @typedef {import('../llm/contract.js').EndpointType} EndpointType @typedef {import('../llm/contract.js').LiveDriver} LiveDriver
+ * @typedef {import('../llm/contract.js').LiveEvent} LiveEvent @typedef {import('../llm/contract.js').ErrorKind} ErrorKind
+ * @typedef {Omit<LiveDriver, 'ready' | 'close' | 'cancel'> & { ready: Promise<void>, closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>,
+ *   on(fn: (e: LiveEvent) => void): () => void, cancel(): void, close(why?: string): void, bytes: { in: number, out: number }, handle?: string,
+ *   tunables: Record<string, any> }} LiveSession
+ *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with
+ */
+
+/** How long a session may take to be ready. */
+export const READY_MS = 15_000;
+
+/**
+ * Refuses a session address not at the ability's origin, before anything opens: wss: for an https address, ws:
+ * only for http on localhost or 127.0.0.1, as the security policy allows. The words name origins only, never the key.
+ * @param {import('../llm/config.js').Endpoint} endpoint @param {string} url
+ */
+export function liveOrigin(endpoint, url) {
+  /** @type {URL | null} */
+  let u = null;
+  let want = '';
+  try {
+    u = new URL(url);
+    want = new URL(endpoint.baseUrl).origin;
+  } catch {
+    // refused below
+  }
+  const web = { 'wss:': 'https:', 'ws:': 'http:' }[u?.protocol ?? ''];
+  if (u && web && `${web}//${u.host}` === want && !addressProblem(want)) return;
+  throw new ProviderError('bad-request', `${endpoint.name}'s live voice built a session address at ${u ? `${u.protocol}//${u.host}` : "an address that isn't one"}, not its address ${want || '(none)'}. Check its tunables.`);
+}
+
+/**
+ * What a close means (spec §9.9): the protocol's reading, else annai's. A refused key is auth; quota or RESOURCE_EXHAUSTED
+ * rate; 1008 or "not found" not-found; 1011 server; anything else network. A code alone can mean two things (Gemini's 1007), so words count first.
+ * @param {EndpointType} type @param {number} code @param {string} reason @returns {ErrorKind}
+ */
+export function closeKind(type, code, reason) {
+  /** @type {any} */
+  let k = null;
+  try {
+    k = type.classifyClose?.(code, reason);
+  } catch {
+    // a broken reading is none
+  }
+  if (KINDS.has(k)) return k;
+  if (/api key|unauthenticated|permission denied/i.test(reason)) return 'auth';
+  if (/quota|resource_exhausted|rate limit/i.test(reason)) return 'rate';
+  if (code === 1008 || /not found/i.test(reason)) return 'not-found';
+  return code === 1011 ? 'server' : 'network';
+}
+
+/**
+ * Opens a live session; an address not at the ability's origin throws at once.
+ * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, model: import('../llm/config.js').Model, key: string | null,
+ *   tunables: Record<string, any>, setup: import('../llm/contract.js').LiveSetup, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
+ *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number }} c
+ * @returns {LiveSession}
+ */
+export function openLive(c) {
+  const { type, endpoint, model, key, setup, trace, registry, wake, now = Date.now, readyMs = READY_MS } = c;
+  const socket = c.socket ?? ((url, protocols) => new WebSocket(url, protocols));
+  if (key) trace?.secret(key);
+  /** A bug in the protocol's code counts against its plugin (spec §5.5). @param {string} what @param {unknown} e */
+  const bug = (what, e) => { if (isPluginBug(e)) registry?.fail(type.pluginId, `live ${what}`, e); };
+  /** @param {Record<string, any>} tunables @returns {{ url: string, protocols?: string[] }} */
+  const build = (tunables) => {
+    /** @type {any} */
+    let r;
+    try {
+      r = /** @type {NonNullable<EndpointType['open']>} */ (type.open)({ endpoint, model, key, tunables });
+    } catch (e) {
+      bug('open', e);
+      throw e instanceof ProviderError ? e : new ProviderError('plugin', `${type.name} couldn't start a live session.`);
+    }
+    liveOrigin(endpoint, String(r?.url));
+    return r;
+  };
+  const first = build(c.tunables);
+  const host = new URL(first.url).host;
+  const started = now();
+  let last = started;
+  const bytes = { in: 0, out: 0 };
+  let turns = 0;
+  /** @type {number | undefined} */
+  let cost;
+  let asked = ''; // why annai closed it
+  let done = false;
+  /** @type {LiveDriver | null} */
+  let driver = null;
+  /** @type {any} */
+  let ws = null;
+  /** @type {Set<(e: LiveEvent) => void>} */
+  const listeners = new Set();
+  /** @param {string} state @param {Record<string, any>} [more] */
+  const log = (state, more) => trace?.live({ state, endpoint: endpoint.name, model: model.name, providerModel: model.providerId, ...more, ...(wake ? { wake } : {}) });
+  /** @type {(v: { code: number, reason: string, kind: ErrorKind | null }) => void} */
+  let settle = () => {};
+  const closed = new Promise((r) => { settle = r; });
+  /** @param {number} code @param {string} reason @param {ErrorKind | null} kind */
+  const finish = (code, reason, kind) => {
+    if (done) return;
+    done = true;
+    log('closed', { ms: now() - started, code, kind, why: asked || reason, bytesIn: bytes.in, bytesOut: bytes.out, turns, cost });
+    settle({ code, reason: key ? reason.split(key).join('«key»') : reason, kind });
+  };
+  /** What the protocol heard: usage is priced and traced, the handle kept, then every listener hears it. @param {LiveEvent} e */
+  const emit = (e) => {
+    if (e?.type === 'usage') {
+      const usage = { ...NO_USAGE, ...e.usage };
+      const turnCost = costOf(usage, model.prices);
+      cost = addCost(cost, turnCost);
+      trace?.request({ kind: 'realtime', endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url: first.url, status: 101, ms: now() - last, firstMs: null, outcome: 'ok', usage, ...(turnCost !== undefined ? { cost: turnCost } : {}), ...(wake ? { wake } : {}) });
+      last = now();
+    } else if (e?.type === 'resume') session.handle = e.handle;
+    else if (e?.type === 'goaway') log('goaway', { ms: e.ms });
+    else if (e?.type === 'turn') turns++;
+    for (const fn of listeners) {
+      try {
+        fn(e);
+      } catch (err) {
+        console.warn('a live session listener failed', err);
+      }
+    }
+  };
+  log('open');
+  const ready = new Promise((resolve, reject) => {
+    /** One connection; a protocol may ask for one more, before it is ready, with other tunables. @param {{ url: string, protocols?: string[] }} r @param {Record<string, any>} tunables @param {boolean} again */
+    const attempt = (r, tunables, again) => {
+      /** How it went: opened, ready (up), too late, or broken by the protocol's code. */
+      const st = { opened: false, up: false, late: false, broken: false };
+      /** What the protocol does with each message; it sets it as it attaches. @type {((d: string | Uint8Array) => void) | null} */
+      let handler = null;
+      /** @param {ProviderError} err @param {number} code @param {string} reason */
+      const down = (err, code, reason) => {
+        reject(err);
+        finish(code, reason, err.kind);
+      };
+      try {
+        ws = socket(r.url, r.protocols ?? []);
+      } catch (e) {
+        // Refused by the browser at once (its security policy). Its words may hold the address, so only the name is kept.
+        return down(new ProviderError('unreachable', `annai couldn't open a live session with ${host} (${/** @type {any} */ (e)?.name ?? 'error'}).`), 1006, '');
+      }
+      const s = ws;
+      s.binaryType = 'arraybuffer';
+      const timer = setTimeout(() => { st.late = true; s.close(1000); }, readyMs);
+      const broke = (/** @type {string} */ what, /** @type {unknown} */ e) => {
+        bug(what, e);
+        st.broken = true;
+        s.close(1000);
+      };
+      s.addEventListener('open', () => {
+        st.opened = true;
+        if (asked) return s.close(1000);
+        const io = {
+          send: (/** @type {string | Uint8Array} */ d) => {
+            bytes.out += typeof d === 'string' ? utf8(d).length : d.byteLength;
+            s.send(d);
+          },
+          on: (/** @type {(d: string | Uint8Array) => void} */ fn) => { handler = fn; },
+        };
+        try {
+          driver = /** @type {NonNullable<EndpointType['attach']>} */ (type.attach)(io, { endpoint, model, tunables, setup, emit });
+        } catch (e) {
+          return broke('attach', e);
+        }
+        Promise.resolve(driver?.ready).then(() => {
+          if (done || st.up) return;
+          st.up = true;
+          clearTimeout(timer);
+          log(setup.resume ? 'resumed' : 'ready', { ms: now() - started });
+          resolve(undefined);
+        }, (e) => broke('ready', e));
+        return undefined;
+      });
+      s.addEventListener('message', (/** @type {MessageEvent} */ e) => {
+        const d = typeof e.data === 'string' ? e.data : new Uint8Array(e.data);
+        bytes.in += typeof d === 'string' ? utf8(d).length : d.byteLength;
+        try {
+          handler?.(d);
+        } catch (err) {
+          bug('message', err);
+        }
+      });
+      s.addEventListener('close', (/** @type {CloseEvent} */ e) => {
+        clearTimeout(timer);
+        const reason = String(e.reason ?? '');
+        if (st.up) return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason));
+        /** @type {Record<string, any> | null | undefined} */
+        let next = null;
+        try {
+          next = asked || !st.opened || again || st.late || st.broken ? null : type.reopen?.(e.code, reason, tunables);
+          if (next) return attempt(build((session.tunables = next)), next, true);
+        } catch (err) {
+          bug('reopen', err);
+          if (err instanceof ProviderError) return down(err, e.code, reason);
+        }
+        /** @type {ErrorKind} */
+        const kind = asked ? 'cancelled' : st.late ? 'timeout' : !st.opened ? 'unreachable' : st.broken ? 'plugin' : closeKind(type, e.code, reason);
+        const words = { timeout: "The live session didn't start in time.", unreachable: `annai couldn't reach ${host}.`, plugin: `${type.name} couldn't start a live session.` }[/** @type {string} */ (kind)];
+        return down(new ProviderError(kind, words ?? ((key ? reason.split(key).join('«key»') : reason) || `The live session closed (${e.code}).`)), e.code, reason);
+      });
+      return undefined;
+    };
+    attempt(first, c.tunables, false);
+  });
+  ready.catch(() => {}); // read by whoever awaits it; never left unhandled
+  /** A driver call; a bug in it counts against the plugin. @param {string} what @param {(d: LiveDriver) => void} fn */
+  const call = (what, fn) => {
+    if (!driver || done) return;
+    try {
+      fn(driver);
+    } catch (e) {
+      bug(what, e);
+      if (!isPluginBug(e)) throw e;
+    }
+  };
+  /** @type {LiveSession} */
+  const session = {
+    ready,
+    closed,
+    bytes,
+    tunables: c.tunables,
+    on(fn) {
+      listeners.add(fn);
+      return () => { listeners.delete(fn); };
+    },
+    audio: (chunk) => call('audio', (d) => d.audio(chunk)),
+    activity: (edge) => call('activity', (d) => d.activity(edge)),
+    text: (t, o) => call('text', (d) => d.text(t, o)),
+    image: (i) => call('image', (d) => d.image(i)),
+    answer: (id, name, output, o) => call('answer', (d) => d.answer(id, name, output, o)),
+    cancel: () => call('cancel', (d) => d.cancel?.()),
+    close(why = 'closed') {
+      if (done || asked) return;
+      asked = why;
+      call('close', (d) => d.close?.());
+      ws?.close(1000);
+    },
+  };
+  return session;
+}

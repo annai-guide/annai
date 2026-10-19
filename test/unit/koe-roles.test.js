@@ -54,8 +54,9 @@ test('roles.json keeps the Koe roles at level off; a saved file without them rea
   await saveRoles(ws, { ...roles, 'koe-type': { models: [], level: 'low', firstOutputSeconds: 8 } });
   ({ roles } = await readConfig(ws));
   assert.deepEqual(roles['koe-type'], { models: [], level: 'low', firstOutputSeconds: 8 });
-  assert.deepEqual(ROLE_KINDS['koe-talk'], ['chat']);
-  assert.deepEqual(ROLE_KINDS['koe-type'], ['chat']);
+  // Koe's lists take chat models and realtime voice models (K4).
+  assert.deepEqual(ROLE_KINDS['koe-talk'], ['chat', 'realtime']);
+  assert.deepEqual(ROLE_KINDS['koe-type'], ['chat', 'realtime']);
 });
 
 test('adding a provider whose description recommends Koe models fills Main but no Koe list; "Use the recommended models" fills them', async () => {
