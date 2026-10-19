@@ -85,6 +85,17 @@ test('web_search: Jina Search with a key, as TSV; without a key, what to do', as
   assert.equal(out, 'title\turl\tsnippet\nNepenthe\thttps://www.nepenthe.com/\tOpen daily<sep>until 10.');
 });
 
+test("web_search: a plugin's search provider is never handed the Jina key, even one called jina that the user chose", async () => {
+  const { registry, run, setKey } = await setup();
+  await setKey('jina_test_key');
+  /** @type {any[]} */
+  const handed = [];
+  registry.add('other', 'search', { id: 'jina', name: 'Other', search: async (/** @type {string} */ _q, /** @type {any} */ c) => { handed.push(c.key); return [{ title: 'T', url: 'https://x.test/', snippet: 's' }]; } });
+  registry.setRules({ rank: (id) => [id === 'web' ? 0 : 2], choice: (kind) => (kind === 'search' ? 'other' : undefined), reserved: () => null });
+  assert.match(await run('web_search', { query: 'q' }, () => new Response('')), /^title/);
+  assert.deepEqual(handed, [null]);
+});
+
 test('search via and fetch via: one search tool, never two competing ones (spec §9.5)', () => {
   const search = { id: 'a-search', name: 'S', kind: 'search', patch: {} };
   const fetchTool = { id: 'a-fetch', name: 'F', kind: 'fetch', patch: {} };

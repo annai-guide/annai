@@ -199,10 +199,13 @@ function actions(ctx, r, update) {
         Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(id)}` });
         update();
       }
-      // A provider: its plugin with what it needs, then the provider and its page (spec §9.8).
+      // A provider: its plugin with what it needs, then the provider and its page (spec §9.8); one with code may
+      // have its own Add flow (decision 15), such as a look at what an address offers.
       : async () => {
         b.textContent = 'Adding…';
-        ctx.go(`#/models/provider?id=${encodeURIComponent(await ctx.llm.addProvider(id, { roles: 'recommended', official: r.official }))}`);
+        const o = { roles: /** @type {const} */ ('recommended'), official: r.official };
+        const added = r.facts.code ? await ctx.llm.startAdd(id, o) : await ctx.llm.addProvider(id, o);
+        ctx.go(added === null ? `#/models/provider?new=${encodeURIComponent(id)}` : `#/models/provider?id=${encodeURIComponent(added)}`);
       }),
   }, label);
   return [r.added ? h('span', { class: 'sub', text: 'Added' }) : null, b];

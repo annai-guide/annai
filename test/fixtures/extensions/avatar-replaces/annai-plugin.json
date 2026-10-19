@@ -1,0 +1,10 @@
+{
+  "id": "avatar-replaces",
+  "name": "Mountain look",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "index.js",
+  "replaces": ["avatar"],
+  "description": "Test plugin (milestone 6 of providers as plugins): Shiori drawn as a mountain, declared with replaces.",
+  "author": "annai tests"
+}

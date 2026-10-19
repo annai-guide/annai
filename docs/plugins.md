@@ -40,6 +40,7 @@ A plugin's manifest:
   - `keywords`: up to 20 other names it is searched by, 1 to 40 characters each, written as they are shown (`["Unsloth", "LM Studio"]`). They aren't hidden: a row found by a keyword says so, "Also for: LM Studio". A name match ranks above a keyword match, so a plugin made for LM Studio comes before one that lists it as a keyword. Give the names of things your plugin also serves (a server built on the one you describe, a product's other spelling), not words for what it does: its description and its abilities are searched too.
   - `featured`: a sentence of up to 200 characters for the one-tap start on Models and the welcome. It counts only in annai's own catalog: a third party's is ignored.
   - `catchAll`: `true` for a provider of any address (annai's Another address), listed after the others when the Add screen is browsed.
+  - `replaces`: up to 20 names your plugin registers and means to replace, such as `["weather", "avatar"]`: a tool, a component, a skill, a personality, a card type or a search provider, by its bare name. The install screen asks the user (see "Names and conflicts").
   - `templates` (endpoint templates, before providers) is refused: "Endpoint templates were replaced by `provider`".
   - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing"). A module you leave out isn't there once installed from an address, and the plugin won't start; the error is the browser's own, and it names your entry file, not the missing module (Chrome: "Failed to fetch dynamically imported module: …/index.js"; Safari names no file at all: "Importing a module script failed.").
   - `settings`: a JSON Schema object; annai draws a form from it on your plugin's page in Settings → Plugins. See "Settings" below.
@@ -47,7 +48,7 @@ A plugin's manifest:
 
 annai copies the package into its own storage, so the plugin works offline, and serves its files at `/plugins/<id>/…`. Relative imports between a plugin's own modules therefore just work. A package's files keep no history: installing it again replaces them.
 
-A package's id is one name space with every other package: a skill is installed under its own name, and a skill name Shiori already has (one of annai's own, or another package's, on or off) can't be installed again. The id of one of annai's own plugins (any in its catalog) can't be taken by a package from a file or an address: "annai's own plugin uses this name".
+A package's id is one name space with every other package: a skill is installed under its own name. The id of one of annai's own plugins (any in its catalog) can't be taken by a package from a file or an address: "annai's own plugin uses this name". Names inside a package (a tool, a skill, a component) can be shared: see "Names and conflicts".
 
 ## The entry module
 
@@ -68,7 +69,7 @@ export function activate(annai) {
 | | |
 |---|---|
 | `annai.id` | your plugin's id |
-| `annai.register(kind, item)` | adds something to the registry; returns a function that removes it |
+| `annai.register(kind, item)` | adds something to the registry; returns a function that removes it. A kind with a call of its own isn't added this way, so its checks always run: tools, protocols, backup places, schemas, hooks, the UI's (`ui:…`), and a model provider's description and setup, which annai makes from your manifest and `annai.providers.setup`. |
 | `annai.schemas.register({ scope, pattern, schema })` | a JSON Schema that files at matching paths must pass. An invalid write is refused, and the refusal says why. |
 | `annai.tools.register(tool)` | a tool: a name (letters, digits, `_` and `-`, up to 64), a description, an input JSON Schema and `run(input, call)` (spec §5.4). `call` has `trip` (the open trip's scope, or null), `signal` (stop when it aborts), `model` (the model that called it) and `fetch` (traced). Errors become results Shiori sees. Every tool can be switched off in Settings → Tools. |
 | `annai.events.append(scope, type, data, keep?)` | appends an entry to a scope's log, signed `plugin:<id>`. `keep = { texts: [[name, text]], blobs: [{ bytes, type }] }` stores content and names it in the entry's refs; long texts are kept that way, short ones go in `data`. Returns the entry. |
@@ -76,7 +77,7 @@ export function activate(annai) {
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Protocols (endpoint types)" below |
 | `annai.providers.setup(setup)` | a provider plugin's own setup and quirks, once: see "Model providers with code" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
-| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
 | `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or provider's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
@@ -89,7 +90,7 @@ export function activate(annai) {
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
 | `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change); a key nothing is saved for has your schema's `default` |
 | `annai.searchProviders()` | the search providers, in the order the user set |
-| `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has is refused. Skills in a package's `skills` don't need this. |
+| `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has isn't used until the user chooses yours (see "Names and conflicts"). Skills in a package's `skills` don't need this. |
 | `annai.register('search', { id, name, needsKey?, search(query, { key, fetch, signal }) })` | a search provider for `web_search`: returns `[{ title, url, snippet }]` |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
@@ -129,10 +130,27 @@ Pools are safest from an hour before low tide until low tide. Read [the safety n
 
   The site must let web apps read it (GitHub's raw files do; a `github.com/…/blob/…` page is read from there). At most 200 files and 64 MB. A key in the address (a path segment or a query value that looks like one) is kept in a secret of annai's own, apart from your plugin's `annai.secrets`, which annai uses to look for updates; the address is shown and kept everywhere else with `«key»` in its place. An address with a name and password before an `@` is refused.
 - **From annai's catalog:** the Add screen lists annai's own plugins and what is installed, yours among them, searched by name, `keywords` and description (see "The package"). A model provider is added there, which makes the provider too: Settings → Models → Add a provider opens it on model providers. Only annai's catalog and installed plugins are listed; a plugin of yours is found there once installed from its address.
-- **The install screen** comes first, for a file or an address: what the package is, where it came from, what it brings, and what it needs ("It needs: Chat Completions (from annai, installed with it)"). A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys." A provider says where keys go, by origin: "Keys you give this provider are sent to https://llm.example." Install stays off while a requirement can't be had (a third party's not installed, or one the user switched off).
+- **The install screen** comes first, for a file or an address: what the package is, where it came from, what it brings, what it needs ("It needs: Chat Completions (from annai, installed with it)"), and what it replaces (see "Names and conflicts"). Over an installed package of its id, it says which version is there. When that one came from another place (another address, or a file over an address), it says so, with **Install, keep its settings and keys** (its settings, keys and the user's choices for its names go to the new one) and **Install fresh** (they are removed first). A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys." A provider says where keys go, by origin: "Keys you give this provider are sent to https://llm.example." Install stays off while a requirement can't be had (a third party's not installed, or one the user switched off).
 - **Requirements** are installed with your plugin, all or nothing: if a download fails or the connection drops, nothing stays half-installed. A plugin the user switched off is never switched on for yours: the install stops and says how.
 - **Updates:** a package installed from an address is checked there when annai starts, when it comes back to the screen at most once a day (so your site isn't asked at every return), and on Check now in Settings → Updates; a changed package (its files, not just its version) is offered on a card, in Settings → Updates and in Settings → Plugins. Nothing changes until the user taps Update. An update that brings something new (code where there was none, new skills or personalities, or a provider that sends keys to a new origin: scheme, host and port) lists it and asks again, with the full-trust words for new code. What an update now requires is installed on Update. Code that already ran runs the new version from the next start.
 - **Removing** removes everything the package stored: its files, its settings (`annai.settings`), its secrets (`annai.secrets`), its tools' switches, and what it kept in the system log with `annai.events.append('sys', …)`. What it wrote into a trip stays: that is the trip's. Removing a provider plugin removes the providers made from it, with their keys and models; removing the last provider made from it removes the plugin. Then annai's own protocol plugins that nothing requires and no switched-on ability uses go too; a third party's stays.
+
+## Names and conflicts
+
+Some things plugins register have a name only one plugin can hold: tools, protocols (endpoint types), kinds of backup place, skills, personalities, card types, search providers, and the components (`avatar`, `dock`, `now-card`, `plan-row`). Hooks and the slots that add things up (chips, Now sections, dock actions, tabs, settings pages, screens, themes) never clash.
+
+- **One owner per name,** in a fixed order: annai's built-ins, then its official plugins, then third-party plugins by when each was first installed (an update keeps its place), then by id. Plugins start in that order. annai's own components, and the skills it ships, are annai's even when nothing draws them.
+- **The user's choice comes first.** A plugin whose name is taken isn't used, and its page says "Not used: the tool weather is already provided by Places tools", with **Use this one instead**. The choice is kept, shown on both plugins' pages ("The tool weather: this one is used (your choice)") with **Undo**, and holds while your plugin runs; while it is off, the next in order is used. Removing a plugin forgets the choices that named it.
+- **`replaces`** in your manifest names what you mean to replace. The install screen says "It replaces how Shiori looks from annai", with **Install and use it** and **Install, keep annai's**; nothing is chosen until one is tapped. Without `replaces`, your plugin installs, and the user finds the switch on its page.
+- **What no choice moves:**
+  - the agent loop's own tools (`speak`, `show`, `ask`, `wait`, `sleep`, `skill`, `tell_koe`, `tell_kokoro` and the rest of Shiori's own): a plugin's tool by one of those names is never used;
+  - protocols and kinds of backup place: they are handed the keys the user gives (a provider's, a place's), so the one used is annai's own, else the one installed first. A name annai's own plugin provides is never yours: while annai's is off, nothing has it, and a call says its plugin isn't running. When a protocol annai has is needed, annai's own is installed, even if yours has its name. Give yours a name of its own.
+- **Your provider's id is your plugin's id,** and only your plugin's description and setup are its.
+- **Owners are named plainly:** annai, a built-in or an official plugin by its name, any other plugin by its name with its id, "Tides (tides)", so no manifest's name passes for annai's. A package named annai, or a built-in's name (whatever its case, spaces, width or invisible characters), isn't installed.
+- **A bug counts against the plugin that registered the thing,** as annai's registry knows it, never against an id the thing says it has.
+- **Removing a plugin** removes its tools' switches, but not one for a name another plugin, the loop or annai still has.
+
+A plugin that registers a name twice uses the first.
 
 ## The UI
 
@@ -162,7 +180,7 @@ To change what a chip or a section shows, keep the element it was given and chan
   - `'trip-tab'`, `{ id, title, render(el, ui, { trip }) }`: a button on a trip's page, after Replay, opening a page of yours for that trip.
   - `'settings-page'`, `{ id, title, render(el, ui) }`: a page listed under Settings → From plugins and on your plugin's page.
 - **Card types,** `annai.ui.cardType({ type, name, description, schema?, render(data, el, ui) })`: a kind of card Shiori can show. Her `show` tool gains `type` and `data`, and its description lists your type with its description; `data` must pass `schema` when you give one, or Shiori is told why. The card's label reads "SHIORI · <NAME>". A card of your type shown while your plugin is off shows its title and text.
-- **Components,** `annai.ui.component(name, impl)`; the last plugin to register one wins, and annai's own is used when yours fails:
+- **Components,** `annai.ui.component(name, impl)`. A component is a name with one owner, annai's own until the user chooses yours: declare it in `replaces`, and your install screen asks ("It replaces how Shiori looks from annai"); without it, your plugin's page says Not used, with a switch. annai's own is used when yours fails:
   - `'avatar'`, `{ create({ size }) }` returning `{ el, setState(state), setLevel(0..1, who), glance(dx, dy), blink() }` (spec §16.3).
   - `'now-card'`, `{ render(el, ui, { title, place, chips, liveOn }) }`: the top of the Now card.
   - `'dock'`, `{ create(ui) }` returning `{ el }`: the whole dock.
@@ -241,7 +259,7 @@ A model provider is usually data: one `annai-plugin.json` with a `provider` desc
 - **Each ability** (an id of lowercase letters, digits and dashes) has a `kind` (`chat`, `transcription`, `voice`), a protocol's `type`, and optionally a `name`, `on: false` to start switched off, its own `baseUrl`, `tunables`, `extraBody`, a `note`, `modelDefaults` (what a model added by id or from a list starts with, such as `providerTools` or `cacheTtls`) and `models` (each with a `providerId`, and the model settings of spec §9.2).
 - **`roles`** suggests models: `recommended` and `free`, each role to provider model ids among the abilities of its kind (chat roles `main`, `utility`, `decide`; `speech-in` transcription; `speech-out` voices). Adding a provider fills chat roles still empty; its speech models go behind the free entries.
 - **`requires`** must cover every protocol of an ability that starts on. One that starts off brings its protocol when the user turns it on.
-- **One key per provider.** The user may add several providers from one plugin (two accounts); each has its own key, models and places in roles. annai keeps the key in its secrets; your plugin never sees it.
+- **One key per provider.** The user may add several providers from one plugin (two accounts); each has its own key, models and places in roles. annai keeps the key in its secrets, and hands it only to the protocol a call goes through, never to another provider's plugin. A data-only provider can't read it at all; a plugin with code runs with annai's full access (the install screen says so), so the user trusts it with every key.
 - **Updates:** when your plugin's version changes, the providers made from it take the new description; the user's own changes stay, new models join no role, and a new ability arrives switched off.
 
 **Quirks are data.** A server's differences are written in its description, not in code. The servers people run show how (`plugins-official/provider-llamacpp`, `-vllm`, `-sglang`, `-ollama`, `-lmstudio`): each has its default address, `local: true`, notes on how to let annai's address in, and how its thinking is switched, as the reasoning map every model added from its list starts with. llama.cpp's, trimmed:
@@ -272,11 +290,11 @@ export function activate(annai) {
 }
 ```
 
-- **`panel(ui, provider)`** draws your part of the setup. With `provider` `{ id, name, key }` (key: whether one is saved), it is drawn on that provider's page, in the key's place; the standard key field follows unless `keyField` is false. With `provider` null, it is your own start: annai draws it as the one-tap start when your plugin is the featured one. Build it with `ui.h`. What it throws, or a panel that isn't an element, counts against your plugin, and the screen draws without it.
+- **`panel(ui, provider)`** draws your part of the setup. With `provider` `{ id, name, key }` (key: whether one is saved), it is drawn on that provider's page, in the key's place; the standard key field follows unless `keyField` is false. With `provider` null, it is your own Add flow: Add on your provider installs your plugin and opens it on a screen of its own, with Add by hand beside it (the provider as your description has it, set up on its page), and a provider your panel adds with `ui.add` opens its page. Leaving that screen with no provider made from your plugin removes it again, if Add installed it for this. annai also draws it as the one-tap start when your plugin is the featured one. Return null where you have nothing to add (Another address does on a provider's page, which keeps annai's switches). Build it with `ui.h`, with handlers as `on…` attributes. What it throws, or a panel that isn't an element, counts against your plugin, and the screen draws without it.
 - **`ui`** (the setup's own) has `h`, `render()` (draws the screen again) and `returnsElsewhere` (true on an iPhone Home Screen app, where a page you open comes back to Safari, not to annai: show a code to paste there). Cards and toasts are `annai.ui.card` and `annai.ui.toast`. And:
   - `ui.add({ key, roles, name, baseUrl, abilities })` adds a provider from your description, installing the protocols of the abilities turned on; `roles` is `"recommended"` (the default), `"free"` or null. An address (`baseUrl`, or an ability's) must be one annai takes, at an origin your description names, as your install screen said keys go there; a `catchAll` provider may give any. It gives the provider's id.
   - `ui.keep(providerId, key)` sets the key of one of your own providers (null removes it). Another plugin's provider is refused.
-  - Both keep the key in annai's secrets, for that provider alone: your plugin never stores it. A key given as a function is called only once everything else is in place (the plugin, what it requires, the provider found), so a key made for annai, such as a sign-in's, is never lost to a failed install.
+  - Both keep the key in annai's secrets, for that provider alone: your plugin needn't store it, and the provider contract never hands it another provider's. A key given as a function is called only once everything else is in place (the plugin, what it requires, the provider found), so a key made for annai, such as a sign-in's, is never lost to a failed install.
   - `ui.expectReturn()` says you are sending the browser away, to come back to annai's address (`location.origin + '/'`). The next load of that address with a query, within 15 minutes, calls your `returned(params, ui)` once plugins have started, with the query's parameters; the query leaves the address, Settings → Models says the sign-in is being finished, and what you throw is shown on a card titled by your plugin's name. A query no plugin expected (or one past the 15 minutes) is removed, and a card says a sign-in came back too late, to start it again.
 - **The page must not wait before opening another.** An iPhone opens a page only from the tap itself: make a link's address before the tap (a pending sign-in can wait in your own localStorage key), never after an `await`.
 - **`classify(status, body, ability)`** is asked before the protocol's own, for an error response from one of your abilities: give a sharper kind (`rate`, `credit`, …) or null. Anything but one of annai's error kinds counts as null.
@@ -284,7 +302,36 @@ export function activate(annai) {
 - **`list(...)`** lists an ability's models in the protocol's place. `protocolList()` gives the protocol's own list, to build on. `fetch` sends only to the ability's address (another origin is refused, unsent) and never follows a redirect, as annai's own requests with a key don't. A crash in it counts against your plugin, and the protocol's list answers.
 - **`featured`** in your manifest counts only in annai's own catalog.
 
-OpenRouter's (`plugins-official/provider-openrouter`) is a sign-in panel, `returned` and `classify` (its free-model limit is too many requests, not an account out of credit). llama.cpp's, Ollama's and LM Studio's are a `list` each, which reads the context a server serves from its own API. llama.cpp's, whole:
+OpenRouter's (`plugins-official/provider-openrouter`) is a sign-in panel, `returned` and `classify` (its free-model limit is too many requests, not an account out of credit).
+
+Another address's (`plugins-official/provider-another-address`) is an Add flow: a panel that looks for what an address offers, at no cost, then adds the provider with what it found. `probe.js` asks for the model list and sends an empty request (no model, no input; a chat path's carries an output limit of one token, in case a lax server runs it anyway) to each path annai knows, at most four at a time, reading each answer against a control request to a path that can't exist, so auth in front of every path, or JSON for anything, finds nothing. Its panel, trimmed:
+
+```js
+import { probe, LOOKS } from './probe.js';
+export function activate(annai) {
+  const io = {
+    fetch: (url, init) => annai.net.fetch(url, init),   // traced; the probe sends each with redirect: 'manual'
+    reach: (url) => annai.net.fetch(url, { mode: 'no-cors', credentials: 'omit' }).then(() => true, () => false),  // there at all?
+    problem: annai.helpers.addressProblem,             // an address annai sends keys to
+  };
+  return annai.providers.setup({
+    panel(ui, provider) {
+      if (provider) return null;                        // a provider's own page: annai's switches
+      const address = ui.h('input', { id: 'probe-address', type: 'url' });
+      const key = ui.h('input', { id: 'probe-key', type: 'password' });
+      const look = ui.h('button', { type: 'button', onclick: async () => {
+        const r = await probe(address.value, key.value || null, io);
+        const found = LOOKS.filter((l) => r.abilities[l.id].state === 'found');
+        await ui.add({ name: new URL(r.base).host, baseUrl: r.base, key: key.value || undefined, roles: null,
+          abilities: Object.fromEntries(found.map((l) => [l.id, { on: true, ...(l.root ? { baseUrl: r.root } : {}) }])) });
+      } }, 'Look for what it offers');
+      return ui.h('div', {}, address, key, look);
+    },
+  });
+}
+```
+
+The real one shows what was found (✓, ✗, or ? with the reason) and adds only on Add with these, a speech path switched on only where the model list names a model for it: some servers answer a speech path whatever their models can do. A request a browser couldn't make is told apart by `reach`, a no-cors GET: it reaches a server whatever its CORS says, so a server that answers it doesn't allow web apps, and one that doesn't isn't there. A browser sends a no-cors request only if it may follow a redirect, which is why it carries no key, body or cookies. llama.cpp's, Ollama's and LM Studio's are a `list` each, which reads the context a server serves from its own API. llama.cpp's, whole:
 
 ```js
 const root = (base) => String(base).replace(/\/+$/, '').replace(/\/v1$/, '');

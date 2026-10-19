@@ -116,6 +116,9 @@ export async function buildAndSave(page) {
  * A stand-in model server on its own port, for tests that need real CORS (WebKit can't route
  * requests from a page a service worker controls). A route is a reply, or a list of replies served
  * in turn (the last repeats); a reply may wait delayMs. bodies(path) gives what was posted: parsed JSON, or the bytes.
+ * An empty request (no model: {}, or only an output limit), as Another address sends to look for what a server
+ * offers, is refused with 400 on a route it has, as a real server refuses it, and is neither served a reply nor kept
+ * among the bodies.
  * @param {Record<string, { status: number, type: string, body: string | Buffer, delayMs?: number } | { status: number, type: string, body: string | Buffer, delayMs?: number }[]>} routes
  */
 export async function startModelServer(routes) {
@@ -138,6 +141,7 @@ export async function startModelServer(routes) {
         return;
       }
       const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+      const route = routes[path];
       if (req.method === 'POST') {
         const raw = Buffer.concat(chunks);
         /** @type {any} */
@@ -147,9 +151,12 @@ export async function startModelServer(routes) {
         } catch {
           // not JSON (a multipart upload): kept as bytes
         }
+        if (route && body && typeof body === 'object' && !Array.isArray(body) && !(body instanceof Buffer) && !('model' in body)) {
+          res.writeHead(400, { ...cors, 'content-type': 'application/json' }).end('{"error":{"type":"invalid_request_error","message":"model: Field required"}}');
+          return;
+        }
         received.set(path, [...(received.get(path) ?? []), body]);
       }
-      const route = routes[path];
       const n = served.get(route) ?? 0;
       served.set(route, n + 1);
       const r = Array.isArray(route) ? route[Math.min(n, route.length - 1)] : route;
@@ -183,36 +190,73 @@ export async function startSettled(page) {
 }
 
 /**
- * From the Models screen: Add a provider opens the catalog on model providers; the provider is found by
- * its name and added (Add, or Add another once one is set up), its plugin installed with what it needs;
- * then its page. @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
- * @param {string} [heading] its page's title, when it isn't the provider's name
+ * From the Models screen: Add a provider opens the catalog on model providers; the provider is found by its
+ * name and Add (or Add another, once one is set up) is tapped, its plugin installed with what it needs.
+ * @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
  */
-export async function pickProvider(page, provider, heading = provider) {
+export async function tapAdd(page, provider) {
   await startSettled(page);
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
   await page.getByLabel('Search the catalog').fill(provider);
   const escaped = provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   await page.getByRole('button', { name: new RegExp(`^Add (another )?${escaped}$`) }).click();
-  await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible({ timeout: 30_000 });
+}
+
+/**
+ * From the Models screen: the provider is added (tapAdd), by hand where its plugin has an Add flow of its own
+ * (OpenRouter's sign-in, Another address's look: milestone 5); then its page.
+ * @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
+ * @param {string} [heading] its page's title, when it isn't the provider's name
+ */
+export async function pickProvider(page, provider, heading = provider) {
+  await tapAdd(page, provider);
+  const byHand = page.getByRole('button', { name: 'Add by hand' });
+  await expect(byHand.or(page.getByRole('button', { name: 'Remove provider' }))).toBeVisible({ timeout: 30_000 });
+  if (await byHand.isVisible()) await byHand.click();
+  await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+}
+
+/**
+ * From the Models screen: Another address looks at an address (with its key) and is added with what it found,
+ * at no cost; then its page, named by the address's host. @param {import('@playwright/test').Page} page
+ * @param {{ url: string, key?: string }} o
+ */
+export async function lookAndAdd(page, { url, key }) {
+  await tapAdd(page, 'Another address');
+  await page.getByLabel('Address', { exact: true }).fill(url);
+  if (key) await page.getByLabel('API key (optional)').fill(key);
+  await page.getByRole('button', { name: 'Look for what it offers' }).click();
+  await page.getByRole('button', { name: 'Add with these' }).click({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { level: 1, name: new URL(url).host })).toBeVisible({ timeout: 30_000 });
 }
 
 /**
  * From the Models screen: adds a provider (installing its plugin and what it needs), names it, gives
  * its address and key, switches on one ability, adds one model by id to it, and comes back. ability:
  * the ability's name, such as "Anthropic Messages" for Another address; a provider's only chat ability is "Chat".
+ * Another address looks at the address and is added with what it found (lookAndAdd), unless look is false: an
+ * address with nothing there, added by hand.
  * @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
- * @param {{ ability?: string, name: string, url: string, key: string, model: string }} o
+ * @param {{ ability?: string, name: string, url: string, key: string, model: string, look?: boolean }} o
  */
-export async function addProvider(page, provider, { ability = 'Chat', name, url, key, model }) {
-  await pickProvider(page, provider);
-  await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByLabel('Address', { exact: true }).fill(url);
-  await page.getByLabel('API key').fill(key);
-  await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
-  // Saving draws the screen again: wait for the new one (its key field says a key is saved), or what is typed next is lost.
-  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+export async function addProvider(page, provider, { ability = 'Chat', name, url, key, model, look = true }) {
+  if (provider === 'Another address' && look) {
+    // Its address and key were saved by Add with these: only the name, which saves as it changes.
+    await lookAndAdd(page, { url, key });
+    await page.getByLabel('Name', { exact: true }).fill(name);
+    await leaveSaved(page.getByLabel('Name', { exact: true }));
+    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+  } else {
+    await pickProvider(page, provider);
+    await page.getByLabel('Name', { exact: true }).fill(name);
+    await page.getByLabel('Address', { exact: true }).fill(url);
+    await page.getByLabel('API key').fill(key);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+    // Saving draws the screen again: wait for the new one (its key field says a key is saved), or what is typed next is lost.
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  }
   const panel = page.getByRole('region', { name: ability, exact: true });
   const use = panel.getByLabel(`Use ${ability}`);
   if (!(await use.isChecked())) {
@@ -393,13 +437,13 @@ export async function zipOf(files, top) {
 
 /**
  * Shiori's main model on a stand-in Anthropic server at origin (/b), through Another address and its
- * Anthropic Messages ability, and a trip, from a fresh start.
- * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip]
+ * Anthropic Messages ability, and a trip, from a fresh start. look: false for an address with nothing there.
+ * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip] @param {{ look?: boolean }} [o]
  */
-export async function modelSetUp(page, origin, trip = 'Big Sur') {
+export async function modelSetUp(page, origin, trip = 'Big Sur', { look = true } = {}) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model', look });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');

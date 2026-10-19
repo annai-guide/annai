@@ -83,7 +83,8 @@ test("a router that never streams, through Another address's Chat Completions: T
     await tryIt.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(tryIt.locator('.talk-text').last()).toHaveText('Here you are: Nepenthe is open till 10.');
     await expect(tryIt.getByText(/^\d+ tokens · /)).toBeVisible();
-    expect(s.requests.filter((r) => r.method === 'POST').every((r) => r.body.stream === true), 'a stream is still asked for').toBe(true);
+    // Each request with a model (not Another address's empty look at what the server offers).
+    expect(s.requests.filter((r) => r.method === 'POST' && r.body?.model).every((r) => r.body.stream === true), 'a stream is still asked for').toBe(true);
   } finally {
     await s.stop();
   }

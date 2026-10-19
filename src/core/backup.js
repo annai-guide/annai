@@ -152,7 +152,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       if (stopped(e)) throw new DOMException('The backup was stopped.', 'AbortError');
       const cleaned = await clean(e, rec);
       // A bug counts against the plugin (spec §5.5), told without any secret its message echoed.
-      if (isPluginBug(e)) registry.fail(type.pluginId, `backup ${what}`, cleaned);
+      const by = registry.owner('storage-type', type.type)?.pluginId; // the plugin that registered it, never a field it carries
+      if (isPluginBug(e) && by) registry.fail(by, `backup ${what}`, cleaned);
       throw cleaned;
     }
   }

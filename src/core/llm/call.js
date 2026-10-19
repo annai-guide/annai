@@ -217,7 +217,9 @@ export function asProviderError(e, signal, type, registry) {
   const name = /** @type {any} */ (e)?.name;
   if (name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') return new ProviderError('timeout', 'No output started in time.', { cause: e });
   if (name === 'AbortError' || signal.aborted) return new ProviderError('cancelled', 'Stopped.', { cause: e });
-  registry?.fail(type.pluginId, `endpoint type ${type.type}`, e);
+  // The plugin that registered the type is blamed, never a field the type carries.
+  const by = registry?.owner('endpoint-type', type.type)?.pluginId;
+  if (by) registry?.fail(by, `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
 }
 

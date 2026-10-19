@@ -1,6 +1,7 @@
 import { h, twoStep } from '../dom.js';
 import { settingsForm, formFields } from '../settings-form.js';
-import { sourceLine, FULL_ACCESS } from './plugin-install.js';
+import { sourceLine, FULL_ACCESS, thingWords, ownerName } from './plugin-install.js';
+import { KEYED } from '../../core/registry.js';
 import { pluginActions, stateOf, updateFor, removalWords } from './plugins.js';
 import { slotEntries } from '../slots.js';
 import { explainStorageFull } from '../storage-full.js';
@@ -46,6 +47,25 @@ function resetPart(ctx, r) {
     h('div', { class: 'acts' }, twoStep('Reset settings', 'Tap again to reset', () => resetSettings(ctx, r))));
 }
 
+/** A plugin's Names: Not used, with the switch; used by the user's choice, with Undo (on both pages). @param {any} ctx @param {string} id @param {any[]} rows */
+function namesPart(ctx, id, rows) {
+  const clashes = ctx.registry.clashes(id);
+  if (!clashes.length) return null;
+  const act = (/** @type {string} */ label, /** @type {any} */ c, /** @type {string | null} */ to) => h('button', { class: 'btn', type: 'button', onclick: async () => {
+    await ctx.plugins.choose(c.kind, c.name, to).catch((/** @type {any} */ e) => ctx.notices.toast(String(e?.message ?? e)));
+    ctx.render();
+  } }, label);
+  return h('section', { class: 'panel', 'aria-label': 'Names' }, h('h2', { class: 'section', text: 'Names' }),
+    h('ul', { class: 'brings' }, ...clashes.map((/** @type {import('../../core/registry.js').Clash} */ c) => {
+      const thing = thingWords(c.kind, c.name);
+      const by = ownerName(rows, c.owner);
+      const text = c.chosen ? `${thing[0].toUpperCase()}${thing.slice(1)}: ${c.used ? 'this one' : `the one from ${by}`} is used (your choice).`
+        : `Not used: ${thing} is already provided by ${by}.${c.reserved ? ` ${KEYED.has(c.kind) ? `It is handed the keys you give it, so it isn't switched: remove ${by} to use this one.` : "annai keeps it for Shiori's own use."}` : ''}`;
+      const button = c.chosen ? act('Undo', c, null) : c.reserved ? null : act('Use this one instead', c, id);
+      return h('li', {}, h('span', { text }), button ? ' ' : null, button);
+    })));
+}
+
 /**
  * A plugin's own page (milestone 8b, choice 11): what it is and where it came from, what it is doing,
  * its skills and tools, its settings form (spec §5.2) and settings pages, and what can be done with it.
@@ -82,6 +102,7 @@ export async function renderPlugin(ctx, id) {
     tools.length ? h('section', { class: 'panel', 'aria-label': 'Tools' }, h('h2', { class: 'section', text: 'Tools' }),
       h('p', { class: 'sub' }, 'Each can be switched off in ', h('a', { href: '#/tools' }, 'Settings → Tools'), '.'),
       h('ul', { class: 'brings' }, ...tools.map((t) => h('li', { text: t })))) : null,
+    namesPart(ctx, id, rows),
     r.settings || reset || note ? h('section', { class: 'panel', 'aria-label': 'Settings' }, h('h2', { class: 'section', text: 'Settings' }),
       r.settings ? await settingsForm(ctx, id, r.settings) : null, reset, note ? h('p', { class: 'sub', role: 'status', text: note }) : null) : null,
     pages.length ? h('section', { class: 'panel', 'aria-label': 'Its pages' }, h('h2', { class: 'section', text: 'Its pages' }),
