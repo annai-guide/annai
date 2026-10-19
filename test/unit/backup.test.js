@@ -281,3 +281,33 @@ test("fix pass R1 (minor 5): a git-like place keeps no record of devices seen; i
   await phone.backups.backUp(a);
   assert.equal((await phone.backups.get(a))?.last?.known, undefined);
 });
+
+test("fix pass: adding a place never switches on a backup plugin the user turned off (it says so); the place's Turn it on, the user's own tap for it, does", async () => {
+  /** @type {[string, boolean][]} */
+  const asked = [];
+  const d = await device(memoryPlace(), 'iPhone', async (type, o) => { asked.push([type, Boolean(o?.keepOff)]); });
+  const id = await d.backups.add('memory');
+  await d.backups.turnOn(id);
+  assert.deepEqual(asked, [['memory', true], ['memory', false]]);
+});
+
+test('fix pass: with ensureProvided, a storage plugin the user turned off stays off when a place of its kind is added, in words', async () => {
+  const { ensureProvided } = await import('../../src/core/llm/official.js');
+  const { hostKit } = await import('./package-kit.js');
+  const { readFile } = await import('node:fs/promises');
+  const k = await hostKit();
+  const root = new URL('../../', import.meta.url);
+  const fetch = async (/** @type {any} */ url) => {
+    try {
+      return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+  await ensureProvided(k.host, 'storage-type', 'webdav', { fetch });
+  await k.host.setEnabled('storage-webdav', false);
+  await assert.rejects(ensureProvided(k.host, 'storage-type', 'webdav', { fetch, keepOff: true }), /WebDAV, which you turned off.*Turn it on in Settings → Plugins/s);
+  assert.equal((await k.host.installed())['storage-webdav'].enabled, false);
+  await ensureProvided(k.host, 'storage-type', 'webdav', { fetch });
+  assert.equal((await k.host.installed())['storage-webdav'].enabled, true, 'Turn it on switches it on');
+});

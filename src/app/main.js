@@ -149,9 +149,9 @@ async function boot() {
   const device = deviceName();
   const backups = createBackups({
     store, ws, registry, app: VERSION, label: device.label, noun: device.noun,
-    ensure: async (type) => {
+    ensure: async (type, o = {}) => {
       await controllerReady();
-      await ensureProvided(plugins, 'storage-type', type);
+      await ensureProvided(plugins, 'storage-type', type, { keepOff: o.keepOff });
     },
   });
   // The welcome, once per device, at annai's plain start (the user, 2026-10-18): a link that opens a screen
