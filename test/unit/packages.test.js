@@ -71,6 +71,17 @@ test("a manifest with templates is refused, pointing to provider; a provider tha
   await assert.rejects(inspectPackage(files({ 'annai-plugin.json': MANIFEST({ keywords: ['x'.repeat(41)] }) })), /keywords/);
 });
 
+test('replaces: the names a plugin means to replace, read as given; one that is no name, or more than 20, is refused (milestone 6)', async () => {
+  const pkg = (/** @type {any} */ replaces) => inspectPackage(files({ 'annai-plugin.json': MANIFEST({ replaces }) }));
+  assert.deepEqual((await pkg(['weather', 'avatar', 'web_search'])).replaces, ['weather', 'avatar', 'web_search']);
+  assert.deepEqual((await inspectPackage(files({ 'annai-plugin.json': MANIFEST() }))).replaces, []);
+  assert.deepEqual((await inspectPackage(files({ 'SKILL.md': SKILL }))).replaces, []);
+  await assert.rejects(pkg(['how Shiori looks']), /replaces/);
+  await assert.rejects(pkg(['<b>x</b>']), /replaces/);
+  await assert.rejects(pkg('avatar'), /replaces/);
+  await assert.rejects(pkg(Array.from({ length: 21 }, (_, i) => `n${i}`)), /replaces/);
+});
+
 test("requires: a range that isn't ^N, an id that isn't one, or a homepage that isn't https is refused", async () => {
   const pkg = (/** @type {any} */ requires) => inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: OPENAI_LIKE, requires }) }));
   await assert.rejects(pkg([{ id: 'openai-responses', version: '>=0.1' }]), /requires.*version/);

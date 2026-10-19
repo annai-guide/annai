@@ -1,7 +1,7 @@
 import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts } from './packages.js';
 import { parseSkill, SKILL_FILE } from './skills.js';
 import { forget } from './forget.js';
-import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme } from './ui-slots.js';
+import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, COMPONENTS } from './ui-slots.js';
 import { normPath, typeForPath } from './paths.js';
 import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
 import { tracedFetch, withoutSecretsIn } from './agent/net.js';
@@ -96,7 +96,7 @@ export class PluginHost {
     choice: (kind, name) => this.#uses[`${kind}:${name}`],
     reserved: (kind, name) => {
       if (kind === 'tool' && [...TALK, ...ALWAYS_ON, ...(this.#services.agent?.loopTools?.() ?? []).map((/** @type {any} */ t) => t.name)].includes(name)) return 'only';
-      return kind === 'ui:component' || [...this.builtins.values()].some((m) => m.provides?.[kind]?.includes(name)) ? 'own' : null;
+      return (kind === 'ui:component' && COMPONENTS.includes(name)) || [...this.builtins.values()].some((m) => m.provides?.[kind]?.includes(name)) ? 'own' : null;
     },
   };
 
@@ -155,9 +155,9 @@ export class PluginHost {
   /**
    * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of annai's
    * own ids, not a package of the other kind. A skill name Shiori already has is no reason to refuse:
-   * the skill isn't used until the user chooses it (milestone 6). replaces: the installed version this package would replace.
+   * the skill isn't used until the user chooses it (milestone 6). previous: the installed version this package would replace.
    * @param {Map<string, Uint8Array>} files
-   * @returns {Promise<import('./packages.js').Package & { replaces: { version: string, kind: string, added: import('./packages.js').Added } | null }>}
+   * @returns {Promise<import('./packages.js').Package & { previous: { version: string, kind: string, added: import('./packages.js').Added } | null }>}
    */
   async inspect(files) {
     const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
@@ -167,7 +167,7 @@ export class PluginHost {
     }
     const had = (await this.installed())[id];
     if (had && kindOfState(had) !== pkg.kind) throw new PluginError(id, `is installed already as a ${kindOfState(had)}. Remove it first.`);
-    return { ...pkg, replaces: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg) } : null };
+    return { ...pkg, previous: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg) } : null };
   }
 
   /**
@@ -219,8 +219,9 @@ export class PluginHost {
    * @param {string} kind @param {string} name @param {string | null} pluginId
    */
   async choose(kind, name, pluginId) {
-    if (pluginId && this.#rules.reserved(kind, name) === 'only') throw new PluginError(pluginId, `${name} is annai's own, so no plugin replaces it.`);
-    if (pluginId && KEYED.has(kind)) throw new PluginError(pluginId, `${name} is handed the keys you give it, so the one used is annai's own, else the one installed first.`);
+    if (pluginId && !this.registry.choosable(kind, name)) {
+      throw new PluginError(pluginId, KEYED.has(kind) ? `${name} is handed the keys you give it, so the one used is annai's own, else the one installed first.` : `${name} is annai's own, so no plugin replaces it.`);
+    }
     await updateAppSettings(this.ws, { uses: { [`${kind}:${name}`]: pluginId } });
     this.#uses = (await readAppSettings(this.ws)).uses ?? {};
     this.registry.setRules(this.#rules); // owners change: screens draw again
