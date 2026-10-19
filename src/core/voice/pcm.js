@@ -85,12 +85,14 @@ export class StreamResampler {
   #n = 0; // outputs so far
   #filter;
 
-  /** @param {number} from @param {number} to */
+  /**
+   * Going down, a 24th-order Butterworth low-pass at 7/16 of the new rate (12 biquads): flat to 3.4 kHz at 8 kHz, and 40 dB
+   * down a tenth past the new rate's half, so nothing above it folds back into speech (K6 review). @param {number} from @param {number} to
+   */
   constructor(from, to) {
     this.step = from / to;
-    const a = to < from ? biquad('lowpass', to * 0.45, from) : null;
-    const b = to < from ? biquad('lowpass', to * 0.45, from) : null;
-    this.#filter = a && b ? (/** @type {number} */ x) => b(a(x)) : (/** @type {number} */ x) => x;
+    const stages = to < from ? Array.from({ length: 12 }, (_, k) => biquad('lowpass', to * 0.4375, from, 1 / (2 * Math.cos((Math.PI * (2 * k + 1)) / 48)))) : [];
+    this.#filter = (/** @type {number} */ x) => stages.reduce((y, f) => f(y), x);
   }
 
   /** @param {Float32Array} pcm @returns {Float32Array} */
