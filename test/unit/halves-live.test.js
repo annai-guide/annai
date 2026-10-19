@@ -248,10 +248,18 @@ test('an immediate note goes in at once and cuts Koe off mid-sentence; her line 
     k.agent.send('Tell me about Bixby Bridge');
     await until(() => k.agent.live.view.name === 'speaking');
     await new Promise((r) => setTimeout(r, 600));
+    // How much of her turn was heard goes with it, for a protocol that cuts its record there (OpenAI's truncate, K6).
+    const s = k.sessions.at(-1);
+    /** @type {any[]} */
+    const seen = [];
+    const text = s.text;
+    s.text = (/** @type {string} */ t, /** @type {any} */ o) => { seen.push(o); return text(t, o); };
     const at = Date.now();
     await k.agent.channel.send('kokoro', "It's a concrete arch bridge, opened in 1932 (Caltrans).", 'immediate', 'tool');
     await until(() => texts(k).length === 2);
     assert.ok(Date.now() - at < 300, 'at once');
+    assert.equal(seen[0].interrupt, true);
+    assert.ok(seen[0].playedMs >= 500 && seen[0].playedMs < 2000, String(seen[0].playedMs));
     await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
     const [cut, fixed] = await k.events(['out.speak']);
     assert.equal(cut.data.cut, true);

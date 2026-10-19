@@ -61,7 +61,7 @@ export function fakeCodec(formats) {
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
- *   live?: { origin: string, roles?: string[], first?: boolean } }} [opts]
+ *   live?: { origin: string, roles?: string[], first?: boolean, key?: string, tunables?: Record<string, any> } }} [opts]
  *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
@@ -69,7 +69,7 @@ export function fakeCodec(formats) {
  *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for Koe's models,
  *   "Koe for typing" (m-koe, model-koe) and "Koe for talking" (m-koet, model-koet), and the inputs Koe's models take;
  *   live: a realtime model (m-live, Gemini Live's protocol) at the stand-in realtime server's origin, first in roles (Koe for talking by
- *   default); first false puts it after the chat models there
+ *   default); first false puts it after the chat models there; key and tunables, for the real service (test/live)
  */
 export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe, live } = {}) {
   const registry = new Registry();
@@ -136,8 +136,10 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
   const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);
   geminiLive({ providers: { register: (/** @type {any} */ x) => { types.set('gemini-live', { ...x, pluginId: 'gemini-live' }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } } });
-  /** Every live session opened, in order. @type {any[]} */
+  /** Every live session opened, in order, and every socket. @type {any[]} */
   const sessions = [];
+  /** @type {WebSocket[]} */
+  const sockets = [];
   /** @type {string[]} what the voice was asked to say */
   const said = [];
   /** @type {string[]} the transcription models asked, in turn */
@@ -173,7 +175,11 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
       const pRec = cfg.providers[rec.provider];
       const type = /** @type {any} */ (types.get(providerOf(pRec).abilities[rec.ability].type));
       const endpoint = endpointOf(pRec, rec.ability, type.tunables);
-      const s = openLive({ type, endpoint, model: modelOf(rec), key: 'k-live', tunables: { ...type.tunables, proactive: false }, setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace: modelTrace(store, o.scope ?? SYS), wake: o.wake });
+      const s = openLive({
+        type, endpoint, model: modelOf(rec), key: live?.key ?? 'k-live', tunables: { ...type.tunables, proactive: false, ...live?.tunables },
+        setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace: modelTrace(store, o.scope ?? SYS), wake: o.wake,
+        socket: (/** @type {string} */ url, /** @type {string[]} */ protocols) => { const w = new WebSocket(url, protocols); sockets.push(w); return w; },
+      });
       s.closed.then(({ kind }) => { if (kind === 'auth' || kind === 'rate' || kind === 'server' || kind === 'not-found') bench.bench(modelId, COOLDOWN_MS); });
       sessions.push(s);
       return s;
@@ -208,7 +214,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */
   const events = (types) => store.tx(['events'], 'readonly', (t) => t.listEvents(trip, types ? { types } : {}));
-  return { store, ws, trip, registry, host, agent, llm, requests, sent, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed, sessions };
+  return { store, ws, trip, registry, host, agent, llm, requests, sent, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed, sessions, sockets };
 }
 
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */

@@ -354,8 +354,7 @@ export class LiveKoe {
     if (!this.c.visible()) return this.#hold(note);
     if (mode === 'immediate') {
       if (!(await this.open('note', { mic: Boolean(this.c.voice?.unlocked) }))) return false;
-      for (const t of [this.#t, this.#sounding]) if (t) this.#stop(t);
-      this.#text(note, true);
+      this.#text(note, this.#cut());
       return true;
     }
     this.#notes.push(note);
@@ -370,20 +369,22 @@ export class LiveKoe {
     else if (this.#waiting.length < WAITING_MAX) this.#waiting.push(fn);
   }
 
-  /** A text turn: Koe answers it. @param {string} text @param {boolean} [interrupt] */
-  #text(text, interrupt = false) {
+  /** A text turn: Koe answers it. cut: it cuts Koe off, which was heard this far. @param {string} text @param {{ playedMs?: number }} [cut] */
+  #text(text, cut) {
     this.#trailing = false;
     this.#poke();
-    this.#send((s) => s.text(text, { interrupt }));
+    this.#send((s) => s.text(text, { interrupt: Boolean(cut), ...cut }));
   }
 
   /** @param {'start' | 'end'} edge */
   #activity(edge) {
     if (!this.c.visible()) return this.close('away'); // a page out of view never streams a sound
     const now = Date.now();
+    /** @type {{ playedMs?: number }} */
+    let cut = {};
     if (edge === 'start') {
       // The user cut in: her voice stops now; the provider cuts its turn too.
-      if (this.#sounding) this.#stop(this.#sounding);
+      if (this.#sounding) cut = this.#cut();
       this.#flushHeard(false);
       this.#hear = { id: newId('h'), text: '', at: now, ms: 0, pcm: [], logged: null };
     } else {
@@ -391,7 +392,7 @@ export class LiveKoe {
       this.#trailing = false;
     }
     this.#poke();
-    this.#send((s) => s.activity(edge));
+    this.#send((s) => s.activity(edge, cut));
     this.#changed();
   }
 
@@ -470,11 +471,19 @@ export class LiveKoe {
     return this.#flushHeard(dismissed);
   }
 
-  /** Koe was cut off: its voice stops, and its words are kept up to where it was heard. @param {Turn} t */
+  /** Koe was cut off: its voice stops, and its words are kept up to where it was heard. @param {Turn} t @returns {number | undefined} how much of it was heard, in ms */
   #stop(t) {
     t.cut = true;
-    if (t.stream) t.stream.stop(); // its done writes it
-    else if (t.spoken) this.#said(t, null);
+    if (t.stream) return t.stream.stop().playedMs; // its done writes it
+    if (t.spoken) this.#said(t, null);
+    return undefined;
+  }
+
+  /** Koe's voice stops now, wherever it is; how much of its turn was heard, for a protocol that cuts its record there (OpenAI's truncate). */
+  #cut() {
+    let playedMs;
+    for (const t of [this.#t, this.#sounding]) if (t) playedMs = this.#stop(t) ?? playedMs;
+    return playedMs === undefined ? {} : { playedMs };
   }
 
   /**
