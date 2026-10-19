@@ -180,7 +180,7 @@ export async function callRole(c) {
     // setup may add headers and sharpen error kinds (decision 15).
     const own = await c.keyFor(pRec.id);
     if (own) c.trace?.secret(own);
-    const set = adjusted(c.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables));
+    const set = adjusted(c.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables), provider.keyHeader);
     const { endpoint, key } = sendKey(set.endpoint, own, provider.keyHeader);
     let repairs = 0;
     let uploadRetries = 0;

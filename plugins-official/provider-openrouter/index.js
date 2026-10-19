@@ -131,8 +131,8 @@ export function freeLimit(_status, body) {
 const words = (e) => String(/** @type {any} */ (e)?.message ?? e);
 
 /**
- * The setup annai.providers.setup takes. env stands in for the browser's storage and fetch in tests.
- * @param {{ storage?: KeyValue, fetch?: Fetch }} [env]
+ * The setup annai.providers.setup takes. env: annai.ui.card, and the browser's storage and fetch, stood in for in tests.
+ * @param {{ card?: (c: { tone?: string, title: string, body?: string }) => void, storage?: KeyValue, fetch?: Fetch }} [env]
  */
 export function openRouter(env = {}) {
   const store = () => env.storage ?? localStorage;
@@ -155,7 +155,7 @@ export function openRouter(env = {}) {
     } catch (e) {
       throw asked ? e : new Error(`${words(e).replace(/[.\s]*$/, '.')} Nothing was sent to OpenRouter yet: try again.`);
     }
-    ui.card({
+    env.card?.({
       tone: 'ok', title: 'Signed in with OpenRouter',
       body: provider ? "annai keeps the new key for OpenRouter's chat, transcription and voices." : `Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, ${BEHIND}.`,
     });
@@ -254,5 +254,5 @@ export function openRouter(env = {}) {
 
 /** @param {any} annai */
 export function activate(annai) {
-  return annai.providers.setup(openRouter({ fetch: annai.net.fetch }));
+  return annai.providers.setup(openRouter({ fetch: annai.net.fetch, card: annai.ui.card }));
 }

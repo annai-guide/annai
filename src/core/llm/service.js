@@ -65,7 +65,7 @@ export function createLlm({
     const type = types().get(ability.type);
     if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`);
     const secret = await getKey(store, pRec.id);
-    const set = adjusted(plugins.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables));
+    const set = adjusted(plugins.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables), provider.keyHeader);
     const { endpoint, key } = sendKey(set.endpoint, secret, provider.keyHeader);
     return { rec, type: set.type, endpoint, model: modelOf(rec), key, secret };
   };
@@ -372,7 +372,7 @@ export function createLlm({
       if (!rec || !provider || !ability) throw new ProviderError('not-found', 'That provider or ability no longer exists.');
       await ensure(ability.type);
       const was = /** @type {import('./contract.js').EndpointType} */ (types().get(ability.type));
-      const set = adjusted(plugins.registry, rec.plugin, was, endpointOf(rec, abilityId, was.tunables));
+      const set = adjusted(plugins.registry, rec.plugin, was, endpointOf(rec, abilityId, was.tunables), provider.keyHeader);
       const { type } = set;
       const { endpoint, key } = sendKey(set.endpoint, await getKey(store, providerId), provider.keyHeader);
       /**

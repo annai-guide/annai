@@ -78,7 +78,7 @@ async function device({ chat = /** @type {() => Response} */ (() => new Response
 async function signIn(d, { provider = null, keys = async () => new Response(JSON.stringify({ key: KEY })) } = {}) {
   const storage = memoryStorage();
   const url = new URL(await signInUrl({ callback: 'https://annai.guide/', provider, storage }));
-  const setup = openRouter({ storage, fetch: keys });
+  const setup = openRouter({ storage, fetch: keys, card: (c) => d.cards.push(c) });
   await setup.returned(new URLSearchParams(`?code=abc&state=${url.searchParams.get('state')}`), setupUi(d.ctx, 'provider-openrouter'));
   return storage;
 }
@@ -307,7 +307,7 @@ test("annai gets ready before it asks OpenRouter for a key: with annai's catalog
     const storage = memoryStorage();
     const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
     let asked = 0;
-    const setup = openRouter({ storage, fetch: async () => { asked++; return new Response(JSON.stringify({ key: 'sk-or-lost' })); } });
+    const setup = openRouter({ storage, card: () => {}, fetch: async () => { asked++; return new Response(JSON.stringify({ key: 'sk-or-lost' })); } });
     await assert.rejects(setup.returned(new URLSearchParams(`?code=abc&state=${url.searchParams.get('state')}`), setupUi(ctx, 'provider-openrouter')), (/** @type {any} */ e) => e.message.startsWith(why) && /Nothing was sent to OpenRouter yet: try again\.$/.test(e.message));
     assert.equal(asked, 0);
     assert.ok(storage.getItem('annai.openrouter'), 'the sign-in still waits, so trying again costs nothing');

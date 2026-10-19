@@ -1,11 +1,38 @@
 import { h, messageOf } from './dom.js';
 import { made } from './slots.js';
 import { platform, isStandalone } from './platform.js';
-import { expectReturn, returnFor } from './returns.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
 import { officialPlugins } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
+
+/**
+ * Coming back to annai's address (decision 16): the plugin that sent the browser away expects the next load with a query, within 15 minutes, once.
+ * @typedef {{ getItem(k: string): string | null, setItem(k: string, v: string): void, removeItem(k: string): void }} KeyValue
+ */
+const SLOT = 'annai.return';
+const MAX_AGE = 15 * 60_000;
+
+/** Notes that a plugin expects annai's address back. @param {string} pluginId @param {{ storage?: KeyValue, now?: number }} [o] */
+export function expectReturn(pluginId, { storage = localStorage, now = Date.now() } = {}) {
+  storage.setItem(SLOT, JSON.stringify({ plugin: pluginId, at: now }));
+}
+
+/** Whose return this page load is, or null; any query uses the note up. @param {string} search @param {{ storage?: KeyValue, now?: number }} [o] */
+export function returnFor(search, { storage = localStorage, now = Date.now() } = {}) {
+  const params = new URLSearchParams(search);
+  if (!params.size) return null;
+  /** @type {any} */
+  let note = null;
+  try {
+    note = JSON.parse(storage.getItem(SLOT) ?? 'null');
+  } catch {
+    // unreadable: no one's
+  }
+  storage.removeItem(SLOT);
+  const fresh = typeof note?.plugin === 'string' && typeof note.at === 'number' && now >= note.at && now - note.at <= MAX_AGE;
+  return fresh ? { plugin: note.plugin, params } : null;
+}
 
 /**
  * A provider plugin's own part of its setup (decision 15): its panel, on its provider's page and as the
@@ -24,9 +51,6 @@ export function setupUi(ctx, pluginId) {
   return Object.freeze({
     plugin: pluginId,
     h,
-    go: (/** @type {string} */ hash) => ctx.go(String(hash)),
-    toast: (/** @type {string} */ text) => ctx.notices.toast(String(text)),
-    card: (/** @type {any} */ c) => ctx.notices.card({ title: String(c?.title ?? ''), body: c?.body === undefined ? undefined : String(c.body), tone: c?.tone, actions: c?.actions }),
     render: () => ctx.render?.(),
     /** A page annai opens comes back to Safari, not here: an iPhone Home Screen app. */
     get returnsElsewhere() {
@@ -57,12 +81,8 @@ export function drawPanel(ctx, pluginId, provider) {
   return panel ? made(ctx, { pluginId, item: s }, 'provider setup panel', () => panel(setupUi(ctx, pluginId), provider), (x) => (x === null || x instanceof Node ? null : 'its panel is no element')) : null;
 }
 
-/** A provider page's panel, and whether the key field follows it (always, when no panel drew). @param {any} ctx @param {string} pluginId @param {PanelProvider} provider */
-export function connection(ctx, pluginId, provider) {
-  const panel = drawPanel(ctx, pluginId, provider);
-  return { panel, keyField: !panel || setupOf(ctx.registry, pluginId)?.keyField !== false };
-}
-
+/** @type {string | null} the plugin a sign-in is being finished for, by name */
+let finishing = null;
 /** @type {{ id: string, name: string, featured: string } | null} the catalog's featured provider, once ready in this run */
 let featured = null;
 
@@ -83,9 +103,6 @@ export async function readyFeatured(ctx) {
   return featured;
 }
 
-/** The plugin a sign-in is being finished for, by name, while it is. @type {string | null} */
-let finishing = null;
-export const returning = () => finishing;
 
 /** The one-tap start: the featured provider's panel; until it is in, a disabled button, never a link without an address. @param {any} ctx */
 export function featuredStart(ctx) {
@@ -114,7 +131,7 @@ export function featuredStart(ctx) {
  * query leaves the address, Models says it is finishing, and the plugin's returned() takes the rest once
  * plugins have started; how it ends is on a card. Any other query is removed and ignored.
  * @param {any} ctx llm, store, registry, plugins, notices, render, go
- * @param {{ location?: { search: string, pathname: string, hash: string }, history?: { replaceState: History['replaceState'] }, storage?: import('./returns.js').KeyValue, now?: number }} [env]
+ * @param {{ location?: { search: string, pathname: string, hash: string }, history?: { replaceState: History['replaceState'] }, storage?: KeyValue, now?: number }} [env]
  * @returns {Promise<boolean>} whether it was a return
  */
 export async function finishReturn(ctx, env = {}) {
