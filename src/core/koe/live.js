@@ -216,6 +216,7 @@ export class LiveKoe {
     const p = this.c.voice?.problem(e) ?? { title: 'Listening stopped', body: String(e) };
     this.c.notice({ tone: 'warn', title: p.title, body: p.body });
     this.#changed();
+    this.#idle();
   }
 
   /**
@@ -524,6 +525,7 @@ export class LiveKoe {
       this.#tools--;
       this.#poke();
       this.#changed();
+      this.#idle(); // what waited for the call goes in now
     }
   }
 
