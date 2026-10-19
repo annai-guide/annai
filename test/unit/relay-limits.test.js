@@ -100,9 +100,10 @@ test('a confirmation is kept 60 days after the last push, then forgotten', async
   const k = await relayKit();
   await k.call('POST', '/v1/schedule', { body: k.reminder({ sendAt: k.now() + MIN }), token: token() });
   await k.after(MIN);
+  await k.after(5 * MIN); // its id and token are forgotten
   assert.deepEqual(await k.stored(), ['confirmed', 'jwt'], 'that it had a push, and the VAPID token (Apple: renew it at most once an hour)');
-  assert.equal(await k.alarm(), k.now() + KEEP_CONFIRMED);
-  await k.after(KEEP_CONFIRMED - MIN);
+  assert.equal(await k.alarm(), k.now() - 5 * MIN + KEEP_CONFIRMED);
+  await k.after(KEEP_CONFIRMED - 6 * MIN);
   assert.deepEqual(await k.stored(), ['confirmed', 'jwt']);
   await k.after(MIN);
   assert.deepEqual(await k.stored(), []);

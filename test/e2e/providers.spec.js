@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { openApp, waitForServiceWorker, zipOf } from './helpers.js';
+
+/** The version annai ships of an official plugin, read from its manifest. @param {string} id */
+const shipped = async (id) => JSON.parse(await readFile(new URL(`../../plugins-official/${id}/annai-plugin.json`, import.meta.url), 'utf8')).version;
 
 // Providers as plugins (milestone 1): a provider is one address and one key with several abilities;
 // adding one installs its plugin and what it requires, from annai's catalog, with no question.
@@ -135,14 +139,14 @@ test('the Plugins page names the providers made from a provider plugin, and its 
   await page.goto('/#/plugins');
   /** An installed plugin's row on Plugins, by the link its name is. @param {string} name */
   const installedRow = (name) => page.locator('.card', { has: page.getByRole('link', { name, exact: true }) });
-  const row = installedRow('OpenAI 1.0.0');
+  const row = installedRow(`OpenAI ${await shipped('provider-openai')}`);
   await expect(row).toContainText('Providers: OpenAI (work), OpenAI (home)');
   await expect(row).toContainText('Removing it removes OpenAI (work) and OpenAI (home), with their keys and models.');
   // A protocol plugin says what needs it.
-  await expect(installedRow('OpenAI Responses 0.1.0')).toContainText('Needed by OpenAI.');
+  await expect(installedRow(`OpenAI Responses ${await shipped('openai-responses')}`)).toContainText('Needed by OpenAI.');
   await row.getByRole('button', { name: 'Remove' }).click();
   await row.getByRole('button', { name: 'Tap again to remove' }).click();
-  await expect(installedRow('OpenAI 1.0.0')).toHaveCount(0);
+  await expect(installedRow(`OpenAI ${await shipped('provider-openai')}`)).toHaveCount(0);
   expect(await installedIds(page)).toEqual([]);
   await page.goto('/#/models');
   await expect(page.getByText('No providers yet. Add one below.')).toBeVisible();

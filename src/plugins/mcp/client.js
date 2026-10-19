@@ -60,10 +60,14 @@ export class McpClient {
   async connect(o) {
     this.#session = null;
     this.#version = null;
+    // Read first: a removal that overtakes this start takes the server's secret, and the session it got is still to be ended.
+    const [address, auth] = [await this.#address(), await this.auth()];
     const result = await this.#request('initialize', { protocolVersion: ASKED, capabilities: {}, clientInfo: { name: 'annai', version: '1' } }, o, true);
     if (this.#closed) {
-      // Closed while it started: the session it got is ended too.
-      await this.close(o);
+      // Closed while it started: the session it got is ended too, where and as it was started.
+      const session = this.#session;
+      this.#session = null;
+      if (session) await ender(address, auth, session)(o);
       throw this.#removed();
     }
     const v = String(result?.protocolVersion ?? '');
@@ -116,15 +120,7 @@ export class McpClient {
     this.#session = null;
     this.#version = null;
     if (!session) return null;
-    const address = await this.#address();
-    const headers = { ...(await this.auth()), 'Mcp-Session-Id': session };
-    return async ({ fetch, signal }) => {
-      try {
-        await fetch(address, { method: 'DELETE', headers, ...(signal ? { signal } : {}) });
-      } catch {
-        // gone already, or too slow: nothing more to do
-      }
-    };
+    return ender(await this.#address(), await this.auth(), session);
   }
 
   /**
@@ -220,6 +216,11 @@ export class McpClient {
       throw new McpError('cors', `annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`);
     }
     if (res.status === 401 || res.status === 403) {
+      // A server guarding against DNS rebinding refuses an Origin it doesn't know with 403, and says so (the SDK: "Invalid Origin header").
+      if (res.status === 403 && /origin/i.test(await startOf(res, 2000))) {
+        const here = globalThis.location?.origin;
+        throw new McpError('cors', `The MCP server ${this.server} doesn't take requests from annai${here ? ` at ${here}` : "'s address"}: it checks the Origin they come from. Add ${here ?? "annai's address"} to the origins it allows.`);
+      }
       res.body?.cancel().catch(() => {});
       throw new McpError('auth', `The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`);
     }
@@ -288,6 +289,20 @@ export class McpClient {
     if (!m || typeof m !== 'object' || m.id !== id) throw unreadable();
     return m;
   }
+}
+
+/**
+ * What ends a session on its server: a DELETE to that address with those headers.
+ * @param {string} address @param {Record<string, string>} auth @param {string} session @returns {(o: { fetch: Fetch, signal?: AbortSignal }) => Promise<void>}
+ */
+function ender(address, auth, session) {
+  return async ({ fetch, signal }) => {
+    try {
+      await fetch(address, { method: 'DELETE', headers: { ...auth, 'Mcp-Session-Id': session }, ...(signal ? { signal } : {}) });
+    } catch {
+      // gone already, or too slow: nothing more to do
+    }
+  };
 }
 
 /** The start of an answer's body, as text: no more than max bytes are read (minors 5). @param {Response} res @param {number} max */

@@ -97,11 +97,27 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     return rec;
   }
 
-  /** The error as annai shows and keeps it: a TargetError without any secret annai keeps (spec §9.9). @param {unknown} e @returns {Promise<TargetError>} */
-  async function clean(e) {
+  /**
+   * The error as annai shows and keeps it: a TargetError without any secret annai keeps (spec §9.9), and
+   * the choices a place offers (fields left empty) only as settings of its own fields.
+   * @param {unknown} e @param {Target} [rec] @returns {Promise<TargetError>}
+   */
+  async function clean(e, rec) {
     const t = e instanceof TargetError ? e : null;
     const message = await withoutSecrets(store, String(/** @type {any} */ (e)?.message ?? e));
-    return new TargetError(t?.kind ?? 'other', message, { remote: t?.remote, bytes: t?.bytes, retryAt: t?.retryAt });
+    const choices = rec && Array.isArray(t?.choices)
+      ? await withoutSecretsIn(store, t.choices.slice(0, 20).map((c) => ({ label: String(c?.label ?? '').slice(0, 200), config: settingsOf(rec, c?.config) })))
+      : undefined;
+    return new TargetError(t?.kind ?? 'other', message, { remote: t?.remote, bytes: t?.bytes, retryAt: t?.retryAt, ...(choices ? { choices } : {}) });
+  }
+
+  /** What a place filled in for fields left empty, or offers: text values of its own fields. @param {Target} rec @param {unknown} config @returns {Record<string, string>} */
+  function settingsOf(rec, config) {
+    const keys = new Set((typeOf(rec.type)?.fields ?? []).map((f) => f.key));
+    /** @type {Record<string, string>} */
+    const out = {};
+    if (config && typeof config === 'object') for (const [k, v] of Object.entries(config)) if (keys.has(k) && typeof v === 'string' && v.length <= 200) out[k] = v;
+    return out;
   }
 
   /** @param {unknown} e */
@@ -134,7 +150,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     } catch (e) {
       // A stop is a stop, in annai's own words: whatever the plugin's error said may hold a secret.
       if (stopped(e)) throw new DOMException('The backup was stopped.', 'AbortError');
-      const cleaned = await clean(e);
+      const cleaned = await clean(e, rec);
       // A bug counts against the plugin (spec §5.5), told without any secret its message echoed.
       if (isPluginBug(e)) registry.fail(type.pluginId, `backup ${what}`, cleaned);
       throw cleaned;
@@ -339,9 +355,12 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
      * @param {string} id @returns {Promise<{ note: string, newer: RemoteBackup | null }>}
      */
     async check(id) {
-      const rec = await target(id);
-      const said = (await call(rec, 'check', (t, c) => t.check(c)))?.note;
-      const note = await withoutSecrets(store, String(said ?? 'Works.'));
+      let rec = await target(id);
+      const said = await call(rec, 'check', (t, c) => t.check(c));
+      const note = await withoutSecrets(store, String(said?.note ?? 'Works.'));
+      // What the place filled in for fields left empty is the place's own from now on: later backups don't look again.
+      const filled = settingsOf(rec, said?.config);
+      if (Object.keys(filled).length) rec = await setTarget(ws, id, { config: { ...rec.config, ...filled } });
       const there = await listed(rec);
       const me = await deviceId(ws);
       const newer = newerOf(there, rec.last, me);

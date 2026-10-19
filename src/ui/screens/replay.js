@@ -1,4 +1,4 @@
-import { h, field } from '../dom.js';
+import { h, field, whenGone } from '../dom.js';
 import { readJourney } from '../../core/after/journey.js';
 import { replayOf, momentAt, entryLine, PLAY_SPEEDS } from '../../core/after/replay.js';
 import { stampCount } from '../../core/after/stamps.js';
@@ -176,17 +176,8 @@ export async function renderReplay(ctx, route) {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
     photoUrl = '';
   };
-  // Paused, nothing else notices the screen leaving: its place on the page is watched once it has one.
-  requestAnimationFrame(() => {
-    const parent = root.parentNode;
-    if (!parent) return gone();
-    const seen = new MutationObserver(() => {
-      if (root.isConnected) return;
-      seen.disconnect();
-      gone();
-    });
-    seen.observe(parent, { childList: true });
-  });
+  // Paused, nothing else notices the screen leaving.
+  whenGone(root, gone);
   const tick = () => {
     if (!root.isConnected) {
       gone();

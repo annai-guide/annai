@@ -120,6 +120,8 @@ export class Live {
   #away = null;
   /** @type {{ how: 'start' | 'shown', since: number | null, from: Fix | null, fired: Fired[], timer: any } | null} a catch-up collecting what fires (spec §11.4) */
   #catch = null;
+  /** The first fix after annai was away is still to come: the way since then counts at once, whenever it comes. */
+  #back = false;
   /** @type {{ scope: string, text: string }[]} what fired while there was no connection */
   #held = [];
   /** @type {number | null} when the connection went */
@@ -283,6 +285,7 @@ export class Live {
     this.#tracker.reset();
     this.#kept = null;
     this.#odo = null;
+    this.#back = false;
     this.#away = null;
     this.#held = [];
     this.#offlineSince = null;
@@ -614,8 +617,10 @@ export class Live {
 
   /** Live mode's own work failed: told once for each problem, so a card says so (spec §17 rule 4), and it goes on. @param {unknown} e */
   #fail(e) {
-    const key = String(/** @type {any} */ (e)?.message ?? e);
+    // The same problem whatever its numbers say ("12 bytes left", a seq), and told once; the list stays short.
+    const key = `${/** @type {any} */ (e)?.name}: ${String(/** @type {any} */ (e)?.message ?? e).replace(/\d+/g, '#')}`;
     if (this.#told.has(key)) return;
+    if (this.#told.size >= 50) this.#told.clear();
     this.#told.add(key);
     console.warn('live mode: a check failed', e);
     try {
@@ -831,9 +836,11 @@ export class Live {
     }
     // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
     // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
-    // away counts the way since then at once, in the catch-up (spec §11.4), not as a jump when the user next moves.
-    // Only while the catch-up waits for it: a first fix after FIX_WAIT_MS counts as any fix does.
-    const back = this.#catch !== null;
+    // away counts the way since then at once, in the catch-up (spec §11.4) when it comes in time, not as a
+    // jump when the user next moves; one after FIX_WAIT_MS does too, as the catch-up has gone.
+    // A fix too coarse to count (a cell tower's) leaves it to the first that is good enough.
+    const back = this.#back && fix.accuracy <= 100;
+    if (fix.accuracy <= 100) this.#back = false;
     if (!this.#odo) this.#odo = fix;
     else if ((moving || back) && fix.accuracy <= 100 && meters(this.#odo, fix) >= (back ? Math.max(STOP_M, 2 * fix.accuracy) : Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy))) {
       this.odometer += meters(this.#odo, fix) / 1000;
@@ -908,6 +915,7 @@ export class Live {
     if (this.#catch) await this.#endCatchUp();
     const c = { ...gap, fired: /** @type {Fired[]} */ ([]), timer: /** @type {any} */ (null) };
     this.#catch = c;
+    this.#back = true;
     // What the phone's notifications did meanwhile, before the firings that may be theirs (spec §11.6).
     await this.#hear(await this.#readNews());
     await this.#check({ past: true });
@@ -987,9 +995,15 @@ export class Live {
     this.#watches.clear();
     for (const scope of scopes) {
       await this.#loadScope(scope);
-      for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['trigger.fired'] }))) {
-        this.#fired.set(this.#key(scope, String(e.data?.watch)), { at: e.ts, place: e.data?.place ?? null, ...(typeof e.data?.for === 'number' ? { for: e.data.for } : {}) });
-      }
+      await this.#recall(scope);
+    }
+  }
+
+  /** Each watch's last firing in a conversation, from its log; only those of ids, when given. @param {string} scope @param {Set<string>} [ids] */
+  async #recall(scope, ids) {
+    for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['trigger.fired'] }))) {
+      const id = String(e.data?.watch);
+      if (!ids || ids.has(id)) this.#fired.set(this.#key(scope, id), { at: e.ts, place: e.data?.place ?? null, ...(typeof e.data?.for === 'number' ? { for: e.data.for } : {}) });
     }
   }
 
@@ -999,7 +1013,9 @@ export class Live {
     const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(() => null);
     if (info?.simulation === true) this.#still.add(scope);
     else this.#still.delete(scope);
-    if (this.#still.has(scope) && this.#sim?.trip !== scope) {
+    // An archived trip's, which a change to its watch file brings here too, wait until it is unarchived (minors-live item 33).
+    const archived = scope !== ME && (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)))?.status === 'archived';
+    if (archived || (this.#still.has(scope) && this.#sim?.trip !== scope)) {
       this.#watches.delete(scope);
       return;
     }
@@ -1037,6 +1053,9 @@ export class Live {
     const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
     const fallbackTz = [info?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
     this.#plan = planWatches(items, bookings, { fallbackTz });
+    // A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it.
+    const ids = new Set(this.#plan.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(trip, id))));
+    if (ids.size) await this.#recall(trip, ids);
     for (const { item } of items) {
       const p = item.place;
       if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? 'a plan place'), lat: p.lat, lng: p.lng });

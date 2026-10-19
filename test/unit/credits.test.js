@@ -20,6 +20,7 @@ const NOT_SOURCES = {
   'dav.example.com': "a placeholder for the user's own WebDAV folder",
   'git.example.com': "a placeholder for the user's own Forgejo or Gitea server",
   'codeberg.org': 'a Forgejo server the user may back up to',
+  'git-lfs.github.com': "the Git LFS pointer format's name, which a Forgejo place compares files by; nothing is fetched from it",
   'maps.apple.com': 'a link the user opens in their maps app',
   'www.google.com': 'a link the user opens in their maps app',
   'www.openstreetmap.org': 'links to OpenStreetMap: its copyright page, and where a photo was taken',

@@ -8,11 +8,15 @@ import { createHash } from 'node:crypto';
  * CORS behaviour (measured 2026-10-18, see docs/superpowers/plans/2026-10-18-storage-forgejo.md),
  * including its tree pages that all say truncated. It hashes git objects with code of its own
  * (node:crypto), in SHA-1 or SHA-256 repositories. Tests and the end-to-end suite run it on a port
- * of its own (port 0).
+ * of its own (port 0). The account and the repository search answer as both servers did for each
+ * token's scopes (2026-10-18): GET /user needs User: Read, which TOKEN and READ_TOKEN lack and
+ * USER_TOKEN has; the search needs only Repository, and the permissions it gives are the user's,
+ * whatever the token may do.
  * @typedef {{ type: 'blob', data: Buffer } | { type: 'tree', entries: { name: string, mode: string, sha: string }[] }
  *   | { type: 'commit', tree: string, parents: string[], message: string, date: string }} GitObject
  * @typedef {{ name: string, private: boolean, archived: boolean, format: 'sha1' | 'sha256', defaultBranch: string,
- *   objects: Map<string, GitObject>, refs: Map<string, string> }} Repo
+ *   push: boolean, mirror: boolean, objects: Map<string, GitObject>, refs: Map<string, string> }} Repo
+ *   push: whether the user may change it (a collaborator may only read); mirror: a pull mirror
  * @typedef {Map<string, { sha: string, mode: string }>} Files path → file
  * @typedef {{ files: Map<string, { sha: string, mode: string }>, dirs: Map<string, Dir> }} Dir
  * @typedef {{ status: number, json?: any, raw?: Buffer, headers?: Record<string, string>, cors?: boolean, drop?: boolean }} Answer
@@ -21,6 +25,8 @@ import { createHash } from 'node:crypto';
 
 export const TOKEN = 'f0rgej0standin0123456789abcdef01234567';
 export const READ_TOKEN = 'f0rgej0standinreadonly0123456789abcdef';
+/** A token with Repository: Read and write and User: Read. */
+export const USER_TOKEN = 'f0rgej0standinuser0123456789abcdef0123';
 /** The headers the user's own server allows web apps to send. */
 const ALLOWED_HEADERS = ['authorization', 'content-type', 'accept'];
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
@@ -50,13 +56,17 @@ function idOf(format, o) {
 }
 
 /**
- * @param {{ token?: string, repos?: Record<string, { private?: boolean, archived?: boolean, format?: 'sha1' | 'sha256', defaultBranch?: string,
- *   files?: Record<string, string | Buffer> }>, cors?: boolean | string, perPage?: number, flavor?: 'forgejo' | 'gitea', maxBody?: number }} [opts]
- *   repos: each one empty, or with one commit holding files; cors: true allows any origin, a string only that origin, false none
+ * @param {{ token?: string, user?: string, repos?: Record<string, { private?: boolean, archived?: boolean, format?: 'sha1' | 'sha256', defaultBranch?: string,
+ *   push?: boolean, mirror?: boolean, files?: Record<string, string | Buffer> }>, cors?: boolean | string, perPage?: number, flavor?: 'forgejo' | 'gitea',
+ *   maxBody?: number, lfs?: boolean, maxItems?: number }} [opts]
+ *   user: the tokens' account; repos: each one empty, or with one commit holding files; cors: true allows any origin, a string only that origin, false none
  *   (Forgejo's default); perPage: the most tree entries a page holds; flavor: Gitea says truncated only while more pages follow,
- *   and answers a stale sha with 422; maxBody: a proxy in front refuses larger requests with 413, without CORS headers
+ *   and answers a stale sha with 422; maxBody: a proxy in front refuses larger requests with 413, without CORS headers;
+ *   lfs: the server keeps files .gitattributes sends to Git LFS ([server] LFS_START_SERVER): ChangeFiles commits a pointer
+ *   to the content in their place, as both servers did (2026-10-18), and /media gives the content; maxItems: the most a
+ *   page of the repository search holds ([api] MAX_RESPONSE_ITEMS, 50 unless the server's app.ini says less)
  */
-export async function startForgejo({ token = TOKEN, repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity } = {}) {
+export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity, lfs = false, maxItems = 50 } = {}) {
   /** @type {Map<string, Repo>} */
   const all = new Map();
   /** @type {{ method: string, path: string, status: number, body: string }[]} */
@@ -79,6 +89,26 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
   };
   /** @param {Repo} repo @param {Buffer} data */
   const blob = (repo, data) => keep(repo, { type: 'blob', data });
+  /** What Git LFS keeps, by the content's SHA-256. @type {Map<string, Buffer>} */
+  const kept = new Map();
+  /** A file's text on a branch, or ''. @param {Repo} repo @param {{ sha: string } | undefined} f */
+  const text = (repo, f) => (f ? /** @type {any} */ (repo.objects.get(f.sha))?.data?.toString() ?? '' : '');
+  /**
+   * What the tree holds for a file: itself, or, where .gitattributes says filter=lfs, a pointer to it (Forgejo's lfs.Pointer.StringContent).
+   * @param {Repo} repo @param {string} attributes @param {string} path @param {Buffer} data
+   */
+  const stored = (repo, attributes, path, data) => {
+    const lfsd = attributes.split('\n').some((line) => {
+      const [pattern, ...attrs] = line.trim().split(/\s+/);
+      if (!pattern || !attrs.includes('filter=lfs')) return false;
+      const re = new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\u0000/g, '.*')}$`);
+      return re.test(pattern.includes('/') ? path : /** @type {string} */ (path.split('/').pop()));
+    });
+    if (!lfsd) return data;
+    const oid = createHash('sha256').update(data).digest('hex');
+    kept.set(oid, data);
+    return Buffer.from(`version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize ${data.length}\n`);
+  };
   const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 
   /** @param {Repo} repo @param {Files} files */
@@ -156,14 +186,15 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
 
   /** @param {Repo} repo */
   const repoJson = (repo) => ({
-    id: 1, name: repo.name.split('/')[1], full_name: repo.name, owner: { login: repo.name.split('/')[0] }, private: repo.private, internal: false,
-    empty: repo.refs.size === 0, archived: repo.archived, default_branch: repo.defaultBranch, object_format_name: repo.format,
-    permissions: { admin: true, push: true, pull: true },
+    id: 1, name: repo.name.split('/')[1], full_name: repo.name, owner: { id: 1, login: repo.name.split('/')[0] }, private: repo.private, internal: false,
+    empty: repo.refs.size === 0, archived: repo.archived, mirror: repo.mirror, default_branch: repo.defaultBranch, object_format_name: repo.format,
+    permissions: { admin: repo.name.startsWith(`${user}/`), push: repo.push, pull: true },
   });
 
   for (const [name, r] of Object.entries(repos)) {
     /** @type {Repo} */
-    const repo = { name, private: r.private ?? true, archived: r.archived ?? false, format: r.format ?? 'sha1', defaultBranch: r.defaultBranch ?? 'main', objects: new Map(), refs: new Map() };
+    const repo = { name, private: r.private ?? true, archived: r.archived ?? false, format: r.format ?? 'sha1', defaultBranch: r.defaultBranch ?? 'main',
+      push: r.push ?? true, mirror: r.mirror ?? false, objects: new Map(), refs: new Map() };
     all.set(name, repo);
     if (r.files) {
       /** @type {Files} */
@@ -174,7 +205,7 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
 
   /** ChangeFiles, as Forgejo's services/repository/files/update.go does it. @param {Repo} repo @param {any} body @param {string} authed @returns {Answer} */
   function changeFiles(repo, body, authed) {
-    if (authed !== token) return { status: 403, json: err('token does not have at least one of required scope(s): [write:repository]') };
+    if (authed !== token && authed !== USER_TOKEN) return { status: 403, json: err('token does not have at least one of required scope(s): [write:repository]') };
     if (repo.archived) return { status: 423, json: err(`<Repository 1:${repo.name}> is archived`) };
     if (used() > quota) return { status: 413, json: { message: 'quota exceeded', user_id: 1, username: repo.name.split('/')[0] } };
     if (!Array.isArray(body?.files)) return { status: 422, json: err('[Files]: Required') };
@@ -182,6 +213,7 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
     const before = beforeChange;
     beforeChange = null;
     before?.();
+    if (all.get(repo.name) !== repo) return notFound(); // deleted meanwhile
     const empty = repo.refs.size === 0;
     const head = repo.refs.get(branch);
     if (!head && !empty) return { status: 404, json: err(`branch does not exist [name: ${branch}]`) };
@@ -221,10 +253,12 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
         if (f.operation === 'create' && had) return { status: 422, json: err(`repository file already exists [path: ${f.path}]`) };
       }
     }
+    // Forgejo reads the attributes as the branch has them; Gitea also takes a .gitattributes the same request brings.
+    const attributes = lfs ? text(repo, base.get('.gitattributes')) + (flavor === 'gitea' ? body.files.filter((/** @type {any} */ f) => f.path === '.gitattributes' && f.content).map((/** @type {any} */ f) => Buffer.from(f.content, 'base64').toString()).join('\n') : '') : '';
     const files = new Map(base);
     for (const f of body.files) {
       if (f.operation === 'delete') files.delete(f.path);
-      else files.set(f.path, { sha: blob(repo, Buffer.from(String(f.content ?? ''), 'base64')), mode: '100644' });
+      else files.set(f.path, { sha: blob(repo, stored(repo, attributes, f.path, Buffer.from(String(f.content ?? ''), 'base64'))), mode: '100644' });
     }
     const during = duringChange;
     duringChange = null;
@@ -266,7 +300,21 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
     const m = /^\/api\/v1\/repos\/([^/]+)\/([^/]+)(\/.*)?$/.exec(url.pathname);
     const auth = /^(?:token|bearer) (.+)$/i.exec(String(headers.authorization ?? ''))?.[1] ?? '';
     if (!headers.authorization) return { status: 401, json: err('token is required') };
-    if (auth !== token && auth !== READ_TOKEN) return { status: 401, json: err(`access token does not exist [sha: ${auth.slice(0, 40)}]`) };
+    if (auth !== token && auth !== READ_TOKEN && auth !== USER_TOKEN) return { status: 401, json: err(`access token does not exist [sha: ${auth.slice(0, 40)}]`) };
+    if (method === 'GET' && url.pathname === '/api/v1/user') {
+      return auth === USER_TOKEN ? { status: 200, json: { id: 1, login: user, username: user } } : { status: 403, json: err('token does not have at least one of required scope(s): [read:user]') };
+    }
+    if (method === 'GET' && url.pathname === '/api/v1/repos/search') {
+      // What the user may see, by name; is_private and archived filter, q matches part of a name.
+      const q = url.searchParams;
+      const flag = (/** @type {string} */ k) => (q.has(k) ? q.get(k) === 'true' : null);
+      const [priv, archived, words] = [flag('is_private'), flag('archived'), (q.get('q') ?? '').toLowerCase()];
+      const found = [...all.values()].filter((x) => (priv === null || x.private === priv) && (archived === null || x.archived === archived) && x.name.split('/')[1].toLowerCase().includes(words))
+        .sort((a, b) => (a.name.split('/')[1] < b.name.split('/')[1] ? -1 : 1));
+      const limit = Math.min(maxItems, Number(q.get('limit')) || 30);
+      const start = (Math.max(1, Number(q.get('page')) || 1) - 1) * limit;
+      return { status: 200, json: { ok: true, data: found.slice(start, start + limit).map(repoJson) }, headers: { 'x-total-count': String(found.length) } };
+    }
     const repo = m ? all.get(`${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`) : undefined;
     if (!m || !repo) return notFound();
     const rest = m[3] ?? '';
@@ -299,12 +347,15 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
       const end = Math.min(start + per, entries.length);
       return { status: 200, json: { ...json, tree: entries.slice(start, end), truncated: flavor === 'gitea' ? end < entries.length : entries.length > per } };
     }
-    if (method === 'GET' && (r = /^\/(?:raw|media)\/(.+)$/.exec(rest))) {
+    if (method === 'GET' && (r = /^\/(raw|media)\/(.+)$/.exec(rest))) {
       const at = resolve(repo, url.searchParams.get('ref') ?? repo.defaultBranch);
-      const path = r[1].split('/').map(decodeURIComponent).join('/');
+      const path = r[2].split('/').map(decodeURIComponent).join('/');
       const f = at ? flatten(repo, /** @type {string} */ (treeOf(repo, at))).get(path) : undefined;
       const b = f ? repo.objects.get(f.sha) : undefined;
-      return b?.type === 'blob' ? { status: 200, raw: b.data } : notFound();
+      if (b?.type !== 'blob') return notFound();
+      // /media follows a pointer to the content Git LFS keeps; /raw gives the pointer.
+      const oid = /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:([0-9a-f]{64})\n/.exec(b.data.toString('latin1'))?.[1];
+      return { status: 200, raw: r[1] === 'media' && oid && kept.has(oid) ? /** @type {Buffer} */ (kept.get(oid)) : b.data };
     }
     if (method === 'GET' && rest === '/commits') {
       if (repo.refs.size === 0) return { status: 409, json: err('Git Repository is empty.') };
@@ -441,6 +492,19 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
     /** @param {string} name @param {boolean} value */
     setArchived(name, value) {
       repoOf(name).archived = value;
+    },
+    /** Someone makes a branch where another is. @param {string} name @param {string} branch @param {string} from */
+    branchFrom(name, branch, from) {
+      const repo = repoOf(name);
+      repo.refs.set(branch, /** @type {string} */ (repo.refs.get(from)));
+    },
+    /** Someone deletes a branch, as the web page's Branches tab does (never the default one). @param {string} name @param {string} branch */
+    deleteBranch(name, branch) {
+      repoOf(name).refs.delete(branch);
+    },
+    /** Someone deletes the whole repository. @param {string} name */
+    deleteRepo(name) {
+      all.delete(name);
     },
     stop: () => new Promise((resolve) => {
       server.closeAllConnections?.();

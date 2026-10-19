@@ -164,6 +164,35 @@ export default function (test, assert) {
     assert.equal(/** @type {HTMLElement} */ (dock.el.querySelector('.talk .av')).dataset.state, 'speaking');
   });
 
+  test("small fixes 5: a plugin's avatar that throws now and then, and works between, keeps its place; one that keeps throwing on one call still gives annai's own back", () => {
+    const { registry, errors } = kit();
+    const agent = fakeAgent();
+    const ctx = { registry, agent, notices: { card() {}, toast() {} }, go() {} };
+    const theirs = document.createElement('span');
+    // setState throws at its 1st, 2nd, 4th and 5th calls: never three in a row.
+    const throwsAt = new Set([1, 2, 4, 5]);
+    let calls = 0;
+    registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: theirs, setState() { if (throwsAt.has(++calls)) throw new TypeError('no state'); }, setLevel() {} }) });
+    const dock = createDock(ctx);
+    for (const name of ['thinking', 'speaking', 'listening', 'sleeping']) agent.emit('state', { name, label: '' });
+    assert.equal(calls, 5);
+    assert.equal(errors.length, 4);
+    assert.ok(dock.el.contains(theirs), 'theirs stays: the throws never came three in a row');
+    assert.equal(registry.isDisabled('look'), false, 'a call that worked ended its run of failures');
+
+    // setState throws every time, while setLevel works between: three setState throws are a run.
+    const second = kit();
+    const mine = document.createElement('span');
+    second.registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: mine, setState() { throw new TypeError('never'); }, setLevel() {} }) });
+    const again = createDock({ ...ctx, registry: second.registry });
+    for (const name of ['thinking', 'speaking']) {
+      again.avatar.setLevel(0.5);
+      agent.emit('state', { name, label: '' });
+    }
+    assert.ok(!again.el.contains(mine), "after three setState throws, annai's own is drawn");
+    assert.ok(again.el.querySelector('.talk .seat .av'));
+  });
+
   test('minors 13: a dock made again leaves nothing listening: dispose() lets go of Shiori, voice, live mode and the simulation', () => {
     const { registry } = kit();
     const agent = fakeAgent();

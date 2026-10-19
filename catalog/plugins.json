@@ -27,7 +27,7 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 13159,
+      "size": 17154,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -43,14 +43,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "63331a2b3c43458534005cdee92544e7a27abd0d69f6ebbf11055ed1d175867e",
-        "index.js": "9fe0ce60c029d89e55890b2946d9b21d4856064027484e346336db760bd58550"
+        "annai-plugin.json": "dc357560de09dff266f95a5e50a66638b94fde1960696f4ef39553220d4092ea",
+        "index.js": "60d57c0908e6788022140d913dfc2bc9861b6363a6ecb2bed7c3671cec88a540"
       }
     },
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Talks to OpenAI's Responses API and to servers that speak it, keeping nothing on the server.",
       "category": "developer",
       "keywords": [],
@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 16820,
+      "size": 21394,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -66,8 +66,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "886adcd8fd0e61b3786528f3a7bbd3b1396cc636143e71b7bc2aee0acb1d7178",
-        "index.js": "81b0892878a51a9b60579143d0a7fdfa82afa95deccd4c91e6c8887bf1740f6d"
+        "annai-plugin.json": "8fa049bbbeb525c27a24bd9034d7f8909822fbf07b2016a72dcff0b19a91d714",
+        "index.js": "a5ddada591b8fa0883e96f083311a2c83e36ee86e7fc7e17608b17a55e6beb4a"
       }
     },
     {
@@ -413,7 +413,7 @@
     {
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -421,7 +421,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 36387,
+      "size": 42720,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -429,9 +429,9 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "a5807f36bce6257f30146fa1c5d599fb76c90e039f1a93d8b6d1b74bad29a6bc",
+        "annai-plugin.json": "b522855d9b29ce34efe67f8fe28fd6a3ba56a8bb054e0819223b42c372c28aa6",
         "git.js": "fe62d15bd1b8679ba15cbadd43cea1741c4df1b65a6500a803ceef737660ce80",
-        "index.js": "abd7c9c8ae4fefa5448cf2561bdbb967c641eb15ffa38c7f49f03ed131087368"
+        "index.js": "5feefbc9831f34aca17b671799848fe680d28a0552e1f6ab78c2c83c0ef7a861"
       }
     },
     {

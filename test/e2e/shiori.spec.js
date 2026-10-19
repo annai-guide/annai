@@ -207,24 +207,29 @@ test("taken off the page while working, her marker's streamer stops; out of sigh
     a.el.style.setProperty('top', '0');
     document.body.append(a.el);
     a.setState('away');
-    await wait(500);
     const band = /** @type {SVGPathElement} */ (a.el.querySelector('.marker .band'));
+    const av = /** @type {HTMLElement} */ (a.el.querySelector('.av'));
     /** @type {number} */
     let changes = 0;
     const watch = new MutationObserver(() => { changes++; });
     watch.observe(band, { attributes: true, attributeFilter: ['d'] });
-    await wait(600);
-    const on = changes;
+    // What a loaded machine does late (her observer's word, a step of her wave) is waited for, up to 10 s, rather than
+    // counted in a fixed window: under load it flaked both ways (2026-10-18, a container held to 2 CPUs).
+    const until = async (/** @type {() => boolean} */ ok) => {
+      for (const end = Date.now() + 10_000; !ok() && Date.now() < end;) await wait(50);
+      return ok();
+    };
+    const waved = await until(() => changes >= 5);
     a.el.remove();
-    await wait(300); // the observer reports her gone
+    const gone = await until(() => av.dataset.hidden === ''); // her observer reports her gone
     changes = 0;
     await wait(1000);
     watch.disconnect();
-    return { on, off: changes, hidden: /** @type {HTMLElement} */ (a.el.querySelector('.av')).dataset.hidden };
+    return { waved, gone, off: changes };
   });
-  expect(result.on, 'it waves on the page').toBeGreaterThan(4);
+  expect(result.waved, 'it waves on the page').toBe(true);
+  expect(result.gone, 'she knows she is off it').toBe(true);
   expect(result.off, 'and stops off it').toBe(0);
-  expect(result.hidden).toBe('');
 });
 
 test("her art is kept for offline use: after the first visit she shows with no network", async ({ page }, testInfo) => {
@@ -418,6 +423,9 @@ test('removing the trip Shiori is working in: she stops first, and nothing of it
 });
 
 test('milestone 2 done: a photo conversation with tool use and fallback across two providers; a refused photo is repaired by itself; the trace shows it all', async ({ page }) => {
+  // The longest flow here (two endpoints, a photo, three model calls, a reload, the trace): on a loaded machine it ran out of
+  // the 90 s a test has before its end, the Trace filter (on a container held to 1 CPU, 6 of 6 in WebKit). Each step keeps its own limit.
+  test.slow();
   const refusal = JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'messages.0.content.1.image.source.base64: image exceeds 5 MB maximum: 6000000 bytes > 4000 bytes' } });
   const llm = await startModelServer({
     '/a/v1/chat/completions': { status: 402, type: 'application/json', body: JSON.stringify({ error: { message: 'Insufficient credits', code: 402 } }) },

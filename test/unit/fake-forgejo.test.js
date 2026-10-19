@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startForgejo, TOKEN, READ_TOKEN } from '../fakes/forgejo.js';
+import { startForgejo, TOKEN, READ_TOKEN, USER_TOKEN } from '../fakes/forgejo.js';
 
 // The stand-in answers as Forgejo 16.0.6 did when probed (2026-10-18): the ids, messages and
 // statuses below are the real server's.
@@ -186,6 +186,39 @@ test('without [cors] ENABLED, a preflight gets 405 and no answer carries CORS he
     assert.deepEqual([pre.status, pre.headers.get('access-control-allow-origin')], [405, null]);
     const get = await api(fj.origin)('GET', '/repos/me/backup');
     assert.deepEqual([get.status, get.headers.get('access-control-allow-origin')], [200, null]);
+  } finally {
+    await fj.stop();
+  }
+});
+
+test("the stand-in's account and search, as both servers answered (2026-10-18): GET /user needs User: Read; the search lists what the user may see", async () => {
+  const fj = await startForgejo({ repos: {
+    'me/backup': {}, 'me/notes': { files: { 'a.md': 'a' } }, 'me/site': { private: false }, 'me/old': { archived: true },
+    'other/readonly': { push: false }, 'team/shared': {}, 'me/copy': { mirror: true },
+  } });
+  try {
+    // A token with only Repository: Read and write can't ask whose it is.
+    const denied = await api(fj.origin)('GET', '/user');
+    assert.deepEqual([denied.status, denied.json.message], [403, 'token does not have at least one of required scope(s): [read:user]']);
+    const me = await api(fj.origin, USER_TOKEN)('GET', '/user');
+    assert.deepEqual([me.status, me.json.login], [200, 'me']);
+    assert.equal((await api(fj.origin, 'f'.repeat(40))('GET', '/user')).status, 401);
+    // The search: the user's own and shared repositories, public and private; is_private and archived filter them.
+    const all = await api(fj.origin)('GET', '/repos/search?limit=50');
+    assert.equal(all.json.ok, true);
+    assert.equal(all.headers.get('x-total-count'), '7');
+    const found = await api(fj.origin)('GET', '/repos/search?is_private=true&archived=false&limit=50');
+    assert.deepEqual(found.json.data.map((/** @type {any} */ r) => `${r.full_name} ${r.private} ${r.archived} ${r.mirror} ${r.permissions.push} ${r.owner.login}`), [
+      'me/backup true false false true me', 'me/copy true false true true me', 'me/notes true false false true me',
+      'other/readonly true false false false other', 'team/shared true false false true team',
+    ]);
+    // Push is the user's permission, not the token's: a read-only token sees the same.
+    assert.deepEqual((await api(fj.origin, READ_TOKEN)('GET', '/repos/search?is_private=true&archived=false')).json.data.map((/** @type {any} */ r) => r.permissions.push), [true, true, true, false, true]);
+    const named = await api(fj.origin)('GET', '/repos/search?is_private=true&archived=false&q=NOTES');
+    assert.deepEqual(named.json.data.map((/** @type {any} */ r) => r.full_name), ['me/notes']);
+    const paged = await api(fj.origin)('GET', '/repos/search?is_private=true&limit=2&page=3');
+    assert.deepEqual([paged.headers.get('x-total-count'), paged.json.data.map((/** @type {any} */ r) => r.full_name)], ['6', ['other/readonly', 'team/shared']]);
+    assert.equal((await api(fj.origin, 'f'.repeat(40))('GET', '/repos/search')).status, 401);
   } finally {
     await fj.stop();
   }

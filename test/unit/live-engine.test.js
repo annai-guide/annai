@@ -420,6 +420,25 @@ test("a log write that fails doesn't hold a reminder back or make it fire again:
   assert.match(String(/** @type {any} */ (problems[0])?.message), /disk is full/);
 });
 
+test('a failure told is the same problem when only its numbers change: a card for it once, not one a minute', async () => {
+  /** @type {unknown[]} */
+  const problems = [];
+  const k = await liveKit({ problem: (e) => problems.push(e) });
+  await k.live.setWatch(k.trip, { when: { type: 'every', minutes: 1 }, fallback: 'Look up.' });
+  let free = 4096;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+    get(o, key) {
+      const v = o[key];
+      if (key === 'appendEvent') return (/** @type {string} */ scope, /** @type {any} */ e) => (e.type === 'trigger.fired' ? Promise.reject(new Error(`The disk is full: ${free--} bytes left.`)) : o.appendEvent(scope, e));
+      return typeof v === 'function' ? v.bind(o) : v;
+    },
+  })));
+  await k.to(at('08:36'));
+  assert.ok(free < 4093, 'it failed every minute');
+  assert.equal(problems.length, 1);
+});
+
 test("live mode keeps memories and firings only for the watches there are: a watch that is gone, or a plan item removed, leaves nothing behind", async () => {
   const k = await liveKit({ plan: { bixby: BIX, nepenthe: NEP } });
   const tea = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:00') }, fallback: 'Tea.' });
@@ -433,4 +452,18 @@ test("live mode keeps memories and firings only for the watches there are: a wat
   assert.ok(!held.some((key) => key.includes(tea.id) || key.includes('plan:bixby:')), held.join(', '));
   assert.ok(held.some((key) => key.includes(cambria.id)));
   assert.ok(held.some((key) => key.includes('plan:nepenthe:')));
+});
+
+test("a plan item removed and made again remembers what it fired, as the log does: its arrival doesn't fire a second time", async () => {
+  const k = await liveKit({ plan: { bixby: BIX } });
+  await k.stay(BIXBY, at('09:30'), at('09:33'));
+  const arrived = async () => (await k.events(['trigger.fired'])).filter((e) => e.data.watch === 'plan:bixby:arrived').length;
+  assert.equal(await arrived(), 1);
+  const item = await k.ws.readJSON(k.trip, '/plan/bixby.json');
+  await k.ws.delete(k.trip, '/plan/bixby.json', { author: 'user' });
+  await k.settle();
+  await k.ws.write(k.trip, '/plan/bixby.json', item, { author: 'user' });
+  await k.settle();
+  await k.stay(BIXBY, at('09:34'), at('09:40'));
+  assert.equal(await arrived(), 1);
 });

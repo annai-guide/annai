@@ -193,6 +193,24 @@ test("archiving a trip takes its reminders out of what a closed annai can say at
   k.live.dispose();
 });
 
+test("an archived trip's watch file that changes doesn't bring its watches back: they wait until it is unarchived", async () => {
+  const k = await liveKit();
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  await setTripStatus(k.store, k.trip, 'archived');
+  await k.live.tripsChanged();
+  const later = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:30') }, fallback: 'Scones.' }); // written in the archived trip
+  await k.settle();
+  assert.deepEqual((await k.live.reminders()) ?? [], []);
+  assert.ok(!k.live.held.some((key) => key.includes(later.id)), k.live.held.join(', '));
+  await k.to(at('10:31'));
+  assert.equal(k.agent.wakes.length, 0, 'nothing of it fires');
+  await setTripStatus(k.store, k.trip, 'active');
+  await k.live.tripsChanged();
+  await k.settle();
+  assert.equal((await k.events(['trigger.fired'])).length, 2, 'unarchived, both come back, and fire late');
+  k.live.dispose();
+});
+
 test('annai starting off screen says nothing on screen: its catch-up firings are not said, so their notifications are no doubles (fix pass L3)', async () => {
   const k = await liveKit({ live: false });
   const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });

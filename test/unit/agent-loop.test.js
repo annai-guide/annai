@@ -96,9 +96,12 @@ test('wait returns what the user typed, or that nothing came', async () => {
 
 test('tapping Shiori stops a hanging tool and the turn; every call still has a result (spec §6.7)', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'hang', input: {} }, { name: 'speak', input: { text: 'Never said.' } }] }]]);
-  k.registry.add('test', 'tool', { name: 'hang', description: 'Never ends.', input: { type: 'object' }, run: () => new Promise(() => {}) });
+  /** @type {() => void} */
+  let started = () => {};
+  const hanging = new Promise((r) => { started = () => r(undefined); });
+  k.registry.add('test', 'tool', { name: 'hang', description: 'Never ends.', input: { type: 'object' }, run: () => { started(); return new Promise(() => {}); } });
   k.agent.send('Go');
-  await new Promise((r) => setTimeout(r, 20));
+  await hanging; // the tap comes while the tool hangs, however long the turn took to reach it (it flaked at a fixed 20 ms under load)
   k.agent.interrupt();
   await k.agent.idle();
   const results = await k.events(['tool.result']);

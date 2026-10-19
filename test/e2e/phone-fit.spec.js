@@ -1,6 +1,26 @@
 import { test, expect } from '@playwright/test';
 import { openApp, turnOnSwipes } from './helpers.js';
 
+// In headless WebKit no tap unlocks sound, so every tap, a swipe's pointerup too, starts the silent clip again; and a
+// page that goes away while one starts can wedge WebKit's process on Linux (the Erase hang, 2026-10-18). A swipe test
+// ends right after a swipe, and once hung in WebKit under load: each test here ends once the clips it started have.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    const play = HTMLMediaElement.prototype.play;
+    /** @type {Promise<unknown>[]} */
+    const started = [];
+    Object.defineProperty(window, 'testClips', { value: started });
+    HTMLMediaElement.prototype.play = function () {
+      const p = play.call(this);
+      started.push(p.catch(() => {}));
+      return p;
+    };
+  });
+});
+test.afterEach(async ({ page }) => {
+  await page.evaluate(() => Promise.race([Promise.allSettled(/** @type {any} */ (window).testClips ?? []), new Promise((r) => setTimeout(r, 5000))]));
+});
+
 // What the user saw on an iPhone (2026-10-18): the page scrolled sideways, a date box stuck out of
 // its card, Shiori sat over the camera button in a corner, and the top bar hid that it scrolls.
 const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/backups', '#/notifications', '#/shiori',

@@ -14,7 +14,7 @@ import { createBackups } from '../../src/core/backup.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { exportArchive, openArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { text } from '../../src/core/bytes.js';
-import { startForgejo, READ_TOKEN } from '../fakes/forgejo.js';
+import { startForgejo, READ_TOKEN, USER_TOKEN } from '../fakes/forgejo.js';
 import { browserFetch as browserAt } from '../fakes/browser-fetch.js';
 import { everything } from './backup-kit.js';
 
@@ -158,6 +158,26 @@ test('the next backup sends only what changed, deletes what is gone, and comes b
   }
 });
 
+test("a repository whose .gitattributes sends photos to Git LFS: a photo kept as an LFS pointer is still the same photo, so it isn't sent again, and comes back whole", async () => {
+  for (const flavor of /** @type {const} */ (['forgejo', 'gitea'])) {
+    const fj = await startForgejo({ flavor, lfs: true, repos: { [REPO]: { files: { '.gitattributes': '*.jpg filter=lfs diff=lfs merge=lfs -text\n' } } } });
+    try {
+      const { type } = forgejo();
+      const d = await device();
+      const first = await type.put(ctx(fj), await archive(d), opts());
+      const photo = /** @type {Buffer} */ (fj.files(REPO).get(`trips/${d.trip}/files/gate.jpg`));
+      assert.match(photo.toString('latin1'), /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:/, `${flavor}: the tree holds a pointer`);
+      await d.ws.write(d.trip, '/notes/bixby.md', 'Bixby Bridge, 1932, at dawn', { author: 'user' });
+      const second = await type.put(ctx(fj), await archive(d), opts({ base: first.id }));
+      assert.equal(fileOps(changes(fj)[1]).some((o) => o.endsWith('/files/gate.jpg')), false, `${flavor}: the photo is not sent again`);
+      const { ws, id } = await restored(await type.get(ctx(fj), second.id, { onProgress: () => {} }));
+      assert.deepEqual((await ws.read(id, '/files/gate.jpg'))?.bytes, (await d.ws.read(d.trip, '/files/gate.jpg'))?.bytes, `${flavor}: restored whole`);
+    } finally {
+      await fj.stop();
+    }
+  }
+});
+
 test("a large repository's tree is read page by page, whether the last page says truncated (Forgejo) or not (Gitea)", async () => {
   for (const flavor of /** @type {const} */ (['forgejo', 'gitea'])) {
     const fj = await startForgejo({ repos: { [REPO]: {} }, perPage: 4, flavor });
@@ -288,7 +308,7 @@ test('the wrong repository, token or address is refused in plain words, before a
     await assert.rejects(type.put(ctx(fj, { token: READ_TOKEN }), a, opts()), refused('refused', /isn't allowed to change me\/annai-backup.*Read and write/));
     await assert.rejects(type.check(ctx(fj, { repo: 'used', branch: 'backups' })), refused('setup', /has no branch backups/));
     for (const [o, re] of /** @type {[any, RegExp][]} */ ([
-      [{ owner: '' }, /owner and the repository/], [{ repo: 'not a repo' }, /owner and the repository/], [{ token: '' }, /access token/],
+      [{ owner: 'a b' }, /owner and the repository/], [{ repo: 'not a repo' }, /owner and the repository/], [{ token: '' }, /access token/],
       [{ server: 'http://example.com' }, /https/], [{ server: '' }, /https/], [{ branch: 'a b' }, /branch/],
     ])) await assert.rejects(type.check(ctx(fj, o)), refused('setup', re), JSON.stringify(o));
     // A README, a licence and a .gitignore stay as they are.
@@ -302,6 +322,116 @@ test('the wrong repository, token or address is refused in plain words, before a
     assert.match((await type.check(ctx(fj, { server: `${fj.origin}/me/annai-backup`, owner: '', repo: '' }))).note, /^Works/);
     assert.match((await type.check(ctx(fj, { server: `${fj.origin}/me/annai-backup.git` }))).note, /^Works/);
     assert.equal(type.where({ server: `${fj.origin}/me/annai-backup/`, owner: '', repo: '' }), `${host}/me/annai-backup`);
+  } finally {
+    await fj.stop();
+  }
+});
+
+// The user's ask (2026-10-18): an owner or a repository left empty is filled in. A token with only Repository: Read
+// and write can't ask GET /user whose it is (both servers answer 403), so the repository search finds the private
+// repositories it may change; with User: Read too, the token's own account comes first.
+
+test('an owner and a repository left empty are found from the token: the one private repository it can change, never a public one', async () => {
+  const fj = await startForgejo({ repos: {
+    [REPO]: {}, 'me/site': { private: false }, 'me/old': { archived: true }, 'other/readonly': { push: false }, 'me/copy': { mirror: true },
+  } });
+  try {
+    const { type, sent } = forgejo();
+    const host = new URL(fj.origin).host;
+    const found = await type.check(ctx(fj, { owner: '', repo: '' }));
+    assert.deepEqual(found.config, { owner: 'me', repo: 'annai-backup' });
+    assert.equal(found.note, `Works: annai can reach me/annai-backup on ${host}, a private repository. It is the only private repository this token can change, so annai filled it in.`);
+    assert.equal(fj.count('GET', '/api/v1/user'), 1, 'it asks whose the token is, and is refused');
+    assert.ok(sent.every((s) => new Headers(s.init.headers).get('authorization') === `token ${fj.token}`));
+    // Only the owner left empty: the repository of that name the token can change.
+    const owner = await type.check(ctx(fj, { owner: '', repo: 'annai-backup' }));
+    assert.deepEqual([owner.config, owner.note], [{ owner: 'me', repo: 'annai-backup' }, `Works: annai can reach me/annai-backup on ${host}, a private repository. annai filled in its owner, me.`]);
+    // Given values are kept: nothing is looked up.
+    const before = fj.log.length;
+    assert.equal((await type.check(ctx(fj))).config, undefined);
+    assert.equal(fj.log.slice(before).some((/** @type {any} */ l) => l.path.endsWith('/search') || l.path.endsWith('/user')), false);
+    // An owner given whose repositories the token can't change.
+    await assert.rejects(type.check(ctx(fj, { owner: 'other', repo: '' })), refused('missing', new RegExp(`can't change any private repository of other on ${host}`)));
+  } finally {
+    await fj.stop();
+  }
+});
+
+test("an empty repository with several private ones the token can change asks which, and with none says to create one; a public one is never offered", async () => {
+  const fj = await startForgejo({ repos: {
+    [REPO]: {}, 'me/notes': { files: { 'a.md': 'a' } }, 'team/backups': {}, 'me/site': { private: false }, 'other/readonly': { push: false },
+  } });
+  try {
+    const { type } = forgejo();
+    const host = new URL(fj.origin).host;
+    const several = await type.check(ctx(fj, { owner: '', repo: '' })).then(() => null, (e) => e);
+    assert.ok(several instanceof TargetError && several.kind === 'setup', String(several));
+    assert.equal(several.message, `This token can change 3 private repositories on ${host}. Choose the one for annai's backups, or type its owner and name.`);
+    assert.deepEqual(/** @type {any} */ (several).choices, [
+      { label: 'me/annai-backup', config: { owner: 'me', repo: 'annai-backup' } },
+      { label: 'me/notes', config: { owner: 'me', repo: 'notes' } },
+      { label: 'team/backups', config: { owner: 'team', repo: 'backups' } },
+    ]);
+    // An owner given narrows it to theirs.
+    assert.deepEqual((await type.check(ctx(fj, { owner: 'team', repo: '' }))).config, { owner: 'team', repo: 'backups' });
+    // With User: Read, an empty owner is the token's own account: two of its repositories to choose from.
+    const mine = await type.check(ctx(fj, { owner: '', repo: '', token: USER_TOKEN })).then(() => null, (e) => e);
+    assert.deepEqual(mine?.choices?.map((/** @type {any} */ c) => c.label), ['me/annai-backup', 'me/notes']);
+    // A repository named, under no owner the token can change: create it.
+    await assert.rejects(type.check(ctx(fj, { owner: '', repo: 'trips' })), refused('missing',
+      new RegExp(`^There is no private repository named trips on ${host} that this token can change\\. Create it there first \\(annai doesn't make one\\), or check the name\\.$`)));
+    // A public repository is never offered, even when it is the only one.
+    const lone = await startForgejo({ repos: { 'me/site': { private: false }, 'other/readonly': { push: false } } });
+    try {
+      await assert.rejects(type.check(ctx(lone, { owner: '', repo: '' })), refused('missing',
+        new RegExp(`^This token can't change any private repository on ${new URL(lone.origin).host}\\. Create a private repository there first, named annai-backup for example \\(annai doesn't make one\\), then Save and test again\\.$`)));
+    } finally {
+      await lone.stop();
+    }
+    // A token the server doesn't know, asked before anything else.
+    await assert.rejects(type.check(ctx(fj, { owner: '', repo: '', token: 'f'.repeat(40) })), refused('auth'));
+  } finally {
+    await fj.stop();
+  }
+});
+
+test('the search is read page by page, and a repository found on a later page is still found', async () => {
+  /** @type {Record<string, any>} */
+  const repos = {};
+  for (let i = 0; i < 120; i++) repos[`me/public-${String(i).padStart(3, '0')}`] = { private: false };
+  for (let i = 0; i < 60; i++) repos[`me/a-readonly-${String(i).padStart(3, '0')}`] = { push: false };
+  repos['me/z-backup'] = {};
+  const fj = await startForgejo({ repos });
+  try {
+    const { type } = forgejo();
+    assert.deepEqual((await type.check(ctx(fj, { owner: '', repo: '' }))).config, { owner: 'me', repo: 'z-backup' });
+    assert.equal(fj.count('GET', '/repos/search'), 3, 'is_private leaves the public ones out; 61 private ones are two pages, and an empty third says that was all');
+  } finally {
+    await fj.stop();
+  }
+  // A server whose pages hold fewer than annai asks for (MAX_RESPONSE_ITEMS 20): its short pages aren't the end (fix pass 5).
+  const short = await startForgejo({ repos, maxItems: 20 });
+  try {
+    const { type } = forgejo();
+    assert.deepEqual((await type.check(ctx(short, { owner: '', repo: '' }))).config, { owner: 'me', repo: 'z-backup' });
+  } finally {
+    await short.stop();
+  }
+});
+
+test("a branch deleted while annai backs up to it says so, and what to do, rather than that there is no repository; a repository deleted meanwhile still says that", async () => {
+  const fj = await startForgejo({ repos: { [REPO]: { files: { 'README.md': 'Mine' } } } });
+  try {
+    const { type } = forgejo();
+    const a = await archive(await device());
+    // A branch of its own for annai's backups, deleted on the server just as the backup is sent.
+    fj.branchFrom(REPO, 'backups', 'main');
+    fj.beforeChange(() => fj.deleteBranch(REPO, 'backups'));
+    await assert.rejects(type.put(ctx(fj, { branch: 'backups' }), a, opts()), refused('setup',
+      /^The branch backups of me\/annai-backup was deleted while annai backed up to it, so this backup stopped\. Make it again on .*, or leave Branch empty to back up to main, then back up again\.$/));
+    fj.branchFrom(REPO, 'backups', 'main');
+    fj.beforeChange(() => fj.deleteRepo(REPO));
+    await assert.rejects(type.put(ctx(fj, { branch: 'backups' }), a, opts()), refused('missing', /^There is no repository me\/annai-backup on /));
   } finally {
     await fj.stop();
   }
@@ -483,24 +613,30 @@ test('a SHA-256 repository: files are compared by its own ids, so the photo stil
   }
 });
 
+/** annai with the Forgejo plugin installed and running, as on a phone; logged: what its registry logged. */
+async function throughAnnai() {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => { logged.push(ev); } });
+  const store = createMemoryStore();
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  const dir = new URL('../../plugins-official/storage-forgejo/', import.meta.url);
+  /** @type {Map<string, Uint8Array>} */
+  const files = new Map();
+  for (const name of await readdir(dir)) files.set(name, new Uint8Array(await readFile(new URL(name, dir))));
+  const served = '/plugins/storage-forgejo/';
+  const host = new PluginHost({ registry, workspace: ws, importModule: (url) => import(url.startsWith(served) ? new URL(url.slice(served.length), dir).href : url) });
+  await host.install(files, { source: 'official' });
+  await host.start('storage-forgejo');
+  const backups = createBackups({ store, ws, registry, app: 'test', label: 'iPhone', noun: 'phone' });
+  return { logged, registry, store, ws, backups };
+}
+
 test('Forgejo through annai: every request is in the trace, and the token is in nothing posted, traced or kept (spec §15)', async () => {
   const fj = await startForgejo({ repos: { [REPO]: {} } });
   try {
-    /** @type {any[]} */
-    const logged = [];
-    const registry = new Registry({ log: (ev) => { logged.push(ev); } });
-    const store = createMemoryStore();
-    const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
-    await ensureBaseScopes(ws);
-    const dir = new URL('../../plugins-official/storage-forgejo/', import.meta.url);
-    /** @type {Map<string, Uint8Array>} */
-    const files = new Map();
-    for (const name of await readdir(dir)) files.set(name, new Uint8Array(await readFile(new URL(name, dir))));
-    const served = '/plugins/storage-forgejo/';
-    const host = new PluginHost({ registry, workspace: ws, importModule: (url) => import(url.startsWith(served) ? new URL(url.slice(served.length), dir).href : url) });
-    await host.install(files, { source: 'official' });
-    await host.start('storage-forgejo');
-    const backups = createBackups({ store, ws, registry, app: 'test', label: 'iPhone', noun: 'phone' });
+    const { logged, registry, store, ws, backups } = await throughAnnai();
     const trip = await createTrip(ws, { title: 'Big Sur' });
     await ws.write(trip, '/files/gate.jpg', new Uint8Array([0, 1, 2, 3]), { author: 'user' });
     const id = await backups.add('forgejo');
@@ -521,6 +657,39 @@ test('Forgejo through annai: every request is in the trace, and the token is in 
     await assert.rejects(backups.check(id), (e) => e instanceof TargetError && e.kind === 'other' && /can't read/.test(e.message));
     assert.deepEqual(logged, []);
     assert.equal(registry.isDisabled('storage-forgejo'), false);
+  } finally {
+    await fj.stop();
+  }
+});
+
+test("through annai, what Save and test filled in is kept as the place's settings, so backups don't look again; several to choose from come with the error", async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {}, 'me/site': { private: false } } });
+  try {
+    const { logged, ws, backups } = await throughAnnai();
+    await createTrip(ws, { title: 'Big Sur' });
+    const id = await backups.add('forgejo');
+    await backups.update(id, { config: { server: fj.origin, owner: '', repo: '' }, secret: { token: fj.token } });
+    assert.match((await backups.check(id)).note, /It is the only private repository this token can change, so annai filled it in\.$/);
+    const kept = await backups.get(id);
+    assert.deepEqual([kept.config.owner, kept.config.repo, kept.checked !== null], ['me', 'annai-backup', true]);
+    const searched = fj.count('GET', '/repos/search');
+    await backups.backUp(id);
+    await backups.check(id);
+    assert.equal(fj.count('GET', '/repos/search'), searched, 'no search once filled in');
+    assert.equal(fj.commits(REPO).length, 1);
+    // Several: the error carries them, each with the settings it fills in, and nothing is kept meanwhile.
+    const more = await startForgejo({ repos: { [REPO]: {}, 'me/notes': {} } });
+    try {
+      const two = await backups.add('forgejo');
+      await backups.update(two, { config: { server: more.origin, owner: '', repo: '' }, secret: { token: more.token } });
+      const e = await backups.check(two).then(() => null, (x) => x);
+      assert.ok(e instanceof TargetError && e.kind === 'setup');
+      assert.deepEqual(/** @type {any} */ (e).choices, [{ label: 'me/annai-backup', config: { owner: 'me', repo: 'annai-backup' } }, { label: 'me/notes', config: { owner: 'me', repo: 'notes' } }]);
+      assert.deepEqual([(await backups.get(two)).config.repo, (await backups.get(two)).checked], ['', null]);
+    } finally {
+      await more.stop();
+    }
+    assert.deepEqual(logged, [], 'nothing counted against the plugin');
   } finally {
     await fj.stop();
   }
