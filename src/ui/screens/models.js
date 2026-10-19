@@ -191,7 +191,7 @@ function signInSection(ctx, cfg) {
   }
   return h('section', { class: 'panel', 'aria-label': 'Sign in' },
     h('h2', { class: 'section', text: 'The quickest start' }),
-    h('p', { text: "Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and a voice, which cost a little; the phone's own dictation and voice, which are free, stay first." }),
+    h('p', { text: "Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the phone's own dictation and voice stay first." }),
     h('div', { class: 'acts' }, btn),
     codeSlot,
     status);

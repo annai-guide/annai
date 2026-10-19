@@ -196,14 +196,14 @@ export async function addOpenRouterVoice(ctx, key, catalog) {
   return added;
 }
 
-/** Where OpenRouter's voice goes, and how to use it. */
-export const BEHIND = "behind the phone's own dictation and the browser voice, which are free. Those from OpenRouter cost a little, from credits you buy there: to use them first, move them up under Roles";
+/** Where OpenRouter's speech models go, and how to use them. */
+export const BEHIND = "behind the phone's own dictation and the browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles";
 
 /** Says on a card what sign-in set up. @param {any} ctx @param {{ voice: string[] | null }} done */
 export function signedIn(ctx, { voice }) {
   const start = 'Shiori thinks with free models to start, so trying annai costs nothing.';
   const body = voice === null ? `${start} annai couldn't add OpenRouter's voice just now: the OpenRouter endpoint's page can.`
-    : voice.length ? `${start} annai also added OpenRouter's transcription and a voice, ${BEHIND}.` : `${start} You can change them under Roles.`;
+    : voice.length ? `${start} annai also added OpenRouter's transcription and voices, ${BEHIND}.` : `${start} You can change them under Roles.`;
   ctx.notices.card({ tone: 'ok', title: 'Signed in with OpenRouter', body });
 }
 
