@@ -173,13 +173,23 @@ export async function startModelServer(routes) {
 }
 
 /**
+ * Models with no provider draws the one-tap start once its plugin has come in the background (milestone 4),
+ * which moves what is below it: this waits until it has, so nothing moves under a tap.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function startSettled(page) {
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Getting the sign-in ready…' })).toHaveCount(0, { timeout: 30_000 });
+}
+
+/**
  * From the Models screen: Add a provider opens the catalog on model providers; the provider is found by
  * its name and added (Add, or Add another once one is set up), its plugin installed with what it needs;
  * then its page. @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
  * @param {string} [heading] its page's title, when it isn't the provider's name
  */
 export async function pickProvider(page, provider, heading = provider) {
-  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await startSettled(page);
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
   await page.getByLabel('Search the catalog').fill(provider);
   const escaped = provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

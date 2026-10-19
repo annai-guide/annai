@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, fixtureFiles } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, fixtureFiles, startSettled } from './helpers.js';
 
 // One catalog (milestone 3 of providers as plugins): one Add screen for everything a user can add,
 // searchable and browsable, opened where the user came from.
@@ -21,6 +21,7 @@ const chip = (page, name) => page.getByRole('button', { name, exact: true });
 test('Models → Add a provider opens the catalog on model providers; "unsloth" finds llama.cpp saying "Also for: Unsloth"; Add installs it and opens its page', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
+  await startSettled(page);
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Add' })).toBeVisible();
   await expect(chip(page, 'Model providers')).toHaveAttribute('aria-pressed', 'true');
@@ -58,6 +59,7 @@ test('Models → Add a provider opens the catalog on model providers; "unsloth" 
 test("a speech role's Add opens on providers with transcription; Plugins → Add opens on everything, grouped by kind; the chips filter", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
+  await startSettled(page);
   await page.getByRole('link', { name: 'Add a provider for speech-in' }).click();
   await expect(chip(page, 'Transcription')).toHaveAttribute('aria-pressed', 'true');
   for (const name of ['OpenAI', 'Groq', 'Local speech server']) await expect(page.getByRole('button', { name: `Add ${name}`, exact: true })).toBeVisible();
@@ -148,6 +150,7 @@ test("Add's crumb goes back where it was opened from: Models, Plugins, or Experi
   await page.getByRole('link', { name: '← Experimental' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Experimental' })).toBeVisible();
   await page.goto('/#/models');
+  await startSettled(page);
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
   await page.getByRole('link', { name: '← Models' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();

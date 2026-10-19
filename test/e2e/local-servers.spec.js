@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, pickProvider } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, pickProvider, startSettled } from './helpers.js';
 import { startFakeServer } from '../fakes/model-server.js';
 
 // Servers you run (milestone 2): a provider plugin per local server, whose quirks are data. The stand-ins
@@ -67,6 +67,7 @@ test("a router that never streams, through Another address's Chat Completions: T
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
+    await startSettled(page);
     await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add llama.cpp', exact: true })).toHaveCount(1);
     await page.getByRole('link', { name: '← Models' }).click();
