@@ -41,14 +41,25 @@ test('a fresh device is welcomed at its first plain start, and only once', async
   await expect(h1(page)).toHaveText('Trips');
 });
 
-test('Erase starts annai again as on a new device: the welcome shows again', async ({ page }) => {
+test('Erase starts annai again as on a new device: the welcome shows again, and no sign-in or other annai state is left in the browser', async ({ page }) => {
   await openApp(page, '#/welcome');
   await expect.poll(async () => typeof (await appSettings(page)).welcomedAt).toBe('number');
+  // A sign-in waiting (its verifier) and a return expected, as a provider plugin keeps them; scroll positions kept for this tab.
+  await page.evaluate(() => {
+    localStorage.setItem('annai.openrouter', JSON.stringify({ verifier: 'v', state: 's', at: Date.now(), mode: 'code', url: 'https://openrouter.ai/auth?x' }));
+    localStorage.setItem('annai.return', JSON.stringify({ plugin: 'provider-openrouter', at: Date.now() }));
+    localStorage.setItem('annai.backupTimings', '{}');
+    localStorage.setItem('elsewhere', 'kept');
+    sessionStorage.setItem('annai-scrolls', '[]');
+  });
   await page.evaluate(() => { location.hash = '#/settings'; });
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
   await expect(h1(page)).toHaveText(STEPS[0]);
   expect(new URL(page.url()).hash).toBe('#/welcome');
+  // annai.forceDownload is this test's own, set again at each load.
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k !== 'annai.forceDownload').sort())).toEqual(['elsewhere']);
+  expect(await page.evaluate(() => sessionStorage.getItem('annai-scrolls'))).toBeNull();
 });
 
 // The tap on Erase can be a start's first, whose sound unlock starts a silent clip (spec §10.1). WebKit on
@@ -67,7 +78,8 @@ test("Erase as a start's first tap, five times over: the welcome shows each time
       p.then(done, done);
       return p;
     };
-    addEventListener('beforeunload', () => sessionStorage.setItem('clips', `${sessionStorage.getItem('clips') ?? ''}${plays} played, ${starting} starting; `));
+    // Kept where Erase leaves it: a key of the test's own, not annai's.
+    addEventListener('beforeunload', () => localStorage.setItem('test-clips', `${localStorage.getItem('test-clips') ?? ''}${plays} played, ${starting} starting; `));
   });
   await openApp(page, '#/welcome');
   for (let i = 1; i <= 5; i++) {
@@ -76,7 +88,7 @@ test("Erase as a start's first tap, five times over: the welcome shows each time
     await page.getByRole('button', { name: 'Erase now' }).click();
     await expect(h1(page), `Erase ${i}`).toHaveText(STEPS[0]);
   }
-  const clips = String(await page.evaluate(() => sessionStorage.getItem('clips'))).split('; ').filter(Boolean);
+  const clips = String(await page.evaluate(() => localStorage.getItem('test-clips'))).split('; ').filter(Boolean);
   expect(clips).toHaveLength(5);
   for (const c of clips) expect(c).toMatch(/^[1-9]\d* played, 0 starting$/);
 });
