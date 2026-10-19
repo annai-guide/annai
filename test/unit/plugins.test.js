@@ -193,13 +193,18 @@ test('host: a stored plugin is checked again before it starts', async () => {
   }
 });
 
-test('host: reinstalling a plugin that already ran asks for a restart instead of running old code', async () => {
+test('host: reinstalling a plugin that already ran with other files asks for a restart instead of running old code; the same files need none', async () => {
   const { host, relaunch } = await setup();
   await host.install(await fixture('hello'));
   await host.install(await fixture('hello')); // never ran yet: nothing stale
   assert.equal(host.needsRestart('hello'), false);
   await host.start('hello');
   await host.install(await fixture('hello'));
+  assert.equal(host.needsRestart('hello'), false, 'the same files again: the code that ran is theirs');
+  const next101 = await fixture('hello');
+  next101.set('annai-plugin.json', new TextEncoder().encode(JSON.stringify({ ...JSON.parse(new TextDecoder().decode(next101.get('annai-plugin.json'))), version: '1.0.1' })));
+  await host.stop('hello');
+  await host.install(next101);
   assert.equal(host.needsRestart('hello'), true);
   await assert.rejects(host.start('hello'), /Restart annai/);
   assert.equal(host.active.has('hello'), false);

@@ -4,10 +4,13 @@ import { openApp, waitForServiceWorker } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 
 /** A test plugin from test/fixtures/plugins, as a zip. @param {string} [dir] */
-async function fixtureZip(dir = 'hello') {
+/** A plugin fixture as a zip; with version, its manifest says that version. @param {string} [dir] @param {string} [version] */
+async function fixtureZip(dir = 'hello', version) {
   const z = new ZipWriter();
   for (const name of ['annai-plugin.json', 'index.js']) {
-    await z.add(`${dir}/${name}`, new Uint8Array(await readFile(new URL(`../fixtures/plugins/${dir}/${name}`, import.meta.url))));
+    let bytes = new Uint8Array(await readFile(new URL(`../fixtures/plugins/${dir}/${name}`, import.meta.url)));
+    if (version && name === 'annai-plugin.json') bytes = new TextEncoder().encode(JSON.stringify({ ...JSON.parse(new TextDecoder().decode(bytes)), version }));
+    await z.add(`${dir}/${name}`, bytes);
   }
   return Buffer.from(await z.finish().arrayBuffer());
 }
@@ -82,7 +85,8 @@ test('reinstalling a plugin that is running asks for a restart, which runs the n
   await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
   await page.getByRole('button', { name: 'Install', exact: true }).click();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
-  await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  // A new version: its code differs from what ran (the same files again start at once, with no restart).
+  await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip('hello', '1.0.1') });
   await expect(page.getByText('Version 1.0.0 is installed now. Installing replaces it.')).toBeVisible();
   await page.getByRole('button', { name: 'Install', exact: true }).click();
 

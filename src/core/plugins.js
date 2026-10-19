@@ -81,9 +81,13 @@ export class PluginHost {
   active = new Map();
   /** @type {Map<string, any>} built-in manifests by id */
   builtins = new Map();
-  /** Plugins whose code was imported in this session. The browser keeps a module by its URL until annai restarts. */
-  #loaded = new Set();
-  /** Plugins installed or removed after their code was imported: only a restart runs the new code. */
+  /**
+   * Plugins whose code was imported in this session, with the fingerprint of the files it came from. The
+   * browser keeps a module by its URL until annai restarts, so those bytes are what runs.
+   * @type {Map<string, string | undefined>}
+   */
+  #loaded = new Map();
+  /** Plugins installed with other files than the ones whose code ran: only a restart runs the new code. */
   #stale = new Set();
   /** @type {{ llm?: any, agent?: any, notices?: any, fetch?: any }} what plugins reach through annai once the app has it */
   #services = {};
@@ -315,7 +319,9 @@ export class PluginHost {
       type: before ? 'plugin.update' : 'plugin.install', actor: 'system',
       data: { plugin: id, name: pkg.name, version: pkg.version, kind: pkg.kind, from: source, ...(shown ? { url: shown } : {}) },
     }).catch(() => {});
-    if (this.#loaded.has(id) && pkg.code) this.#stale.add(id);
+    // Files other than the ones whose code ran need a restart; the same ones again (removed, then added back) start at once.
+    if (this.#loaded.has(id) && pkg.code && this.#loaded.get(id) !== pkg.fingerprint) this.#stale.add(id);
+    else this.#stale.delete(id);
     return pkg.manifest;
   }
 
@@ -427,7 +433,7 @@ export class PluginHost {
     const manifest = await this.#stored(id);
     const state = await this.installed();
     this.#claimed = { state, names: await this.#claims(state) };
-    if (manifest.entry) this.#loaded.add(id);
+    if (manifest.entry) this.#loaded.set(id, state[id]?.fingerprint);
     const mod = manifest.entry ? await this.importModule(this.pluginUrl(id, manifest.entry)) : {};
     await this.#start(manifest, mod, false);
     // Its tools' names, kept so removing it removes their switches even while it is off (choice 4).
@@ -492,7 +498,6 @@ export class PluginHost {
     const off = [...tools].filter((t) => Object.hasOwn(switches, t));
     if (off.length) await updateAppSettings(this.ws, { tools: Object.fromEntries(off.map((t) => [t, null])) });
     await logEvent(this.ws.store, SYS, { type: 'plugin.remove', actor: 'user', data: { plugin: id, name: was?.name ?? id, kind: kindOfState(was), bytes } }).catch(() => {});
-    if (this.#loaded.has(id)) this.#stale.add(id);
     return { bytes };
   }
 

@@ -446,3 +446,23 @@ test('Reset M2: a plugin that is being removed is not reset, as it is not starte
   await removing;
   assert.deepEqual((await log()).filter((e) => e.type === 'plugin.reset'), []);
 });
+
+test("fix pass: a code plugin removed and installed again with the same files starts again at once; different files wait for a restart", async () => {
+  const { host } = await hostKit();
+  const code = (/** @type {string} */ version, /** @type {string} */ word) => files({
+    'annai-plugin.json': JSON.stringify({ id: 'tides', name: 'Tides', version, api: 1, entry: 'index.js' }),
+    'index.js': `export function activate(annai) { return annai.tools.register({ name: 'tide_times', description: 'Tides.', input: { type: 'object' }, run: () => '${word}' }); }`,
+  });
+  await host.install(code('1.0.0', 'low'));
+  await host.start('tides');
+  await host.uninstall('tides');
+  assert.equal(host.needsRestart('tides'), false);
+  await host.install(code('1.0.0', 'low'));
+  assert.equal(host.needsRestart('tides'), false, 'the bytes the browser has are these');
+  await host.start('tides');
+  assert.ok(host.active.has('tides'));
+  await host.install(code('1.0.1', 'high'));
+  assert.equal(host.needsRestart('tides'), true, 'new code runs from the next start');
+  await host.install(code('1.0.0', 'low'));
+  assert.equal(host.needsRestart('tides'), false, 'back to the bytes that ran: no restart needed');
+});
