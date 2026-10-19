@@ -439,3 +439,32 @@ test('a transcript ends with a final piece even when its pieces said it all (rev
   assert.deepEqual(events.map(({ type, text, final }) => [type, text, final]), [['said', 'Hi ', false], ['said', 'there.', false], ['said', '', true], ['heard', 'Hello.', true]]);
   driver.close();
 });
+
+test("told how much of the turn was heard (playedMs, K5's), it truncates there, item by item; told nothing, by the clock (review)", async () => {
+  const { driver, sent, events, say } = await bare();
+  driver.text('Tell me about Bixby Bridge.');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(voice(400)) });
+  say({ type: 'response.output_audio.delta', item_id: 'i2', delta: toBase64(voice(600)) });
+  driver.text('<from_kokoro>It opened in 1932.</from_kokoro>', { interrupt: true, playedMs: 700 });
+  assert.deepEqual(sent.filter((m) => m.type === 'conversation.item.truncate').map((m) => [m.item_id, m.audio_end_ms]), [['i2', 300]], 'the first item was heard whole');
+  say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', output: [] } });
+  say({ type: 'response.created', response: { id: 'r2' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i3', delta: toBase64(voice(1000)) });
+  say({ type: 'response.done', response: { id: 'r2', status: 'completed', output: [] } });
+  await sleep(60);
+  // The player started late: it says 20 ms, where the clock would say more.
+  driver.activity('start', { playedMs: 20 });
+  assert.deepEqual(sent.filter((m) => m.type === 'conversation.item.truncate').map((m) => [m.item_id, m.audio_end_ms]).at(-1), ['i3', 20]);
+  assert.deepEqual(events.filter((e) => e.type === 'turn').map((e) => e.end), ['interrupted', 'interrupted']);
+  // The voice played out by the clock, and annai's player still says only part of it was heard: truncated there, the turn ended once.
+  driver.activity('end');
+  say({ type: 'response.created', response: { id: 'r3' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i4', delta: toBase64(voice(30)) });
+  say({ type: 'response.done', response: { id: 'r3', status: 'completed', output: [] } });
+  await sleep(80);
+  driver.activity('start', { playedMs: 10 });
+  assert.deepEqual(sent.filter((m) => m.type === 'conversation.item.truncate').map((m) => [m.item_id, m.audio_end_ms]).at(-1), ['i4', 10]);
+  assert.deepEqual(events.filter((e) => e.type === 'turn').map((e) => e.end), ['interrupted', 'interrupted', 'complete']);
+  driver.close();
+});

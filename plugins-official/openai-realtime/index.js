@@ -12,11 +12,12 @@
  *   user's audio), so the cost is the same. Koe's voice comes back as 24 kHz PCM. The tunables input and output
  *   choose (pcmu, pcma, pcm16), for the device check that compares them in a noisy car;
  * - turns are annai's (turn_detection null): its detector's cut commits the audio and asks for a response;
- * - a response is made faster than it plays: annai plays it as it comes, so this reckons what has been heard by
- *   the clock, and the turn is complete when playing it would end, as Gemini's is. A cut-in cancels the response
- *   still being made and truncates what wasn't heard;
+ * - a response is made faster than it plays: annai plays it as it comes, and the turn is complete when playing it
+ *   would end, as Gemini's is. A cut-in cancels the response still being made and truncates what wasn't heard,
+ *   where annai's player says it stopped (playedMs), else by the clock;
  * - a tool's answer starts no response unless one is asked for (`silent` asks for none); while a response is being
- *   made, what annai sends next waits for it to end, as OpenAI takes one response at a time;
+ *   made, what annai sends next waits for it to end, as OpenAI takes one response at a time; a response.create
+ *   OpenAI refuses (its error names the create's event_id) ends that turn, and what waited goes;
  * - a session lasts at most an hour, with no handle to resume it: after renewMinutes, a goaway asks annai for a
  *   fresh one;
  * - usage comes with response.done, by modality, cached tokens apart.
@@ -177,9 +178,10 @@ export function activate(annai) {
       const out = (m) => { held.push(m); flush(); };
       const respond = () => out({ type: 'response.create' });
       // Koe's voice as annai plays it, back to back as it comes: each item's start and length, and when all of it ends.
-      /** @type {{ id: string, at: number, ms: number }[]} */
+      /** r: the response it came in, counted. @type {{ id: string, at: number, ms: number, r: number }[]} */
       let items = [];
       let clock = 0;
+      let responses = 0;
       /** Cancels sent whose response hasn't ended: that turn has ended as interrupted already. */
       let cuts = 0;
       /** Turns that end when their voice would have played. @type {Set<any>} */
@@ -209,21 +211,33 @@ export function activate(annai) {
         }
         emit({ type: 'tool', id, name: String(name ?? ''), input });
       };
-      /** Cuts off Koe's turn, if one is going on: the response being made is cancelled, and what wasn't heard truncated. */
-      const cut = () => {
+      /**
+       * Cuts off Koe's turn, if one is going on: the response being made is cancelled, and what wasn't heard truncated, where
+       * annai's player says it stopped (playedMs: of the turn it plays, the newest response's items in order), else by the clock.
+       * @param {number} [playedMs]
+       */
+      const cut = (playedMs) => {
         const now = Date.now();
         const making = responding && !cuts;
-        if (!making && clock <= now) return;
+        const live = making || clock > now || ending.size > 0;
+        if (!live && playedMs === undefined) return;
         if (making) {
           send({ type: 'response.cancel' });
           cuts++;
         }
-        for (const it of items) if (now < it.at + it.ms) send({ type: 'conversation.item.truncate', item_id: it.id, content_index: 0, audio_end_ms: Math.max(0, Math.floor(now - it.at)) });
+        const last = items.at(-1)?.r;
+        let left = playedMs ?? 0;
+        for (const it of items) {
+          const told = playedMs !== undefined && it.r === last;
+          const heard = told ? left : now - it.at;
+          if (told) left -= it.ms;
+          if (heard < it.ms) send({ type: 'conversation.item.truncate', item_id: it.id, content_index: 0, audio_end_ms: Math.max(0, Math.floor(heard)) });
+        }
         items = [];
         clock = now;
         for (const x of ending) clearTimeout(x);
         ending.clear();
-        emit({ type: 'turn', end: 'interrupted' });
+        if (live) emit({ type: 'turn', end: 'interrupted' });
       };
       /** The response is done: its tools, its usage, and its turn's end. @param {any} r */
       const done = (r) => {
@@ -285,6 +299,7 @@ export function activate(annai) {
           }
           case 'response.created':
             pending = '';
+            responses++;
             break;
           case 'response.output_audio.delta': {
             if (cuts) break; // the cancelled answer's, on its way before the cut: never heard
@@ -294,7 +309,7 @@ export function activate(annai) {
             const now = Date.now();
             const start = Math.max(now, clock);
             clock = start + ms;
-            if (items.at(-1)?.id !== m.item_id) items = [...items.filter((x) => x.at + x.ms > now), { id: m.item_id, at: start, ms: 0 }]; // the ones played, let go
+            if (items.at(-1)?.id !== m.item_id) items = [...items.filter((x) => x.at + x.ms > now), { id: m.item_id, at: start, ms: 0, r: responses }]; // the ones played, let go
             /** @type {{ ms: number }} */ (items.at(-1)).ms += ms;
             emit({ type: 'audio', data: pcm });
             break;
@@ -343,9 +358,9 @@ export function activate(annai) {
           out({ type: 'input_audio_buffer.append', audio: base64.encode(encode ? encode(pcm) : new Uint8Array(pcm.buffer, 0, pcm.byteLength)) });
         },
         // A start cuts Koe off, as her voice is playing; the end commits what was said and asks for her answer.
-        activity: (/** @type {'start' | 'end'} */ edge) => {
+        activity: (/** @type {'start' | 'end'} */ edge, /** @type {{ playedMs?: number }} */ o = {}) => {
           if (edge === 'start') {
-            cut();
+            cut(o.playedMs);
             out({ type: 'input_audio_buffer.clear' });
           } else {
             out({ type: 'input_audio_buffer.commit' });
@@ -353,8 +368,8 @@ export function activate(annai) {
           }
         },
         // An immediate note cuts Koe off first; without interrupt, a text turn waits for the answer being made.
-        text: (/** @type {string} */ text, /** @type {{ interrupt?: boolean }} */ o = {}) => {
-          if (o.interrupt) cut();
+        text: (/** @type {string} */ text, /** @type {{ interrupt?: boolean, playedMs?: number }} */ o = {}) => {
+          if (o.interrupt) cut(o.playedMs);
           out({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } });
           respond();
         },
@@ -364,7 +379,7 @@ export function activate(annai) {
           out({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: id, output } });
           if (!o.silent) respond();
         },
-        cancel: cut,
+        cancel: () => cut(),
         close: () => {
           clearTimeout(renew);
           for (const x of ending) clearTimeout(x);

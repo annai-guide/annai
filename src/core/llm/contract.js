@@ -257,16 +257,17 @@ export function safeId(id) {
  * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what it sends and takes, preferred first (tunables input, output pick, K6)
  * @property {(c: SpeechSpec) => { url: string, protocols?: string[] }} [open]  a session's address and subprotocols
  * @property {(socket: LiveSocket, c: { endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, tunables: Record<string, any>,
- *   setup: LiveSetup, emit: (e: LiveEvent) => void }) => LiveDriver} [attach]
+ *   setup: LiveSetup, emit: (e: LiveEvent) => void }) => LiveDriver} [attach]  its ready may fail with a ProviderError saying why (K6); audio both ways is 16-bit PCM at the formats' rates
  * @property {(code: number, reason: string) => ErrorKind | null} [classifyClose]
  * @property {(code: number, reason: string, tunables: Record<string, any>) => Record<string, any> | null} [reopen]  tunables to open with once more, before ready
  * @typedef {{ format: 'pcm16' | 'pcmu' | 'pcma', rate: number }} AudioFormat
  * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat }} LiveSetup  resume: a handle
  * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket  on: set as it attaches
- * @typedef {{ ready: Promise<void>, audio(chunk: Uint8Array): void, activity(edge: 'start' | 'end'): void, text(t: string, o?: { interrupt?: boolean }): void,
+ * @typedef {{ ready: Promise<void>, audio(chunk: Uint8Array): void, activity(edge: 'start' | 'end', o?: { playedMs?: number }): void, text(t: string, o?: { interrupt?: boolean, playedMs?: number }): void,
  *   image(i: { mediaType: string, data: string }): void, answer(id: string, name: string, output: string, o?: { silent?: boolean }): void,
  *   cancel?(): void, close?(): void }} LiveDriver
- *   ready: the setup was taken (a ProviderError: why not); audio: 16-bit PCM at audioIn's rate; image: base64; silent: no more speech for that answer
+ *   ready: the setup was taken; audio: 16-bit PCM in audioIn; image: base64; silent: no more speech for that answer; playedMs: when the user or a
+ *   note cuts Koe off, how much of its turn was heard (a protocol may cut its record of the turn there)
  * @typedef {{ type: 'audio', data: Uint8Array } | { type: 'heard' | 'said', text: string, final?: boolean } | { type: 'tool', id: string, name: string, input: any }
  *   | { type: 'turn', end: 'complete' | 'interrupted' } | { type: 'usage', usage: Partial<Usage> } | { type: 'resume', handle: string }
  *   | { type: 'goaway', ms: number }} LiveEvent  audio: 16-bit PCM in audioOut; heard, said: transcripts in pieces; usage: a turn's
