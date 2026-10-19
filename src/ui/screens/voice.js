@@ -1,7 +1,7 @@
 import { h, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { voiceSettings } from '../../core/voice/settings.js';
-import { modelOf } from '../../core/llm/config.js';
+import { modelOf, abilityOf, providerOf, KOE_ROLES } from '../../core/llm/config.js';
 import { SAMPLE, speechProblem } from '../speech-check.js';
 import { whereHeard, whereSaid } from '../../core/voice/where.js';
 
@@ -42,6 +42,11 @@ export async function renderVoice(ctx) {
   const silence = h('input', { id: 'voice-silence', type: 'number', min: '2', max: '60', step: '1', value: String(s.silenceSeconds) });
   const firstWords = h('input', { id: 'voice-first-words', type: 'number', min: '5', max: '120', step: '1', value: String(s.firstWordsSeconds) });
   const clips = savedCheck('Keep voice clips', s.keepClips, (on) => save({ keepClips: on }));
+  // Koe live (K5): where a live session's audio goes, said plainly; its quiet spell, and whether speaking cuts her off.
+  const live = [...new Set(KOE_ROLES.flatMap((r) => cfg.roles[r]?.models ?? []).filter((/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime')
+    .map((/** @type {string} */ id) => providerOf(cfg.providers[cfg.models[id].provider]).name))];
+  const closeAfter = h('input', { id: 'voice-close-after', type: 'number', min: '10', max: '300', step: '1', value: String(s.closeAfterSeconds) });
+  const bargeIn = savedCheck('Cut her off by speaking', s.bargeIn, (on) => save({ bargeIn: on }));
 
   const sayStatus = h('p', { class: 'sub', role: 'status' });
   const sayButton = h('button', {
@@ -139,6 +144,11 @@ export async function renderVoice(ctx) {
       clips.el,
       h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' }),
       h('p', { class: 'sub', text: formats })),
+    section('Live voice',
+      h('p', { class: 'sub', text: `While a live session is open, what you say goes straight to ${live.join(' or ') || 'the live model\u2019s provider'} as audio, only while someone speaks; the chip says "Listening live". A session opens when you tap Shiori or type, or when a reminder or Kokoro's note needs saying, and closes after the quiet below, when voice goes off, or when annai leaves the screen.${live.length ? '' : ' Put a live voice model, such as Gemini Live, in Koe for talking (Settings → Models) to use one.'}` }),
+      savedField('Close a live session after (seconds of quiet)', closeAfter, () => numberIn(closeAfter, 10, 300, 'Close after 10 to 300 seconds of quiet.', { whole: true, need: true }), (n) => save({ closeAfterSeconds: n })),
+      bargeIn.el,
+      h('p', { class: 'sub', text: 'Off: only a tap cuts her off, for a car whose speakers echo her voice back.' })),
     section('Where your voice goes',
       h('p', { class: 'sub' }, 'What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to ', h('a', { href: '#/models' }, 'Settings → Models'), '.'),
       h('h3', { class: 'section', text: 'What you say' }), heardWhere,

@@ -6,7 +6,8 @@ const SETTINGS = /** @type {const} */ ([['auto', 'Auto'], ['on', 'On'], ['off', 
 /**
  * The voice chip (spec §10.5): what voice is now ("Voice auto · off", "Voice on · car audio"),
  * always one tap away; a tap shows Auto, On and Off. The three are drawn only while shown, so
- * the dock adds no words to the screens it sits on.
+ * the dock adds no words to the screens it sits on. While a live session's microphone is open it
+ * says so plainly, "Listening live" (K5: what is said goes to the provider as it is said).
  * @param {any} ctx
  */
 export function voiceChip(ctx) {
@@ -40,8 +41,19 @@ export function voiceChip(ctx) {
       chip.focus();
     }
   });
-  const off = voice.onChange((/** @type {import('../core/voice/mode.js').VoiceMode} */ m) => { chip.textContent = chipText(m); });
+  /** @type {string | null} 'listening': a live session's microphone is open; 'open': a session is open for typing */
+  let live = ctx.agent?.live?.listening ? 'listening' : ctx.agent?.live?.state === 'open' ? 'open' : null;
+  const say = () => {
+    chip.textContent = live === 'listening' ? 'Listening live' : `${chipText(voice.mode)}${live ? ' · live' : ''}`;
+    chip.classList.toggle('listening', live === 'listening');
+  };
+  say();
+  const off = voice.onChange(say);
+  const offLive = ctx.agent?.on?.('halves', (/** @type {{ live?: string | null }} */ x) => {
+    live = x.live ?? null;
+    say();
+  });
   const el = h('div', { class: 'voice-chip-wrap' }, chip, menu);
   // dispose: the dock is remade; an open menu's listener for a tap elsewhere goes with it.
-  return { el, dispose: () => { close(); off(); } };
+  return { el, dispose: () => { close(); off(); offLive?.(); } };
 }
