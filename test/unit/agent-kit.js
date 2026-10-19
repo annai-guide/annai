@@ -54,7 +54,7 @@ export function fakeCodec(formats) {
  * kept in `requests`.
  * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string },
- *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[] } }} [opts]
+ *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> } }} [opts]
  *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
@@ -92,7 +92,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.roles.main.models.push(`m-${i}`);
   });
   if (koe?.type) {
-    add('pv-koe', 'm-koe', 'Koe', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.type) ? { script: koe.type } : koe.type }, { providerId: 'model-koe', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'] });
+    add('pv-koe', 'm-koe', 'Koe', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.type) ? { script: koe.type } : koe.type }, { providerId: 'model-koe', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'], ...(koe.model ?? {}) });
     config.roles['koe-type'] = { models: ['m-koe'], level: 'off' };
   }
   if (koe?.talk) {

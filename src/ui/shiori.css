@@ -111,7 +111,8 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
    while voice is on, the dock grows, and never moves. */
 .voice-row { display: flex; justify-content: center; align-items: center; gap: 2px; max-width: 560px; margin: 2px auto 0; flex-wrap: wrap; }
 .voice-row > :not([hidden]):not(:empty) ~ :not([hidden]):not(:empty) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
-.voice-row .voice-chip-wrap, .voice-row .plugin-chips { display: inline-flex; align-items: center; gap: 4px; }
+.voice-row .voice-chip-wrap, .voice-row .plugin-chips, .voice-row .halves-sign { display: inline-flex; align-items: center; gap: 4px; }
+.voice-row .halves-sign[hidden] { display: none; }
 .voice-row .chip { border: 0; background: none; min-height: 32px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); }
 .ib-icon { font-size: 22px; line-height: 1; }
 .voice-row .chip:hover { color: var(--ink); }

@@ -136,7 +136,10 @@ export class Halves {
     // Koe's quick tools are Shiori's own, found by name: Kokoro's (timers, recall), else the plugins' (reads, places, light changes).
     const find = (/** @type {string} */ name) => this.kokoro.loopTools().find((t) => t.name === name) ?? c.registry.entries('tool').find((e) => e.item?.name === name)?.item;
     this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel)]);
-    for (const kind of /** @type {const} */ (['event', 'notice'])) for (const a of [this.kokoro, this.koe]) a.on(kind, (x) => this.#emit(kind, x));
+    for (const a of [this.kokoro, this.koe]) {
+      a.on('event', (x) => this.#emit('event', x));
+      a.on('notice', (n) => this.#notice(n));
+    }
     this.kokoro.on('open', (x) => this.#emit('open', x));
     this.kokoro.on('state', (s) => this.#stateOf(this.kokoro, s));
     this.koe.on('state', (s) => this.#stateOf(this.koe, s));
@@ -190,6 +193,17 @@ export class Halves {
       }
     }
   }
+
+  /** A card, once: both halves stopped by the same budget say it once. @param {any} n */
+  #notice(n) {
+    const key = `${n.title}\n${n.body}`;
+    const now = Date.now();
+    if (this.#lastCard.key === key && now - this.#lastCard.at < 5000) return;
+    this.#lastCard = { key, at: now };
+    this.#emit('notice', n);
+  }
+
+  #lastCard = { key: '', at: 0 };
 
   /** A half's state: the dock follows the half that talks; Kokoro's working shows as the sign. @param {Agent} half @param {any} s */
   #stateOf(half, s) {
