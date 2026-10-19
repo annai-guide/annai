@@ -33,7 +33,7 @@ const BLOCKS = Object.freeze({
 });
 /** How long Koe rests after its whole list failed, at least. */
 export const KOE_REST_MS = 60_000;
-const KOKORO_ONLY = ['personality', 'recap', 'restart'];
+const KOKORO_ONLY = ['personality', 'restart'];
 /** The user's own wakes, past the budgets. */
 const THEIRS = ['user', 'choice', 'file', 'live'];
 /** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
@@ -350,16 +350,17 @@ export class Halves {
     this.send(option);
   }
 
-  /** Both halves get it while Koe talks, budgets checked once, its reminders with Koe (plan decision 16). @param {Wake} w @returns {Promise<void>} */
+  /** Both halves get it while Koe talks, budgets checked once, its reminders with Koe (plan decision 16); asked to hear her, Koe alone. @param {Wake} w @returns {Promise<void>} */
   wake(w) {
     if (w.scope && w.scope !== (this.kokoro.target ?? ME)) return this.kokoro.wake(w);
     this.#route(async () => {
       await this.#refresh();
       if (this.koeState !== 'text' || KOKORO_ONLY.includes(w.kind)) return void (await this.kokoro.wake(w));
-      if (!THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
+      if (!w.aloud && !THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
       this.#koeOpen();
       this.koe.enqueue(w);
-      this.#wakeKokoro({ ...w, fallbacks: [] });
+      // Asked to hear her (the recap told aloud), the half with the voice tells it; Kokoro hears it told.
+      if (!w.aloud) this.#wakeKokoro({ ...w, fallbacks: [] });
     });
     return Promise.resolve();
   }
