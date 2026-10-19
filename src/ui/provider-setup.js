@@ -4,6 +4,7 @@ import { platform, isStandalone } from './platform.js';
 import { expectReturn, returnFor } from './returns.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
+import { officialPlugins } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 
 /**
@@ -62,9 +63,51 @@ export function connection(ctx, pluginId, provider) {
   return { panel, keyField: !panel || setupOf(ctx.registry, pluginId)?.keyField !== false };
 }
 
+/** @type {{ id: string, name: string, featured: string } | null} the catalog's featured provider, once ready in this run */
+let featured = null;
+
+/**
+ * The featured provider (only annai's catalog marks one), its plugin installed in the background while no
+ * provider exists, so its sign-in is there before the tap (spec §9.8); annai's own, running already, is used
+ * as it is (a sign-in coming back may be adding with it). null: none, or a provider exists. @param {any} ctx
+ */
+export async function readyFeatured(ctx) {
+  const entry = featured ?? (await officialPlugins().catch(() => {
+    throw new Error('Connect to the internet to sign in.');
+  })).find((p) => typeof p.featured === 'string' && p.featured);
+  if (!entry) return null;
+  await ctx.llm.ready;
+  const running = (await ctx.plugins.installed())[entry.id]?.source === 'official' && setupOf(ctx.registry, entry.id);
+  if (!running && !(await ctx.llm.prepareStart(entry.id))) return null;
+  featured = { id: entry.id, name: entry.name, featured: String(entry.featured) };
+  return featured;
+}
+
 /** The plugin a sign-in is being finished for, by name, while it is. @type {string | null} */
 let finishing = null;
 export const returning = () => finishing;
+
+/** The one-tap start: the featured provider's panel; until it is in, a disabled button, never a link without an address. @param {any} ctx */
+export function featuredStart(ctx) {
+  const slot = h('div', {});
+  const status = h('p', { class: 'sub', role: 'status', text: finishing ? `Finishing the sign-in with ${finishing}…` : '' });
+  /** @param {{ id: string, name: string }} f */
+  const show = (f) => {
+    const panel = drawPanel(ctx, f.id, null);
+    slot.replaceChildren(...(panel ? [panel] : []));
+    if (!panel) status.textContent = `${f.name}'s sign-in couldn't be shown. Add it from Add a provider instead.`;
+  };
+  const section = h('section', { class: 'panel', 'aria-label': 'Sign in' }, h('h2', { class: 'section', text: 'The quickest start' }), slot, status);
+  if (featured && setupOf(ctx.registry, featured.id)?.panel) show(featured);
+  else {
+    slot.append(h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', disabled: true }, 'Getting the sign-in ready…')));
+    readyFeatured(ctx).then((f) => (f ? show(f) : section.remove()), (e) => {
+      slot.replaceChildren();
+      status.textContent = messageOf(e);
+    });
+  }
+  return section;
+}
 
 /**
  * When this page load is annai's address coming back to the plugin that expected it (decision 16): the

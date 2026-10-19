@@ -27,8 +27,6 @@ const KIND_NAMES = { providers: 'Model providers', speech: 'Voices and transcrip
 const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice' };
 /** Where Add was opened from (?from=), for its crumb; Plugins otherwise. @type {Record<string, [string, string]>} */
 const FROM = { models: ['#/models', '← Models'], experimental: ['#/experimental', '← Experimental'] };
-/** Another address is the catch-all: browsing, it comes after the providers annai knows. */
-const ANOTHER = 'provider-another-address';
 const NOT_INSTALLABLE = "That file isn't something annai can install";
 
 /** An MCP server, added on its own screen: a fixed row whose id no manifest can have. @type {Row} */
@@ -139,7 +137,8 @@ export async function renderAdd(ctx, route) {
   for (const p of Object.values(cfg?.providers ?? {})) configured[p.plugin] = (configured[p.plugin] ?? 0) + 1;
   const rows = addRows(catalog, installed, configured);
   const byId = new Map(rows.map((r) => [r.facts.id, r]));
-  const last = (/** @type {{ entry: Facts }} */ x) => (x.entry.id === ANOTHER || x.entry === MCP_ROW.facts ? 1 : 0);
+  // A provider for any address (catchAll), and the MCP row, come after the ones annai knows, browsing.
+  const last = (/** @type {{ entry: Facts }} */ x) => (x.entry.catchAll || x.entry === MCP_ROW.facts ? 1 : 0);
   const redraw = () => view.update(); // after an install, the row it changed
   const view = finder({
     label: 'Search the catalog', entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },

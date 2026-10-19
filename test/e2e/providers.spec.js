@@ -62,7 +62,9 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   await expect(page.getByText('No providers yet. Add one below.')).toBeVisible();
   await expect(page.getByText('No models yet. Add one.')).toBeVisible();
   await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)"]);
-  expect(await installedIds(page)).toEqual([]);
+  // With no provider, Models offers the one-tap start again: only its provider's plugin, and what that needs, come back.
+  await expect(page.getByRole('region', { name: 'Sign in' }).getByRole('button', { name: 'Sign in with OpenRouter' })).toBeVisible({ timeout: 30_000 });
+  expect(await installedIds(page)).toEqual(['chat-completions', 'provider-openrouter', 'speech-openai']);
   expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toEqual([]);
 });
 

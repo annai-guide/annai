@@ -92,6 +92,22 @@ export function createLlm({
     if ((await plugins.installed())[plugin]) await plugins.uninstall(plugin);
     return prune(plugins, inUse(Object.values((await readConfig(ws)).providers)));
   };
+  /** @type {Promise<unknown>} adding and the featured start's install go one at a time: they share requirements */
+  let line = Promise.resolve();
+  /** @template T @param {() => Promise<T>} work @returns {Promise<T>} */
+  const queued = (work) => {
+    const run = line.then(work);
+    line = run.catch(() => {});
+    return run;
+  };
+  /** Removes annai's own provider plugins no provider comes from (the featured start's, once another is added), unless turned off. */
+  const tidy = async () => {
+    const cfg = await readConfig(ws);
+    for (const [id, s] of Object.entries(await plugins.installed())) {
+      if (s.source !== 'official' || s.enabled === false || Object.values(cfg.providers).some((p) => p.plugin === id)) continue;
+      if ((await plugins.manifestOf(id))?.provider) await drop(id);
+    }
+  };
   /** Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. */
   const sync = () => syncProviders({ ws }, providers());
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -146,23 +162,34 @@ export function createLlm({
     /**
      * Adds a provider (spec §9.8): its plugin and what it requires, the protocols of the abilities
      * that start on, then the provider with its models and one key: a function giving it is called once
-     * all that is in, so a sign-in's key is never lost to a failed install.
+     * all that is in, so a sign-in's key is never lost to a failed install. Then tidy().
      * @param {string} plugin @param {Omit<import('./providers.js').AddOptions, 'key'> & { key?: string | null | (() => Promise<string>), official?: boolean }} [o]
      *   official: it must be annai's own @returns {Promise<string>} the provider's id
      */
-    async addProvider(plugin, { official, key, ...o } = {}) {
+    addProvider: (plugin, { official, key, ...o } = {}) => queued(async () => {
       const had = (await plugins.installed())[plugin];
+      let id;
       try {
         const src = await service.installProvider(plugin, { official });
-        for (const [id, a] of Object.entries(src.provider.abilities)) if (o.abilities?.[id]?.on ?? a.on !== false) await ensure(a.type);
-        return await addProviderRecords({ ws, store }, src, { ...o, key: typeof key === 'function' ? await key() : key });
+        for (const [ability, a] of Object.entries(src.provider.abilities)) if (o.abilities?.[ability]?.on ?? a.on !== false) await ensure(a.type);
+        id = await addProviderRecords({ ws, store }, src, { ...o, key: typeof key === 'function' ? await key() : key });
       } catch (e) {
         // A failed add leaves no provider plugin it brought without a provider, nor what that alone required (fix pass).
         const cfg = await readConfig(ws).catch(() => null);
         if (!had && cfg && !Object.values(cfg.providers).some((p) => p.plugin === plugin)) await drop(plugin).catch(() => {});
         throw e;
       }
-    },
+      await tidy().catch((e) => console.warn("a provider plugin with no provider couldn't be removed", e));
+      return id;
+    }),
+    /**
+     * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
+     * tap, so one switched off stays off. @param {string} plugin @returns {Promise<import('./providers.js').ProviderSource | null>} null: a provider exists
+     */
+    prepareStart: (plugin) => queued(async () => {
+      if (Object.keys((await readConfig(ws)).providers).length) return null;
+      return service.installProvider(plugin, { official: true, tap: false });
+    }),
     /**
      * Removes a provider: its key, models and their places in roles (spec §4.9). The last provider
      * made from a plugin takes that plugin with it, then the official protocol plugins nothing needs
