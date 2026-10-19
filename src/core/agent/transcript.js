@@ -55,8 +55,12 @@ export class Transcript {
   #heard = new Map();
   /** The tool calls of the last assistant message: nothing but their results may follow it until they all have one. @type {string[]} */
   #last = [];
-  /** Lines that came while the last calls were open, added once they all have results (plan decision 3). @type {Part[][]} */
+  /** Lines that came while the last calls were open, added once they all have results (plan decision 3). @type {{ seq: number, parts: Part[] }[]} */
   #held = [];
+  /** The lines added since the last reply, by the entry each came from. @type {{ seq: number, parts: Part[] }[]} */
+  #since = [];
+  /** The entry being applied. */
+  #at = 0;
   /** Koe's notes as annai wrapped them: the only words in Koe's transcript that may carry the marker (security review). @type {WeakSet<Part>} */
   #wrapped = new WeakSet();
 
@@ -76,12 +80,14 @@ export class Transcript {
     const d = e.data ?? {};
     const texts = { ...d, ...r.texts };
     const koe = this.half === 'koe';
+    this.#at = e.seq;
     if (e.type === 'compaction') {
       this.messages = [];
       this.#calls.clear();
       this.#answered.clear();
       this.#last = [];
       this.#held = [];
+      this.#since = [];
       this.compaction = e.seq;
       this.from = e.seq;
       // Koe starts again after it with its window: Kokoro, which keeps the whole conversation, has the summary.
@@ -114,8 +120,16 @@ export class Transcript {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
+      // What the other half wrote while this reply was being made wasn't in its request: it follows the reply
+      // (after its calls' results), live and from the log alike. One half's conversation is as it was.
+      const to = this.half !== 'one' && typeof d.context?.to === 'number' ? d.context.to : Infinity;
+      const late = this.#since.filter((x) => x.seq > to);
+      if (late.length) this.#unadd(late.flatMap((x) => x.parts));
+      this.#since = [];
       if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
+      this.#held.push(...late);
+      this.#flushHeld();
       this.unanswered = false;
     } else if (e.type === 'note') {
       // A note from the other half: Kokoro's block, or Koe's marked text.
@@ -186,8 +200,7 @@ export class Transcript {
       this.#answered.add(d.id);
       const heard = (Array.isArray(d.heard) ? d.heard : []).map((/** @type {string} */ id) => this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id }));
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
-      // The last calls all answered: what came meanwhile follows their results.
-      if (!this.#waitsForResults()) for (const parts of this.#held.splice(0)) this.#add('user', parts);
+      this.#flushHeld();
     } else {
       return;
     }
@@ -208,8 +221,24 @@ export class Transcript {
    * @param {Part[]} parts
    */
   #line(parts) {
-    if (this.#waitsForResults()) this.#held.push(parts);
-    else this.#add('user', parts);
+    if (this.#waitsForResults()) this.#held.push({ seq: this.#at, parts });
+    else this.#since.push({ seq: this.#at, parts: this.#add('user', parts) });
+  }
+
+  /** The last calls all answered (or none): what came meanwhile follows their results. */
+  #flushHeld() {
+    if (this.#waitsForResults()) return;
+    for (const x of this.#held.splice(0)) this.#since.push({ seq: x.seq, parts: this.#add('user', x.parts) });
+  }
+
+  /** Takes lines back out of the last message, to add them again after the reply. @param {Part[]} parts */
+  #unadd(parts) {
+    const last = this.messages.at(-1);
+    if (last?.role !== 'user') return;
+    const gone = new Set(parts);
+    const left = last.parts.filter((p) => !gone.has(p));
+    if (left.length) this.messages[this.messages.length - 1] = { role: 'user', parts: left };
+    else this.messages.pop();
   }
 
   /**
@@ -252,12 +281,13 @@ export class Transcript {
     return p;
   }
 
-  /** @param {'user' | 'assistant'} role @param {Part[]} given */
+  /** @param {'user' | 'assistant'} role @param {Part[]} given @returns {Part[]} the parts as added */
   #add(role, given) {
     const parts = this.half === 'koe' && role === 'user' ? given.map((p) => this.#unmarked(p)) : given;
     const last = this.messages.at(-1);
     if (last?.role === role) this.messages[this.messages.length - 1] = { role, parts: [...last.parts, ...parts] };
     else this.messages.push({ role, parts });
+    return parts;
   }
 
   /**

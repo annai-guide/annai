@@ -166,6 +166,24 @@ test('a note that arrives while tool calls are open waits for their results, liv
   assert.deepEqual((await Transcript.load(store, SCOPE, { half: 'koe', nonce: NONCE })).open(), []);
 });
 
+test('a line the other half wrote while a reply was being made follows that reply, live and from the log alike', async () => {
+  const store = createMemoryStore();
+  const { kokoro, log } = both(store);
+  const w = await log({ type: 'wake', actor: 'system', data: { id: 'w1', half: 'kokoro', reasons: [{ kind: 'trigger', text: 'Arrived at Nepenthe' }] } });
+  // Koe notes something while Kokoro's call runs: the reply that comes back was made without it.
+  await log({ type: 'note', actor: 'shiori', data: { id: 'n1', from: 'koe', mode: 'append', why: 'tool' }, texts: [['text', 'They are hungry.']] });
+  await modelTrace(store, SCOPE).turn({ ...turnInfo(TALK_TAG, 'w1'), context: { from: w.seq, to: w.seq } }, '', '', [{ type: 'tool_call', id: 'c', name: 'nearby', input: {} }]);
+  const [t] = await store.tx(['events'], 'readonly', (x) => x.listEvents(SCOPE, { types: ['model.turn'] }));
+  kokoro.apply(t, await resolveEvent(store, t));
+  await log({ type: 'tool.result', actor: 'system', data: { id: 'c', name: 'nearby', ok: true, ms: 0, half: 'kokoro' }, texts: [['content', 'Café Kevah']] });
+  assert.deepEqual(texts(kokoro), [
+    ['user', '[annai] "Arrived at Nepenthe"'],
+    ['assistant', 'call nearby'],
+    ['user', 'result c: Café Kevah', '[Koe notes] "They are hungry."'],
+  ]);
+  assert.deepEqual((await Transcript.load(store, SCOPE, { half: 'kokoro' })).messages, kokoro.messages);
+});
+
 test("a conversation from before the split reads exactly as it did; Kokoro's rules differ only in quoting annai's lines; Koe knows what was said", async () => {
   const store = createMemoryStore();
   const one = new Transcript();
