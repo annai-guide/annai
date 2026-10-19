@@ -239,3 +239,47 @@ test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a t
   assert.ok(k.sent['model-0'].some((/** @type {any} */ r) => userTexts(r).includes('[the user chose] "Dinner"')), 'Kokoro reads it, and woke for it');
   assert.equal(k.agent.tap(), 'typing', 'voice off, nobody talking: typing opens');
 });
+
+// Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.
+test('after a reload mid-turn, Kokoro reads by its two-half rules from its first turn, and only Kokoro takes up the restart: Koe speaks once', async () => {
+  const { Halves } = await import('../../src/core/agent/halves.js');
+  const { selfTools } = await import('../../src/core/agent/self-tools.js');
+  const { Transcript } = await import('../../src/core/agent/transcript.js');
+  const KOE2 = { rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: "I'm checking." } }, { name: 'tell_kokoro', input: { text: 'Is Nepenthe open now?' } }, { name: 'wait', input: { seconds: 600 } }] }, then: calls(['speak', { text: 'Here is what I found.' }]) },
+    { match: '.', reply: calls(['speak', { text: 'Back again.' }]) },
+  ] };
+  const KOKORO2 = { rules: [
+    { match: 'the user wrote', reply: { delayMs: 60_000, toolCalls: [{ name: 'tell_koe', input: { text: 'Open till 10.' } }, { name: 'sleep', input: {} }] } },
+    { match: '.', reply: calls(['tell_koe', { text: 'After the restart: open till 10.' }]) },
+  ] };
+  const k = await agentKit([KOKORO2], { koe: { type: KOE2 } });
+  const llm2 = { ...k.llm };
+  k.agent.send('Is Nepenthe open?');
+  await until(() => k.agent.koe.waiting, 3000);
+  await until(() => k.agent.kokoro.busy, 1000);
+  await new Promise((r) => setTimeout(r, 100));
+  // The page dies: nothing of the old halves writes again.
+  k.agent.leaving(true);
+  k.llm.call = () => new Promise(() => {});
+  const before = (await k.events()).length;
+  const fresh = new Halves({ store: k.store, ws: k.ws, llm: llm2, registry: k.registry, codec: k.codec, voice: null, timeZone: () => 'UTC', secondMs: 10 });
+  fresh.addLoopTools(selfTools(fresh.kokoro));
+  await fresh.open(k.trip);
+  await fresh.idle();
+  await new Promise((r) => setTimeout(r, 200));
+  await fresh.idle();
+  const after = (await k.events()).slice(before);
+  const restarts = after.filter((e) => e.type === 'wake' && e.data.reasons.some((/** @type {any} */ r) => r.kind === 'restart')).map((e) => e.data.half);
+  assert.deepEqual(restarts, ['kokoro'], 'Kokoro takes up the restart; Koe waits for its note');
+  assert.deepEqual(after.filter((e) => e.type === 'out.speak').map((e) => [e.data.half, e.data.text]), [['koe', 'Back again.']]);
+  const repaired = after.filter((e) => e.type === 'tool.result' && e.data.content === 'interrupted by app restart').map((e) => [e.data.name, e.data.half ?? '-']);
+  assert.deepEqual(repaired.sort(), [['tell_kokoro', 'koe'], ['wait', 'koe']].sort().filter((x) => repaired.some((y) => y[0] === x[0])), JSON.stringify(repaired));
+  assert.equal(fresh.kokoro.transcript.half, 'kokoro');
+  const first = k.sent['model-0'].at(-1);
+  assert.ok(first.system.includes('# Working behind Koe'), "Kokoro's first call after the reload has its two-half instructions");
+  assert.deepEqual(fresh.koe.transcript.open(), []);
+  assert.deepEqual(fresh.kokoro.transcript.open(), []);
+  assert.equal(JSON.stringify(fresh.koe.transcript.messages), JSON.stringify((await Transcript.load(k.store, k.trip, { half: 'koe', nonce: fresh.nonce })).messages));
+  assert.equal(JSON.stringify(fresh.kokoro.transcript.messages), JSON.stringify((await Transcript.load(k.store, k.trip, { half: 'kokoro' })).messages));
+});
