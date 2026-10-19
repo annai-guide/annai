@@ -297,3 +297,17 @@ test('a model that refuses the audio format it was sent gets the same request ag
   assert.equal((await call(u, { request: heard, speech })).reply.text, 'B.');
   assert.deepEqual(plain, [false, false]);
 });
+
+test("Koe fix pass 10: a rest past 10 minutes (a provider's day limit) is said plainly, with when it ends, on the model's line, and while it rests", async () => {
+  const t = setup([[{ error: 'rate', retryAfter: 18 * 3_600_000, message: 'You exceeded your current quota, please check your plan and billing details.' }], [{ text: 'B.' }]]);
+  const r = await call(t);
+  const until = new Date(1_000_000 + 18 * 3_600_000);
+  assert.match(String(r.attempts[0].error), /^its daily limit is used up; it rests until .+/);
+  assert.ok(String(r.attempts[0].error).includes(until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
+  assert.doesNotMatch(String(r.attempts[0].error), /billing/);
+  const again = await call(t);
+  assert.deepEqual(again.attempts.map((a) => [a.outcome, a.error]), [['benched', r.attempts[0].error], ['ok', undefined]]);
+  // A short rest keeps the provider's words.
+  const s = setup([[{ error: 'rate', retryAfter: 60_000, message: 'Slow down.' }], [{ text: 'B.' }]]);
+  assert.equal((await call(s)).attempts[0].error, 'Slow down.');
+});

@@ -27,18 +27,37 @@ export const NETWORK_RETRIES = Object.freeze([1000, 3000]);
 export class Bench {
   /** @type {Map<string, number>} */
   #until = new Map();
-  /** @param {string} id @param {number} ms */
-  bench(id, ms, now = Date.now()) {
+  /** Why a model rests, when that is worth saying while it does. @type {Map<string, string>} */
+  #why = new Map();
+  /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] */
+  bench(id, ms, now = Date.now(), why) {
     this.#until.set(id, Math.max(this.#until.get(id) ?? 0, now + ms));
+    if (why) this.#why.set(id, why);
+    else this.#why.delete(id);
   }
   /** @param {string} id */
   until(id) {
     return this.#until.get(id) ?? 0;
   }
   /** @param {string} id */
+  why(id) {
+    return this.#why.get(id);
+  }
+  /** @param {string} id */
   clear(id) {
     this.#until.delete(id);
+    this.#why.delete(id);
   }
+}
+
+/** A rest longer than this is a provider's day limit, said plainly (not in its billing words). */
+export const LONG_REST_MS = 10 * 60_000;
+
+/** A long rest in plain words, with the local time it ends. @param {number} until @param {number} now */
+export function restText(until, now) {
+  const end = new Date(until);
+  const time = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `its daily limit is used up; it rests until ${end.toDateString() === new Date(now).toDateString() ? time : `${end.toLocaleDateString([], { weekday: 'long' })} ${time}`}`;
 }
 
 /** Every model of a role failed. attempts says how; said is any text a reply had already given. */
@@ -179,7 +198,8 @@ export async function callRole(c) {
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
     const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
     if (skip || !model || !type || !pRec || !provider) {
-      attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0 });
+      const why = skip === 'benched' ? bench.why(id) : undefined;
+      attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}) });
       continue;
     }
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
@@ -255,7 +275,11 @@ export async function callRole(c) {
           await sleep(step.wait);
           continue;
         }
-        if (step.bench !== undefined) bench.bench(id, step.bench, now());
+        if (step.bench !== undefined) {
+          const long = err.kind === 'rate' && step.bench > LONG_REST_MS ? restText(now() + step.bench, now()) : undefined;
+          if (long) attempts[attempts.length - 1].error = long;
+          bench.bench(id, step.bench, now(), long);
+        }
         break;
       }
     }

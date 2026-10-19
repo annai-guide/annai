@@ -394,3 +394,14 @@ test('Fix pass 7: a message that fails to be routed goes to Kokoro, with a card,
   assert.ok((await k.events(['out.speak'])).some((e) => e.data.text === 'Got it.'));
   assert.ok(k.notices.some((/** @type {any} */ n) => /the settings could not be read/.test(n.body)), JSON.stringify(k.notices));
 });
+
+test("Fix pass 10: when Kokoro's model has used up its day, Koe hears it plainly, with when it rests until", async () => {
+  const k = await agentKit([[{ error: 'rate', retryAfter: 18 * 3_600_000, message: 'You exceeded your current quota, please check your plan and billing details.' }]], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: 'Open now?' }]) },
+  ] } } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const [failed] = (await k.events(['note'])).filter((e) => e.data.why === 'kokoro-failed');
+  assert.match(failed.data.text, /^Kokoro couldn't check: model-0: its daily limit is used up; it rests until .+\. Tell the user you couldn't check, and offer to try again\.$/);
+  assert.doesNotMatch(failed.data.text, /billing/);
+});

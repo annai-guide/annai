@@ -459,8 +459,10 @@ export class Halves {
     if (this.koeState !== 'text') return false;
     if (!this.#failTold) {
       this.#failTold = true;
-      const kind = e instanceof AllFailedError ? e.attempts.map((a) => a.outcome).find((o) => o !== 'benched' && o !== 'ok') : undefined;
-      const plain = kind ? explain(new ProviderError(/** @type {any} */ (kind), why)) : e instanceof AllFailedError ? 'its models are resting after errors.' : why;
+      const attempts = e instanceof AllFailedError ? e.attempts : [];
+      const rest = attempts.find((a) => a.error?.startsWith('its daily limit'));
+      const kind = attempts.map((a) => a.outcome).find((o) => o !== 'benched' && o !== 'ok');
+      const plain = rest ? `${rest.name}: ${rest.error}.` : kind ? explain(new ProviderError(/** @type {any} */ (kind), why)) : attempts.length ? 'its models are resting after errors.' : why;
       this.channel.send('kokoro', `Kokoro couldn't check: ${plain} Tell the user you couldn't check, and offer to try again.`, 'append', 'kokoro-failed').catch(() => {});
     }
     return true;
