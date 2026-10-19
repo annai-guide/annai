@@ -113,10 +113,12 @@ export function restartCard(ctx, name) {
  */
 export async function renderPluginInstall(ctx) {
   const p = pendingPackage();
-  const back = h('p', { class: 'crumbs' }, h('a', { href: '#/plugins' }, '← Plugins'));
+  // Back to the Add screen it was picked on, where installing from a file or an address starts.
+  const to = p?.back ?? '#/add';
+  const back = h('p', { class: 'crumbs' }, h('a', { href: to }, '← Add'));
   if (!p) {
     return h('div', { class: 'screen' }, back, h('h1', { class: 'title', text: 'Nothing to install' }),
-      h('p', {}, "There's nothing to install. ", h('a', { href: '#/plugins' }, 'Go back to Plugins.')));
+      h('p', {}, "There's nothing to install. ", h('a', { href: to }, 'Go back to Add.')));
   }
   const { pkg, from } = p;
   const what = pkg.kind === 'skill' ? 'A skill' : pkg.provider && !pkg.code ? 'A model provider · data only' : pkg.code ? 'A plugin' : 'A package without code';
@@ -149,7 +151,7 @@ export async function renderPluginInstall(ctx) {
       h('h2', { class: 'section', text: 'New in this version' }),
       h('ul', { class: 'brings' }, ...whatItBrings(pkg.replaces.added).map((t) => h('li', { text: t })))) : null,
     h('div', { class: 'acts' }, install,
-      h('button', { class: 'btn', type: 'button', onclick: () => { setPendingPackage(null); ctx.go('#/plugins'); } }, 'Cancel')));
+      h('button', { class: 'btn', type: 'button', onclick: () => { setPendingPackage(null); ctx.go(to); } }, 'Cancel')));
 }
 
 /** Installs the package on screen, then starts it; each step that fails says so. @param {any} ctx @param {HTMLButtonElement} button */
