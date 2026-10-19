@@ -18,15 +18,15 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "provides": {
         "endpoint-type": [
           "chat-completions"
         ]
       },
       "files": {
-        "annai-plugin.json": "7ddcdff92b786c5100dbe5162c1bb9a21207f50a611c6784919331fbb0684ed1",
-        "index.js": "323300c1342b0d01b06d3378f579fa48e8dd1b09b60f72a70cc928386e8e9114"
+        "annai-plugin.json": "63331a2b3c43458534005cdee92544e7a27abd0d69f6ebbf11055ed1d175867e",
+        "index.js": "9fe0ce60c029d89e55890b2946d9b21d4856064027484e346336db760bd58550"
       }
     },
     {
