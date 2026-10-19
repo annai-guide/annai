@@ -153,7 +153,7 @@ A photo is encoded at two points, each with its own settings: **ingest**, once, 
     - It is on by default, since the photo goes to that provider anyway; a switch on the endpoint turns it off.
     - **Every upload expires after 48 hours.** Anthropic and OpenAI let annai set that, and Gemini always does it. So nothing annai uploads outlives its use for long, even when annai's own data is lost. An expired id is simply uploaded again.
     - **Where a provider can't expire uploads** (OpenRouter today), annai deletes its own, which it names `annai-…`. It deletes one when compaction drops the photo. At each start, it also deletes any of its uploads there that is more than 48 hours old, found by name and age, so this works even after annai's data is lost.
-    - OpenRouter's documentation suggests uploading may need a management key, so uploads there are used only once the endpoint's Test shows they work (§9.8).
+    - OpenRouter's documentation suggests uploading may need a management key, so uploads there are used only once the provider's Test shows they work (§9.8).
     - The Anthropic Messages and OpenAI Responses types upload.
     - Storing uploads costs nothing at Anthropic and Gemini; OpenAI lists no price for it (checked 2026-10-15, and again 2026-10-18).
 - **A closer look.**
@@ -199,6 +199,8 @@ Removing a trip deletes it from the device and frees its space at once. There is
   - The server must allow browser access (CORS).
   - Auth is a URL plus headers or a bearer token. OAuth for MCP comes later.
 - **Code plugins.** Full-trust ES modules with the same powers as built-ins. The install screen says so plainly: "This plugin gets full access to your trips and API keys."
+- **Model providers** (provider plugins). One provider: its address, how its key is sent, its abilities (chat, transcription, voice, each through a protocol plugin's endpoint type), its models with prices and capabilities, the roles it suggests, its key page and notes. Most are data only, a `provider` description in the manifest and no `entry` (§9.1).
+- **Data-only plugins** (a manifest with no `entry`: a provider, skills, personalities) can't run anything, so their install screen has no full-access warning. A provider's says where a key given to it is sent, by origin: "Keys you give this provider are sent to https://api.openai.com."
 
 ### 5.2 Package and manifest
 
@@ -206,8 +208,13 @@ A plugin is a folder, zip or URL containing `annai-plugin.json`:
 - `id`, `name`, `version`, `description`, `author`, `homepage`
 - `api`: the interface major version
 - `entry`: an optional ES module
-- `skills[]`, `personalities[]`, `templates`
+- `skills[]`, `personalities[]`
+- `provider`: a model provider's description (§9.1)
+- `requires`: the plugins it needs, `[{ id, version: "^N", homepage? }]` (at most 10); `^N` is the same major, which for a protocol plugin is its interface version. A package can't require itself.
+- `category`: its kind in the catalog: `providers`, `speech`, `backup`, `tools`, `skills` or `developer`; derived when absent
+- `keywords`: other names it is searched by, as shown ("LM Studio")
 - `settings`: a JSON Schema, from which we render a settings form automatically
+- `templates` (endpoint templates) is refused: "Endpoint templates were replaced by `provider`".
 
 ### 5.3 Installing and loading
 
@@ -218,6 +225,11 @@ A plugin is a folder, zip or URL containing `annai-plugin.json`:
 - **Updates are checked for, and offered.** annai compares the official plugins it has installed with its catalog at each start, when it comes back to the screen (at most every 15 minutes), once a day while it stays open, and on Check now in Settings → Updates. Plugins installed from a URL are checked at their address at each start, on coming back at most once a day (so a third party's server isn't asked at every return), and on Check now. Nothing is checked while offline. A newer version is offered on a card (once, not at every return), in Settings → Updates and in Settings → Plugins; nothing changes until the user taps Update, and new code that replaces code already running runs from the next start. Plugins installed from a file have nowhere to check.
 - **Choosing an unavailable type installs its plugin.** When a user picks an endpoint type, search provider or speech provider whose plugin isn't installed, it installs automatically.
 - **Plugins can add new types,** which become selectable once the plugin is installed.
+- **What a plugin requires is installed with it.** Official requirements come from the catalog, hash-checked, with no question; a third-party one must be installed first, from its own address, and the install stops and names it (with its homepage). All or nothing: when a download fails or the connection drops, nothing stays half-installed. An update that changes `requires` resolves them when the user taps Update, and a protocol update to a major an installed plugin doesn't accept is refused, naming that plugin. A plugin the user switched off is never switched on by this: the install stops and says how to turn it on; one annai switched off after errors starts again only on the user's tap (§5.5).
+- **Calls never install.** Only setting up does: adding a provider, turning an ability on, Test, Fetch model list, Try this model. A model whose protocol isn't running is skipped (§9.6).
+- **Pruning.** Removing the last provider made from a provider plugin uninstalls that plugin, then every official protocol plugin that no installed plugin requires and no switched-on ability uses. A third-party protocol plugin stays.
+- **annai's own names stay annai's.** A package from a file or an address can't take the id of an official plugin, and a copy that holds one is never used as annai's own.
+- **An update from an address whose provider would send keys to a new origin** (scheme, host and port) asks first, as new code does.
 
 ### 5.4 Interface
 
@@ -413,9 +425,11 @@ There's no special machinery:
 
 ## 9. Models and providers
 
-### 9.1 Endpoint types are plugins
+### 9.1 Protocols and providers are plugins
 
-The core contains no protocol. Settings offer these endpoint types, each mapped to an official on-demand plugin:
+**Protocol plugins** are the endpoint types: they know how to talk (request and reply formats, streaming, error kinds). **Provider plugins** describe one provider each, as data: its address, how its key is sent (`keyHeader` when not the protocol's way), its abilities, each with its kind (chat, transcription, voice), its protocol's type, its own address if it has one, tunables, extra fields, `modelDefaults` (what a model added by id or from a list starts with) and models; the roles it suggests (`recommended`, `free`); its key page and notes. annai's catalog has OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, a local speech server, the scripted model and "Another address" (any other server, its abilities switched on by hand), each requiring the protocol plugins its abilities need.
+
+The core contains no protocol. These endpoint types are official on-demand plugins:
 - Chat Completions
 - Anthropic Messages
 - OpenAI Responses. Nothing is kept on the server (`store: false`): the whole conversation goes each time, and the model's encrypted reasoning goes back with it.
@@ -431,29 +445,29 @@ The core provides:
 
 Search and speech providers work the same way, as on-demand plugins with their own quirk settings.
 
-### 9.2 Endpoint vs model settings
+### 9.2 Provider, ability and model settings
 
-| Endpoint: how to talk to a server | Model: what one model can do and costs |
-|---|---|
-| name, type, base URL | name (unique, chosen by the user; defaults to the provider's id) |
-| API key (in `secrets`), extra headers | the provider's model id; free text or picked from the fetched list |
-| the type's tunables, e.g. `max_tokens` vs `max_completion_tokens`, `system` vs `developer`, usage in stream, image/PDF format | belongs to exactly one endpoint |
-| `extraBody` for all its models | capabilities: tools, images (formats, longest edge, size, count per request; from the template, then corrected by refusals, §4.8), PDFs, audio input |
-| provider tools offered endpoint-wide | context window, maximum output |
-| photo uploads through the provider's files API: on by default where the type supports it (§4.8) | |
-| "fetch model list" | prices: input, output, cache read, cache write per TTL, per-call tool fees |
-| | cache TTL options |
-| | reasoning map, provider tools it supports |
-| | its own tunables and `extraBody`, which override the endpoint's |
+| Provider: how to reach a server | Ability: one thing it offers | Model: what one model can do and costs |
+|---|---|---|
+| name, address | on or off (a new one in an update arrives off) | name (unique, chosen by the user; defaults to the provider's id) |
+| **one API key** (in `secrets`), extra headers | its protocol's type, and its own address (empty: the provider's) | the provider's model id; free text or picked from the fetched list |
+| | the type's tunables, e.g. `max_tokens` vs `max_completion_tokens`, `system` vs `developer`, usage in stream, image/PDF format | belongs to exactly one ability |
+| | `extraBody` for all its models | capabilities: tools, images (formats, longest edge, size, count per request; from the description, then corrected by refusals, §4.8), PDFs, audio input |
+| | provider tools offered ability-wide, through `modelDefaults` | context window, maximum output |
+| | photo uploads through the provider's files API: on by default where the type supports it (§4.8) | prices: input, output, cache read, cache write per TTL, per-call tool fees |
+| | "fetch model list", Test | cache TTL options; reasoning map, provider tools it supports |
+| | | its own tunables and `extraBody`, which override the ability's |
 
-Precedence: **user setting > template > plugin default.** Roles reference models by stable internal id, so renames are safe.
+Tunables and extra fields are per ability because each protocol defines its own; the key and headers are how the server is reached, the same for every ability. **One key per provider**: two accounts are two providers made from one plugin, each with its own key, models and role entries (this replaces the "one key per endpoint" ruling, made when an endpoint was the unit).
+
+Precedence: **user setting > description (template) > plugin default.** Roles reference models by stable internal id, so renames are safe.
 
 ### 9.3 Reasoning
 
 - **Five abstract levels:** `off · low · medium · high · max`.
   - Each role has a default level the user can edit: main → medium, utility → low, quick decision → off.
   - The core overrides per kind of call: the "is this for me?" check is always `off`, and compaction is `low`. `task` may request a level.
-- **Each model has a map from level → request patch.** The template ships it, and the user can edit it.
+- **Each model has a map from level → request patch.** The provider's description ships it, and the user can edit it.
 - **A missing level uses the nearest one; on a tie, the cheaper one.**
 - **Each endpoint type also declares where the reasoning text comes back:** `thinking` blocks, `reasoning_content`, `reasoning`, or OpenAI Responses' reasoning summaries. Reasoning is stored, never shown to the user, and visible in the trace.
 - **The Test button can try each level** and record which ones work.
@@ -486,6 +500,7 @@ Each role is an **ordered list** of models, tried front to back:
 | no first output within a time limit (configurable; tighter for voice) | next model |
 | request too long | compact first; skip models whose window is too small |
 | the model answers, including declining | that's an answer: no fallback |
+| its ability is switched off, or its protocol plugin isn't running | skipped ("off", "type-missing"); a call never installs one |
 
 - **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size.
 - **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model.
@@ -504,23 +519,22 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 - **Dedicated decision models** that return calibrated probabilities over fixed outputs can be added as plugins, for example TypeSafe's Jev.
 - **Below a confidence threshold, the main model decides.**
 
-### 9.8 Templates and onboarding
+### 9.8 Providers and onboarding
 
-- **The catalog** (`annai.guide/catalog/templates.json`) holds endpoints, popular models, capabilities, prices, TTLs, reasoning maps, provider tools, and quirks for chat, search and speech providers.
-  - It refreshes when the app is online.
-  - Users' settings are copies. When a template changes, they're offered the update, never changed silently.
-- **Default onboarding is "Sign in with OpenRouter"** (OAuth PKCE, with no client registration on our side). It creates the endpoint and suggests models for each role.
+- **Providers come from the catalog** (`annai.guide/catalog/plugins.json`): each provider plugin's description holds its models, capabilities, prices, TTLs, reasoning maps, provider tools and quirks. Adding one (Settings → Models → Add a provider) installs it and what it requires, with no question for annai's own.
+  - Users' settings are copies: the description is a provider's template layer. A provider plugin's update (new models, new prices) is offered like any plugin update (§5.3) and applies on the user's tap; then the user's own changes stay, new models join no role, and a new ability arrives switched off, said on the provider's page.
+  - Its speech models join behind the free entries when it is added: transcription after phone dictation, voices after the browser voice (§10.1, §10.3). "Use the recommended models" on its page puts them first, on that tap only.
+- **Default onboarding is "Sign in with OpenRouter"** (OAuth PKCE, with no client registration on our side). It makes one OpenRouter provider, with one key, and suggests models for each role.
   - OpenRouter's free models allow 50 requests per day (1,000 per day after $10 of lifetime purchases), enough to try annai. The chat roles get free models.
-  - It also adds OpenRouter's transcription and voices (its OpenAI-compatible audio API), as endpoints of their own, each with its own copy of the key. Their models go at the end of the speech lists, behind phone dictation and the browser voice, so trying annai stays free; using them first is the user's choice, by moving them up under Roles (the user, 2026-10-18).
+  - Its transcription and voices (OpenRouter's OpenAI-compatible audio API) are abilities of the same provider, on the same key. Their models go at the end of the speech lists, behind phone dictation and the browser voice, so trying annai stays free; using them first is the user's choice, by moving them up under Roles (the user, 2026-10-18).
   - Nothing that costs money goes ahead of something free. OpenRouter's free voice (Fish Audio's, in its default voice) comes first among its voices: each sentence it says uses one of the free requests a day that the free chat models use too (the user, 2026-10-18: free audio is worth having). OpenRouter has no free transcription model. The others need credits bought at OpenRouter.
   - The card that says sign-in finished says what it set up, that the free voice shares the free requests, and how to move them up.
-  - Someone who signed in before the voice was added is offered it on the OpenRouter endpoint's page, with that endpoint's key. It is never added silently.
   - The key OpenRouter makes is labelled "annai" in the user's OpenRouter keys. Back from OpenRouter, Settings → Models shows at once and says the sign-in is being finished.
-  - Templates cover Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral and local servers. The local-server template notes that a phone needs an HTTPS address, such as a tunnel.
+  - Endpoints from before providers are removed at the next start, with their models, keys and uploads, and a card says to add providers again (no conversion; the user, 2026-10-18). A backup from before, restored later, is moved over again.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
-  - Where the endpoint has a files API, it also uploads that small image, so annai knows whether photo uploads work with this key (§4.8).
-  - It explains failures in plain words: "this endpoint blocks web apps" is a different message from "key rejected".
+  - Where the ability's protocol has a files API, it also uploads that small image, so annai knows whether photo uploads work with this key (§4.8).
+  - It explains failures in plain words: "this address blocks web apps" is a different message from "key rejected".
 
 ### 9.9 Usage, cost, errors, keys
 
@@ -536,7 +550,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   | image refused (format, size, longest edge, count) | make a copy within the new limit, retry, and save the limit on the model (§4.8). If no installed encoder can make a format the model accepts, the utility model searches the plugin catalog and a card offers the plugin; installing it always takes the user's tap. |
   | an uploaded photo's id expired or is unknown | upload the photo again and retry |
   | blocked by browser | explain that the endpoint doesn't allow web apps |
-  | bad request | hint: check the endpoint's tunables |
+  | bad request | hint: check the ability's tunables |
   | network | retry with backoff |
 
 - **Keys** live only in `secrets`. They're never in context and are redacted from the trace.
@@ -546,7 +560,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 ### 10.1 Speaking
 
 - **Sentence by sentence.** The text of `speak` streams in as the model generates it (read from partial tool arguments), and `Intl.Segmenter` cuts it into sentences.
-- **Each sentence goes to the first working entry in the speech-out list.** The list is user-ordered; the browser voice sits last by default. A voice a template adds goes ahead of it; those Sign in with OpenRouter adds go behind it, the free one first, until the user moves them up (§9.8).
+- **Each sentence goes to the first working entry in the speech-out list.** The list is user-ordered; the browser voice sits last by default. A provider's voices join behind it when the provider is added (Sign in with OpenRouter's too, the free one first), until the user moves them up or taps "Use the recommended models" (§9.8).
 - **No gaps.** With API voices, the next sentence's audio is fetched while the current one plays.
 - **Mid-answer fallback.** If a voice fails partway through, the same sentence replays on the next voice in the list, and the failed voice is benched.
 - **Audio unlock.** Playback goes through one audio player, unlocked by the first tap of each session (an iOS rule).
@@ -579,7 +593,7 @@ Entries:
 - one stand-in entry, **"Send audio to the model"**
 - phone dictation, where available. The browser's own speech service hears it (Google on Chrome, Apple on Safari), unless it recognizes speech on the device (§11.7).
 
-The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template, after "Send audio to the model"; the one Sign in with OpenRouter adds goes after phone dictation (§9.8). With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
+The default order is "Send audio to the model", then phone dictation. Transcription models come from providers' transcription abilities. One the user adds goes after "Send audio to the model"; a provider's join after phone dictation when it is added (§9.8). With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
 
 **The list is resolved again for each model attempt, against the model actually receiving the speech.** That applies to any role, including quick decision.
 - "Send audio to the model" is used only if that model accepts audio. Otherwise it's skipped.
@@ -834,7 +848,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **The responsibility model (§2, principle 2):**
   - Imported and fetched content is the user's responsibility.
   - The trace makes everything the agent sent and read visible.
-  - Third-party code plugins run with full trust, and their install screen says so.
+  - Third-party code plugins run with full trust, and their install screen says so. Data-only plugins (a provider, skills, personalities) can't run anything and get no such warning; a provider's install screen says where keys go, and an update that sends them to a new origin asks first (§5.3).
 - **No telemetry.** "Copy diagnostics" produces a redacted report for the user to share if they choose.
 - **Credits.** Every data source annai contacts is credited in Settings → About, with the attribution its licence or policy asks for:
   - OpenStreetMap: "© OpenStreetMap contributors", under the ODbL, linked to its copyright page; through Overpass, and Nominatim under its usage policy
@@ -855,8 +869,8 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - Spoken words hidden unless asked.
 - **System cards are not Shiori.** System problems appear as system cards, never in Shiori's voice.
 - **Settings save as they change.** A quiet "Saved" shows by the field, not a toast, and an error shows by it too; a value that isn't valid isn't saved. Text and number fields save once committed or left, never at each keystroke. A Save button stays only for:
-  - keys and passwords: an endpoint's key, the Jina key, a plugin's secret fields, a backup place's credentials and passphrase
-  - connections that are tested or used as a whole when saved: a backup place ("Save and test"), the push relay's address, and an endpoint's address, key and extra headers (headers often carry a credential, and a half-typed connection should never be used)
+  - keys and passwords: a provider's key, the Jina key, a plugin's secret fields, a backup place's credentials and passphrase
+  - connections that are tested or used as a whole when saved: a backup place ("Save and test"), the push relay's address, and a provider's address, key and extra headers (headers often carry a credential, and a half-typed connection should never be used)
   - long texts: a personality, the file editor
 
 ### 16.2 Layout and screens
@@ -878,7 +892,7 @@ Reference: mockups draft 6.
   - **Files**
   - **Trace:** filters plus tool switches
   - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then Updates, About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, of annai or of a plugin, Updates comes first, with a line saying what waits.
-    - **Models:** Sign in with OpenRouter (until there is an OpenRouter endpoint), the endpoints and their models, the roles (§9.6), then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead.
+    - **Models:** Sign in with OpenRouter (until there is an OpenRouter provider), the providers (each with the abilities switched on and its number of models) and Add a provider, the roles (§9.6), chat roles taking chat models and speech roles transcription models or voices, then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead. A provider's page has its name; its key (written once, with Get a key), address and extra headers, saved together; its note; the suggestion buttons; one panel per ability with its switch, its own address, tunables, extra fields, photo uploads, its models (Add a model by id, Fetch model list) and Test; and Remove, which takes its key, models and their places in roles, and its plugin when it is the last made from it. Settings → Plugins names the providers made from each provider plugin and the plugins that need each protocol.
     - **Shiori:** how she looks, her personality, and how often she acts on her own (§14.1).
     - **Updates:** annai's version and the build running; when annai last checked, and Check now, which checks annai and every plugin, those from an address too; a new version of annai that waits, with Restart now; each plugin update with its own Update. It says plainly when everything is up to date, when annai is offline, and what a check couldn't reach.
     - **About:** annai's version and the build of the service worker that runs it, with a link to Updates; the licence (AGPL-3.0, its text shipped and readable offline) and the source; where to report a problem; the privacy summary (what annai does with keys and data, and where that stops, in the welcome's words); the fine print; "Show the welcome again"; and the credits (§15), the fonts' licences and Shiori's art.
@@ -1040,8 +1054,8 @@ index.html  manifest.webmanifest  sw.js  _headers
 src/core/          storage, events, registry, scheduler, loop, context, patch, tsv, zip, crypto, schema
 src/plugins/       built-ins: files, talk, web, places, time, go, self, mcp, sensors, voice-browser, ui-*
 src/ui/            components, screens, tokens.css, i18n
-plugins-official/  on-demand: chat-completions, anthropic-messages, openai-responses, gemini, speech-*, search-*, storage-*
-catalog/           plugins.json, templates.json, links.json
+plugins-official/  on-demand: chat-completions, anthropic-messages, openai-responses, speech-*, search-*, storage-*, provider-* (model providers, data only)
+catalog/           plugins.json (each plugin's kind, abilities, keywords, size, requirements and file hashes), links.json
 skills/            built-in skills (driving companion, …)
 relay/             push relay (Cloudflare Worker)
 test/              unit, contract, e2e, fixtures
@@ -1067,3 +1081,5 @@ Each milestone gets its own implementation plan. The plugin interface exists fro
 | 9 | **Backup targets:** GitHub, S3-compatible, WebDAV (§12.4) | Automatic backup and restore to GitHub works. |
 
 Remaining official plugins (Gemini, more speech and search providers, and photo encoders such as WebP for Safari or AVIF) are added during milestones 2 and 3 as needed. OpenAI Responses joined on 2026-10-18.
+
+**Providers as plugins** (docs/superpowers/specs/2026-10-18-provider-plugins-design.md, six milestones): providers and abilities with one key, `requires` and data-only provider plugins (M1); servers you run (M2); one catalog with search (M3); OpenRouter as a code provider (M4); "Another address" looks for itself (M5); conflicts made explicit (M6).
