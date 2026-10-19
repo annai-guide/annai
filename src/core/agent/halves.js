@@ -153,7 +153,7 @@ export class Halves {
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.koeState === 'text' ? { aside: true } : {}) } : {}),
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
         gate: (call) => this.#gate(call),
-        failed: (why, e) => this.#kokoroFailed(why, e),
+        failed: (why, e, kinds) => this.#kokoroFailed(why, e, kinds),
         calling: () => {
           this.#nothingTold = false;
           this.#unseen = 0; // it reads every line so far
@@ -469,10 +469,13 @@ export class Halves {
     return { content: 'Koe is speaking for you; use tell_koe.', told: true };
   }
 
-  /** Koe tells the user Kokoro couldn't check, once, in plain words; no card (plan decision 21). @param {string} why @param {unknown} e */
-  #kokoroFailed(why, e) {
+  /**
+   * Koe tells the user Kokoro couldn't check, once, in plain words; no card (plan decision 21). A check
+   * nobody waited for (Koe's answer, a review) stays in the Trace. @param {string} why @param {unknown} e @param {string[]} kinds
+   */
+  #kokoroFailed(why, e, kinds) {
     if (this.koeState !== 'text') return false;
-    if (!this.#failTold) {
+    if (!this.#failTold && !kinds.every((k) => k === 'cue')) {
       this.#failTold = true;
       const attempts = e instanceof AllFailedError ? e.attempts : [];
       const rest = attempts.find((a) => a.error?.startsWith('its daily limit'));

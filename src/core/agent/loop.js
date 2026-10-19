@@ -65,7 +65,7 @@ import { validate } from '../schema.js';
  * @property {<T>(fn: () => Promise<T>) => Promise<T>} [serial] both halves' writes, one at a time
  * @property {(e: any, r: Resolved) => Promise<void> | void} [logged] an event it wrote, for the other half
  * @property {(call: { id: string, name: string, input: any, wake: string }) => Promise<import('./tools.js').ToolOutput | null>} [gate] a call not run, and its result
- * @property {(why: string, e: unknown) => boolean} [failed] true: the other half tells the user, so no card
+ * @property {(why: string, e: unknown, kinds: string[]) => boolean} [failed] true: the other half tells the user (or nobody waited), so no card; kinds: the turn's wakes
  * @property {() => void} [calling] @property {() => Promise<unknown>} [ready] waited for before each turn
  * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
@@ -1226,7 +1226,7 @@ export class Agent {
     const body = await withoutSecrets(this.store, this.#explain(e));
     const last = e instanceof AllFailedError ? e.attempts.at(-1) : undefined;
     // The other half tells the user: no card.
-    const quiet = this.#half.failed?.(body, e) ?? false;
+    const quiet = this.#half.failed?.(body, e, this.#facts.kinds) ?? false;
     if (quiet || this.#photoCard === wakeId) {
       // said elsewhere, or its card already says why
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
