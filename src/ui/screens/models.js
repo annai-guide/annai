@@ -5,7 +5,7 @@ import { providerOf, modelOf, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } fr
 import { LEVELS } from '../../core/llm/reasoning.js';
 import { ROLE_KINDS } from '../../core/llm/provider-desc.js';
 import { speechAdd } from '../../core/llm/providers.js';
-import { renderProvider } from './provider.js';
+import { renderProvider, renderNewProvider } from './provider.js';
 import { renderModel } from './model.js';
 import { featuredStart } from '../provider-setup.js';
 
@@ -24,11 +24,12 @@ const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: 
 /**
  * Settings → Models (spec §9.2, §9.6, §9.8): the providers annai calls, each with its abilities and
  * models, which models each role tries, in order, and what Shiori's requests may cost and how large
- * they grow (§6.4–6.6). A provider's page is #/models/provider?id=, a model's #/models/model?id=.
+ * they grow (§6.4–6.6). A provider's page is #/models/provider?id=, a provider plugin's own Add flow
+ * #/models/provider?new=, a model's #/models/model?id=.
  * @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
  */
 export async function renderModels(ctx, route) {
-  if (route.parts[1] === 'provider') return renderProvider(ctx, route.params.id ?? '');
+  if (route.parts[1] === 'provider') return route.params.new ? renderNewProvider(ctx, route.params.new) : renderProvider(ctx, route.params.id ?? '');
   if (route.parts[1] === 'model') return renderModel(ctx, route.params.id ?? '');
   await ctx.llm.ready;
   const [cfg, app] = await Promise.all([ctx.llm.config(), readAppSettings(ctx.ws)]);

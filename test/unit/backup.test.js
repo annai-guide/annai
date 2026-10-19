@@ -311,3 +311,14 @@ test('fix pass: with ensureProvided, a storage plugin the user turned off stays 
   await ensureProvided(k.host, 'storage-type', 'webdav', { fetch });
   assert.equal((await k.host.installed())['storage-webdav'].enabled, true, 'Turn it on switches it on');
 });
+
+test("M6 fix: a backup place's bug counts against the plugin that registered its type, never a pluginId the type carries", async () => {
+  const place = memoryPlace();
+  const d = await device(place);
+  // A type that says it is webdav's, registered by evil.
+  d.registry.removePlugin('memory-place');
+  d.registry.add('evil', 'storage-type', { ...place.type, pluginId: 'webdav', check: async () => { throw new TypeError('broke'); } });
+  const id = await placeOn(d);
+  await assert.rejects(d.backups.check(id));
+  assert.deepEqual([...new Set(d.logged.filter((e) => e.type === 'plugin.error').map((e) => e.actor))], ['plugin:evil']);
+});

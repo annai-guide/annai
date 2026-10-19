@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, cardSchema, SLOTS, COMPONENTS } from '../../src/core/ui-slots.js';
 import { Registry } from '../../src/core/registry.js';
-import { files, hostKit } from './package-kit.js';
+import { files, hostKit, codePlugin } from './package-kit.js';
 
 const draw = () => {};
 
@@ -62,7 +62,8 @@ test("a plugin's UI parts are registered under its id, refused with the reason w
     'theme.css': ':root { --ai: #0a7; }',
   }));
   await host.start('tides');
-  assert.deepEqual(['ui:status-chip', 'ui:card-type', 'ui:component', 'ui:screen', 'ui:theme'].map((k) => registry.entries(k).map((e) => e.pluginId)), [['tides'], ['tides'], ['tides'], ['tides'], ['tides']]);
+  assert.deepEqual(['ui:status-chip', 'ui:card-type', 'ui:component', 'ui:screen', 'ui:theme'].map((k) => registry.entries(k, { all: true }).map((e) => e.pluginId)), [['tides'], ['tides'], ['tides'], ['tides'], ['tides']]);
+  assert.deepEqual(registry.entries('ui:component'), [], "a component is used only once chosen: annai's own until then");
   assert.equal(registry.list('ui:theme')[0].href, '/plugins/tides/theme.css');
   await host.setEnabled('tides', false);
   assert.equal(registry.list('ui:status-chip').length, 0);
@@ -71,6 +72,29 @@ test("a plugin's UI parts are registered under its id, refused with the reason w
     'index.js': "export function activate(annai) { annai.ui.slot('dock-action', { id: 'x', label: 'X', icon: '≈' }); }",
   }));
   await assert.rejects(host.start('wrong'), /the dock action x needs run/);
+});
+
+test("a component plugin is used only when chosen; annai's own avatar otherwise", async () => {
+  const { component, dockKey } = await import('../../src/ui/slots.js');
+  const { host, registry, relaunch } = await hostKit();
+  await host.install(codePlugin('look', "return annai.ui.component('avatar', { create: () => ({ el: {} }) });"));
+  await host.start('look');
+  const ctx = { registry };
+  const annais = dockKey(ctx);
+  assert.equal(component(ctx, 'avatar'), null);
+  assert.deepEqual(registry.clashes('look'), [{ kind: 'ui:component', name: 'avatar', owner: 'annai', used: false, reserved: false, chosen: false }]);
+  await host.choose('ui:component', 'avatar', 'look');
+  assert.equal(component(ctx, 'avatar')?.pluginId, 'look');
+  assert.notEqual(dockKey(ctx), annais, 'the dock is made again with it');
+  assert.deepEqual(registry.clashes('look'), [{ kind: 'ui:component', name: 'avatar', owner: 'look', used: true, reserved: false, chosen: true }]);
+  // Stored: annai started again uses it at once.
+  const next = relaunch();
+  await next.startInstalled();
+  assert.equal(component({ registry: next.registry }, 'avatar')?.pluginId, 'look');
+  // Undone: annai's own again.
+  await host.choose('ui:component', 'avatar', null);
+  assert.equal(component(ctx, 'avatar'), null);
+  assert.equal(dockKey(ctx), annais);
 });
 
 test('8b-4: a drawing, a dock action or a component that works ends its plugin\'s run of failures', async () => {

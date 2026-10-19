@@ -4,5 +4,6 @@
   "version": "1.0.0",
   "api": 1,
   "entry": "index.js",
+  "replaces": ["avatar", "now-card", "dock"],
   "description": "Test plugin: annai's avatar, Now card and dock, replaced."
 }

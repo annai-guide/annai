@@ -7,6 +7,27 @@ export const NOT_OWN = `${OWN}, but the one installed came from elsewhere, so an
 /** A plugin the user switched off stays off (security review). */
 export const TURN_ON = 'Turn it on in Settings → Plugins, then try again.';
 
+const by = (/** @type {string} */ f) => (/** @type {any} */ x) => String(x?.[f]);
+/** Kinds whose names have one owner, with how a name is read. @type {Record<string, (item: any) => string>} */
+export const NAMED = Object.freeze({
+  tool: by('name'), 'endpoint-type': by('type'), 'storage-type': by('type'), skill: by('name'), personality: by('name'), 'ui:component': by('name'), 'ui:card-type': by('type'), search: by('id'),
+});
+/** Kinds handed the user's keys: rank alone owns them, never a choice. */
+export const KEYED = new Set(['endpoint-type', 'storage-type']);
+
+/** How owners are found (reserved: 'only' annai's alone, 'own' annai's until chosen; official: whose a keyed name is).
+ * @typedef {{ rank: (pluginId: string) => (number | string)[], choice: (kind: string, name: string) => string | undefined,
+ *   reserved: (kind: string, name: string) => 'only' | 'own' | null, official?: (kind: string, name: string) => string | undefined }} Rules
+ * @typedef {{ kind: string, name: string, owner: string, used: boolean, reserved: boolean, chosen: boolean }} Clash */
+/** @type {Rules} before setRules: the first to register owns a name */
+const FIRST = { rank: () => [], choice: () => undefined, reserved: () => null };
+
+/** Two ranks of one length compared element by element: below 0 when a comes first. @param {(number | string)[]} a @param {(number | string)[]} b */
+export function compareRanks(a, b) {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  return 0;
+}
+
 /** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
@@ -39,7 +60,9 @@ export class PluginError extends Error {
  * switched off until enable() is called (spec §5.5).
  */
 export class Registry {
-  /** @type {Map<string, { pluginId: string, item: any }[]>} */ #items = new Map();
+  /** @type {Map<string, { pluginId: string, item: any, seq: number }[]>} */ #items = new Map();
+  #seq = 0;
+  /** @type {Rules} */ #rules = FIRST;
   /** @type {Map<string, number>} */ #failures = new Map();
   /** @type {Set<string>} */ #disabled = new Set();
   /** @type {Set<() => void>} */ #listeners = new Set();
@@ -53,7 +76,7 @@ export class Registry {
 
   /** @param {string} pluginId @param {string} kind @param {any} item @returns {() => void} removes this contribution */
   add(pluginId, kind, item) {
-    const entry = { pluginId, item };
+    const entry = { pluginId, item, seq: this.#seq++ };
     const list = this.#items.get(kind) ?? [];
     list.push(entry);
     this.#items.set(kind, list);
@@ -68,18 +91,63 @@ export class Registry {
     };
   }
 
-  /** Contributions of a kind from plugins that are not switched off. @param {string} kind */
+  /** Contributions of a kind from plugins not switched off; of a named kind, each name's owner's. @param {string} kind */
   list(kind) {
-    return (this.#items.get(kind) ?? []).filter((e) => !this.#disabled.has(e.pluginId)).map((e) => e.item);
+    return this.entries(kind).map((e) => e.item);
   }
 
   /**
-   * Contributions of a kind with the plugin each came from. all: also those of plugins switched off after
-   * repeated errors (they still hold the names they registered).
+   * Contributions of a kind with the plugin each came from; of a named kind, one per name, its owner's. all: every one, used or not, on or off.
    * @param {string} kind @param {{ all?: boolean }} [o] @returns {{ pluginId: string, item: any }[]}
    */
   entries(kind, { all = false } = {}) {
-    return (this.#items.get(kind) ?? []).filter((e) => all || !this.#disabled.has(e.pluginId)).map((e) => ({ pluginId: e.pluginId, item: e.item }));
+    const name = NAMED[kind];
+    const seen = new Set();
+    return (this.#items.get(kind) ?? []).filter((e) => all || (!this.#disabled.has(e.pluginId) && (!name || (!seen.has(name(e.item))
+      && this.owner(kind, name(e.item))?.pluginId === e.pluginId && seen.add(name(e.item)))))).map((e) => ({ pluginId: e.pluginId, item: e.item }));
+  }
+
+  /** @param {Rules} rules */
+  setRules(rules) {
+    this.#rules = rules;
+    this.#emit();
+  }
+
+  /** A name's owner: annai's, the user's choice while it runs, else the lowest rank running; null: nobody. @param {string} kind @param {string} name @returns {{ pluginId: string, chosen: boolean } | null} */
+  owner(kind, name) {
+    const how = this.#rules.reserved(kind, name);
+    if (how === 'only') return { pluginId: 'annai', chosen: false };
+    const read = NAMED[kind] ?? (() => '');
+    const live = (this.#items.get(kind) ?? []).filter((e) => !this.#disabled.has(e.pluginId) && read(e.item) === name);
+    const chosen = this.choosable(kind, name) && this.#rules.choice(kind, name);
+    if (chosen && live.some((e) => e.pluginId === chosen)) return { pluginId: chosen, chosen: true };
+    const rank = (/** @type {{ pluginId: string, seq: number }} */ e) => [...this.#rules.rank(e.pluginId), e.seq];
+    const [first] = live.sort((a, b) => compareRanks(rank(a), rank(b)));
+    const top = first && this.#rules.rank(first.pluginId)[0];
+    if (how === 'own' && top !== 0) return { pluginId: 'annai', chosen: false };
+    // A keyed name annai's official plugin provides is never a third party's.
+    if (first && !(Number(top) <= 1) && KEYED.has(kind) && this.#rules.official?.(kind, name)) return null;
+    return first ? { pluginId: first.pluginId, chosen: false } : null;
+  }
+
+  /** Whether a choice may move a name. @param {string} kind @param {string} name */
+  choosable(kind, name) {
+    return !KEYED.has(kind) && this.#rules.reserved(kind, name) !== 'only';
+  }
+
+  /** A plugin's names that it doesn't own, or that the user chose: its page's Names. @param {string} pluginId @returns {Clash[]} */
+  clashes(pluginId) {
+    /** @type {Clash[]} */
+    const out = [];
+    for (const [kind, read] of Object.entries(NAMED)) {
+      const all = this.#items.get(kind) ?? [];
+      for (const name of new Set(all.filter((e) => e.pluginId === pluginId).map((e) => read(e.item)))) {
+        const o = this.owner(kind, name);
+        if (o?.pluginId === pluginId && !o.chosen) continue;
+        out.push({ kind, name, owner: o?.pluginId ?? ((KEYED.has(kind) && this.#rules.official?.(kind, name)) || pluginId), used: o?.pluginId === pluginId, reserved: !this.choosable(kind, name), chosen: Boolean(o?.chosen) });
+      }
+    }
+    return out;
   }
 
   /** @param {string} pluginId */

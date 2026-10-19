@@ -7,6 +7,7 @@ import { addsAnything } from '../../core/packages.js';
 import { descOrigins } from '../../core/llm/provider-desc.js';
 import { officialPlugins } from '../../core/llm/official.js';
 import { checkRequires, installWith, checkPackageId } from '../../core/requires.js';
+import { NAMED } from '../../core/registry.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
@@ -88,6 +89,18 @@ export function sourceLine(from) {
   return 'From annai';
 }
 
+/** Whether two packages came from one place: one address (its keys aside), or files. @param {any} a @param {any} b */
+const samePlace = (a, b) => a?.source === b?.source && (b?.source !== 'url' || sourceLine(a) === sourceLine(b));
+
+/**
+ * Installing over the installed package of its id: an update from where it came, or one from another place.
+ * @param {{ version: string, from: { source?: string, url?: string, file?: string } }} previous @param {{ source?: string, url?: string, file?: string }} from
+ */
+export function overLine(previous, from) {
+  return samePlace(previous.from, from) ? `Version ${previous.version} is installed now. Installing replaces it.`
+    : `Version ${previous.version} is installed now, ${sourceLine(previous.from).replace(/^From/, 'from')}, not where this one comes from. Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.`;
+}
+
 /** An http(s) address or null. @param {unknown} url */
 function webAddress(url) {
   try {
@@ -96,6 +109,23 @@ function webAddress(url) {
   } catch {
     return null;
   }
+}
+
+/** A named thing in words: "the tool weather", "how Shiori looks". */
+const KIND_WORDS = /** @type {Record<string, string>} */ ({ tool: 'the tool', 'endpoint-type': 'the protocol', 'storage-type': 'the kind of backup place', skill: 'the skill', personality: 'the personality', 'ui:card-type': 'the card type', search: 'the search provider' });
+const COMPONENT_WORDS = /** @type {Record<string, string>} */ ({ avatar: 'how Shiori looks', dock: 'the dock', 'now-card': 'the Now card', 'plan-row': "how the plan's rows look" });
+/** @param {string} kind @param {string} name */
+export const thingWords = (kind, name) => (kind === 'ui:component' ? COMPONENT_WORDS[name] ?? `the part ${name}` : `${KIND_WORDS[kind] ?? kind} ${name}`);
+/** Who owns a name: annai, a built-in's or official plugin's name, else a name from a manifest, with its id. @param {any[]} rows describe()'s @param {string} id */
+export function ownerName(rows, id) {
+  const r = id === 'annai' ? null : rows.find((x) => x.id === id);
+  return !r ? id : r.builtin || r.source === 'official' ? r.name : `${r.name} (${id})`;
+}
+
+/** What a package's replaces would replace now, and the user may choose. @param {any} ctx @param {{ id: string, replaces?: string[] }} pkg @returns {{ kind: string, name: string, owner: string }[]} */
+export function replacing(ctx, pkg) {
+  return (pkg.replaces ?? []).flatMap((name) => Object.keys(NAMED).map((kind) => ({ kind, name, owner: ctx.registry.owner(kind, name)?.pluginId })))
+    .filter((r) => r.owner && r.owner !== pkg.id && ctx.registry.choosable(r.kind, r.name));
 }
 
 /** The card that says annai must start again to run new code. @param {any} ctx @param {string} name */
@@ -127,7 +157,17 @@ export async function renderPluginInstall(ctx) {
   const needs = await needsOf(ctx, pkg);
   // A package from elsewhere can't take the name of annai's own plugin (security review).
   const taken = await checkPackageId(ctx.plugins, pkg.id, from?.source).then(() => null, (e) => message(e));
-  const install = h('button', { class: 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, install) }, 'Install');
+  // What it replaces is chosen here, by a tap.
+  const rows = await ctx.plugins.describe();
+  const mine = replacing(ctx, pkg);
+  const owners = [...new Set(mine.map((s) => s.owner))];
+  // Over one from another place: keep what it keeps, or start fresh.
+  const elsewhere = Boolean(pkg.previous && !samePlace(pkg.previous.from, from));
+  /** @type {[string, { use?: typeof mine, fresh?: boolean }][]} */
+  const picks = elsewhere ? [['Install, keep its settings and keys', {}], ['Install fresh', { fresh: true }]]
+    : mine.length ? [['Install and use it', { use: mine }], [owners.join() === 'annai' ? "Install, keep annai's" : "Install, keep what's used now", {}]] : [['Install', {}]];
+  /** @type {HTMLButtonElement[]} */
+  const buttons = picks.map(([label, o], i) => h('button', { class: i ? 'btn' : 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, buttons, o) }, label));
   return h('div', { class: 'screen plugin-install' }, back,
     h('h1', { class: 'title', text: `Install ${pkg.name}?` }),
     h('p', { class: 'sub', text: line }),
@@ -139,28 +179,37 @@ export async function renderPluginInstall(ctx) {
       h('h2', { class: 'section', text: 'What it brings' }),
       h('ul', { class: 'brings' }, ...whatItBrings(pkg).map((t) => h('li', { text: t }))),
       needs.text ? h('p', { class: needs.ok ? 'sub' : 'error', text: needs.text }) : null),
+    mine.length ? h('section', { class: 'panel', 'aria-label': 'What it replaces' },
+      h('h2', { class: 'section', text: 'What it replaces' }),
+      h('ul', { class: 'brings' }, ...mine.map((s) => h('li', { text: `It replaces ${thingWords(s.kind, s.name)} from ${ownerName(rows, s.owner)}.` })))) : null,
     pkg.code
       ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), h('p', { text: 'Only install it if you trust where it came from.' }), keysNote(pkg) ? h('p', { text: keysNote(pkg) }) : null)
       : pkg.provider
         // A provider's own note, in place of the skill note (security review): what it can't do, and where keys go.
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: "It can't run anything: it is data that tells annai how to reach a model provider." }), h('p', { text: keysNote(pkg) }))
         : h('p', { class: 'skill-note', text: 'A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.' }),
-    pkg.replaces ? h('p', { class: 'sub', text: `Version ${pkg.replaces.version} is installed now. Installing replaces it.` }) : null,
+    pkg.previous ? h('p', { class: elsewhere ? 'risk-note' : 'sub', text: overLine(pkg.previous, from) }) : null,
     // What a new version adds is said on its own, so nothing new slips in with an update (the coordinator's second finding).
-    pkg.replaces && addsAnything(pkg.replaces.added) ? h('section', { class: 'panel', 'aria-label': 'New in this version' },
+    pkg.previous && addsAnything(pkg.previous.added) ? h('section', { class: 'panel', 'aria-label': 'New in this version' },
       h('h2', { class: 'section', text: 'New in this version' }),
-      h('ul', { class: 'brings' }, ...whatItBrings(pkg.replaces.added).map((t) => h('li', { text: t })))) : null,
-    h('div', { class: 'acts' }, install,
+      h('ul', { class: 'brings' }, ...whatItBrings(pkg.previous.added).map((t) => h('li', { text: t })))) : null,
+    h('div', { class: 'acts' }, ...buttons,
       h('button', { class: 'btn', type: 'button', onclick: () => { setPendingPackage(null); ctx.go(to); } }, 'Cancel')));
 }
 
-/** Installs the package on screen, then starts it; each step that fails says so. @param {any} ctx @param {HTMLButtonElement} button */
-async function installPending(ctx, button) {
+/**
+ * Installs the package on screen, then starts it; each step that fails says so. use: the names it replaces that the
+ * user chose it for; fresh: what the installed one keeps goes first. Both before it starts.
+ * @param {any} ctx @param {HTMLButtonElement[]} buttons @param {{ use?: { kind: string, name: string }[], fresh?: boolean }} o
+ */
+async function installPending(ctx, buttons, { use = [], fresh = false }) {
   const p = pendingPackage();
   if (!p) return;
   const { pkg } = p;
-  button.disabled = true;
+  const choose = async () => { for (const s of use) await ctx.plugins.choose(s.kind, s.name, pkg.id); };
+  buttons.forEach((b) => { b.disabled = true; });
   try {
+    if (fresh) await ctx.plugins.forgetKept(pkg.id);
     // What it needs (annai's own, from its catalog) may be code too.
     if ((pkg.code || pkg.requires?.length) && !navigator.serviceWorker?.controller) {
       throw new Error(NO_SERVICE);
@@ -168,6 +217,7 @@ async function installPending(ctx, button) {
     if (pkg.requires?.length) {
       // With what it requires, all or nothing, and started (spec §5.3).
       await installWith(ctx.plugins, p.files, p.from, { tap: true });
+      await choose();
       setPendingPackage(null);
       ctx.notices.toast(`Installed ${pkg.name}.`);
       ctx.go('#/plugins');
@@ -175,9 +225,10 @@ async function installPending(ctx, button) {
     }
     await checkPackageId(ctx.plugins, pkg.id, p.from?.source);
     await ctx.plugins.install(p.files, p.from);
+    await choose();
   } catch (e) {
     if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${pkg.name} wasn't installed`, body: message(e) });
-    button.disabled = false;
+    buttons.forEach((b) => { b.disabled = false; });
     return;
   }
   setPendingPackage(null);

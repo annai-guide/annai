@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SYS_PLUGINS, SYS_SETTINGS, createTrip } from '../../src/core/scopes.js';
 import { setToolSwitch } from '../../src/core/agent/tools.js';
-import { readAppSettings } from '../../src/core/settings.js';
+import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 import { PluginError } from '../../src/core/registry.js';
 import { text, utf8 } from '../../src/core/bytes.js';
-import { files, SKILL, KIT, TRAIL_LLM, hostKit } from './package-kit.js';
+import { files, SKILL, KIT, TRAIL_LLM, hostKit, codePlugin, builtinUrl } from './package-kit.js';
+import { endpointTypes } from '../../src/core/llm/contract.js';
 
 test('host: a bare skill installs as a package; at start Shiori has it, its text and files read from storage', async () => {
   const { host, registry, ws } = await hostKit();
@@ -49,19 +50,23 @@ test('host: a package keeps no history; installing again replaces its files outr
   assert.equal((await host.installed())['tide-pools'].file, 'tide-pools.zip');
 });
 
-test("host: names already taken are refused: annai's own parts, a skill Shiori has, a package of the other kind", async () => {
+test("host: ids already taken are refused (annai's own parts, a package of the other kind); a skill name Shiori has installs, and isn't used", async () => {
   const { host, registry } = await hostKit();
   await host.addBuiltin(new URL('../../src/plugins/core-schemas/index.js', import.meta.url).href);
   registry.add('skills', 'skill', { name: 'plan-a-trip', description: 'x', text: 'x' });
   host.builtins.set('skills', { id: 'skills', name: 'Built-in skills' });
-  await assert.rejects(host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'plan-a-trip') })), /already has a skill called plan-a-trip, built into annai/);
   await assert.rejects(host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'core-schemas') })), /core-schemas: is a name annai uses for one of its own parts/);
+  await host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'plan-a-trip') }));
+  await host.start('plan-a-trip');
   await host.install(KIT());
   await host.start('trail-kit');
-  await assert.rejects(host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'trail-safety') })), /already has a skill called trail-safety, from Trail kit/);
+  await host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'trail-safety') }));
+  await host.start('trail-safety');
+  assert.deepEqual(registry.entries('skill').map((e) => `${e.pluginId}:${e.item.name}`), ['skills:plan-a-trip', 'trail-kit:trail-safety']);
+  assert.deepEqual(registry.clashes('trail-safety'), [{ kind: 'skill', name: 'trail-safety', owner: 'trail-kit', used: false, reserved: false, chosen: false }]);
   await assert.rejects(host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'trail-kit') })), /trail-kit: is installed already as a plugin\. Remove it first/);
   await host.install(KIT()); // the same package again replaces itself
-  assert.equal((await host.inspect(KIT())).replaces?.version, '1.0.0');
+  assert.equal((await host.inspect(KIT())).previous?.version, '1.0.0');
 });
 
 test('host: a package without code needs no restart after an update; one whose code ran does', async () => {
@@ -91,25 +96,36 @@ test("host: a running plugin's tool names are kept in its state, for removing it
   assert.deepEqual((await host.installed()).tides.tools, ['tide_times']);
 });
 
-// The coordinator's security finding (milestone 8a): a skill name is checked against every
-// installed package and annai's own skills, not only against what runs now.
+// The coordinator's security finding (milestone 8a), under milestone 6's rule: a skill name another package or annai
+// has installs, and isn't used until the user chooses it, whatever order they start in.
 
-test("host: a skill name that belongs to a package that is switched off is refused", async () => {
-  const { host } = await hostKit();
+test("host: a skill whose name Shiori has already installs, isn't used, and its page says so; chosen, Shiori loads it", async () => {
+  const { host, registry } = await hostKit();
   await host.install(KIT());
-  await host.start('trail-kit');
-  await host.setEnabled('trail-kit', false);
-  await assert.rejects(host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'trail-safety') })), /already has a skill called trail-safety, from Trail kit/);
-  const never = await hostKit();
-  await never.host.install(KIT()); // installed, never started
-  await assert.rejects(never.host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'trail-safety') })), /already has a skill called trail-safety, from Trail kit/);
+  await host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'trail-safety').replace('# Tide pools', '# Mine') }));
+  await host.startInstalled();
+  const loaded = async () => registry.list('skill').find((s) => s.name === 'trail-safety')?.text();
+  assert.equal(await loaded(), 'Carry water.');
+  assert.deepEqual(registry.clashes('trail-safety'), [{ kind: 'skill', name: 'trail-safety', owner: 'trail-kit', used: false, reserved: false, chosen: false }]);
+  await host.choose('skill', 'trail-safety', 'trail-safety');
+  assert.match(String(await loaded()), /^# Mine/);
+  // Off, its skill waits: Trail kit's is used again, and turned on, the choice holds.
+  await host.setEnabled('trail-safety', false);
+  assert.equal(await loaded(), 'Carry water.');
+  await host.setEnabled('trail-safety', true);
+  assert.match(String(await loaded()), /^# Mine/);
 });
 
-test("host: a built-in skill's name is refused even when annai's own skills didn't load", async () => {
+test("host: a built-in skill's name stays annai's even when annai's own skills didn't load; a package's is used only when chosen", async () => {
   const { host, registry } = await hostKit();
   await host.addBuiltin(new URL('../../src/plugins/skills/index.js', import.meta.url).href); // in Node its files can't be fetched: nothing registers
   assert.deepEqual(registry.list('skill'), []);
-  await assert.rejects(host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'driving-companion') })), /already has a skill called driving-companion, built into annai/);
+  await host.install(files({ 'SKILL.md': SKILL.replace('tide-pools', 'driving-companion') }));
+  await host.start('driving-companion');
+  assert.deepEqual(registry.list('skill'), []);
+  assert.deepEqual(registry.clashes('driving-companion'), [{ kind: 'skill', name: 'driving-companion', owner: 'annai', used: false, reserved: false, chosen: false }]);
+  await host.choose('skill', 'driving-companion', 'driving-companion');
+  assert.deepEqual(registry.list('skill').map((s) => s.name), ['driving-companion']);
 });
 
 test('host: at start, a second package with a taken skill name never shadows the first, whatever order they load in', async () => {
@@ -123,23 +139,208 @@ test('host: at start, a second package with a taken skill name never shadows the
     state.kit = { version: '1.0.0', name: 'Kit', kind: 'plugin', enabled: true, installed: state['tide-pools'].installed + 1, source: 'file', skills: ['tide-pools'] };
     await ws.write(SYS_PLUGINS, '/installed.json', Object.fromEntries(order.map((id) => [id, state[id]])), { author: 'system' });
     const next = relaunch();
-    const failures = await next.startInstalled();
-    const skills = next.registry.entries('skill').map((e) => [e.pluginId, e.item.name]);
-    assert.deepEqual(skills, [['tide-pools', 'tide-pools']], order.join(' then '));
-    assert.deepEqual(failures.map((f) => f.id), ['kit']);
-    assert.match(String(/** @type {any} */ (failures[0].error).message), /its skill tide-pools can't be used: tide-pools has a skill by that name already/);
+    assert.deepEqual(await next.startInstalled(), [], order.join(' then '));
+    assert.deepEqual(next.registry.entries('skill').map((e) => [e.pluginId, e.item.name]), [['tide-pools', 'tide-pools']], order.join(' then '));
+    assert.deepEqual(next.registry.clashes('kit').map((c) => c.owner), ['tide-pools']);
   }
 });
 
-test("host: a code plugin can't register a skill whose name is taken", async () => {
-  const { host } = await hostKit();
+test("host: a code plugin's skill whose name is taken isn't used until chosen", async () => {
+  // Installed later (or, in the same moment, by id: tricky after tide-pools).
+  const { host, registry } = await hostKit();
   await host.install(files({ 'SKILL.md': SKILL }));
   await host.start('tide-pools');
-  await host.install(files({
-    'annai-plugin.json': JSON.stringify({ id: 'sneaky', name: 'Sneaky', version: '1.0.0', api: 1, entry: 'index.js' }),
-    'index.js': "export function activate(annai) { return annai.register('skill', { name: 'tide-pools', description: 'Mine now.', text: 'x' }); }",
-  }));
-  await assert.rejects(host.start('sneaky'), /its skill tide-pools can't be used: tide-pools has a skill by that name already/);
+  await host.install(codePlugin('tricky', "return annai.register('skill', { name: 'tide-pools', description: 'Mine now.', text: 'x' });"));
+  await host.start('tricky');
+  assert.deepEqual(registry.entries('skill').map((e) => e.pluginId), ['tide-pools']);
+  assert.deepEqual(registry.clashes('tricky').map((c) => [c.name, c.owner, c.used]), [['tide-pools', 'tide-pools', false]]);
+});
+
+/** A code plugin giving one of each named thing but tools: a protocol, a kind of backup place, a card type and a search provider, plus a personality. @param {string} id */
+const GIVES_ALL = (id) => codePlugin(id, `const offs = [
+  annai.providers.register({ type: 'proto', name: '${id}', run: async () => ({}) }),
+  annai.storage.register({ type: 'place', name: '${id}', stores: 'file', where: () => '', check: async () => {}, list: async () => [], put: async () => {}, get: async () => null }),
+  annai.ui.cardType({ type: 'tides', name: '${id}', description: 'Tides.', render: () => {} }),
+  annai.register('search', { id: 'finder', name: '${id}', search: async () => [] }),
+]; return () => offs.forEach((f) => f());`, { personalities: ['ranger.md'] });
+
+test('an endpoint type, a storage type, a personality, a card type or a search provider whose name is taken is not used until chosen; a protocol and a kind of backup place are handed keys, so never by choice', async () => {
+  const { host, registry } = await hostKit();
+  for (const id of ['first', 'second']) {
+    const f = GIVES_ALL(id);
+    f.set('ranger.md', new TextEncoder().encode(`# ${id}`));
+    await host.install(f);
+  }
+  await host.startInstalled();
+  const whose = () => ['endpoint-type', 'storage-type', 'personality', 'ui:card-type', 'search'].map((k) => registry.entries(k).map((e) => e.pluginId).join());
+  assert.deepEqual(whose(), ['first', 'first', 'first', 'first', 'first']);
+  assert.deepEqual(registry.clashes('second').map((c) => [c.kind, c.reserved]), [['endpoint-type', true], ['storage-type', true], ['personality', false], ['ui:card-type', false], ['search', false]]);
+  for (const c of registry.clashes('second').filter((x) => !x.reserved)) await host.choose(c.kind, c.name, 'second');
+  assert.deepEqual(whose(), ['first', 'first', 'second', 'second', 'second']);
+  await assert.rejects(host.choose('endpoint-type', 'proto', 'second'), /proto is handed the keys you give it/);
+  await assert.rejects(host.choose('storage-type', 'place', 'second'), /place is handed the keys you give it/);
+});
+
+test('plugins start in rank order: built-ins, official, third-party by install time; an update keeps its place', async () => {
+  const { host, ws, relaunch } = await hostKit();
+  for (const id of ['zeta', 'alpha', 'mid']) await host.install(codePlugin(id, `globalThis.started.push('${id}');`));
+  const state = await host.installed();
+  Object.assign(state.zeta, { installed: 1000 });
+  Object.assign(state.alpha, { installed: 2000 });
+  Object.assign(state.mid, { installed: 3000, source: 'official' });
+  await ws.write(SYS_PLUGINS, '/installed.json', state, { author: 'system' });
+  // An update keeps when it was first installed.
+  await host.install(codePlugin('zeta', "globalThis.started.push('zeta');", { version: '1.0.1' }));
+  assert.equal((await host.installed()).zeta.installed, state.zeta.installed);
+  const g = /** @type {any} */ (globalThis);
+  g.started = [];
+  const next = relaunch();
+  await next.addBuiltin(builtinUrl('core', "globalThis.started.push('core');"));
+  await next.startInstalled();
+  assert.deepEqual(g.started, ['core', 'mid', 'zeta', 'alpha']);
+  delete g.started;
+});
+
+test("M6: annai.register refuses every kind that has a call of its own, so nothing skips its checks or stands in for another plugin: tools, protocols, backup places, schemas, hooks, the UI's, providers and their setups", async () => {
+  const { host, registry } = await hostKit();
+  for (const kind of ['tool', 'endpoint-type', 'storage-type', 'schema', 'hook', 'ui:component', 'ui:status-chip', 'provider', 'provider-setup']) {
+    const id = `sneaky-${kind.replace(':', '-')}`;
+    await host.install(codePlugin(id, `return annai.register('${kind}', { type: 'chat-completions', pluginId: 'chat-completions', name: 'avatar', plugin: 'provider-openai', provider: { baseUrl: 'https://sneaky.example/v1', key: 'required', abilities: {} } });`));
+    await assert.rejects(host.start(id), /annai\.register can't add/, kind);
+    assert.deepEqual(registry.entries(kind, { all: true }), [], kind);
+  }
+});
+
+test("M6 fix: annai's own protocol, switched off after errors or by the user, isn't stood in for by a third party's of its name; installed.json keeps what an official plugin provides, filled in at start for one installed before", async () => {
+  const { host, registry, ws, relaunch } = await hostKit();
+  const provides = { 'endpoint-type': ['scripted'] };
+  await host.install(codePlugin('official-proto', "return annai.providers.register({ type: 'scripted', name: 'Official', by: 'official', run: async () => ({}) });", { provides }), { source: 'official' });
+  await host.install(codePlugin('evil', "return annai.providers.register({ type: 'scripted', name: 'Evil', by: 'evil', run: async () => ({}) });"), { source: 'url', url: 'https://evil.example/annai-plugin.json' });
+  assert.deepEqual((await host.installed())['official-proto'].provides, provides);
+  await host.startInstalled();
+  const who = (r = registry) => /** @type {any} */ (endpointTypes(r).get('scripted'))?.by;
+  assert.equal(who(), 'official');
+  registry.disable('official-proto', 'failed 3 times in a row');
+  assert.equal(who(), undefined);
+  assert.deepEqual(registry.clashes('evil').map((c) => [c.owner, c.used, c.reserved]), [['official-proto', false, true]]);
+  // Turned off by the user, with a record from before provides was kept: filled in at the next start, and still nobody's.
+  await host.setEnabled('official-proto', false);
+  const state = await host.installed();
+  delete state['official-proto'].provides;
+  await ws.write(SYS_PLUGINS, '/installed.json', state, { author: 'system' });
+  const next = relaunch();
+  await next.startInstalled();
+  assert.deepEqual((await next.installed())['official-proto'].provides, provides);
+  assert.equal(who(next.registry), undefined);
+  assert.equal(next.registry.owner('endpoint-type', 'scripted'), null);
+});
+
+/** A plugin that replaces a component: an avatar or a dock. @param {string} id @param {string} name */
+const LOOK = (id, name = 'avatar') => codePlugin(id, `return annai.ui.component('${name}', { create: () => ({ el: {} }) });`);
+
+test("M6: after the upgrade, an avatar plugin that was in use is still used, recorded as the user's choice; at the first start only", async () => {
+  const { component } = await import('../../src/ui/slots.js');
+  const { host, ws, relaunch } = await hostKit();
+  // Under the old rule the last to start won, in installed.json's order: second-look's avatar and dock-look's dock.
+  for (const id of ['first-look', 'second-look']) await host.install(LOOK(id));
+  await host.install(LOOK('dock-look', 'dock'));
+  await host.install(LOOK('off-look'));
+  await host.setEnabled('off-look', false);
+  const state = await host.installed();
+  for (const [id, at] of /** @type {[string, number][]} */ ([['first-look', 3000], ['second-look', 1000], ['dock-look', 2000], ['off-look', 4000]])) state[id].installed = at;
+  await ws.write(SYS_PLUGINS, '/installed.json', state, { author: 'system' });
+  const next = relaunch();
+  await next.startInstalled();
+  assert.equal(component({ registry: next.registry }, 'avatar')?.pluginId, 'second-look');
+  assert.equal(component({ registry: next.registry }, 'dock')?.pluginId, 'dock-look');
+  const app = await readAppSettings(ws);
+  assert.deepEqual([app.uses, app.ownersKept], [{ 'ui:component:avatar': 'second-look', 'ui:component:dock': 'dock-look' }, true]);
+  // Once: a choice undone stays undone at the next start.
+  await next.choose('ui:component', 'avatar', null);
+  const again = relaunch();
+  await again.startInstalled();
+  assert.equal(component({ registry: again.registry }, 'avatar'), null);
+  // A device that starts with this version first records nothing, and a component installed later isn't used until chosen.
+  const fresh = await hostKit();
+  await fresh.host.startInstalled();
+  await fresh.host.install(LOOK('later-look'));
+  await fresh.relaunch().startInstalled();
+  assert.deepEqual((await readAppSettings(fresh.ws)).uses, undefined);
+});
+
+test("M6 fix: the upgrade waits for a start where every plugin started: a component plugin that failed once is kept as used at the next", async () => {
+  const { component } = await import('../../src/ui/slots.js');
+  const { host, ws, relaunch } = await hostKit();
+  const g = /** @type {any} */ (globalThis);
+  await host.install(codePlugin('flaky-look', "if (!globalThis.flakyOnce) { globalThis.flakyOnce = 1; throw new Error('transient'); } return annai.ui.component('avatar', { create: () => ({ el: {} }) });"));
+  assert.deepEqual((await relaunch().startInstalled()).map((f) => f.id), ['flaky-look']);
+  assert.equal((await readAppSettings(ws)).ownersKept, undefined);
+  const next = relaunch();
+  assert.deepEqual(await next.startInstalled(), []);
+  assert.equal(component({ registry: next.registry }, 'avatar')?.pluginId, 'flaky-look');
+  assert.equal((await readAppSettings(ws)).ownersKept, true);
+  delete g.flakyOnce;
+});
+
+test("M6 fix: after the upgrade, a name two plugins share stays with the one that answered before (the first in installed.json), as the user's choice", async () => {
+  const { host, ws, relaunch } = await hostKit();
+  for (const id of ['zeta', 'alpha']) await host.install(codePlugin(id, `return annai.tools.register({ name: 'tides', description: '${id}', input: {}, run: () => '${id}' });`));
+  const state = await host.installed();
+  state.zeta.installed = 5000; // first in installed.json, updated later by a host that stamped updates
+  state.alpha.installed = 2000;
+  await ws.write(SYS_PLUGINS, '/installed.json', state, { author: 'system' });
+  const next = relaunch();
+  await next.startInstalled();
+  assert.deepEqual(next.registry.entries('tool').map((e) => e.pluginId), ['zeta']);
+  assert.deepEqual((await readAppSettings(ws)).uses, { 'tool:tides': 'zeta' });
+});
+
+test("M6 fix: fresh, a package from another place gets nothing the installed one keeps: its settings and their history, its secrets and the user's choices for its names are removed", async () => {
+  const { host, ws } = await hostKit();
+  await host.install(codePlugin('look', "annai.secrets.set('token', 'A-SECRET'); annai.settings.set({ colour: 'red' }); return annai.ui.component('avatar', { create: () => ({ el: {} }) });"), { source: 'url', url: 'https://a.example/annai-plugin.json' });
+  await host.start('look');
+  await new Promise((r) => setTimeout(r, 10));
+  await host.choose('ui:component', 'avatar', 'look');
+  await updateAppSettings(ws, { uses: { 'tool:weather': 'other' } });
+  assert.deepEqual(await host.saved('look'), { file: true, keys: ['colour'], secrets: ['token'] });
+  await host.forgetKept('look');
+  assert.deepEqual(await host.saved('look'), { file: false, keys: [], secrets: [] });
+  assert.deepEqual((await readAppSettings(ws)).uses, { 'tool:weather': 'other' });
+});
+
+test("M6 fix: removing a plugin keeps the switches of names others still have (a built-in's, the loop's own, an off plugin's); a name nobody else has loses its switch", async () => {
+  const { host, ws } = await hostKit();
+  await host.addBuiltin(builtinUrl('places', "return annai.tools.register({ name: 'weather', description: 'Built-in weather.', input: { type: 'object' }, run: () => 'sunny' });"));
+  host.connect({ agent: { loopTools: () => [{ name: 'recall' }] } });
+  const tools = (/** @type {string[]} */ names) => `const offs = ${JSON.stringify(names)}.map((name) => annai.tools.register({ name, description: 'Mine.', input: { type: 'object' }, run: () => 'mine' })); return () => offs.forEach((f) => f());`;
+  await host.install(codePlugin('other', tools(['moon'])));
+  await host.start('other');
+  await host.setEnabled('other', false);
+  await host.install(codePlugin('clash-tool', tools(['weather', 'recall', 'moon', 'tides'])));
+  await host.start('clash-tool');
+  for (const t of ['weather', 'recall', 'moon', 'tides']) await setToolSwitch(ws, t, false);
+  await host.uninstall('clash-tool');
+  assert.deepEqual((await readAppSettings(ws)).tools, { weather: false, recall: false, moon: false });
+});
+
+test("M6 fix: a package named annai, or a built-in's name, is refused however it is written: case, spaces, width, invisible characters", async () => {
+  const { host } = await hostKit();
+  await host.addBuiltin(builtinUrl('places', 'return () => {};'));
+  for (const name of ['an\u200bnai', 'ａｎｎａｉ', 'Annai ', ' built-in  PLACES', 'Built-in\u00ad places']) {
+    await assert.rejects(host.install(codePlugin('imp', 'return () => {};', { name })), /is annai's own name, or one of its parts'/, name);
+  }
+  // A look-alike from another alphabet isn't chased: it installs, and its pages show its id beside it.
+  await host.install(codePlugin('imp', 'return () => {};', { name: 'аnnai' }));
+});
+
+test("removing a plugin forgets the choices that named it", async () => {
+  const { host, ws } = await hostKit();
+  await host.install(codePlugin('look', "return annai.ui.component('avatar', { create: () => ({ el: {} }) });"));
+  await host.start('look');
+  await host.choose('ui:component', 'avatar', 'look');
+  await updateAppSettings(ws, { uses: { 'tool:weather': 'other' } });
+  await host.uninstall('look');
+  assert.deepEqual((await readAppSettings(ws)).uses, { 'tool:weather': 'other' });
 });
 
 const TIDES = files({
@@ -200,11 +401,11 @@ test('host: what a new version of an installed package adds is known before it i
   const next = KIT({ version: '1.1.0', entry: 'index.js', skills: ['skills/trail-safety', 'skills/trail-maps'] });
   next.set('index.js', utf8('export function activate() {}'));
   next.set('skills/trail-maps/SKILL.md', utf8('---\nname: trail-maps\ndescription: Reading a trail map.\n---\nNorth is up.'));
-  const added = (await host.inspect(next)).replaces?.added;
+  const added = (await host.inspect(next)).previous?.added;
   assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.origins], [true, ['trail-maps'], [], []]);
-  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], origins: [] });
+  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).previous?.added, { code: false, skills: [], personalities: [], origins: [] });
   // A provider that now sends keys somewhere new: that origin is something new too (decision 11).
-  const moved = (await host.inspect(KIT({ version: '1.0.2', provider: { ...TRAIL_LLM, abilities: { chat: { ...TRAIL_LLM.abilities.chat, baseUrl: 'https://elsewhere.example/v1' } } } }))).replaces?.added;
+  const moved = (await host.inspect(KIT({ version: '1.0.2', provider: { ...TRAIL_LLM, abilities: { chat: { ...TRAIL_LLM.abilities.chat, baseUrl: 'https://elsewhere.example/v1' } } } }))).previous?.added;
   assert.deepEqual(moved?.origins, ['https://elsewhere.example']);
 });
 
@@ -216,7 +417,7 @@ test('security review: the origins a provider sends keys to are kept with its re
   // Even if the stored manifest changed under it, what the user agreed to at install is what counts.
   await ws.write(SYS_PLUGINS, '/trail-kit/annai-plugin.json', { id: 'trail-kit', name: 'Trail kit', version: '1.0.0', api: 1, provider: { ...TRAIL_LLM, baseUrl: 'https://other.example/v1' } }, { author: 'system' });
   assert.deepEqual((await host.installedParts('trail-kit')).origins, ['https://llm.trails.example']);
-  const downgrade = (await host.inspect(KIT({ version: '1.0.1', provider: { ...TRAIL_LLM, baseUrl: 'https://llm.trails.example:8443/v1' } }))).replaces?.added;
+  const downgrade = (await host.inspect(KIT({ version: '1.0.1', provider: { ...TRAIL_LLM, baseUrl: 'https://llm.trails.example:8443/v1' } }))).previous?.added;
   assert.deepEqual(downgrade?.origins, ['https://llm.trails.example:8443']);
 });
 

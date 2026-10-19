@@ -152,13 +152,11 @@ const SKILL_IMAGE_MAX = 5 * 1024 * 1024;
 /**
  * The skill tool (spec §7.2): a skill's text, with a line naming its other files; or one of them
  * (choice 9): text as text (scripts too: annai never runs them), a photo as a photo, else said what it is.
- * The first skill with a name wins, as in her context.
+ * Each name's owner's skill, as in her context.
  * @param {import('./loop.js').Agent} agent @param {{ name: string, file?: string }} i
  */
 async function loadSkill(agent, i) {
-  /** @type {any[]} */
-  const skills = [];
-  for (const s of agent.registry.list('skill')) if (s?.name && !skills.some((x) => x.name === s.name)) skills.push(s);
+  const skills = agent.registry.list('skill').filter((s) => s?.name);
   const s = skills.find((x) => x.name === i.name);
   if (!s) return `There is no skill called "${i.name}". Skills: ${skills.map((x) => x.name).join(', ') || 'none yet'}.`;
   const files = typeof s.files === 'function' ? /** @type {string[]} */ (await s.files()) : [];

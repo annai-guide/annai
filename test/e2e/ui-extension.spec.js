@@ -3,10 +3,13 @@ import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, 
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
-/** Installs a package from a zip through the Add screen and its install screen. @param {any} page @param {Buffer} zip @param {string} name */
-export async function install(page, zip, name) {
+/**
+ * Installs a package from a zip through the Add screen and its install screen; one that replaces annai's
+ * own parts is installed and used (milestone 6). @param {any} page @param {Buffer} zip @param {string} name @param {string} [button]
+ */
+export async function install(page, zip, name, button = 'Install') {
   await pickFile(page, { name: `${name}.zip`, mimeType: 'application/zip', buffer: zip });
-  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await page.getByRole('button', { name: button, exact: true }).click();
   await expect(page.locator('.card', { hasText: name }).getByText('On', { exact: true })).toBeVisible();
 }
 
@@ -23,7 +26,7 @@ test("a plugin's slots, plan row, screen and theme appear, and go when it is tur
       await new Workspace(store).write(trip, '/plan/falls.json', { id: 'falls', title: 'Pfeiffer Falls', kind: 'sight', fixed: false, priority: 1, start: { at: '2030-11-27T10:00:00-08:00', tz: 'America/Los_Angeles' } }, { author: 'user' });
       store.close();
     }, trip);
-    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install and use it');
     const dock = page.getByRole('navigation', { name: 'Shiori' });
     await expect(dock.getByText('Trail ok')).toBeVisible();
     await dock.getByRole('button', { name: 'Trail check' }).click();
@@ -59,7 +62,7 @@ test("a plugin can replace the avatar, the Now card and the dock; turned off, an
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await install(page, await zipOf(await fixtureFiles('trail-look')), 'Trail look');
+    await install(page, await zipOf(await fixtureFiles('trail-look')), 'Trail look', 'Install and use it');
     const dock = page.getByRole('navigation', { name: 'Shiori' });
     await expect(dock.getByRole('button', { name: 'Talk to Shiori' })).toBeVisible();
     await expect(dock.getByRole('button', { name: 'Type' })).toHaveCount(0);
@@ -97,7 +100,7 @@ test("Shiori shows a plugin's kind of card: the plugin draws it, and its label n
   ] });
   try {
     await modelSetUp(page, llm.origin);
-    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install and use it');
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Show me the falls');
     await page.getByRole('button', { name: 'Send' }).click();
@@ -112,7 +115,7 @@ test("a plugin's page saves the settings its schema asks for; a secret is kept a
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install and use it');
     await page.getByRole('link', { name: 'Trail UI' }).click();
     await expect(page.getByRole('heading', { name: 'Trail UI' })).toBeVisible();
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
@@ -145,7 +148,7 @@ test("Reset on a plugin's page clears its settings and its secret: after a reloa
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install and use it');
     await page.getByRole('link', { name: 'Trail UI' }).click();
     await expect(page.getByLabel('Trailhead')).toHaveValue('Big Sur Station');
     await page.getByLabel('Trailhead').fill('Pfeiffer Big Sur'); // saved once it is left
@@ -188,7 +191,7 @@ test('8b-2: with a plugin\'s dock, the Conversation shows what Shiori says, and 
   page.on('pageerror', (e) => errors.push(String(e)));
   try {
     await modelSetUp(page, llm.origin);
-    await install(page, await zipOf(await fixtureFiles('trail-look')), 'Trail look');
+    await install(page, await zipOf(await fixtureFiles('trail-look')), 'Trail look', 'Install and use it');
     await page.getByRole('navigation', { name: 'Shiori' }).getByRole('button', { name: 'Ask about the trail' }).click();
     await expect(page.locator('.convo .shiori p')).toHaveText('About two miles.');
     await expect(page.getByText('Something went wrong')).toHaveCount(0);
@@ -212,14 +215,14 @@ test("8b-3: a Now card or plan row that fails is drawn by annai instead, whether
       store.close();
     }, trip);
     const broken = {
-      'annai-plugin.json': Buffer.from(JSON.stringify({ id: 'looks-break', name: 'Looks break', version: '1.0.0', api: 1, entry: 'index.js' })),
+      'annai-plugin.json': Buffer.from(JSON.stringify({ id: 'looks-break', name: 'Looks break', version: '1.0.0', api: 1, entry: 'index.js', replaces: ['now-card', 'plan-row'] })),
       'index.js': Buffer.from(`export function activate(annai) {
         const a = annai.ui.component('now-card', { render: () => { throw new TypeError('now card broke'); } });
         const b = annai.ui.component('plan-row', { render: async () => { throw new TypeError('row broke'); } });
         return () => { a(); b(); };
       }`),
     };
-    await install(page, await zipOf(broken), 'Looks break');
+    await install(page, await zipOf(broken), 'Looks break', 'Install and use it');
     await page.goto('/#/now');
     await expect(page.getByText("Live mode is off, so annai isn't following where you are.")).toBeVisible();
     await expect(page.getByRole('button', { name: 'Turn on live mode' })).toBeVisible();

@@ -17,10 +17,10 @@ import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.
  * @typedef {{ id: string, version: string, homepage?: string }} Requirement  version: "^N", the same major (milestone 1, decision 7)
  * @typedef {{ kind: 'plugin' | 'skill', id: string, name: string, version: string, shownVersion: string, manifest: any,
  *   files: Map<string, Uint8Array>, code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[],
- *   provider: import('./llm/provider-desc.js').ProviderDesc | null, requires: Requirement[], category: string, keywords: string[],
+ *   provider: import('./llm/provider-desc.js').ProviderDesc | null, requires: Requirement[], category: string, keywords: string[], replaces: string[],
  *   description: string, author?: string, homepage?: string, license?: string, fingerprint: string }} Package
  *   files: by name inside the package (its top folder taken off); shownVersion: '' for a skill without a version;
- *   provider: a model provider's description (data); category: '' when the manifest gives none
+ *   provider: a model provider's description (data); category: '' when the manifest gives none; replaces: names it means to replace
  */
 
 export const API_VERSION = 1;
@@ -53,6 +53,7 @@ export const PLUGIN_MANIFEST_SCHEMA = {
     },
     category: { enum: CATEGORIES },
     keywords: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 40 } },
+    replaces: { type: 'array', maxItems: 20, items: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,64}$' } },
     featured: { type: 'string', minLength: 1, maxLength: 200 },
     catchAll: { type: 'boolean' },
   },
@@ -200,7 +201,7 @@ async function skillPackage(files, checkNames) {
   const manifest = skillManifest(skill);
   return {
     kind: 'skill', id: skill.name, name: skill.name, version: manifest.version, shownVersion: skill.metadata.version ?? '', manifest, files, code: false,
-    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], provider: null, requires: [], category: '', keywords: [], description: skill.description,
+    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], provider: null, requires: [], category: '', keywords: [], replaces: [], description: skill.description,
     ...(skill.metadata.author ? { author: skill.metadata.author } : {}), ...(skill.license ? { license: skill.license } : {}),
     fingerprint: await fingerprint(files),
   };
@@ -250,7 +251,7 @@ async function pluginPackage(files, checkNames) {
   }
   return {
     kind: 'plugin', id, name: manifest.name, version: manifest.version, shownVersion: manifest.version, manifest, files, code: Boolean(manifest.entry),
-    skills, personalities, provider: manifest.provider ?? null, requires: manifest.requires ?? [], category: manifest.category ?? '', keywords: manifest.keywords ?? [],
+    skills, personalities, provider: manifest.provider ?? null, requires: manifest.requires ?? [], category: manifest.category ?? '', keywords: manifest.keywords ?? [], replaces: manifest.replaces ?? [],
     description: manifest.description ?? '',
     ...(manifest.author ? { author: manifest.author } : {}), ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
     fingerprint: await fingerprint(files),
