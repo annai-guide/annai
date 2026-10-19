@@ -273,8 +273,9 @@ export async function readConfig(ws) {
  */
 function rolesFrom(saved, models) {
   const { 'koe-talk': talk, 'koe-type': type, ...s } = saved && typeof saved === 'object' ? saved : {};
-  // Koe's two lists before they were one (2026-10-19): the talking list's models, then the typing list's.
-  s.koe ??= talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))] } : undefined;
+  // Koe's two lists before they were one (2026-10-19): the talking list's models, then the typing list's, and its wait, else
+  // the typing list's. Not their level: old files hold an explicit 'off', the old default, which would defeat the new 'low'.
+  s.koe ??= talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))], firstOutputSeconds: talk?.firstOutputSeconds ?? type?.firstOutputSeconds } : undefined;
   /** @type {Roles} */
   const out = {};
   for (const role of new Set([...CHAT_ROLES, KOE_ROLE, ...SPEECH_ROLES, ...Object.keys(s)])) {

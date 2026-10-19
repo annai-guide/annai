@@ -56,15 +56,18 @@ test("a stored config with Koe's two old lists reads as one: the talking list's 
   const [big, small] = [idOf('Big'), idOf('Small (free)')];
   await ws.write(SYS_SETTINGS, '/llm/roles.json', {
     main: { models: [big], level: 'medium' },
-    'koe-talk': { models: [small, big], level: 'off' }, 'koe-type': { models: [big, 'gone', small], level: 'off' },
+    'koe-talk': { models: [small, big], level: 'off', firstOutputSeconds: 5 }, 'koe-type': { models: [big, 'gone', small], level: 'off', firstOutputSeconds: 12 },
   }, { author: 'user' });
   const { roles } = await readConfig(ws);
-  assert.deepEqual(roles.koe.models, [small, big]);
+  assert.deepEqual(roles.koe, { models: [small, big], level: 'low', firstOutputSeconds: 5 }, "the talking list's wait; the new default level, not the old lists' saved off");
   assert.ok(!('koe-talk' in roles) && !('koe-type' in roles));
   // Saved again, the file holds the one list.
   await saveRoles(ws, roles);
   const file = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
   assert.deepEqual([file.koe.models, 'koe-talk' in file, 'koe-type' in file], [[small, big], false, false]);
+  // The typing list's wait, when the talking list had none.
+  await ws.write(SYS_SETTINGS, '/llm/roles.json', { 'koe-talk': { models: [], level: 'off' }, 'koe-type': { models: [big], level: 'off', firstOutputSeconds: 12 } }, { author: 'user' });
+  assert.deepEqual((await readConfig(ws)).roles.koe, { models: [big], level: 'low', firstOutputSeconds: 12 });
 });
 
 test('adding a provider whose description recommends a Koe model fills Main but not Koe; "Use the recommended models" fills it; the two old names are ignored', async () => {
