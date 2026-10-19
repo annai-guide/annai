@@ -175,8 +175,9 @@ function build(rec, tunablesFor, withUser) {
     /** @type {AbilityValues} */
     const eff = mergePatch(mergePatch({ tunables: tunablesFor(type) }, tpl.abilities?.[id] ?? {}), usr.abilities?.[id] ?? {});
     const kind = String(eff.kind ?? '');
+    if (!type || !KIND_NAMES[kind]) continue; // what is left of an ability a description no longer has
     abilities[id] = {
-      id, kind, type, name: eff.name || KIND_NAMES[kind] || id, on: eff.on !== false, baseUrl: eff.baseUrl || v.baseUrl || '',
+      id, kind, type, name: eff.name || KIND_NAMES[kind], on: eff.on !== false, baseUrl: eff.baseUrl || v.baseUrl || '',
       tunables: eff.tunables ?? {}, extraBody: eff.extraBody ?? {}, modelDefaults: eff.modelDefaults ?? {},
     };
   }
