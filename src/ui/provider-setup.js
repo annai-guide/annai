@@ -1,9 +1,10 @@
-import { h } from './dom.js';
+import { h, messageOf } from './dom.js';
 import { made } from './slots.js';
 import { platform, isStandalone } from './platform.js';
-import { expectReturn } from './returns.js';
+import { expectReturn, returnFor } from './returns.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
+import { isPluginBug } from '../core/registry.js';
 
 /**
  * A provider plugin's own part of its setup (decision 15): its panel, on its provider's page and as the
@@ -59,4 +60,41 @@ export function drawPanel(ctx, pluginId, provider) {
 export function connection(ctx, pluginId, provider) {
   const panel = drawPanel(ctx, pluginId, provider);
   return { panel, keyField: !panel || setupOf(ctx.registry, pluginId)?.keyField !== false };
+}
+
+/** The plugin a sign-in is being finished for, by name, while it is. @type {string | null} */
+let finishing = null;
+export const returning = () => finishing;
+
+/**
+ * When this page load is annai's address coming back to the plugin that expected it (decision 16): the
+ * query leaves the address, Models says it is finishing, and the plugin's returned() takes the rest once
+ * plugins have started; how it ends is on a card. Any other query is removed and ignored.
+ * @param {any} ctx llm, store, registry, plugins, notices, render, go
+ * @param {{ location?: { search: string, pathname: string, hash: string }, history?: { replaceState: History['replaceState'] }, storage?: import('./returns.js').KeyValue, now?: number }} [env]
+ * @returns {Promise<boolean>} whether it was a return
+ */
+export async function finishReturn(ctx, env = {}) {
+  const loc = env.location ?? location;
+  if (!loc.search) return false;
+  const back = returnFor(loc.search, env);
+  (env.history ?? history).replaceState(null, '', `${loc.pathname}${back ? '#/models' : loc.hash}`);
+  if (!back) return false;
+  const name = String((await ctx.plugins.installed())[back.plugin]?.name ?? back.plugin);
+  finishing = name;
+  try {
+    ctx.render?.();
+    await ctx.llm.ready;
+    const returned = setupOf(ctx.registry, back.plugin)?.returned;
+    if (!returned) throw new Error(`${name} isn't running. Look at it in Settings → Plugins, then sign in again.`);
+    await Promise.resolve(returned(back.params, setupUi(ctx, back.plugin))).catch((e) => {
+      if (isPluginBug(e)) ctx.registry.fail(back.plugin, 'sign-in', e);
+      throw e;
+    });
+  } catch (e) {
+    ctx.notices.card({ tone: 'warn', title: `Signing in with ${name} didn't finish`, body: messageOf(e) });
+  } finally {
+    finishing = null;
+  }
+  return true;
 }
