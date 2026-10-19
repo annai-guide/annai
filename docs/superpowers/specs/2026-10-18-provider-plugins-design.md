@@ -1,6 +1,6 @@
 # Providers as plugins, one catalog, and plugin conflicts: design
 
-Date: 2026-10-18. Status: agreed with the user in chat; this document is the description to plan from.
+Date: 2026-10-18. Status: approved by the user ("the plan looks good", 2026-10-18); the description to plan from.
 
 ## Why
 
@@ -103,7 +103,13 @@ What the code shows:
   - "Install from an address".
 
   It lists no third-party entries hosted elsewhere until official submissions exist. So "official or from a URL" describes installed items.
-- **One "Add" screen** with a search box: name, description, tags, abilities, and "free".
+- **One "Add" screen** with a search box.
+- **What search covers** (the user, 2026-10-18: someone searching "unsloth", "lmstudio" or "ollama" should find the llama.cpp plugin when no more specific plugin exists):
+  - **The fields, ranked in this order:** the name, the plugin's `keywords`, then its description. Abilities and "free" also match.
+  - **Keywords** are declared in the manifest, e.g. `keywords: ["unsloth", "lm studio", "koboldcpp"]` on the llama.cpp plugin. They aren't hidden: a row that matched on a keyword says why, e.g. "Also for: LM Studio".
+  - **A more specific plugin wins** by ranking: a name match comes before a keyword match.
+  - **Matching** ignores case, spaces and punctuation ("lm studio" = "lmstudio"), and matches from the start of a word. There's no search library; it's a few lines of annai's own code.
+  - **Official plugins' keywords** are part of their catalog entries, so the official catalog can be searched before anything is installed.
 - **When nothing is typed,** it's browsable, grouped by kind: model providers, voices and transcription, backup places, tools and MCP, skills and personalities, developer. Only kinds with something in them show.
 - **Filter chips:** kind, abilities (chat, transcription, voice), free, local, official or third-party.
 - **Each row shows:**
@@ -183,7 +189,7 @@ What the code shows:
 
 ## Spec changes
 docs/superpowers/specs/2026-10-15-annai-design.md:
-- **§5:** kinds (provider plugins, data-only plugins and their trust), the manifest (`requires`, `replaces`, the provider description), install and update with dependencies, and conflicts;
+- **§5:** kinds (provider plugins, data-only plugins and their trust), the manifest (`requires`, `replaces`, `keywords`, the provider description), install and update with dependencies, and conflicts;
 - **§9:** endpoint becomes provider, with abilities; one key per provider (this replaces the "one key per endpoint" ruling, which the user made when an endpoint was the unit);
 - **§9.8:** onboarding, and OpenRouter's sign-in as its plugin's setup;
 - **§10:** speech models come from providers' abilities;
