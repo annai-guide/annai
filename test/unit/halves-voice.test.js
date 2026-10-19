@@ -230,6 +230,7 @@ test('Koe asking in the same reply as it answers costs one Kokoro call, whicheve
     await new Promise((r) => setTimeout(r, 100));
     await k.agent.idle();
     assert.equal(k.sent['model-0']?.length, 1, order);
+    assert.match(k.sent['model-0'][0].tail, /woke for: Koe asks: "Is Nepenthe open now\?"$/m, `${order}: Koe's question, not its answer, wakes Kokoro`);
     assert.deepEqual(plays(k), ["I'm checking.", "It's open till 10 tonight."], order);
     // A new question, after Kokoro has answered: Koe's question reaches it.
     await say(k, 'first-one');

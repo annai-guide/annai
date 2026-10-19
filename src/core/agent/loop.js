@@ -67,6 +67,7 @@ import { validate } from '../schema.js';
  * @property {(call: { id: string, name: string, input: any, wake: string }) => Promise<import('./tools.js').ToolOutput | null>} [gate] a call not run, and its result
  * @property {(why: string, e: unknown) => boolean} [failed] true: the other half tells the user, so no card
  * @property {() => void} [calling] @property {() => Promise<unknown>} [ready] waited for before each turn
+ * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended]
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
@@ -616,7 +617,7 @@ export class Agent {
     this.#leaving = yes;
   }
 
-  /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7); the voice only if it is this half's. */
+  /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7), and her voice if it is this half's. */
   interrupt() {
     this.#abort?.abort();
     if (this.#half.voice()) this.voice?.speaker.stop();
@@ -1153,6 +1154,7 @@ export class Agent {
       if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
+      this.#half.replied?.(calls.map((/** @type {any} */ c) => c.name));
       if (!calls.length) {
         if (result.reply.stop === 'pause') continue;
         this.#facts.finalText = String(result.reply.text ?? '').trim();
@@ -1985,8 +1987,7 @@ export class Agent {
 
   /**
    * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
-   * tapped to talk (spec §6.2, §10.4); after a turn that worked, what was heard is written down, by
-   * the half that hears (Koe while it talks: once, plan K2).
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard.
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
