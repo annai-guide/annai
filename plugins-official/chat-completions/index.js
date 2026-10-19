@@ -100,9 +100,11 @@ function wire(m, t, current = false) {
     /** @type {any} */
     const out = { role: 'assistant', content: text || null };
     if (calls.length) {
+      // The stand-in only for a reply another model wrote: one of the provider's own carries its signature on its first call.
+      const stand = current && isObject(t.standInCallExtra) && !calls.some((/** @type {any} */ c) => isObject(c.extra));
       out.tool_calls = calls.map((/** @type {any} */ c) => ({
         id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(isObject(c.input) ? c.input : {}) },
-        ...(isObject(c.extra) ? { extra_content: c.extra } : current && isObject(t.standInCallExtra) ? { extra_content: t.standInCallExtra } : {}),
+        ...(isObject(c.extra) ? { extra_content: c.extra } : stand ? { extra_content: t.standInCallExtra } : {}),
       }));
     }
     return [out];
