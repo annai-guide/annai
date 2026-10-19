@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { record, TALK_TAG } from '../../src/core/agent/log.js';
 import { resolveEvent } from '../../src/core/agent/transcript.js';
-import { Channel, channelTool } from '../../src/core/agent/channel.js';
+import { Channel, channelTool } from '../../src/core/agent/halves.js';
 import { ALWAYS_ON, toolList } from '../../src/core/agent/tools.js';
 
 /** Kokoro as the receiving half, and a channel whose Koe side writes into the same log. @param {any[]} script */

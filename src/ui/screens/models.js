@@ -15,8 +15,6 @@ const ROLE_NAMES = {
   utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks',
   'speech-in': 'Speech in: how Shiori hears you', 'speech-out': "Speech out: Shiori's voice",
 };
-/** What buttons and fields call a role: its id, or Koe's lists by name. @type {Record<string, string>} */
-const ROLE_LABELS = { 'koe-talk': 'Koe for talking', 'koe-type': 'Koe for typing' };
 /** The chat roles in the order they are shown: Koe's two lists right after Main. */
 const CHAT_ORDER = ['main', 'koe-talk', 'koe-type', 'utility', 'decide'];
 /** What each stand-in entry is (spec §10.1, §10.3). @type {Record<string, string>} */
@@ -135,7 +133,7 @@ function rolesSection(ctx, cfg) {
  */
 function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } = {}) {
   const r = roles[role];
-  const called = ROLE_LABELS[role] ?? role;
+  const called = role.startsWith('koe') ? ROLE_NAMES[role].split(':')[0] : role; // Koe's lists by name, the rest by id
   /** Moves an entry up or down the list as it is when saved. @param {string} id @param {number} by */
   const move = (id, by) => list(role, (ids) => {
     const next = ids.slice();

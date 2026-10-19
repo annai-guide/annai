@@ -9,7 +9,7 @@ import { candidates } from '../../src/core/llm/fallback.js';
 import { ROLE_LEVELS } from '../../src/core/llm/reasoning.js';
 import { ROLE_KINDS, checkProviderDesc } from '../../src/core/llm/provider-desc.js';
 import { addProvider, useSuggestion } from '../../src/core/llm/providers.js';
-import { koeList, splitOn } from '../../src/core/koe/path.js';
+import { koeList, splitOn } from '../../src/core/llm/fallback.js';
 import { ROUTER_SRC } from './provider-kit.js';
 
 /** @param {Record<string, string[]>} lists @returns {any} */
