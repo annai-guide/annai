@@ -661,3 +661,34 @@ test("removing a trip forgets what was heard in it, its sound and its words, fro
   assert.equal(k.voice.memory.get(kept), null);
   assert.equal(k.voice.memory.size, 0);
 });
+
+test("Koe's question that never reaches Kokoro (its tell_kokoro failed) still lets Koe's answer wake Kokoro", async () => {
+  const k = await agentKit([{ rules: [{ match: 'Koe answered the user', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: ' ' }]) }] } },
+    voice: { speechIn: ['m-hear'] },
+  });
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal((await results(k, 'tell_kokoro'))[0].data.ok, false);
+  assert.equal(k.sent['model-0']?.length, 1);
+  assert.match(k.sent['model-0'][0].tail, /woke for: Koe answered the user$/m);
+});
+
+test("Kokoro failing on a typed question Koe answered itself tells Koe nothing; one Koe asked about, it does", async () => {
+  const k = await agentKit([[{ error: 'overloaded', message: 'busy' }]], {
+    koe: { type: { rules: [
+      { match: 'the user wrote', times: 1, reply: calls(['speak', { text: 'Bixby Bridge is a 1932 concrete arch.' }]) },
+      { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: 'Is Nepenthe open now?' }]) },
+      { match: 'a note from Kokoro', reply: calls(['speak', { text: "Sorry, I couldn't check that." }]) },
+    ] } },
+  });
+  k.agent.send('What is Bixby Bridge?');
+  await k.agent.idle();
+  assert.ok(k.sent['model-0']?.length >= 1);
+  assert.deepEqual(await k.events(['note']), [], 'nobody waited for Kokoro');
+  k.llm.bench.clear('m-0');
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['note'])).filter((e) => e.data.from === 'kokoro').map((e) => e.data.why), ['kokoro-failed']);
+});
