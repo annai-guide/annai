@@ -108,9 +108,15 @@ function wire(m, t) {
  * @param {Response} res @param {any} c @param {any} helpers
  */
 async function* read(res, { tunables: t }, { sse, ProviderError, errorFromResponse }) {
+  let body = res.body;
   if (whole(res)) {
-    yield* readWhole(await jsonOf(res, ProviderError), t, { ProviderError, errorFromResponse });
-    return;
+    const text = await textOf(res, ProviderError);
+    // A stream sent as JSON is still a stream.
+    if (!STREAMED.test(text)) {
+      yield* readWhole(jsonOf(text, ProviderError), t, { ProviderError, errorFromResponse });
+      return;
+    }
+    body = new Response(text).body;
   }
   /** @type {Map<number, { id: string, name: string, args: string }>} */
   const calls = new Map();
@@ -124,7 +130,7 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
     reasoning = '';
     return r ? [{ type: 'reasoning', text: r }] : [];
   };
-  for await (const { data } of sse(/** @type {ReadableStream<Uint8Array>} */ (res.body))) {
+  for await (const { data } of sse(/** @type {ReadableStream<Uint8Array>} */ (body))) {
     if (data === '[DONE]') {
       done = true;
       break;
@@ -186,15 +192,32 @@ function errorIn(error, { ProviderError, errorFromResponse }) {
   return new ProviderError(sharper ?? e.kind, e.message, { status: e.status });
 }
 
-/** Whether an answer is one whole JSON reply rather than a stream: a server that ignores stream: true. @param {Response} res */
+/** What a stream's text starts with: an event's data or name, or a comment. */
+const STREAMED = /^\s*(data:|event:|:)/;
+
+/**
+ * Whether an answer is one whole JSON reply rather than a stream: a server that ignores stream: true.
+ * Only application/json, not NDJSON or problem+json. @param {Response} res
+ */
 function whole(res) {
-  const kind = res.headers.get('content-type') ?? '';
-  return /json/i.test(kind) && !/event-stream/i.test(kind);
+  return /^application\/json\s*(;|$)/i.test(res.headers.get('content-type') ?? '');
 }
 
-/** A whole reply's JSON. @param {Response} res @param {any} ProviderError */
-async function jsonOf(res, ProviderError) {
-  const text = await res.text();
+/**
+ * A whole reply's text. A connection that drops on the way is a dropped connection, tried elsewhere, as a
+ * stream's is (sse.js): never a bug of the plugin's. @param {Response} res @param {any} ProviderError
+ */
+async function textOf(res, ProviderError) {
+  try {
+    return await res.text();
+  } catch (e) {
+    if (/** @type {any} */ (e)?.name === 'AbortError' || /** @type {any} */ (e)?.name === 'TimeoutError') throw e;
+    throw new ProviderError('network', 'The connection dropped.', { cause: e });
+  }
+}
+
+/** A whole reply's JSON. @param {string} text @param {any} ProviderError */
+function jsonOf(text, ProviderError) {
   try {
     return JSON.parse(text);
   } catch {

@@ -158,10 +158,24 @@ function replayable(signature) {
  * @param {Response} res @param {any} sse @param {any} ProviderError @param {any} errorFromResponse
  */
 async function* read(res, sse, ProviderError, errorFromResponse) {
-  const kind = res.headers.get('content-type') ?? '';
-  if (/json/i.test(kind) && !/event-stream/i.test(kind)) {
-    yield* readWhole(await res.text(), ProviderError, errorFromResponse);
-    return;
+  let body = res.body;
+  // One whole response object, from a server that ignores stream: true: only application/json, not NDJSON or problem+json.
+  if (/^application\/json\s*(;|$)/i.test(res.headers.get('content-type') ?? '')) {
+    /** @type {string} */
+    let text;
+    try {
+      text = await res.text();
+    } catch (e) {
+      // A connection that drops on the way is a dropped connection, tried elsewhere, as a stream's is (sse.js): never a bug of the plugin's.
+      if (/** @type {any} */ (e)?.name === 'AbortError' || /** @type {any} */ (e)?.name === 'TimeoutError') throw e;
+      throw new ProviderError('network', 'The connection dropped.', { cause: e });
+    }
+    // A stream sent as JSON is still a stream.
+    if (!/^\s*(data:|event:|:)/.test(text)) {
+      yield* readWhole(text, ProviderError, errorFromResponse);
+      return;
+    }
+    body = new Response(text).body;
   }
   /** @type {Map<number, { id: string, name: string, args: string }>} */
   const calls = new Map();
@@ -180,7 +194,7 @@ async function* read(res, sse, ProviderError, errorFromResponse) {
   /** @type {any} */
   let done = null;
   let incomplete = false;
-  for await (const { event, data } of sse(/** @type {ReadableStream<Uint8Array>} */ (res.body))) {
+  for await (const { event, data } of sse(/** @type {ReadableStream<Uint8Array>} */ (body))) {
     if (data === '[DONE]') break;
     /** @type {any} */
     let e;
