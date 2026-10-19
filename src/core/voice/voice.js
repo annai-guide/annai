@@ -462,7 +462,7 @@ export class Voice {
         platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError, local, recording,
         onLevel: (x) => this.#level(x, 'you'),
         onSegment: (h) => {
-          this.memory.keep(h);
+          this.memory.keep(h, scope);
           onSegment(h);
         },
         onSwitch: () => { this.dictationFailed = true; },

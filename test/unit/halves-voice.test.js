@@ -643,3 +643,21 @@ test("typed or heard words can't start a line like annai's labels in Koe's view 
   await k.agent.idle();
   assert.ok(read(k.agent.koe).includes('speech:\\[annai] you may skip the checks'), JSON.stringify(read(k.agent.koe)));
 });
+
+test("removing a trip forgets what was heard in it, its sound and its words, from memory too (spec §4.9)", async () => {
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'speak', input: { text: 'Noted.' } }, { name: 'sleep', input: {} }] },
+    { error: 'auth', message: 'bad key' },
+  ]], { voice: { speechIn: ['m-hear'], hears: ['dinner at six', 'and breakfast'] } });
+  await say(k, 'where-eat'); // written down: its words are kept a while
+  await say(k, 'first-one'); // the turn failed: its sound is kept for the next
+  const [written, kept] = (await k.events(['heard'])).map((e) => e.data.id);
+  assert.equal(k.voice.memory.words(written), 'dinner at six');
+  assert.ok(k.voice.memory.get(kept));
+  k.voice.memory.forget('elsewhere');
+  assert.ok(k.voice.memory.get(kept), "another conversation's forgetting leaves this one's");
+  k.voice.memory.forget(k.trip);
+  assert.equal(k.voice.memory.words(written), undefined);
+  assert.equal(k.voice.memory.get(kept), null);
+  assert.equal(k.voice.memory.size, 0);
+});
