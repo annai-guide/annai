@@ -380,15 +380,19 @@ export class Halves {
   }
 
   /**
-   * A live session's part (a message, a wake, a note) once Koe has the conversation open; when no session can open, Koe's
-   * next model takes it, or with none, annai says the wake's reminders itself. @param {() => Promise<boolean>} fn @param {Wake} w
+   * A live session's part (a message, a wake, a note) once Koe has the conversation open. When no session can open, Koe's
+   * next model takes it; with none left, a card says so, and Kokoro talks directly at once, told so (with what it last told
+   * Koe that didn't reach the user), the wake's reminders said by annai only if it can't (review); a session that closed
+   * meanwhile leaves them to annai. @param {() => Promise<boolean>} fn @param {Wake} w
    */
   async #live(fn, w) {
     await this.koe.opening.catch(() => {});
     if (await fn()) return;
     await this.#refresh();
-    if (this.koeState === 'text') this.koe.enqueue(w);
-    else if (w.fallbacks?.length) this.kokoro.remind(w.fallbacks);
+    if (this.koeState === 'text') return this.koe.enqueue(w);
+    if (this.koeState !== 'down') return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
+    this.#notice({ tone: 'warn', title: "Koe's live voice couldn't start", body: 'Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.' });
+    this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true, ...(w.fallbacks?.length ? { fallbacks: w.fallbacks } : {}) });
   }
 
   /**
