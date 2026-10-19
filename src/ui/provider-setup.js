@@ -45,9 +45,10 @@ export function returnFor(search, { storage = localStorage, now = Date.now() } =
 /**
  * What a panel and a sign-in get (docs/plugins.md). add and keep work only on this plugin's providers, and
  * annai keeps the key in its secrets (§9.9). A key given as a function is asked for once all else is in
- * place, so no key is made that annai can't keep. @param {any} ctx @param {string} pluginId
+ * place, so no key is made that annai can't keep. added: told of a provider add made, as the plugin's own Add
+ * flow opens its page. @param {any} ctx @param {string} pluginId @param {{ added?: (id: string) => unknown }} [o]
  */
-export function setupUi(ctx, pluginId) {
+export function setupUi(ctx, pluginId, { added } = {}) {
   /** @param {any} key */
   const take = async (key) => (typeof key === 'function' ? String(await key()) : key ?? null);
   return Object.freeze({
@@ -69,7 +70,9 @@ export function setupUi(ctx, pluginId) {
         const at = new URL(String(u)).origin;
         if (m?.catchAll !== true && !where.includes(at)) throw new Error(`${m?.name ?? pluginId} can't add a provider at ${at}: it sends keys only to ${where.join(', ') || 'none'}.`);
       }
-      return ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities });
+      const id = await ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities });
+      await added?.(id);
+      return id;
     },
     /** @param {string} providerId @param {any} key */
     keep: async (providerId, key) => {
@@ -86,12 +89,13 @@ export function setupUi(ctx, pluginId) {
 
 /**
  * A plugin's panel (provider null: its own start); what it throws, or gives that isn't an element, counts
- * against it (§5.5), and there is none. @param {any} ctx @param {string} pluginId @param {PanelProvider | null} provider @returns {HTMLElement | null}
+ * against it (§5.5), and there is none. @param {any} ctx @param {string} pluginId @param {PanelProvider | null} provider
+ * @param {Parameters<typeof setupUi>[2]} [o] @returns {HTMLElement | null}
  */
-export function drawPanel(ctx, pluginId, provider) {
+export function drawPanel(ctx, pluginId, provider, o) {
   const s = setupOf(ctx.registry, pluginId);
   const panel = s?.panel;
-  return panel ? made(ctx, { pluginId, item: s }, 'provider setup panel', () => panel(setupUi(ctx, pluginId), provider), (x) => (x === null || x instanceof Node ? null : 'its panel is no element')) : null;
+  return panel ? made(ctx, { pluginId, item: s }, 'provider setup panel', () => panel(setupUi(ctx, pluginId, o), provider), (x) => (x === null || x instanceof Node ? null : 'its panel is no element')) : null;
 }
 
 /** @type {string | null} the plugin a sign-in is being finished for, by name */

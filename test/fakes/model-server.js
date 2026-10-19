@@ -164,7 +164,8 @@ export async function startFakeServer(o) {
       // LM Studio's own list: capabilities, and each loaded instance's context.
       if (path === '/api/v1/models') return send(200, 'application/json', JSON.stringify({ models: o.native ?? NATIVE }));
       if (path === '/health') return send(200, 'application/json', '{"status":"ok"}');
-      if (!body || typeof body !== 'object') return send(400, 'application/json', error('missing required field: model', 'invalid_request_error'));
+      // An empty request (nothing, {}, or only an output limit: no model), as Another address sends to look, is refused on any real route.
+      if (!body || typeof body !== 'object' || !body.model) return send(400, 'application/json', error('missing required field: model', 'invalid_request_error'));
       if (path !== CHAT) return send(501, 'application/json', error('This stand-in answers only chat completions.', 'not_implemented'));
       if (!Array.isArray(body.messages)) return send(400, 'application/json', error("'messages' is required", 'invalid_request_error'));
       const effort = body.reasoning_effort;

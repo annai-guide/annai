@@ -72,7 +72,7 @@ test('an MCP server added with a bearer token: its tools under Settings → Tool
 test("a server that doesn't let web apps call it, or refuses the token, isn't added, and the screen says why", async ({ page }) => {
   const closed = await startMcpServer({ token: TOKEN, cors: false });
   try {
-    await modelSetUp(page, 'http://127.0.0.1:9');
+    await modelSetUp(page, 'http://127.0.0.1:9', undefined, { look: false }); // nothing there: added by hand
     await page.goto('/#/mcp');
     await page.getByLabel('Name', { exact: true }).fill('closed');
     await page.getByLabel('Address').fill(closed.url);

@@ -77,7 +77,7 @@ export function activate(annai) {
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Protocols (endpoint types)" below |
 | `annai.providers.setup(setup)` | a provider plugin's own setup and quirks, once: see "Model providers with code" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
-| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
 | `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or provider's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
@@ -287,7 +287,7 @@ export function activate(annai) {
 }
 ```
 
-- **`panel(ui, provider)`** draws your part of the setup. With `provider` `{ id, name, key }` (key: whether one is saved), it is drawn on that provider's page, in the key's place; the standard key field follows unless `keyField` is false. With `provider` null, it is your own start: annai draws it as the one-tap start when your plugin is the featured one. Build it with `ui.h`. What it throws, or a panel that isn't an element, counts against your plugin, and the screen draws without it.
+- **`panel(ui, provider)`** draws your part of the setup. With `provider` `{ id, name, key }` (key: whether one is saved), it is drawn on that provider's page, in the key's place; the standard key field follows unless `keyField` is false. With `provider` null, it is your own Add flow: Add on your provider installs your plugin and opens it on a screen of its own, with Add by hand beside it (the provider as your description has it, set up on its page), and a provider your panel adds with `ui.add` opens its page. Leaving that screen with no provider made from your plugin removes it again, if Add installed it for this. annai also draws it as the one-tap start when your plugin is the featured one. Return null where you have nothing to add (Another address does on a provider's page, which keeps annai's switches). Build it with `ui.h`, with handlers as `on…` attributes. What it throws, or a panel that isn't an element, counts against your plugin, and the screen draws without it.
 - **`ui`** (the setup's own) has `h`, `render()` (draws the screen again) and `returnsElsewhere` (true on an iPhone Home Screen app, where a page you open comes back to Safari, not to annai: show a code to paste there). Cards and toasts are `annai.ui.card` and `annai.ui.toast`. And:
   - `ui.add({ key, roles, name, baseUrl, abilities })` adds a provider from your description, installing the protocols of the abilities turned on; `roles` is `"recommended"` (the default), `"free"` or null. An address (`baseUrl`, or an ability's) must be one annai takes, at an origin your description names, as your install screen said keys go there; a `catchAll` provider may give any. It gives the provider's id.
   - `ui.keep(providerId, key)` sets the key of one of your own providers (null removes it). Another plugin's provider is refused.
@@ -299,7 +299,36 @@ export function activate(annai) {
 - **`list(...)`** lists an ability's models in the protocol's place. `protocolList()` gives the protocol's own list, to build on. `fetch` sends only to the ability's address (another origin is refused, unsent) and never follows a redirect, as annai's own requests with a key don't. A crash in it counts against your plugin, and the protocol's list answers.
 - **`featured`** in your manifest counts only in annai's own catalog.
 
-OpenRouter's (`plugins-official/provider-openrouter`) is a sign-in panel, `returned` and `classify` (its free-model limit is too many requests, not an account out of credit). llama.cpp's, Ollama's and LM Studio's are a `list` each, which reads the context a server serves from its own API. llama.cpp's, whole:
+OpenRouter's (`plugins-official/provider-openrouter`) is a sign-in panel, `returned` and `classify` (its free-model limit is too many requests, not an account out of credit).
+
+Another address's (`plugins-official/provider-another-address`) is an Add flow: a panel that looks for what an address offers, at no cost, then adds the provider with what it found. `probe.js` asks for the model list and sends an empty request (no model, no input; a chat path's carries an output limit of one token, in case a lax server runs it anyway) to each path annai knows, at most four at a time, reading each answer against a control request to a path that can't exist, so auth in front of every path, or JSON for anything, finds nothing. Its panel, trimmed:
+
+```js
+import { probe, LOOKS } from './probe.js';
+export function activate(annai) {
+  const io = {
+    fetch: (url, init) => annai.net.fetch(url, init),   // traced; the probe sends each with redirect: 'manual'
+    reach: (url) => annai.net.fetch(url, { mode: 'no-cors', credentials: 'omit' }).then(() => true, () => false),  // there at all?
+    problem: annai.helpers.addressProblem,             // an address annai sends keys to
+  };
+  return annai.providers.setup({
+    panel(ui, provider) {
+      if (provider) return null;                        // a provider's own page: annai's switches
+      const address = ui.h('input', { id: 'probe-address', type: 'url' });
+      const key = ui.h('input', { id: 'probe-key', type: 'password' });
+      const look = ui.h('button', { type: 'button', onclick: async () => {
+        const r = await probe(address.value, key.value || null, io);
+        const found = LOOKS.filter((l) => r.abilities[l.id].state === 'found');
+        await ui.add({ name: new URL(r.base).host, baseUrl: r.base, key: key.value || undefined, roles: null,
+          abilities: Object.fromEntries(found.map((l) => [l.id, { on: true, ...(l.root ? { baseUrl: r.root } : {}) }])) });
+      } }, 'Look for what it offers');
+      return ui.h('div', {}, address, key, look);
+    },
+  });
+}
+```
+
+The real one shows what was found (✓, ✗, or ? with the reason) and adds only on Add with these, a speech path switched on only where the model list names a model for it: some servers answer a speech path whatever their models can do. A request a browser couldn't make is told apart by `reach`, a no-cors GET: it reaches a server whatever its CORS says, so a server that answers it doesn't allow web apps, and one that doesn't isn't there. A browser sends a no-cors request only if it may follow a redirect, which is why it carries no key, body or cookies. llama.cpp's, Ollama's and LM Studio's are a `list` each, which reads the context a server serves from its own API. llama.cpp's, whole:
 
 ```js
 const root = (base) => String(base).replace(/\/+$/, '').replace(/\/v1$/, '');

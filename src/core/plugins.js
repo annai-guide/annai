@@ -20,7 +20,7 @@ import { retry } from './llm/retry.js';
 import { checkTool, TALK, ALWAYS_ON } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { mergePatch } from './patch.js';
-import { descOrigins } from './llm/provider-desc.js';
+import { descOrigins, addressProblem } from './llm/provider-desc.js';
 import { checkSetup } from './llm/setup.js';
 import { catalogFacts } from './catalog-facts.js';
 
@@ -46,7 +46,7 @@ function defaultsOf(schema) {
 }
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
-  backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer });
+  backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer, addressProblem });
 
 /** A state record's kind: a bare skill, or a plugin (every record from before milestone 8). @param {any} s @returns {'skill' | 'plugin'} */
 const kindOfState = (s) => (s?.kind === 'skill' ? 'skill' : 'plugin');
