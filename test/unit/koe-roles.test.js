@@ -70,6 +70,24 @@ test("a stored config with Koe's two old lists reads as one: the talking list's 
   assert.deepEqual((await readConfig(ws)).roles.koe, { models: [big], level: 'low', firstOutputSeconds: 12 });
 });
 
+test("a file holding both koe and the two old lists: koe wins, and reading and saving again changes nothing more", async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  await addProvider({ ws, store }, structuredClone(ROUTER_SRC), { key: 'sk-r', roles: null });
+  const cfg = await readConfig(ws);
+  const [big, small] = ['Big', 'Small (free)'].map((name) => /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).name === name)?.id));
+  await ws.write(SYS_SETTINGS, '/llm/roles.json', {
+    koe: { models: [big], level: 'medium', firstOutputSeconds: 9 }, 'koe-talk': { models: [small], level: 'off', firstOutputSeconds: 5 }, 'koe-type': { models: [small], level: 'off' },
+  }, { author: 'user' });
+  const first = (await readConfig(ws)).roles;
+  assert.deepEqual(first.koe, { models: [big], level: 'medium', firstOutputSeconds: 9 });
+  await saveRoles(ws, first);
+  const file = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
+  assert.ok(!('koe-talk' in file) && !('koe-type' in file));
+  assert.deepEqual((await readConfig(ws)).roles, first);
+});
+
 test('adding a provider whose description recommends a Koe model fills Main but not Koe; "Use the recommended models" fills it; the two old names are ignored', async () => {
   const store = createMemoryStore();
   const ws = new Workspace(store);
@@ -87,6 +105,16 @@ test('adding a provider whose description recommends a Koe model fills Main but 
   cfg = await readConfig(ws);
   assert.deepEqual(name('koe'), ['Small (free)']);
   assert.ok(!('koe-talk' in cfg.roles) && !('koe-type' in cfg.roles));
+  // A description naming only the old lists: nothing lands in Koe, and roles.json never holds them.
+  const oldStore = createMemoryStore();
+  const old = new Workspace(oldStore);
+  await ensureBaseScopes(old);
+  const only = structuredClone(ROUTER_SRC);
+  only.provider.roles = { recommended: { main: ['big'], 'koe-talk': ['small:free'], 'koe-type': ['big'] } };
+  const oid = await addProvider({ ws: old, store: oldStore }, only, { key: 'sk-r' });
+  await useSuggestion({ ws: old }, oid, only, 'recommended');
+  const file = await old.readJSON(SYS_SETTINGS, '/llm/roles.json');
+  assert.deepEqual([file.koe?.models ?? [], 'koe-talk' in file, 'koe-type' in file], [[], false, false]);
 });
 
 test("Koe's wait for the first words is 8 seconds unless the user set one (Koe answers at once)", async () => {
