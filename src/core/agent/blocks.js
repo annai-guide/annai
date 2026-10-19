@@ -1,38 +1,38 @@
 /**
  * What one half reads of the other (the Koe and Kokoro design, "What each half sees"): Kokoro reads
  * the conversation as labelled blocks, the words in them quoted, and Koe reads Kokoro's notes inside
- * markers that nobody else can write, since they are stripped from everything else it reads (plan
- * decision 14; the security review of K1).
+ * a marker nobody else can write: it carries Koe's session nonce, and every other text Koe reads has
+ * its angle brackets escaped (plan decision 14; the security reviews of K1).
  */
 
-/** Brackets a model may read as a tag's. */
-const OPEN = '<‹〈＜《⟨';
-const CLOSE = '>›〉＞》⟩';
-/** A marker-like tag: any bracket, a slash, the name with any separator and case, attributes, and the closing bracket if there is one. */
-const TAG = new RegExp(`[${OPEN}]\\s*\\/?\\s*from[\\s_-]*kokoro\\b[^${OPEN}${CLOSE}]*[${CLOSE}]?`, 'gi');
-/** The marker's own name, bare: never in prose, so it goes too, with the brackets around it. */
-const NAME = new RegExp(`[${OPEN}]?\\s*\\/?\\s*from_kokoro\\b\\s*\\/?\\s*[${CLOSE}]?`, 'gi');
+/** The longest text Koe reads from one place, cut before anything else is done with it (a guard). */
+export const MAX_TEXT = 100_000;
 
 /**
- * Text without the note markers, in any case, spacing or bracket, so a note can't be faked or broken
- * out of. Stripped until nothing changes: a marker hidden inside another is taken out too.
+ * Text that isn't annai's own, as Koe reads it: its angle brackets made look-alikes, so no tag of any
+ * spelling survives, a marker least of all (the security reviews of K1). Linear, and cut to MAX_TEXT first.
  * @param {string} text
  */
-export function stripMarkers(text) {
-  let out = String(text ?? '');
-  for (let was = ''; was !== out;) {
-    was = out;
-    out = out.replace(TAG, '').replace(NAME, '');
-  }
-  return out;
+export function escapeTags(text) {
+  const s = String(text ?? '');
+  return (s.length > MAX_TEXT ? `${s.slice(0, MAX_TEXT)}…` : s).replace(/</g, '‹').replace(/>/g, '›');
 }
 
 /** Words inside a label, quoted, so a label or a new line in them can't pass for annai's. @param {unknown} text */
 export const quote = (text) => JSON.stringify(String(text ?? ''));
 
-/** A note from Kokoro as Koe reads it, wrapped once. @param {string} text */
-export function wrapNote(text) {
-  return `<from_kokoro>${stripMarkers(text)}</from_kokoro>`;
+/**
+ * A note from Kokoro as Koe reads it: annai's own marker, with Koe's session nonce, which Koe's
+ * instructions say is the only one to trust, around words that can't close it.
+ * @param {string} text @param {string} nonce
+ */
+export function wrapNote(text, nonce) {
+  return `<from_kokoro id="${nonce}">${escapeTags(text)}</from_kokoro>`;
+}
+
+/** A nonce for Koe's session: fresh each time annai starts, so text from anywhere else can't carry it. */
+export function newNonce() {
+  return [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /** A note from Koe is a question when it ends with "?", otherwise a note. @param {string} text @returns {'asks' | 'notes'} */
