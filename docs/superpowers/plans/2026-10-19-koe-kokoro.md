@@ -1,5 +1,7 @@
 # Koe and Kokoro: Implementation Plan
 
+> **Changed on 2026-10-19:** Koe's two lists, "for talking" and "for typing", became one list, `koe`, and Koe thinks at "low" by default; where this plan names the two lists, read the one (the Koe design doc's change record, "What the user decided", 2026-10-19).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Shiori becomes two halves when the user opts in: Koe talks with the user at once (a fast text model, or a realtime voice model such as Gemini Live), and Kokoro, the main model, thinks and works behind it. The halves pass notes that never stall either one, and every recording travels in the smallest format both the phone and the provider can handle.
