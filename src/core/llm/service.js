@@ -92,6 +92,8 @@ export function createLlm({
     if ((await plugins.installed())[plugin]) await plugins.uninstall(plugin);
     return prune(plugins, inUse(Object.values((await readConfig(ws)).providers)));
   };
+  /** Plugins Add's tap installed for their own Add flow, until it is left. @type {Set<string>} */
+  const brought = new Set();
   /** @type {Promise<unknown>} adding and the featured start's install go one at a time: they share requirements */
   let line = Promise.resolve();
   /** @template T @param {() => Promise<T>} work @returns {Promise<T>} */
@@ -183,6 +185,30 @@ export function createLlm({
       }
       await tidy().catch((e) => console.warn("a provider plugin with no provider couldn't be removed", e));
       return id;
+    }),
+    /**
+     * Add's tap on a provider with code: its plugin, with what it requires; then null when the plugin has its own
+     * Add flow (a panel, decision 15), which adds it, or the provider added. @param {string} plugin
+     * @param {{ official?: boolean, roles?: 'recommended' | 'free' | null }} [o] @returns {Promise<string | null>} the provider's id
+     */
+    async startAdd(plugin, { official, roles } = {}) {
+      const had = (await plugins.installed())[plugin];
+      await queued(() => service.installProvider(plugin, { official }));
+      if (setupOf(plugins.registry, plugin)?.panel) {
+        if (!had) brought.add(plugin);
+        return null;
+      }
+      try {
+        return await service.addProvider(plugin, { official, roles });
+      } catch (e) {
+        // As a failed add: the plugin it brought goes.
+        if (!had && !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === plugin)) await drop(plugin).catch(() => {});
+        throw e;
+      }
+    },
+    /** Leaving a plugin's own Add flow: one Add's tap installed, with no provider from it, goes, as before the tap. @param {string} plugin */
+    leaveAdd: (plugin) => queued(async () => {
+      if (brought.delete(plugin) && !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === plugin)) await drop(plugin);
     }),
     /**
      * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
