@@ -334,7 +334,7 @@ export class Halves {
     const cfg = await this.llm.config();
     this.#split = splitOn(cfg);
     const voiceOn = Boolean(this.voice?.on);
-    const path = koePath(cfg, { types: this.llm.types?.() ?? new Map(), until: (id) => this.llm.bench?.until(id) ?? 0, now: Date.now() });
+    const path = koePath(cfg, { voiceOn, types: this.llm.types?.() ?? new Map(), until: (id) => this.llm.bench?.until(id) ?? 0, now: Date.now() });
     // A text Koe whose list failed whole rests a while.
     const resting = path?.kind === 'text' && this.clock() < this.#downUntil;
     /** @type {Told} */

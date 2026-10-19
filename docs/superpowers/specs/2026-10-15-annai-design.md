@@ -562,7 +562,7 @@ Request patches use JSON Merge Patch (RFC 7396), plus one extension: a key endin
 
 Each role is an **ordered list** of models, tried front to back:
 - Empty chat roles fall back to the main list.
-- **Koe's list** (§6.8) takes chat and realtime models, and is the same with voice on or off: its first model that can answer now decides Koe's pathway (§10.7, §10.8), and the voice setting (§10.5) only whether Koe talks aloud. Empty, it never uses Main: Shiori is one half. It's at level low, waits 8 s for the first words unless set, and is filled only by "Use the recommended models" on a provider's page, never when a provider is added: the split is opt-in. It was two lists, "for talking" and "for typing", until the user asked for one, like Main (2026-10-19: "currently the two settings looks exactly the same lol"); a stored config's two lists read as one, the talking list's models first, and a provider description that still names them is ignored there.
+- **Koe's list** (§6.8) takes chat and realtime models, and is the same with voice on or off: its first model that can answer now decides Koe's pathway (§10.7, §10.8), except that with voice off (§10.5) a text model that can answer comes before a realtime one, whose reply would be sound nobody hears (data saved by default). Empty, it never uses Main: Shiori is one half. It's at level low, waits 8 s for the first words unless set, and is filled only by "Use the recommended models" on a provider's page, never when a provider is added: the split is opt-in. It was two lists, "for talking" and "for typing", until the user asked for one, like Main (2026-10-19: "currently the two settings looks exactly the same lol"); a stored config's two lists read as one, the talking list's models first, and a provider description that still names them is ignored there.
 - Speech-out ends with the browser voice by default. Speech-in ends with phone dictation where available.
 - Users can reorder or remove these defaults.
 
@@ -760,7 +760,7 @@ While Shiori is two halves (§6.8), the one voice is Koe's:
 
 ### 10.8 Live sessions
 
-When the first model of Koe's list that can answer is a realtime one (§9.1, Gemini Live), Koe talks in live sessions: one stream both ways, its own voice, both transcripts (the Koe and Kokoro design, "Realtime sessions"). Its pathway walks its list, whatever the voice: a live model resting, off or without its protocol running is passed over, and a text model first means the loop.
+When the first model of Koe's list that can answer is a realtime one (§9.1, Gemini Live), Koe talks in live sessions: one stream both ways, its own voice, both transcripts (the Koe and Kokoro design, "Realtime sessions"). Its pathway walks its list: a live model resting, off or without its protocol running is passed over, and a text model first means the loop. With voice off, a text model that can answer, anywhere in the list, comes first: a live session's replies are audio only (Gemini Live's are 24 kHz PCM, about 65 KB a second as base64), never played while voice is off, so a realtime model runs muted only when no text model can answer.
 - **Opening,** never by itself, so no microphone stays open between sessions:
   - a tap on Shiori, with voice on: the session and the microphone;
   - a typed message or a photo: a session without the microphone. With voice off, its reply is Koe's bubble (its transcript) and its sound is dropped; when voice comes on, the same session speaks, and a tap gives it the microphone;
