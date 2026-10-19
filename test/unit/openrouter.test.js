@@ -60,6 +60,19 @@ test('exchange: the code and the verifier buy a key; a strange state, an old sig
   await assert.rejects(exchange({ code: 'c', state: 'any', fetch, storage, now: 1000 + 16 * 60_000 }), /expired/);
 });
 
+test("the code and the verifier never follow a redirect: together they'd buy a key for whoever is at the other end (fix pass)", async () => {
+  const storage = memoryStorage();
+  await signInUrl({ callback: null, storage, now: 1000 });
+  /** @type {any[]} */
+  const inits = [];
+  const answer = (/** @type {any} */ res) => async (/** @type {any} */ _url, /** @type {any} */ init) => { inits.push(init); return res; };
+  const opaque = /** @type {any} */ ({ type: 'opaqueredirect', status: 0, ok: false, json: async () => ({ key: 'sk-or-elsewhere' }) });
+  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: answer(opaque), storage, now: 2000 }), /OpenRouter answered with a redirect, which annai doesn't follow with your sign-in/);
+  const moved = new Response(null, { status: 307, headers: { location: 'https://elsewhere.example/keys' } });
+  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: answer(moved), storage, now: 2000 }), /redirect/);
+  assert.ok(inits.length === 2 && inits.every((i) => i.redirect === 'manual'));
+});
+
 test("a code OpenRouter won't take, an old sign-in and an empty paste each say what to do next, in words", async () => {
   const storage = memoryStorage();
   await signInUrl({ callback: null, storage, now: 1000 });

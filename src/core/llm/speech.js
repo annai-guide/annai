@@ -1,4 +1,4 @@
-import { errorFromResponse, sameOrigin } from './contract.js';
+import { errorFromResponse, sameOrigin, noRedirect } from './contract.js';
 import { cannotConnect, asProviderError } from './call.js';
 import { speechCost } from './cost.js';
 
@@ -45,11 +45,12 @@ export async function speechCall(c) {
     let res;
     sameOrigin(endpoint, built.url); // the key goes only to the ability's address
     try {
-      res = await (c.fetch ?? ((url, init) => fetch(url, init)))(built.url, { method: 'POST', headers: built.headers, body: built.body, signal });
+      res = await (c.fetch ?? ((url, init) => fetch(url, init)))(built.url, { method: 'POST', headers: built.headers, body: built.body, signal, redirect: 'manual' });
     } catch (e) {
       throw cannotConnect(e, signal);
     }
     status = res.status;
+    noRedirect(res, endpoint);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       const err = errorFromResponse(res.status, body, res.headers);

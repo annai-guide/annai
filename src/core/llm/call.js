@@ -1,4 +1,4 @@
-import { ProviderError, errorFromResponse, portable, sameOrigin } from './contract.js';
+import { ProviderError, errorFromResponse, portable, sameOrigin, noRedirect } from './contract.js';
 import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
@@ -138,11 +138,12 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       /** @type {Response} */
       let res;
       try {
-        res = await get(built.url, { method: 'POST', headers: built.headers, body: JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request).map((t) => t.patch))), signal: linked });
+        res = await get(built.url, { method: 'POST', headers: built.headers, body: JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request).map((t) => t.patch))), signal: linked, redirect: 'manual' });
       } catch (e) {
         throw cannotConnect(e, linked);
       }
       status = res.status;
+      noRedirect(res, endpoint);
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         const err = errorFromResponse(res.status, text, res.headers);
@@ -243,9 +244,10 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
       let traced = false;
       try {
         sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
-        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal });
+        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal, redirect: 'manual' });
         traced = true;
         await trace?.upload({ endpoint: endpoint.name, url: r.url, status: res.status, ms: now() - started, ...(res.ok ? {} : { error: (await res.text().catch(() => '')).slice(0, 300) }) });
+        noRedirect(res, endpoint);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const up = type.readUpload(await res.json());
         await uploads.set(endpoint.id, p.hash, up.id, up.expiresAt ?? now() + UPLOAD_TTL_S * 1000, now());

@@ -115,10 +115,12 @@ export async function exchange({ code, state, pasted = false, fetch: get = (url,
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ code: code.trim(), code_verifier: saved.verifier, code_challenge_method: 'S256' }),
+      redirect: 'manual', // the code and verifier buy a key (fix pass)
     });
   } catch {
     throw new Error("annai couldn't reach OpenRouter. Check the connection and try again.");
   }
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) throw new Error(`OpenRouter answered with a redirect, which annai doesn't follow with your sign-in. ${AGAIN}`);
   // 403: the code is wrong, used or older than 10 minutes. The same sign-in takes a new code.
   if (res.status === 403) throw new Error("OpenRouter didn't take the code: a code works once, for 10 minutes. Tap Sign in with OpenRouter to get a new one.");
   if (!res.ok) throw new Error(`OpenRouter didn't accept the sign-in (HTTP ${res.status}). ${AGAIN}`);
