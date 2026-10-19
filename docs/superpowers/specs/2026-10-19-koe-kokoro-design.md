@@ -161,6 +161,25 @@ In code and the spec they're Koe and Kokoro.
 - **Privacy:** while a session is open, audio streams continuously to the provider. The voice chip shows it plainly (e.g. "listening live"), and the Trace records the session's opening, closing and tool calls.
 - **Cost:** realtime usage is recorded per session where the provider reports it, and counts toward Spend per day.
 
+### Audio formats: the most efficient each provider supports (the user, 2026-10-19)
+The user: "maybe let's try to use the most efficient codec each provider supports? this is to cut down data usage and increase reliability on trips".
+
+- **Today:** every recording goes out as WAV, 16 kHz mono (`src/core/voice/recorder.js`, `pcm.js`): about 256 kbps, or 1.9 MB a minute, for every provider. Speech coming back is MP3 by default (speech-openai's `format` tunable).
+- **Each speech ability declares the formats it accepts and returns,** in order of preference. These go in the protocol plugin's defaults and the provider description, since providers differ. For example:
+  - OpenAI's transcription takes webm, ogg, mp4/m4a, mp3 and wav;
+  - Groq adds flac;
+  - Gemini's audio input takes ogg, aac, mp3, flac and wav;
+  - OpenAI's chat `input_audio` takes only wav and mp3;
+  - Gemini Live takes raw 16-bit PCM at 16 kHz only;
+  - OpenAI Realtime takes pcm16 or G.711.
+- **annai picks the smallest format both the device can make and the provider accepts:** Opus, then AAC, then MP3, then FLAC, then WAV as the last resort.
+  - It records with what the browser offers: MediaRecorder's `audio/webm;codecs=opus` on Chrome and Android, `audio/mp4` (AAC) on iPhone Safari, or WebCodecs' AudioEncoder where it encodes Opus.
+  - It asks for the smallest output the device can play: Opus where it plays, otherwise AAC or MP3.
+  - Check each format against the provider's current docs and a real call where possible.
+- **Realtime sessions can't choose a codec on Gemini Live** (PCM in, PCM out). Their saving is to stream no silence: a local voice detector sends audio only while someone speaks, using the API's manual activity signals (`activityStart` / `activityEnd`, automatic detection off) or `audioStreamEnd`. Sessions also close after the quiet spell. On OpenAI Realtime, prefer G.711 where its quality is good enough for speech recognition, and say why.
+- **Reliability:** a smaller upload is less likely to fail on a weak signal. Whatever the format, a failed upload retries with the same bytes. The clip kept in the trip record (§10) stays in its compressed form, which also saves storage.
+- **The Trace** shows each clip's format and size.
+
 ### Spending and the Trace
 - Both halves' model calls count toward Spend per day. The Trace shows each call, which half made it, and the notes between them.
 - Settings → Models shows the Koe role with its two lists, near Main.
