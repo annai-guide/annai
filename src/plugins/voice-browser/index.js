@@ -138,11 +138,13 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         return played;
       },
       // A live session's voice (K4): pieces scheduled back to back on the one unlocked context, however fast they come.
+      // Its ticker runs until end() has played out or stop(): a caller always ends a stream one way or the other.
       stream({ rate, onLevel = () => {} }) {
         const c = context();
         if (c.state !== 'running') c.resume().catch(() => {});
-        /** Each piece: when it plays on the context's clock, its source, and its loudness. @type {{ at: number, end: number, src: AudioBufferSourceNode, level: number }[]} */
+        /** The pieces still to play: when on the context's clock, their source, and their loudness. @type {{ at: number, end: number, src: AudioBufferSourceNode, level: number }[]} */
         const pieces = [];
+        let heard = 0; // seconds of the pieces already played and let go
         let next = 0;
         let ended = false;
         /** @type {{ playedMs: number } | null} */
@@ -155,13 +157,17 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           clearInterval(ticker);
           onLevel(0);
           // What was heard: sound only, never the gaps when pieces came late.
-          result = { playedMs: Math.round(pieces.reduce((s, p) => s + Math.max(0, Math.min(c.currentTime, p.end) - p.at), 0) * 1000) };
+          result = { playedMs: Math.round((heard + pieces.reduce((s, p) => s + Math.max(0, Math.min(c.currentTime, p.end) - p.at), 0)) * 1000) };
           settle(result);
           return result;
         };
         const ticker = setInterval(() => {
           const now = c.currentTime;
-          onLevel(pieces.find((p) => p.at <= now && now < p.end)?.level ?? 0);
+          while (pieces.length && pieces[0].end <= now) {
+            const p = /** @type {{ at: number, end: number }} */ (pieces.shift());
+            heard += p.end - p.at;
+          }
+          onLevel(pieces.find((p) => p.at <= now)?.level ?? 0);
           if (ended && now >= next) finish();
         }, 50);
         return {
@@ -180,6 +186,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
             pieces.push({ at, end: next, src, level: Math.min(1, Math.sqrt(sum / pcm.length) * 4) });
           },
           end() { ended = true; },
+          queued: () => pieces.length,
           stop() {
             const r = finish();
             for (const p of pieces) p.src.stop();

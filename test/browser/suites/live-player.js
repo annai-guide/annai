@@ -47,4 +47,19 @@ export default function (test, assert) {
     s.end();
     assert.equal((await s.done).playedMs, 0);
   });
+
+  test('a long stream keeps only what is still to play: pieces already heard are let go (review)', async () => {
+    const s = /** @type {any} */ (browserPlatform().player).stream({ rate: 24_000 });
+    let most = 0;
+    for (let i = 0; i < 40; i++) {
+      s.push(piece(50));
+      most = Math.max(most, s.queued());
+      await wait(45);
+    }
+    s.end();
+    const { playedMs } = await s.done;
+    assert.ok(most < 10, `at most ${most} pieces kept of 40`);
+    assert.equal(s.queued(), 0);
+    assert.ok(Math.abs(playedMs - 2000) < 60, `played ${playedMs} ms of 2000`);
+  });
 }
