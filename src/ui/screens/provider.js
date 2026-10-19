@@ -2,7 +2,7 @@ import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosa
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById, useSuggestion } from '../../core/llm/providers.js';
-import { testPanel, liveTestPanel } from '../model-check.js';
+import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem } from '../../core/llm/provider-desc.js';
@@ -233,8 +233,8 @@ async function abilityBody(view, abilityId) {
     })),
     h('div', { class: 'saving' }, extra.el, ...autosave(extra.area, extra.read, async (x) => extra.show((await saveAbility({ extraBody: x })).extraBody))),
     modelsPart(ctx, id, abilityId, models),
-    !first ? null : (speech ? speechTestPanel(ctx, first, speech, cfg.models[first.id].verified, `Test ${first.name}`)
-      : (a.kind === 'realtime' ? liveTestPanel : testPanel)(ctx, first.id, cfg.models[first.id].verified, `Test ${first.name}`)),
+    first && speech ? speechTestPanel(ctx, first, speech, cfg.models[first.id].verified, `Test ${first.name}`) : null,
+    first && !speech ? testPanel(ctx, first.id, cfg.models[first.id].verified, `Test ${first.name}`, a.kind === 'realtime') : null,
     note,
   ];
 }

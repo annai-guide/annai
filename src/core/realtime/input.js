@@ -2,25 +2,23 @@ import { biquad } from '../voice/pcm.js';
 import { Detector } from '../voice/detector.js';
 
 /**
- * A live session's microphone (the Koe and Kokoro design, "Audio formats": realtime sessions stream no silence).
- * annai's end-of-sentence detector drives the API's manual turns (decision 9): at speech start, activityStart and
- * the sound just before it; while it goes on, 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the
- * rest and activityEnd. Nothing is sent while nobody speaks. While Koe plays, a start needs bargeInDb more over
- * the floor (decision 13): her own voice from the car's speakers is quieter than a passenger cutting in.
+ * A live session's microphone (the Koe and Kokoro design: realtime sessions stream no silence). annai's end-of-sentence
+ * detector drives the API's manual turns (decision 9): at speech start, activityStart and the sound just before it;
+ * then 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and activityEnd. While Koe plays, a
+ * start needs bargeInDb more over the floor (decision 13): her own voice from the car's speakers is quieter than a passenger.
  */
 
-/** Sound at another sample rate, piece by piece, as 16-bit PCM: the same samples as resampling it all at once. */
+/** Sound at another rate, piece by piece, as 16-bit PCM: the same samples as all at once (filtered, then read between samples, as resample()). */
 export class StreamResampler {
-  #pos = 0; // the next output's place in the input, counted from the first sample
-  #base = 0; // where the current piece starts in the input
-  #last = 0; // the previous piece's last sample, filtered
+  #pos = 0; // the next output's place in the input
+  #base = 0; // where this piece starts in the input
+  #last = 0; // the last piece's last sample, filtered
   #n = 0; // outputs so far
   #filter;
 
   /** @param {number} from @param {number} to */
   constructor(from, to) {
     this.step = from / to;
-    // Filtered first when going down, so nothing folds back (as pcm.js's resample).
     const a = to < from ? biquad('lowpass', to * 0.45, from) : null;
     const b = to < from ? biquad('lowpass', to * 0.45, from) : null;
     this.#filter = a && b ? (/** @type {number} */ x) => b(a(x)) : (/** @type {number} */ x) => x;
@@ -28,19 +26,17 @@ export class StreamResampler {
 
   /** @param {Float32Array} pcm @returns {Int16Array} */
   push(pcm) {
-    const x = new Float32Array(pcm.length + 1);
+    const x = new Float32Array(pcm.length + 1); // x[0]: the sample before this piece
     x[0] = this.#last;
     for (let i = 0; i < pcm.length; i++) x[i + 1] = this.#filter(pcm[i]);
-    const end = this.#base + pcm.length - 1; // the last input sample here
     /** @type {number[]} */
     const out = [];
-    for (; this.#pos <= end; this.#pos = ++this.#n * this.step) {
+    for (; this.#pos <= this.#base + pcm.length - 1; this.#pos = ++this.#n * this.step) {
       const j = Math.floor(this.#pos);
       const f = this.#pos - j;
-      const k = j - this.#base + 1; // x[0] is the sample before this piece
-      const v = x[k] * (1 - f) + (f ? x[k + 1] : 0) * f;
-      const c = Math.max(-1, Math.min(1, v));
-      out.push(Math.round(c < 0 ? c * 0x8000 : c * 0x7fff));
+      const k = j - this.#base + 1;
+      const v = Math.max(-1, Math.min(1, x[k] * (1 - f) + (f ? x[k + 1] : 0) * f));
+      out.push(Math.round(v < 0 ? v * 0x8000 : v * 0x7fff));
     }
     if (pcm.length) this.#last = x[pcm.length];
     this.#base += pcm.length;
