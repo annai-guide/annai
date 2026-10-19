@@ -9,6 +9,7 @@ const notes = new Map();
 
 /**
  * Settings → Backups (spec §12.4, §16.2 "Storage & backup"): the places this device backs up to, or one place.
+ * ?add=<type> (the Add screen's Set up) chooses that kind of place to add.
  * @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
  */
 export async function renderBackups(ctx, route) {
@@ -19,6 +20,8 @@ export async function renderBackups(ctx, route) {
   const kinds = new Map(offered.map((o) => /** @type {[string, string]} */ ([o.type, o.name])));
   for (const t of ctx.backups.types()) kinds.set(t.type, t.name);
   const pick = h('select', { id: 'add-place' }, ...[...kinds].map(([type, name]) => h('option', { value: type, text: name })));
+  // From the Add screen's Set up: that kind of place, chosen.
+  if (kinds.has(route.params.add)) pick.value = route.params.add;
   const status = h('p', { class: 'sub', role: 'status' });
   const add = h('button', {
     class: 'btn pri', type: 'button',

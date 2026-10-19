@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp } from './helpers.js';
+import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile, pickAddress } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const file = (/** @type {Buffer} */ body, type = 'text/plain') => ({ status: 200, type, body });
@@ -27,8 +27,7 @@ test('a skill from a zip: the install screen says what a skill is; Shiori sees o
   ] });
   try {
     await modelSetUp(page, llm.origin);
-    await page.goto('/#/plugins');
-    await page.getByLabel('Install from a file').setInputFiles({ name: 'tide-pools.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('tide-pools'), 'tide-pools-main') });
+    await pickFile(page, { name: 'tide-pools.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('tide-pools'), 'tide-pools-main') });
     await expect(page.getByRole('heading', { name: 'Install tide-pools?' })).toBeVisible();
     await expect(page.getByText('A skill is instructions for Shiori')).toBeVisible();
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toHaveCount(0);
@@ -63,9 +62,7 @@ test('a skill from an address, with the file it links to', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await page.goto('/#/plugins');
-    await page.getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/tide-pools/SKILL.md`);
-    await page.getByRole('button', { name: 'Get it' }).click();
+    await pickAddress(page, `${site.origin}/kits/tide-pools/SKILL.md`);
     await expect(page.getByRole('heading', { name: 'Install tide-pools?' })).toBeVisible();
     await expect(page.getByText(`From 127.0.0.1:${new URL(site.origin).port}/kits/tide-pools/SKILL.md`)).toBeVisible();
     await page.getByRole('button', { name: 'Install', exact: true }).click();
@@ -84,9 +81,7 @@ test("8a-1: a key in a skill's address: the install screen shows «key», and no
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await page.goto('/#/plugins');
-    await page.getByLabel('Address of a plugin or skill').fill(`${site.origin}/s/${key}/tide-pools/SKILL.md`);
-    await page.getByRole('button', { name: 'Get it' }).click();
+    await pickAddress(page, `${site.origin}/s/${key}/tide-pools/SKILL.md`);
     await expect(page.getByText(`From 127.0.0.1:${new URL(site.origin).port}/s/«key»/tide-pools/SKILL.md`)).toBeVisible();
     await page.getByRole('button', { name: 'Install', exact: true }).click();
     await expect(page.getByText('tide-pools 1.2')).toBeVisible();
@@ -120,8 +115,7 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
   ] });
   try {
     await modelSetUp(page, llm.origin);
-    await page.goto('/#/plugins');
-    await page.getByLabel('Install from a file').setInputFiles({ name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
+    await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
     await expect(page.getByRole('heading', { name: 'Install Tides?' })).toBeVisible();
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
     await expect(page.getByText('Code that runs in annai')).toBeVisible();
@@ -130,7 +124,7 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
     const chips = page.getByRole('navigation', { name: 'Shiori' });
     await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
     // From a zip, installed: its status chip appears (spec §16.4); then removed.
-    await page.getByLabel('Install from a file').setInputFiles({ name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
+    await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
     await page.getByRole('button', { name: 'Install', exact: true }).click();
     await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
     await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Remove' }).click();
@@ -138,8 +132,7 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
     await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toHaveCount(0); // the list drawn again: its field is the new one
     // From an address: the same files as the code that ran this session, so it starts at once (other files would wait for a restart).
-    await page.getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/tides/annai-plugin.json`);
-    await page.getByRole('button', { name: 'Get it' }).click();
+    await pickAddress(page, `${site.origin}/kits/tides/annai-plugin.json`);
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
     await page.getByRole('button', { name: 'Install', exact: true }).click();
     await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
@@ -170,9 +163,7 @@ test('an update from an address is offered after a reload and changes nothing un
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'tide_times', input: {} }])), sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await page.goto('/#/plugins');
-    await page.getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/tides/annai-plugin.json`);
-    await page.getByRole('button', { name: 'Get it' }).click();
+    await pickAddress(page, `${site.origin}/kits/tides/annai-plugin.json`);
     await page.getByRole('button', { name: 'Install', exact: true }).click();
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toBeVisible();
     routes['/kits/tides/annai-plugin.json'] = file(Buffer.from(tides['annai-plugin.json'].toString().replace('"1.0.0"', '"1.1.0"')), 'application/json');
@@ -206,8 +197,7 @@ test('a package without code brings a skill and a personality; Settings → Shio
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await page.goto('/#/plugins');
-    await page.getByLabel('Install from a file').setInputFiles({ name: 'trail-kit.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('trail-kit')) });
+    await pickFile(page, { name: 'trail-kit.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('trail-kit')) });
     await expect(page.getByText('Skill "trail-safety": Before a hike - water, light, and telling someone where you go.')).toBeVisible();
     await expect(page.getByText('Personality "ranger"')).toBeVisible();
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toHaveCount(0);
@@ -229,7 +219,7 @@ test("8a-5: a new version of a code plugin that is off stays off, and its code d
     await modelSetUp(page, llm.origin);
     await page.goto('/#/plugins');
     const chips = page.getByRole('navigation', { name: 'Shiori' });
-    await page.getByLabel('Install from a file').setInputFiles({ name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
+    await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
     await page.getByRole('button', { name: 'Install', exact: true }).click();
     await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
     await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Turn off' }).click();
@@ -237,7 +227,7 @@ test("8a-5: a new version of a code plugin that is off stays off, and its code d
     await page.reload(); // its code hasn't run since
     await expect(page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Turn on' })).toBeVisible();
     const next = { ...tides, 'annai-plugin.json': Buffer.from(JSON.stringify({ ...JSON.parse(tides['annai-plugin.json'].toString()), version: '1.0.1' })) };
-    await page.getByLabel('Install from a file').setInputFiles({ name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(next) });
+    await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(next) });
     await page.getByRole('button', { name: 'Install', exact: true }).click();
     await expect(page.locator('.card', { hasText: 'Tides 1.0.1' }).getByRole('button', { name: 'Turn on' })).toBeVisible();
     await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
