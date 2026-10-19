@@ -105,9 +105,9 @@ export class LiveKoe {
     this.c = c;
   }
 
-  /** Something is going on: opening, Koe's turn or sound, a tool, or the user speaking. */
+  /** Something is going on: opening or reconnecting, Koe's turn or sound, a tool, or the user speaking. */
   get busy() {
-    return Boolean(this.#opening || this.#t || this.#sounding || this.#tools || this.#input?.active);
+    return Boolean(this.#opening || this.#t || this.#sounding || this.#tools || this.#input?.active || (this.state === 'open' && !this.#s));
   }
 
   /** The dock's state (spec §16.3), as a half's. @returns {import('../agent/loop.js').State} */
@@ -571,15 +571,16 @@ export class LiveKoe {
     const old = this.#s;
     const gen = this.#gen;
     this.#rotate = false;
-    this.#s = null; // what is said meanwhile waits for the new one
+    this.#s = null; // what is said meanwhile waits for the new one, speech going on starting again there first
+    if (this.#input?.active) this.#waiting.unshift((x) => x.activity('start'));
     const s = await this.#connect(/** @type {string} */ (this.modelId), old?.handle ?? this.#handle, why).catch(() => null);
     old?.close(why);
     if (gen !== this.#gen) {
       s?.close('closed');
       return false;
     }
-    // Speech going on starts again there.
-    if (s && this.#input?.active) s.activity('start');
+    this.#poke();
+    this.#changed();
     return Boolean(s);
   }
 
@@ -598,7 +599,10 @@ export class LiveKoe {
     this.#flushHeard(false);
     if (h) this.#hear = { ...h, id: newId('h'), text: '', at: Date.now(), pcm: [], logged: null };
     if (s.handle) this.#handle = s.handle;
-    if (kind !== 'auth' && kind !== 'not-found' && this.#handle && (await this.#reconnect(why))) return;
+    if (kind !== 'auth' && kind !== 'not-found' && this.#handle && (await this.#reconnect(why))) {
+      this.c.llm.bench?.clear(/** @type {string} */ (this.modelId)); // resumed: the close is no reason to rest
+      return;
+    }
     this.#gone(cut);
   }
 
