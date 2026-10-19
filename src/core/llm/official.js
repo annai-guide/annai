@@ -9,7 +9,7 @@ import { refuseBreaking, installRequirements } from '../requires.js';
  * @typedef {import('../plugins.js').PluginHost} PluginHost
  * @typedef {{ id: string, name: string, version: string, provides: Record<string, string[]>, files: Record<string, string>,
  *   description?: string, category?: string, keywords?: string[], abilities?: string[], free?: boolean, local?: boolean, code?: boolean, size?: number,
- *   requires?: import('../packages.js').Requirement[] }} CatalogPlugin  the facts catalogFacts gives (scripts/catalog-facts.mjs), and its files' hashes
+ *   requires?: import('../packages.js').Requirement[] }} CatalogPlugin  the facts catalogFacts gives (src/core/catalog-facts.js), and its files' hashes
  * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, keepOff?: boolean }} FetchOptions
  *   keepOff: a plugin the user switched off is never switched on by this (security review): it stops, saying how to turn it on
  */
