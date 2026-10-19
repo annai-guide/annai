@@ -83,7 +83,7 @@ export class LiveKoe {
   #sounding = null;
   /** Words still coming for a turn that was cut off, until new sound comes. */
   #trailing = false;
-  /** Kokoro's append notes, waiting for Koe's turn and its sound to end. @type {string[]} */
+  /** What waits for Koe's turn and its sound to end, or for the page to be in view: Kokoro's notes as Koe reads them, a trigger's words. @type {string[]} */
   #notes = [];
   /** @type {any} */
   #quiet = null;
@@ -150,7 +150,8 @@ export class LiveKoe {
   async #start(why) {
     const id = this.c.model();
     const gen = ++this.#gen;
-    if (!id || (await this.#over())) return false;
+    // Never from a page out of view: what comes meanwhile waits for it (shown()).
+    if (!id || !this.c.visible() || (await this.#over())) return false;
     this.state = 'opening';
     this.#changed();
     // A session that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
@@ -247,13 +248,13 @@ export class LiveKoe {
       this.#notes = [];
     }
     if (this.state === 'closed') return;
+    this.state = 'closed';
     this.#gen++;
     const s = this.#s;
     this.#s = null;
     if (!forget && s?.handle) this.#handle = s.handle;
     this.#hush();
     s?.close(why);
-    this.state = 'closed';
     this.modelId = null;
     this.c.told('live-closed');
     this.#changed();
@@ -322,9 +323,25 @@ export class LiveKoe {
 
   /** A wake Koe answers (a trigger, the recap asked aloud), as a text turn from annai. @param {import('../agent/loop.js').Wake} w */
   async wake(w) {
+    const text = `[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`;
+    if (!this.c.visible()) return this.#hold(text);
     if (!(await this.open(w.kind, { mic: Boolean(this.c.voice?.unlocked) }))) return false;
-    this.#text(`[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`);
+    this.#text(text);
     return true;
+  }
+
+  /** The page is out of view: no session opens, and the words wait for it. @param {string} text @returns {true} */
+  #hold(text) {
+    this.#notes.push(text);
+    return true;
+  }
+
+  /**
+   * The page is back in view: what waited (a trigger, Kokoro's notes) is said in a session that opens for it, without the
+   * microphone: a tap opens that (security review).
+   */
+  async shown() {
+    if (this.#notes.length && (await this.open('shown'))) this.#idle();
   }
 
   /**
@@ -332,13 +349,15 @@ export class LiveKoe {
    * and cuts Koe off. A note when no session is open opens one first. @param {string} text @param {'append' | 'immediate'} mode
    */
   async note(text, mode) {
+    const note = wrapNote(text, this.c.nonce);
+    if (!this.c.visible()) return this.#hold(note);
     if (mode === 'immediate') {
       if (!(await this.open('note', { mic: Boolean(this.c.voice?.unlocked) }))) return false;
       for (const t of [this.#t, this.#sounding]) if (t) this.#stop(t);
-      this.#text(wrapNote(text, this.c.nonce), true);
+      this.#text(note, true);
       return true;
     }
-    this.#notes.push(text);
+    this.#notes.push(note);
     if (!(await this.open('note', { mic: Boolean(this.c.voice?.unlocked) }))) return false;
     this.#idle();
     return true;
@@ -359,6 +378,7 @@ export class LiveKoe {
 
   /** @param {'start' | 'end'} edge */
   #activity(edge) {
+    if (!this.c.visible()) return this.close('away'); // a page out of view never streams a sound
     const now = Date.now();
     if (edge === 'start') {
       // The user cut in: her voice stops now; the provider cuts its turn too.
@@ -376,6 +396,7 @@ export class LiveKoe {
 
   /** @param {Uint8Array} b */
   #audio(b) {
+    if (!this.c.visible()) return this.close('away');
     if (this.#keep && this.#hear) this.#hear.pcm.push(samples(b));
     this.#poke();
     this.#send((s) => s.audio(b));
@@ -541,7 +562,7 @@ export class LiveKoe {
   /** Between turns: Kokoro's append notes go in together, and a session told to go reconnects with its handle. */
   #idle() {
     if (this.busy || !this.#s) return;
-    if (this.#notes.length) this.#text(this.#notes.splice(0).map((n) => wrapNote(n, this.c.nonce)).join('\n'));
+    if (this.#notes.length) this.#text(this.#notes.splice(0).join('\n'));
     else if (this.#rotate) this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
   }
 
