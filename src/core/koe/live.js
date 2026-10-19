@@ -191,8 +191,9 @@ export class LiveKoe {
     return s;
   }
 
-  /** Sound out now where voice is on, sound was unlocked and the page is in view; else Koe's words are bubbles. */
+  /** An open session's sound out now where voice is on, sound was unlocked and the page is in view; else Koe's words are bubbles. */
   unmute() {
+    if (this.state !== 'open') return;
     const v = this.c.voice;
     const was = this.voiced;
     this.voiced = Boolean(v?.on && v.unlocked && this.c.visible() && v.platform?.player.stream);

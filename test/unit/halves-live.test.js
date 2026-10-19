@@ -288,3 +288,20 @@ test("opening and closing sessions again and again: Kokoro's system text and too
     await k.done();
   }
 });
+
+test("with no session open, a live Koe never takes the microphone from the speech pipeline (one voice and one mic at a time)", async () => {
+  const k = await liveKit([], { koe: { talk: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-live', 60_000); // Koe talks through its text model
+    await k.agent.split();
+    assert.equal(k.agent.koeState, 'text');
+    assert.equal(k.agent.tap(), 'listening');
+    await until(() => k.agent.state.name === 'listening');
+    await k.agent.split(); // what voice is, worked out again
+    await k.agent.idle();
+    assert.equal(k.agent.state.name, 'listening');
+    assert.notEqual(k.platform.log.at(-1), 'mic close', JSON.stringify(k.platform.log));
+  } finally {
+    await k.done();
+  }
+});
