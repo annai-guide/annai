@@ -56,7 +56,12 @@ export function checkProviderDesc(desc) {
   if (errors.length) return errors;
   const abilities = Object.entries(desc.abilities);
   if (!abilities.length) errors.push('$.abilities: a provider needs at least one ability');
-  for (const [id] of abilities) if (!ABILITY_ID.test(id)) errors.push(`$.abilities.${id}: an ability id is lowercase letters, digits and dashes, starting with a letter`);
+  // Every address a key may go to must be one (security review): none is dropped, and none is plain http to another machine.
+  if (desc.baseUrl) addressProblem('$.baseUrl', desc.baseUrl, errors);
+  for (const [id, a] of abilities) {
+    if (!ABILITY_ID.test(id)) errors.push(`$.abilities.${id}: an ability id is lowercase letters, digits and dashes, starting with a letter`);
+    if (a.baseUrl !== undefined) addressProblem(`$.abilities.${id}.baseUrl`, a.baseUrl, errors);
+  }
   for (const [which, roles] of Object.entries(desc.roles ?? {})) {
     for (const [role, ids] of Object.entries(/** @type {Record<string, string[]>} */ (roles))) {
       const kind = ROLE_KIND[role];
@@ -71,21 +76,41 @@ export function checkProviderDesc(desc) {
   return errors;
 }
 
-/** @param {string} url */
-function hostOf(url) {
+/**
+ * Why an address can't be one a key is sent to, added to errors: it must parse, and be https, or http
+ * only for localhost and 127.0.0.1, as annai's security policy allows (spec §15, connect-src).
+ * @param {string} at @param {string} url @param {string[]} errors
+ */
+function addressProblem(at, url, errors) {
+  /** @type {URL} */
+  let u;
   try {
-    return url ? new URL(url).host : '';
+    u = new URL(url);
   } catch {
-    return '';
+    errors.push(`${at}: "${url}" isn't a web address`);
+    return;
+  }
+  if (u.protocol === 'https:' && u.hostname) return;
+  if (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')) return;
+  errors.push(`${at}: an address must start with https:// (http:// only for localhost or 127.0.0.1)`);
+}
+
+/** An address's origin (scheme, host and port); one that doesn't parse is kept as it is, never dropped. @param {string} url */
+function originOf(url) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
   }
 }
 
 /**
- * Every host a key given to this provider may be sent to: its address and each ability's own, sorted,
- * once each (spec §15: an update that names a new one asks first).
+ * Every origin (scheme, host and port) a key given to this provider may be sent to: its address and
+ * each ability's own, sorted, once each. An update that names a new one asks first, so a change of
+ * scheme or port does too (decision 11; security review). An address the user must give is none.
  * @param {ProviderDesc} desc @returns {string[]}
  */
-export function descHosts(desc) {
-  const hosts = [hostOf(desc?.baseUrl ?? ''), ...Object.values(desc?.abilities ?? {}).map((a) => hostOf(a?.baseUrl ?? ''))];
-  return [...new Set(hosts.filter(Boolean))].sort();
+export function descOrigins(desc) {
+  const all = [desc?.baseUrl ?? '', ...Object.values(desc?.abilities ?? {}).map((a) => a?.baseUrl ?? '')];
+  return [...new Set(all.filter((x) => typeof x === 'string' && x).map(originOf))].sort();
 }

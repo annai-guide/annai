@@ -3,6 +3,7 @@ import { pendingPackage, setPendingPackage } from '../plugin-pending.js';
 import { explainStorageFull } from '../storage-full.js';
 import { addressParts } from '../../core/address.js';
 import { addsAnything } from '../../core/packages.js';
+import { descOrigins } from '../../core/llm/provider-desc.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
@@ -10,8 +11,8 @@ const message = (/** @type {any} */ e) => String(e?.message ?? e);
 
 /**
  * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
- * its model provider, and (in an update) the new places its provider sends keys to.
- * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, hosts?: string[] }} pkg @returns {string[]}
+ * its model provider, and (in an update) the new origins its provider sends keys to.
+ * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, origins?: string[] }} pkg @returns {string[]}
  */
 export function whatItBrings(pkg) {
   const out = [];
@@ -19,14 +20,27 @@ export function whatItBrings(pkg) {
   for (const s of pkg.skills ?? []) out.push(`Skill "${s.name}": ${s.description}`);
   for (const p of pkg.personalities ?? []) out.push(`Personality "${p.name}"`);
   if (pkg.provider) out.push(`A model provider: ${abilityWords(pkg.provider)}`);
-  if (pkg.hosts?.length) out.push(`Its provider now sends keys you give it to ${pkg.hosts.join(', ')}`);
+  if (pkg.origins?.length) out.push(`Its provider now sends keys you give it to ${pkg.origins.join(', ')}`);
   return out.length ? out : ['Nothing annai uses yet'];
+}
+
+/** "a, b and c". @param {string[]} list */
+const andList = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] ?? '');
+
+/**
+ * Where a provider sends the keys a user gives it, by origin with its scheme (security review): said on
+ * a fresh install as on an update. null for a package that isn't a provider.
+ * @param {{ provider?: any }} pkg @returns {string | null}
+ */
+export function keysNote(pkg) {
+  if (!pkg.provider) return null;
+  const origins = descOrigins(pkg.provider);
+  return origins.length ? `Keys you give this provider are sent to ${andList(origins)}.` : 'Keys you give this provider are sent only to the address you give it.';
 }
 
 /** A provider's abilities in words: "chat, transcription and voice". @param {any} desc */
 export function abilityWords(desc) {
-  const kinds = [...new Set(Object.values(desc?.abilities ?? {}).map((/** @type {any} */ a) => String(a?.kind)))];
-  return kinds.length > 1 ? `${kinds.slice(0, -1).join(', ')} and ${kinds.at(-1)}` : kinds[0] ?? 'nothing yet';
+  return andList([...new Set(Object.values(desc?.abilities ?? {}).map((/** @type {any} */ a) => String(a?.kind)))]) || 'nothing yet';
 }
 
 /**
@@ -99,8 +113,11 @@ export async function renderPluginInstall(ctx) {
       h('h2', { class: 'section', text: 'What it brings' }),
       h('ul', { class: 'brings' }, ...whatItBrings(pkg).map((t) => h('li', { text: t })))),
     pkg.code
-      ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), h('p', { text: 'Only install it if you trust where it came from.' }))
-      : h('p', { class: 'skill-note', text: 'A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.' }),
+      ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), h('p', { text: 'Only install it if you trust where it came from.' }), keysNote(pkg) ? h('p', { text: keysNote(pkg) }) : null)
+      : pkg.provider
+        // A provider's own note, in place of the skill note (security review): what it can't do, and where keys go.
+        ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: "It can't run anything: it is data that tells annai how to reach a model provider." }), h('p', { text: keysNote(pkg) }))
+        : h('p', { class: 'skill-note', text: 'A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.' }),
     pkg.replaces ? h('p', { class: 'sub', text: `Version ${pkg.replaces.version} is installed now. Installing replaces it.` }) : null,
     // What a new version adds is said on its own, so nothing new slips in with an update (the coordinator's second finding).
     pkg.replaces && addsAnything(pkg.replaces.added) ? h('section', { class: 'panel', 'aria-label': 'New in this version' },

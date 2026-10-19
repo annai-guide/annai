@@ -20,7 +20,7 @@ import { retry } from './llm/retry.js';
 import { checkTool } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { mergePatch } from './patch.js';
-import { descHosts } from './llm/provider-desc.js';
+import { descOrigins } from './llm/provider-desc.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -124,9 +124,10 @@ export class PluginHost {
 
   /**
    * Each installed package's record, by id. kind: 'skill' for a bare skill (absent before milestone 8: a plugin); source: 'official', 'url'
-   * or 'file' (before milestone 8, the file's name); skills: the skill names it claims; tools: its tools' names as of its last start.
+   * or 'file' (before milestone 8, the file's name); skills: the skill names it claims; tools: its tools' names as of its last start;
+   * origins: where its provider sends keys, as installed.
    * @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string, kind?: string,
-   *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], startFailures?: number }>>}
+   *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], startFailures?: number, origins?: string[] }>>}
    */
   async installed() {
     return (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {};
@@ -173,13 +174,14 @@ export class PluginHost {
 
   /**
    * What an installed package has, read from its stored files (its record may be older than this):
-   * code or not, its skills' and personalities' names, and the hosts its provider sends keys to. A
-   * package that can't be read has nothing, so anything a new version brings counts as new.
+   * code or not, its skills' and personalities' names, and the origins its provider sends keys to, as
+   * kept with its record when it was installed (what the user agreed to). A package that can't be read
+   * has nothing, so anything a new version brings counts as new.
    * @param {string} id @returns {Promise<import('./packages.js').Parts>}
    */
   async installedParts(id) {
     /** @type {import('./packages.js').Parts} */
-    const none = { code: false, skills: [], personalities: [], hosts: [] };
+    const none = { code: false, skills: [], personalities: [], origins: [] };
     const s = (await this.installed())[id];
     if (!s) return none;
     if (kindOfState(s) === 'skill') return { ...none, skills: [id] };
@@ -187,7 +189,8 @@ export class PluginHost {
       const m = await this.#stored(id);
       const skills = (await this.#claims({ [id]: { kind: 'plugin' } })).get(id) ?? [];
       const personalities = (Array.isArray(m.personalities) ? m.personalities : []).map((p) => String(p).split('/').pop()?.replace(/\.md$/, '') ?? '');
-      return { code: Boolean(m.entry), skills, personalities, hosts: m.provider ? descHosts(m.provider) : [] };
+      const origins = Array.isArray(s.origins) ? s.origins.map(String) : m.provider ? descOrigins(m.provider) : [];
+      return { code: Boolean(m.entry), skills, personalities, origins };
     } catch {
       return none;
     }
@@ -289,6 +292,8 @@ export class PluginHost {
     state[id] = {
       // A new version of one that is off stays off (fix pass 8a-5).
       version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
+      // Where its provider sends keys, as agreed to now: an update is compared with this (security review).
+      ...(pkg.provider ? { origins: descOrigins(pkg.provider) } : {}),
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
     const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
