@@ -190,6 +190,15 @@ test('the iPhone Home Screen sign-in is ready before the tap, and a pending one 
   assert.equal((await codeSignIn({ storage, now: 2_000_001 })).pending, false, 'one that comes back by itself is not reused for a code');
 });
 
+test('an expired sign-in is removed, not only written over: its verifier is gone even when a new one can\'t be made (fix pass)', async () => {
+  const storage = memoryStorage();
+  await codeSignIn({ storage, now: 0 });
+  assert.ok(storage.getItem('annai.openrouter'));
+  const full = { ...storage, setItem: () => { throw new DOMException('full', 'QuotaExceededError'); } };
+  await assert.rejects(codeSignIn({ storage: full, now: 16 * 60_000 }), /full/);
+  assert.equal(storage.getItem('annai.openrouter'), null);
+});
+
 test("on an iPhone Home Screen app, annai's 15 minutes count from the tap, not from when the sign-in was drawn (fix pass)", async () => {
   const storage = memoryStorage();
   const ok = async (/** @type {any} */ _url, /** @type {any} */ init) => new Response(JSON.stringify({ key: `sk-or-${JSON.parse(init.body).code}` }));

@@ -61,6 +61,7 @@ export async function signInUrl({ callback, provider = null, storage = localStor
 export async function codeSignIn({ provider = null, storage = localStorage, now = Date.now() } = {}) {
   const saved = waiting(storage);
   if (saved?.mode === 'code' && typeof saved.url === 'string' && (saved.provider ?? null) === provider && now - saved.at <= MAX_AGE) return { url: saved.url, pending: true };
+  if (saved && !(now - saved.at <= MAX_AGE)) storage.removeItem(SLOT); // an expired one goes, even if no new one can be made
   return { url: await signInUrl({ callback: null, provider, storage, now }), pending: false };
 }
 
