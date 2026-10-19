@@ -462,6 +462,7 @@ export function activate(annai) {
   - It prices each `usage` you emit (one per turn) by the model's prices, `audioIn`, `audioOut` and `image` (image and video tokens) among them, and counts it in Spend per day. It traces the session's life as `live.session` entries, with the data both ways, and never its address, subprotocols or key.
   - A crash in your code counts against your plugin, as for any protocol.
 - **Audio:** `audio()` gets 16-bit PCM at `setup.audioIn`'s rate, and `audio` events carry it at `setup.audioOut`'s. annai streams only speech: `activity('start')`, the audio, then `activity('end')` at the end of the sentence, from its own end-of-sentence detector. Nothing is sent while nobody speaks.
+- **Cut off:** when the user's voice or an immediate note cuts Koe off, `activity('start', { playedMs })` and `text(t, { interrupt: true, playedMs })` say how much of its turn was heard, for a protocol that cuts its record of the turn there (OpenAI Realtime's truncate). Gemini Live cuts its turn itself, and needs neither.
 - **Answers:** annai answers every tool call at once. `silent` means "say nothing more for this answer" (Gemini's `scheduling: "SILENT"`, without which it adds a filler turn).
 - **The stand-in** (`test/fakes/realtime-server.js`) speaks Gemini Live as it was measured to, for your tests: `startRealtimeServer({ flavour: 'gemini', key, turns })`.
 

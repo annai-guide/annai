@@ -67,3 +67,21 @@ You need your Gemini key from AI Studio (free). Before you start, open Settings 
 - [ ] **A locked screen.** Tap Test and lock the phone at once. Unlock: the panel says what happened (an answer, or that the session closed), and the next Test works.
 - [ ] **The Trace.** Trace → Kind **Models**, Type contains `live.session`: "live session open", "live session ready · Gemini 3.8 Live · … s", and "live session closed · … · test · … in, … out". Type contains `net.request`: a line for the turn, `ok (101)`. Search the page for your key: it isn't there (Copy diagnostics too).
 - [ ] **A wrong key.** On Google Gemini's page, change the key to something wrong and tap Test: "✗ The key was rejected." Put the right key back.
+
+## K5: Koe live
+
+You need Gemini's Live voice switched on (K4), **Gemini 3.8 Live** first in Settings → Models → **Koe for talking**, a model in **Koe for typing** (gemini-3.5-flash-lite) and in Main (gemini-3.8-flash), and a trip open. Most of this is in the car, with the phone on the car's Bluetooth.
+
+- [ ] **A tap opens it.** Voice on, tap Shiori: the chip says **Listening live** (in red). Ask "Is Nepenthe open right now?": within about a second Koe says it's checking, and a few seconds later says the hours, in its own words, never naming notes or Kokoro. The sign shows "Kokoro is working" meanwhile. Write down how long from the end of your question to Koe's first word.
+- [ ] **A stable fact.** "What's that bridge?" near Bixby Bridge: Koe answers at once, from what it knows.
+- [ ] **A correction.** If Kokoro corrects Koe (say a wrong year), Koe stops mid-sentence and corrects itself. The Conversation shows the first line cut off, ending in ✂.
+- [ ] **Chatter.** Talk to a passenger, not Shiori: Koe stays silent. Turn on "Show what the halves tell each other": the line shows as heard, not for Shiori.
+- [ ] **Cutting in.** While Koe talks, say something: she stops at once and listens. Does her own voice from the car's speakers ever cut her off (echo)? If it does, turn off Settings → Voice → **Cut her off by speaking** and check a tap still stops her.
+- [ ] **The quiet spell.** Say nothing for 30 seconds: the chip goes back to "Voice on", and music returns to full quality (not the thin phone-call sound). Settings → Voice → **Close a live session after** changes the wait.
+- [ ] **A reminder.** After an earlier tap, set a reminder a few minutes ahead ("remind me in 3 minutes to check the fuel"): when it fires, Koe says it aloud, and the chip says Listening live again until the quiet spell.
+- [ ] **A tunnel.** Drive through a tunnel or a dead spot mid-answer: when the signal comes back, Koe carries on (the session resumes), or the typing model finishes the answer through Shiori's usual voice. Nothing you said is missing from the Conversation; a cut line ends in ✂.
+- [ ] **A locked screen.** While a session is open, lock the phone: it closes (the chip isn't "Listening live" when you unlock). Tap Shiori: a session opens and remembers what you were talking about.
+- [ ] **Out of view.** While a session is open, switch to another app: it closes, and the microphone indicator (the orange dot) goes. Coming back, nothing listens until you tap.
+- [ ] **Typing to it.** Voice off, type a question: Koe's answer appears as a bubble; nothing plays, and the microphone indicator never shows.
+- [ ] **Data and cost.** Trace → Kind **Models**, Type contains `live.session`: each session's lines, "live session closed · Gemini 3.8 Live · … · quiet · … KB in, … KB out · $…". Write down the data for a minute of talk. Settings → Models → Spend per day counts the sessions.
+- [ ] **Erase** (last, on a test install): with a session open, Settings → Erase: the microphone indicator goes at once.
