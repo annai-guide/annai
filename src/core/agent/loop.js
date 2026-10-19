@@ -262,7 +262,7 @@ export class Agent {
 
   /** A tapped answer is marked as chosen for the other half's reading; one half's log is as it was. */
   #chose() {
-    return this.#half.name === 'one' ? {} : { chose: true };
+    return this.#rules() === 'one' ? {} : { chose: true };
   }
 
   /**

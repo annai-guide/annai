@@ -318,3 +318,57 @@ test('Fix pass 9: Stop on Kokoro while Koe waits tells Koe that Kokoro was stopp
   assert.deepEqual((await k.events(['note'])).map((e) => [e.data.from, e.data.text]), [['kokoro', 'Kokoro was stopped.']]);
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'wait')?.data.content, 'Kokoro: see the note below.');
 });
+
+// Fix pass 5 (the review's no-koe-identity probe): with no Koe model, Halves sends and logs exactly what Shiori as one did.
+test('with no Koe model, Halves and the one Agent send the same requests and write the same log, a tapped answer included', async () => {
+  const { updateAppSettings: settings } = await import('../../src/core/settings.js');
+  const NOW = Date.parse('2026-11-26T12:00:00Z');
+  const script = [
+    { toolCalls: [{ name: 'speak', input: { text: 'Hello!' } }, { name: 'sleep', input: {} }] },
+    { text: 'Let me look.', toolCalls: [{ name: 'list', input: { path: '/trip/' } }] },
+    { toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'A it is.' } }, { name: 'wait', input: { seconds: 30 } }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'Noted.' } }, { name: 'sleep', input: {} }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'Sunset is soon.' } }, { name: 'sleep', input: {} }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'A nice photo.' } }, { name: 'sleep', input: {} }] },
+    { text: 'Done.' },
+  ];
+  /** @param {boolean} halves */
+  const run = async (halves) => {
+    const k = await agentKit([script], { halves, agent: { now: () => NOW } });
+    const a = k.agent;
+    const pending = () => (halves ? a.kokoro.pendingId : a.pendingId);
+    a.send('Hi');
+    await a.idle();
+    a.send('Plan the day');
+    await until(() => pending() !== null, 5000);
+    a.answer(/** @type {string} */ (pending()), 'A');
+    await until(() => a.state.name === 'waiting' && (halves ? a.kokoro.waiting : a.waiting), 5000);
+    a.send('Thanks');
+    await a.idle();
+    await a.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
+    await a.idle();
+    await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+    a.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+    await a.idle();
+    await settings(k.ws, { shiori: { budgets: { wakesPerHour: 1 } } });
+    await a.wake({ kind: 'trigger', text: 'Golden hour', fallbacks: [{ watch: 'gold', text: 'Golden hour now' }] });
+    await a.idle();
+    await until(() => k.notices.some((/** @type {any} */ n) => n.title === 'Shiori skipped a wake'), 5000);
+    for (let i = 0; i < 200 && (await k.events(['reminder'])).length < 2; i++) await new Promise((r) => setTimeout(r, 5));
+    a.send('Last word');
+    await a.idle();
+    /** @param {any} x */
+    const norm = (x) => JSON.parse(JSON.stringify(x, (key, v) => {
+      // What differs run to run by nature: ids, hashes, times.
+      if (['id', 'wake', 'ms', 'firstMs', 'ts', 'seq', 'prefix', 'now', 'answer', 'of', 'hash', 'refs', 'new', 'old'].includes(key)) return undefined;
+      return typeof v === 'string' ? v.replace(/scripted_\d+_\d+|\b[wct]-[a-z0-9]+/g, 'ID').replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, 'TIME') : v;
+    }));
+    return { requests: norm(k.requests), events: (await k.events()).map((e) => ({ type: e.type, actor: e.actor, data: norm(e.data) })), notices: k.notices.map((/** @type {any} */ n) => n.title) };
+  };
+  const one = await run(false);
+  const two = await run(true);
+  assert.deepEqual(two.requests, one.requests);
+  assert.deepEqual(two.events, one.events);
+  assert.deepEqual(two.notices, one.notices);
+});
