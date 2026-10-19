@@ -503,7 +503,7 @@ The core contains no protocol. These endpoint types are official on-demand plugi
 - Anthropic Messages
 - OpenAI Responses. Nothing is kept on the server (`store: false`): the whole conversation goes each time, and the model's encrypted reasoning goes back with it.
 - Gemini, not built yet. Until it is, Gemini's OpenAI-compatible endpoint works through Chat Completions.
-- Gemini Live, a **realtime** type (Koe and Kokoro, K4): a voice conversation in one stream, both ways, over a WebSocket. annai opens the socket itself, only at the origin of its ability's address (`wss:` for an `https` address; `ws:` only for `localhost` and `127.0.0.1`), and the protocol drives it: setup, 16-bit PCM in and out, both transcripts, tool calls and their answers, resumption. Gemini takes the key only in the address (`?key=`), the one way a browser's WebSocket can give it: the address is never traced, and the key is blanked wherever it could show. Closes are read by their words as well as their codes (Gemini's 1007 is both a bad field and a bad key). Each turn's usage is priced by its text and audio tokens (`audioIn`, `audioOut`) and counted in Spend per day; each session's opening, readiness, goaway and closing, with its data both ways, is a `live.session` entry in the Trace. Gemini's Live voice ability arrives switched off, and switching it on installs the protocol; a realtime model's Test opens a session that must say "OK" aloud. Realtime models go only in Koe's lists (§9.6); chat roles skip them.
+- Gemini Live, a **realtime** type (Koe and Kokoro, K4): a voice conversation in one stream, both ways, over a WebSocket. annai opens the socket itself, only at the origin of its ability's address (`wss:` for an `https` address; `ws:` only for `localhost` and `127.0.0.1`), and the protocol drives it: setup, 16-bit PCM in and out, both transcripts, tool calls and their answers, resumption. Gemini takes the key only in the address (`?key=`), the one way a browser's WebSocket can give it: the address is never traced, and the key is blanked wherever it could show. Closes are read by their words as well as their codes (Gemini's 1007 is both a bad field and a bad key). Each turn's usage is priced by its text, audio, and image and video tokens (`audioIn`, `audioOut`, `image`) and counted in Spend per day; each session's opening, readiness, goaway and closing, with its data both ways, is a `live.session` entry in the Trace. Gemini's Live voice ability arrives switched off, and switching it on installs the protocol; a realtime model's Test opens a session that must say "OK" aloud. Realtime models go only in Koe's lists (§9.6); chat roles skip them.
 
 Chat Completions and OpenAI Responses also take a server that answers `stream: true` with one whole JSON reply, such as an LLM router that never streams. The wait for the first words then covers the whole reply, and Another address's note says which wait to raise.
 
@@ -526,7 +526,7 @@ Search and speech providers work the same way, as on-demand plugins with their o
 | | the type's tunables, e.g. `max_tokens` vs `max_completion_tokens`, `system` vs `developer`, usage in stream, image/PDF format | belongs to exactly one ability |
 | | `extraBody` for all its models | capabilities: tools, images (formats, longest edge, size, count per request; from the description, then corrected by refusals, §4.8), PDFs, audio input |
 | | provider tools offered ability-wide, through `modelDefaults` | context window, maximum output |
-| | photo uploads through the provider's files API: on by default where the type supports it (§4.8) | prices: input, output, cache read, cache write per TTL, per-call tool fees; for a realtime model, audio in and out |
+| | photo uploads through the provider's files API: on by default where the type supports it (§4.8) | prices: input, output, cache read, cache write per TTL, per-call tool fees; for a realtime model, audio in and out, and images and video in |
 | | "fetch model list", Test | cache TTL options; reasoning map, provider tools it supports |
 | | | its own tunables and `extraBody`, which override the ability's |
 
@@ -630,7 +630,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 
 ### 9.9 Usage, cost, errors, keys
 
-- **Usage is normalized** to input, cache read, cache write, output and reasoning, and for a realtime model's turn its audio tokens in and out. Multiplied by the model's prices (audio at the input and output prices when a model has none of its own), that gives cost per call, wake and trip.
+- **Usage is normalized** to input, cache read, cache write, output and reasoning, and for a realtime model's turn its audio tokens in and out and its image and video tokens. Multiplied by the model's prices (these at the input and output prices when a model has none of its own), that gives cost per call, wake and trip.
 - **Error kinds:**
 
   | Kind | Response |
