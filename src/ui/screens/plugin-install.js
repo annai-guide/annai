@@ -10,6 +10,8 @@ import { checkRequires, installWith, checkPackageId } from '../../core/requires.
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
+/** A plugin's code loads through the service worker (spec §5.3). */
+export const NO_SERVICE = "Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.";
 
 /**
  * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
@@ -159,7 +161,7 @@ async function installPending(ctx, button) {
   try {
     // What it needs (annai's own, from its catalog) may be code too.
     if ((pkg.code || pkg.requires?.length) && !navigator.serviceWorker?.controller) {
-      throw new Error("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.");
+      throw new Error(NO_SERVICE);
     }
     if (pkg.requires?.length) {
       // With what it requires, all or nothing, and started (spec §5.3).
