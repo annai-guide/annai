@@ -297,15 +297,17 @@ The provider adapter places cache markers where the provider needs them (Anthrop
 
 Each model declares its cache TTL options and prices (§9.2). The core tracks, per model and prefix fingerprint, when the prefix was last sent, so it knows whether the cache is **warm or cold**.
 
+- **The cache lasts an hour by default** (Settings → Models → Cache), or five minutes if the user chooses. An hour costs more to write, and pays off when the next message comes more than a few minutes later. A model that doesn't list the hour among its TTL options is asked for five minutes, and its warmth is counted that way.
+
 - **Prefix rewrites happen only when the cache is cold or about to expire:** compaction, and refreshing the memory or plan snapshot. A rewrite just before expiry costs nothing extra, since the cache would be lost anyway. The one exception is when the next request would overflow: above 90% of the model's window, or above the maximum request size (§6.5).
 - **The trace shows actual cache hits,** from the token counts each provider reports.
 - **Plugins can read TTL and warmth,** and can schedule wakes (for example, "keep warm and catch up on the world"). Nothing like that is built in.
 
 ### 6.5 Compaction ("housekeeping")
 
-- **Two limits trigger it,** and both work the same way. Housekeeping is due at a threshold (default 70%), and is forced when the next request would overflow (§6.4).
+- **Two limits trigger it,** and both work the same way. Housekeeping is due at a threshold (default 70%), and is forced when the next request would overflow (§6.4). The threshold and the maximum request size are set in Settings → Models → Housekeeping.
   - **The context window**, per model and editable.
-  - **The maximum request size** (Settings; default 8 MiB).
+  - **The maximum request size** (default 8 MiB).
     - Every turn sends the whole context again: caching lowers the cost, not the upload. On roaming data, a photo-heavy conversation could otherwise cost more to upload than the model call.
     - Photos count at their base64 size, a third more than the file. Photos uploaded to the provider count only as their id (§4.8).
 - **There are two modes, and the cache decides which one runs:**
@@ -330,7 +332,7 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
   - trigger wakes per hour
   - quiet hours
 
-  Hitting a budget ends the turn with a card.
+  Hitting a budget ends the turn with a card. Spend per day is set in Settings → Models, with the requests it limits; the other three in Settings → Shiori, under "How often she acts on her own".
 - **Cost is always visible** in the trace.
 - **Stuck-loop detection is always on.** Three identical tool calls in a row with identical results end the turn with a card.
 
@@ -781,6 +783,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **When we update an original:**
   - an unedited copy follows the update silently
   - an edited copy gets "a new version of the original is available", with compare, keep mine, or let Shiori merge
+- **Settings → Shiori** holds them: how she looks in each state, the personalities (choose one; edit its text, saved with its button; make a new one from it), "Ask me before Shiori changes her personality", and how often she acts on her own (wakes per hour, quiet hours, steps per wake; §6.6). Spend per day, the cache and housekeeping are on Settings → Models.
 - **Shiori changes a personality only through `tune_personality`.** The flow:
   1. The utility model reviews the change: is it about behaviour only (facts about the user go to memory)? Has it bloated? Does it contradict the base safety rules?
   2. An approved change applies at her next wake, never mid-conversation.
@@ -841,6 +844,10 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - Short cards.
 - Spoken words hidden unless asked.
 - **System cards are not Shiori.** System problems appear as system cards, never in Shiori's voice.
+- **Settings save as they change.** A quiet "Saved" shows by the field, not a toast, and an error shows by it too; a value that isn't valid isn't saved. Text and number fields save once committed or left, never at each keystroke. A Save button stays only for:
+  - keys and passwords: an endpoint's key, the Jina key, a plugin's secret fields, a backup place's credentials and passphrase
+  - connections that are tested or used as a whole when saved: a backup place ("Save and test"), the push relay's address, and an endpoint's address, key and extra headers (headers often carry a credential, and a half-typed connection should never be used)
+  - long texts: a personality, the file editor
 
 ### 16.2 Layout and screens
 
@@ -861,6 +868,8 @@ Reference: mockups draft 6.
   - **Files**
   - **Trace:** filters plus tool switches
   - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, "Restart annai" comes first.
+    - **Models:** Sign in with OpenRouter (until there is an OpenRouter endpoint), the endpoints and their models, the roles (§9.6), then what Shiori's requests may cost and how large they grow: Spend per day (§6.6), the cache (§6.4) and housekeeping (§6.5). Each chat model's page has "Try this model": a short conversation with that model alone, with no fallback, showing each reply's tokens and cost, and keeping nothing but the trace. Speech models have their Test instead.
+    - **Shiori:** how she looks, her personality, and how often she acts on her own (§14.1).
     - **About:** annai's version and the build of the service worker that runs it; the licence (AGPL-3.0, its text shipped and readable offline) and the source; where to report a problem; the privacy summary (what annai does with keys and data, and where that stops, in the welcome's words); the fine print; "Show the welcome again"; and the credits (§15), the fonts' licences and Shiori's art.
     - **Experimental:** features still being tried, each off until turned on. The first is swiping between tabs.
   - **Onboarding:**
