@@ -12,7 +12,7 @@ import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError, TAKEN, KEYED, isPluginBug, compareRanks } from './registry.js';
+import { PluginError, TAKEN, NOT_OWN, KEYED, isPluginBug, compareRanks } from './registry.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
@@ -155,9 +155,9 @@ export class PluginHost {
   /**
    * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of annai's
    * own ids, not a package of the other kind. A skill name Shiori already has is no reason to refuse:
-   * the skill isn't used until the user chooses it (milestone 6). previous: the installed version this package would replace.
+   * the skill isn't used until the user chooses it (milestone 6). previous: the installed version this package would replace, and where it came from.
    * @param {Map<string, Uint8Array>} files
-   * @returns {Promise<import('./packages.js').Package & { previous: { version: string, kind: string, added: import('./packages.js').Added } | null }>}
+   * @returns {Promise<import('./packages.js').Package & { previous: { version: string, kind: string, added: import('./packages.js').Added, from: { source: string, file?: string, url?: string } } | null }>}
    */
   async inspect(files) {
     const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
@@ -167,7 +167,7 @@ export class PluginHost {
     }
     const had = (await this.installed())[id];
     if (had && kindOfState(had) !== pkg.kind) throw new PluginError(id, `is installed already as a ${kindOfState(had)}. Remove it first.`);
-    return { ...pkg, previous: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg) } : null };
+    return { ...pkg, previous: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg), from: sourceOf(had) } : null };
   }
 
   /**
@@ -244,8 +244,9 @@ export class PluginHost {
     await this.stop(id);
     const state = await this.installed();
     const before = state[id];
-    // annai's own plugin keeps its name: a package from elsewhere never replaces it (security review).
+    // annai's own plugin keeps its name: a package from elsewhere never replaces it (security review), nor annai's one from elsewhere (milestone 6).
     if (before?.source === 'official' && source !== 'official') throw new PluginError(id, TAKEN);
+    if (before && before.source !== 'official' && source === 'official') throw new PluginError(id, NOT_OWN);
     // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
     const shown = await this.#keepAddress(id, url);
     state[id] = {
@@ -356,7 +357,8 @@ export class PluginHost {
     // An address kept raw before fix pass 8a-1 moves into its package's secret.
     for (const [id, s] of Object.entries(await this.installed())) if (s.source === 'url') await this.address(id).catch(() => {});
     const rank = this.#rules.rank;
-    for (const [id, s] of Object.entries(await this.installed()).sort(([a], [b]) => compareRanks(rank(a), rank(b)))) {
+    const state = await this.installed();
+    for (const [id, s] of Object.entries(state).sort(([a], [b]) => compareRanks(rank(a), rank(b)))) {
       if (!s.enabled) continue;
       try {
         await this.start(id);
@@ -369,7 +371,23 @@ export class PluginHost {
         failures.push({ id, error, disabled });
       }
     }
+    await this.#keepComponents(Object.keys(state)).catch(() => {}); // the next start tries again
     return failures;
+  }
+
+  /**
+   * At the first start with milestone 6, a component a plugin replaced under the old rule (the last to start
+   * won, in installed.json's order) stays in use, as the user's choice; marked done in the app settings.
+   * @param {string[]} order installed.json's ids, as they started before
+   */
+  async #keepComponents(order) {
+    if ((await readAppSettings(this.ws)).componentsKept) return;
+    const used = this.registry.entries('ui:component', { all: true }).filter((e) => order.includes(e.pluginId) && !this.registry.isDisabled(e.pluginId))
+      .sort((a, b) => order.indexOf(a.pluginId) - order.indexOf(b.pluginId));
+    const uses = Object.fromEntries(used.map((e) => [`ui:component:${e.item?.name}`, e.pluginId]).filter(([k]) => !this.#uses[k]));
+    await updateAppSettings(this.ws, { componentsKept: true, ...(Object.keys(uses).length ? { uses } : {}) });
+    this.#uses = (await readAppSettings(this.ws)).uses ?? {};
+    this.registry.setRules(this.#rules);
   }
 
   /** Starts an installed plugin; a second call while it is starting waits for the first. @param {string} id */
@@ -717,7 +735,11 @@ export class PluginHost {
     );
     return Object.freeze({
       id,
-      register: (/** @type {string} */ kind, /** @type {any} */ item) => registry.add(id, kind, item),
+      register: (/** @type {string} */ kind, /** @type {any} */ item) => {
+        // A provider's description comes from its manifest, its setup from providers.setup: never under another's id (milestone 6).
+        if (kind === 'provider' || kind === 'provider-setup') throw new PluginError(id, `annai keeps ${kind === 'provider' ? "model providers' descriptions" : "providers' setups"} itself: see docs/plugins.md, "Model providers"`);
+        return registry.add(id, kind, item);
+      },
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
       tools: Object.freeze({
         register: (/** @type {any} */ tool) => {

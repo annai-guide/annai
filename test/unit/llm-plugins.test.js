@@ -8,7 +8,7 @@ import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js'
 import { Registry, PluginError } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { endpointTypes, ProviderError } from '../../src/core/llm/contract.js';
-import { ensureType } from '../../src/core/llm/official.js';
+import { ensureType, officialPlugins, updateOfficial } from '../../src/core/llm/official.js';
 import { utf8 } from '../../src/core/bytes.js';
 
 const root = new URL('../../', import.meta.url);
@@ -93,6 +93,30 @@ test("security review: a package from elsewhere holding the id of the official p
   await host.install(fake, { source: 'file' });
   await assert.rejects(ensureType(host, 'scripted', { fetch: repoFetch().get }), /annai's own plugin uses this name.*came from elsewhere/s);
   assert.equal((await host.installed())['scripted-model'].source, 'file', 'not overwritten');
+});
+
+test('M6: an official install never overwrites a third-party package with its id: it stops and says so', async () => {
+  const { host } = await setup();
+  const fake = new Map([['annai-plugin.json', utf8(JSON.stringify({ id: 'scripted-model', name: 'Scripted model', version: '0.0.1', api: 1, entry: 'index.js' }))], ['index.js', utf8('export function activate() {}')]]);
+  await host.install(fake, { source: 'file' });
+  const entry = (await officialPlugins({ fetch: repoFetch().get })).find((p) => p.id === 'scripted-model');
+  await assert.rejects(updateOfficial(host, /** @type {any} */ (entry), { fetch: repoFetch().get }), /annai's own plugin uses this name.*came from elsewhere/s);
+  await assert.rejects(host.install(fake, { source: 'official' }), /annai's own plugin uses this name.*came from elsewhere/s);
+  assert.equal((await host.installed())['scripted-model'].source, 'file', 'not overwritten');
+});
+
+test("M6: a third party's protocol with the type of annai's own doesn't keep annai's own out: when the type is needed, annai's is installed and used; offline, the third party's stays", async () => {
+  const { host, registry } = await setup();
+  const mine = new Map([['annai-plugin.json', utf8(JSON.stringify({ id: 'my-scripted', name: 'My scripted', version: '1.0.0', api: 1, entry: 'index.js' }))],
+    ['index.js', utf8("export function activate(annai) { return annai.providers.register({ type: 'scripted', async *run() {} }); }")]]);
+  await host.install(mine, { source: 'file' });
+  await host.start('my-scripted');
+  await ensureType(host, 'scripted', { fetch: async () => { throw new TypeError('Failed to fetch'); } });
+  assert.equal(endpointTypes(registry).get('scripted')?.pluginId, 'my-scripted');
+  await ensureType(host, 'scripted', { fetch: repoFetch().get });
+  assert.equal((await host.installed())['scripted-model']?.source, 'official');
+  assert.equal(endpointTypes(registry).get('scripted')?.pluginId, 'scripted-model');
+  assert.deepEqual(registry.clashes('my-scripted').map((c) => [c.name, c.owner, c.reserved]), [['scripted', 'scripted-model', true]]);
 });
 
 test('two calls for the same type at once share one install, and the type is there once', async () => {

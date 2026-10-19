@@ -107,19 +107,28 @@ const KINDS = { 'endpoint-type': 'an endpoint type', 'storage-type': 'a kind of 
 /** The type ids of a kind that running plugins provide. @param {import('../registry.js').Registry} registry @param {string} kind */
 const provided = (registry, kind) => new Set(registry.list(kind).map((/** @type {any} */ t) => t.type));
 
+/**
+ * Whether annai's own (a built-in, or an official plugin) provides a type now: a third party's by that name
+ * doesn't keep annai's own out (milestone 6). @param {PluginHost} host @param {string} kind @param {string} type
+ */
+export async function ownProvides(host, kind, type) {
+  const owner = host.registry.owner(kind, type)?.pluginId;
+  return Boolean(owner && (host.builtins.has(owner) || (await host.installed())[owner]?.source === 'official'));
+}
+
 /** Makes an endpoint type available (see ensureProvided). @param {PluginHost} host @param {string} type @param {FetchOptions} [opts] */
 export function ensureType(host, type, opts = {}) {
   return ensureProvided(host, 'endpoint-type', type, opts);
 }
 
 /**
- * Makes a type of a kind ("endpoint-type", "storage-type") available. Nothing to do when a running
- * plugin provides it. Otherwise it starts the installed official plugin that provides it, or
- * installs the catalog's version (spec §5.3).
+ * Makes a type of a kind ("endpoint-type", "storage-type") available. Nothing to do when annai's own
+ * provides it. Otherwise it starts the installed official plugin that provides it, or installs the
+ * catalog's version (spec §5.3); a third party's serves when annai has none, or its catalog can't be had.
  * @param {PluginHost} host @param {string} kind @param {string} type @param {FetchOptions} [opts]
  */
-export function ensureProvided(host, kind, type, opts = {}) {
-  if (provided(host.registry, kind).has(type)) return Promise.resolve();
+export async function ensureProvided(host, kind, type, opts = {}) {
+  if (await ownProvides(host, kind, type)) return;
   // Two callers at once share one install: a second install would stop the plugin the first one started.
   const running = inFlight.get(host) ?? new Map();
   inFlight.set(host, running);
@@ -137,7 +146,9 @@ const inFlight = new WeakMap();
 /** @param {PluginHost} host @param {string} kind @param {string} type @param {FetchOptions} opts */
 async function ensureNow(host, kind, type, opts) {
   const what = KINDS[kind] ?? kind;
-  const entry = (await officialPlugins(opts)).find((p) => p.provides?.[kind]?.includes(type));
+  const theirs = provided(host.registry, kind).has(type);
+  const entry = (await officialPlugins(opts).catch((e) => { if (theirs) return []; throw e; })).find((p) => p.provides?.[kind]?.includes(type));
+  if (!entry && theirs) return;
   if (!entry) throw new PluginError(type, `isn't ${what} annai knows. Install a plugin that provides it.`);
   const state = (await host.installed())[entry.id];
   // A package from elsewhere with annai's own id is neither used nor overwritten (security review).
