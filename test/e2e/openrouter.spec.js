@@ -104,7 +104,8 @@ test("Sign in with OpenRouter makes one provider with one key: free chat models,
     expect(said).toMatchObject({ model: 'x-ai/grok-voice-tts-1.0', voice: 'ara', response_format: 'mp3' });
     const raw = Buffer.from(server.bodies('/api/v1/audio/transcriptions')[0]).toString('latin1');
     expect(raw).toContain('openai/whisper-large-v3-turbo');
-    expect(raw).toContain('RIFF');
+    // The smallest file both sides take: Opus in WebM, from the browser's own encoder (Koe and Kokoro design, "Audio formats").
+    expect(raw).toContain('filename="speech.webm"');
     // One key, the sign-in's, on each request, with annai's attribution as on the chat endpoint.
     expect(sent).toHaveLength(2);
     for (const h of sent) expect(h).toMatchObject({ authorization: `Bearer ${KEY}`, 'x-title': 'annai', 'http-referer': 'https://annai.guide' });

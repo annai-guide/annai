@@ -148,4 +148,11 @@ test('ADTS frames carry the right length and sample-rate index; FLAC starts fLaC
   assert.equal(flac.length, 42 + 6);
   assert.deepEqual(flacFile(streaminfo, []), marked, 'a bare STREAMINFO gets the marker and its block header');
   assert.throws(() => flacFile(null, []), /no STREAMINFO/);
+  // Ogg FLAC's mapping header before "fLaC" (GStreamer's), its STREAMINFO not yet marked last: from the marker on, marked.
+  const unmarked = Uint8Array.from([...marked.subarray(0, 4), 0, 0, 0, 34, ...streaminfo]);
+  const ogg = Uint8Array.from([0x7f, ...[...'FLAC'].map((c) => c.charCodeAt(0)), 1, 0, 0, 2, ...unmarked]);
+  assert.deepEqual(flacFile(ogg, [Uint8Array.of(0xff, 0xf8)]), Uint8Array.from([...marked, 0xff, 0xf8]));
+  // Headers in the stream itself, ahead of the frames: the file as it came, its last block marked.
+  const stream = [marked.subarray(0, 4), unmarked.subarray(4), Uint8Array.of(0xff, 0xf8, 9)];
+  assert.deepEqual(flacFile(ogg, stream), Uint8Array.from([...marked, 0xff, 0xf8, 9]));
 });
