@@ -49,3 +49,20 @@ Before you start, open Settings → Updates: if it offers OpenRouter 2.0.0, Chat
 - [ ] **Its plugin has code.** Settings → Plugins → OpenRouter: "A model provider · has code · version 2.0.0", with the full-access note. Add → search "openrouter": its row says "Official · Has code".
 - [ ] **Another provider tidies the start away.** Remove OpenRouter (its page → Remove provider, twice). Models shows the quickest start again. Then Add a provider → **Ollama** (or any other) → **Add**: in Settings → Plugins, OpenRouter's plugin is gone, as no provider comes from it.
 - [ ] **Your llama.cpp server's context window.** Add llama.cpp with your Unsloth Studio server's HTTPS address and key (as in milestone 2), **Fetch model list**, and **Add** the model Studio has loaded: its row says "262K context" (or what Studio serves), and on its page **Takes photos** is ticked, as Studio's /props says the model reads images.
+
+## Milestone 6: conflicts made explicit
+
+The test plugins are served by annai's stand-in on the machine that serves annai, as in the milestone 8 checklist, on a free port (never 8765, 8790–8799 or 18010–18014), for example:
+
+    node scripts/mcp-stand-in.mjs --port 8486 --token <a long random token> --files test/fixtures/extensions
+    tailscale serve --bg --https=8487 http://127.0.0.1:8486
+
+Below, `<stand-in>` is `https://<machine>.<tailnet>.ts.net:8487`.
+
+- [ ] **What was in use stays in use.** If a plugin replaced how Shiori looks, her dock or the Now card before the update, it still does after it, and its page (Settings → Plugins → its name) says, under Names, "How Shiori looks: this one is used (your choice)." with **Undo**.
+- [ ] **A taken tool name.** Settings → Plugins → Add → Address of a plugin or skill: `<stand-in>/files/clash-tool/annai-plugin.json` → **Get it** → **Install**. Open Clash tool's page: under Names, "Not used: the tool weather is already provided by Places tools." Ask Shiori "What's the weather at Bixby Bridge?": Trace → Tools shows `weather` with Places' forecast.
+- [ ] **Switch, and Shiori uses it.** On Clash tool's page, **Use this one instead**: "The tool weather: this one is used (your choice)." Settings → Plugins → Places tools: "The tool weather: Clash tool's is used (your choice)." Ask again: the answer is "Clash weather: always sunny." (Trace → Tools).
+- [ ] **Undo, on the other page.** On Places tools' page, **Undo**: "The tool weather: this one is used. Also from Clash tool, not used." Ask again: Places' forecast. Remove Clash tool.
+- [ ] **A plugin that replaces how Shiori looks.** Zip `test/fixtures/extensions/avatar-replaces/` on the machine, AirDrop or save it to Files, then Settings → Plugins → Add → Install from a file. The install screen: under What it replaces, "It replaces how Shiori looks from annai.", with **Install and use it** and **Install, keep annai's**. Tap **Install and use it**: the dock shows a mountain in Shiori's place.
+- [ ] **Undo it.** Mountain look's page: **Undo**: Shiori comes back in the dock, and the page says "Not used: how Shiori looks is already provided by annai.", with **Use this one instead**. Tap it: the mountain again. Turn the plugin off: Shiori; on: the mountain. Remove it.
+- [ ] **A package from another place.** Install Clash tool from its address again, then pick the same folder zipped, from a file: the install screen says, as a warning, that version 1.0.0 is installed from `<machine>…/files/clash-tool/annai-plugin.json`, not where this one comes from, and that this one gets the settings and keys that one keeps. Cancel, and remove Clash tool.

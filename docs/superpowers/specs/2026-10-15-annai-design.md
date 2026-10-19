@@ -215,6 +215,7 @@ A plugin is a folder, zip or URL containing `annai-plugin.json`:
 - `keywords`: other names it is searched by, as shown ("LM Studio")
 - `featured`: a sentence for the one-tap start (§9.8); it counts only in annai's own catalog, never from a third party's manifest
 - `catchAll`: a provider for any address (Another address), listed after the others when browsing
+- `replaces`: names it means to replace (a tool, a component such as `avatar`, a skill …), up to 20; the install screen asks (§5.6)
 - `settings`: a JSON Schema, from which we render a settings form automatically
 - `templates` (endpoint templates) is refused: "Endpoint templates were replaced by `provider`".
 
@@ -230,7 +231,7 @@ A plugin is a folder, zip or URL containing `annai-plugin.json`:
 - **What a plugin requires is installed with it.** Official requirements come from the catalog, hash-checked, with no question; a third-party one must be installed first, from its own address, and the install stops and names it (with its homepage). All or nothing: when a download fails or the connection drops, nothing stays half-installed. An update that changes `requires` resolves them when the user taps Update, and a protocol update to a major an installed plugin doesn't accept is refused, naming that plugin. A plugin the user switched off is never switched on by this: the install stops and says how to turn it on; one annai switched off after errors starts again only on the user's tap (§5.5).
 - **Calls never install.** Only setting up does: adding a provider, turning an ability on, Test, Fetch model list, Try this model. A model whose protocol isn't running is skipped (§9.6).
 - **Pruning.** Removing the last provider made from a provider plugin uninstalls that plugin, then every official protocol plugin that no installed plugin requires and no switched-on ability uses. A third-party protocol plugin stays.
-- **annai's own names stay annai's.** A package from a file or an address can't take the id of an official plugin, and a copy that holds one is never used as annai's own.
+- **annai's own names stay annai's.** A package from a file or an address can't take the id of an official plugin, and a copy that holds one is never used as annai's own; annai's own never installs over a package from elsewhere that holds its id either. Installing over an installed package from another place (another address, or a file over an address) says so: the new one gets the settings and keys the installed one keeps.
 - **An update from an address whose provider would send keys to a new origin** (scheme, host and port) asks first, as new code does.
 
 ### 5.4 Interface
@@ -268,6 +269,16 @@ A module exports `activate(annai)`, which returns a cleanup function.
 - A plugin that keeps failing is disabled automatically, with a card saying why.
 - A plugin built for an incompatible `api` major version is disabled cleanly.
 - The interface scopes are for organization, not security.
+
+### 5.6 Names and conflicts
+
+- **A name has one owner.** Tool names, protocols (endpoint types), kinds of backup place, skill and personality names, card types, search providers and the replaceable components (§16.4) are names. Hooks and the slots that add things up (chips, Now sections, dock actions, tabs, settings pages, screens, themes) never clash. A provider's id is its plugin's id, unique by install, and a plugin registers only its own provider.
+- **The fixed order decides,** so behaviour is repeatable: built-ins, then official plugins, then third-party plugins by when each was first installed (an update keeps its place), then by id. Plugins start in that order.
+- **Built-ins and official plugins keep their names.** A third party's plugin with one of their names isn't used. annai's own components, and the skills it ships, are annai's even when no plugin draws them.
+- **The user's choice decides, once made.** A plugin's page says "Not used: <name> is already provided by <owner>", with **Use this one instead**. The choice is stored (app settings, `uses`), holds while that plugin runs (switched off, the next in order is used), and is shown on both plugins' pages, "<name>: this one is used (your choice)", with **Undo**. Removing the plugin forgets it. Choosing never switches a plugin on.
+- **`replaces`** (§5.2) is asked at install: "It replaces <name> from <owner>", with **Install and use it** and **Install, keep <owner>'s**. Nothing is chosen until one is tapped.
+- **What no choice moves:** the agent loop's own tools (`speak`, `show`, `ask`, `wait`, `sleep`, `tell_koe`, `tell_kokoro`, and the rest of the loop's), which keep the loop whole; and protocols and kinds of backup place, which are handed the keys the user gives (a provider's, a place's): their owner is by order alone, so `replaces` can never hand a plugin someone else's key. When a type is needed, annai's own is installed even if a third party's has its name.
+- **Upgrading:** at the first start with this rule, a component that a plugin replaced under the old one (the last plugin to register it) is recorded as the user's choice, so nothing in use stops being used.
 
 ## 6. Agent loop
 
@@ -1050,7 +1061,7 @@ Reference: mockups draft 6.
 
 - **Slots:** status chips, Now-card sections, dock actions, trip tabs, settings pages.
 - **Card types:** renderers, often paired with a schema.
-- **Named components that plugins can replace:** avatar, now-card, dock, plan-row, and others.
+- **Named components that plugins can replace:** avatar, now-card, dock, plan-row, and others. They are names like any other (§5.6): annai's own is used until the user chooses a plugin's, at its install (`replaces`) or on its page.
 - **Whole screens:** a new tab, or the home screen for a mode such as hiking.
 - **Themes:** all colors, type and spacing are CSS variables.
 - **Only slots, components and variables are stable across updates.**
