@@ -132,3 +132,49 @@ test("a value that isn't valid shows why by its field and isn't saved", async ({
   await page.reload();
   await expect(page.getByLabel('Summarize at (% of the context)')).toHaveValue('70');
 });
+
+/** A file of the user's, as stored. @param {import('@playwright/test').Page} page @param {string} path */
+const meFile = (page, path) => page.evaluate(async (p) => {
+  const load = (/** @type {string} */ url) => import(url);
+  const { createIdbStore } = await load('/src/core/store-idb.js');
+  const { Workspace } = await load('/src/core/workspace.js');
+  const store = await createIdbStore();
+  try {
+    return await new Workspace(store).readText('me', p);
+  } finally {
+    store.close();
+  }
+}, path);
+
+test('choosing another personality moves the editor to it, so its Save writes that one (review, 2026-10-18)', async ({ page }) => {
+  await openApp(page);
+  await expect.poll(() => meFile(page, '/personalities/storyteller.md')).toBeTruthy(); // installed as annai starts
+  await page.goto('/#/shiori');
+  const shiori = await meFile(page, '/personalities/shiori.md');
+  const storyteller = page.getByRole('radio', { name: 'storyteller' });
+  await storyteller.check();
+  await expect(savedBy(storyteller)).toHaveText('Saved');
+  await expect(page.getByLabel('"storyteller"')).toHaveValue(/\S/);
+  await page.getByLabel('"storyteller"').fill('# Storyteller\nTell the stories of each place.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => meFile(page, '/personalities/storyteller.md')).toBe('# Storyteller\nTell the stories of each place.');
+  expect(await meFile(page, '/personalities/shiori.md')).toBe(shiori);
+});
+
+test("quiet hours set halfway ask for the other time quietly, and say they need both only once the pair is left (review, 2026-10-18)", async ({ page }) => {
+  await openApp(page, '#/shiori');
+  const from = page.getByLabel('Quiet from');
+  const until = page.getByLabel('Quiet until');
+  await from.fill('22:00');
+  await until.focus();
+  await expect(page.getByRole('status').filter({ hasText: 'Set the other time too.' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'Quiet hours need both times' })).toHaveCount(0);
+  await page.getByLabel('Steps per wake').focus();
+  await expect(page.getByRole('alert')).toHaveText('Quiet hours need both times. Clear both for none.');
+  await expect(until).toHaveAttribute('aria-invalid', 'true');
+  await until.fill('07:00');
+  await until.blur();
+  await expect(savedBy(until)).toHaveText('Saved');
+  await expect(page.getByRole('alert').filter({ hasText: 'Quiet hours' })).toHaveCount(0);
+  await expect(until).not.toHaveAttribute('aria-invalid', 'true');
+});
