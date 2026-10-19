@@ -468,3 +468,15 @@ test("told how much of the turn was heard (playedMs, K5's), it truncates there, 
   assert.deepEqual(events.filter((e) => e.type === 'turn').map((e) => e.end), ['interrupted', 'interrupted', 'complete']);
   driver.close();
 });
+
+test("cut(playedMs), K5's tap on Shiori while Koe speaks: the response is cancelled and truncated where it was heard; Gemini Live has no cut", async () => {
+  const { driver, sent, events, say } = await bare();
+  driver.text('Tell me about Bixby Bridge.');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(voice(800)) });
+  /** @type {any} */ (driver).cut(500);
+  assert.deepEqual(sent.slice(-2).map((m) => m.type), ['response.cancel', 'conversation.item.truncate']);
+  assert.deepEqual([sent.at(-1).item_id, sent.at(-1).audio_end_ms], ['i1', 500]);
+  assert.deepEqual(events.filter((e) => e.type === 'turn').map((e) => e.end), ['interrupted']);
+  driver.close();
+});

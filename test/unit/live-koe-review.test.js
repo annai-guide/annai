@@ -125,3 +125,22 @@ test('item 3 (probe A3): a close while listen() waits opens no microphone and th
     await k.done();
   }
 });
+
+test('item 4 (probe H): a tap that cuts Koe off tells the provider how much of her turn was heard (cut), for one that truncates its record there', async () => {
+  const k = await liveKit([{ said: 'Bixby Bridge is a concrete arch from 1932, and one of the most photographed bridges on the coast.', audio: tone(4) }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.agent.live.view.name === 'speaking', 3000);
+    await wait(500);
+    /** @type {number[]} */
+    const cuts = [];
+    k.sessions.at(-1).cut = (/** @type {number} */ ms) => { cuts.push(ms); };
+    assert.equal(k.agent.tap(), 'cut');
+    assert.equal(cuts.length, 1);
+    assert.ok(cuts[0] >= 400 && cuts[0] < 1500, String(cuts[0]));
+  } finally {
+    await k.done();
+  }
+});

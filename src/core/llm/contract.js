@@ -265,9 +265,10 @@ export function safeId(id) {
  * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket  on: set as it attaches
  * @typedef {{ ready: Promise<void>, audio(chunk: Uint8Array): void, activity(edge: 'start' | 'end', o?: { playedMs?: number }): void, text(t: string, o?: { interrupt?: boolean, playedMs?: number }): void,
  *   image(i: { mediaType: string, data: string }): void, answer(id: string, name: string, output: string, o?: { silent?: boolean }): void,
- *   cancel?(): void, close?(): void }} LiveDriver
+ *   cancel?(): void, cut?(playedMs?: number): void, close?(): void }} LiveDriver
  *   ready: the setup was taken; audio: 16-bit PCM in audioIn; image: base64; silent: no more speech for that answer; playedMs: when the user or a
- *   note cuts Koe off, how much of its turn was heard (a protocol may cut its record of the turn there)
+ *   note cuts Koe off, how much of its turn was heard (a protocol may cut its record of the turn there); cut: a tap stopped Koe's voice there,
+ *   with nothing else said (K5)
  * @typedef {{ type: 'audio', data: Uint8Array } | { type: 'heard' | 'said', text: string, final?: boolean } | { type: 'tool', id: string, name: string, input: any }
  *   | { type: 'turn', end: 'complete' | 'interrupted' } | { type: 'usage', usage: Partial<Usage> } | { type: 'resume', handle: string }
  *   | { type: 'goaway', ms: number }} LiveEvent  audio: 16-bit PCM in audioOut; heard, said: transcripts in pieces; usage: a turn's
