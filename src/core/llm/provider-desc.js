@@ -24,7 +24,7 @@ export const ROLE_KINDS = Object.freeze({
   main: ['chat'], utility: ['chat'], decide: ['chat'], koe: ['chat', 'realtime'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
 });
 /** Koe's two lists before they were one (2026-10-19): a description naming them still checks, and they are ignored. */
-export const OLD_KOE_ROLES = Object.freeze(['koe-talk', 'koe-type']);
+const OLD_KOE_ROLES = Object.freeze(['koe-talk', 'koe-type']);
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;
 /** The tunables protocols join onto an ability's address. */
