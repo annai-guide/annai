@@ -71,23 +71,47 @@ function requestSections(ctx, s) {
 
 /**
  * The providers that can be added (spec §9.8): annai's catalog's model providers, and the provider
- * plugins installed from elsewhere; offline, the ones installed already. Another address comes last.
- * @param {any} ctx @returns {Promise<{ options: { id: string, name: string }[], offline: boolean }>}
+ * plugins installed from elsewhere, named so; offline, the ones installed already. Another address
+ * comes after annai's own, those from elsewhere last. A copy from elsewhere that holds the id of one of
+ * annai's own is never offered as annai's (security review): a note says why it isn't there.
+ * @param {import('../../core/llm/official.js').CatalogPlugin[] | null} catalog @param {{ plugin: string, name: string }[]} running
+ * @param {Record<string, any>} installed @returns {{ options: { id: string, name: string, official: boolean }[], notes: string[] }}
  */
+export function addOptions(catalog, running, installed) {
+  /** @type {{ id: string, name: string, official: boolean }[]} */
+  const options = [];
+  /** @type {string[]} */
+  const notes = [];
+  for (const p of catalog ?? []) {
+    if (!p.abilities?.length) continue;
+    if (installed[p.id] && installed[p.id].source !== 'official') {
+      notes.push(`${p.name}: the one installed came from elsewhere but uses the name of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.`);
+      continue;
+    }
+    options.push({ id: p.id, name: p.name, official: true });
+  }
+  for (const s of running) {
+    if (options.some((o) => o.id === s.plugin) || catalog?.some((p) => p.id === s.plugin)) continue;
+    const i = installed[s.plugin];
+    let from = '';
+    if (i?.source === 'url') {
+      try {
+        from = `from ${new URL(i.url).host}`;
+      } catch {
+        from = 'from an address';
+      }
+    } else if (i?.source !== 'official') from = 'from a file';
+    options.push({ id: s.plugin, name: from ? `${s.name} (${from})` : s.name, official: !from });
+  }
+  const rank = (/** @type {{ id: string, official: boolean }} */ o) => (o.official ? 0 : 2) + (o.id === 'provider-another-address' ? 1 : 0);
+  options.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  return { options, notes };
+}
+
+/** What Add a provider offers now. @param {any} ctx */
 async function addable(ctx) {
   const catalog = await officialPlugins().catch(() => null);
-  const installed = await ctx.plugins.installed();
-  /** @type {{ id: string, name: string, own: boolean }[]} */
-  const options = (catalog ?? []).filter((p) => p.abilities?.length).map((p) => ({ id: p.id, name: p.name, own: true }));
-  for (const s of ctx.llm.providers()) {
-    if (options.some((o) => o.id === s.plugin)) continue;
-    const i = installed[s.plugin];
-    const from = i?.source === 'url' && i.url ? (() => { try { return `from ${new URL(i.url).host}`; } catch { return 'from an address'; } })() : i?.source === 'file' ? 'from a file' : '';
-    options.push({ id: s.plugin, name: from ? `${s.name} (${from})` : s.name, own: !from });
-  }
-  const rank = (/** @type {{ id: string, own: boolean }} */ o) => (o.id === 'provider-another-address' ? 1 : 0) + (o.own ? 0 : 2);
-  options.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-  return { options, offline: catalog === null };
+  return { ...addOptions(catalog, ctx.llm.providers(), await ctx.plugins.installed()), offline: catalog === null };
 }
 
 /** The providers, each with its abilities that are on and its models, and Add a provider. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg @param {Awaited<ReturnType<typeof addable>>} offer */
@@ -111,7 +135,7 @@ function providersSection(ctx, cfg, offer) {
       add.disabled = true;
       status.textContent = `Adding ${chosen.name}, with what it needs…`;
       try {
-        const id = await ctx.llm.addProvider(chosen.id, { roles: 'recommended' });
+        const id = await ctx.llm.addProvider(chosen.id, { roles: 'recommended', official: chosen.official });
         ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
       } catch (e) {
         status.textContent = messageOf(e);
@@ -125,6 +149,7 @@ function providersSection(ctx, cfg, offer) {
     rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: 'No providers yet. Add one below.' }),
     offer.options.length ? h('div', { class: 'row' }, field('Add a provider', pick), h('div', { class: 'acts' }, add)) : null,
     offer.offline ? h('p', { class: 'sub', text: "annai's list of providers couldn't be loaded. Connect to the internet and open this screen again." }) : null,
+    ...offer.notes.map((t) => h('p', { class: 'sub', text: t })),
     status);
 }
 

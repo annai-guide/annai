@@ -315,3 +315,21 @@ test("listing an ability's models: by its address, with the provider's key; an a
   assert.match(k.reached.at(-1) ?? '', /"api-key":"sk-x-1"/);
   assert.doesNotMatch(k.reached.at(-1) ?? '', /Bearer/);
 });
+
+test("security review: an installed copy of an official provider's id that came from elsewhere is never used as annai's own; one from annai whose files no longer match the catalog is fetched again", async () => {
+  const k = await serviceKit();
+  // As if it slipped in (a restored backup, an older annai): a provider-x from a file.
+  await k.host.install(new Map(Object.entries(PX('9.0.0')).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'file' });
+  await k.host.start('provider-x');
+  await assert.rejects(k.llm.installProvider('provider-x', { official: true }), /annai's own plugin uses this name, but the one installed came from elsewhere/);
+  await assert.rejects(k.llm.addProvider('provider-x', { key: 'sk-x-secret', official: true }), /came from elsewhere/);
+  assert.deepEqual(Object.keys((await k.llm.config()).providers), []);
+  assert.deepEqual(await k.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), [], 'no key was kept for it');
+  // annai's own, its files changed in storage: fetched again from the catalog before it is used.
+  const { host, llm, ws, s } = await serviceKit();
+  await llm.installProvider('provider-x', { official: true });
+  await ws.write('sys:plugins', '/provider-x/annai-plugin.json', JSON.parse(PX()['annai-plugin.json']), { author: 'system' });
+  assert.equal(await host.verifyOfficial('provider-x', /** @type {any} */ (s.entries.find((e) => e.id === 'provider-x'))), false);
+  await llm.installProvider('provider-x', { official: true });
+  assert.equal(await host.verifyOfficial('provider-x', /** @type {any} */ (s.entries.find((e) => e.id === 'provider-x'))), true);
+});

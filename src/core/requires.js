@@ -162,6 +162,23 @@ async function withRequirements(host, requires, env, { who, id, install }) {
   }
 }
 
+/** The words for a package from elsewhere that holds, or would take, the id of annai's own plugin. */
+export const OWN_NAME = "annai's own plugin uses this name";
+
+/**
+ * Refuses a package from a file or an address whose id is one of annai's own (security review): one
+ * in annai's catalog, or, offline, one installed from it. Nothing is stored or changed.
+ * @param {PluginHost} host @param {string} id @param {string | undefined} source @param {Env} [env]
+ */
+export async function checkPackageId(host, id, source, env = {}) {
+  if (source === 'official') return;
+  const catalog = env.catalog ?? await officialPlugins(env).catch(() => null);
+  const own = catalog?.find((p) => p.id === id);
+  if (own || (await host.installed())[id]?.source === 'official') {
+    throw new PluginError(id, `${OWN_NAME} (${own?.name ?? id}), so a package from elsewhere can't have it. Ask its author to rename it.`);
+  }
+}
+
 /**
  * Installs a package with what it requires (all or nothing), and starts them. @param {PluginHost} host
  * @param {Map<string, Uint8Array>} files @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} opts @param {Env} [env]
@@ -169,6 +186,7 @@ async function withRequirements(host, requires, env, { who, id, install }) {
  */
 export async function installWith(host, files, opts, env = {}) {
   const pkg = await host.inspect(files);
+  await checkPackageId(host, pkg.id, opts.source, env);
   await withRequirements(host, pkg.requires, env, { who: pkg.name, id: pkg.id, install: () => host.install(files, opts) });
   return pkg.manifest;
 }

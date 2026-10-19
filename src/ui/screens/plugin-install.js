@@ -5,7 +5,7 @@ import { addressParts } from '../../core/address.js';
 import { addsAnything } from '../../core/packages.js';
 import { descOrigins } from '../../core/llm/provider-desc.js';
 import { officialPlugins } from '../../core/llm/official.js';
-import { satisfies, installWith } from '../../core/requires.js';
+import { satisfies, installWith, checkPackageId } from '../../core/requires.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
@@ -132,13 +132,16 @@ export async function renderPluginInstall(ctx) {
   const line = [what, pkg.shownVersion ? `version ${pkg.shownVersion}` : null, pkg.author ? `by ${pkg.author}` : null].filter(Boolean).join(' · ');
   const home = webAddress(pkg.homepage);
   const needs = await needsOf(ctx, pkg);
-  const install = h('button', { class: 'btn pri', type: 'button', disabled: !needs.ok, onclick: () => installPending(ctx, install) }, 'Install');
+  // A package from elsewhere can't take the name of annai's own plugin (security review).
+  const taken = await checkPackageId(ctx.plugins, pkg.id, from?.source).then(() => null, (e) => message(e));
+  const install = h('button', { class: 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, install) }, 'Install');
   return h('div', { class: 'screen plugin-install' }, back,
     h('h1', { class: 'title', text: `Install ${pkg.name}?` }),
     h('p', { class: 'sub', text: line }),
     home ? h('p', {}, h('a', { href: home, target: '_blank', rel: 'noopener noreferrer', text: home })) : null,
     pkg.description ? h('p', { text: pkg.description }) : null,
     h('p', { class: 'sub', text: sourceLine(from) }),
+    taken ? h('p', { class: 'error', role: 'alert', text: taken }) : null,
     h('section', { class: 'panel', 'aria-label': 'What it brings' },
       h('h2', { class: 'section', text: 'What it brings' }),
       h('ul', { class: 'brings' }, ...whatItBrings(pkg).map((t) => h('li', { text: t }))),
@@ -177,6 +180,7 @@ async function installPending(ctx, button) {
       ctx.go('#/plugins');
       return;
     }
+    await checkPackageId(ctx.plugins, pkg.id, p.from?.source);
     await ctx.plugins.install(p.files, p.from);
   } catch (e) {
     if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${pkg.name} wasn't installed`, body: message(e) });
