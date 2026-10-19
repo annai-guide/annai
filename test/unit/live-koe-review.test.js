@@ -327,3 +327,20 @@ test('item 12 (probe B3): a tap that first unlocks sound on a session already op
     await k.done();
   }
 });
+
+test("item 13: the quiet spell doesn't run out while Kokoro works on Koe's question: its answer is said in the same session", async () => {
+  const k = await liveKit([
+    { heard: 'Is Nepenthe open?', said: "I'm checking.", audio: tone(0.1), tool: { name: 'tell_kokoro', args: { text: 'Is Nepenthe open now?' } } },
+    { said: "It's open until ten tonight.", audio: tone(0.1) },
+  ], { kokoro: [{ rules: [{ match: 'Koe (asks|notes)', reply: { delayMs: 800, toolCalls: [{ name: 'tell_koe', input: { text: 'Open until 22:00 (nepenthe.com).' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
+  try {
+    k.agent.tap(); // the quiet spell is 300 ms here; Kokoro takes 800
+    await until(() => k.agent.live.listening);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    assert.equal(k.server.connections().length, 1, 'one session');
+    assert.deepEqual(await blocks(k), ['live-open']);
+  } finally {
+    await k.done();
+  }
+});
