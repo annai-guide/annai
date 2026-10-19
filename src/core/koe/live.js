@@ -86,6 +86,8 @@ export class LiveKoe {
   #gen = 0;
   /** @type {Promise<boolean> | null} */
   #opening = null;
+  /** @type {Promise<void> | null} */
+  #listening = null;
   /** What it writes, in order. @type {Promise<unknown>} */
   #chain = Promise.resolve();
   /** @type {(() => void)[]} */
@@ -188,13 +190,20 @@ export class LiveKoe {
   }
 
   /** The microphone opens on the open session; what is said streams live, only while someone speaks. */
-  async listen() {
+  listen() {
+    // One at a time: two in flight would open two microphones (review).
+    return (this.#listening ??= this.#listen().finally(() => { this.#listening = null; }));
+  }
+
+  async #listen() {
     const v = this.c.voice;
     const p = v?.platform;
     if (this.#input || !this.#s || !p || !v.on || !this.c.visible()) return;
+    const { pauseMs, bargeIn } = await v.settings();
+    // A close may have come meanwhile.
+    if (this.#input || !this.#s || this.state !== 'open' || !this.c.visible()) return;
     this.unmute();
     this.c.release();
-    const { pauseMs, bargeIn } = await v.settings();
     this.#input = new LiveInput({
       mic: p.mic, rate: this.#s.audioIn.rate, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
@@ -228,15 +237,19 @@ export class LiveKoe {
       this.#handle = undefined;
       this.#notes = [];
     }
-    if (this.state === 'closed') return;
+    const was = this.state;
     this.state = 'closed';
+    // A microphone is always let go, whatever came before.
+    const input = this.#input;
+    this.#input = null;
+    this.listening = false;
+    input?.stop();
+    if (was === 'closed') return this.#changed();
     this.#gen++;
     const s = this.#s;
     this.#s = null;
     if (!forget && s?.handle) this.#handle = s.handle;
-    this.#input?.stop();
-    this.#input = null;
-    this.listening = this.voiced = this.#rotate = false;
+    this.voiced = this.#rotate = false;
     this.#cut();
     this.#t = null;
     this.#flushHeard(false);
@@ -262,7 +275,7 @@ export class LiveKoe {
       return 'stopped';
     }
     if (!this.c.voice?.on) return 'typing';
-    this.open('tap', { mic: true });
+    this.open('tap', { mic: true }).catch(() => {});
     return 'listening';
   }
 
@@ -292,9 +305,9 @@ export class LiveKoe {
     return true;
   }
 
-  /** A wake Koe answers (a trigger, the recap asked aloud), as annai's text turn. @param {import('../agent/loop.js').Wake} w */
+  /** A wake Koe answers (a trigger, the recap asked aloud), as annai's text turn; not said, its reminders are annai's (Halves). @param {import('../agent/loop.js').Wake} w */
   wake(w) {
-    return this.#say(`[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`, w.kind);
+    return this.#say(`[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`, w.kind, false);
   }
 
   /**
@@ -303,7 +316,7 @@ export class LiveKoe {
    */
   note(text, mode) {
     const note = wrapNote(text, this.c.nonce);
-    if (mode !== 'immediate' || !this.c.visible()) return this.#say(note, 'note');
+    if (mode !== 'immediate' || !this.c.visible()) return this.#say(note, 'note', true);
     return this.open('note', { mic: Boolean(this.c.voice?.unlocked) }).then((ok) => {
       if (ok) this.#text(note, this.#cut());
       return ok;
@@ -312,14 +325,18 @@ export class LiveKoe {
 
   /**
    * Words to say once Koe's turn and voice have ended; from a page out of view, nothing opens, and they wait for it
-   * (shown()). Otherwise a session opens, and listens after where sound was unlocked. @param {string} text @param {string} why
+   * (shown()). Otherwise a session opens, and listens after where sound was unlocked. Not said, they wait for the next
+   * session where keep (a note), else go. @param {string} text @param {string} why @param {boolean} keep @returns {Promise<boolean>} whether they will be said
    */
-  async #say(text, why) {
+  async #say(text, why, keep) {
     this.#notes.push(text);
     if (!this.c.visible()) return true;
-    if (!(await this.open(why, { mic: Boolean(this.c.voice?.unlocked) }))) return false;
-    this.#idle();
-    return true;
+    if ((await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open') {
+      this.#idle();
+      return true;
+    }
+    if (!keep) this.#notes = this.#notes.filter((x) => x !== text);
+    return false;
   }
 
   /** The page is back in view: what waited is said, in a session without the microphone, which a tap opens (security review). */
@@ -342,6 +359,7 @@ export class LiveKoe {
 
   /** @param {'start' | 'end'} edge */
   #activity(edge) {
+    if (this.state === 'closed') return;
     if (!this.c.visible()) return this.close('away'); // a page out of view never streams a sound
     /** @type {{ playedMs?: number }} */
     let cut = {};
@@ -361,6 +379,7 @@ export class LiveKoe {
 
   /** @param {Uint8Array} b */
   #audio(b) {
+    if (this.state === 'closed') return;
     if (!this.c.visible()) return this.close('away');
     if (this.#keep && this.#hear) this.#hear.pcm.push(samples(b));
     this.#poke();
