@@ -7,6 +7,7 @@ import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem } from '../../core/llm/provider-desc.js';
 import { andList } from '../format.js';
+import { connection } from '../provider-setup.js';
 
 export { messageOf };
 
@@ -22,7 +23,7 @@ export function priceLine(prices) {
 /**
  * One provider (spec §9.2, §9.8): its name, one key, its address and extra headers (saved together,
  * §16.1), then each ability with its switch, its own address, tunables, fields and models, and Remove.
- * Drawn from the provider plugin's description, as data: a plugin with code adds to it from milestone 4.
+ * Drawn from the provider plugin's description, as data; a plugin with code adds its own panel (decision 15).
  * @param {any} ctx @param {string} id
  */
 export async function renderProvider(ctx, id) {
@@ -44,7 +45,9 @@ export async function renderProvider(ctx, id) {
   const saveFields = saver(ctx, id, tunablesFor, null);
   const name = h('input', { id: 'provider-name', autocomplete: 'off', value: p.name });
   const url = h('input', { id: 'provider-url', autocomplete: 'off', autocapitalize: 'off', inputmode: 'url', value: p.baseUrl, placeholder: 'https://…' });
-  const key = desc?.key === 'none' ? null : h('input', { id: 'provider-key', type: 'password', autocomplete: 'off', placeholder: hasKey ? 'saved (type a new one to replace it)' : 'not set' });
+  // A plugin with code may draw its own part in the key's place, such as a sign-in (decision 15).
+  const own = connection(ctx, rec.plugin, { id, name: p.name, key: hasKey });
+  const key = desc?.key === 'none' || !own.keyField ? null : h('input', { id: 'provider-key', type: 'password', autocomplete: 'off', placeholder: hasKey ? 'saved (type a new one to replace it)' : 'not set' });
   const headers = jsonField('Extra headers (JSON)', 'provider-headers', p.headers);
   // The address, key and extra headers (often a credential too) are saved together with a button, so a half-typed connection is never used.
   const save = h('button', {
@@ -84,6 +87,7 @@ export async function renderProvider(ctx, id) {
       savedField('Name', name, () => name.value.trim() || providerBase(rec).name, async (v) => { title.textContent = (await saveFields({ name: v })).name; }),
       h('h3', { text: 'Connection' }),
       field('Address', url),
+      own.panel,
       key ? field('API key', key) : null,
       desc?.note || desc?.keyUrl
         ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)

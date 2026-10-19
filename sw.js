@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '3b097e928c39';
+const BUILD = '3e9e7b184281';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -81,6 +81,7 @@ const SHELL = [
   '/src/core/llm/official.js',
   '/src/core/llm/provider-desc.js',
   '/src/core/llm/providers.js',
+  '/src/core/llm/setup.js',
   '/src/core/llm/cost.js',
   '/src/core/llm/partial-json.js',
   '/src/core/llm/reasoning.js',
@@ -197,6 +198,8 @@ const SHELL = [
   '/src/ui/privacy.js',
   '/src/ui/plugin-cards.js',
   '/src/ui/plugin-pending.js',
+  '/src/ui/provider-setup.js',
+  '/src/ui/returns.js',
   '/src/ui/plugin-updates.js',
   '/src/ui/push.js',
   '/src/ui/router.js',

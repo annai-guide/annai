@@ -121,7 +121,7 @@ export async function renderPluginInstall(ctx) {
       h('p', {}, "There's nothing to install. ", h('a', { href: to }, 'Go back to Add.')));
   }
   const { pkg, from } = p;
-  const what = pkg.kind === 'skill' ? 'A skill' : pkg.provider && !pkg.code ? 'A model provider · data only' : pkg.code ? 'A plugin' : 'A package without code';
+  const what = pkg.kind === 'skill' ? 'A skill' : pkg.provider ? `A model provider · ${pkg.code ? 'has code' : 'data only'}` : pkg.code ? 'A plugin' : 'A package without code';
   const line = [what, pkg.shownVersion ? `version ${pkg.shownVersion}` : null, pkg.author ? `by ${pkg.author}` : null].filter(Boolean).join(' · ');
   const home = webAddress(pkg.homepage);
   const needs = await needsOf(ctx, pkg);

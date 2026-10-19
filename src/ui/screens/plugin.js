@@ -64,7 +64,7 @@ export async function renderPlugin(ctx, id) {
   const reset = saved && (r.settings || saved.file || saved.secrets.length) ? resetPart(ctx, r) : null;
   const note = notes.get(id);
   notes.delete(id);
-  const what = r.builtin ? 'Built into annai' : r.kind === 'skill' ? 'A skill' : r.provider && !r.code ? 'A model provider · data only' : r.code ? 'A plugin' : 'A package without code';
+  const what = r.builtin ? 'Built into annai' : r.kind === 'skill' ? 'A skill' : r.provider ? `A model provider · ${r.code ? 'has code' : 'data only'}` : r.code ? 'A plugin' : 'A package without code';
   const line = [what, r.shownVersion ? `version ${r.shownVersion}` : null, r.author ? `by ${r.author}` : null].filter(Boolean).join(' · ');
   const told = (await removalWords(ctx, rows)).get(id);
   return h('div', { class: 'screen plugin-page' }, back,
