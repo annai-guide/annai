@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave } from './helpers.js';
+import { openApp, buildAndSave, pastWelcome } from './helpers.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
@@ -42,7 +42,7 @@ test('everything survives export, erase and import', async ({ page }) => {
 
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
-  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await pastWelcome(page);
   await expect(page.getByText('No trips yet.')).toBeVisible();
 
   await page.getByLabel('Open a trip someone sent you').setInputFiles(file);

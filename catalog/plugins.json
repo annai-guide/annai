@@ -30,6 +30,20 @@
       }
     },
     {
+      "id": "openai-responses",
+      "name": "OpenAI Responses",
+      "version": "0.1.0",
+      "provides": {
+        "endpoint-type": [
+          "openai-responses"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "886adcd8fd0e61b3786528f3a7bbd3b1396cc636143e71b7bc2aee0acb1d7178",
+        "index.js": "81b0892878a51a9b60579143d0a7fdfa82afa95deccd4c91e6c8887bf1740f6d"
+      }
+    },
+    {
       "id": "remote-trace",
       "name": "Remote trace (for developers)",
       "version": "0.1.0",

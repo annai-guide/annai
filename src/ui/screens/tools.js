@@ -4,6 +4,8 @@ import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf } from '../../core/llm/config.js';
 
 const GROUPS = ['Talk', 'Files', 'Web', 'Places', 'Go', 'Time', 'Self'];
+/** Jina's page for its API keys ("Manage API Key"), where a free key is made. */
+const JINA_KEYS = 'https://jina.ai/api-dashboard/key-manager/';
 
 /** A switch for every tool and provider-side tool (spec §7.2, §9.5); switches cover plugins' tools too. @param {any} ctx */
 export async function toolSwitchList(ctx) {
@@ -62,7 +64,11 @@ export async function renderTools(ctx) {
       radio('Search via', [['auto', "Your model's own search when it has one, else Jina"], ['provider', "Your model's own search"], ['annai', 'Jina Search (needs the key below)'], ['off', 'Off']], web.searchVia ?? 'auto', (v) => saveWeb({ searchVia: v })),
       radio('Fetch via', [['annai', 'annai: directly, then Jina Reader, then your model'], ['provider', "Your model's own fetch"], ['off', 'Off']], web.fetchVia ?? 'annai', (v) => saveWeb({ fetchVia: v })),
       field('Jina key', key),
-      h('p', { class: 'sub', text: hasKey ? 'A key is set. It stays on this device and is never shown again.' : 'Jina Reader reads sites that don\'t let web apps read them, and Jina Search searches the web. Some networks need a key; it\'s free at jina.ai.' }),
+      hasKey
+        ? h('p', { class: 'sub', text: 'A key is set. It stays on this device and is never shown again.' })
+        // A real link, so an iPhone Home Screen app opens it in Safari from the tap itself (as Sign in with OpenRouter does).
+        : h('p', { class: 'sub' }, "Jina Reader reads sites that don't let web apps read them, and Jina Search searches the web. Some networks need a key. ",
+          h('a', { href: JINA_KEYS, target: '_blank', rel: 'noopener noreferrer', text: 'Get a free key from Jina' }), '.'),
       h('div', { class: 'acts' },
         h('button', { class: 'btn pri', type: 'button', onclick: async () => {
           const v = key.value.trim();

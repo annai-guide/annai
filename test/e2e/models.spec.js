@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint, filterTrace, responsesReply } from './helpers.js';
 
 test('endpoints, models and roles are set in Settings → Models, survive a reload, and the key is never shown', async ({ page }) => {
   await openApp(page, '#/models');
@@ -162,4 +162,82 @@ test('a model keeps its photo limits on its page, to see and change (spec §9.2)
   await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/\n  "maxEdge": 1568/); // shown again, formatted, once saved
   await page.reload();
   await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/"maxBytes": 3000000/);
+});
+
+test('an OpenAI Responses endpoint: its model list, the Test button with the tool, the photo and the upload, and a conversation with one tool call (stood in for)', async ({ page }) => {
+  const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
+  const encrypted = 'gAAAAABe2eEncryptedReasoning==';
+  const llm = await startModelServer({
+    '/v1/models': { status: 200, type: 'application/json', body: JSON.stringify({ object: 'list', data: [{ id: 'gpt-6-luna', object: 'model', owned_by: 'system' }, { id: 'gpt-6.1-sol', object: 'model', owned_by: 'system' }] }) },
+    '/v1/files': { status: 200, type: 'application/json', body: JSON.stringify({ id: 'file-e2e', object: 'file', purpose: 'vision', expires_at: Math.floor(Date.now() / 1000) + 3600 }) },
+    '/v1/responses': [
+      sse(responsesReply({ text: 'OK' })), // Test: the tiny request
+      sse(responsesReply({ calls: [{ name: 'report_color', input: { color: 'red' } }] })), // Test: the tool and the photo
+      sse(responsesReply({ reasoning: { id: 'rs_e2e', summary: 'Show the hours.', encrypted }, calls: [{ name: 'show', input: { card: { title: 'Nepenthe', text: 'Open till 10.' } } }] })),
+      sse(responsesReply({ text: 'Shown.' })),
+    ],
+  });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await page.getByLabel('Add an endpoint').selectOption({ label: 'Other: OpenAI Responses' });
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Other: OpenAI Responses' })).toBeVisible({ timeout: 30_000 });
+    await page.getByLabel('Name', { exact: true }).fill('Responses stand-in');
+    await page.getByLabel('Base URL').fill(`${llm.origin}/v1`);
+    await page.getByLabel('API key').fill('sk-test-secret-r');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('heading', { name: 'Responses stand-in' })).toBeVisible();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    await expect(page.getByLabel('Upload photos to this provider (each expires after 48 hours)')).toBeChecked();
+    // The model list, from GET /models.
+    await page.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(page.getByText('2 models.')).toBeVisible();
+    await page.getByRole('button', { name: 'Add gpt-6-luna' }).click();
+    await page.getByRole('link', { name: /^gpt-6-luna/ }).click();
+    await page.getByLabel('Takes photos').check();
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByLabel('Takes photos')).toBeChecked();
+    await page.getByRole('link', { name: '← Responses stand-in' }).click();
+    // The Test button: access and the key, then the tool with the photo, then an upload.
+    await page.getByRole('button', { name: 'Test', exact: true }).click();
+    await expect(page.getByText('Everything works.')).toBeVisible();
+    await expect(page.getByText('✓ Tool calls work.')).toBeVisible();
+    await expect(page.getByText('✓ Photos work: it saw the red square.')).toBeVisible();
+    await expect(page.getByText(/^✓ Photo uploads work/)).toBeVisible();
+    expect(llm.bodies('/v1/files').length).toBe(1);
+    const photo = llm.bodies('/v1/responses')[1].input[0].content;
+    expect(photo.find((/** @type {any} */ c) => c.type === 'input_image').image_url).toMatch(/^data:image\/png;base64,/);
+    // A conversation: Shiori shows a card, then says she has.
+    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByLabel('Add a model to main').selectOption({ label: 'gpt-6-luna' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await expect(page.getByText('1. gpt-6-luna')).toBeVisible();
+    await page.goto('/#/trips');
+    await page.getByLabel('Trip name').fill('Big Sur');
+    await page.getByRole('button', { name: 'Start trip' }).click();
+    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('When does Nepenthe close?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.convo .card-title')).toHaveText('Nepenthe');
+    await expect.poll(() => llm.bodies('/v1/responses').length).toBe(4);
+    const [first, second] = llm.bodies('/v1/responses').slice(2);
+    for (const body of [first, second]) {
+      expect(body.store).toBe(false);
+      expect(body.stream).toBe(true);
+      expect(body.input.at(-1).role).toBe('developer'); // the now block, out of the cached prefix
+    }
+    expect(first.instructions).toBeTruthy();
+    expect(first.tools.find((/** @type {any} */ t) => t.name === 'show')).toMatchObject({ type: 'function', strict: false });
+    // The second request carries the first reply back: its encrypted reasoning, then the call, then the call's result.
+    const items = second.input;
+    const at = items.findIndex((/** @type {any} */ x) => x.type === 'reasoning');
+    expect(items[at]).toEqual({ id: 'rs_e2e', type: 'reasoning', summary: [{ type: 'summary_text', text: 'Show the hours.' }], encrypted_content: encrypted });
+    expect(items[at + 1]).toMatchObject({ type: 'function_call', name: 'show' });
+    expect(items[at + 2]).toMatchObject({ type: 'function_call_output', call_id: items[at + 1].call_id });
+    expect(await page.content()).not.toContain('sk-test-secret-r');
+  } finally {
+    await llm.stop();
+  }
 });

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, pastWelcome } from './helpers.js';
 import { startS3, ACCESS, SECRET } from '../fakes/s3.js';
 import { startWebDAV, USER, PASSWORD } from '../fakes/webdav.js';
 
@@ -65,6 +65,7 @@ test('S3: encrypted automatic backups, and a wiped phone restores one with its p
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
+    await pastWelcome(page);
     await expect(page.getByText('No trips yet.')).toBeVisible();
     await addPlace(page, 'S3-compatible storage', fields);
     await page.getByRole('button', { name: 'Save and test' }).click();

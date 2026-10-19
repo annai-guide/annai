@@ -16,6 +16,7 @@ export const manifest = {
 };
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
+const CREDIT_OPEN_METEO = 'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)';
 /** Nominatim allows one request a second (spec §7.2); the gap is a little more. */
 export const NOMINATIM_GAP = { ms: 1100 };
 
@@ -52,19 +53,24 @@ function sunOnly(i, e) {
   return `${head}sunrise ${hm(t.sunrise)}, sunset ${hm(t.sunset)}, ${golden}.`;
 }
 
-/** A guide's introduction and the names of its sections; or one section. @param {string} title @param {string} text @param {string | undefined} section @param {string} source */
+/**
+ * A guide's introduction and the names of its sections; or one section. Each comes with its article's
+ * address, as Wikipedia's rows do: CC BY-SA credits by a link to the article.
+ * @param {string} title @param {string} text @param {string | undefined} section @param {string} source
+ */
 function guideText(title, text, section, source) {
   const heads = [...text.matchAll(/^(={2,4}) (.+?) \1$/gm)];
+  const from = `(${source}) https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
   if (!section) {
     const intro = (heads.length ? text.slice(0, heads[0].index) : text).trim();
-    return `${title} (${source})\n\n${intro}${heads.length ? `\n\nSections: ${heads.map((m) => m[2]).join(', ')}. Ask for one with section.` : ''}`;
+    return `${title} ${from}\n\n${intro}${heads.length ? `\n\nSections: ${heads.map((m) => m[2]).join(', ')}. Ask for one with section.` : ''}`;
   }
   const k = heads.findIndex((m) => m[2].toLowerCase() === String(section).toLowerCase());
   if (k < 0) return `${title} has no section "${section}". Its sections: ${heads.map((m) => m[2]).join(', ')}.`;
   const level = heads[k][1].length;
   const end = heads.slice(k + 1).find((m) => m[1].length <= level);
   const body = text.slice(/** @type {number} */ (heads[k].index) + heads[k][0].length, end?.index ?? text.length).trim();
-  return `${title}: ${heads[k][2]} (${source})\n\n${body}`;
+  return `${title}: ${heads[k][2]} ${from}\n\n${body}`;
 }
 
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
@@ -201,7 +207,8 @@ export function activate(annai) {
         const d = w.daily && typeof w.daily === 'object' ? w.daily : {};
         const at = (/** @type {string} */ key, /** @type {number} */ k) => (Array.isArray(d[key]) ? d[key][k] : undefined);
         const di = (Array.isArray(d.time) ? d.time : []).indexOf(times[idx[0]].slice(0, 10));
-        const lines = [`Time zone: ${w.timezone}${w.timezone_abbreviation ? ` (${w.timezone_abbreviation})` : ''}`];
+        // Open-Meteo's licence asks for this credit next to wherever its data shows; the Trace shows this answer.
+        const lines = [CREDIT_OPEN_METEO, `Time zone: ${w.timezone}${w.timezone_abbreviation ? ` (${w.timezone_abbreviation})` : ''}`];
         if (di >= 0) {
           lines.push(`${d.time[di]}: ${Math.round(at('temperature_2m_min', di))} to ${Math.round(at('temperature_2m_max', di))} °C, rain chance up to ${at('precipitation_probability_max', di)}%, `
             + `sunrise ${String(at('sunrise', di)).slice(11)}, sunset ${String(at('sunset', di)).slice(11)}`);
