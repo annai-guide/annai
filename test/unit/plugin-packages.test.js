@@ -5,7 +5,7 @@ import { setToolSwitch } from '../../src/core/agent/tools.js';
 import { readAppSettings } from '../../src/core/settings.js';
 import { PluginError } from '../../src/core/registry.js';
 import { text, utf8 } from '../../src/core/bytes.js';
-import { files, SKILL, KIT, hostKit } from './package-kit.js';
+import { files, SKILL, KIT, TRAIL_LLM, hostKit } from './package-kit.js';
 
 test('host: a bare skill installs as a package; at start Shiori has it, its text and files read from storage', async () => {
   const { host, registry, ws } = await hostKit();
@@ -27,15 +27,15 @@ test('host: a bare skill installs as a package; at start Shiori has it, its text
   assert.deepEqual([row?.kind, row?.version, row?.shownVersion, row?.source, row?.skills], ['skill', '1.2.0', '1.2', 'url', ['tide-pools']]);
 });
 
-test("host: a package's skills, personalities and templates join the registry at start and leave when it stops", async () => {
+test("host: a package's skills, personalities and provider description join the registry at start and leave when it stops", async () => {
   const { host, registry } = await hostKit();
   await host.install(KIT());
   await host.start('trail-kit');
   assert.deepEqual(registry.list('skill').map((s) => s.name), ['trail-safety']);
   assert.deepEqual(registry.list('personality').map((p) => [p.name, p.text]), [['ranger', '# Ranger\nCalm and practical.']]);
-  assert.deepEqual(registry.list('template').map((t) => t.id), ['trail-llm']);
+  assert.deepEqual(registry.list('provider').map((p) => [p.plugin, p.name, p.version, p.provider.abilities.chat.type]), [['trail-kit', 'Trail kit', '1.0.0', 'chat-completions']]);
   await host.setEnabled('trail-kit', false);
-  assert.deepEqual([registry.list('skill'), registry.list('personality'), registry.list('template')], [[], [], []]);
+  assert.deepEqual([registry.list('skill'), registry.list('personality'), registry.list('provider')], [[], [], []]);
 });
 
 test('host: a package keeps no history; installing again replaces its files outright, and the log says so', async () => {
@@ -201,8 +201,11 @@ test('host: what a new version of an installed package adds is known before it i
   next.set('index.js', utf8('export function activate() {}'));
   next.set('skills/trail-maps/SKILL.md', utf8('---\nname: trail-maps\ndescription: Reading a trail map.\n---\nNorth is up.'));
   const added = (await host.inspect(next)).replaces?.added;
-  assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.templates], [true, ['trail-maps'], [], []]);
-  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], templates: [] });
+  assert.deepEqual([added?.code, added?.skills.map((s) => s.name), added?.personalities, added?.hosts], [true, ['trail-maps'], [], []]);
+  assert.deepEqual((await host.inspect(KIT({ version: '1.0.1' }))).replaces?.added, { code: false, skills: [], personalities: [], hosts: [] });
+  // A provider that now sends keys somewhere new: that host is something new too (decision 11).
+  const moved = (await host.inspect(KIT({ version: '1.0.2', provider: { ...TRAIL_LLM, abilities: { chat: { ...TRAIL_LLM.abilities.chat, baseUrl: 'https://elsewhere.example/v1' } } } }))).replaces?.added;
+  assert.deepEqual(moved?.hosts, ['elsewhere.example']);
 });
 
 // Fix pass 8a-2: a remove or an install while the plugin is starting.
@@ -242,14 +245,12 @@ test('8a-2: installing a new version while the old one starts leaves the old one
   assert.equal((await host.installed()).slow.version, '1.1.0');
 });
 
-test("8a-3: a package's endpoint template names the package it came from, whatever the template says", async () => {
-  const { host, registry } = await hostKit();
+test("a stored manifest with templates, from before providers, doesn't start, and says why", async () => {
+  const { host, ws } = await hostKit();
   await host.install(KIT());
-  await host.start('trail-kit');
-  assert.deepEqual(registry.list('template').map((t) => [t.id, t.from]), [['trail-llm', 'Trail kit']]);
-  await host.install(KIT({ version: '1.0.1' }).set('templates.json', utf8(JSON.stringify({ endpoints: [{ id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM', from: 'annai' }] }))));
-  await host.start('trail-kit');
-  assert.deepEqual(registry.list('template').map((t) => [t.id, t.from]), [['trail-llm', 'Trail kit']]);
+  await ws.write(SYS_PLUGINS, '/trail-kit/annai-plugin.json', { id: 'trail-kit', name: 'Trail kit', version: '1.0.0', api: 1, templates: ['templates.json'] }, { author: 'system' });
+  await assert.rejects(host.start('trail-kit'), /Endpoint templates were replaced by `provider`/);
+  assert.match((await host.describe()).find((r) => r.id === 'trail-kit')?.problem ?? '', /replaced by `provider`/);
 });
 
 test('8a-5: a new version of a code plugin that is off stays off: its code runs neither during the update nor at the next start', async () => {

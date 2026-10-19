@@ -13,12 +13,14 @@ export const files = (o) => new Map(Object.entries(o).map(([k, v]) => [k, utf8(v
 /** A third party's skill, as its SKILL.md. */
 export const SKILL = '---\nname: tide-pools\ndescription: Tide pools: when they are safe to visit.\nmetadata:\n  author: Example Trails\n  version: "1.2"\n---\n# Tide pools\nSee [safety](references/safety.md).\n';
 
-/** A package without code: a skill, a personality and an endpoint template. @param {any} [more] manifest changes */
+/** A model provider's description, as data: one chat ability. */
+export const TRAIL_LLM = Object.freeze({ baseUrl: 'https://llm.trails.example/v1', key: 'required', abilities: { chat: { kind: 'chat', type: 'chat-completions' } } });
+
+/** A package without code: a skill, a personality and a model provider. @param {any} [more] manifest changes */
 export const KIT = (more = {}) => files({
-  'annai-plugin.json': JSON.stringify({ id: 'trail-kit', name: 'Trail kit', version: '1.0.0', api: 1, skills: ['skills/trail-safety'], personalities: ['personalities/ranger.md'], templates: ['templates.json'], ...more }),
+  'annai-plugin.json': JSON.stringify({ id: 'trail-kit', name: 'Trail kit', version: '1.0.0', api: 1, skills: ['skills/trail-safety'], personalities: ['personalities/ranger.md'], provider: TRAIL_LLM, ...more }),
   'skills/trail-safety/SKILL.md': '---\nname: trail-safety\ndescription: Before a hike, what to check.\n---\nCarry water.',
   'personalities/ranger.md': '# Ranger\nCalm and practical.',
-  'templates.json': JSON.stringify({ endpoints: [{ id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM' }] }),
 });
 
 /** A host on memory storage, its log appends handed to plugins' hooks, that loads installed modules from storage as data: URLs (as plugins.test.js does). */

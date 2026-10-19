@@ -7,16 +7,20 @@ import { PluginError } from './registry.js';
 import { parseSkill, skillVersion, skillLinks, frontMatter, SkillError, SKILL_FILE } from './skills.js';
 import { answerBytes } from './answer.js';
 import { readZip } from './zip.js';
+import { checkProviderDesc, descHosts, CATEGORIES } from './llm/provider-desc.js';
 
 /**
  * A package as annai reads it before installing (spec §5.2): a folder, zip or address holding
  * annai-plugin.json, or a bare skill in the Agent Skills format (§5.1). Nothing here stores anything.
  * @typedef {import('./skills.js').Skill} Skill
  * @typedef {{ name: string, description: string, folder: string }} SkillInfo  folder: '' for the package's top, else "skills/tides"
+ * @typedef {{ id: string, version: string, homepage?: string }} Requirement  version: "^N", the same major (milestone 1, decision 7)
  * @typedef {{ kind: 'plugin' | 'skill', id: string, name: string, version: string, shownVersion: string, manifest: any,
  *   files: Map<string, Uint8Array>, code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[],
- *   templates: any[], description: string, author?: string, homepage?: string, license?: string, fingerprint: string }} Package
- *   files: by name inside the package (its top folder taken off); shownVersion: '' for a skill without a version
+ *   provider: import('./llm/provider-desc.js').ProviderDesc | null, requires: Requirement[], category: string, keywords: string[],
+ *   description: string, author?: string, homepage?: string, license?: string, fingerprint: string }} Package
+ *   files: by name inside the package (its top folder taken off); shownVersion: '' for a skill without a version;
+ *   provider: a model provider's description (data); category: '' when the manifest gives none
  */
 
 export const API_VERSION = 1;
@@ -39,8 +43,16 @@ export const PLUGIN_MANIFEST_SCHEMA = {
     files: { type: 'array', items: { type: 'string' }, maxItems: 200 },
     skills: { type: 'array', items: { type: 'string' } },
     personalities: { type: 'array', items: { type: 'string' } },
-    templates: { type: 'array', items: { type: 'string' } },
     settings: { type: 'object' },
+    provider: { type: 'object' },
+    requires: {
+      type: 'array', maxItems: 10,
+      items: { type: 'object', required: ['id', 'version'], properties: {
+        id: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{1,63}$' }, version: { type: 'string', pattern: '^\\^\\d+$' }, homepage: { type: 'string', pattern: '^https://', maxLength: 500 },
+      } },
+    },
+    category: { enum: CATEGORIES },
+    keywords: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 40 } },
   },
 };
 
@@ -54,6 +66,11 @@ export function checkManifest(manifest) {
   }
   if (manifest.entry !== undefined && !insidePlugin(manifest.entry)) {
     throw new PluginError(id, `its entry "${manifest.entry}" isn't a file inside the plugin`);
+  }
+  if (manifest.templates !== undefined) throw new PluginError(id, 'Endpoint templates were replaced by `provider` (see docs/plugins.md)');
+  if (manifest.provider !== undefined) {
+    const wrong = checkProviderDesc(manifest.provider);
+    if (wrong.length) throw new PluginError(id, `its provider isn't valid: ${wrong.join('; ')}`);
   }
 }
 
@@ -117,12 +134,9 @@ function rootOf(names, file) {
 /** @param {number} n */
 const sizeWords = (n) => (n >= 1048576 ? `${Math.floor(n / 1048576)} MB` : `${n} bytes`);
 
-/** @param {any} t */
-const isTemplate = (t) => t && typeof t === 'object' && typeof t.id === 'string' && typeof t.type === 'string' && typeof t.name === 'string' && Number.isInteger(t.version);
-
 /**
  * Reads a package from its files (e.g. an unzipped one) and checks everything a later step needs:
- * the manifest or the skill, the files it names, its skills, personalities and templates.
+ * the manifest or the skill, the files it names, its skills, personalities and provider description.
  * @param {Map<string, Uint8Array>} raw @param {{ maxBytes?: number }} [o] @returns {Promise<Package>}
  */
 export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) {
@@ -183,7 +197,7 @@ async function skillPackage(files, checkNames) {
   const manifest = skillManifest(skill);
   return {
     kind: 'skill', id: skill.name, name: skill.name, version: manifest.version, shownVersion: skill.metadata.version ?? '', manifest, files, code: false,
-    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], templates: [], description: skill.description,
+    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], provider: null, requires: [], category: '', keywords: [], description: skill.description,
     ...(skill.metadata.author ? { author: skill.metadata.author } : {}), ...(skill.license ? { license: skill.license } : {}),
     fingerprint: await fingerprint(files),
   };
@@ -231,23 +245,10 @@ async function pluginPackage(files, checkNames) {
     if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) throw new PluginError(id, `its personality's file name ${p} must be lowercase letters, digits and dashes, like ranger.md`);
     personalities.push({ name, path: p });
   }
-  const templates = [];
-  for (const t of manifest.templates ?? []) {
-    const bytes = files.get(t);
-    /** @type {any} */
-    let json;
-    try {
-      if (!bytes) throw new Error('missing');
-      json = JSON.parse(text(bytes));
-    } catch {
-      throw new PluginError(id, `its template file ${t} isn't valid JSON`);
-    }
-    if (!Array.isArray(json?.endpoints) || !json.endpoints.every(isTemplate)) throw new PluginError(id, `its template file ${t} doesn't hold endpoint templates annai can read`);
-    templates.push(...json.endpoints);
-  }
   return {
     kind: 'plugin', id, name: manifest.name, version: manifest.version, shownVersion: manifest.version, manifest, files, code: Boolean(manifest.entry),
-    skills, personalities, templates, description: manifest.description ?? '',
+    skills, personalities, provider: manifest.provider ?? null, requires: manifest.requires ?? [], category: manifest.category ?? '', keywords: manifest.keywords ?? [],
+    description: manifest.description ?? '',
     ...(manifest.author ? { author: manifest.author } : {}), ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
     fingerprint: await fingerprint(files),
   };
@@ -365,7 +366,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       skillFiles.push(`${folder}${SKILL_FILE}`);
       add(`${folder}${SKILL_FILE}`);
     }
-    for (const f of [...(Array.isArray(manifest.personalities) ? manifest.personalities : []), ...(Array.isArray(manifest.templates) ? manifest.templates : [])]) add(f);
+    for (const f of Array.isArray(manifest.personalities) ? manifest.personalities : []) add(f);
     names.delete(MANIFEST_FILE);
     if (names.size + 1 > ADDRESS_MAX_FILES) throw tooMany();
     /** @type {Map<string, URL>} */
@@ -409,10 +410,11 @@ function asManifest(url, body) {
 
 /**
  * What a package brings that an installed one didn't (the coordinator's second finding): code where
- * there was none, and skills, personalities and endpoint templates it didn't have. An update that
- * adds any of them asks the user first.
- * @typedef {{ code: boolean, skills: string[], personalities: string[], templates: string[] }} Parts what an installed package has, by name
- * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], templates: any[] }} Added
+ * there was none, skills and personalities it didn't have, and hosts its provider description sends
+ * keys to that the installed one didn't (milestone 1, decision 11). An update that adds any of them
+ * asks the user first.
+ * @typedef {{ code: boolean, skills: string[], personalities: string[], hosts: string[] }} Parts what an installed package has, by name
+ * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], hosts: string[] }} Added
  * @param {Parts} before @param {Package} pkg @returns {Added}
  */
 export function addedParts(before, pkg) {
@@ -420,12 +422,12 @@ export function addedParts(before, pkg) {
     code: !before.code && pkg.code,
     skills: pkg.skills.filter((s) => !before.skills.includes(s.name)),
     personalities: pkg.personalities.filter((p) => !before.personalities.includes(p.name)),
-    templates: pkg.templates.filter((t) => !before.templates.includes(t.id)),
+    hosts: pkg.provider ? descHosts(pkg.provider).filter((h) => !(before.hosts ?? []).includes(h)) : [],
   };
 }
 
 /** Whether anything was added. @param {Added | null | undefined} a */
-export const addsAnything = (a) => Boolean(a && (a.code || a.skills.length || a.personalities.length || a.templates.length));
+export const addsAnything = (a) => Boolean(a && (a.code || a.skills.length || a.personalities.length || a.hosts?.length));
 
 /** Whether what the user agreed to covers what is added now. @param {Added | null | undefined} agreed @param {Added} added */
 export function agreedTo(agreed, added) {
@@ -434,7 +436,7 @@ export function agreedTo(agreed, added) {
   return (!added.code || agreed.code)
     && added.skills.every((s) => agreed.skills.some((x) => x.name === s.name))
     && added.personalities.every((p) => agreed.personalities.some((x) => x.name === p.name))
-    && added.templates.every((t) => agreed.templates.some((x) => x.id === t.id));
+    && (added.hosts ?? []).every((h) => (agreed.hosts ?? []).includes(h));
 }
 
 /** What was added, in words. @param {Added} a */
@@ -443,6 +445,6 @@ export function addedWords(a) {
     ...(a.code ? ['code that runs in annai'] : []),
     ...a.skills.map((s) => `the skill ${s.name}`),
     ...a.personalities.map((p) => `the personality ${p.name}`),
-    ...a.templates.map((t) => `the endpoint template ${t.name ?? t.id}`),
+    ...(a.hosts ?? []).map((h) => `a provider that sends keys to ${h}`),
   ].join(', ');
 }

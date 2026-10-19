@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inspectPackage, fingerprint, isJunk, checkManifest, insidePlugin } from '../../src/core/packages.js';
+import { inspectPackage, fingerprint, isJunk, checkManifest, insidePlugin, addedParts, addsAnything, addedWords, agreedTo } from '../../src/core/packages.js';
 import { PluginError } from '../../src/core/registry.js';
 import { files, SKILL } from './package-kit.js';
+import { OPENAI_LIKE } from './provider-kit.js';
 
 const MANIFEST = (/** @type {any} */ more = {}) => JSON.stringify({ id: 'trail-kit', name: 'Trail kit', version: '1.0.0', api: 1, description: 'Skills for trails.', ...more });
 
@@ -18,18 +19,18 @@ test('a bare skill: at the top or in one folder, with the junk zips carry left o
   assert.equal((await inspectPackage(files({ 'SKILL.md': SKILL.replace(/metadata:[\s\S]*?---/, '---') }))).shownVersion, '');
 });
 
-test('a plugin package: its code, the skills it lists, personalities, templates and files', async () => {
+test('a plugin package: its code, the skills it lists, personalities and files', async () => {
   const pkg = await inspectPackage(files({
-    'trail-kit/annai-plugin.json': MANIFEST({ entry: 'index.js', files: ['index.js', 'lib.js'], skills: ['skills/trail-safety'], personalities: ['personalities/ranger.md'], templates: ['templates.json'], author: 'Trails', homepage: 'https://trails.example/' }),
+    'trail-kit/annai-plugin.json': MANIFEST({ entry: 'index.js', files: ['index.js', 'lib.js'], skills: ['skills/trail-safety'], personalities: ['personalities/ranger.md'], author: 'Trails', homepage: 'https://trails.example/' }),
     'trail-kit/index.js': 'export function activate() {}', 'trail-kit/lib.js': 'export const x = 1;',
     'trail-kit/skills/trail-safety/SKILL.md': '---\nname: trail-safety\ndescription: Before a hike, what to check.\n---\nCarry water.',
     'trail-kit/personalities/ranger.md': '# Ranger\nCalm and practical.',
-    'trail-kit/templates.json': JSON.stringify({ endpoints: [{ id: 'trail-llm', version: 1, type: 'chat-completions', name: 'Trail LLM', baseUrl: 'https://llm.example/v1' }] }),
   }));
   assert.deepEqual([pkg.kind, pkg.id, pkg.version, pkg.shownVersion, pkg.code, pkg.author, pkg.homepage], ['plugin', 'trail-kit', '1.0.0', '1.0.0', true, 'Trails', 'https://trails.example/']);
   assert.deepEqual(pkg.skills.map((s) => [s.name, s.folder]), [['trail-safety', 'skills/trail-safety']]);
   assert.deepEqual(pkg.personalities, [{ name: 'ranger', path: 'personalities/ranger.md' }]);
-  assert.deepEqual(pkg.templates.map((t) => t.id), ['trail-llm']);
+  assert.equal(pkg.provider, null);
+  assert.deepEqual([pkg.requires, pkg.keywords, pkg.category], [[], [], '']);
   assert.ok(pkg.files.has('annai-plugin.json'));
 });
 
@@ -45,8 +46,6 @@ test('packages annai refuses, each with the reason', async () => {
     [{ 'annai-plugin.json': MANIFEST({ skills: ['../up'] }) }, /isn't a folder inside/],
     [{ 'annai-plugin.json': MANIFEST({ personalities: ['ranger.txt'] }), 'ranger.txt': 'x' }, /personality.*\.md/],
     [{ 'annai-plugin.json': MANIFEST({ personalities: ['Ranger Bob.md'] }), 'Ranger Bob.md': 'x' }, /personality's file name/],
-    [{ 'annai-plugin.json': MANIFEST({ templates: ['t.json'] }), 't.json': '{"endpoints":[{"id":1}]}' }, /template/],
-    [{ 'annai-plugin.json': MANIFEST({ templates: ['t.json'] }), 't.json': 'not json' }, /t\.json isn't valid JSON/],
     [{ 'annai-plugin.json': MANIFEST({ files: ['gone.js'] }) }, /gone\.js.*missing/],
     [{ 'annai-plugin.json': MANIFEST(), 'a\\b.js': 'x' }, /"a\\b\.js" isn't allowed/],
     [{ 'annai-plugin.json': MANIFEST({ entry: 'index.js' }) }, /entry file index\.js is missing/],
@@ -54,6 +53,44 @@ test('packages annai refuses, each with the reason', async () => {
   ];
   for (const [f, why] of cases) await assert.rejects(inspectPackage(files(f)), (e) => e instanceof PluginError && why.test(/** @type {Error} */ (e).message), String(why));
   await assert.rejects(inspectPackage(files({ 'SKILL.md': SKILL, 'big.txt': 'x'.repeat(5000) }), { maxBytes: 4000 }), /too large/);
+});
+
+test('a data-only provider package: provider, requires, keywords and category are read, and it has no code', async () => {
+  const pkg = await inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: OPENAI_LIKE, requires: [{ id: 'openai-responses', version: '^0' }], keywords: ['GPT'], category: 'providers' }) }));
+  assert.equal(pkg.code, false);
+  assert.equal(pkg.provider?.abilities.chat.type, 'openai-responses');
+  assert.deepEqual(pkg.requires, [{ id: 'openai-responses', version: '^0' }]);
+  assert.deepEqual(pkg.keywords, ['GPT']);
+  assert.equal(pkg.category, 'providers');
+});
+
+test("a manifest with templates is refused, pointing to provider; a provider that isn't valid is refused with its errors", async () => {
+  await assert.rejects(inspectPackage(files({ 'annai-plugin.json': MANIFEST({ templates: ['t.json'] }), 't.json': '{}' })), /replaced by .provider./);
+  await assert.rejects(inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: { abilities: {} } }) })), /provider .*(baseUrl|key)/);
+  await assert.rejects(inspectPackage(files({ 'annai-plugin.json': MANIFEST({ category: 'games' }) })), /category/);
+  await assert.rejects(inspectPackage(files({ 'annai-plugin.json': MANIFEST({ keywords: ['x'.repeat(41)] }) })), /keywords/);
+});
+
+test("requires: a range that isn't ^N, an id that isn't one, or a homepage that isn't https is refused", async () => {
+  const pkg = (/** @type {any} */ requires) => inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: OPENAI_LIKE, requires }) }));
+  await assert.rejects(pkg([{ id: 'openai-responses', version: '>=0.1' }]), /requires.*version/);
+  await assert.rejects(pkg([{ id: 'Not An Id', version: '^0' }]), /requires.*id/);
+  await assert.rejects(pkg([{ id: 'acme-proto', version: '^2', homepage: 'http://acme.example/annai' }]), /requires.*homepage/);
+  await assert.rejects(pkg(Array.from({ length: 11 }, (_, i) => ({ id: `p-${i}`, version: '^0' }))), /requires/);
+  assert.deepEqual((await pkg([{ id: 'acme-proto', version: '^2', homepage: 'https://acme.example/annai' }])).requires, [{ id: 'acme-proto', version: '^2', homepage: 'https://acme.example/annai' }]);
+});
+
+test('addedParts: a provider whose description names a host the installed one did not has hosts in Added', async () => {
+  const pkgWith = async (/** @type {string} */ baseUrl) => inspectPackage(files({ 'annai-plugin.json': MANIFEST({ provider: { ...OPENAI_LIKE, baseUrl } }) }));
+  const added = addedParts({ code: false, skills: [], personalities: [], hosts: ['api.a.test'] }, await pkgWith('https://api.b.test/v1'));
+  assert.deepEqual(added.hosts, ['api.b.test']);
+  assert.equal(addsAnything(added), true);
+  assert.match(addedWords(added), /sends keys to api\.b\.test/);
+  assert.equal(agreedTo(null, added), false);
+  assert.equal(agreedTo(added, added), true);
+  const same = addedParts({ code: false, skills: [], personalities: [], hosts: ['api.a.test'] }, await pkgWith('https://api.a.test/v2'));
+  assert.deepEqual(same.hosts, []);
+  assert.equal(addsAnything(same), false);
 });
 
 test('the fingerprint changes when any file or name does, and only then', async () => {

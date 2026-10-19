@@ -8,14 +8,25 @@ import { addsAnything } from '../../core/packages.js';
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
 const message = (/** @type {any} */ e) => String(e?.message ?? e);
 
-/** What a package brings, one line each (choice 8 of milestone 8a). @param {{ code: boolean, skills: any[], personalities: any[], templates: any[] }} pkg @returns {string[]} */
+/**
+ * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
+ * its model provider, and (in an update) the new places its provider sends keys to.
+ * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, hosts?: string[] }} pkg @returns {string[]}
+ */
 export function whatItBrings(pkg) {
   const out = [];
   if (pkg.code) out.push('Code that runs in annai');
   for (const s of pkg.skills ?? []) out.push(`Skill "${s.name}": ${s.description}`);
   for (const p of pkg.personalities ?? []) out.push(`Personality "${p.name}"`);
-  if (pkg.templates?.length) out.push(`Endpoint templates: ${pkg.templates.map((t) => t.name).join(', ')}. An endpoint template decides where a key you give it is sent.`);
+  if (pkg.provider) out.push(`A model provider: ${abilityWords(pkg.provider)}`);
+  if (pkg.hosts?.length) out.push(`Its provider now sends keys you give it to ${pkg.hosts.join(', ')}`);
   return out.length ? out : ['Nothing annai uses yet'];
+}
+
+/** A provider's abilities in words: "chat, transcription and voice". @param {any} desc */
+export function abilityWords(desc) {
+  const kinds = [...new Set(Object.values(desc?.abilities ?? {}).map((/** @type {any} */ a) => String(a?.kind)))];
+  return kinds.length > 1 ? `${kinds.slice(0, -1).join(', ')} and ${kinds.at(-1)}` : kinds[0] ?? 'nothing yet';
 }
 
 /**
