@@ -1,0 +1,49 @@
+# A Forgejo / Gitea backup place: plan
+
+**Goal:** a new kind of backup place, "Forgejo / Gitea", for a private repository on the user's own Forgejo server, on Gitea, or on Codeberg (which runs Forgejo). It sits next to the GitHub place and behaves the same way (spec §12.4): the archive's files, unpacked, one backup per commit, only changed files uploaded, public repositories refused, single writer, restore through the import screen.
+
+**Architecture:**
+- **`plugins-official/storage-forgejo/`:** an official on-demand plugin, installed when the user first adds such a place (spec §5.3).
+  - `index.js`: the storage type `forgejo`.
+  - `git.js`: the GitHub place's `git.js`, copied as it is. Plugins are installed one by one, each from its own files, so one can't import another's. A unit test keeps the two copies identical.
+- **`test/fakes/forgejo.js`:** a stand-in for the part of Forgejo's API the place uses, with Forgejo's status codes, messages and CORS behaviour as measured against Forgejo 16.0.6 (below). It hashes git objects with its own code (node:crypto), for SHA-1 and SHA-256 repositories.
+- **No core change.** The backups screen lists every storage type the catalog offers (`offeredTypes('storage-type')`), so the catalog entry is all it needs. `stores: 'tree'` gives it the git places' pace and the hold logic the GitHub place has.
+
+## The API facts relied on
+
+Checked 2026-10-18 against the current API descriptions (codeberg.org/swagger.v1.json, Forgejo 16.0.0-dev; gitea.com/swagger.v1.json), the current source (codeberg.org/forgejo/forgejo, branch forgejo; github.com/go-gitea/gitea, branch main), and a throwaway Forgejo 16.0.6 container (the version the user runs).
+
+| Fact | Source |
+|---|---|
+| The API is at `<server>/api/v1`. A token goes in `Authorization: token <t>`; `Bearer <t>` works too. | swagger `securityDefinitions.AuthorizationHeaderToken`; Forgejo `routers/api/shared/middleware.go` (`PermitBearer: true`); probe |
+| A token with only `write:repository` can read and commit; creating a repository also needs `write:user`. annai never creates one. | probe; the user's server (via the coordinator) |
+| `GET /repos/{o}/{r}` gives `full_name`, `private`, `empty`, `archived`, `default_branch`, `permissions.push` and `object_format_name` (`sha1` or `sha256`). | swagger `Repository`; probe |
+| `GET /repos/{o}/{r}/branches/{b}` gives `commit.id`, `commit.message` and `commit.timestamp`; 404 when there is no such branch, including in an empty repository. | swagger `Branch`, `PayloadCommit`; probe |
+| `GET /repos/{o}/{r}/git/trees/{sha}?recursive=true&page=&per_page=` takes a commit's id. It pages: at most `[api] DEFAULT_GIT_TREES_PER_PAGE` entries (1000) a page, with `total_count`. **Forgejo sets `truncated: true` on every page once there is more than one page, the last included; past the end `tree` is `null`.** Gitea sets it only while more follow. So annai pages by `total_count`. | Forgejo and Gitea `services/repository/files/tree.go`; probe |
+| `GET /repos/{o}/{r}/git/blobs/{sha}` leaves out the content of blobs over `[api] DEFAULT_MAX_BLOB_SIZE` (10 MiB), so annai reads files with `GET /repos/{o}/{r}/media/{path}?ref=<commit>`, which also follows Git LFS. | `modules/setting/api.go`; probe (a 30 MB blob came back with no content) |
+| `GET /repos/{o}/{r}/commits?sha=<branch>&limit=&page=&stat=false&verification=false&files=false` lists commits, at most `[api] MAX_RESPONSE_ITEMS` (50) a page; 409 "Git Repository is empty." for an empty repository. | swagger; probe |
+| **ChangeFiles**, `POST /repos/{o}/{r}/contents` with `{ branch, message, files: [{ operation: create \| update \| delete, path, content (base64), sha }] }`, makes one commit on top of the branch's head at that moment. There is no top-level `sha` or base commit in the request. It works on an empty repository (no first commit needed). | swagger `ChangeFilesOptions`, `ChangeFileOperation`; `services/repository/files/update.go`; probe |
+| **The guard against a stale base:** `update` and `delete` must name the file's current blob id, checked against the branch head at that moment: Forgejo answers 409 ("sha does not match"), Gitea 422. `create` of a file that exists is 422. The commit is pushed without force, so two at the same moment can't both land. Every backup changes `annai-archive.json` (it holds the time it was made), so a backup another device made meanwhile always fails this check. | `handleCheckErrors` and `handleCreateOrUpdateFileError` (Forgejo), `handleChangeRepoFilesError` (Gitea); probe |
+| Within one request the checks run against the head, not the request: a `create` under a file the same request deletes is refused (422 "a file exists where you're trying to create a subdirectory"). annai deletes such files in an earlier commit. | `handleCheckErrors`; probe |
+| ChangeFiles' answer repeats each file's content in base64, up to 10 MiB a file. | `GetFilesResponseFromCommit`; probe |
+| No limit on the request's size in Forgejo itself (a 30 MB request worked). A proxy in front often has one (nginx: 1 MB unless `client_max_body_size` is raised). Forgejo's quota answers 413 `{"message":"quota exceeded"}`, checked before the request against what is already used. | probe; `context.EnforceQuotaAPI` in Forgejo's `routers/api/v1/api.go` |
+| An archived repository answers 423. | swagger; probe |
+| CORS: `[cors] ENABLED = true` and `ALLOW_DOMAIN = <origin>` in app.ini. `Authorization` is always allowed; `HEADERS` adds to it (default `Content-Type`, `User-Agent`). The default methods cover GET and POST. Error answers carry the CORS headers too. Without it, a preflight gets 405 and answers carry none. Codeberg allows every origin. The user's server allows `Authorization`, `Content-Type` and `Accept` only, so annai sends no other header. | `modules/setting/cors.go`, Forgejo `routers/api/shared/middleware.go`, Gitea `routers/api/v1/api.go`; probe; codeberg.org; the coordinator |
+
+## Decisions
+
+- **Pace: the git places', after changes within the hour** (`stores: 'tree'`), not S3's and WebDAV's six hours. A backup here sends only what changed, like GitHub's, and a self-hosted server has no rate limit to stay under. The six hours exist for places that take a whole archive file each time.
+- **Large files and large backups.** One request carries at most 8 MiB of files and 200 files (the server runs git once or twice per file); a larger backup goes as several commits.
+  - Only the last commit holds the new `annai-archive.json`, and only its message starts "annai backup". The ones before it say "Part of an annai backup from …", so they are never listed as backups or restored.
+  - A backup cut off half way leaves its parts on the branch. The backups listed are still whole ones, and the next try builds on the parts, sending only what is still missing.
+  - A 413 from the server or a proxy, or a request the browser couldn't make while the server still answers, is sent again in halves. A single file that still can't go stops the backup with its name, its size and what to raise.
+  - Files over 100 MB are refused, as on GitHub.
+- **Share or duplicate:** `git.js` is copied, not shared (see Architecture). index.js shares no code with the GitHub place: its requests, paging, commits and errors all differ.
+- **Repository:** the user makes it in the web UI first; a token with Repository: Read and write is all annai asks for. A branch that doesn't exist yet is made only in an empty repository.
+
+## Tests (test-first)
+
+- `test/unit/fake-forgejo.test.js`: the stand-in answers as Forgejo does.
+- `test/unit/storage-forgejo.test.js`: the first backup, an incremental one, a restore, paging, another device, public refused, 401/403/404/409/413/423, no CORS, the token in nothing posted or kept, large backups in parts.
+- `test/e2e/backups-forgejo.spec.js`: in both browsers, set up, back up, change, back up, erase, restore.
+- By hand: the same plugin against a throwaway Forgejo 16.0.6 container.
