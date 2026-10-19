@@ -13,8 +13,9 @@ import http from 'node:http';
  * @typedef {{ text?: string, reasoning?: string, calls?: { name: string, input: any }[], forced?: { name: string, input: any },
  *   usage?: { input: number, output: number, cached?: number } }} Reply
  *   one answer to a chat request; replies are given in turn, and the last repeats. forced: the call the model makes, in place
- *   of its words, when the server forces a tool call (llama.cpp only for tool_choice "required", as measured on 2026-10-19;
- *   Ollama never, as it doesn't support tool_choice; the others for "required" or a named function)
+ *   of its words, when the server forces a tool call: llama.cpp only for tool_choice "required", which its code parses (a named
+ *   function it drops, as measured on 2026-10-19; the user's Unsloth Studio server forced neither); Ollama never, as it doesn't
+ *   support tool_choice; the others for "required" or a named function
  * @typedef {{ method: string, path: string, headers: Record<string, any>, body: any }} Seen
  *   body: parsed JSON, or the text ('' for none)
  * @typedef {{ flavour: Flavour, key?: string, cors?: '*' | string[] | false, spa?: boolean, authEverywhere?: boolean,

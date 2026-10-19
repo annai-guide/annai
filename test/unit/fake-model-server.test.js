@@ -177,7 +177,7 @@ test("Ollama refuses a named thinking level for a model that can't think, and ta
   }
 });
 
-test('llama.cpp accepts a tool_choice naming one function but doesn\'t force it (measured); "required" forces a call; vLLM forces either', async () => {
+test('llama.cpp accepts a tool_choice naming one function but doesn\'t force it (measured); "required", which its code parses, forces a call; vLLM forces either', async () => {
   const reply = { text: 'B. To someone else.', forced: { name: 'decide', input: { option: 'B' } } };
   const tools = [{ type: 'function', function: { name: 'decide', parameters: { type: 'object' } } }];
   for (const [flavour, choice, forced] of /** @type {const} */ ([
