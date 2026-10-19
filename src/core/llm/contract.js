@@ -9,7 +9,7 @@
  *   | { type: 'audio', mediaType: string, data: string }
  *   | { type: 'speech', id: string, text?: string, clip?: string }
  *   | { type: 'provider', block: any, model: string }
- *   | { type: 'tool_call', id: string, name: string, input: any }
+ *   | { type: 'tool_call', id: string, name: string, input: any, extra?: any, model?: string }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
  *   image.data and document.data are base64 (a document is a PDF). An image's hash is its bytes' fingerprint, path and
@@ -18,6 +18,8 @@
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model. audio.data is base64, sent only to a model that takes audio. speech is a heard
  *   segment (spec §10.3): annai resolves it for each model attempt into audio or words; text is its words once written down, clip a kept voice clip's hash.
+ *   A tool_call's extra is what its provider wrote on it to have back (Gemini 3's thought signature), and model the provider model id
+ *   that wrote it: it goes back only to that model.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
@@ -37,7 +39,7 @@
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string }
  *   | { type: 'reasoning_delta', text: string }
  *   | { type: 'tool_input', id: string, name: string, partial: string }
- *   | { type: 'tool_call', id: string, name: string, input: any }
+ *   | { type: 'tool_call', id: string, name: string, input: any, extra?: any }
  *   | { type: 'usage', usage: Partial<Usage> }
  *   | { type: 'logprobs', top: { token: string, logprob: number }[] }
  *   | { type: 'provider', block: any }
@@ -175,7 +177,7 @@ function retryAfterOf(headers) {
 
 /**
  * The transcript as one model may see it (spec §9.6): reasoning signed by another model is
- * dropped, and tool-call ids are rewritten into a form every provider accepts.
+ * dropped, and so is what another model wrote on a tool call; tool-call ids are rewritten into a form every provider accepts.
  * @param {Message[]} messages @param {string} modelKey the provider model id the request goes to
  * @returns {Message[]}
  */
@@ -185,7 +187,11 @@ export function portable(messages, modelKey) {
     if (p.type === 'speech') return [{ type: 'text', text: p.text || '[audio, not transcribed]' }]; // resolved before sending; never sent as it is
     if (p.type === 'reasoning') return (p.signature || p.redacted) && p.model !== modelKey ? [] : [p];
     if (p.type === 'provider') return p.model === modelKey ? [p] : [];
-    if (p.type === 'tool_call' || p.type === 'tool_result') return [{ ...p, id: safeId(p.id) }];
+    if (p.type === 'tool_call') {
+      const { extra, model, ...call } = p;
+      return [{ ...call, id: safeId(p.id), ...(extra !== undefined && model === modelKey ? { extra, model } : {}) }];
+    }
+    if (p.type === 'tool_result') return [{ ...p, id: safeId(p.id) }];
     return [p];
   };
   return messages.map((m) => ({ role: m.role, parts: m.parts.flatMap(keep) })).filter((m) => m.parts.length);

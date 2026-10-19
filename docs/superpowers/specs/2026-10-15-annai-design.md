@@ -521,6 +521,7 @@ Each role is an **ordered list** of models, tried front to back:
 - **The transcript stays portable.** It's stored in our own format. When the model changes:
   - tool-call ids are rewritten for the new provider
   - reasoning blocks signed for another model are dropped
+  - what a provider wrote on a tool call to have back (Gemini 3's thought signature, `extra_content` in Chat Completions) goes back only to the model that wrote it. Gemini 3 refuses a call in the current turn without one, so Gemini's description gives Chat Completions the stand-in its docs name for calls another model wrote (`standInCallExtra`): a fallback mid-turn isn't refused (checked against Gemini, 2026-10-19)
 - **A stream that breaks partway** is handled like an interruption. The next model gets "said so far: … ✂" and continues without repeating anything.
 - **The trace records every attempt,** which model answered, and the cost of each attempt.
 

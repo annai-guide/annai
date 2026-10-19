@@ -1,7 +1,7 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 1,
   "description": "Gemini models through Google's OpenAI-compatible endpoint.",
   "category": "providers",
@@ -19,7 +19,14 @@
     "abilities": {
       "chat": {
         "kind": "chat",
-        "type": "chat-completions"
+        "type": "chat-completions",
+        "tunables": {
+          "standInCallExtra": {
+            "google": {
+              "thought_signature": "skip_thought_signature_validator"
+            }
+          }
+        }
       }
     }
   }
