@@ -130,26 +130,28 @@ test("Check now finds an official plugin's update in annai's catalog; Settings l
     await waitForServiceWorker(page);
     await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
     await expect(page.getByText('Installed Remote trace (for developers).')).toBeVisible();
-    // annai ships Remote trace 0.1.1: a new manifest, and the catalog's entry for it.
+    // annai ships the next patch of Remote trace: a new manifest, and the catalog's entry for it.
     const manifest = JSON.parse(await readFile(new URL('plugins-official/remote-trace/annai-plugin.json', root), 'utf8'));
-    const next = `${JSON.stringify({ ...manifest, version: '0.1.1' }, null, 2)}\n`;
+    const now = manifest.version;
+    const bumped = now.replace(/\d+$/, (/** @type {string} */ n) => String(Number(n) + 1));
+    const next = `${JSON.stringify({ ...manifest, version: bumped }, null, 2)}\n`;
     const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
     const entry = catalog.plugins.find((/** @type {any} */ p) => p.id === 'remote-trace');
-    Object.assign(entry, { version: '0.1.1', files: { ...entry.files, 'annai-plugin.json': createHash('sha256').update(next).digest('hex') } });
+    Object.assign(entry, { version: bumped, files: { ...entry.files, 'annai-plugin.json': createHash('sha256').update(next).digest('hex') } });
     site.changed.set('/plugins-official/remote-trace/annai-plugin.json', next);
     site.changed.set('/catalog/plugins.json', JSON.stringify(catalog));
 
     await go(page, '#/updates');
     await page.getByRole('button', { name: 'Check now' }).click();
     const plugins = page.getByRole('region', { name: 'Plugins' });
-    await expect(plugins.locator('.card', { hasText: 'Remote trace (for developers) 0.1.0 → 0.1.1' })).toBeVisible();
+    await expect(plugins.locator('.card', { hasText: `Remote trace (for developers) ${now} → ${bumped}` })).toBeVisible();
     await expect(page.getByText('Last checked just now.', { exact: true })).toBeVisible();
     await go(page, '#/settings');
     await expect.poll(() => sections(page).then((s) => s[0])).toBe('Updates');
     await expect(page.getByRole('region', { name: 'Updates' })).toContainText('Plugin updates are ready: Remote trace (for developers).');
 
     await go(page, '#/updates');
-    await plugins.getByRole('button', { name: 'Update to 0.1.1' }).click();
+    await plugins.getByRole('button', { name: `Update to ${bumped}` }).click();
     // Its old code ran this session: the new one runs from the next start.
     await expect(page.getByText('Restart annai to use the new versions')).toBeVisible();
     await expect(plugins.getByText('Restart annai to run the new version of Remote trace (for developers).')).toBeVisible();
@@ -160,7 +162,7 @@ test("Check now finds an official plugin's update in annai's catalog; Settings l
     await reloaded;
     await expect(page.getByText('Last checked just now. Everything is up to date.')).toBeVisible({ timeout: 30_000 });
     await go(page, '#/plugins');
-    await expect(page.locator('.card', { hasText: 'Remote trace (for developers) 0.1.1' }).getByText('On', { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.card', { hasText: `Remote trace (for developers) ${bumped}` }).getByText('On', { exact: true })).toBeVisible({ timeout: 30_000 });
   } finally {
     await site.stop();
   }

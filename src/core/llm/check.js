@@ -30,7 +30,7 @@ const asError = (e) => (e instanceof ProviderError ? e : new ProviderError('plug
 
 /**
  * The Test button (spec §9.8): one tiny request, then one with a small tool and a small image.
- * It says in plain words what works. "This endpoint blocks web apps" is told apart from
+ * It says in plain words what works. "This address blocks web apps" is told apart from
  * "annai couldn't reach it" by asking again in a way that skips the browser's access check
  * (the probe), which only reaches a server that is there.
  * @param {TestCase} c @returns {Promise<{ ok: boolean, steps: TestStep[] }>}
@@ -42,7 +42,7 @@ export async function testModel(c) {
   const steps = [];
   try {
     const r = await callOnce({ ...base, request: { ...SAY_OK, maxOutput: room(model) } });
-    steps.push({ step: 'access', ok: true, detail: 'annai can reach this endpoint from the browser.' });
+    steps.push({ step: 'access', ok: true, detail: 'annai can reach this address from the browser.' });
     steps.push({ step: 'key', ok: true, detail: `The key works. The model said: "${r.text.trim().slice(0, 60)}".` });
   } catch (e) {
     const err = asError(e);

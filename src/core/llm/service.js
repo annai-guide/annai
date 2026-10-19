@@ -332,7 +332,7 @@ export function createLlm({
         try {
           host = new URL(r.url).host;
         } catch {
-          // not an address: the words say "this endpoint"
+          // not an address: the words say "this address"
         }
         if (await probe(r.url)) {
           throw new ProviderError('blocked', `${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.`, { cause: e });

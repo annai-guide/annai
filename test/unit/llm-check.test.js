@@ -50,13 +50,13 @@ test('a rejected key is a key problem, in plain words', async () => {
   assert.match(r.steps[0].detail, /key was rejected/);
 });
 
-test('"this endpoint blocks web apps" is told apart from "annai couldn\'t reach it"', async () => {
+test('"this address blocks web apps" is told apart from "annai couldn\'t reach it"', async () => {
   const type = /** @type {any} */ ({ type: 'http', name: 'HTTP', pluginId: 'p', build: () => ({ url: 'https://llm.test/v1/chat', headers: {}, body: {} }), read: async function* () {} });
   const base = { ...scriptedCase([]), type, fetch: async () => { throw new TypeError('Failed to fetch'); } };
   const blocked = await testModel({ ...base, probe: async () => true });
   assert.match(blocked.steps[0].detail, /doesn't allow web apps/);
   const down = await testModel({ ...base, probe: async () => false });
-  assert.match(down.steps[0].detail, /couldn't reach this endpoint/);
+  assert.match(down.steps[0].detail, /couldn't reach this address/);
 });
 
 test("a model that ignores the tool and doesn't see the square fails those steps only", async () => {
