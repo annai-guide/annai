@@ -88,3 +88,15 @@ test('settled() waits while an unlock starts its silent clip, at once when none 
   await stuck.voice.settled(30);
   assert.ok(Date.now() - t0 < 1000, 'it holds nothing up for long');
 });
+
+test("a voice platform whose unlock gives a plain boolean, not a promise, is taken at its word: nothing throws out of a tap on Shiori", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
+  k.platform.player.unlock = /** @type {any} */ (() => false);
+  assert.equal(await k.voice.unlock(), false);
+  k.platform.player.unlock = /** @type {any} */ (() => true);
+  assert.doesNotThrow(() => k.agent.tap());
+  await k.voice.settled(30);
+  assert.equal(await k.voice.unlock(), true);
+  k.platform.player.unlock = () => { throw new Error('not called again'); };
+  assert.equal(await k.voice.unlock(), true, 'once it worked, it does nothing');
+});
