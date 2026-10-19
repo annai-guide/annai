@@ -429,13 +429,24 @@ There's no special machinery:
 
 **Protocol plugins** are the endpoint types: they know how to talk (request and reply formats, streaming, error kinds). **Provider plugins** describe one provider each, as data: its address, how its key is sent (`keyHeader` when not the protocol's way), its abilities, each with its kind (chat, transcription, voice), its protocol's type, its own address if it has one, tunables, extra fields, `modelDefaults` (what a model added by id or from a list starts with) and models; the roles it suggests (`recommended`, `free`); its key page and notes. annai's catalog has OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, a local speech server, the scripted model and "Another address" (any other server, its abilities switched on by hand), each requiring the protocol plugins its abilities need.
 
+**Servers you run** have provider plugins of their own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama and LM Studio. Each is data, marked `local`, and its quirks are data too:
+- its default address and port, and whether it takes a key (Ollama takes none);
+- how its thinking is switched, as `modelDefaults.reasoning`: llama.cpp's `reasoning_effort` with `chat_template_kwargs.enable_thinking`, vLLM's and SGLang's `reasoning_effort` with `chat_template_kwargs` (`enable_thinking` and `thinking`), Ollama's `reasoning_effort: "none"` for off alone, its other levels empty (Ollama decides how hard a model thinks, and refuses a named level for a model that can't think). Level off sends the switch, so a quick decision doesn't think. LM Studio doesn't document its switch, so it has none;
+- forced tool calls: llama-server accepts a `tool_choice` naming a tool but doesn't force it, so llama.cpp's plugin turns on Chat Completions' `enforceToolCall` tunable, which sends `"required"` where the forced tool is the only one offered (the user, 2026-10-19). The user's Unsloth Studio server forced neither (2026-10-19); there the quick decision reads the letter the model writes. Ollama doesn't support `tool_choice`, so a quick decision may go to the main model;
+- the reasoning field: the protocol's `auto` reads `reasoning_content` and `reasoning`, which covers them all;
+- usage in the stream: the protocol asks for it (`stream_options`), which llama.cpp, vLLM, SGLang and Ollama answer (LM Studio doesn't say);
+- the context window: vLLM's and SGLang's lists give it as `max_model_len`. llama.cpp's list gives only the training context, and Ollama's and LM Studio's give none, so until their plugins read it from the server (milestone 4 of the provider plan) it is set on each model's page;
+- notes in plain words: how to let annai's address in (Ollama's `OLLAMA_ORIGINS`, LM Studio's Enable CORS, llama.cpp's `--cors-origins` when `--tools` narrows it), the flags tool calls need (vLLM, SGLang), Ollama's small default context.
+
+A server you run is reached at `http://localhost` (or `127.0.0.1`) on the device annai runs on, or at an `https://` address. A plain `http://` address on another computer is refused: browsers block it from annai's https page, and the security policy (§15) allows http only for localhost. From a phone, the server needs HTTPS in front of it, such as Tailscale Serve or a tunnel, and the words where an address is typed say so.
+
 The core contains no protocol. These endpoint types are official on-demand plugins:
 - Chat Completions
 - Anthropic Messages
 - OpenAI Responses. Nothing is kept on the server (`store: false`): the whole conversation goes each time, and the model's encrypted reasoning goes back with it.
 - Gemini, not built yet. Until it is, Gemini's OpenAI-compatible endpoint works through Chat Completions.
 
-Chat Completions and OpenAI Responses also take a server that answers `stream: true` with one whole JSON reply, such as an LLM router that never streams. The wait for the first words then covers the whole reply.
+Chat Completions and OpenAI Responses also take a server that answers `stream: true` with one whole JSON reply, such as an LLM router that never streams. The wait for the first words then covers the whole reply, and Another address's note says which wait to raise.
 
 Plugins can add further types.
 
@@ -536,6 +547,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
   - Where the ability's protocol has a files API, it also uploads that small image, so annai knows whether photo uploads work with this key (§4.8).
+  - Its requests ask at level off. Where Main (or else Utility) asks this model at a level whose patch is another than off's, one more tiny request asks at that level, and a refusal is said in plain words with what to change ("At Main's level (medium), this model refused: …"). A model that can't think, given a named level, would otherwise pass Test and fail every turn.
   - It explains failures in plain words: "this address blocks web apps" is a different message from "key rejected".
 
 ### 9.9 Usage, cost, errors, keys
@@ -1013,6 +1025,7 @@ Eyes-free voice mode also serves users with low vision.
   - end-of-sentence detector, run on recorded PCM fixtures
 - **Storage contract tests:** one suite, run against an in-memory store in Node and against real IndexedDB in a browser.
 - **Provider adapters:** recorded fixtures (streams, tool calls, errors, quirks) for every endpoint type. An opt-in live suite uses the developer's own keys and never runs in CI.
+- **Stand-in model servers** (`test/fakes/model-server.js`): real HTTP servers on a port of their own, one flavour each for llama.cpp, vLLM, SGLang, Ollama, LM Studio and a router that never streams. Each answers as its documents say, and llama.cpp's as a real one was measured to: its model list's shape, its reasoning field, a tool call in pieces, usage when asked, its CORS. Modes stand in for a key, auth in front of every path, and a web app's fallback page. Unit tests reach them with a fetch that keeps a browser's CORS rules; end-to-end tests reach them from the page.
 - **Scripted fake model:** a provider plugin that replies with predetermined text and tool calls, for deterministic, free end-to-end tests. Plugin authors can use it too.
 - **Trip simulation:** a GPS track plus a fake clock at 10× speed, with assertions on which triggers fired and what Shiori did.
 - **End-to-end (Playwright):** Chromium and WebKit, with simulated location, a fake microphone fed from a WAV file, pre-granted permissions, and phone-sized viewports.

@@ -189,6 +189,7 @@ The design leaves these to the builder. Each line says why.
     - That code reads the context window the server really serves: llama.cpp's `/props`, Ollama's `/api/show`, and LM Studio's `/api/v1/models` with its vision and tool flags.
     - It uses the provider contract's `list` hook, so it's built in Milestone 4 once the contract exists. Milestone 2 ships them data only, with the context window set by hand until then.
     - They're official, so there's no install question; their plugin pages show the has-code note.
+    - Ollama's hook can also give a model whose `/api/show` capabilities include `thinking` the full named map (`reasoning_effort` low, medium, high). Milestone 2 leaves those levels empty, as Ollama refuses a named level for a model that can't think (M2 fix pass, 2026-10-19).
 23. **Chat Completions and OpenAI Responses read a whole JSON reply** when a server ignores `stream: true`.
     - Why: maiGo drops `stream` and answers `application/json` (its server writes the whole completion). Today annai's SSE reader finds nothing in that reply and says "The reply stopped before it finished".
 24. **OpenRouter's speech list paths stay data.**

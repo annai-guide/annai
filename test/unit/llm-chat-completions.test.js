@@ -102,6 +102,20 @@ test('build: the tail joins the last user message, or follows tool results; docu
   assert.equal(type.tail, true);
 });
 
+test('build: enforceToolCall (off unless a provider turns it on) sends a forced tool as tool_choice "required" when it is the one tool offered; a request offering several tools, or forcing none, is unchanged (the user, 2026-10-19)', () => {
+  assert.equal(type.tunables.enforceToolCall, false);
+  const one = [{ name: 'decide', description: 'Pick one.', input: { type: 'object' } }];
+  const two = [...one, { name: 'look', description: 'Look.', input: { type: 'object' } }];
+  const on = { ...type.tunables, enforceToolCall: true };
+  const body = (/** @type {any} */ tunables, /** @type {any} */ request) => type.build(spec({ tunables, request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }], ...request } })).body;
+  assert.equal(body(on, { tools: one, toolChoice: 'decide' }).tool_choice, 'required');
+  assert.deepEqual(body(type.tunables, { tools: one, toolChoice: 'decide' }).tool_choice, { type: 'function', function: { name: 'decide' } });
+  assert.deepEqual(body(on, { tools: two, toolChoice: 'decide' }).tool_choice, { type: 'function', function: { name: 'decide' } });
+  assert.equal('tool_choice' in body(on, { tools: two }), false);
+  assert.equal('tool_choice' in body(on, { tools: one }), false);
+  assert.deepEqual(body(on, { tools: two }).tools, body(type.tunables, { tools: two }).tools);
+});
+
 test('read: the first token’s alternatives, once', async () => {
   const events = await read(await fixture('logprobs.sse'));
   assert.deepEqual(events.filter((e) => e.type === 'logprobs'), [{ type: 'logprobs', top: [{ token: 'B', logprob: -0.05 }, { token: 'A', logprob: -3.2 }] }]);
@@ -183,6 +197,23 @@ test("list: OpenRouter's model list becomes models with windows, inputs, tools a
   });
   assert.deepEqual(models[1].prices, { input: 0, output: 0 });
   assert.deepEqual(type.readList({ data: [{ id: 'gpt-x', object: 'model' }] }), [{ providerId: 'gpt-x' }]);
+});
+
+test('list: a model list with max_model_len gives the context window (vLLM, SGLang); llama.cpp\'s training context is not the one it serves', async () => {
+  const { startFakeServer } = await import('../fakes/model-server.js');
+  for (const flavour of /** @type {const} */ (['vllm', 'sglang', 'llamacpp'])) {
+    const s = await startFakeServer({ flavour });
+    try {
+      const [m] = type.readList(await (await fetch(`${s.origin}/v1/models`)).json());
+      if (flavour === 'llamacpp') assert.deepEqual([m.contextWindow, m.input], [undefined, ['text', 'image']], 'n_ctx_train is left alone; photos are found');
+      else assert.deepEqual(m, { providerId: 'Qwen/Qwen3-8B', contextWindow: 32768 }, flavour);
+    } finally {
+      await s.stop();
+    }
+  }
+  // OpenRouter's context_length comes first, then max_model_len, then its top provider's.
+  assert.equal(type.readList({ data: [{ id: 'x', context_length: 1000, max_model_len: 2000, top_provider: { context_length: 3000 } }] })[0].contextWindow, 1000);
+  assert.equal(type.readList({ data: [{ id: 'x', max_model_len: 2000, top_provider: { context_length: 3000 } }] })[0].contextWindow, 2000);
 });
 
 test('read: url citations and counted searches', async () => {

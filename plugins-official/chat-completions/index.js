@@ -12,6 +12,7 @@ const TUNABLES = Object.freeze({
   usageInStream: true, // ask for usage in the stream (stream_options.include_usage)
   reasoningField: 'auto', // where reasoning text comes back: "reasoning" (OpenRouter), "reasoning_content" (DeepSeek), or either
   imageDetail: null, // e.g. "high"
+  enforceToolCall: false, // a tool the model must call, when it is the one offered, goes as tool_choice "required": llama.cpp ignores one named
 });
 const STOP = /** @type {Record<string, string>} */ ({ stop: 'end', tool_calls: 'tool', function_call: 'tool', length: 'length', content_filter: 'refusal' });
 const CODES = /** @type {Record<string, string>} */ ({ context_length_exceeded: 'context', insufficient_quota: 'credit', invalid_api_key: 'auth', model_not_found: 'not-found' });
@@ -60,7 +61,11 @@ function build({ endpoint, model, key, tunables: t, request }) {
   if (request.tools?.length) {
     body.tools = request.tools.map((/** @type {any} */ x) => ({ type: 'function', function: { name: x.name, description: x.description, parameters: x.input } }));
   }
-  if (request.toolChoice) body.tool_choice = { type: 'function', function: { name: request.toolChoice } };
+  if (request.toolChoice) {
+    // "required" forces a call to some tool: the one named, when it is the only one offered (the user, 2026-10-19).
+    const only = request.tools?.length === 1 && request.tools[0].name === request.toolChoice;
+    body.tool_choice = t.enforceToolCall && only ? 'required' : { type: 'function', function: { name: request.toolChoice } };
+  }
   if (request.logprobs) {
     body.logprobs = true;
     body.top_logprobs = request.logprobs;
@@ -320,13 +325,17 @@ function pricesOf(p) {
   return out;
 }
 
-/** The models an endpoint lists. OpenRouter's list says much more than OpenAI's, which gives ids only. @param {any} json */
+/**
+ * The models an endpoint lists. OpenRouter's list says much more than OpenAI's, which gives ids only; vLLM's and
+ * SGLang's give the context they serve as max_model_len. llama.cpp's n_ctx_train is what the model was trained on,
+ * not what the server serves, so it is left alone. @param {any} json
+ */
 function readList(json) {
   return (Array.isArray(json?.data) ? json.data : []).filter((/** @type {any} */ m) => typeof m?.id === 'string').map((/** @type {any} */ m) => {
     /** @type {Record<string, any>} */
     const out = { providerId: m.id };
     if (m.name) out.name = m.name;
-    const window = m.context_length ?? m.top_provider?.context_length;
+    const window = m.context_length ?? m.max_model_len ?? m.top_provider?.context_length;
     if (window) out.contextWindow = window;
     if (m.top_provider?.max_completion_tokens) out.maxOutput = m.top_provider.max_completion_tokens;
     const kinds = m.architecture?.input_modalities;

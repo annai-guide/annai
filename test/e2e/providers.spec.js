@@ -209,5 +209,5 @@ test("fix pass: an address typed without https:// isn't saved, on the provider a
   const own = voice.getByLabel('Its own address');
   await own.fill('http://192.168.1.5:8880/v1');
   await own.blur();
-  await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)/);
+  await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\./);
 });

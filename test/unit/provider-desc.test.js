@@ -51,3 +51,11 @@ test('fix pass: an address typed on a provider\'s page is checked by the same ru
   assert.match(String(addressProblem('http://192.168.1.5:8080/v1')), /must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)/);
   assert.match(String(addressProblem('ftp://example.com')), /must start with https/);
 });
+
+test('a server you run, at a plain http:// address on another computer, is told how to reach it: HTTPS in front of it; the rule stays', () => {
+  for (const lan of ['http://192.168.1.5:9931/v1', 'http://gpu-box.local:11434/v1', 'http://10.0.0.7:8000/v1']) {
+    assert.match(String(addressProblem(lan)), /must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\.$/, lan);
+  }
+  assert.doesNotMatch(String(addressProblem('ftp://example.com')), /another computer/);
+  assert.doesNotMatch(String(addressProblem('https://')), /another computer/);
+});
