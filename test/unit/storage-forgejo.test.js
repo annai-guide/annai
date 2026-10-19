@@ -391,6 +391,24 @@ test('the search is read page by page, and a repository found on a later page is
   }
 });
 
+test("a branch deleted while annai backs up to it says so, and what to do, rather than that there is no repository; a repository deleted meanwhile still says that", async () => {
+  const fj = await startForgejo({ repos: { [REPO]: { files: { 'README.md': 'Mine' } } } });
+  try {
+    const { type } = forgejo();
+    const a = await archive(await device());
+    // A branch of its own for annai's backups, deleted on the server just as the backup is sent.
+    fj.branchFrom(REPO, 'backups', 'main');
+    fj.beforeChange(() => fj.deleteBranch(REPO, 'backups'));
+    await assert.rejects(type.put(ctx(fj, { branch: 'backups' }), a, opts()), refused('setup',
+      /^The branch backups of me\/annai-backup was deleted while annai backed up to it, so this backup stopped\. Make it again on .*, or leave Branch empty to back up to main, then back up again\.$/));
+    fj.branchFrom(REPO, 'backups', 'main');
+    fj.beforeChange(() => fj.deleteRepo(REPO));
+    await assert.rejects(type.put(ctx(fj, { branch: 'backups' }), a, opts()), refused('missing', /^There is no repository me\/annai-backup on /));
+  } finally {
+    await fj.stop();
+  }
+});
+
 test("a server that doesn't let web apps use its API says so, and the place shows what to add to app.ini", async () => {
   const fj = await startForgejo({ repos: { [REPO]: {} }, cors: false });
   try {
