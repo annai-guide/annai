@@ -460,6 +460,12 @@ test("M6: a package over an installed one of its id says so: an update from wher
   }
 });
 
+test("M6 fix: an owner is named by its name, and with its id when that name is annai's or another plugin's", async () => {
+  const { ownerName } = await import('../../src/ui/screens/plugin-install.js');
+  const rows = [{ id: 'places', name: 'Places tools', builtin: true }, { id: 'imp', name: 'Annai' }, { id: 'imp2', name: 'places Tools' }, { id: 'honest', name: 'Tides' }];
+  assert.deepEqual(['annai', 'imp', 'imp2', 'places', 'honest', 'gone'].map((id) => ownerName(rows, id)), ['annai', 'Annai (imp)', 'places Tools (imp2)', 'Places tools', 'Tides', 'gone']);
+});
+
 test('the card when a plugin is switched off says which, why and where to turn it back on', async () => {
   const { disabledCard } = await import('../../src/ui/plugin-cards.js');
   assert.deepEqual(disabledCard({ name: 'Tides', reason: 'failed 3 times in a row', message: 'boom' }), {
