@@ -15,36 +15,12 @@ import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { exportArchive, openArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { text } from '../../src/core/bytes.js';
 import { startForgejo, READ_TOKEN } from '../fakes/forgejo.js';
+import { browserFetch as browserAt } from '../fakes/browser-fetch.js';
 import { everything } from './backup-kit.js';
 
 const REPO = 'me/annai-backup';
 const ORIGIN = 'https://annai.guide';
-/** Headers a browser sends without asking first (CORS-safelisted), with the values annai could send. */
-const SAFE = new Set(['accept', 'accept-language', 'content-language']);
-
-/**
- * fetch as a browser at ORIGIN makes it: a request that isn't simple is asked about first (a
- * preflight), and an answer without the server's leave to read it is a failure without an answer,
- * as "Failed to fetch" is in Chromium.
- * @param {string} url @param {RequestInit} [init] @returns {Promise<Response>}
- */
-async function browserFetch(url, init = {}) {
-  const method = init.method ?? 'GET';
-  const headers = new Headers(init.headers);
-  const unsafe = [...headers.keys()].filter((h) => !SAFE.has(h)).sort();
-  const blocked = () => new TypeError('Failed to fetch');
-  if (!['GET', 'HEAD', 'POST'].includes(method) || unsafe.length) {
-    const pre = await fetch(url, { method: 'OPTIONS', headers: { origin: ORIGIN, 'access-control-request-method': method, ...(unsafe.length ? { 'access-control-request-headers': unsafe.join(',') } : {}) } }).catch(() => { throw blocked(); });
-    const allowed = (pre.headers.get('access-control-allow-headers') ?? '').toLowerCase().split(',').map((s) => s.trim());
-    if (!pre.ok || pre.headers.get('access-control-allow-origin') !== ORIGIN || unsafe.some((h) => !allowed.includes(h))) throw blocked();
-  }
-  const res = await fetch(url, { ...init, headers: { ...Object.fromEntries(headers), origin: ORIGIN } }).catch((e) => {
-    if (e?.name === 'AbortError') throw e;
-    throw blocked();
-  });
-  if (res.headers.get('access-control-allow-origin') !== ORIGIN) throw blocked();
-  return res;
-}
+const browserFetch = browserAt(ORIGIN);
 
 /** The Forgejo type as annai's core sees it; sent: every request it made. @param {any} [mod] a fresh copy of the plugin */
 function forgejo(mod = { activate }) {
