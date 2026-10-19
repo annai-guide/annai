@@ -179,7 +179,31 @@ test("a model that takes no photos is asked something it can answer with the too
   assert.ok(!ask.messages[0].parts.some((/** @type {any} */ p) => p.type === 'image'));
   assert.match(words, /red/, 'without a picture, the question carries the answer');
   assert.doesNotMatch(words, /What color is the square\?/);
-  assert.ok(ask.maxOutput >= 2048, `room for a thinking model before its tool call: ${ask.maxOutput}`);
+  assert.ok(ask.maxOutput >= 4096, `room for a thinking model before its tool call: ${ask.maxOutput}`);
   const cut = await testModel(scriptedCase([{ text: 'OK' }, { text: 'Let me think about the', stop: 'length' }], { input: ['text'], tools: true }));
   assert.match(cut.steps[2].detail, /ran out of room|length/i);
+});
+
+test('every Test request leaves room for a model that must think before it answers: 4096 tokens, or the model\'s own limit when lower (the user, 2026-10-18)', async () => {
+  /** @param {any} c */
+  const watch = (c) => {
+    /** @type {number[]} */
+    const asked = [];
+    const run = c.type.run;
+    c.type.run = (/** @type {any} */ x) => { asked.push(x.request.maxOutput); return run(x); };
+    return asked;
+  };
+  const ok = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  const c = scriptedCase(ok);
+  const asked = watch(c);
+  await testModel(c);
+  assert.deepEqual(asked, [4096, 4096]);
+  const small = scriptedCase(ok, { maxOutput: 1024 });
+  const askedSmall = watch(small);
+  await testModel(small);
+  assert.deepEqual(askedSmall, [1024, 1024]);
+  const levels = scriptedCase([{ text: 'OK' }, { text: 'OK' }], { reasoning: { low: {}, high: {} } });
+  const askedLevels = watch(levels);
+  await testLevels(levels);
+  assert.deepEqual(askedLevels, [4096, 4096]);
 });
