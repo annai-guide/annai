@@ -112,6 +112,14 @@ export function createDock(ctx) {
     lastSaid = String(e.data.text ?? '');
     if (!caption.hidden) caption.textContent = lastSaid;
   }));
+  // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
+  const halves = h('span', { class: 'halves-sign', hidden: true },
+    h('span', { class: 'chip', role: 'status', text: 'Kokoro is working' }),
+    h('button', { class: 'chip', type: 'button', 'aria-label': 'Stop Kokoro', onclick: () => ctx.agent.stopKokoro() }, 'Stop'));
+  if ('kokoroWorking' in ctx.agent) {
+    halves.hidden = !ctx.agent.kokoroWorking;
+    offs.push(ctx.agent.on('halves', (/** @type {{ kokoroWorking: boolean }} */ x) => { halves.hidden = !x.kokoroWorking; }));
+  }
   // Plugins' status chips and dock actions (spec §16.4), drawn again whenever they change (refreshSlots).
   const pluginChips = h('span', { class: 'plugin-chips' });
   const pluginActions = h('span', { class: 'plugin-actions' });
@@ -125,7 +133,7 @@ export function createDock(ctx) {
       h('span', { class: 'dock-end' },
         h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, keyboardIcon()),
         pluginActions)),
-    h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords, pluginChips));
+    h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords, halves, pluginChips));
   const refreshSlots = () => {
     cleanUp('dock');
     pluginChips.replaceChildren(...slotEntries(ctx, 'ui:status-chip').map((e) => {
