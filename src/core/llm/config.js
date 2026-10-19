@@ -5,13 +5,11 @@ import { SYS_SETTINGS, newId } from '../scopes.js';
 import { LEVELS, ROLE_LEVELS } from './reasoning.js';
 
 /**
- * Providers, their models and roles (spec §9.2, §9.6), kept as files in the settings scope, and API
- * keys, one per provider, kept only in secrets (§9.9). A provider is one address and one key, with
- * abilities (chat, transcription, voice), each through a protocol plugin's endpoint type; each model
- * belongs to one ability. Every provider and model stores two layers: what its provider plugin's
- * description (or a fetched model list) said, and what the user changed. Effective values are the
- * protocol's defaults, then the description, then the user's (§9.2: user setting > template > plugin
- * default), so an update of the description never overwrites the user's changes.
+ * Providers, their models and roles (spec §9.2, §9.6), as files in the settings scope; one API key per
+ * provider, only in secrets (§9.9). A provider is one address and one key with abilities (chat,
+ * transcription, voice), each through a protocol's endpoint type; a model belongs to one ability. Each
+ * record has two layers, the description's (or a list's) and the user's: effective values are the
+ * protocol's defaults, then the description, then the user's (§9.2), so an update never overwrites them.
  * @typedef {import('../workspace.js').Workspace} Workspace @typedef {import('../types.js').Store} Store
  * @typedef {import('./cost.js').Prices} Prices
  * @typedef {{ on?: boolean, kind?: string, type?: string, name?: string, baseUrl?: string, tunables?: Record<string, any>,
@@ -28,9 +26,8 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  *   a tool the provider runs itself (spec §9.5): the patch enables it; pricePerCall (USD) × the usage count named by usageKey is its cost
  * @typedef {{ id: string, plugin: string, template: { version: string, values: ProviderValues, models?: string[], added?: string[] } | null, user: ProviderValues,
  *   verified?: Record<string, any>, created: number }} ProviderRecord
- *   plugin: the provider plugin it was made from; template.version: that plugin's version; template.models: the description's
- *   models as of that version, as "<ability>/<provider model id>", so a model the user removed isn't added again by the next update;
- *   template.added: the abilities that version brought, which arrived switched off (its page says they are new)
+ *   template.version: its plugin's; template.models: the description's, "<ability>/<id>", so a model the user removed
+ *   isn't added again; template.added: abilities that version brought, which arrived switched off
  * @typedef {{ id: string, provider: string, ability: string, template: { id: string, version: string, values: ModelValues } | null, user: ModelValues,
  *   verified?: Record<string, any>, created: number }} ModelRecord
  *   template.id: "<plugin>/<ability>/<provider model id>" from a description, "list/<provider model id>" from a list (version '')
@@ -40,7 +37,7 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  *   abilities: Record<string, Ability> }} Provider
  * @typedef {{ id: string, provider: string, ability: string, type: string, name: string, baseUrl: string, headers: Record<string, string>,
  *   tunables: Record<string, any>, extraBody: Record<string, any> }} Endpoint
- *   what a call to one ability sees (protocol plugins get it as their endpoint): id "<provider>/<ability>", name the provider's
+ *   what a call to one ability sees, as protocol plugins get it: id "<provider>/<ability>", name the provider's
  * @typedef {{ id: string, provider: string, ability: string, name: string, providerId: string, input: string[], tools: boolean, contextWindow: number | null,
  *   maxOutput: number | null, prices: Prices | null, cacheTtls: string[], reasoning: Record<string, any>, tunables: Record<string, any>,
  *   extraBody: Record<string, any>, providerTools: ProviderTool[], logprobs: boolean, images: ImageLimits }} Model
