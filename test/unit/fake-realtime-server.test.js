@@ -87,7 +87,9 @@ test('it speaks the Gemini Live flavour: setup, a turn on activityEnd, interrupt
     await c.until(() => c.got.some((g) => g.json.serverContent?.outputTranscription?.text.startsWith('Bixby')));
     c.send({ realtimeInput: { activityStart: {} } });
     await c.until(() => c.got.some((g) => g.json.serverContent?.interrupted));
-    assert.equal(c.got.filter((g) => g.json.serverContent?.turnComplete).length, 1, 'the cut-off turn never completes');
+    await c.until(() => c.got.filter((g) => g.json.serverContent?.turnComplete).length === 2);
+    const after = c.got.slice(c.got.findIndex((g) => g.json.serverContent?.interrupted));
+    assert.ok(after[1].json.serverContent.turnComplete, 'the cut turn ends at once after interrupted, as Gemini sends it');
     // What it got, in order.
     const kinds = s.received().map((m) => Object.keys(m)[0] + (m.realtimeInput ? `.${Object.keys(m.realtimeInput)[0]}` : ''));
     assert.deepEqual(kinds, ['setup', 'realtimeInput.activityStart', 'realtimeInput.audio', 'realtimeInput.activityEnd', 'clientContent', 'realtimeInput.activityStart']);
