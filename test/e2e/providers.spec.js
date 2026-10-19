@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, zipOf, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, zipOf, savedBy, pickProvider, pickFile } from './helpers.js';
 
 /** The version annai ships of an official plugin, read from its manifest. @param {string} id */
 const shipped = async (id) => JSON.parse(await readFile(new URL(`../../plugins-official/${id}/annai-plugin.json`, import.meta.url), 'utf8')).version;
@@ -25,12 +25,8 @@ const installedIds = (page) => page.evaluate(async () => {
   store.close();
   return Object.keys(state ?? {}).sort();
 });
-/** Adds a provider from the Models screen and waits for its page. @param {import('@playwright/test').Page} page @param {string} option @param {string} [name] its page's title */
-async function add(page, option, name = option) {
-  await page.getByLabel('Add a provider').selectOption({ label: option });
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
-}
+/** Adds a provider from the Models screen, through the catalog, and waits for its page. @param {import('@playwright/test').Page} page @param {string} provider @param {string} [name] its page's title */
+const add = (page, provider, name) => pickProvider(page, provider, name);
 /** @param {import('@playwright/test').Page} page @param {string} heading */
 const roleItems = (page, heading) => page.locator('.role', { has: page.getByRole('heading', { name: heading }) }).locator('.role-item > span');
 
@@ -107,12 +103,12 @@ const kit = (requires) => zipOf({
 test("a third-party data-only provider from a file: the install screen says it can't run anything and where keys go, without the full-access words; one needing a third-party protocol that isn't installed can't be installed and names it", async ({ page }) => {
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
-  await page.getByLabel('Install from a file').setInputFiles({ name: 'trail-llm-kit.zip', mimeType: 'application/zip', buffer: await kit([{ id: 'acme-proto', version: '^2', homepage: 'https://acme.example/annai' }]) });
+  await pickFile(page, { name: 'trail-llm-kit.zip', mimeType: 'application/zip', buffer: await kit([{ id: 'acme-proto', version: '^2', homepage: 'https://acme.example/annai' }]) });
   await expect(page.getByRole('heading', { name: 'Install Trail LLM kit?' })).toBeVisible();
   await expect(page.getByText(/acme-proto, which isn't installed\. Install it from https:\/\/acme\.example\/annai first/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Install', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await page.getByLabel('Install from a file').setInputFiles({ name: 'trail-llm-kit.zip', mimeType: 'application/zip', buffer: await kit([{ id: 'chat-completions', version: '^0' }]) });
+  await pickFile(page, { name: 'trail-llm-kit.zip', mimeType: 'application/zip', buffer: await kit([{ id: 'chat-completions', version: '^0' }]) });
   await expect(page.getByText('A model provider · data only · version 1.0.0')).toBeVisible();
   await expect(page.getByText("It can't run anything: it is data that tells annai how to reach a model provider.")).toBeVisible();
   await expect(page.getByText('Keys you give this provider are sent to https://llm.trails.example.')).toBeVisible();
@@ -122,7 +118,7 @@ test("a third-party data-only provider from a file: the install screen says it c
   await expect(page.getByRole('link', { name: 'Trail LLM kit 1.0.0' })).toBeVisible({ timeout: 30_000 });
   expect(await installedIds(page)).toEqual(['chat-completions', 'trail-llm-kit']);
   await page.goto('/#/models');
-  await add(page, 'Trail LLM kit (from a file)', 'Trail LLM kit');
+  await add(page, 'Trail LLM kit');
   await expect(page.getByRole('link', { name: /^Trail one/ })).toBeVisible();
 });
 
