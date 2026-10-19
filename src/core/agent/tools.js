@@ -18,8 +18,8 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
  */
 
 export const TALK = Object.freeze(['speak', 'show', 'ask', 'wait', 'sleep']);
-/** "Every tool can be switched off, except show, ask, wait and sleep" (spec §7.2). */
-export const ALWAYS_ON = Object.freeze(['show', 'ask', 'wait', 'sleep']);
+/** "Every tool can be switched off, except show, ask, wait and sleep" (spec §7.2), and the halves' notes to each other: either off would leave a half no way to reach the other. */
+export const ALWAYS_ON = Object.freeze(['show', 'ask', 'wait', 'sleep', 'tell_koe', 'tell_kokoro']);
 /** A tool name every provider accepts. */
 export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 /** The most of a tool's result the model sees at once; the rest is cut, with a note. */
