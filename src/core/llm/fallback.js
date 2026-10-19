@@ -86,9 +86,8 @@ export const splitOn = (cfg) => candidates(cfg, KOE_ROLE).length > 0;
 
 /**
  * Koe's pathway now (K5): the first model in its list that can answer (the user, 2026-10-19: one Koe list). A realtime
- * one runs a live session; a chat one, the loop, which passes over the realtime models in the list. A realtime model off,
- * resting or without its protocol running is passed over, and a chat model resting, so a live model that can't go on falls
- * to the next one down. With voice off, a chat model that can answer comes first: a live session's reply is sound nobody
+ * one runs a live session; a chat one, the loop, which passes over the realtime models in the list. A model off, resting
+ * or without its protocol running is passed over, so a live model that can't go on falls to the next one down. With voice off, a chat model that can answer comes first: a live session's reply is sound nobody
  * hears (data saved by default). null: none can. @param {ModelConfig} cfg
  * @param {{ voiceOn: boolean, types: Map<string, { realtime?: boolean }>, until: (id: string) => number, now: number }} o
  * @returns {{ kind: 'live', modelId: string } | { kind: 'text' } | null}
@@ -98,9 +97,10 @@ export function koePath(cfg, { voiceOn, types, until, now }) {
   let live = null;
   for (const id of candidates(cfg, KOE_ROLE)) {
     const a = abilityOf(cfg, id);
-    if (!cfg.models[id] || until(id) > now) continue;
-    if (a?.kind !== 'realtime') return { kind: 'text' };
-    if (!live && a.on && types.get(a.type)?.realtime) live = { kind: 'live', modelId: id };
+    // As callRole has it: a model of an ability switched off, or whose protocol isn't running, can't answer.
+    if (!cfg.models[id] || !a?.on || !types.get(a.type) || until(id) > now) continue;
+    if (a.kind !== 'realtime') return { kind: 'text' };
+    if (!live && types.get(a.type)?.realtime) live = { kind: 'live', modelId: id };
     if (live && voiceOn) return live;
   }
   return live;

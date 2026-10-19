@@ -161,4 +161,12 @@ test("Koe's pathway, voice off: a chat model that can answer comes before a real
   assert.equal(koePath(liveOnly, { ...off, until: () => 5000 }), null);
   const chatFirst = { ...cfg, roles: { ...cfg.roles, koe: { models: ['fast', 'live'], level: 'off' } } };
   assert.deepEqual(koePath(chatFirst, off), { kind: 'text' });
+  // A chat model that can't be called (its ability off, or its protocol not running) can't answer, as callRole has it:
+  // the live model runs muted; with nothing else, Koe is down.
+  const chatOff = structuredClone(cfg);
+  chatOff.providers.pv.user.abilities.chat.on = false;
+  assert.deepEqual(koePath(chatOff, off), { kind: 'live', modelId: 'live' }, 'its chat ability off');
+  assert.deepEqual(koePath(cfg, { ...off, types: new Map([['gemini-live', { realtime: true }]]) }), { kind: 'live', modelId: 'live' }, 'its protocol not running');
+  assert.equal(koePath(chatOff, { ...off, until: (/** @type {string} */ id) => (id === 'live' ? 5000 : 0) }), null, 'the live one resting too: none can');
+  assert.equal(koePath({ ...chatOff, roles: { ...cfg.roles, koe: { models: ['fast'], level: 'off' } } }, { ...off, voiceOn: true }), null, 'voice on, the chat model alone and off');
 });
