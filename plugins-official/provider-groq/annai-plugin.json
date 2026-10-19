@@ -1,0 +1,60 @@
+{
+  "id": "provider-groq",
+  "name": "Groq",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Fast open models, and fast Whisper transcription.",
+  "category": "providers",
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    },
+    {
+      "id": "speech-openai",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "key": "required",
+    "keyUrl": "https://console.groq.com/keys",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "note": "Add models with Fetch model list."
+      },
+      "transcription": {
+        "kind": "transcription",
+        "type": "openai-transcription",
+        "note": "Fast Whisper. Groq bills each request as at least 10 seconds.",
+        "models": [
+          {
+            "providerId": "whisper-large-v3-turbo",
+            "name": "Groq: Whisper large v3 turbo",
+            "prices": {
+              "perMinute": 0.000667,
+              "minSeconds": 10
+            }
+          },
+          {
+            "providerId": "whisper-large-v3",
+            "name": "Groq: Whisper large v3",
+            "prices": {
+              "perMinute": 0.00185,
+              "minSeconds": 10
+            }
+          }
+        ]
+      }
+    },
+    "roles": {
+      "recommended": {
+        "speech-in": [
+          "whisper-large-v3-turbo"
+        ]
+      }
+    }
+  }
+}

@@ -137,3 +137,19 @@ export async function site(plugins) {
   };
   return s;
 }
+
+/** An official provider plugin from this repository, as its started plugin registers it. @param {string} id @returns {Promise<ProviderSource>} */
+export async function official(id) {
+  const { readFile } = await import('node:fs/promises');
+  const m = JSON.parse(await readFile(new URL(`../../plugins-official/${id}/annai-plugin.json`, import.meta.url), 'utf8'));
+  return { plugin: m.id, name: m.name, version: m.version, provider: m.provider };
+}
+
+/** Every official plugin's manifest in this repository. @returns {Promise<any[]>} */
+export async function officialManifests() {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const dir = new URL('../../plugins-official/', import.meta.url);
+  const out = [];
+  for (const d of (await readdir(dir, { withFileTypes: true })).filter((x) => x.isDirectory())) out.push(JSON.parse(await readFile(new URL(`${d.name}/annai-plugin.json`, dir), 'utf8')));
+  return out;
+}

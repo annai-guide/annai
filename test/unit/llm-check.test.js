@@ -12,8 +12,9 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { testModel, testLevels, TEST_IMAGE } from '../../src/core/llm/check.js';
-import { readConfig, modelOf, saveEndpoint, saveModel, saveRoles, setKey } from '../../src/core/llm/config.js';
-import { addFromTemplate } from '../../src/core/llm/templates.js';
+import { readConfig, modelOf, saveProvider, saveModel, saveRoles, setKey } from '../../src/core/llm/config.js';
+import { addProvider } from '../../src/core/llm/providers.js';
+import { official } from './provider-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
@@ -28,8 +29,8 @@ function scriptedType() {
 function scriptedCase(script, model = {}) {
   return {
     type: scriptedType(),
-    endpoint: { id: `ep-${Math.random()}`, type: 'scripted', name: 'S', baseUrl: '', headers: {}, tunables: { script }, extraBody: {} },
-    model: { id: 'm', endpoint: 'ep', name: 'S', providerId: 'scripted', input: ['text', 'image'], tools: true, contextWindow: null, maxOutput: null, prices: null, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, ...model },
+    endpoint: { id: `pv-${Math.random()}/chat`, provider: 'pv', ability: 'chat', type: 'scripted', name: 'S', baseUrl: '', headers: {}, tunables: { script }, extraBody: {} },
+    model: { id: 'm', provider: 'pv', ability: 'chat', name: 'S', providerId: 'scripted', input: ['text', 'image'], tools: true, contextWindow: null, maxOutput: null, prices: null, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, ...model },
     key: null,
   };
 }
@@ -96,17 +97,16 @@ async function realLlm() {
 
 test('the service records what the Test button found on the model, and a model that works rests no more', async () => {
   const { llm, ws, store } = await realLlm();
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
   await llm.ensureType('scripted');
-  await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
+  await addProvider({ ws, store }, await official('provider-scripted'), { roles: null });
   const [id] = Object.keys((await readConfig(ws)).models);
   // A model that failed earlier rests; once Test reaches it with a working key, it is back at once.
   llm.bench.bench(id, 60_000);
   await llm.test(id);
   assert.equal(llm.bench.until(id), 0);
-  // Saving an endpoint, or its key, puts its models back too: the user may have fixed what failed.
+  // Saving a provider, or its key, puts its models back too: the user may have fixed what failed.
   llm.bench.bench(id, 60_000);
-  await llm.unbench((await readConfig(ws)).models[id].endpoint);
+  await llm.unbench((await readConfig(ws)).models[id].provider);
   assert.equal(llm.bench.until(id), 0);
   const verified = (await readConfig(ws)).models[id].verified;
   assert.equal(verified?.access, true);
@@ -117,13 +117,12 @@ test('the service records what the Test button found on the model, and a model t
 
 test('the service passes on the model to prefer and the photo repair (spec §9.6, §9.9)', async () => {
   const { llm, ws, store } = await realLlm();
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
   await llm.ensureType('scripted');
-  await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
+  await addProvider({ ws, store }, await official('provider-scripted'), { roles: null });
   const cfg = await readConfig(ws);
   const [first] = Object.keys(cfg.models);
-  const ep = cfg.endpoints[cfg.models[first].endpoint];
-  await saveEndpoint(ws, { ...ep, user: { ...ep.user, tunables: { script: [{ error: 'image', status: 400, message: 'too big' }, { text: 'Fixed.' }, { text: 'Second.' }] } } });
+  const ep = cfg.providers[cfg.models[first].provider];
+  await saveProvider(ws, { ...ep, user: { ...ep.user, abilities: { chat: { tunables: { script: [{ error: 'image', status: 400, message: 'too big' }, { text: 'Fixed.' }, { text: 'Second.' }] } } } } });
   await saveModel(ws, { ...cfg.models[first], id: 'm-second', user: { ...cfg.models[first].user, providerId: 'scripted-2', name: 'Second' } });
   await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: [first, 'm-second'], level: 'medium' } });
   const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Hi' }] }] };
@@ -151,15 +150,14 @@ test('the Test button checks photo uploads where the endpoint stores files (spec
 
 test("what the Test button says never shows a key, whatever the provider's message holds (spec §9.9)", async () => {
   const { llm, ws, store } = await realLlm();
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
   await llm.ensureType('scripted');
-  await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
+  await addProvider({ ws, store }, await official('provider-scripted'), { roles: null });
   const cfg = await readConfig(ws);
   const [id] = Object.keys(cfg.models);
-  const ep = cfg.endpoints[cfg.models[id].endpoint];
+  const ep = cfg.providers[cfg.models[id].provider];
   await setKey(store, ep.id, 'sk-live-0123456789abcdef');
   // A kind the plugin made up has no plain words of annai's: the provider's own message is shown, blanked.
-  await saveEndpoint(ws, { ...ep, user: { ...ep.user, tunables: { script: [{ error: 'quota-ish', status: 400, message: 'Key sk-live-0123456789abcdef may not use this model.' }] } } });
+  await saveProvider(ws, { ...ep, user: { ...ep.user, abilities: { chat: { tunables: { script: [{ error: 'quota-ish', status: 400, message: 'Key sk-live-0123456789abcdef may not use this model.' }] } } } } });
   const r = await llm.test(id);
   assert.equal(r.ok, false);
   assert.match(r.steps[0].detail, /may not use this model/);
@@ -210,15 +208,14 @@ test('every Test request leaves room for a model that must think before it answe
 
 test('Try this model calls that model alone: no fallback when it fails, a model resting is still asked, and the trace keeps the call (the user, 2026-10-18)', async () => {
   const { llm, ws, store } = await realLlm();
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
   await llm.ensureType('scripted');
-  await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
+  await addProvider({ ws, store }, await official('provider-scripted'), { roles: null });
   const cfg = await readConfig(ws);
   const [one] = Object.keys(cfg.models);
-  const ep = cfg.endpoints[cfg.models[one].endpoint];
-  await saveEndpoint(ws, { ...ep, user: { ...ep.user, tunables: { script: [{ error: 'credit', status: 402 }] } } });
-  await saveEndpoint(ws, { ...ep, id: 'ep-two', user: { ...ep.user, name: 'Two', tunables: { script: [{ text: 'From two.' }] } } });
-  await saveModel(ws, { ...cfg.models[one], id: 'm-two', endpoint: 'ep-two', user: { ...cfg.models[one].user, providerId: 'scripted-2', name: 'Two' } });
+  const ep = cfg.providers[cfg.models[one].provider];
+  await saveProvider(ws, { ...ep, user: { ...ep.user, abilities: { chat: { tunables: { script: [{ error: 'credit', status: 402 }] } } } } });
+  await saveProvider(ws, { ...ep, id: 'pv-two', user: { ...ep.user, name: 'Two', abilities: { chat: { tunables: { script: [{ text: 'From two.' }] } } } } });
+  await saveModel(ws, { ...cfg.models[one], id: 'm-two', provider: 'pv-two', user: { ...cfg.models[one].user, providerId: 'scripted-2', name: 'Two' } });
   await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: [one, 'm-two'], level: 'medium' } });
   const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Hi' }] }] };
   // The main role would fall back to Two; the one model asked does not.

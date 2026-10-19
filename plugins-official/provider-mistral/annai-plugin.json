@@ -1,0 +1,26 @@
+{
+  "id": "provider-mistral",
+  "name": "Mistral",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Mistral's models.",
+  "category": "providers",
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "https://api.mistral.ai/v1",
+    "key": "required",
+    "keyUrl": "https://console.mistral.ai/api-keys",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "note": "Add models with Fetch model list."
+      }
+    }
+  }
+}

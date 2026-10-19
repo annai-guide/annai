@@ -1,0 +1,29 @@
+{
+  "id": "provider-deepseek",
+  "name": "DeepSeek",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "DeepSeek's models, with their reasoning shown as they think.",
+  "category": "providers",
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "https://api.deepseek.com",
+    "key": "required",
+    "keyUrl": "https://platform.deepseek.com/api_keys",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "tunables": {
+          "reasoningField": "reasoning_content"
+        },
+        "note": "Add models with Fetch model list."
+      }
+    }
+  }
+}

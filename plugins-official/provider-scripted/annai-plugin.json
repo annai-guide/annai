@@ -1,0 +1,41 @@
+{
+  "id": "provider-scripted",
+  "name": "Scripted model (for testing)",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
+  "category": "developer",
+  "requires": [
+    {
+      "id": "scripted-model",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "",
+    "key": "none",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "scripted",
+        "models": [
+          {
+            "providerId": "scripted",
+            "name": "Scripted",
+            "contextWindow": 200000,
+            "maxOutput": 4096,
+            "input": [
+              "text",
+              "image"
+            ],
+            "tools": true,
+            "prices": {
+              "input": 0,
+              "output": 0
+            }
+          }
+        ]
+      }
+    }
+  }
+}
