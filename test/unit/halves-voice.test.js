@@ -500,3 +500,33 @@ test("Kokoro's list failing on a check nobody waits for (Koe's answer, a review)
   assert.deepEqual((await k.events(['note'])).filter((e) => e.data.from === 'kokoro').map((e) => e.data.why), ['kokoro-failed']);
   assert.ok(plays(k).includes("Sorry, I couldn't check that."));
 });
+
+// Merged with provider milestone 6 (one owner per name).
+test("a plugin's tell_kokoro or tell_koe never replaces annai's, and Koe's quick tools are each name's owner", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [{ match: 'the user wrote', reply: calls(['read', { path: '/trip/trip.json' }]) }] } } });
+  /** @type {string[]} */
+  const ran = [];
+  const input = { type: 'object', properties: { text: { type: 'string' }, path: { type: 'string' } } };
+  for (const name of ['tell_kokoro', 'tell_koe', 'read']) k.registry.add('a-plugin', 'tool', { name, description: `a plugin's ${name}`, input, run: async () => { ran.push(name); return 'taken'; } });
+  k.agent.send('What is this trip called?');
+  await k.agent.idle();
+  const described = (/** @type {any} */ req, /** @type {string} */ name) => req.tools.find((/** @type {any} */ t) => t.name === name)?.description ?? '';
+  assert.doesNotMatch(described(k.sent['model-koe'][0], 'tell_kokoro'), /a plugin's/);
+  assert.doesNotMatch(described(k.sent['model-koe'][0], 'read'), /a plugin's/);
+  assert.doesNotMatch(described(k.sent['model-0'][0], 'tell_koe'), /a plugin's/);
+  assert.deepEqual(ran, []);
+  assert.match((await results(k, 'read'))[0].data.content, /Big Sur/);
+});
+
+// Fix pass (review): probes A, B, B2, C, C2, D, G.
+test('[speak, show] with voice on still listens: only a question to Kokoro or a wait after it lets speak go on at once (probe A)', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', times: 1, reply: { toolCalls: [{ name: 'speak', input: { text: 'Want to stop at Nepenthe?' } }, { name: 'show', input: { card: { title: 'Nepenthe', text: 'A café on the cliff' } } }] } }] } },
+    voice: { speechIn: ['m-hear'], hears: ['where should we eat'] },
+  });
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 50));
+  await k.agent.idle();
+  assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (8 seconds).');
+  assert.equal(micOpens(k), 2, "the tap's window, then the speak's");
+});
