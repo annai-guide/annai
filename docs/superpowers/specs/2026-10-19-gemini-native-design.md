@@ -70,7 +70,15 @@ The user, 2026-10-19: "is it possible we also support letting google store part 
 - removing a trip deletes its conversations' stored turns;
 - Erase, removing the Gemini provider, and turning the switch off delete all of them.
 
-Deletions wait for a connection and are retried until done. Until then, the provider page says how many are waiting. Removing the provider or Erase doesn't wait for them: annai keeps the list of pending deletions, with the key it needs, until they're done, and says so in the confirmation. The builder tags each stored turn with the conversation it belongs to (the core passes the conversation's id with the request if it doesn't already).
+Deletions wait for a connection and are retried until done. Until then, the provider page says how many are waiting.
+
+**Removing the provider and Erase delete first** (corrected while planning, 2026-10-19). Nothing on the phone outlives either of them, the key included, so a deletion can't wait for later.
+- annai sends the deletions at once, up to 10 seconds, while the key is still there.
+- Anything it couldn't delete (offline) is named before the tap: "Google keeps N turns until they expire, up to D days."
+
+Each stored turn is tagged with the trip it belongs to (calls already carry their scope).
+
+**Only conversation turns are kept** (added while planning). Main's and Koe's turns are kept when the switch is on. One-off calls (utility, quick decisions, Test, "Try this model") are never stored on Google's side.
 
 **The Trace** shows, per call, whether it continued a stored turn and how much it sent.
 
