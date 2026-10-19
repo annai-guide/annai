@@ -265,3 +265,21 @@ test('item 10: a session hushed while it moves to a new connection (GoAway) clos
     await k.done();
   }
 });
+
+test('item 9 (probe I): a trigger while the page is out of view shows its reminder now, as annai does for any, and Koe says it when the page is back', async () => {
+  const k = await liveKit([{ said: 'Your train leaves in twenty minutes.', audio: tone(0.1) }]);
+  try {
+    await k.voice.unlock();
+    hidden(true);
+    await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
+    await k.agent.idle();
+    await until(() => k.notices.some((/** @type {any} */ n) => n.body === 'Train at 10:40'), 2000);
+    assert.equal(k.server.connections().length, 0);
+    hidden(false);
+    k.agent.shown();
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});

@@ -224,7 +224,7 @@ export class Halves {
       koe: this.koe, llm: c.llm, voice: c.voice ?? null, store: c.store, nonce: this.nonce,
       model: () => this.#liveId,
       setup: () => this.#liveSetup(),
-      visible: () => globalThis.document?.visibilityState !== 'hidden',
+      visible: () => this.#visible(),
       release: () => { this.kokoro.release(); this.koe.release(); },
       notice: (n) => this.#notice(n),
       told: (state) => this.#block(state),
@@ -254,6 +254,7 @@ export class Halves {
   get state() { return this.koeState === 'live' ? this.live.view : this.talking.state; }
   /** The dock's sign. */
   get kokoroWorking() { return this.#works() && this.kokoro.busy; }
+  #visible() { return globalThis.document?.visibilityState !== 'hidden'; }
   /** Koe talks with the user: through the loop, or live. */
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
   get busy() { return this.#routes > 0 || this.kokoro.busy || this.koe.busy || this.live.busy; }
@@ -494,6 +495,8 @@ export class Halves {
       this.#koeOpen();
       // Asked to hear her (the recap told aloud): the half with the voice tells it.
       if (!w.aloud) this.#wakeKokoro({ ...w, fallbacks: [] });
+      // From a page out of view, a session waits for it; its reminders show now, as annai's always do (review).
+      if (this.koeState === 'live' && !this.#visible() && w.fallbacks?.length) this.kokoro.remind(w.fallbacks);
       if (this.koeState === 'live') await this.#live(() => this.live.wake(w), w);
       else this.koe.enqueue(w);
     });
