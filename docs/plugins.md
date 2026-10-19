@@ -310,7 +310,7 @@ Speech travels in the smallest format both the phone and the provider handle (sp
 
   A user can change them on the provider's page, per ability or model.
 - **What your code gets:** an `audio` part's `mediaType` (`audio/ogg`, `audio/webm`, `audio/mp4`, `audio/aac`, `audio/mpeg`, `audio/flac` or `audio/wav`), or a transcription's `audio.mediaType`. Name the file or format for it, as Chat Completions does (`audio/mp4` → `m4a`).
-- **When a provider refuses** a format it was said to take (a 400 that names the audio or the format), annai sends the same request again with WAV, and keeps sending that model WAV until it restarts. So keep `classify` from turning such a refusal into another kind.
+- **When a provider refuses** a format it was said to take, annai asks again in WAV (a transcription after any bad request; a chat model when the 400 names the audio or its format), and keeps sending that model WAV until it restarts if WAV works. A voice that refuses its format is asked for MP3, then WAV. So keep `classify` from turning such a refusal into another kind.
 - **A failed upload** (network or server) is sent again with the very same bytes: don't change the audio between attempts.
 
 ## Backup places

@@ -9,7 +9,7 @@ const tag = (b, at, s) => { for (let i = 0; i < 4; i++) b[at + i] = s.charCodeAt
 /** @param {Uint8Array} b @param {number} at */
 const tagAt = (b, at) => String.fromCharCode(b[at], b[at + 1], b[at + 2], b[at + 3]);
 
-/** A 16-bit mono WAV file, of float samples (outside -1..1 clipped) or 16-bit ones. @param {Float32Array | Int16Array} pcm @param {number} sampleRate @returns {Uint8Array} */
+/** A 16-bit mono WAV file. Float samples outside -1..1 are clipped. @param {Float32Array | Int16Array} pcm @param {number} sampleRate @returns {Uint8Array} */
 export function encodeWav(pcm, sampleRate) {
   const out = new Uint8Array(44 + pcm.length * 2);
   const dv = new DataView(out.buffer);
@@ -63,10 +63,7 @@ export function decodeWav(bytes) {
   return { sampleRate: fmt.sampleRate, pcm };
 }
 
-/**
- * The 16-bit samples of a mono WAV file (the first channel of others), with no copy where they
- * can be read in place, as the microphone's are. @param {Uint8Array} bytes @returns {{ pcm: Int16Array, rate: number }}
- */
+/** A WAV file's 16-bit samples (the first channel), read in place where they can be. @param {Uint8Array} bytes @returns {{ pcm: Int16Array, rate: number }} */
 export function pcm16(bytes) {
   const { dv, fmt, body, size } = chunks(bytes);
   const n = Math.floor(size / 2 / fmt.channels);

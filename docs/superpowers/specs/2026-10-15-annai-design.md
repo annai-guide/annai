@@ -656,15 +656,15 @@ The user: "use the most efficient codec each provider supports … to cut down d
   - It's chosen again for each receiver: a transcription model, or a chat model for "Send audio to the model" (§10.3).
   - Each format is made once per segment and kept with it.
 - **What the phone makes:**
-  1. WebCodecs' `AudioEncoder`, with annai's own small Ogg, WebM, ADTS and FLAC files (no library). Each codec is tried once on a tenth of a second, since a browser may say it has one that then fails: at 16 kHz, else at 48 kHz.
+  1. WebCodecs' `AudioEncoder`, at 16 kHz, with annai's own small Ogg, WebM, ADTS and FLAC files (no library). Each codec is tried once on a tenth of a second, with a time limit, since a browser may say it has one that then fails or hangs. An encoding that fails or runs past its limit falls to the next format, and its codec isn't used again until annai restarts.
   2. Where the encoder makes nothing a receiver takes, `MediaRecorder` records alongside. It's cut with each segment, and starts again every 2 s while nobody speaks.
   3. WAV, which annai always makes itself.
 
   The choice is made at run time, by trying, never by the browser's name.
-- **Speech out:** a voice whose `format` is `auto` is asked for the smallest format it offers that the phone plays.
+- **Speech out:** a voice whose `format` is `auto` is asked for the smallest format it offers that the phone plays. A voice that refuses it (Speaches refuses Opus and AAC) is asked for MP3, then WAV, until annai restarts.
 - **Reliability:**
-  - A failed upload (network or server) is sent again twice, with the same bytes.
-  - A provider that refuses a format it declared gets WAV at once, for that request and until annai restarts.
+  - A failed upload (network or server) is sent again twice, with the same bytes. A turn that's stopped stops them.
+  - A transcription model that refuses any other format gets WAV at once (whisper.cpp's server says only "Invalid request"). A chat model gets it when its refusal names the audio or its format. If WAV works, that model gets WAV until annai restarts; if WAV is refused too, it fails as before.
 - **The Trace** shows each clip's format and size: kept, sent to be written down, sent to a model, and what a voice sent back. Settings → Voice says what this phone makes and plays.
 
 ## 11. Triggers and live mode
