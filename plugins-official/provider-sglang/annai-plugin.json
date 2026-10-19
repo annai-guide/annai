@@ -23,24 +23,28 @@
         "modelDefaults": {
           "reasoning": {
             "off": {
+              "reasoning_effort": "none",
               "chat_template_kwargs": {
                 "enable_thinking": false,
                 "thinking": false
               }
             },
             "low": {
+              "reasoning_effort": "low",
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "thinking": true
               }
             },
             "medium": {
+              "reasoning_effort": "medium",
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "thinking": true
               }
             },
             "high": {
+              "reasoning_effort": "high",
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "thinking": true
