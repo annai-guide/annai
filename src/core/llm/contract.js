@@ -134,7 +134,20 @@ export function explain(e) {
  */
 export function errorFromResponse(status, body, headers) {
   const message = messageOf(body) || `HTTP ${status}`;
-  return new ProviderError(kindOf(status, message), message, { status, retryAfter: retryAfterOf(headers) });
+  return new ProviderError(kindOf(status, message), message, { status, retryAfter: retryAfterOf(headers) ?? retryDelayOf(body) });
+}
+
+/** The wait a Google API error asks for in its RetryInfo ("23s"), in ms, when no header says. @param {string} body @returns {number | undefined} */
+function retryDelayOf(body) {
+  try {
+    const j = JSON.parse(body);
+    const details = (Array.isArray(j) ? j[0] : j)?.error?.details;
+    const delay = Array.isArray(details) ? details.find((d) => typeof d?.retryDelay === 'string')?.retryDelay : undefined;
+    const s = Number.parseFloat(delay ?? '');
+    return Number.isFinite(s) && /^\d+(\.\d+)?s$/.test(delay ?? '') ? Math.round(s * 1000) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** @param {number} status @param {string} message @returns {ErrorKind} */
@@ -155,7 +168,8 @@ function kindOf(status, message) {
 function messageOf(body) {
   if (!body) return '';
   try {
-    const j = JSON.parse(body);
+    const parsed = JSON.parse(body);
+    const j = Array.isArray(parsed) ? parsed[0] : parsed; // Google's APIs send a list of one
     const m = j?.error?.message ?? j?.message ?? (typeof j?.error === 'string' ? j.error : '');
     if (typeof m === 'string' && m) return m.slice(0, 500);
   } catch {
