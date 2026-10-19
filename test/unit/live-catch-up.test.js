@@ -167,3 +167,31 @@ test("after a restart the way travelled while closed counts once, in the catch-u
   assert.ok(live.odometer - km < 2, `odometer ${live.odometer}`);
   live.dispose();
 });
+
+test("a catch-up that ends before the first fix still counts the way travelled while closed once, at that fix, so the odometer doesn't jump when the user later moves", async () => {
+  const k = await liveKit();
+  const moved = await k.live.setWatch(k.trip, { when: { type: 'moved', km: 10 }, fallback: 'Ten km.' });
+  await k.fix(at('08:31'), MONTEREY);
+  k.live.dispose();
+  const clock = new ManualClock(at('10:30'));
+  const agent = fakeAgent(k.trip);
+  const sensors = fakeSensors(k.registry);
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA });
+  await live.start();
+  await live.settled();
+  // The GPS takes longer than the catch-up waits for it.
+  await clock.advanceTo(at('10:30:20'), () => live.settled());
+  assert.equal(agent.wakes.length, 0, 'nothing the clock made due');
+  sensors.fix({ lat: NEPENTHE.lat, lng: NEPENTHE.lng, accuracy: 8, speed: 0 });
+  await live.settled();
+  const km = live.odometer;
+  assert.ok(km > 40 && km < 50, `odometer ${km}`);
+  assert.ok(agent.wakes.some((/** @type {any} */ w) => w.text.includes(`Your watch ${moved.id} (after 10 km travelled) fired: you have travelled 4`)), JSON.stringify(agent.wakes));
+  for (let s = 0; s <= 120; s += 5) {
+    await clock.advanceTo(at('10:31') + s * 1000, () => live.settled());
+    sensors.fix({ ...off(NEPENTHE, 0, -s * 15), accuracy: 8, speed: 15 });
+    await live.settled();
+  }
+  assert.ok(live.odometer - km < 2, `odometer ${live.odometer}`);
+  live.dispose();
+});
