@@ -291,12 +291,10 @@ function usageOf(u) {
   };
 }
 
-/** A sharper kind for an error: by its OpenAI-style code, or OpenRouter's free-model limits; or null. @param {number} _status @param {string} body */
+/** A sharper kind for an error, by its OpenAI-style code, or null. A provider's own limits are its plugin's (decision 15). @param {number} _status @param {string} body */
 function classify(_status, body) {
   try {
     const e = JSON.parse(body)?.error;
-    // OpenRouter's free models used up for the day: its words ask for credits, but no account ran out.
-    if (/free-models-per-(day|min)/.test(String(e?.message))) return 'rate';
     return CODES[String(e?.code ?? e?.type ?? '')] ?? null;
   } catch {
     return null;
