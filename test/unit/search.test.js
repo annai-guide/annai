@@ -30,6 +30,7 @@ test('"lm studio", "lmstudio" and "LMStudio" are one query; matching starts at a
   assert.equal(matchAt('seek', 'DeepSeek'), true);
   assert.equal(matchAt('', 'LM Studio'), false);
   assert.equal(matchAt('?!', 'LM Studio'), false);
+  assert.deepEqual(rankEntry(ENTRIES[0], '?!'), { score: 0 });
 });
 
 test('a name match comes before a keyword match: "lm studio" lists LM Studio first, then llama.cpp, saying "Also for: LM Studio"', () => {
@@ -96,4 +97,43 @@ test('letters of any script match: a Japanese name is found by its start', () =>
   assert.deepEqual(ids(searchCatalog(ENTRIES, 'ГОЛОС', {})), ['golos']);
   // Full-width letters typed on a Japanese keyboard are the same letters.
   assert.equal(matchAt('ＬＭ　Ｓｔｕｄｉｏ', 'LM Studio'), true);
+});
+
+test('words joined by punctuation are words: "free,voice" and "free/voice" are "free voice"', () => {
+  const spaced = ids(searchCatalog(ENTRIES, 'free voice', {}));
+  assert.ok(spaced.includes('provider-openrouter'));
+  for (const q of ['free,voice', 'free/voice', 'free・voice', 'free　voice']) assert.deepEqual(ids(searchCatalog(ENTRIES, q, {})), spaced, q);
+  assert.deepEqual(rankEntry(ENTRIES.find((e) => e.id === 'provider-llamacpp'), 'unsloth,chat'), { score: 1, why: 'Unsloth' });
+});
+
+test('a query is read up to 100 characters, and each entry once however often it is searched; the ranks are what matching each field gives', () => {
+  // Past 100 characters the rest is dropped: "unsloth" and a long tail still finds llama.cpp.
+  assert.deepEqual(ids(searchCatalog(ENTRIES, `unsloth${' '.repeat(100)}zzz`, {})), ['provider-llamacpp']);
+  assert.deepEqual(ids(searchCatalog(ENTRIES, 'x'.repeat(5000), {})), []);
+  // An entry's fields are squashed once, not at every keystroke.
+  let reads = 0;
+  const counted = { ...facts({ id: 'counted', name: 'Counted', description: 'A quiet one.' }), official: true };
+  Object.defineProperty(counted, 'description', { get: () => { reads++; return 'A quiet one.'; } });
+  for (const q of ['q', 'qu', 'qui', 'quiet', 'zz']) searchCatalog([counted], q, {});
+  assert.equal(reads, 1);
+  // The same ranks as matching each field with matchAt, for every entry and query.
+  /** @param {any} e @param {string} q @returns {any} */
+  const whole = (e, q) => {
+    if (matchAt(q, e.name)) return { score: 3 };
+    const why = e.keywords.find((/** @type {string} */ k) => matchAt(q, k));
+    if (why) return { score: 2, why };
+    return { score: matchAt(q, e.description) || e.abilities.some((/** @type {string} */ a) => matchAt(q, `${a}s`)) || (e.free && matchAt(q, 'free')) ? 1 : 0 };
+  };
+  /** @param {any} e @param {string} q */
+  const reference = (e, q) => {
+    const all = whole(e, q);
+    const words = q.split(/[^\p{L}\p{N}]+/u).filter((w) => squash(w).text);
+    if (all.score || words.length < 2) return all;
+    const ranks = words.map((w) => whole(e, w));
+    const score = Math.min(...ranks.map((r) => r.score));
+    const why = score ? ranks.find((r) => r.why)?.why : undefined;
+    return why ? { score, why } : { score };
+  };
+  const queries = ['lm studio', 'lmstudio', 'unsloth', 'free voice', 'llama cpp', 'voices', 'router', 'ollama', 'chat', 'open', 'ことば', 'ＬＭ　Ｓｔｕｄｉｏ', 'unsloth chat', 'x', 'speech server', 'free,voice', 'seek', 'tudio'];
+  for (const q of queries) for (const e of ENTRIES) assert.deepEqual(rankEntry(e, q), reference(e, q), `${q} / ${e.id}`);
 });
