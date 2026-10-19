@@ -313,3 +313,21 @@ test("with no session open, a live Koe never takes the microphone from the speec
     await k.done();
   }
 });
+
+test("annai's own reminders while a live session's voice plays are shown, never spoken over it (one voice at a time)", async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.2) }]);
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.ok(k.agent.live.voiced);
+    await k.agent.remind([{ watch: 'w', text: 'Check-out at 11:00 in the other trip' }], 'elsewhere');
+    await k.agent.remind([{ watch: 'w', text: 'Fuel is low' }]);
+    assert.ok(k.notices.some((/** @type {any} */ n) => n.body === 'Fuel is low'), 'shown');
+    assert.ok(!k.said.includes('Fuel is low') && !k.said.includes('Check-out at 11:00 in the other trip'), 'never said by annai over Koe');
+    const [shown] = await k.events(['reminder']);
+    assert.equal(shown.data.aloud, undefined);
+  } finally {
+    await k.done();
+  }
+});
