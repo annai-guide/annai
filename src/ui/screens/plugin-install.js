@@ -89,6 +89,19 @@ export function sourceLine(from) {
   return 'From annai';
 }
 
+/** Whether two packages came from one place: one address (its keys aside), or files. @param {any} a @param {any} b */
+const samePlace = (a, b) => a?.source === b?.source && (b?.source !== 'url' || sourceLine(a) === sourceLine(b));
+
+/**
+ * Installing over the package of its id that is installed now (milestone 6): an update from where that came from,
+ * or one from elsewhere taking its place, which gets what that one keeps. Files count as one place.
+ * @param {{ version: string, from: { source?: string, url?: string, file?: string } }} previous @param {{ source?: string, url?: string, file?: string }} from
+ */
+export function overLine(previous, from) {
+  return samePlace(previous.from, from) ? `Version ${previous.version} is installed now. Installing replaces it.`
+    : `Version ${previous.version} is installed now, ${sourceLine(previous.from).replace(/^From/, 'from')}, not where this one comes from. Installing replaces it, and this one gets the settings and keys that one keeps.`;
+}
+
 /** An http(s) address or null. @param {unknown} url */
 function webAddress(url) {
   try {
@@ -175,7 +188,7 @@ export async function renderPluginInstall(ctx) {
         // A provider's own note, in place of the skill note (security review): what it can't do, and where keys go.
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: "It can't run anything: it is data that tells annai how to reach a model provider." }), h('p', { text: keysNote(pkg) }))
         : h('p', { class: 'skill-note', text: 'A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.' }),
-    pkg.previous ? h('p', { class: 'sub', text: `Version ${pkg.previous.version} is installed now. Installing replaces it.` }) : null,
+    pkg.previous ? h('p', { class: samePlace(pkg.previous.from, from) ? 'sub' : 'risk-note', text: overLine(pkg.previous, from) }) : null,
     // What a new version adds is said on its own, so nothing new slips in with an update (the coordinator's second finding).
     pkg.previous && addsAnything(pkg.previous.added) ? h('section', { class: 'panel', 'aria-label': 'New in this version' },
       h('h2', { class: 'section', text: 'New in this version' }),

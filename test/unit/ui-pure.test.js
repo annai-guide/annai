@@ -447,6 +447,19 @@ test('the install screen says what a package brings and where it came from', asy
   assert.equal(sourceLine({ source: 'builtin' }), 'From annai');
 });
 
+test("M6: a package over an installed one of its id says so: an update from where it came, else that it replaces one from elsewhere, which hands it that one's settings and keys", async () => {
+  const { overLine } = await import('../../src/ui/screens/plugin-install.js');
+  const at = (/** @type {string} */ url) => ({ source: 'url', url });
+  assert.equal(overLine({ version: '1.0.0', from: at('https://trails.example/kit/annai-plugin.json') }, at('https://trails.example/kit/annai-plugin.json')), 'Version 1.0.0 is installed now. Installing replaces it.');
+  assert.equal(overLine({ version: '1.0.0', from: { source: 'file', file: 'kit.zip' } }, { source: 'file', file: 'kit (1).zip' }), 'Version 1.0.0 is installed now. Installing replaces it.');
+  // A key in the address is no difference: annai keeps it blanked.
+  assert.equal(overLine({ version: '1.0.0', from: at('https://trails.example/s/«key»/annai-plugin.json') }, at('https://trails.example/s/zap1a2b3c4d5e6f7g8h9/annai-plugin.json')), 'Version 1.0.0 is installed now. Installing replaces it.');
+  for (const from of [at('https://other.example/kit/annai-plugin.json'), { source: 'file', file: 'kit.zip' }]) {
+    assert.equal(overLine({ version: '1.0.0', from: at('https://trails.example/kit/annai-plugin.json') }, from),
+      "Version 1.0.0 is installed now, from trails.example/kit/annai-plugin.json, not where this one comes from. Installing replaces it, and this one gets the settings and keys that one keeps.");
+  }
+});
+
 test('the card when a plugin is switched off says which, why and where to turn it back on', async () => {
   const { disabledCard } = await import('../../src/ui/plugin-cards.js');
   assert.deepEqual(disabledCard({ name: 'Tides', reason: 'failed 3 times in a row', message: 'boom' }), {
