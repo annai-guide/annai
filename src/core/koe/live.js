@@ -77,6 +77,9 @@ export class LiveKoe {
   /** @type {any} */
   #quiet = null;
   #quietMs = 30_000;
+  /** A session a trigger or a note opened listens only this long after it speaks, as Shiori's speak does (K2), until the user speaks or taps. */
+  #answerMs = 8_000;
+  #brief = false;
   /** Koe's sound's sample rate. */
   #rate = 24_000;
   #keep = false;
@@ -161,6 +164,7 @@ export class LiveKoe {
     }
     const settings = await this.c.voice?.settings();
     this.#quietMs = (settings?.closeAfterSeconds ?? 30) * (this.c.secondMs ?? 1000);
+    this.#answerMs = (settings?.silenceSeconds ?? 8) * (this.c.secondMs ?? 1000);
     this.#keep = Boolean(settings?.keepClips);
     this.modelId = id;
     this.state = 'open';
@@ -285,6 +289,7 @@ export class LiveKoe {
       this.close('tap');
       return 'stopped';
     }
+    this.#brief = false;
     if (!this.c.voice?.on) return 'typing';
     this.open('tap', { mic: true }).catch(() => {});
     return 'listening';
@@ -303,6 +308,7 @@ export class LiveKoe {
    * @returns {Promise<boolean>} false: no session could open
    */
   async send(text, { photos = [], chose = false } = {}) {
+    this.#brief = false;
     const e = await this.c.koe.logUser(text, photos, chose);
     if (!(await this.open('typed'))) return false;
     const rec = (await this.c.llm.config()).models[this.modelId ?? ''];
@@ -344,6 +350,7 @@ export class LiveKoe {
   async #say(text, why, keep) {
     this.#notes.push(text);
     if (!this.c.visible()) return true;
+    if (this.state === 'closed') this.#brief = true; // nobody asked to talk: it listens for an answer, not the quiet spell
     if ((await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open') {
       this.#idle();
       return true;
@@ -377,6 +384,7 @@ export class LiveKoe {
     /** @type {{ playedMs?: number }} */
     let cut = {};
     if (edge === 'start') {
+      this.#brief = false; // the user talks: the quiet spell holds
       // The user cut in: her voice stops now, and the provider cuts its turn.
       if (this.#sounding) cut = this.#cut();
       this.#flushHeard(false);
@@ -635,7 +643,7 @@ export class LiveKoe {
   /** Re-arms the quiet spell: no speech either way and no tool call for that long closes it (decision 12). */
   #poke() {
     clearTimeout(this.#quiet);
-    if (this.state !== 'closed') this.#quiet = setTimeout(() => (this.busy ? this.#poke() : this.close('quiet')), this.#quietMs);
+    if (this.state !== 'closed') this.#quiet = setTimeout(() => (this.busy ? this.#poke() : this.close('quiet')), this.#brief ? this.#answerMs : this.#quietMs);
   }
 
   /** Today's spend reached (Spend per day): none opens, and one open closes, with the budget card. @returns {Promise<boolean>} */

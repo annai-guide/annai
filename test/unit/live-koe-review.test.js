@@ -283,3 +283,24 @@ test('item 9 (probe I): a trigger while the page is out of view shows its remind
     await k.done();
   }
 });
+
+test("item 11 (consent): a session a trigger opened listens after it speaks only for the answer window (Settings → Voice's \"Listen for an answer\"), not the quiet spell; once the user speaks, or taps, the spell holds", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1) }, { heard: 'thanks', said: 'You are welcome.', audio: tone(0.1) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } }); // 3 s and 20 ms here
+    await k.voice.unlock();
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.ok(k.agent.live.listening, 'it listens after');
+    await until(() => k.agent.live.state === 'closed', 1000); // the answer window, not the 3 s spell
+    // Tapped open, the spell holds, a trigger after it changing nothing.
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await k.agent.wake({ kind: 'trigger', text: 'Fuel is low' });
+    await wait(400);
+    assert.equal(k.agent.live.state, 'open');
+  } finally {
+    await k.done();
+  }
+});
