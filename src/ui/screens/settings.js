@@ -15,12 +15,18 @@ const section = (title, ...children) => h('section', { class: 'panel', 'aria-lab
 
 /**
  * Settings' sections in the order a user reaches for them, most often first (the user, 2026-10-18),
- * Erase last; while an update waits, it comes before everything.
- * @param {{ updateReady: boolean }} o
+ * Erase last; while an update waits, Updates comes before everything.
+ * @param {{ waiting: boolean }} o
  */
-export function sectionOrder({ updateReady }) {
-  return [...(updateReady ? ['update'] : []), 'models', 'voice', 'notifications', 'backup', 'shiori', 'photos', 'tools', 'plugins', 'storage',
-    'about', 'diagnostics', 'developer', 'experimental', 'erase'];
+export function sectionOrder({ waiting }) {
+  return [...(waiting ? ['updates'] : []), 'models', 'voice', 'notifications', 'backup', 'shiori', 'photos', 'tools', 'plugins', 'storage',
+    ...(waiting ? [] : ['updates']), 'about', 'diagnostics', 'developer', 'experimental', 'erase'];
+}
+
+/** What waits, in a line: a new version of annai, plugin updates; null when nothing does. @param {boolean} app @param {{ name: string }[]} plugins */
+export function waitingWords(app, plugins) {
+  const words = [app ? 'A new version of annai is ready.' : '', plugins.length ? `Plugin updates are ready: ${plugins.map((u) => u.name).join(', ')}.` : ''];
+  return words.filter(Boolean).join(' ') || null;
 }
 
 /** @param {string} line @param {string} href @param {string} label */
@@ -33,11 +39,12 @@ export async function renderSettings(ctx) {
   const exportSlot = h('div', {});
   const places = ctx.backups ? await ctx.backups.list() : [];
   const automatic = places.filter((/** @type {any} */ p) => p.auto !== 'off').map((/** @type {any} */ p) => p.name);
+  const waits = waitingWords(Boolean(ctx.updates?.waiting), (await ctx.updates?.plugins().catch(() => [])) ?? []);
   /** @type {Record<string, () => Promise<any> | any>} */
   const sections = {
-    update: () => section('Update',
-      h('p', { class: 'sub', text: `A new version of annai is ready. It is used the next time annai starts. This is annai ${ctx.version}.` }),
-      h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => ctx.update.apply() }, 'Restart annai'))),
+    updates: () => section('Updates',
+      h('p', { class: 'sub', text: waits ?? 'annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.' }),
+      h('div', { class: 'acts' }, h('a', { class: waits ? 'btn pri' : 'btn', href: '#/updates' }, 'Updates'))),
     models: () => section('Models', ...goTo('The endpoints and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.', '#/models', 'Models')),
     voice: () => section('Voice', ...goTo('How Shiori speaks and hears you, with a test for each.', '#/voice', 'Voice')),
     notifications: () => section('Notifications', ...goTo('Reminders while annai is closed, through the push relay, and what it learns.', '#/notifications', 'Notifications')),
@@ -76,7 +83,7 @@ export async function renderSettings(ctx) {
   };
   /** @type {any[]} */
   const drawn = [];
-  for (const id of sectionOrder({ updateReady: Boolean(ctx.update?.ready) })) drawn.push(await sections[id]());
+  for (const id of sectionOrder({ waiting: waits !== null })) drawn.push(await sections[id]());
   return h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'Settings' }), ...drawn);
 }
 

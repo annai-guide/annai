@@ -10,7 +10,7 @@ import { PluginHost } from '../../src/core/plugins.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { ensureType, officialUpdates, updateOfficial } from '../../src/core/llm/official.js';
-import { offerPluginUpdates, applyUpdates, pluginUpdates } from '../../src/ui/plugin-updates.js';
+import { offerCard, applyUpdates, checkPlugins } from '../../src/ui/plugin-updates.js';
 import { addressUpdates, updateFromAddress } from '../../src/core/package-updates.js';
 import { fetchPackage } from '../../src/core/packages.js';
 import { SKILL, hostKit } from './package-kit.js';
@@ -44,6 +44,16 @@ async function repo({ bump = false } = {}) {
       return new Response('not found', { status: 404 });
     }
   };
+}
+
+/** Every update known after a check of both kinds. @param {any} host @param {any} env */
+const pluginUpdates = async (host, env) => (await checkPlugins(host, env)).found;
+
+/** Looks, and offers what it found on one card, as annai does at start (Updates.start). @param {any} ctx @param {any} env */
+async function offerPluginUpdates(ctx, env) {
+  const updates = await pluginUpdates(ctx.plugins, env);
+  if (updates.length) offerCard(ctx, updates, env);
+  return updates;
 }
 
 async function setup() {

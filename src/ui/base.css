@@ -277,7 +277,7 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .facts-list strong { display: block; }
 .facts-list.limits { padding-left: 20px; list-style: disc; gap: 6px; }
 .sub-head { font-family: var(--f-display); font-weight: 700; font-size: 17px; }
-.about .version { font-family: var(--f-mono); font-size: 14px; overflow-wrap: anywhere; }
+.screen .version { font-family: var(--f-mono); font-size: 14px; overflow-wrap: anywhere; }
 .credit { display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 .credit-name { font-size: 16px; font-weight: 700; }
 pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--f-mono); font-size: 12px; line-height: 1.5; margin: 0; padding: 12px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line); }

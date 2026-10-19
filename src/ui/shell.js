@@ -30,6 +30,7 @@ import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
 import { renderAbout } from './screens/about.js';
+import { renderUpdates } from './screens/updates.js';
 import { renderExperimental } from './screens/experimental.js';
 import { readAppSettings } from '../core/settings.js';
 import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi, made } from './slots.js';
@@ -39,13 +40,14 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 const SECTION = /** @type {Record<string, string>} */ ({
   trip: 'trips', file: 'trips', booking: 'trips', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
   plugins: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
-  voice: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings',
+  voice: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
 });
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates };
 
 /**
  * @param {HTMLElement} root
- * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any, version: string }} core
+ * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
+ *   updates?: import('./updates.js').Updates, version: string }} core
  */
 export function startShell(root, core) {
   const notices = createNotices();
@@ -71,7 +73,6 @@ export function startShell(root, core) {
   document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
   drawTabs();
 
-  const update = { ready: false, apply: () => {} };
   // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on (the user,
   // 2026-10-18). Off, the screen leaves sideways panning to the browser (no touch-action of its own).
   let swipes = false;
@@ -81,7 +82,7 @@ export function startShell(root, core) {
   };
   if (core.ws) readAppSettings(core.ws).then((a) => setSwipes(a.experimental?.swipeTabs === true)).catch(() => {});
   const ctx = {
-    ...core, notices, update, setSwipes,
+    ...core, notices, setSwipes,
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },
     render: () => render(),
   };
@@ -304,14 +305,16 @@ export function startShell(root, core) {
     ctx.go('#/import');
   });
   render({ moved: true });
+  let readyCard = () => {};
   return {
     notices,
     render,
-    /** Shown in Settings → Update once a new version is waiting. @param {() => void} apply */
+    /** Draws the screen again once nothing typed would be lost (what Settings → Updates shows changed). */
+    redraw: () => redraw(),
+    /** A new version of annai waits (Settings → Updates says so too): one card, the newest. @param {() => void} apply */
     setUpdateReady(apply) {
-      update.ready = true;
-      update.apply = apply;
-      notices.card({ title: 'An update is ready', body: 'It will be used the next time annai starts.', actions: [{ label: 'Restart now', primary: true, run: apply }] });
+      readyCard();
+      readyCard = notices.card({ title: 'An update is ready', body: 'It will be used the next time annai starts.', actions: [{ label: 'Restart now', primary: true, run: apply }] });
     },
   };
 }
