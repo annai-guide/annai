@@ -345,3 +345,25 @@ test("Add on a provider whose plugin draws its own Add flow installs it, with wh
   await assert.rejects(k.llm.startAdd('provider-acme', { official: true }), /turned off/);
   assert.equal((await k.host.installed())['provider-acme'].enabled, false);
 });
+
+test("leaving a plugin's own Add flow without a provider takes away what Add's tap installed, and only that", async () => {
+  const k = await kit();
+  const ids = async () => Object.keys(await k.host.installed()).sort();
+  assert.equal(await k.llm.startAdd('provider-acme', { official: true }), null);
+  assert.deepEqual(await ids(), ['proto-h', 'provider-acme']);
+  await k.llm.leaveAdd('provider-acme');
+  assert.deepEqual(await ids(), [], 'as before the tap: the plugin, and what only it required');
+  // A provider added from it keeps it.
+  await k.llm.startAdd('provider-acme', { official: true });
+  const id = await setupUi(k.ctx, 'provider-acme').add({ key: 'sk-acme-1' });
+  await k.llm.leaveAdd('provider-acme');
+  assert.deepEqual(await ids(), ['proto-h', 'provider-acme']);
+  // One installed before the tap (the featured start's, in the background) stays.
+  await k.llm.removeProvider(id);
+  assert.ok(await k.llm.prepareStart('provider-acme'));
+  await k.llm.startAdd('provider-acme', { official: true });
+  await k.llm.leaveAdd('provider-acme');
+  assert.deepEqual(await ids(), ['proto-h', 'provider-acme']);
+  await k.llm.leaveAdd('provider-other');
+  assert.deepEqual(await ids(), ['proto-h', 'provider-acme'], 'a plugin no tap brought is left as it is');
+});
