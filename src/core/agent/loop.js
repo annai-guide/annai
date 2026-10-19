@@ -207,6 +207,8 @@ export class Agent {
   #noteCut = false;
   /** A turn runs. */
   #turning = false;
+  /** Whether the half might use the voice when its turn's voice was last worked out. */
+  #mayVoice = true;
   /** What the running turn did (Half.ended). */
   #facts = { finalText: '', told: false, slept: false, spoke: false, kinds: /** @type {string[]} */ ([]) };
 
@@ -1007,6 +1009,7 @@ export class Agent {
     const abort = new AbortController();
     this.#abort = abort;
     const asked = wakes.some((w) => w.aloud);
+    this.#mayVoice = this.#half.voice();
     this.#voiceNow = await this.#voiceOn(asked);
     // Asked to hear her with voice mode off: she speaks, and the microphone stays off (spec §10.5, §6.2).
     this.#aloudOnly = this.#voiceNow && asked && !this.voice?.on;
@@ -1059,6 +1062,11 @@ export class Agent {
         await this.#notice({ tone: 'warn', title: over.title, body: over.body });
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'budget', which: over.which, wake: wakeId, message: over.body } });
         break;
+      }
+      // The voice changed hands mid-turn (Koe down, or back): this step follows it.
+      if (this.#half.voice() !== this.#mayVoice) {
+        this.#mayVoice = !this.#mayVoice;
+        this.#voiceNow = await this.#voiceOn(wakes.some((w) => w.aloud));
       }
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });

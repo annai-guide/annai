@@ -567,3 +567,15 @@ test("Koe coming back while Kokoro's turn has the voice waits for that turn's en
   assert.deepEqual((await k.events(['halves'])).map((e) => e.data.state), ['koe-down', 'koe-up'], 'Koe is back once that turn is over');
   assert.equal(k.agent.koeState, 'text');
 });
+
+test("Koe failing while Kokoro's turn runs, voice on: Kokoro's answer is said aloud, not a silent bubble (probe G)", async () => {
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', reply: { delayMs: 150, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, then: calls(['speak', { text: 'Nepenthe is open till 10.' }]) },
+    { match: '.', reply: sleep },
+  ] }], { koe: { talk: [{ delayMs: 30, error: 'auth', message: 'bad key' }] }, voice: { speechIn: ['m-hear'] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.equal(k.agent.koeState, 'down');
+  assert.deepEqual(plays(k), ['Nepenthe is open till 10.']);
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => [e.data.half, e.data.voice]), [['kokoro', true]]);
+});
