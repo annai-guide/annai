@@ -3,22 +3,24 @@ import { openApp, waitForServiceWorker, addProvider, koeSetUp, startModelServer,
 
 // Koe and Kokoro, K1: the text split (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md).
 
-test('Models shows Koe for talking and Koe for typing right after Main, each taking chat models', async ({ page }) => {
+test('Models shows one Koe list right after Main, taking chat models (the user, 2026-10-19: one Koe list)', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   const roles = page.getByRole('region', { name: 'Roles' });
   await expect(roles.locator('h3')).toHaveText([
-    'Main: talks with you', 'Koe for talking: answers you at once when voice is on', 'Koe for typing: answers you at once when you type',
+    'Main: talks with you', 'Koe: answers you at once, typed or spoken',
     'Utility: summaries and small jobs', 'Quick decision: yes-or-no checks', 'Speech in: how Shiori hears you', "Speech out: Shiori's voice",
   ]);
-  await expect(roles.getByText('Empty: Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toHaveCount(2);
+  await expect(roles.getByText('Empty: Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toHaveCount(1);
   await expect(page.getByLabel('Wait for the first words (seconds)').nth(1)).toHaveAttribute('placeholder', '8');
   await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Fast', url: 'https://fast.example.test/v1', key: 'sk-fast', model: 'fast-model', look: false });
-  await page.getByLabel('Add a model to Koe for typing').selectOption({ label: 'fast-model' });
-  await page.getByRole('button', { name: 'Add to Koe for typing' }).click();
-  await expect(roles.locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();
+  await page.getByLabel('Add a model to Koe').selectOption({ label: 'fast-model' });
+  await page.getByRole('button', { name: 'Add to Koe' }).click();
+  await expect(roles.locator('.role').nth(1).getByText('1. fast-model')).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('1. fast-model')).toBeVisible();
+  // The note on voice off is for a list with a live voice in it (live-koe.spec): none here.
+  await expect(page.getByText('With voice off, a text model here answers before a live voice', { exact: false })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(0).getByText('No models yet. Add one.')).toBeVisible();
 });
 
@@ -75,7 +77,7 @@ test("Trace shows both halves' turns and their notes; the toggle shows the notes
     await expect(page.getByText('Koe to Kokoro · append · Is Nepenthe open now?')).toBeVisible();
     await expect(page.getByText('Kokoro to Koe · append · Nepenthe is open till 10 tonight (nepenthe.com).')).toBeVisible();
     await filterTrace(page, { kind: 'Models', type: 'model.turn' });
-    await expect(page.getByText(/Koe · koe-type: koe-model · 1 attempt/).first()).toBeVisible();
+    await expect(page.getByText(/Koe · koe: koe-model · 1 attempt/).first()).toBeVisible();
     await expect(page.getByText(/Kokoro · main: kokoro-model · 1 attempt/).first()).toBeVisible();
     await page.goto('/#/talk');
     const toggle = page.getByLabel('Show what the halves tell each other');

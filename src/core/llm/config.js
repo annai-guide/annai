@@ -48,8 +48,8 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
 
 /** The roles that call chat models; an empty one uses the main list (spec §9.6). */
 export const CHAT_ROLES = Object.freeze(['main', 'utility', 'decide']);
-/** Koe's lists, for talking and for typing (the Koe and Kokoro design): an empty one uses the other, never Main. */
-export const KOE_ROLES = Object.freeze(['koe-talk', 'koe-type']);
+/** Koe's list (the Koe and Kokoro design): chat and realtime models, in order; empty, there is no Koe, never Main. */
+export const KOE_ROLE = 'koe';
 /** The speech roles (spec §9.6, §10). Their lists hold stand-in entries besides models. */
 export const SPEECH_ROLES = Object.freeze(['speech-in', 'speech-out']);
 /** @type {Readonly<Record<string, { role: string, name: string }>>} */
@@ -272,10 +272,13 @@ export async function readConfig(ws) {
  * @param {any} saved @param {Record<string, ModelRecord>} models @returns {Roles}
  */
 function rolesFrom(saved, models) {
-  const s = saved && typeof saved === 'object' ? saved : {};
+  const { 'koe-talk': talk, 'koe-type': type, ...s } = saved && typeof saved === 'object' ? saved : {};
+  // Koe's two lists before they were one (2026-10-19): the talking list's models, then the typing list's, and its wait, else
+  // the typing list's. Not their level: old files hold an explicit 'off', the old default, which would defeat the new 'low'.
+  s.koe ??= talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))], firstOutputSeconds: talk?.firstOutputSeconds ?? type?.firstOutputSeconds } : undefined;
   /** @type {Roles} */
   const out = {};
-  for (const role of new Set([...CHAT_ROLES, ...KOE_ROLES, ...SPEECH_ROLES, ...Object.keys(s)])) {
+  for (const role of new Set([...CHAT_ROLES, KOE_ROLE, ...SPEECH_ROLES, ...Object.keys(s)])) {
     const r = s[role] ?? {};
     const speech = SPEECH_ROLES.includes(role);
     const kept = (/** @type {any} */ id) => typeof id === 'string' && (Boolean(models[id]) || (speech && STAND_INS[id]?.role === role));

@@ -281,11 +281,11 @@ test('callRole skips a realtime model as not-chat; a chat role never sends it a 
   const m = newModel(p.id, 'live', { user: { providerId: 'live-1' } });
   await saveProvider(ws, p, [m]);
   await setKey(store, p.id, KEY);
-  await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: [m.id], level: 'off' }, 'koe-talk': { models: [m.id], level: 'off' } });
+  await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: [m.id], level: 'off' }, koe: { models: [m.id], level: 'off' } });
   FakeSocket.made = [];
   const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: async () => { throw new Error('no request'); }, openSocket: socket });
   const cfg = await readConfig(ws);
-  assert.equal(cfg.roles['koe-talk'].models[0], m.id, 'Koe for talking takes a realtime model');
+  assert.equal(cfg.roles.koe.models[0], m.id, 'Koe takes a realtime model');
   const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'hi' }] }] };
   await assert.rejects(callRole({ role: 'main', request, config: cfg, types: llm.types(), keyFor: async () => KEY, bench: new Bench() }),
     (e) => /** @type {any} */ (e).attempts[0].outcome === 'not-chat');

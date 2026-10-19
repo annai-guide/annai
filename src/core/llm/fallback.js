@@ -1,7 +1,7 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
-import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_ROLES } from './config.js';
+import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_ROLE } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
 import { adjusted } from './setup.js';
 import { formatRefused } from '../voice/formats.js';
@@ -72,45 +72,41 @@ export class AllFailedError extends Error {
 }
 
 /**
- * The models a role tries, in order: its own, or the main list for an empty chat role. An empty Koe
- * list uses the other Koe list, and never Main: no Koe model means no Koe. @param {ModelConfig} config @param {string} role
+ * The models a role tries, in order: its own, or the main list for an empty chat role. An empty Koe list
+ * never uses Main: no Koe model means no Koe. @param {ModelConfig} config @param {string} role
  */
 export function candidates(config, role) {
   const own = config.roles?.[role]?.models ?? [];
-  if (own.length || role === 'main') return own;
-  if (KOE_ROLES.includes(role)) return config.roles?.[KOE_ROLES.find((r) => r !== role) ?? '']?.models ?? [];
-  if (!CHAT_ROLES.includes(role)) return own;
-  return config.roles.main?.models ?? [];
+  if (own.length || !CHAT_ROLES.includes(role)) return own;
+  return config.roles?.main?.models ?? [];
 }
 
-/** Koe's list (the Koe and Kokoro design): voice on uses "Koe for talking", else "Koe for typing", an empty one the other. @param {ModelConfig} cfg @param {boolean} voiceOn */
-export function koeList(cfg, voiceOn) {
-  const role = voiceOn ? 'koe-talk' : 'koe-type';
-  return { role, models: candidates(cfg, role) };
-}
+/** The models of a role a chat call can use: those of a chat ability switched on (Koe's realtime models are passed over). @param {ModelConfig} cfg @param {string} role */
+export const chatCandidates = (cfg, role) => candidates(cfg, role).filter((id) => { const a = abilityOf(cfg, id); return a?.on && a.kind !== 'realtime'; });
 
-/** Whether Shiori is two halves: a Koe list holds a model. @param {ModelConfig} cfg */
-export const splitOn = (cfg) => KOE_ROLES.some((r) => (cfg.roles?.[r]?.models ?? []).length > 0);
+/** Whether Shiori is two halves: Koe's list holds a model. @param {ModelConfig} cfg */
+export const splitOn = (cfg) => candidates(cfg, KOE_ROLE).length > 0;
 
 /**
- * Koe's pathway now (K5): the first model that can answer, in its list, then the other Koe list (a live model that can't go
- * on falls back to the typing models and the speech pipeline: the design, "Failures"). A realtime one runs a live session;
- * a chat one, the loop, with the list it is in (whose realtime models it passes over). A realtime model off, resting or
- * without its protocol running is passed over, and a chat model resting. null: none can. @param {ModelConfig} cfg
+ * Koe's pathway now (K5): the first model in its list that can answer (the user, 2026-10-19: one Koe list). A realtime
+ * one runs a live session; a chat one, the loop, which passes over the realtime models in the list. A model off, resting
+ * or without its protocol running is passed over, so a live model that can't go on falls to the next one down. With voice off, a chat model that can answer comes first: a live session's reply is sound nobody
+ * hears (data saved by default). null: none can. @param {ModelConfig} cfg
  * @param {{ voiceOn: boolean, types: Map<string, { realtime?: boolean }>, until: (id: string) => number, now: number }} o
- * @returns {{ kind: 'live', modelId: string } | { kind: 'text', role: string } | null}
+ * @returns {{ kind: 'live', modelId: string } | { kind: 'text' } | null}
  */
 export function koePath(cfg, { voiceOn, types, until, now }) {
-  const own = koeList(cfg, voiceOn).role;
-  for (const role of [own, KOE_ROLES.find((r) => r !== own) ?? own]) {
-    for (const id of candidates(cfg, role)) {
-      const a = abilityOf(cfg, id);
-      if (!cfg.models[id] || until(id) > now) continue;
-      if (a?.kind !== 'realtime') return { kind: 'text', role };
-      if (a.on && types.get(a.type)?.realtime) return { kind: 'live', modelId: id };
-    }
+  /** @type {{ kind: 'live', modelId: string } | null} */
+  let live = null;
+  for (const id of candidates(cfg, KOE_ROLE)) {
+    const a = abilityOf(cfg, id);
+    // As callRole has it: a model of an ability switched off, or whose protocol isn't running, can't answer.
+    if (!cfg.models[id] || !a?.on || !types.get(a.type) || until(id) > now) continue;
+    if (a.kind !== 'realtime') return { kind: 'text' };
+    if (!live && types.get(a.type)?.realtime) live = { kind: 'live', modelId: id };
+    if (live && voiceOn) return live;
   }
-  return null;
+  return live;
 }
 
 /** A rough token count, enough to skip models whose window is clearly too small. @param {Request} request */
@@ -213,7 +209,7 @@ export async function callRole(c) {
     { role, level, answeredBy, attempts, usage, cost, ...meta, ...(stop ? { stop } : {}), ...(citations?.length ? { citations } : {}) },
     text, reasoning, keepParts ? parts : undefined);
   // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable); Koe answers at once.
-  const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? (KOE_ROLES.includes(role) ? 8 : 30)) * 1000;
+  const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? (role === KOE_ROLE ? 8 : 30)) * 1000;
   const list = c.models ?? candidates(config, role);
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;

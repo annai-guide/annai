@@ -21,8 +21,10 @@ export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice', 'r
 export const CATEGORIES = Object.freeze(['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
 /** Which abilities' models each role takes. @type {Readonly<Record<string, readonly string[]>>} */
 export const ROLE_KINDS = Object.freeze({
-  main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat', 'realtime'], 'koe-type': ['chat', 'realtime'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
+  main: ['chat'], utility: ['chat'], decide: ['chat'], koe: ['chat', 'realtime'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
 });
+/** Koe's two lists before they were one (2026-10-19): a description naming them still checks, and they are ignored. */
+const OLD_KOE_ROLES = Object.freeze(['koe-talk', 'koe-type']);
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;
 /** The tunables protocols join onto an ability's address. */
@@ -85,7 +87,7 @@ export function checkProviderDesc(desc) {
     for (const [role, ids] of Object.entries(/** @type {Record<string, string[]>} */ (roles))) {
       const kinds = ROLE_KINDS[role];
       if (!kinds) {
-        errors.push(`$.roles.${which}.${role}: there is no such role`);
+        if (!OLD_KOE_ROLES.includes(role)) errors.push(`$.roles.${which}.${role}: there is no such role`);
         continue;
       }
       const have = new Set(abilities.filter(([, a]) => kinds.includes(a.kind)).flatMap(([, a]) => (a.models ?? []).map((/** @type {any} */ m) => m.providerId)));

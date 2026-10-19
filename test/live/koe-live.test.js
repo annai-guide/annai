@@ -23,7 +23,7 @@ async function soon(fn, ms = 40_000) {
   }
 }
 
-/** Shiori as two halves, Koe live on the real API; Kokoro answers any question of Koe's with the hours. @param {any} [koe] a typing model's script */
+/** Shiori as two halves, Koe live on the real API; Kokoro answers any question of Koe's with the hours. @param {any} [koe] the script of a chat model after it in Koe's list */
 async function kit(koe) {
   const k = await agentKit([{ rules: [{ match: 'Koe (asks|notes)', reply: { delayMs: 2000, toolCalls: [{ name: 'tell_koe', input: { text: HOURS } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }], {
     live: { origin: 'https://generativelanguage.googleapis.com', key: KEY, tunables: { proactive: true } }, voice: { speechIn: ['m-hear'] },
@@ -109,8 +109,8 @@ test('a dropped connection resumes with its handle, and the conversation goes on
   }
 });
 
-test("a drop that can't resume: the typing model finishes the answer, through the speech pipeline", { skip }, async () => {
-  const finish = '(the typing model finishing the answer)';
+test("a drop that can't resume: the next model in Koe's list finishes the answer, through the speech pipeline", { skip }, async () => {
+  const finish = '(the next model finishing the answer)';
   const { k, said, done } = await kit({ rules: [{ match: 'the live session dropped', reply: { toolCalls: [{ name: 'speak', input: { text: finish } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] });
   try {
     k.agent.send('Tell me about Big Sur, in four or five sentences.');

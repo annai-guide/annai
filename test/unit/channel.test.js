@@ -10,7 +10,7 @@ import { ALWAYS_ON, toolList } from '../../src/core/agent/tools.js';
 /** Kokoro as the receiving half, and a channel whose Koe side writes into the same log. @param {any[]} script */
 async function kokoroKit(script) {
   const k = await agentKit([script], {
-    agent: { half: { name: 'kokoro', tag: TALK_TAG, role: async () => ({ role: 'main' }), registryTools: true, voice: () => false, logVoice: true, housekeeping: true, mark: () => ({}) } },
+    agent: { half: { name: 'kokoro', tag: TALK_TAG, role: 'main', registryTools: true, voice: () => false, logVoice: true, housekeeping: true, mark: () => ({}) } },
   });
   /** @type {string[]} */
   const order = [];

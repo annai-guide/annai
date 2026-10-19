@@ -34,7 +34,7 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     await addProvider(page, 'Another address', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
     await addProvider(page, 'Another address', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
     /** @type {[string, string][]} */
-    const roles = [['main', 'kokoro-model'], ['Koe for talking', 'koe-model'], ['decide', 'd-model'], ['speech-in', 'ears'], ['speech-out', 'voice']];
+    const roles = [['main', 'kokoro-model'], ['Koe', 'koe-model'], ['decide', 'd-model'], ['speech-in', 'ears'], ['speech-out', 'voice']];
     for (const [role, model] of roles) {
       await page.getByLabel(`Add a model to ${role}`).selectOption({ label: model });
       await page.getByRole('button', { name: `Add to ${role}` }).click();

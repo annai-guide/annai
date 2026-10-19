@@ -1,6 +1,6 @@
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
-import { AllFailedError, estimateTokens, candidates } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, candidates, chatCandidates } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf, saveModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
@@ -52,7 +52,7 @@ import { validate } from '../schema.js';
  * @typedef {import('./transcript.js').Resolved} Resolved
  * @typedef {object} Half  how the loop runs as a half of Shiori (the Koe and Kokoro plan, "Agent as a half")
  * @property {'one' | 'kokoro' | 'koe'} name @property {string} tag its model.turn tag
- * @property {(voiceOn: boolean) => Promise<{ role: string }>} role
+ * @property {string} role the role it calls
  * @property {boolean} registryTools false: its own loop tools only @property {() => boolean} voice whether it may use the voice now
  * @property {boolean} logVoice @property {boolean} housekeeping @property {string} [nonce] Koe's, in its notes' marker
  * @property {boolean} [listenLast] its speak doesn't listen when a question to the other half or a wait follows it: they run at once
@@ -76,7 +76,7 @@ import { validate } from '../schema.js';
 
 /** Shiori as one half, as she always was. @type {Half} */
 export const ONE = Object.freeze({
-  name: /** @type {const} */ ('one'), tag: TALK_TAG, role: async () => ({ role: 'main' }), registryTools: true, voice: () => true, logVoice: true, housekeeping: true,
+  name: /** @type {const} */ ('one'), tag: TALK_TAG, role: 'main', registryTools: true, voice: () => true, logVoice: true, housekeeping: true,
 });
 /** No registry: a half with only its own tools. */
 const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
@@ -272,7 +272,7 @@ export class Agent {
     /** @type {import('./refusals.js').Learned} */
     let images = {};
     // Koe's copies of the user's photos are Kokoro's too.
-    const role = (await this.#half.role(this.#voiceNow)).role;
+    const role = this.#half.role;
     for (const id of [...candidates(cfg, role), ...(role === 'main' ? [] : candidates(cfg, 'main'))]) {
       const m = cfg.models[id] ? modelOf(cfg.models[id]) : null;
       if (m?.input?.includes('image')) images = stricter(images, m.images ?? {});
@@ -779,19 +779,19 @@ export class Agent {
 
   /** Whether the main role's first model gets photos by upload, so they count as their id (spec §6.5). */
   async #uploading() {
-    const id = candidates(await this.llm.config(), (await this.#half.role(this.#voiceNow)).role)[0];
+    const id = chatCandidates(await this.llm.config(), this.#half.role)[0];
     return Boolean(id && this.llm.uploading && (await this.llm.uploading(id)));
   }
 
   /** The first model of this half's role. */
   async #mainModel() {
-    return this.#roleModel((await this.#half.role(this.#voiceNow)).role);
+    return this.#roleModel(this.#half.role);
   }
 
-  /** A role's first model, by its fallback (spec §9.6). @param {string} role */
+  /** A role's first chat model, by its fallback (spec §9.6). @param {string} role */
   async #roleModel(role) {
     const cfg = await this.llm.config();
-    const id = candidates(cfg, role)[0];
+    const id = chatCandidates(cfg, role)[0];
     return id && cfg.models[id] ? modelOf(cfg.models[id]) : null;
   }
 
@@ -1090,7 +1090,7 @@ export class Agent {
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
       const { tools, via, providerTools } = await this.#toolsNow();
-      const { role } = await this.#half.role(this.#voiceNow);
+      const { role } = this.#half;
       const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
       const here = this.sense?.() ?? {};
       const now = { now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, place: here.place, activity: here.activity };
@@ -1861,7 +1861,7 @@ export class Agent {
     const voice = this.voice;
     if (!voice) return "voice isn't available here.";
     if (this.#ear) return null; // a tap's window stays the tap's until the first thing said: that needs no gate (choice 3)
-    const how = await voice.howToListen((await this.#half.role(this.#voiceNow)).role);
+    const how = await voice.howToListen(this.#half.role);
     if ('why' in how) {
       // The mic button explains what to add (spec §10.3): on every tap, and once for her own listening.
       if (owner === 'tap' || !this.#toldDeaf) await this.#notice({ tone: 'warn', title: "Shiori can't hear you yet", body: how.why });
@@ -2082,7 +2082,7 @@ export class Agent {
   async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false } = {}) {
     const voice = this.voice;
     if (!voice) return [];
-    const { role } = await this.#half.role(this.#voiceNow);
+    const { role } = this.#half;
     const hearer = await this.#hearer(role);
     /** @type {string[]} */
     const left = [];
@@ -2118,7 +2118,7 @@ export class Agent {
   async #hearer(role) {
     if (this.#heardBy) return this.#heardBy;
     const cfg = await this.llm.config();
-    return candidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
+    return chatCandidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
   }
 
   /**
