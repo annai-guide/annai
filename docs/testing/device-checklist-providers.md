@@ -25,3 +25,16 @@ Your llama.cpp server here is the Unsloth Studio one, with HTTPS in front of it 
 - [ ] **She thinks, and shows it.** Put the model in Main, and **Test** it again: "✓ It also answers at Main's level (medium)." Talk to Shiori: her thinking shows while she works, then her answer. Ask something that needs a tool ("what's the weather at Bixby Bridge?"): she calls it. Trace → Type contains `model.turn`: the turn has her reasoning, and tokens in and out.
 - [ ] **The quick decision doesn't think.** Put the model in Quick decision too, and turn voice on. Say something to someone beside you, not to Shiori. Trace → Type contains `model.turn`: a `decide` turn at level off, with no reasoning in its reply, answered in a second or two.
 - [ ] **maiGo through Another address.** Add a provider → **Another address** → **Add**. Name it maiGo, give its HTTPS address (ending in `/v1`) and its key, **Save**. Use Chat Completions, and add a model it routes by id. **Test**: "Everything works." On the model's page, **Try this model**: the answer comes in one piece. Ask for something long ("the history of Big Sur in 600 words"): if it stops with "No output started in time.", raise Main's "Wait for the first words" in Models (and Settings → Voice → Wait for her first words), as Another address's note says, and ask again.
+
+## Milestone 3: one catalog
+
+- [ ] **Models → Add a provider opens the catalog on model providers.** The Model providers chip is on and only that kind shows, with Another address last. Each row has its abilities, Free where it has free models, and "Official · Data only ·" its size.
+- [ ] **Search "unsloth".** llama.cpp alone, saying "Also for: Unsloth". The keyboard stays up while you type, and the box keeps what you typed.
+- [ ] **Search "lm studio", then "lmstudio".** Both list LM Studio first, then llama.cpp, saying "Also for: LM Studio".
+- [ ] **Search "free voice"**, with the Model providers chip off: OpenRouter, and not OpenAI.
+- [ ] **Add from the catalog.** Search "ollama", then **Add**: Ollama's page opens. Back at Models → Add a provider, Ollama says "Added", with **Add another**.
+- [ ] **A speech role's Add.** Models → Speech in → **Add a provider**: the Transcription chip is on; OpenAI, Groq, OpenRouter and Local speech server are there, Anthropic isn't. Speech out's opens on Voice; OpenAI is there, Groq isn't.
+- [ ] **Plugins → Add opens on everything,** grouped: Model providers, Voices and transcription, Backup places, Tools and MCP, Developer. Tap **Backup places**, then **Set up** on S3-compatible storage: Backups opens with it chosen. Back on Add, **Set up** An MCP server: MCP servers opens.
+- [ ] **Installing from an address** is at the foot of the Add screen: an address, **Get it**, and the install screen comes first. Cancel.
+- [ ] **Plugins search.** Settings → Plugins is grouped by kind, provider plugins under Model providers naming your providers. Type "responses": OpenAI Responses first, then OpenAI, whose description names the Responses API. The chips filter as on Add.
+- [ ] **Offline.** In Airplane mode, Models → Add a provider says annai's catalog couldn't be loaded, and what is installed still lists. **Add another** on a provider you have works.
