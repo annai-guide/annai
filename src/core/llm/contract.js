@@ -116,7 +116,7 @@ export function sameOrigin(endpoint, url) {
   const want = originOf(endpoint.baseUrl);
   const got = originOf(url);
   if (want && got === want) return;
-  throw new ProviderError('bad-request', `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || url}, not its address ${want || endpoint.baseUrl || '(none)'}. Check its tunables.`);
+  throw new ProviderError('bad-request', `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${want || endpoint.baseUrl || '(none)'}. Check its tunables.`);
 }
 
 /** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere (fix pass). @param {Response} res @param {{ name?: string }} endpoint */

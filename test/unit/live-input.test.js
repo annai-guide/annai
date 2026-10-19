@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { StreamResampler, LiveInput } from '../../src/core/realtime/input.js';
+import { LiveInput } from '../../src/core/realtime/input.js';
+import { StreamResampler } from '../../src/core/voice/pcm.js';
 import { clip, quiet, cat, burst, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
@@ -96,11 +97,11 @@ test('the resampler gives the same samples chunk by chunk as all at once (within
       const parts = [];
       for (let i = 0; i < input.length; i += size) parts.push(...r.push(input.subarray(i, i + size)));
       assert.equal(parts.length, whole.length, `${from} in pieces of ${size}`);
-      assert.ok(parts.every((x, i) => Math.abs(x - whole[i]) <= 0x7fff * 1e-3), `${from} in pieces of ${size}: the same samples`);
+      assert.ok(parts.every((x, i) => Math.abs(x - whole[i]) <= 1e-3), `${from} in pieces of ${size}: the same samples`);
     }
     // A 440 Hz tone at half scale stays about half scale.
     const peak = Math.max(...whole.slice(200).map(Math.abs));
-    assert.ok(peak > 0x7fff * 0.45 && peak < 0x7fff * 0.55, `${from}: peak ${peak}`);
+    assert.ok(peak > 0.45 && peak < 0.55, `${from}: peak ${peak}`);
   }
 });
 

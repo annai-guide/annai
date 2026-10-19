@@ -1,4 +1,4 @@
-import { biquad } from '../voice/pcm.js';
+import { StreamResampler } from '../voice/pcm.js';
 import { Detector } from '../voice/detector.js';
 
 /**
@@ -9,42 +9,6 @@ import { Detector } from '../voice/detector.js';
  * While Koe plays, a start needs bargeInDb more over the floor (decision 13): her own voice from the car's speakers is
  * quieter than a passenger.
  */
-
-/** Sound at another rate, piece by piece, as 16-bit PCM: the same samples as all at once (filtered, then read between samples, as resample()). */
-export class StreamResampler {
-  #pos = 0; // the next output's place in the input
-  #base = 0; // where this piece starts in the input
-  #last = 0; // the last piece's last sample, filtered
-  #n = 0; // outputs so far
-  #filter;
-
-  /** @param {number} from @param {number} to */
-  constructor(from, to) {
-    this.step = from / to;
-    const a = to < from ? biquad('lowpass', to * 0.45, from) : null;
-    const b = to < from ? biquad('lowpass', to * 0.45, from) : null;
-    this.#filter = a && b ? (/** @type {number} */ x) => b(a(x)) : (/** @type {number} */ x) => x;
-  }
-
-  /** @param {Float32Array} pcm @returns {Int16Array} */
-  push(pcm) {
-    const x = new Float32Array(pcm.length + 1); // x[0]: the sample before this piece
-    x[0] = this.#last;
-    for (let i = 0; i < pcm.length; i++) x[i + 1] = this.#filter(pcm[i]);
-    /** @type {number[]} */
-    const out = [];
-    for (; this.#pos <= this.#base + pcm.length - 1; this.#pos = ++this.#n * this.step) {
-      const j = Math.floor(this.#pos);
-      const f = this.#pos - j;
-      const k = j - this.#base + 1;
-      const v = Math.max(-1, Math.min(1, x[k] * (1 - f) + (f ? x[k + 1] : 0) * f));
-      out.push(Math.round(v < 0 ? v * 0x8000 : v * 0x7fff));
-    }
-    if (pcm.length) this.#last = x[pcm.length];
-    this.#base += pcm.length;
-    return Int16Array.from(out);
-  }
-}
 
 export class LiveInput {
   /** Speech is being sent now. */
@@ -112,7 +76,7 @@ export class LiveInput {
     }
     const d = this.#detector;
     d.startDb = this.startDb + (this.speaking() ? this.bargeInDb : 0);
-    const out = /** @type {StreamResampler} */ (this.#resampler).push(pcm);
+    const out = Int16Array.from(/** @type {StreamResampler} */ (this.#resampler).push(pcm), (v) => Math.round(Math.max(-1, Math.min(1, v)) * (v < 0 ? 0x8000 : 0x7fff)));
     if (this.active) this.#add(out);
     else this.#hold(out);
     this.#events(d.push(pcm));
