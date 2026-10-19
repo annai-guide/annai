@@ -29,7 +29,7 @@ export async function renderUpdates(ctx) {
   const plugins = (await u?.plugins().catch(() => [])) ?? [];
   const app = u?.waiting ? 'waiting' : (u?.app?.state() ?? 'none');
   const rows = await ctx.plugins.describe().catch(() => []);
-  const names = (/** @type {(r: any) => boolean} */ which) => rows.filter(which).map((/** @type {any} */ r) => r.name).join(', ');
+  const names = (/** @type {(r: any) => boolean} */ is) => rows.filter(is).map((/** @type {any} */ r) => r.name).join(', ');
   const restart = names((r) => r.restart);
   const fromFile = names((r) => r.source === 'file');
   const status = statusWords(u ?? { checking: false, last: null, checkedAt: null }, app !== 'none' || plugins.length > 0);
@@ -41,21 +41,16 @@ export async function renderUpdates(ctx) {
       u?.checkNow().catch(() => {}); // drawn again as it starts and ends
     },
   }, u?.checking ? 'Checking…' : 'Check now');
-  const restartButton = (/** @type {string} */ label) => h('button', {
-    class: 'btn pri', type: 'button',
-    onclick: (/** @type {Event} */ e) => {
-      const b = /** @type {HTMLButtonElement} */ (e.currentTarget);
-      b.disabled = true;
-      b.textContent = 'Restarting…';
-      restartAnnai(ctx);
-    },
-  }, label);
+  const restartButton = (/** @type {string} */ label) => {
+    const b = h('button', { class: 'btn pri', type: 'button', onclick: () => { b.disabled = true; b.textContent = 'Restarting…'; restartAnnai(ctx); } }, label);
+    return b;
+  };
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Updates' }),
     versionLine(ctx.version),
     h('section', { class: 'panel', 'aria-label': 'Checking for updates' },
-      h('p', { class: 'checked', text: status.said }),
+      h('p', { text: status.said }),
       status.failed.length ? h('ul', { class: 'errors' }, ...status.failed.map((f) => h('li', { text: f }))) : null,
       h('div', { class: 'acts' }, check),
       h('p', { class: 'sub', text: 'annai checks by itself when it starts and when you come back to it, at most every 15 minutes. Plugins installed from an address are checked there at most once a day, so their sites aren\'t asked every time; Check now asks them too. Nothing changes until you tap Restart or Update.' })),

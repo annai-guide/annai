@@ -15,7 +15,7 @@ export const SOON = 15 * 60_000;
 export const DAILY = 24 * 60 * 60_000;
 
 export class Updates {
-  /** annai's own, once its service worker is registered: check() looks for a new sw.js. @type {{ check: () => Promise<unknown>, state: () => 'none' | 'downloading' } | null} */
+  /** annai's own, once its service worker is registered. @type {{ check: () => Promise<unknown>, state: () => 'none' | 'downloading' } | null} */
   app = null;
   /** Restarts into the version that waits. @type {(() => void) | null} */
   #swap = null;
@@ -27,7 +27,7 @@ export class Updates {
   notices = null;
   /** @type {{ busy: boolean, idle: () => Promise<void> } | null} */
   agent = null;
-  /** A tap's sound unlock, which nothing a tap starts may outrun (the Erase hang). @type {{ settled: () => Promise<void> } | null} */
+  /** A tap's sound unlock, which nothing a tap starts may outrun. @type {{ settled: () => Promise<void> } | null} */
   voice = null;
   /** A check started or ended; waits: what waits changed too. @type {(waits: boolean) => void} */
   changed = () => {};
@@ -46,9 +46,10 @@ export class Updates {
   /** @type {(() => void) | null} */
   #card = null;
 
-  /** @param {{ host: any, env?: import('./plugin-updates.js').Env, now?: () => number, online?: () => boolean, reload?: () => void }} o */
-  constructor({ host, env = {}, now = () => Date.now(), online = () => navigator.onLine !== false, reload = () => location.reload() }) {
+  /** limitMs: a check that hangs on a stalled connection ends then. @param {{ host: any, env?: import('./plugin-updates.js').Env, now?: () => number, online?: () => boolean, reload?: () => void, limitMs?: number }} o */
+  constructor({ host, env = {}, now = () => Date.now(), online = () => navigator.onLine !== false, reload = () => location.reload(), limitMs = 45_000 }) {
     this.host = host;
+    this.limitMs = limitMs;
     this.env = env;
     this.now = now;
     this.online = online;
@@ -106,7 +107,12 @@ export class Updates {
     }
     if (what.app || what.official) this.#at = t;
     if (what.address) this.#addressAt = t;
-    const run = this.#run(what).finally(() => {
+    /** @type {any} */
+    let timer;
+    /** @type {Promise<Result>} */
+    const slow = new Promise((r) => { timer = setTimeout(() => r((this.last = { failed: ['The check took too long. Check the connection, and try again.'], found: this.last?.found ?? [] })), this.limitMs); });
+    const run = Promise.race([this.#run(what), slow]).finally(() => {
+      clearTimeout(timer);
       this.#running = null;
       this.changed(this.#moved);
     });
