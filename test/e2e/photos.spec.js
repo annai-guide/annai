@@ -263,3 +263,26 @@ test('Show Shiori this part: zoomed in, the part on screen goes to her in your m
   await expect(page.locator('.convo .you img').last()).toBeVisible();
   await expect(viewer).toHaveCount(0);
 });
+
+test("leaving the conversation lets the memory of the photos you sent go", async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
+  await page.getByRole('button', { name: 'Open the photo full size' }).click();
+  await page.getByRole('dialog', { name: /^Photo / }).getByRole('button', { name: 'Show Shiori this part' }).click();
+  const img = page.locator('.convo .you img').last();
+  await expect(img).toHaveAttribute('src', /^blob:/);
+  const url = /** @type {string} */ (await img.getAttribute('src'));
+  /** Whether the photo at a blob: address can still be loaded. @param {string} u */
+  const loads = (u) => page.evaluate((src) => new Promise((resolve) => {
+    const i = new Image();
+    i.onload = () => resolve('kept');
+    i.onerror = () => resolve('gone');
+    i.src = src;
+  }), u);
+  expect(await loads(url)).toBe('kept');
+  await page.goto('/#/trips');
+  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  await expect.poll(() => loads(url)).toBe('gone');
+});

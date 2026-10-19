@@ -26,6 +26,23 @@ export function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+/**
+ * Runs fn once node has left the page, such as a screen another replaced: its place is watched once it has
+ * one, the frame after it is built. One never put on the page counts as gone then. @param {Node} node @param {() => void} fn
+ */
+export function whenGone(node, fn) {
+  requestAnimationFrame(() => {
+    const parent = node.parentNode;
+    if (!parent) return fn();
+    const seen = new MutationObserver(() => {
+      if (node.isConnected) return;
+      seen.disconnect();
+      fn();
+    });
+    seen.observe(parent, { childList: true });
+  });
+}
+
 /** A labelled control: <label class="field"><span>Label</span>control</label>. @param {string} label @param {HTMLElement} control */
 export function field(label, control) {
   return h('label', { class: 'field' }, h('span', { class: 'field-label', text: label }), control);

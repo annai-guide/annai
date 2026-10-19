@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, whenGone } from '../dom.js';
 import { renderCard, cardWho } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
 import { storedTexts, blobBytes } from '../../core/agent/log.js';
@@ -72,6 +72,8 @@ export async function renderTalk(ctx) {
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
   const replaced = new Map((await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['photo.replace'] })))
     .map((/** @type {any} */ e) => [e.data?.old, e.data]));
+  /** @type {string[]} the photos' addresses, whose memory goes with the screen */
+  const urls = [];
   /** The photos the user sent, as Shiori was sent them; a tap opens one full size. @param {any} images */
   const sentPhotos = async (images) => {
     const out = [];
@@ -79,6 +81,7 @@ export async function renderTalk(ctx) {
       const bytes = await blobBytes(ctx.store, latestCopy(String(im?.hash ?? ''), replaced));
       if (!bytes) continue;
       const url = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (bytes)], { type: String(im.mediaType ?? 'image/webp') }));
+      urls.push(url);
       const label = String(im.path ?? 'A photo you sent');
       out.push(h('button', { class: 'photo', type: 'button', 'aria-label': 'Open the photo full size', onclick: () => openPhotoViewer(url, label) },
         h('img', { src: url, alt: 'A photo you sent', title: label })));
@@ -173,12 +176,14 @@ export async function renderTalk(ctx) {
     list.childElementCount ? list : h('p', { class: 'empty', text: 'Nothing yet. Tap Shiori or Type below to talk.' }),
     list.childElementCount ? null : list);
   requestAnimationFrame(() => {
-    if (!list.isConnected) {
-      stop(); // another screen opened while this one was built
-      return;
-    }
+    if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
     wasShown = true;
     list.lastElementChild?.scrollIntoView({ block: 'end' });
+  });
+  // Gone, it stops listening at once, and the photos it showed let their memory go.
+  whenGone(screen, () => {
+    stop();
+    urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;
 }
