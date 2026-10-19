@@ -8,6 +8,12 @@ import { SYS } from '../../src/core/scopes.js';
 import { startFakeServer } from '../fakes/model-server.js';
 import { browserFetch } from '../fakes/browser-fetch.js';
 import { hostKit } from './package-kit.js';
+import { readFile } from 'node:fs/promises';
+import { createLlm } from '../../src/core/llm/service.js';
+import { readConfig, getKey, providerOf } from '../../src/core/llm/config.js';
+import { setupUi } from '../../src/ui/provider-setup.js';
+import { setupOf } from '../../src/core/llm/setup.js';
+import { PluginHost } from '../../src/core/plugins.js';
 
 // Another address looks for what a server offers, at no cost (milestone 5 of providers as plugins,
 // decision 18): its model list, and an empty request to each path annai knows, read against a control
@@ -206,4 +212,151 @@ test('an address annai takes keys to, alone, is checked before anything is sent:
   await assert.rejects(probe('', KEY, counting), /Give the server's address/);
   await assert.rejects(probe('https://llm.example.com/v1', 'sk-two\nlines', counting), /paste it again/);
   assert.equal(sent, 0);
+});
+
+/**
+ * annai's DOM builder stood in for: plain elements holding their attributes (handlers among them), children,
+ * text, value and state. @param {string} tag @param {any} [attrs] @param {...any} children
+ */
+const fakeH = (tag, attrs = {}, ...children) => {
+  const keep = (/** @type {any[]} */ c) => c.flat(Infinity).filter((x) => x !== null && x !== undefined && x !== false);
+  /** @type {any} */
+  const el = {
+    tag, attrs: { ...attrs }, value: attrs?.value ?? '', disabled: Boolean(attrs?.disabled), textContent: attrs?.text ?? '', children: [],
+    replaceChildren: (/** @type {any[]} */ ...c) => { el.children = keep(c); },
+    append: (/** @type {any[]} */ ...c) => { el.children.push(...keep(c)); },
+  };
+  el.replaceChildren(...children);
+  return el;
+};
+/** @param {any} el @returns {any[]} */
+const all = (el) => [el, ...(el?.children ?? []).flatMap((/** @type {any} */ c) => (typeof c === 'object' ? all(c) : []))];
+/** @param {any} el @returns {string} */
+const textOf = (el) => (typeof el === 'object' ? [el.textContent, ...el.children.map(textOf)].join(' ') : String(el)).replace(/\s+/g, ' ').trim();
+/** @param {any} el @param {string} text */
+const buttonOf = (el, text) => all(el).find((x) => x.tag === 'button' && textOf(x) === text);
+
+/** Every text annai keeps: files, log entries and stored content. @param {any} store */
+const everything = (store) => store.tx(['files', 'events', 'blobs', 'scopes'], 'readonly', async (/** @type {any} */ t) => {
+  const out = [];
+  for (const sc of await t.listScopes()) out.push(JSON.stringify(await t.listFiles(sc.id)), JSON.stringify(await t.listEvents(sc.id)));
+  for (const b of await t.listBlobs()) out.push(new TextDecoder().decode(new Uint8Array((await t.getBlob(b.hash))?.data ?? new ArrayBuffer(0))));
+  return out.join('\n');
+});
+
+/**
+ * The model service, with annai's catalog and official plugins from this repository; the stand-ins at 127.0.0.1 are
+ * reached as a page at annai's address reaches them, by annai and by plugins (annai.net.fetch).
+ */
+async function device() {
+  const k = await hostKit();
+  const root = new URL('../../', import.meta.url);
+  // Installed from annai's catalog; loaded from this repository, as Node has no service worker to serve them (they are
+  // hash-checked against the catalog, so they are these files), which lets a plugin's modules import each other.
+  const host = new PluginHost({ registry: k.registry, workspace: k.ws, importModule: (/** @type {string} */ url) => {
+    const m = /^\/plugins\/([^/]+)\/(.+)$/.exec(url);
+    return import(m ? new URL(`plugins-official/${m[1]}/${m[2]}`, root).href : url);
+  } });
+  const asBrowser = browserFetch(ANNAI);
+  const get = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    const u = new URL(String(url), 'http://annai.test');
+    if (u.hostname === '127.0.0.1') return asBrowser(String(url), init);
+    try {
+      return new Response(await readFile(new URL(`.${u.pathname}`, root)));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+  host.connect({ fetch: get });
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: host, fetch: get, probe: (url) => fetch(url).then(() => true, () => false) });
+  /** @type {string[]} the providers its panel added, in turn */
+  const added = [];
+  const ctx = { llm, store: k.store, registry: k.registry, plugins: host, notices: { card: () => {}, toast: () => {} }, render: () => {}, go: () => {} };
+  const ui = () => ({ ...setupUi(ctx, 'provider-another-address', { added: (/** @type {string} */ id) => { added.push(id); } }), h: fakeH });
+  return { ...k, host, llm, ctx, ui, added };
+}
+
+test('Add with these turns on what was found, Messages at the root address, and only the protocol plugins those need are installed; the key is kept once, by annai, and is in no file, log entry or trace', async () => {
+  const d = await device();
+  const s = await startFakeServer({ flavour: 'llamacpp', key: KEY });
+  try {
+    // Add on Another address: its plugin, and nothing else, for its own Add flow.
+    assert.equal(await d.llm.startAdd('provider-another-address', { official: true, roles: 'recommended' }), null);
+    assert.deepEqual(Object.keys(await d.host.installed()), ['provider-another-address']);
+    const setup = /** @type {any} */ (setupOf(d.registry, 'provider-another-address'));
+    assert.equal(setup.panel(d.ui(), { id: 'pv-1', name: 'Mine', key: false }), null, "a provider's own page has the standard switches");
+    const panel = setup.panel(d.ui(), null);
+    assert.equal(buttonOf(panel, 'Add with these'), undefined, 'nothing to add before a look');
+    all(panel).find((x) => x.attrs.id === 'probe-address').value = s.origin;
+    all(panel).find((x) => x.attrs.id === 'probe-key').value = KEY;
+    await buttonOf(panel, 'Look for what it offers').attrs.onclick();
+    const shown = textOf(panel);
+    for (const line of ['✓ Model list: 1 model', '✓ Chat Completions', '✓ OpenAI Responses', '✓ Anthropic Messages', '✗ Transcription: not found', '✗ Voice: not found']) assert.ok(shown.includes(line), `${line} in: ${shown}`);
+    assert.match(shown, /Nothing here costs money; Test sends real requests/);
+    assert.ok(!s.requests.some((q) => q.method === 'POST' && q.body && typeof q.body === 'object' && Object.keys(q.body).length), 'only empty requests');
+
+    await buttonOf(panel, 'Add with these').attrs.onclick();
+    assert.equal(d.added.length, 1, 'the provider it added is opened');
+    const cfg = await readConfig(d.ws);
+    const rec = cfg.providers[d.added[0]];
+    const p = providerOf(rec);
+    assert.deepEqual([rec.plugin, p.name, p.baseUrl], ['provider-another-address', new URL(s.origin).host, `${s.origin}/v1`]);
+    assert.deepEqual(Object.fromEntries(Object.entries(p.abilities).map(([id, a]) => [id, a.on])), { 'chat-completions': true, responses: true, messages: true, transcription: false, voice: false });
+    assert.equal(p.abilities.messages.baseUrl, s.origin, 'Messages at the address without /v1');
+    assert.equal(p.abilities.responses.baseUrl, `${s.origin}/v1`);
+    assert.deepEqual(Object.keys(await d.host.installed()).sort(), ['anthropic-messages', 'chat-completions', 'openai-responses', 'provider-another-address'], 'no speech plugin: nothing found needs it');
+    assert.equal(await getKey(d.store, rec.id), KEY);
+    assert.deepEqual(await d.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), [`llm:${rec.id}`]);
+    assert.ok(!(await everything(d.store)).includes(KEY), 'the key is in no file, log entry or trace');
+    assert.ok((await everything(d.store)).includes('plugin:provider-another-address'), 'its requests are in the trace');
+  } finally {
+    await s.stop();
+  }
+});
+
+test("Add with these doesn't switch on a protocol plugin the user turned off: it says so, and nothing is added; changing the address after a look asks for another", async () => {
+  const d = await device();
+  const s = await startFakeServer({ flavour: 'whole' });
+  try {
+    await d.llm.ensureType('chat-completions');
+    await d.host.setEnabled('chat-completions', false);
+    assert.equal(await d.llm.startAdd('provider-another-address', { official: true }), null);
+    const panel = /** @type {any} */ (setupOf(d.registry, 'provider-another-address')).panel(d.ui(), null);
+    const address = all(panel).find((x) => x.attrs.id === 'probe-address');
+    address.value = `${s.origin}/v1`;
+    await buttonOf(panel, 'Look for what it offers').attrs.onclick();
+    assert.ok(textOf(panel).includes('✓ Chat Completions'));
+    await buttonOf(panel, 'Add with these').attrs.onclick();
+    assert.match(textOf(panel), /which you turned off, isn't switched on/);
+    assert.equal((await d.host.installed())['chat-completions'].enabled, false);
+    assert.deepEqual(Object.keys((await readConfig(d.ws)).providers), []);
+    assert.deepEqual(d.added, []);
+    // A look is for the address it looked at.
+    address.value = 'https://elsewhere.example/v1';
+    address.attrs.oninput();
+    assert.equal(buttonOf(panel, 'Add with these'), undefined);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("the plugin asks whether a server is there at all as the Test button does: a no-cors GET with no key, body or cookies, which browsers send only if it may follow a redirect", async () => {
+  const { activate } = await import('../../plugins-official/provider-another-address/index.js');
+  /** @type {[string, any][]} */
+  const sent = [];
+  const annai = {
+    net: { fetch: async (/** @type {string} */ url, /** @type {any} */ init = {}) => { sent.push([url, init]); throw new TypeError('Failed to fetch'); } },
+    helpers: { addressProblem },
+    providers: { setup: (/** @type {any} */ s) => s },
+  };
+  const setup = activate(annai);
+  const panel = setup.panel({ h: fakeH }, null);
+  all(panel).find((x) => x.attrs.id === 'probe-address').value = 'https://llm.example.test/v1';
+  all(panel).find((x) => x.attrs.id === 'probe-key').value = KEY;
+  await buttonOf(panel, 'Look for what it offers').attrs.onclick();
+  const reach = sent.filter(([, init]) => init.mode === 'no-cors');
+  assert.equal(reach.length, 1, 'once');
+  assert.deepEqual([reach[0][1].method, reach[0][1].headers, reach[0][1].body, reach[0][1].credentials, reach[0][1].redirect], [undefined, undefined, undefined, 'omit', undefined]);
+  for (const [url, init] of sent.filter(([, i]) => i.mode !== 'no-cors')) assert.equal(init.redirect, 'manual', `${url}: the requests that may carry the key never follow a redirect`);
+  assert.match(textOf(panel), /annai couldn't reach llm\.example\.test/);
 });
