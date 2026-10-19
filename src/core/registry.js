@@ -20,8 +20,9 @@ export const KEYED = new Set(['endpoint-type', 'storage-type']);
  * How a name's owner is found. rank: lower first (built-ins 0, official 1, third-party 2, then install time, then id);
  * choice: the user's; reserved: 'only' for a name annai keeps (the loop's own tools), 'own' for one annai has its own
  * of (its components, a built-in's provides), used unless the user chooses a plugin's.
+ * official: the official plugin whose manifest provides a keyed name, which nobody else owns.
  * @typedef {{ rank: (pluginId: string) => (number | string)[], choice: (kind: string, name: string) => string | undefined,
- *   reserved: (kind: string, name: string) => 'only' | 'own' | null }} Rules
+ *   reserved: (kind: string, name: string) => 'only' | 'own' | null, official?: (kind: string, name: string) => string | undefined }} Rules
  * @typedef {{ kind: string, name: string, owner: string, used: boolean, reserved: boolean, chosen: boolean }} Clash
  *   reserved: no choice can change the owner
  */
@@ -143,7 +144,10 @@ export class Registry {
     if (chosen && live.some((e) => e.pluginId === chosen)) return { pluginId: chosen, chosen: true };
     const rank = (/** @type {{ pluginId: string, seq: number }} */ e) => [...this.#rules.rank(e.pluginId), e.seq];
     const [first] = live.sort((a, b) => compareRanks(rank(a), rank(b)));
-    if (how === 'own' && (!first || this.#rules.rank(first.pluginId)[0] !== 0)) return { pluginId: 'annai', chosen: false };
+    const top = first && this.#rules.rank(first.pluginId)[0];
+    if (how === 'own' && top !== 0) return { pluginId: 'annai', chosen: false };
+    // A keyed name annai's official plugin provides is a built-in's or an official's, or nobody's: never a third party's.
+    if (first && !(Number(top) <= 1) && KEYED.has(kind) && this.#rules.official?.(kind, name)) return null;
     return first ? { pluginId: first.pluginId, chosen: false } : null;
   }
 
@@ -165,7 +169,7 @@ export class Registry {
         const o = this.owner(kind, name);
         const others = all.some((e) => e.pluginId !== pluginId && !this.#disabled.has(e.pluginId) && read(e.item) === name);
         if (o?.pluginId === pluginId && !o.chosen && !others) continue;
-        out.push({ kind, name, owner: o?.pluginId ?? pluginId, used: o?.pluginId === pluginId, reserved: !this.choosable(kind, name), chosen: Boolean(o?.chosen) });
+        out.push({ kind, name, owner: o?.pluginId ?? ((KEYED.has(kind) && this.#rules.official?.(kind, name)) || pluginId), used: o?.pluginId === pluginId, reserved: !this.choosable(kind, name), chosen: Boolean(o?.chosen) });
       }
     }
     return out;

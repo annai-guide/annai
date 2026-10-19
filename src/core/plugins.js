@@ -48,6 +48,10 @@ function defaultsOf(schema) {
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
   backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer, addressProblem });
 
+/** The kinds annai.register refuses, with the call each goes through. @type {Record<string, string>} */
+const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',
+  hook: 'annai.hooks.on', provider: "the manifest's provider", 'provider-setup': 'annai.providers.setup' };
+
 /** A state record's kind: a bare skill, or a plugin (every record from before milestone 8). @param {any} s @returns {'skill' | 'plugin'} */
 const kindOfState = (s) => (s?.kind === 'skill' ? 'skill' : 'plugin');
 /** Where a package came from, read the same way for records from before milestone 8, whose source was the file's name. @param {any} s */
@@ -98,6 +102,7 @@ export class PluginHost {
       if (kind === 'tool' && [...TALK, ...ALWAYS_ON, ...(this.#services.agent?.loopTools?.() ?? []).map((/** @type {any} */ t) => t.name)].includes(name)) return 'only';
       return (kind === 'ui:component' && COMPONENTS.includes(name)) || [...this.builtins.values()].some((m) => m.provides?.[kind]?.includes(name)) ? 'own' : null;
     },
+    official: (kind, name) => Object.keys(this.#known).find((id) => this.#known[id]?.source === 'official' && [this.#known[id].provides?.[kind]].flat().includes(name)),
   };
 
   /**
@@ -132,9 +137,9 @@ export class PluginHost {
   /**
    * Each installed package's record, by id. kind: 'skill' for a bare skill (absent before milestone 8: a plugin); source: 'official', 'url'
    * or 'file' (before milestone 8, the file's name); skills: the skill names it claims; tools: its tools' names as of its last start;
-   * origins: where its provider sends keys, as installed.
+   * origins: where its provider sends keys, as installed; provides: what its manifest provides (milestone 6).
    * @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string, kind?: string,
-   *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], startFailures?: number, origins?: string[] }>>}
+   *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], startFailures?: number, origins?: string[], provides?: Record<string, string[]> }>>}
    */
   async installed() {
     return (this.#known = (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {});
@@ -253,7 +258,7 @@ export class PluginHost {
       // A new version of one that is off stays off (fix pass 8a-5); it keeps when it was first installed, its rank (milestone 6).
       version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: before?.installed ?? this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
       // Where its provider sends keys, as agreed to now: an update is compared with this (security review).
-      ...(pkg.provider ? { origins: descOrigins(pkg.provider) } : {}),
+      ...(pkg.provider ? { origins: descOrigins(pkg.provider) } : {}), ...(pkg.manifest.provides ? { provides: pkg.manifest.provides } : {}),
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
     const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
@@ -356,6 +361,10 @@ export class PluginHost {
     this.#uses = (await readAppSettings(this.ws)).uses ?? {};
     // An address kept raw before fix pass 8a-1 moves into its package's secret.
     for (const [id, s] of Object.entries(await this.installed())) if (s.source === 'url') await this.address(id).catch(() => {});
+    // What an official plugin provides is kept with its record (installed before that was, it is read now), so its names stay annai's while it is off.
+    for (const [id, s] of Object.entries(await this.installed())) {
+      if (s.source === 'official' && !s.provides) await this.#updateState(id, { provides: (await this.manifestOf(id))?.provides ?? {} }).catch(() => {});
+    }
     const rank = this.#rules.rank;
     const state = await this.installed();
     for (const [id, s] of Object.entries(state).sort(([a], [b]) => compareRanks(rank(a), rank(b)))) {
@@ -736,8 +745,9 @@ export class PluginHost {
     return Object.freeze({
       id,
       register: (/** @type {string} */ kind, /** @type {any} */ item) => {
-        // A provider's description comes from its manifest, its setup from providers.setup: never under another's id (milestone 6).
-        if (kind === 'provider' || kind === 'provider-setup') throw new PluginError(id, `annai keeps ${kind === 'provider' ? "model providers' descriptions" : "providers' setups"} itself: see docs/plugins.md, "Model providers"`);
+        // A kind with a call of its own is checked, and stamped with this plugin, there: never through here.
+        const call = String(kind).startsWith('ui:') ? 'annai.ui' : Object.hasOwn(OWN_CALL, kind) ? OWN_CALL[kind] : '';
+        if (call) throw new PluginError(id, `annai.register can't add ${kind}: use ${call}`);
         return registry.add(id, kind, item);
       },
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),

@@ -142,9 +142,21 @@ test("a bug in an endpoint type counts against its plugin, and the call fails as
   const logged = [];
   const registry = new Registry({ log: (ev) => logged.push(ev) });
   const buggy = runType(async function* () { yield { type: 'text', text: 'a' }; throw new Error('oops'); });
+  registry.add('run-plugin', 'endpoint-type', buggy);
   await assert.rejects(callOnce({ type: buggy, endpoint: endpoint(), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');
   assert.equal(logged[0].type, 'plugin.error');
   assert.equal(logged[0].actor, 'plugin:run-plugin');
+});
+
+test('M6 fix: the plugin blamed for a bug is the one that registered the type, never a pluginId the type carries', async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => logged.push(ev) });
+  const spoofed = { ...runType(async function* () { throw new TypeError('oops'); }), pluginId: 'chat-completions' };
+  registry.add('evil', 'endpoint-type', spoofed);
+  for (let i = 0; i < 3; i++) await assert.rejects(callOnce({ type: spoofed, endpoint: endpoint(), model: model(), key: null, request, registry }));
+  assert.deepEqual([...new Set(logged.filter((e) => e.type === 'plugin.error').map((e) => e.actor))], ['plugin:evil']);
+  assert.deepEqual([registry.isDisabled('evil'), registry.isDisabled('chat-completions')], [true, false]);
 });
 
 test('reasoning signed by another model is never sent to this one', async () => {

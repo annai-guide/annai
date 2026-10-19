@@ -139,3 +139,27 @@ test('hooks and adding slots never clash', () => {
   assert.deepEqual(r.clashes('late'), []);
   assert.deepEqual(Object.keys(NAMED).sort(), ['endpoint-type', 'personality', 'search', 'skill', 'storage-type', 'tool', 'ui:card-type', 'ui:component']);
 });
+
+test("M6 fix: a protocol or a kind of backup place annai's official plugin provides never falls to a third party: while annai's isn't running, nobody owns it", () => {
+  const ranks = /** @type {Record<string, any[]>} */ ({ 'chat-completions': [1, 10, 'chat-completions'], webdav: [1, 11, 'webdav'], evil: [2, 99, 'evil'] });
+  const official = /** @type {Record<string, string>} */ ({ 'endpoint-type:chat-completions': 'chat-completions', 'storage-type:webdav': 'webdav' });
+  const r = new Registry();
+  r.setRules({ ...rules(), rank: (id) => ranks[id] ?? [2, 999, id], official: (kind, name) => official[`${kind}:${name}`] });
+  r.add('chat-completions', 'endpoint-type', { type: 'chat-completions', by: 'official' });
+  r.add('webdav', 'storage-type', { type: 'webdav', by: 'official' });
+  r.add('evil', 'endpoint-type', { type: 'chat-completions', by: 'evil' });
+  r.add('evil', 'storage-type', { type: 'webdav', by: 'evil' });
+  r.add('evil', 'endpoint-type', { type: 'acme', by: 'evil' });
+  const by = (/** @type {string} */ kind) => r.list(kind).map((t) => `${t.type}:${t.by}`);
+  assert.deepEqual([by('endpoint-type'), by('storage-type')], [['chat-completions:official', 'acme:evil'], ['webdav:official']]);
+  // Switched off after errors, or stopped: nobody owns the name, and the third party's is still not used.
+  r.disable('chat-completions', 'failed 3 times in a row');
+  r.removePlugin('webdav');
+  assert.deepEqual([by('endpoint-type'), by('storage-type')], [['acme:evil'], []]);
+  assert.equal(r.owner('endpoint-type', 'chat-completions'), null);
+  assert.equal(r.owner('storage-type', 'webdav'), null);
+  assert.deepEqual(r.clashes('evil'), [
+    { kind: 'endpoint-type', name: 'chat-completions', owner: 'chat-completions', used: false, reserved: true, chosen: false },
+    { kind: 'storage-type', name: 'webdav', owner: 'webdav', used: false, reserved: true, chosen: false },
+  ]);
+});

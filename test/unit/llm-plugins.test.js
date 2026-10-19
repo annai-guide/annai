@@ -119,6 +119,19 @@ test("M6: a third party's protocol with the type of annai's own doesn't keep ann
   assert.deepEqual(registry.clashes('my-scripted').map((c) => [c.name, c.owner, c.reserved]), [['scripted', 'scripted-model', true]]);
 });
 
+test("M6 fix: offline, a third party's protocol doesn't stand in for annai's own that is installed but turned off", async () => {
+  const { host, registry } = await setup();
+  await ensureType(host, 'scripted', { fetch: repoFetch().get });
+  await host.setEnabled('scripted-model', false);
+  const mine = new Map([['annai-plugin.json', utf8(JSON.stringify({ id: 'my-scripted', name: 'My scripted', version: '1.0.0', api: 1, entry: 'index.js' }))],
+    ['index.js', utf8("export function activate(annai) { return annai.providers.register({ type: 'scripted', async *run() {} }); }")]]);
+  await host.install(mine, { source: 'file' });
+  await host.start('my-scripted');
+  assert.equal(endpointTypes(registry).get('scripted'), undefined);
+  await assert.rejects(ensureType(host, 'scripted', { fetch: async () => { throw new TypeError('Failed to fetch'); }, keepOff: true }), /couldn't be loaded/);
+  assert.equal(endpointTypes(registry).get('scripted'), undefined);
+});
+
 test('two calls for the same type at once share one install, and the type is there once', async () => {
   const { host, registry } = await setup();
   const real = repoFetch();
