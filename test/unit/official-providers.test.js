@@ -298,3 +298,70 @@ test("Gemini's Live voice: off until switched on, which installs gemini-live; Te
     await s.stop();
   }
 });
+
+test("OpenAI's Realtime voice: off until switched on, which installs openai-realtime; Test opens a session through the key as a subprotocol that answers OK aloud, in 24 kHz PCM; a refused key is said as one (K6)", async () => {
+  const desc = (await official('provider-openai')).provider;
+  const rt = /** @type {any} */ (desc.abilities.realtime);
+  assert.deepEqual([rt.kind, rt.type, rt.name, rt.on, rt.baseUrl], ['realtime', 'openai-realtime', 'Realtime voice', false, undefined], 'at the provider\'s own address');
+  assert.deepEqual(rt.models.map((/** @type {any} */ m) => m.providerId), ['gpt-realtime-2.1', 'gpt-realtime-2.1-mini']);
+  assert.deepEqual(rt.models.map((/** @type {any} */ m) => m.prices), [
+    { input: 4, cacheRead: 0.4, audioIn: 32, cacheReadAudio: 0.4, image: 5, output: 24, audioOut: 64 },
+    { input: 0.6, cacheRead: 0.06, audioIn: 10, cacheReadAudio: 0.3, image: 0.8, output: 2.4, audioOut: 20 },
+  ]);
+  assert.ok(rt.models.every((/** @type {any} */ m) => m.input.includes('image') && m.contextWindow === 128000));
+  assert.match(rt.note, /short-lived/);
+  assert.ok(!desc.roles?.recommended?.['koe-talk'], 'not recommended for Koe until a real key has shown OpenAI takes one from a browser');
+  assert.ok(!entry('provider-openai').requires.some((/** @type {any} */ r) => r.id === 'openai-realtime'), 'it brings its protocol only when switched on');
+  assert.ok(entry('provider-openai').version > '1.0.0', 'a version past the one released');
+  const SK = 'sk-proj-stand-in-openai-key-0123456789';
+  const s = await startRealtimeServer({ flavour: 'openai', key: SK, pace: 0.05, turns: [{ said: 'OK.', audio: new Uint8Array(9600), usage: { input_tokens: 500, output_tokens: 20, input_token_details: { text_tokens: 500 }, output_token_details: { audio_tokens: 20 } } }] });
+  try {
+    const k = await hostKit();
+    const fetch = async (/** @type {any} */ url) => {
+      try {
+        return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+      } catch {
+        return new Response('not found', { status: 404 });
+      }
+    };
+    const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+    const id = await llm.addProvider('provider-openai', { key: SK, abilities: { realtime: { on: false, baseUrl: `${s.origin}/v1` } } });
+    assert.ok(!(await k.host.installed())['openai-realtime'], 'nothing for live sessions until they are switched on');
+    const cfg = await readConfig(k.ws);
+    assert.deepEqual(cfg.roles['koe-talk'].models, [], 'adding OpenAI never fills Koe (the split is opt-in)');
+    const rtId = /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'gpt-realtime-2.1')?.id);
+    await llm.setAbility(id, 'realtime', true);
+    assert.ok((await k.host.installed())['openai-realtime'], 'switching it on installs its protocol');
+    /** @type {number[]} */
+    const heard = [];
+    const r = await llm.test(rtId, { onAudio: (/** @type {Uint8Array} */ d, /** @type {any} */ f) => heard.push(d.length, f.rate) });
+    assert.deepEqual(r.steps.map((/** @type {any} */ x) => [x.step, x.ok]), [['access', true], ['key', true], ['live', true]]);
+    assert.equal(r.steps[2].detail, 'It answered aloud: OK.');
+    assert.equal(heard.reduce((n, x, i) => (i % 2 ? n : n + x), 0), 9600, 'its voice, to play');
+    assert.equal(heard[1], 24_000);
+    const [c] = s.connections();
+    assert.deepEqual([c.path, c.model, c.key], ['/v1/realtime', 'gpt-realtime-2.1', SK], 'the key went to the stand-in as a subprotocol, nowhere in the address');
+    assert.deepEqual(s.received().map((m) => m.type), ['session.update', 'conversation.item.create', 'response.create']);
+    assert.deepEqual(s.received()[0].session.audio.input.format, { type: 'audio/pcmu' });
+    assert.equal(s.received()[1].item.content[0].text, 'Say OK.');
+    assert.deepEqual((await readConfig(k.ws)).models[rtId].verified?.live, true);
+    assert.ok(!JSON.stringify(await k.log()).includes(SK), 'no key in any entry');
+    // A key OpenAI refuses is said as one, though the stand-in says it back.
+    await llm.unbench(id);
+    const { setKey } = await import('../../src/core/llm/config.js');
+    await setKey(k.store, id, 'sk-proj-wrong-0123456789');
+    const bad = await llm.test(rtId);
+    assert.deepEqual(bad.steps.map((/** @type {any} */ x) => [x.step, x.ok]), [['key', false]]);
+    assert.match(bad.steps[0].detail, /key was rejected/);
+    assert.ok(!JSON.stringify(await k.log()).includes('sk-proj-wrong-0123456789'));
+  } finally {
+    await s.stop();
+  }
+});
+
+test('Another address has a Realtime voice ability, off, for any server that speaks OpenAI Realtime (K6)', async () => {
+  const m = await official('provider-another-address');
+  const rt = /** @type {any} */ (m.provider.abilities.realtime);
+  assert.deepEqual([rt.kind, rt.type, rt.on], ['realtime', 'openai-realtime', false]);
+  assert.ok(entry('provider-another-address').version > '2.0.0', 'a version past the one released');
+});
