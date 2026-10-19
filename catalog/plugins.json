@@ -71,6 +71,30 @@
       }
     },
     {
+      "id": "openai-realtime",
+      "name": "OpenAI Realtime",
+      "version": "0.1.0",
+      "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 18575,
+      "requires": [],
+      "provides": {
+        "endpoint-type": [
+          "openai-realtime"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "9f8cdc6bd7ddf108bb4bbb2393f48ce1b9ea5ec6fb114c8610ee8c4342fed478",
+        "g711.js": "0815146297e07b0913c7a6cb1823b83e0bbfb92625e154633a835de76e716565",
+        "index.js": "e497c605d9b422a3032ad42471eefbe014a1d7fe5ba577610ebdd042c8c47448"
+      }
+    },
+    {
       "id": "openai-responses",
       "name": "OpenAI Responses",
       "version": "0.2.0",
