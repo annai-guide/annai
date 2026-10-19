@@ -50,6 +50,8 @@ export class Voice {
   #levels = new Set();
   /** Sound may play: a tap unlocked it (spec §10.1). */
   #unlocked = false;
+  /** @type {Promise<unknown>} */
+  #unlocking = Promise.resolve();
 
   /**
    * @param {{ llm: any, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, store?: import('../types.js').Store,
@@ -128,10 +130,17 @@ export class Voice {
       tried = undefined;
     }
     if (!tried) return Promise.resolve(false);
-    return tried.then((ok) => {
+    return (this.#unlocking = tried.then((ok) => {
       if (ok) this.#unlocked = true;
       return Boolean(ok);
-    }, () => false);
+    }, () => false));
+  }
+
+  /** Settles once the unlock in progress has started its silent clip or failed, at most after limitMs. @param {number} [limitMs] */
+  settled(limitMs = 1000) {
+    /** @type {any} */
+    let t;
+    return Promise.race([this.#unlocking, new Promise((r) => { t = setTimeout(r, limitMs); })]).then(() => clearTimeout(t));
   }
 
   /** The glow follows the sound (spec §16.3): her voice, or yours. @param {LevelListener} fn @returns {() => void} */

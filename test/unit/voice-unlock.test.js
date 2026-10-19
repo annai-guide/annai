@@ -62,3 +62,29 @@ test('the Voice unlocks once: a tap on Shiori and a choice on the chip unlock; o
   await tick();
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'unlock').length, 2);
 });
+
+// The Erase hang (2026-10-18): WebKit on Linux (Playwright's WebKit) can deadlock a page's process, and the
+// service worker that shares it, when the page goes away while an audio clip starts. A tap's sound unlock
+// starts one, so a tap that leaves the page waits for it first.
+
+test('settled() waits while an unlock starts its silent clip, at once when none is starting, and for a limited time at most', async () => {
+  const state = (/** @type {Promise<unknown>} */ p) => Promise.race([p.then(() => 'settled'), tick().then(() => 'waiting')]);
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
+  /** @type {(ok: boolean) => void} */
+  let started = () => {};
+  k.platform.player.unlock = () => new Promise((resolve) => { started = resolve; });
+  assert.equal(await state(k.voice.settled()), 'settled', 'nothing is starting');
+  k.voice.unlock();
+  const waiting = k.voice.settled();
+  assert.equal(await state(waiting), 'waiting');
+  started(true);
+  assert.equal(await state(waiting), 'settled');
+  assert.equal(await state(k.voice.settled()), 'settled', 'unlocked: nothing starts again');
+
+  const stuck = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
+  stuck.platform.player.unlock = () => new Promise(() => {}); // a clip that never starts
+  stuck.voice.unlock();
+  const t0 = Date.now();
+  await stuck.voice.settled(30);
+  assert.ok(Date.now() - t0 < 1000, 'it holds nothing up for long');
+});
