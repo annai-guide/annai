@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
+import { ensureBaseScopes } from '../../src/core/scopes.js';
+import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 import { ingestPhoto, photoSettings, fitSize, photoName, isPhotoType, MAX_CANVAS_PIXELS, DEFAULT_PHOTO_SETTINGS } from '../../src/core/photos.js';
 
 /** @param {string} name */
@@ -43,6 +45,16 @@ test('settings: defaults, and anything missing or out of range falls back to the
   assert.deepEqual(s, { keepOriginals: true, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: null }, request: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 1024 * 1024 } });
   assert.deepEqual(photoSettings({ photos: { ingest: { formats: ['image/jpeg'], quality: 0.8, maxBytes: 2_000_000 } } }).ingest,
     { formats: ['image/jpeg'], quality: 0.8, maxEdge: null, maxBytes: 2_000_000 });
+});
+
+test('settings: no limit is kept as 0, which a merge patch can write where null would delete it and bring the default back', async () => {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  await updateAppSettings(ws, { photos: { request: { maxEdge: 0, maxBytes: 0 } } });
+  const s = photoSettings(await readAppSettings(ws));
+  assert.equal(s.request.maxEdge, null);
+  assert.equal(s.request.maxBytes, null);
+  assert.equal(photoSettings({ photos: { ingest: { maxEdge: 0 } } }).ingest.maxEdge, null);
 });
 
 test('fitSize never enlarges, keeps the shape, and stays within the edge and pixel limits', () => {

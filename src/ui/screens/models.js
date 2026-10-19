@@ -1,10 +1,11 @@
-import { h, field } from '../dom.js';
+import { h, field, savedField, savedRadios, numberIn, queueSave } from '../dom.js';
+import { readAppSettings, updateAppSettings } from '../../core/settings.js';
+import { wantedTtl } from '../../core/agent/warmth.js';
 import { endpointOf, modelOf, saveRoles, CHAT_ROLES, SPEECH_ROLES, STAND_INS, speechKind } from '../../core/llm/config.js';
 import { LEVELS } from '../../core/llm/reasoning.js';
 import { addFromTemplate, templateUpdates, speechAdd } from '../../core/llm/templates.js';
 import { renderEndpoint, messageOf } from './endpoint.js';
 import { renderModel } from './model.js';
-import { talkPanel } from '../talk-panel.js';
 import { needsCode, signInUrl, codeSignIn, tapCode, exchange, signIn, signingIn } from '../openrouter.js';
 
 /** @type {Record<string, string>} */
@@ -17,23 +18,52 @@ const ROLE_NAMES = {
 const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: "the phone's own; usually goes to Google or Apple", 'browser-voice': "the browser's own; some voices go online" };
 
 /**
- * Settings → Models (spec §9.2, §9.6, §9.8): the endpoints annai calls, their models, and which
- * models each role tries, in order.
+ * Settings → Models (spec §9.2, §9.6, §9.8): the endpoints annai calls, their models, which models
+ * each role tries, in order, and what Shiori's requests may cost and how large they grow (§6.4–6.6).
  * @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
  */
 export async function renderModels(ctx, route) {
   if (route.parts[1] === 'endpoint') return renderEndpoint(ctx, route.params.id ?? '');
   if (route.parts[1] === 'model') return renderModel(ctx, route.params.id ?? '');
   await ctx.llm.ready;
-  const [cfg, catalog] = await Promise.all([ctx.llm.config(), ctx.llm.templates()]);
+  const [cfg, catalog, app] = await Promise.all([ctx.llm.config(), ctx.llm.templates(), readAppSettings(ctx.ws)]);
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Models' }),
-    h('p', { class: 'sub', text: 'Where Shiori thinks: the endpoints annai calls, their models, and which models each role tries, in order.' }),
+    h('p', { class: 'sub', text: 'Where Shiori thinks: the endpoints annai calls, their models, which models each role tries, in order, and what her requests may cost.' }),
     signInSection(ctx, cfg),
     endpointsSection(ctx, cfg, catalog),
     rolesSection(ctx, cfg),
-    talkPanel(ctx));
+    ...requestSections(ctx, app.shiori ?? {}));
+}
+
+/** @param {string} title @param {...any} children */
+const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
+
+/**
+ * What requests may cost and how large they grow, with the models (the user, 2026-10-18): a day's
+ * spending (spec §6.6), the cache (§6.4), housekeeping (§6.5). Kept under shiori, where her loop reads them.
+ * @param {any} ctx @param {Record<string, any>} s the app settings' shiori entry
+ */
+function requestSections(ctx, s) {
+  const save = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { shiori: c });
+  const spend = h('input', { id: 'budget-spend', type: 'number', inputmode: 'decimal', min: '0.01', step: '0.01', placeholder: 'No limit', value: s.budgets?.spendPerDay ?? '' });
+  const c = { threshold: 0.7, maxRequestMiB: 8, ...(s.compaction ?? {}) };
+  const share = h('input', { id: 'compaction-threshold', type: 'number', inputmode: 'numeric', min: '50', max: '90', step: '5', placeholder: '70', value: String(Math.round(c.threshold * 100)) });
+  const mib = h('input', { id: 'compaction-max', type: 'number', inputmode: 'decimal', min: '1', max: '64', step: '1', placeholder: '8', value: String(c.maxRequestMiB) });
+  return [
+    section('Spend per day',
+      h('p', { class: 'sub', text: "What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit." }),
+      savedField('Spend per day (USD)', spend, () => numberIn(spend, 0.01, Infinity, 'A day costs at least $0.01; leave it empty for no limit.'), (v) => save({ budgets: { spendPerDay: v } }))),
+    section('Cache',
+      h('p', { class: 'sub', text: 'Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.' }),
+      savedRadios('Keep it for', [['1h', '1 hour'], ['5m', '5 minutes']], wantedTtl(s.cacheTtl), (v) => save({ cacheTtl: v }))),
+    section('Housekeeping',
+      h('p', { class: 'sub', text: "When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual." }),
+      h('div', { class: 'row' },
+        savedField('Summarize at (% of the context)', share, () => numberIn(share, 50, 90, 'Summarize at a share from 50 to 90%.', { whole: true }), (v) => save({ compaction: { threshold: v === null ? null : v / 100 } })),
+        savedField('Largest request (MiB)', mib, () => numberIn(mib, 1, 64, 'The largest request is from 1 to 64 MiB.'), (v) => save({ compaction: { maxRequestMiB: v } })))),
+  ];
 }
 
 /** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg @param {import('../../core/llm/templates.js').TemplateCatalog} catalog */
@@ -83,9 +113,19 @@ function rolesSection(ctx, cfg) {
   const models = Object.values(cfg.models).map(modelOf);
   const kind = (/** @type {string} */ id) => speechKind(cfg, types, id);
   const nameOf = (/** @type {string} */ id) => STAND_INS[id]?.name ?? models.find((m) => m.id === id)?.name ?? id;
-  const save = async (/** @type {import('../../core/llm/config.js').Roles} */ roles) => {
-    await saveRoles(ctx.ws, roles);
-    ctx.render();
+  /**
+   * Changes one role as it is saved now, read fresh so no other change is lost.
+   * @param {string} role @param {(r: import('../../core/llm/config.js').Roles[string]) => import('../../core/llm/config.js').Roles[string]} change
+   */
+  const edit = async (role, change) => {
+    const roles = (await ctx.llm.config()).roles;
+    await saveRoles(ctx.ws, { ...roles, [role]: change(roles[role]) });
+  };
+  /** A button's change to a role's list, after the saves waiting; Models is drawn again unless another screen was opened meanwhile. @param {string} role @param {(models: string[]) => string[]} change */
+  const list = async (role, change) => {
+    const here = location.hash;
+    await queueSave(() => edit(role, (r) => ({ ...r, models: change(r.models) })));
+    if (location.hash === here) ctx.render();
   };
   /** A speech list can take its own stand-ins and the models of its direction. @param {string} role */
   const speechChoices = (role) => [
@@ -95,40 +135,36 @@ function rolesSection(ctx, cfg) {
   return h('section', { class: 'panel', 'aria-label': 'Roles' },
     h('h2', { class: 'section', text: 'Roles' }),
     h('p', { class: 'sub', text: 'Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list.' }),
-    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models.filter((m) => !kind(m.id)), nameOf, save)),
+    ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models.filter((m) => !kind(m.id)), nameOf, list, edit)),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
-    ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, save, { speech: true })));
+    ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
 }
 
 /**
+ * One role: its list, which buttons change, and its reasoning level and wait, which save as they change.
  * @param {string} role @param {import('../../core/llm/config.js').Roles} roles @param {{ id: string, name: string }[]} choices what can be added
- * @param {(id: string) => string} nameOf @param {(roles: any) => Promise<void>} save @param {{ speech?: boolean }} [o]
+ * @param {(id: string) => string} nameOf @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list
+ * @param {(role: string, change: (r: any) => any) => Promise<void>} edit @param {{ speech?: boolean }} [o]
  */
-function roleBlock(role, roles, choices, nameOf, save, { speech = false } = {}) {
+function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } = {}) {
   const r = roles[role];
-  /** @param {number} i @param {number} by */
-  const moved = (i, by) => {
-    const list = r.models.slice();
-    [list[i], list[i + by]] = [list[i + by], list[i]];
-    return { ...roles, [role]: { ...r, models: list } };
-  };
+  /** Moves an entry up or down the list as it is when saved. @param {string} id @param {number} by */
+  const move = (id, by) => list(role, (ids) => {
+    const next = ids.slice();
+    const i = next.indexOf(id);
+    if (i >= 0 && next[i + by]) [next[i], next[i + by]] = [next[i + by], next[i]];
+    return next;
+  });
   const items = r.models.map((id, i) => h('li', { class: 'role-item' },
     h('span', { text: `${i + 1}. ${nameOf(id)}${STAND_IN_NOTES[id] ? ` (${STAND_IN_NOTES[id]})` : ''}` }),
-    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} up`, disabled: i === 0, onclick: () => save(moved(i, -1)) }, '↑'),
-    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} down`, disabled: i === r.models.length - 1, onclick: () => save(moved(i, 1)) }, '↓'),
-    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remove ${nameOf(id)} from ${role}`, onclick: () => save({ ...roles, [role]: { ...r, models: r.models.filter((_, j) => j !== i) } }) }, '✕')));
+    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} up`, disabled: i === 0, onclick: () => move(id, -1) }, '↑'),
+    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} down`, disabled: i === r.models.length - 1, onclick: () => move(id, 1) }, '↓'),
+    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remove ${nameOf(id)} from ${role}`, onclick: () => list(role, (ids) => ids.filter((x) => x !== id)) }, '✕')));
   const others = choices.filter((m) => !r.models.includes(m.id));
   const pick = h('select', { id: `role-${role}-add` }, ...others.map((m) => h('option', { value: m.id, text: m.name })));
-  const level = speech ? null : h('select', { id: `role-${role}-level`, onchange: () => save({ ...roles, [role]: { ...r, level: level.value } }) }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
+  const level = speech ? null : h('select', { id: `role-${role}-level` }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
   if (level) level.value = r.level;
-  const wait = h('input', {
-    id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : '30', value: r.firstOutputSeconds ?? '',
-    onchange: () => {
-      const n = Math.round(Number(wait.value));
-      const { firstOutputSeconds: _, ...rest } = r;
-      save({ ...roles, [role]: wait.value.trim() && n >= 1 && n <= 600 ? { ...rest, firstOutputSeconds: n } : rest });
-    },
-  });
+  const wait = h('input', { id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : '30', value: r.firstOutputSeconds ?? '' });
   const empty = role === 'main' ? 'No models yet. Add one.'
     : role === 'speech-in' ? "Nothing here, so annai can't hear you. Add an entry."
       : role === 'speech-out' ? "Nothing here, so Shiori can't speak aloud. Add a voice."
@@ -139,9 +175,16 @@ function roleBlock(role, roles, choices, nameOf, save, { speech = false } = {}) 
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
     h('div', { class: 'row' },
       others.length ? field(`Add a model to ${role}`, pick) : null,
-      others.length ? h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => save({ ...roles, [role]: { ...r, models: speech ? speechAdd(r.models, pick.value, role) : [...r.models, pick.value] } }) }, `Add to ${role}`)) : null,
-      level ? field(`Reasoning for ${role}`, level) : null,
-      field(waitLabel, wait)));
+      others.length ? h('div', { class: 'acts' }, h('button', {
+        class: 'btn', type: 'button',
+        onclick: () => {
+          const id = pick.value; // as chosen at the tap
+          list(role, (ids) => (ids.includes(id) ? ids : speech ? speechAdd(ids, id, role) : [...ids, id]));
+        },
+      }, `Add to ${role}`)) : null,
+      level ? savedField(`Reasoning for ${role}`, level, () => level.value, (v) => edit(role, (x) => ({ ...x, level: v }))) : null,
+      savedField(waitLabel, wait, () => numberIn(wait, 1, 600, 'Wait from 1 to 600 seconds; leave it empty for the usual.', { whole: true }),
+        (n) => edit(role, ({ firstOutputSeconds: _, ...x }) => (n === null ? x : { ...x, firstOutputSeconds: n })))));
 }
 
 /** The quickest start: Sign in with OpenRouter (spec §9.8), offered until an OpenRouter endpoint exists. @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */

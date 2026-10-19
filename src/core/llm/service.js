@@ -83,6 +83,21 @@ export function createLlm({
       });
     },
     /**
+     * One chat model, no fallback ("Try this model"), at main's reasoning level, traced as a "try"
+     * turn. A resting model is asked all the same, a failure doesn't rest it, and an answer ends its rest.
+     * @param {{ modelId: string, request: import('./contract.js').Request, onEvent?: (e: import('./contract.js').StreamEvent) => void, signal?: AbortSignal }} c
+     */
+    async callModel({ modelId, request, onEvent, signal }) {
+      await resolve(modelId); // its endpoint type, installed on demand; a model gone throws
+      const config = await readConfig(ws);
+      const r = await callRole({
+        role: 'try', models: [modelId], level: config.roles.main?.level, request, config, types: types(), keyFor: (id) => getKey(store, id), bench: new Bench(),
+        fetch: get, signal, onEvent, trace: modelTrace(store, SYS), registry: plugins.registry, uploads,
+      });
+      bench.clear(modelId);
+      return r;
+    },
+    /**
      * A quick decision (spec §9.7), recorded as a decide event.
      * @param {{ prompt: string, options: { id: string, label: string }[], threshold?: number, scope?: string, tag?: string }} c
      *   tag: whose decision it is ("plugin:<id>"), kept on its entries

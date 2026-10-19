@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, waitForServiceWorker, addEndpoint, savedBy } from './helpers.js';
 
 // Settings in the order a user reaches for them, Settings → Experimental, and the Jina key's link (the user, 2026-10-18).
 
@@ -55,4 +55,126 @@ test('Settings → Experimental points developers to Remote trace: install it fr
   const panel = page.getByRole('region', { name: 'Remote trace (for developers)' });
   await expect(panel).toContainText("Sends annai's trace to a server you run");
   await expect(panel.getByRole('link', { name: 'Find it in Settings → Plugins' })).toHaveAttribute('href', '#/plugins');
+});
+
+// Settings → Models takes the request settings, and settings save as they change (the user, 2026-10-18).
+
+test('Spend per day, the cache and housekeeping are on Settings → Models, and gone from Settings → Shiori', async ({ page }) => {
+  await openApp(page, '#/models');
+  for (const name of ['Spend per day', 'Cache', 'Housekeeping']) await expect(page.getByRole('region', { name, exact: true })).toBeVisible();
+  await expect(page.getByLabel('Spend per day (USD)')).toHaveValue('');
+  await expect(page.getByRole('radio', { name: '1 hour' })).toBeChecked(); // an hour unless you choose five minutes
+  await expect(page.getByLabel('Summarize at (% of the context)')).toHaveValue('70');
+  await expect(page.getByLabel('Largest request (MiB)')).toHaveValue('8');
+  await page.goto('/#/shiori');
+  await expect(page.getByRole('heading', { name: 'Shiori', level: 1 })).toBeVisible();
+  const own = page.getByRole('region', { name: 'How often she acts on her own' });
+  for (const label of ['Wakes per hour, not counting yours', 'Quiet from', 'Quiet until', 'Steps per wake']) await expect(own.getByLabel(label)).toBeVisible();
+  for (const name of ['Budgets', 'Housekeeping', 'Cache']) await expect(page.getByRole('heading', { name, exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Spend per day (USD)')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Save/ })).toHaveCount(1); // the personality's text alone
+});
+
+test('a setting saves as it changes, with no Save button, and is still there after a reload: a checkbox, a radio, a number, a time, a choice and JSON', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model' });
+  const fiveMinutes = page.getByRole('radio', { name: '5 minutes' });
+  await fiveMinutes.check();
+  await expect(savedBy(fiveMinutes)).toHaveText('Saved');
+  const spend = page.getByLabel('Spend per day (USD)');
+  await spend.fill('2.5');
+  await spend.press('Tab');
+  await expect(savedBy(spend)).toHaveText('Saved');
+  await page.getByRole('link', { name: /Stand-in/ }).click();
+  await page.getByRole('link', { name: /^b-model/ }).click();
+  await expect(page.getByRole('heading', { name: 'b-model' })).toBeVisible();
+  const limits = page.getByLabel('Photo limits (JSON)');
+  await limits.fill('{ "maxEdge": 1568 }');
+  await limits.blur();
+  await expect(savedBy(limits)).toHaveText('Saved');
+  await page.goto('/#/shiori');
+  const from = page.getByLabel('Quiet from');
+  await from.fill('22:00');
+  await from.blur();
+  const until = page.getByLabel('Quiet until');
+  await until.fill('07:00');
+  await until.blur();
+  await expect(savedBy(until)).toHaveText('Saved');
+  await page.goto('/#/settings');
+  const keep = page.getByRole('checkbox', { name: 'Keep originals: store photos exactly as taken' });
+  await keep.check();
+  await expect(savedBy(keep)).toHaveText('Saved');
+  const format = page.getByLabel('Save photos as');
+  await format.selectOption('jpeg');
+  await expect(savedBy(format)).toHaveText('Saved');
+  await page.reload();
+  await expect(page.getByRole('checkbox', { name: 'Keep originals: store photos exactly as taken' })).toBeChecked();
+  await expect(page.getByLabel('Save photos as')).toHaveValue('jpeg');
+  await page.goto('/#/shiori');
+  await expect(page.getByLabel('Quiet from')).toHaveValue('22:00');
+  await expect(page.getByLabel('Quiet until')).toHaveValue('07:00');
+  await page.goto('/#/models');
+  await expect(page.getByRole('radio', { name: '5 minutes' })).toBeChecked();
+  await expect(page.getByLabel('Spend per day (USD)')).toHaveValue('2.5');
+  await page.getByRole('link', { name: /Stand-in/ }).click();
+  await page.getByRole('link', { name: /^b-model/ }).click();
+  await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/"maxEdge": 1568/);
+});
+
+test("a value that isn't valid shows why by its field and isn't saved", async ({ page }) => {
+  await openApp(page, '#/models');
+  const share = page.getByLabel('Summarize at (% of the context)');
+  await share.fill('95');
+  await share.press('Tab');
+  await expect(page.getByText('Summarize at a share from 50 to 90%.')).toBeVisible();
+  await expect(share).toHaveAttribute('aria-invalid', 'true');
+  await page.reload();
+  await expect(page.getByLabel('Summarize at (% of the context)')).toHaveValue('70');
+});
+
+/** A file of the user's, as stored. @param {import('@playwright/test').Page} page @param {string} path */
+const meFile = (page, path) => page.evaluate(async (p) => {
+  const load = (/** @type {string} */ url) => import(url);
+  const { createIdbStore } = await load('/src/core/store-idb.js');
+  const { Workspace } = await load('/src/core/workspace.js');
+  const store = await createIdbStore();
+  try {
+    return await new Workspace(store).readText('me', p);
+  } finally {
+    store.close();
+  }
+}, path);
+
+test('choosing another personality moves the editor to it, so its Save writes that one (review, 2026-10-18)', async ({ page }) => {
+  await openApp(page);
+  await expect.poll(() => meFile(page, '/personalities/storyteller.md')).toBeTruthy(); // installed as annai starts
+  await page.goto('/#/shiori');
+  const shiori = await meFile(page, '/personalities/shiori.md');
+  const storyteller = page.getByRole('radio', { name: 'storyteller' });
+  await storyteller.check();
+  await expect(savedBy(storyteller)).toHaveText('Saved');
+  await expect(page.getByLabel('"storyteller"')).toHaveValue(/\S/);
+  await page.getByLabel('"storyteller"').fill('# Storyteller\nTell the stories of each place.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => meFile(page, '/personalities/storyteller.md')).toBe('# Storyteller\nTell the stories of each place.');
+  expect(await meFile(page, '/personalities/shiori.md')).toBe(shiori);
+});
+
+test("quiet hours set halfway ask for the other time quietly, and say they need both only once the pair is left (review, 2026-10-18)", async ({ page }) => {
+  await openApp(page, '#/shiori');
+  const from = page.getByLabel('Quiet from');
+  const until = page.getByLabel('Quiet until');
+  await from.fill('22:00');
+  await until.focus();
+  await expect(page.getByRole('status').filter({ hasText: 'Set the other time too.' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'Quiet hours need both times' })).toHaveCount(0);
+  await page.getByLabel('Steps per wake').focus();
+  await expect(page.getByRole('alert')).toHaveText('Quiet hours need both times. Clear both for none.');
+  await expect(until).toHaveAttribute('aria-invalid', 'true');
+  await until.fill('07:00');
+  await until.blur();
+  await expect(savedBy(until)).toHaveText('Saved');
+  await expect(page.getByRole('alert').filter({ hasText: 'Quiet hours' })).toHaveCount(0);
+  await expect(until).not.toHaveAttribute('aria-invalid', 'true');
 });

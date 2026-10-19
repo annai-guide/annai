@@ -62,15 +62,19 @@ test('Remote trace, installed from the catalog, sends a conversation to a sink t
     await expect(page.getByRole('heading', { name: 'Remote trace (for developers)' })).toBeVisible();
     // Off until configured: no chip yet.
     await expect(page.getByRole('button', { name: 'Sending trace' })).toHaveCount(0);
+    // Plain settings save as they change; the token has a Save button of its own (spec §16.1). Send, ticked
+    // before the token is saved, saves at once and the plugin's chip appears: the token typed is still there (review, 2026-10-18).
     await page.getByLabel('Server address').fill(`${sink.url}/trace`);
     await page.getByLabel('Token').fill(TOKEN);
     await page.getByRole('checkbox', { name: 'Send', exact: true }).check();
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText('Saved.')).toBeVisible();
-
-    // The chip, short in the dock's row; a tap opens the plugin's page.
     const chip = page.getByRole('button', { name: 'Sending trace' });
     await expect(chip).toBeVisible();
+    await page.waitForTimeout(300); // longer than the shell takes to draw the screen again after the chip
+    await expect(page.getByLabel('Token')).toHaveValue(TOKEN);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
+
+    // The chip, short in the dock's row; a tap opens the plugin's page.
     await expect(chip).toHaveText('Trace');
     const box = await chip.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(40);
@@ -105,7 +109,6 @@ test('Remote trace, installed from the catalog, sends a conversation to a sink t
     await expect(page.getByLabel('Device id')).toHaveValue(lines[0].device);
     // Off: the chip goes at once, and nothing more arrives.
     await page.getByRole('checkbox', { name: 'Send', exact: true }).uncheck();
-    await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('button', { name: 'Sending trace' })).toHaveCount(0);
     await page.waitForTimeout(1000);
     const before = (await sink.lines()).length;

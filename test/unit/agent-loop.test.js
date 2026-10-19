@@ -7,6 +7,7 @@ import { TALK_TAG, record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
+import { updateAppSettings } from '../../src/core/settings.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 
@@ -427,4 +428,22 @@ test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shio
   assert.match(snap.data.content, /snap gave back an image annai can't read/);
   assert.equal((await k.events(['out.speak']))[0]?.data.text, 'That picture was broken.');
   assert.deepEqual(k.agent.transcript.open(), []);
+});
+
+test('the cache lasts an hour unless the user chose five minutes; a model without the hour asks for five minutes (the user, 2026-10-18)', async () => {
+  const k = await agentKit([[say('One.'), say('Two.')], [say('Three.')]], { models: [{ cacheTtls: ['5m', '1h'] }, {}] });
+  assert.equal((await k.agent.settings()).cacheTtl, '1h'); // never chosen
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.equal(k.requests.at(-1).cacheTtl, '1h');
+  assert.equal(k.agent.cacheState()?.ttlMs, 60 * 60_000);
+  await updateAppSettings(k.ws, { shiori: { cacheTtl: '5m' } });
+  assert.equal((await k.agent.settings()).cacheTtl, '5m'); // chosen: kept
+  await updateAppSettings(k.ws, { shiori: { cacheTtl: '1h' } });
+  // The first model rests; the second lists no hour, so it is asked for five minutes, and its warmth lasts five.
+  k.llm.bench.bench('m-0', 60_000);
+  k.agent.send('Again');
+  await k.agent.idle();
+  assert.equal(k.requests.at(-1).cacheTtl, '5m');
+  assert.equal(k.agent.cacheState()?.ttlMs, 5 * 60_000);
 });

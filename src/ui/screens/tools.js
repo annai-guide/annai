@@ -1,4 +1,4 @@
-import { h, field } from '../dom.js';
+import { h, field, autosave, savedRadios } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf } from '../../core/llm/config.js';
@@ -32,11 +32,9 @@ export async function toolSwitchList(ctx) {
   }
   /** @param {string} key @param {string} label @param {string} [note] @param {boolean} [fixed] */
   const sw = (key, label, note, fixed = false) => {
-    const input = h('input', { type: 'checkbox', checked: fixed || switches[key] !== false, disabled: fixed, onchange: async (/** @type {Event} */ e) => {
-      await setToolSwitch(ctx.ws, key, /** @type {HTMLInputElement} */ (e.target).checked);
-      ctx.notices.toast(`${label} is ${/** @type {HTMLInputElement} */ (e.target).checked ? 'on' : 'off'}.`);
-    } });
-    return h('li', {}, h('label', { class: 'check' }, input, h('span', { text: label }), note ? h('span', { class: 'sub', text: ` ${note}` }) : null));
+    const input = h('input', { type: 'checkbox', checked: fixed || switches[key] !== false, disabled: fixed });
+    return h('li', { class: 'saving' }, h('label', { class: 'check' }, input, h('span', { text: label }), note ? h('span', { class: 'sub', text: ` ${note}` }) : null),
+      ...autosave(input, () => input.checked, (on) => setToolSwitch(ctx.ws, key, on)));
   };
   const ordered = [...GROUPS.filter((g) => groups.has(g)), ...[...groups.keys()].filter((g) => !GROUPS.includes(g))];
   return h('div', { class: 'tool-switches' },
@@ -50,19 +48,16 @@ export async function toolSwitchList(ctx) {
 export async function renderTools(ctx) {
   const app = await readAppSettings(ctx.ws);
   const web = app.web ?? {};
-  const radio = (/** @type {string} */ name, /** @type {[string, string][]} */ options, /** @type {string} */ value, /** @type {(v: string) => void} */ set) =>
-    h('fieldset', {}, h('legend', { text: name }), ...options.map(([v, label]) => h('label', { class: 'check' },
-      h('input', { type: 'radio', name, value: v, checked: v === value, onchange: () => set(v) }), h('span', { text: label }))));
   const hasKey = Boolean(await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret('plugin:web:jina')));
   const key = h('input', { id: 'jina-key', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: hasKey ? 'A key is set' : 'jina_…' });
-  const saveWeb = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { web: c }).then(() => ctx.notices.toast('Saved.'));
+  const saveWeb = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { web: c });
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Tools' }),
     h('section', { class: 'panel', 'aria-label': 'Web' },
       h('h2', { class: 'section', text: 'Web' }),
-      radio('Search via', [['auto', "Your model's own search when it has one, else Jina"], ['provider', "Your model's own search"], ['annai', 'Jina Search (needs the key below)'], ['off', 'Off']], web.searchVia ?? 'auto', (v) => saveWeb({ searchVia: v })),
-      radio('Fetch via', [['annai', 'annai: directly, then Jina Reader, then your model'], ['provider', "Your model's own fetch"], ['off', 'Off']], web.fetchVia ?? 'annai', (v) => saveWeb({ fetchVia: v })),
+      savedRadios('Search via', [['auto', "Your model's own search when it has one, else Jina"], ['provider', "Your model's own search"], ['annai', 'Jina Search (needs the key below)'], ['off', 'Off']], web.searchVia ?? 'auto', (v) => saveWeb({ searchVia: v })),
+      savedRadios('Fetch via', [['annai', 'annai: directly, then Jina Reader, then your model'], ['provider', "Your model's own fetch"], ['off', 'Off']], web.fetchVia ?? 'annai', (v) => saveWeb({ fetchVia: v })),
       field('Jina key', key),
       hasKey
         ? h('p', { class: 'sub', text: 'A key is set. It stays on this device and is never shown again.' })

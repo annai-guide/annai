@@ -261,6 +261,19 @@ export function startShell(root, core) {
     swipedTo = last?.y ?? null;
     location.hash = last?.hash ?? tab;
   });
+  /** What a redraw now would lose: a field being typed in, a key typed and not saved, or an error shown. */
+  const typing = () => {
+    const a = document.activeElement;
+    if (a && main.contains(a) && a.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])')) return true;
+    return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
+      || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty)'));
+  };
+  /** Draws the screen again once nothing typed would be lost, unless it was drawn meanwhile. */
+  const redraw = (screen = main.firstElementChild) => {
+    if (main.firstElementChild !== screen) return;
+    if (typing()) setTimeout(() => redraw(screen), 500);
+    else render();
+  };
   // What plugins add redraws when it changes (choice 9 of milestone 8b): once per change, not per item.
   if (core.registry) {
     syncThemes(core.registry, document.head);
@@ -277,7 +290,7 @@ export function startShell(root, core) {
         syncThemes(core.registry, document.head);
         drawTabs();
         if (!remakeDock()) /** @type {any} */ (ctx).dock?.refreshSlots?.();
-        render();
+        redraw();
       }, 0);
     });
   }

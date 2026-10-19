@@ -1,4 +1,4 @@
-import { h, field, radios, checkbox } from '../dom.js';
+import { h, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf } from '../../core/llm/config.js';
@@ -25,31 +25,20 @@ export async function renderVoice(ctx) {
   const whereRows = (rows) => rows.map((r) => h('li', {}, h('strong', { text: r.name }), h('p', { class: 'sub', text: r.where })));
   const heardWhere = h('ol', { class: 'where' }, ...whereRows(whereHeard(cfg, { dictation })));
   const saidWhere = h('ol', { class: 'where' });
-  /** Saves a voice setting and works out the voice again. @param {Record<string, any>} change @param {string} [said] */
-  const save = async (change, said = 'Saved') => {
+  /** Saves a voice setting and works out the voice again. @param {Record<string, any>} change */
+  const save = async (change) => {
     await updateAppSettings(ctx.ws, { voice: change });
     await voice.refresh();
-    ctx.notices.toast(said);
   };
   const modeStatus = h('p', { class: 'sub', role: 'status', text: voice.on ? 'Voice is on.' : 'Voice is off.' });
-  const mode = radios('Voice', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], s.mode, async (m) => {
+  const mode = savedRadios('Voice', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], s.mode, async (m) => {
     // A choice here teaches Auto, as one on the chip does (spec §10.5).
     await voice.choose(m);
     modeStatus.textContent = voice.on ? 'Voice is on.' : 'Voice is off.';
-    ctx.notices.toast('Saved');
   });
   const silence = h('input', { id: 'voice-silence', type: 'number', min: '2', max: '60', step: '1', value: String(s.silenceSeconds) });
-  silence.addEventListener('change', () => {
-    const n = Math.round(Number(silence.value));
-    if (n >= 2 && n <= 60) save({ silenceSeconds: n });
-  });
   const firstWords = h('input', { id: 'voice-first-words', type: 'number', min: '5', max: '120', step: '1', value: String(s.firstWordsSeconds) });
-  firstWords.addEventListener('change', () => {
-    const n = Math.round(Number(firstWords.value));
-    if (n >= 5 && n <= 120) save({ firstWordsSeconds: n });
-  });
-  const clips = checkbox('Keep voice clips', s.keepClips);
-  clips.input.addEventListener('change', () => save({ keepClips: clips.input.checked }));
+  const clips = savedCheck('Keep voice clips', s.keepClips, (on) => save({ keepClips: on }));
 
   const sayStatus = h('p', { class: 'sub', role: 'status' });
   const sayButton = h('button', {
@@ -85,36 +74,9 @@ export async function renderVoice(ctx) {
   // The browser loads its voices a moment after the page opens.
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.addEventListener('voiceschanged', fill, { once: true });
   const rate = h('input', { id: 'voice-rate', type: 'number', min: '0.5', max: '2', step: '0.1', value: String(s.rate) });
-  const browserStatus = h('p', { class: 'sub', role: 'status' });
-  const saveBrowser = h('button', {
-    class: 'btn', type: 'button',
-    onclick: async () => {
-      const r = Number(rate.value);
-      if (!(r >= 0.5 && r <= 2)) {
-        browserStatus.textContent = 'The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.';
-        return;
-      }
-      browserStatus.textContent = '';
-      await updateAppSettings(ctx.ws, { voice: { browserVoice: pick.value, rate: r } });
-      ctx.notices.toast('Saved');
-    },
-  }, 'Save the browser voice');
-
   const pause = h('input', { id: 'voice-pause', type: 'number', min: '300', max: '3000', step: '50', value: String(s.pauseMs) });
   const meter = h('meter', { min: '0', max: '1', value: '0', 'aria-label': 'How loud the microphone hears you' });
   const micStatus = h('p', { class: 'sub', role: 'status' });
-  const savePause = h('button', {
-    class: 'btn', type: 'button',
-    onclick: async () => {
-      const ms = Math.round(Number(pause.value));
-      if (!(ms >= 300 && ms <= 3000)) {
-        micStatus.textContent = 'The pause goes from 300 to 3000 milliseconds; 700 is the usual.';
-        return;
-      }
-      await updateAppSettings(ctx.ws, { voice: { pauseMs: ms } });
-      ctx.notices.toast('Saved');
-    },
-  }, 'Save the pause');
   const micButton = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
@@ -156,17 +118,20 @@ export async function renderVoice(ctx) {
     section('On or off',
       h('p', { class: 'sub', text: 'Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. The chip on the dock changes it too.' }),
       mode, modeStatus,
-      h('div', { class: 'row' }, field('Listen for an answer (seconds)', silence), field('Wait for her first words (seconds)', firstWords))),
+      h('div', { class: 'row' },
+        savedField('Listen for an answer (seconds)', silence, () => numberIn(silence, 2, 60, 'Listen for 2 to 60 seconds.', { whole: true, need: true }), (n) => save({ silenceSeconds: n })),
+        savedField('Wait for her first words (seconds)', firstWords, () => numberIn(firstWords, 5, 120, 'Wait 5 to 120 seconds.', { whole: true, need: true }), (n) => save({ firstWordsSeconds: n })))),
     section("Shiori's voice",
       h('p', { class: 'sub', text: `Voices, tried in order: ${entries.map((/** @type {any} */ e) => e.name).join(', ') || 'none'}.` }),
       h('div', { class: 'acts' }, sayButton), sayStatus),
     section('Browser voice',
       h('p', { class: 'sub', text: synth?.available() ? 'The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.' : 'This browser has no voice of its own.' }),
-      h('div', { class: 'row' }, field('Voice', pick), field('Speed (0.5 to 2)', rate)),
-      h('div', { class: 'acts' }, saveBrowser), browserStatus),
+      h('div', { class: 'row' },
+        savedField('Voice', pick, () => pick.value, (v) => save({ browserVoice: v })),
+        savedField('Speed (0.5 to 2)', rate, () => numberIn(rate, 0.5, 2, 'The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.', { need: true }), (r) => save({ rate: r })))),
     section('Listening',
       h('p', { class: 'sub', text: 'annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.' }),
-      field('Pause that ends a sentence (ms)', pause), h('div', { class: 'acts' }, savePause),
+      savedField('Pause that ends a sentence (ms)', pause, () => numberIn(pause, 300, 3000, 'The pause goes from 300 to 3000 milliseconds; 700 is the usual.', { whole: true, need: true }), (ms) => save({ pauseMs: ms })),
       meter, h('div', { class: 'acts' }, micButton), micStatus,
       clips.el,
       h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' })),

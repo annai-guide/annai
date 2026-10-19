@@ -117,10 +117,10 @@ test("a plugin's page saves the settings its schema asks for; a secret is kept a
     await page.getByRole('link', { name: 'Trail UI' }).click();
     await expect(page.getByRole('heading', { name: 'Trail UI' })).toBeVisible();
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
-    await page.getByLabel('Trailhead').fill('Pfeiffer Big Sur');
+    await page.getByLabel('Trailhead').fill('Pfeiffer Big Sur'); // saved once it is left
     await page.getByLabel('Token').fill('trail-secret-123456');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText('Saved.')).toBeVisible();
+    await page.getByRole('button', { name: 'Save', exact: true }).click(); // a secret has its own Save
+    await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
     await page.reload();
     await expect(page.getByLabel('Trailhead')).toHaveValue('Pfeiffer Big Sur');
     await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
@@ -149,10 +149,9 @@ test("Reset on a plugin's page clears its settings and its secret: after a reloa
     await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI');
     await page.getByRole('link', { name: 'Trail UI' }).click();
     await expect(page.getByLabel('Trailhead')).toHaveValue('Big Sur Station');
-    await page.getByLabel('Trailhead').fill('Pfeiffer Big Sur');
+    await page.getByLabel('Trailhead').fill('Pfeiffer Big Sur'); // saved once it is left
     await page.getByLabel('Token').fill('trail-secret-123456');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText('Saved.')).toBeVisible();
+    await page.getByRole('button', { name: 'Save', exact: true }).click(); // a secret has its own Save
     await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
     await page.getByRole('button', { name: 'Reset settings' }).click();
     await page.getByRole('button', { name: 'Tap again to reset' }).click();
