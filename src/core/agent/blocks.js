@@ -1,18 +1,12 @@
 /**
- * What one half reads of the other (the Koe and Kokoro design, "What each half sees"): Kokoro reads
- * the conversation as labelled blocks, the words in them quoted, and Koe reads Kokoro's notes inside
- * a marker nobody else can write: it carries Koe's session nonce, and every other text Koe reads has
- * its angle brackets escaped (plan decision 14; the security reviews of K1).
+ * What one half reads of the other (the Koe and Kokoro design): Kokoro reads labelled blocks, their words
+ * quoted; Koe reads Kokoro's notes in a marker with its session nonce, every other text's brackets escaped.
  */
 
-/** The longest text Koe reads from one place, cut before anything else is done with it (a guard). */
+/** The longest text Koe reads from one place (a guard). */
 export const MAX_TEXT = 100_000;
 
-/**
- * Text that isn't annai's own, as Koe reads it: its angle brackets made look-alikes, so no tag of any
- * spelling survives, a marker least of all (the security reviews of K1). Linear, and cut to MAX_TEXT first.
- * @param {string} text
- */
+/** Text not annai's own, as Koe reads it: no tag of any spelling survives (security reviews). @param {string} text */
 export function escapeTags(text) {
   const s = String(text ?? '');
   return (s.length > MAX_TEXT ? `${s.slice(0, MAX_TEXT)}…` : s).replace(/</g, '‹').replace(/>/g, '›');
@@ -21,21 +15,17 @@ export function escapeTags(text) {
 /** Words inside a label, quoted, so a label or a new line in them can't pass for annai's. @param {unknown} text */
 export const quote = (text) => JSON.stringify(String(text ?? ''));
 
-/**
- * A note from Kokoro as Koe reads it: annai's own marker, with Koe's session nonce, which Koe's
- * instructions say is the only one to trust, around words that can't close it.
- * @param {string} text @param {string} nonce
- */
+/** A note from Kokoro as Koe reads it, in the one marker Koe trusts. @param {string} text @param {string} nonce */
 export function wrapNote(text, nonce) {
   return `<from_kokoro id="${nonce}">${escapeTags(text)}</from_kokoro>`;
 }
 
-/** A nonce for Koe's session: fresh each time annai starts, so text from anywhere else can't carry it. */
+/** Koe's session nonce, fresh each time annai starts. */
 export function newNonce() {
   return [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** A note from Koe is a question when it ends with "?", otherwise a note. @param {string} text @returns {'asks' | 'notes'} */
+/** @param {string} text @returns {'asks' | 'notes'} */
 export function asksOrNotes(text) {
   return /\?\s*$/.test(String(text ?? '')) ? 'asks' : 'notes';
 }

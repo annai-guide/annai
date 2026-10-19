@@ -1,14 +1,7 @@
 import { tsv } from '../tsv.js';
 import { escapeTags } from '../agent/blocks.js';
 
-/**
- * Koe's compact view of the trip (plan decision 6): today's and tomorrow's plan, the bookings of the
- * next 48 hours and the next reminder, in Koe's tail after the now block (which has the time, place
- * and activity). It changes every call, so it never sits in Koe's cached prefix. Its words come from
- * files, so their brackets are escaped like everything else Koe reads.
- */
-
-/** The longest the view may be, in characters. */
+/** Koe's compact view of the trip, in its tail (plan decision 6); its words escaped. */
 export const VIEW_MAX = 2000;
 const DAY = 86_400_000;
 

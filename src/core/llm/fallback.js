@@ -83,6 +83,15 @@ export function candidates(config, role) {
   return config.roles.main?.models ?? [];
 }
 
+/** Koe's list (the Koe and Kokoro design): voice on uses "Koe for talking", else "Koe for typing", an empty one the other. @param {ModelConfig} cfg @param {boolean} voiceOn */
+export function koeList(cfg, voiceOn) {
+  const role = voiceOn ? 'koe-talk' : 'koe-type';
+  return { role, models: candidates(cfg, role) };
+}
+
+/** Whether Shiori is two halves: a Koe list holds a model. @param {ModelConfig} cfg */
+export const splitOn = (cfg) => KOE_ROLES.some((r) => (cfg.roles?.[r]?.models?.length ?? 0) > 0);
+
 /** A rough token count, enough to skip models whose window is clearly too small. @param {Request} request */
 export function estimateTokens(request) {
   let chars = (request.system ?? '').length + JSON.stringify(request.tools ?? []).length;

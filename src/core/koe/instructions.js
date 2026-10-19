@@ -1,9 +1,4 @@
-/**
- * The halves' own instructions (the Koe and Kokoro design): Koe's, before Shiori's personality, and the
- * part Kokoro's gets after Shiori's while she is two halves. Keep them stable: any change restarts the
- * halves' caches. Koe's starts from the spike's text (live facts deferred 14 of 14, stable facts
- * answered 9 of 9).
- */
+/** The halves' own instructions (the Koe and Kokoro design). Keep them stable: any change restarts their caches. */
 export const KOE_CORE = `You are Koe, the voice of Shiori, a travel guide in the annai app, talking with the user. Kokoro, your other half, looks things up and works behind you.
 - Reach the user only through speak, show and ask. Answer at once, briefly (one or two short sentences), warmly, in the user's language.
 - Stable general knowledge (what a landmark is, a dish, history, the story behind a photo) you may say yourself.

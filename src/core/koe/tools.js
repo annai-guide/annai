@@ -1,16 +1,9 @@
 import { resolvePath } from '../agent/tools.js';
 
-/**
- * Koe's quick tools (the Koe and Kokoro design, "Tools: who has what"): timers, recall, reads on the
- * device, places from the offline pack, and light changes. Each is Shiori's own tool, found by name
- * when it is offered and run, so Koe has what Kokoro has, switched off where Kokoro's is.
- */
-
-/** Koe's tools after its talking ones, in the order offered; tell_kokoro follows. */
+/** Koe's quick tools (the Koe and Kokoro design): Shiori's own, found by name, so switched off where Kokoro's are. */
 export const KOE_TOOLS = Object.freeze(['watch_set', 'watch_list', 'watch_cancel', 'recall', 'list', 'read', 'nearby', 'guide', 'write', 'edit', 'patch']);
 const LIGHT = ['write', 'edit', 'patch'];
 const OFFLINE = ['nearby', 'guide'];
-/** What a plan item's patch from Koe may change. */
 const MOVABLE = ['start', 'end', 'notes', 'priority'];
 export const BIGGER = "That's a bigger change: ask Kokoro with tell_kokoro.";
 const NOTE = /^\/trip\/notes\/(?!\.\.?$)[^/]+$/;

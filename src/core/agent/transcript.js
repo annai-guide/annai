@@ -10,9 +10,7 @@ import { blockFor, saidWithout, wrapNote, escapeTags, quote } from './blocks.js'
  * @typedef {import('../llm/contract.js').Part} Part
  * @typedef {import('../types.js').Store} Store
  * @typedef {{ texts: Record<string, string>, images: Part[] }} Resolved
- * @typedef {'one' | 'kokoro' | 'koe'} HalfName
- *   one: Shiori as one half, as before; kokoro: the half that thinks, which reads the conversation as labelled blocks;
- *   koe: the half that talks, which reads a window of it with Kokoro's notes (the Koe and Kokoro design)
+ * @typedef {'one' | 'kokoro' | 'koe'} HalfName  whose rules (the Koe and Kokoro design): Kokoro reads labelled blocks, Koe a window with Kokoro's notes
  */
 
 export const RESTARTED = 'interrupted by app restart';
@@ -23,10 +21,10 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * read by type: a day of location points is never walked (A6). A type apply() learns goes here too.
  */
 export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask']);
-/** Koe's window (plan decision 5): its last 12 exchanges, the start moving forward in jumps of 6, so its cached prefix holds between jumps. */
+/** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
-/** Wake reasons that are lines of their own elsewhere: the user's words, what was heard, a note, a block. */
+/** Wake reasons that are lines of their own elsewhere. */
 const OWN_LINES = ['user', 'heard', 'note', 'halves'];
 
 export class Transcript {
@@ -34,7 +32,7 @@ export class Transcript {
   messages = [];
   /** @type {HalfName} */
   half = 'one';
-  /** Koe's session nonce, in the marker of Kokoro's notes. */
+  /** Koe's session nonce. */
   nonce = '';
   /** First and last event in context, for model.turn records (spec §4.5). */
   from = 0;
@@ -53,15 +51,14 @@ export class Transcript {
   #answered = new Set();
   /** Heard answers (spec §10.3), by segment id: their tool's result carries them. @type {Map<string, Part>} */
   #heard = new Map();
-  /** The tool calls of the last assistant message: nothing but their results may follow it until they all have one. @type {string[]} */
+  /** @type {string[]} the last reply's calls: only their results follow until all have one */
   #last = [];
-  /** Lines that came while the last calls were open, added once they all have results (plan decision 3). @type {{ seq: number, parts: Part[] }[]} */
+  /** @type {{ seq: number, parts: Part[] }[]} lines held until those results (plan decision 3) */
   #held = [];
-  /** The lines added since the last reply, by the entry each came from. @type {{ seq: number, parts: Part[] }[]} */
+  /** @type {{ seq: number, parts: Part[] }[]} lines since the last reply */
   #since = [];
-  /** The entry being applied. */
   #at = 0;
-  /** Koe's notes as annai wrapped them: the only words in Koe's transcript that may carry the marker (security review). @type {WeakSet<Part>} */
+  /** @type {WeakSet<Part>} Koe's notes as annai wrapped them: the only words that may be tags */
   #wrapped = new WeakSet();
 
   /** @param {{ half?: HalfName, nonce?: string }} [o] */
@@ -70,7 +67,7 @@ export class Transcript {
     this.nonce = nonce;
   }
 
-  /** Whether an event was written by this half, or by the other: Kokoro's own are those not marked Koe's (older ones too). @param {any} d */
+  /** Whether this half wrote it (Kokoro: whatever isn't Koe's). @param {any} d */
   #mine(d) {
     return this.half === 'koe' ? d.half === 'koe' : d.half !== 'koe';
   }
@@ -90,24 +87,23 @@ export class Transcript {
       this.#since = [];
       this.compaction = e.seq;
       this.from = e.seq;
-      // Koe starts again after it with its window: Kokoro, which keeps the whole conversation, has the summary.
+      // Koe starts again with its window; Kokoro has the summary.
       if (!koe) this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
-        // Two halves read a reason quoted, so it can't start a line or pass for a label; one half reads it as before.
+        // Two halves read it quoted, so it can't pass for a label; one half as before.
         this.#line(others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${this.half === 'one' ? w.text : quote(w.text)}` })));
         this.unanswered = true;
         this.waiting = 'wake';
       }
     } else if (e.type === 'msg.user' && this.half === 'kokoro' && d.split) {
-      // The user typed to Koe (or answered it): Kokoro reads it as a block.
       this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images]);
       this.unanswered = true;
       this.waiting = 'user';
     } else if (e.type === 'msg.user') {
-      // A message that answered an ask or a wait is already in that tool's result (Koe's, or Shiori's as one half).
+      // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
         this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text }, ...r.images]);
         // Koe owes an answer only to what was typed to it.
@@ -120,8 +116,7 @@ export class Transcript {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
-      // What the other half wrote while this reply was being made wasn't in its request: it follows the reply
-      // (after its calls' results), live and from the log alike. One half's conversation is as it was.
+      // What the other half wrote while this reply was being made follows it, live and from the log alike.
       const to = this.half !== 'one' && typeof d.context?.to === 'number' ? d.context.to : Infinity;
       const late = this.#since.filter((x) => x.seq > to);
       if (late.length) this.#unadd(late.flatMap((x) => x.parts));
@@ -132,7 +127,6 @@ export class Transcript {
       this.#flushHeld();
       this.unanswered = false;
     } else if (e.type === 'note') {
-      // A note from the other half: Kokoro's block, or Koe's marked text.
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
       /** @type {Part} */
       const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce) : /** @type {string} */ (blockFor(e, texts)) };
@@ -141,15 +135,12 @@ export class Transcript {
       this.unanswered = true;
       this.waiting = 'wake';
     } else if (e.type === 'halves') {
-      // annai's instruction blocks, for Kokoro: Koe is down, up again (plan decision 4).
       if (this.half !== 'kokoro') return;
       this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }]);
     } else if (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask') {
-      // What the other half said to the user; a half's own lines are in its tool calls.
       const line = this.half === 'kokoro' ? (d.half === 'koe' ? blockFor(e, texts) : null) : koe ? saidWithout(e, texts) : null;
       if (!line) return;
       this.#line([{ type: 'text', text: line }]);
-      // Kokoro answered the user directly (Koe was down): Koe owes nothing for it.
       if (koe) this.unanswered = false;
     } else if (e.type === 'photo.replace') {
       // A refused photo's new copy (spec §4.8): every place it was sent now sends the copy. When that
@@ -209,29 +200,22 @@ export class Transcript {
     this.to = e.seq;
   }
 
-  /** Whether a call of the last assistant message has no result yet. */
   #waitsForResults() {
     return this.#last.some((id) => !this.#answered.has(id));
   }
 
-  /**
-   * A line of the conversation that isn't a tool's result: added now, or, while the last calls are
-   * open, after their results, since providers refuse anything between a call and its result
-   * (plan decision 3). It depends only on the order of events, so the log gives the same messages.
-   * @param {Part[]} parts
-   */
+  /** A line that isn't a result: held while calls are open, as providers refuse anything between (plan decision 3). @param {Part[]} parts */
   #line(parts) {
     if (this.#waitsForResults()) this.#held.push({ seq: this.#at, parts });
     else this.#since.push({ seq: this.#at, parts: this.#add('user', parts) });
   }
 
-  /** The last calls all answered (or none): what came meanwhile follows their results. */
   #flushHeld() {
     if (this.#waitsForResults()) return;
     for (const x of this.#held.splice(0)) this.#since.push({ seq: x.seq, parts: this.#add('user', x.parts) });
   }
 
-  /** Takes lines back out of the last message, to add them again after the reply. @param {Part[]} parts */
+  /** @param {Part[]} parts lines taken back out of the last message */
   #unadd(parts) {
     const last = this.messages.at(-1);
     if (last?.role !== 'user') return;
@@ -241,11 +225,7 @@ export class Transcript {
     else this.messages.pop();
   }
 
-  /**
-   * Koe's window (plan decision 5): from the start of its last 12 exchanges, moved forward 6 at a
-   * time. An exchange starts with a user message that holds a line, not only tool results; the
-   * results in front of the first line kept go with the calls cut away, so none is left without its call.
-   */
+  /** An exchange starts with a user message that holds a line; results before the first line kept go with their calls. */
   #window() {
     const starts = this.messages.flatMap((m, i) => (m.role === 'user' && m.parts.some((p) => p.type === 'text') ? [i] : []));
     if (starts.length < KOE_WINDOW + KOE_JUMP) return;
@@ -268,15 +248,11 @@ export class Transcript {
     return [...this.#calls].filter(([id]) => !this.#answered.has(id)).map(([id, name]) => ({ id, name }));
   }
 
-  /**
-   * Koe's user lines have their angle brackets escaped, wherever their words came from (a page, a file,
-   * a card, a reminder, what was heard or typed), so no text but annai's own wrapper is a tag (security reviews).
-   * @param {Part} p @returns {Part}
-   */
+  /** Koe's user lines have their angle brackets escaped, whatever their source (security reviews). @param {Part} p @returns {Part} */
   #unmarked(p) {
     if (this.#wrapped.has(p)) return p;
     if (p.type === 'text') return { ...p, text: escapeTags(p.text) };
-    // A tool's words are data: a line in them that starts like one of annai's labels has its bracket escaped.
+    // And a result's line can't start like one of annai's labels.
     if (p.type === 'tool_result') return { ...p, content: escapeTags(p.content).replace(/^(\s*)\[/gm, '$1\\[') };
     if (p.type === 'speech' && typeof p.text === 'string') return { ...p, text: escapeTags(p.text) };
     return p;
@@ -293,7 +269,7 @@ export class Transcript {
 
   /**
    * The conversation of a scope: the latest compaction's summary, then the events after the part
-   * it covers (spec §6.5), up to before (exclusive) when given; read by one half's rules (Koe's with its session nonce).
+   * it covers (spec §6.5), up to before (exclusive) when given; by one half's rules.
    * @param {Store} store @param {string} scope @param {{ before?: number, half?: HalfName, nonce?: string }} [o]
    */
   static async load(store, scope, o = {}) {
@@ -334,7 +310,7 @@ export async function resolveEvent(store, e) {
 /**
  * After a crash or reload mid-turn, every tool call without a result gets one (spec §6.7), so the
  * transcript stays valid for every provider. @param {Store} store @param {string} scope @param {Transcript} t
- * @param {Record<string, string>} [mark] the half whose calls they are ({ half: 'koe' }), as its results are marked
+ * @param {Record<string, string>} [mark] its results' half mark
  * @returns {Promise<number>} how many were answered
  */
 export async function repair(store, scope, t, mark = {}) {
