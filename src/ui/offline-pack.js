@@ -16,6 +16,12 @@ function holds(m) {
   return `${n(m.places, 'place', 'places')}, ${n(m.summaries, 'Wikipedia summary', 'Wikipedia summaries')}, ${n(m.guides.length, 'Wikivoyage guide', 'Wikivoyage guides')}`;
 }
 
+/** " 2 hours ago", or nothing when the manifest doesn't say when (an empty at). @param {string} at */
+export function downloadedWhen(at) {
+  const t = Date.parse(at);
+  return Number.isFinite(t) ? ` ${relTime(t)}` : '';
+}
+
 /**
  * What the panel says, and its button.
  * @param {PackStatus} s @param {string} connection what connectionOf says
@@ -38,7 +44,7 @@ export function packWords(s, connection) {
       button: `Download (${about})`,
     };
   }
-  const lines = [`Downloaded ${relTime(Date.parse(m.at))} · ${bytes(m.bytes)} · ${holds(m)}.`];
+  const lines = [`Downloaded${downloadedWhen(m.at)} · ${bytes(m.bytes)} · ${holds(m)}.`];
   if (m.guides.length) lines.push(`Guides: ${m.guides.map((g) => g.title).join(', ')}.`);
   if (m.full) lines.push(`It stopped at its ${bytes(MAX_BYTES)} limit, so it holds only the start of the plan.`);
   if (s.cut) lines.push('This plan is longer than a pack holds, so some of the way between stops is left out.');
@@ -108,6 +114,6 @@ export async function packLine(ctx, id) {
   if (!s?.stops) return null;
   const text = !s.manifest ? 'No offline pack for this trip yet.'
     : s.why === 'plan' ? 'The offline pack is from before the plan changed.'
-      : `Offline pack: downloaded ${relTime(Date.parse(s.manifest.at))}.`;
+      : `Offline pack: downloaded${downloadedWhen(s.manifest.at)}.`;
   return h('p', { class: 'sub pack-line' }, `${text} `, h('a', { href: `#/trip/${encodeURIComponent(id)}` }, 'Offline pack'));
 }
