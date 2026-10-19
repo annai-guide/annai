@@ -2,11 +2,10 @@ import { readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, 
 import { ROLE_KIND } from './provider-desc.js';
 
 /**
- * Providers made from provider plugins' descriptions (spec §9.8). The user's settings are copies:
- * a description's values become the template layer of a provider and its models, and when the
- * plugin updates, the template layer follows while the user's layer stays (§9.2).
+ * Providers made from provider plugins' descriptions (spec §9.8): its values are the template layer of
+ * a provider and its models, which follows the plugin's updates while the user's layer stays (§9.2).
  * @typedef {{ plugin: string, name: string, version: string, provider: import('./provider-desc.js').ProviderDesc }} ProviderSource
- *   what a started provider plugin registers: its id, name and version, and its description
+ *   what a started provider plugin registers
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {import('../types.js').Store} Store
  * @typedef {import('./config.js').Roles} Roles
@@ -14,10 +13,10 @@ import { ROLE_KIND } from './provider-desc.js';
  * @typedef {import('./config.js').ProviderValues} ProviderValues
  * @typedef {{ key?: string | null, roles?: 'recommended' | 'free' | null, name?: string, baseUrl?: string,
  *   abilities?: Record<string, { on: boolean, baseUrl?: string }> }} AddOptions
- *   roles: which suggestion fills the chat roles still empty, or none; abilities: switched on or off, and an address of their own
+ *   roles: the suggestion for chat roles still empty; abilities: on or off, and an address of their own
  */
 
-/** The template layer of a provider, from its plugin's description: notes, keyUrl and models stay in the description. @param {ProviderSource} src @returns {ProviderValues} */
+/** A provider's template layer: notes, keyUrl and models stay in the description. @param {ProviderSource} src @returns {ProviderValues} */
 export function providerValues(src) {
   const d = src.provider;
   /** @type {ProviderValues} */
@@ -35,28 +34,19 @@ export function providerValues(src) {
 /** The description's models, by "<ability>/<provider model id>". @param {ProviderSource} src */
 const descModels = (src) => Object.entries(src.provider.abilities).flatMap(([ability, a]) => (a.models ?? []).map((m) => ({ ability, key: `${ability}/${m.providerId}`, values: m })));
 
-/** name, or "name (2)", "name (3)"…: the first no other model has. @param {string} name @param {Set<string>} taken lower-case names */
-function uniqueName(name, taken) {
-  if (!taken.has(name.toLowerCase())) return name;
-  for (let i = 2; ; i++) {
-    const n = `${name} (${i})`;
-    if (!taken.has(n.toLowerCase())) return n;
-  }
-}
-
-/** A model under a name no other model has, which it then takes. @param {ModelRecord} rec @param {Set<string>} taken */
+/** A model under its name, or "name (2)", "name (3)"…: the first no other model has. @param {ModelRecord} rec @param {Set<string>} taken lower-case names */
 function named(rec, taken) {
   const name = modelOf(rec).name;
-  const unique = uniqueName(name, taken);
+  let unique = name;
+  for (let i = 2; taken.has(unique.toLowerCase()); i++) unique = `${name} (${i})`;
   taken.add(unique.toLowerCase());
   if (unique !== name) rec.user = { ...rec.user, name: unique };
   return rec;
 }
 
 /**
- * A speech list with models added (spec §10.3): a transcription model goes after "Send audio to
- * the model" (or first), a voice ahead of the browser voice (or last). Models already in it stay where they are.
- * @param {readonly string[]} list @param {string[]} add @param {string} role @returns {string[]}
+ * A speech list with models added (spec §10.3): transcription after "Send audio to the model", a voice
+ * ahead of the browser voice. Models already in it stay. @param {readonly string[]} list @param {string[]} add @param {string} role @returns {string[]}
  */
 export function withSpeech(list, add, role) {
   const fresh = add.filter((id, i) => !list.includes(id) && add.indexOf(id) === i);
@@ -64,31 +54,23 @@ export function withSpeech(list, add, role) {
   return [...list.slice(0, at), ...fresh, ...list.slice(at)];
 }
 
-/**
- * A speech list with one entry the user added (spec §10.3): a model goes where a suggestion would put
- * it, so phone dictation stays last; a stand-in added back goes last.
- * @param {readonly string[]} list @param {string} id @param {string} role @returns {string[]}
+/** A speech list with one entry the user added: a model where withSpeech puts it, a stand-in last. @param {readonly string[]} list @param {string} id @param {string} role @returns {string[]}
  */
 export function speechAdd(list, id, role) {
   return STAND_INS[id] ? [...list.filter((x) => x !== id), id] : withSpeech(list, [id], role);
 }
 
 /**
- * A speech list with models added at its end, behind everything in it, the stand-ins too: how a
- * provider's speech models join when it is added, so the free path stays first (decision 6; the user,
- * 2026-10-18: "Add, behind phone"). A list the user emptied stays empty.
- * @param {readonly string[]} list @param {string[]} add @returns {string[]}
+ * A speech list with models added behind everything in it, the stand-ins too, so the free path stays
+ * first (decision 6; the user, 2026-10-18: "Add, behind phone"). A list the user emptied stays empty. @param {readonly string[]} list @param {string[]} add @returns {string[]}
  */
 export function speechBehind(list, add) {
   return list.length ? [...list, ...add.filter((id, i) => !list.includes(id) && add.indexOf(id) === i)] : [...list];
 }
 
 /**
- * Roles with a suggestion filled in, from one provider's models. A role takes the models of the
- * abilities its kind fits, the first that has the id in ability order. With onlyEmpty, chat roles the
- * user has set are kept. A speech list keeps its stand-ins: the suggested models move ahead of them
- * (withSpeech), or, behind, join its end, the rest keeping the user's order.
- * @param {Roles} roles @param {(role: string, providerModelId: string) => string | undefined} pick the model id
+ * Roles with a suggestion filled in. onlyEmpty keeps chat roles the user set; speech models move ahead
+ * of the stand-ins (withSpeech), or, behind, join the end. @param {Roles} roles @param {(role: string, providerModelId: string) => string | undefined} pick the model id
  * @param {Record<string, string[]> | undefined} suggestion @param {{ onlyEmpty: boolean, behind: boolean, speech: boolean, chat: boolean }} o
  */
 function suggested(roles, pick, suggestion, o) {
@@ -108,9 +90,7 @@ function suggested(roles, pick, suggestion, o) {
   return next;
 }
 
-/**
- * Finds a provider's model for a role's suggestion: among the abilities whose kind the role takes,
- * switched on, the first in order with that provider model id. @param {import('./config.js').ModelConfig} cfg @param {string} providerId
+/** A provider's model for a role: the first switched-on ability of the role's kind with that id. @param {import('./config.js').ModelConfig} cfg @param {string} providerId
  */
 function picker(cfg, providerId) {
   const rec = cfg.providers[providerId];
@@ -127,11 +107,9 @@ function picker(cfg, providerId) {
 }
 
 /**
- * Adds a provider from its plugin's description (spec §9.8): the provider, the models of every
- * ability (each under a name no other model has), its one key, and the suggestion: chat roles that
- * are still empty, and speech models behind everything in their lists (decision 6). A suggestion
- * without speech models leaves the recommended one's to go behind, so "free" chat still adds a voice.
- * @param {{ ws: Workspace, store: Store }} c @param {ProviderSource} src @param {AddOptions} [o]
+ * Adds a provider from its description (spec §9.8): it, every ability's models, its one key, and the
+ * suggestion for chat roles still empty; speech models go behind (decision 6), the recommended
+ * suggestion's when the chosen one has none, so "free" still brings a voice. @param {{ ws: Workspace, store: Store }} c @param {ProviderSource} src @param {AddOptions} [o]
  * @returns {Promise<string>} the provider's id
  */
 export async function addProvider({ ws, store }, src, { key = null, roles = 'recommended', name, baseUrl, abilities = {} } = {}) {
@@ -165,12 +143,9 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'rec
 }
 
 /**
- * Brings providers up to date with their plugins' descriptions (decision 4): for each provider whose
- * plugin's version differs from the one it was made with, a new template layer for it and its models,
- * the models new to the description added (in no role), and an ability new to it added switched off
- * (decision 5: it is never put to use by itself). The user's layers are never touched; models gone from
- * the description, and models the user removed, stay as they are.
- * @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
+ * Brings providers up to date when their plugin's version changed (decision 4): new template layers,
+ * models new to the description (in no role), and new abilities switched off (decision 5). The user's
+ * layers stay; models gone from the description, or removed by the user, stay as they are. @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
  */
 export async function syncProviders({ ws }, sources) {
   const bySrc = new Map(sources.map((s) => [s.plugin, s]));
@@ -208,17 +183,14 @@ export async function syncProviders({ ws }, sources) {
   return n;
 }
 
-/**
- * Puts a suggestion ("free", "recommended") in the roles it names, on the user's tap, replacing what
- * the chat roles had; speech models go ahead of the stand-ins, as the button's words say.
- * @param {{ ws: Workspace }} c @param {string} providerId @param {ProviderSource} src @param {string} which
+/** A suggestion ("free", "recommended") put in its roles on the user's tap, speech models ahead of the stand-ins. @param {{ ws: Workspace }} c @param {string} providerId @param {ProviderSource} src @param {string} which
  */
 export async function useSuggestion({ ws }, providerId, src, which) {
   const cfg = await readConfig(ws);
   await saveRoles(ws, suggested(cfg.roles, picker(cfg, providerId), src.provider.roles?.[which], { onlyEmpty: false, behind: false, speech: true, chat: true }));
 }
 
-/** What a model added to an ability by id or from a list starts with: the ability's modelDefaults. @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId */
+/** What a model added by id or from a list starts with: its ability's modelDefaults. @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId */
 function startFor(cfg, providerId, abilityId) {
   const rec = cfg.providers[providerId];
   const a = rec ? providerOf(rec).abilities[abilityId] : undefined;
@@ -226,10 +198,7 @@ function startFor(cfg, providerId, abilityId) {
   return structuredClone(a.modelDefaults ?? {});
 }
 
-/**
- * Adds a model from an ability's fetched list: what the list said is its template layer, over the
- * ability's modelDefaults, under a name no other model has.
- * @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed
+/** Adds a model from an ability's list: what the list said, over modelDefaults, is its template layer. @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed
  * @returns {Promise<string>} the model's id
  */
 export async function addListedModel({ ws }, providerId, abilityId, listed) {

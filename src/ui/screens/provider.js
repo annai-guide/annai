@@ -39,23 +39,7 @@ export async function renderProvider(ctx, id) {
   const hasKey = Boolean(await ctx.llm.keyFor(id));
   const status = h('p', { class: 'sub', role: 'status' });
   const title = h('h1', { class: 'title', text: p.name });
-  /**
-   * Saves fields into the user's layer of the provider as it is now (a function works a value out
-   * from it), and puts its models back in use: what failed may be fixed. Gives the provider.
-   * @param {Record<string, any>} fields
-   */
-  const saveFields = async (fields) => {
-    const now = (await ctx.llm.config()).providers[id];
-    if (!now) throw new Error('This provider no longer exists.');
-    const was = providerOf(now, tunablesFor);
-    const values = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, typeof v === 'function' ? v(was) : v]));
-    const user = { ...now.user };
-    for (const k of Object.keys(values)) delete /** @type {any} */ (user)[k];
-    const next = { ...now, user: { ...user, ...diffLayer(values, providerBase(now, tunablesFor)) } };
-    await saveProvider(ctx.ws, next);
-    await ctx.llm.unbench(id);
-    return providerOf(next, tunablesFor);
-  };
+  const saveFields = saver(ctx, id, tunablesFor, null);
   const name = h('input', { id: 'provider-name', autocomplete: 'off', value: p.name });
   const url = h('input', { id: 'provider-url', autocomplete: 'off', autocapitalize: 'off', inputmode: 'url', value: p.baseUrl, placeholder: 'https://…' });
   const key = desc?.key === 'none' ? null : h('input', { id: 'provider-key', type: 'password', autocomplete: 'off', placeholder: hasKey ? 'saved (type a new one to replace it)' : 'not set' });
@@ -116,6 +100,26 @@ export async function renderProvider(ctx, id) {
 /** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
 
 /**
+ * Saves fields into the user's layer of the provider, or of one ability, as it is now (a function works
+ * a value out from it), and puts its models back in use: what failed may be fixed. Gives what it saved.
+ * @param {any} ctx @param {string} id @param {(type: string) => Record<string, any>} tunablesFor @param {string | null} abilityId
+ * @returns {(fields: Record<string, any>) => Promise<any>}
+ */
+const saver = (ctx, id, tunablesFor, abilityId) => async (fields) => {
+  const now = (await ctx.llm.config()).providers[id];
+  if (!now) throw new Error('This provider no longer exists.');
+  const pick = (/** @type {any} */ p) => (abilityId ? p.abilities[abilityId] : p);
+  const values = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, typeof v === 'function' ? v(pick(providerOf(now, tunablesFor))) : v]));
+  const mine = { ...(abilityId ? now.user?.abilities?.[abilityId] : now.user) };
+  for (const k of Object.keys(values)) delete mine[k];
+  const layer = { ...mine, ...diffLayer(values, pick(providerBase(now, tunablesFor))) };
+  const next = { ...now, user: abilityId ? { ...now.user, abilities: { ...now.user?.abilities, [abilityId]: layer } } : layer };
+  await saveProvider(ctx.ws, next);
+  await ctx.llm.unbench(id);
+  return pick(providerOf(next, tunablesFor));
+};
+
+/**
  * One ability: its name and protocol, and its switch, saved as it changes. Switched on, the rest
  * follows: the protocol's Install where it isn't running, its own address, tunables and fields,
  * photo uploads, its models, and Test. A switch drawing the rest again keeps its own place.
@@ -152,19 +156,7 @@ async function abilityBody(view, abilityId) {
   if (!a?.on) return [note];
   const type = ctx.llm.types().get(a.type);
   if (!type) return [installPanel(ctx, a.type, () => ctx.render()), note];
-  /** Saves fields into this ability's user layer, as saveFields does for the provider. @param {Record<string, any>} fields */
-  const saveAbility = async (fields) => {
-    const now = (await ctx.llm.config()).providers[id];
-    if (!now) throw new Error('This provider no longer exists.');
-    const was = providerOf(now, tunablesFor).abilities[abilityId];
-    const values = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, typeof v === 'function' ? v(was) : v]));
-    const mine = { ...now.user?.abilities?.[abilityId] };
-    for (const k of Object.keys(values)) delete /** @type {any} */ (mine)[k];
-    const next = { ...now, user: { ...now.user, abilities: { ...now.user?.abilities, [abilityId]: { ...mine, ...diffLayer(values, providerBase(now, tunablesFor).abilities[abilityId]) } } } };
-    await saveProvider(ctx.ws, next);
-    await ctx.llm.unbench(id);
-    return providerOf(next, tunablesFor).abilities[abilityId];
-  };
+  const saveAbility = saver(ctx, id, tunablesFor, abilityId);
   // Its own address, not the provider's it falls back to.
   const own = String(mergePatch(rec.template?.values?.abilities?.[abilityId] ?? {}, rec.user?.abilities?.[abilityId] ?? {}).baseUrl ?? '');
   const address = h('input', { id: `ability-${abilityId}-url`, autocomplete: 'off', autocapitalize: 'off', inputmode: 'url', value: own, placeholder: `the provider's: ${providerOf(rec).baseUrl || 'none yet'}` });
