@@ -326,3 +326,32 @@ test("openai-realtime is a protocol in annai's catalog: a keyed name, reserved a
   const { OFFICIAL_NAMES } = await import('../../src/core/official-names.js');
   assert.equal(OFFICIAL_NAMES['endpoint-type']['openai-realtime'], 'openai-realtime');
 });
+
+test('after a cut-in, what the cancelled answer still sends is dropped: its voice and its words were never heard', async () => {
+  const { type } = openaiRealtime();
+  /** @type {(d: string | Uint8Array) => void} */
+  let deliver = () => {};
+  /** @type {any[]} */
+  const sent = [];
+  /** @type {any[]} */
+  const events = [];
+  const driver = type.attach({ send: (/** @type {string} */ d) => sent.push(JSON.parse(d)), on: (/** @type {any} */ fn) => { deliver = fn; } },
+    { model: model(), tunables: type.tunables, setup: { ...setup(), audioIn: { format: 'pcmu', rate: 8000 }, audioOut: { format: 'pcm16', rate: 24000 } }, emit: (/** @type {any} */ e) => events.push(e) });
+  const say = (/** @type {any} */ m) => deliver(JSON.stringify(m));
+  say({ type: 'session.updated', session: {} });
+  await driver.ready;
+  driver.text('Tell me about Bixby Bridge.');
+  say({ type: 'response.created', response: { id: 'resp_1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'item_1', delta: toBase64(voice(1000)) });
+  say({ type: 'response.output_audio_transcript.delta', item_id: 'item_1', delta: 'Bixby Bridge ' });
+  driver.text('<from_kokoro>1932.</from_kokoro>', { interrupt: true });
+  say({ type: 'response.output_audio.delta', item_id: 'item_1', delta: toBase64(voice(1000)) });
+  say({ type: 'response.output_audio_transcript.delta', item_id: 'item_1', delta: 'was built in steel' });
+  say({ type: 'response.output_audio_transcript.done', item_id: 'item_1', transcript: 'Bixby Bridge was built in steel' });
+  assert.deepEqual(events.map((e) => e.type === 'said' ? `said:${e.text}` : e.type === 'turn' ? `turn:${e.end}` : e.type), ['audio', 'said:Bixby Bridge ', 'turn:interrupted']);
+  assert.deepEqual(sent.map((m) => m.type).slice(1), ['conversation.item.create', 'response.create', 'response.cancel', 'conversation.item.truncate']);
+  say({ type: 'response.done', response: { id: 'resp_1', status: 'cancelled', output: [] } });
+  assert.deepEqual(sent.map((m) => m.type).slice(5), ['conversation.item.create', 'response.create'], 'the note goes once the cancelled answer is done');
+  assert.equal(events.filter((e) => e.type === 'turn').length, 1);
+  driver.close();
+});

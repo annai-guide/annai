@@ -75,7 +75,8 @@ test("OpenAI's Realtime voice: switched on, openai-realtime installs; Test opens
     await expect(rt.getByText('It answered aloud: OK.')).toBeVisible({ timeout: 30_000 });
     await expect(rt.getByText('Everything works.')).toBeVisible();
     const [c] = s.connections();
-    expect([c.path, c.model, c.key], 'the key went to the stand-in as a subprotocol, not in the address').toEqual(['/v1/realtime', 'gpt-realtime-2.1', SK]);
+    expect([c.path, c.key], 'the key went to the stand-in as a subprotocol, not in the address').toEqual(['/v1/realtime', SK]);
+    expect(c.model, 'one of its models').toMatch(/^gpt-realtime-2\.1/);
     expect(c.protocols[0]).toBe('realtime');
     const [update, item] = s.received();
     expect(update.session.audio.input.format, 'telephone audio in').toEqual({ type: 'audio/pcmu' });
