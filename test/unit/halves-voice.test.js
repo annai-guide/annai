@@ -194,7 +194,10 @@ test('chatter (the gate says not for Shiori) goes into both transcripts and wake
   assert.equal(k.sent['model-koe'].length, 1, 'Koe went back to sleep without a call');
   assert.equal(k.sent['model-0'].length, 1, 'Kokoro woke for what was typed, and not for the chatter');
   assert.ok(read(k.agent.kokoro).join('|').includes('[heard, not meant for you]|speech:did you lock the car'), JSON.stringify(read(k.agent.kokoro)));
-  assert.ok(read(k.agent.koe).includes('speech:did you lock the car'), JSON.stringify(read(k.agent.koe)));
+  // Inside Koe's own result too, it is labelled: unlabelled, a real check's Koe answered it when a note woke it next.
+  assert.ok(read(k.agent.koe).join('|').includes('[heard, not meant for you]|speech:did you lock the car'), JSON.stringify(read(k.agent.koe)));
+  const { Transcript } = await import('../../src/core/agent/transcript.js');
+  assert.deepEqual((await Transcript.load(k.store, k.trip, { half: 'koe', nonce: k.agent.nonce })).messages, k.agent.koe.transcript.messages);
 });
 
 test('a heard question Koe answers wakes Kokoro once, with "[heard]" and "[Koe said aloud]" in its context', async () => {
@@ -237,7 +240,7 @@ test('Koe asking in the same reply as it answers costs one Kokoro call, whicheve
     await new Promise((r) => setTimeout(r, 100));
     await k.agent.idle();
     assert.equal(k.sent['model-0'].length, 2, order);
-    assert.ok(userTexts(k.sent['model-0'][1]).includes('and tomorrow'), `${order}: ${JSON.stringify(k.sent['model-0'][1].messages)} ${k.sent['model-0'][1].tail}`);
+    assert.ok(userTexts(k.sent['model-0'][1]).includes('and tomorrow'), order);
   }
 });
 

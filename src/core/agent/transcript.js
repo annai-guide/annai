@@ -51,6 +51,8 @@ export class Transcript {
   #answered = new Set();
   /** Heard answers (spec §10.3), by segment id: their tool's result carries them. @type {Map<string, Part>} */
   #heard = new Map();
+  /** Those not meant for Shiori: two halves read them labelled in the result too. @type {Set<string>} */
+  #aside = new Set();
   /** @type {string[]} the last reply's calls: only their results follow until all have one */
   #last = [];
   /** @type {{ seq: number, parts: Part[] }[]} lines held until those results (plan decision 3) */
@@ -169,6 +171,7 @@ export class Transcript {
       const own = this.half === 'one' || this.#mine(d);
       if (d.answer && own) {
         this.#heard.set(d.id, speech);
+        if (d.dismissed && this.half !== 'one') this.#aside.add(d.id);
         return;
       }
       const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
@@ -192,7 +195,10 @@ export class Transcript {
       this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since you couldn't be reached: ${said}` }]);
     } else if (e.type === 'tool.result' && this.#mine(d) && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
-      const heard = (Array.isArray(d.heard) ? d.heard : []).map((/** @type {string} */ id) => this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id }));
+      const heard = (Array.isArray(d.heard) ? d.heard : []).flatMap((/** @type {string} */ id) => {
+        const p = this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id });
+        return this.#aside.has(id) ? [{ type: /** @type {const} */ ('text'), text: '[heard, not meant for you]' }, p] : [p];
+      });
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();
     } else {
