@@ -114,11 +114,18 @@ test('the stand-in refuses what Forgejo refuses, guards files by their ids, and 
     assert.match((await change([{ operation: 'create', path: 'a/.git/config', content: b64('y') }])).json.message, /malformed path component/);
     assert.deepEqual((await call('POST', '/repos/me/backup/contents', { branch: 'nope', files: [{ operation: 'create', path: 'q', content: 'eA==' }] })).json.message, 'branch does not exist [name: nope]');
     assert.deepEqual([(await change([{ operation: 'create', path: 'q', content: 'eA==' }], 'me/old')).status], [423]);
-    // Gitea answers a stale id with 422.
+    // Gitea answers a stale id with 422 and a file that isn't there with 404, and takes an update without an id.
     const gitea = await startForgejo({ repos: { 'me/backup': { files: { 'a.md': 'x' } } }, flavor: 'gitea' });
     try {
-      const r = await api(gitea.origin)('POST', '/repos/me/backup/contents', { files: [{ operation: 'update', path: 'a.md', sha: '1'.repeat(40), content: 'eA==' }] });
-      assert.equal(r.status, 422);
+      const g = api(gitea.origin);
+      assert.equal((await g('POST', '/repos/me/backup/contents', { files: [{ operation: 'update', path: 'a.md', sha: '1'.repeat(40), content: 'eA==' }] })).status, 422);
+      const missing = await g('POST', '/repos/me/backup/contents', { files: [{ operation: 'delete', path: 'gone.md', sha: '1'.repeat(40) }] });
+      assert.deepEqual([missing.status, missing.json.message], [404, 'object does not exist [id: , rel_path: gone.md]']);
+      assert.equal((await g('POST', '/repos/me/backup/contents', { files: [{ operation: 'update', path: 'a.md', content: 'eQ==' }] })).status, 201);
+      const before = gitea.commits('me/backup')[0].sha;
+      gitea.duringChange(() => gitea.commitAs('me/backup', { 'a.md': 'theirs' }, 'x'));
+      const lost = await g('POST', '/repos/me/backup/contents', { files: [{ operation: 'create', path: 'b.md', content: 'eA==' }] });
+      assert.deepEqual([lost.status, lost.json.message], [403, `cannot lock ref 'refs/heads/main': is at ${gitea.commits('me/backup')[0].sha} but expected ${before}`]);
     } finally {
       await gitea.stop();
     }
@@ -126,11 +133,12 @@ test('the stand-in refuses what Forgejo refuses, guards files by their ids, and 
     const id = await shaOf('a.md');
     fj.beforeChange(() => fj.commitAs('me/backup', { 'a.md': 'theirs' }, 'annai backup from Android phone\n\nDevice: phone-b\n'));
     assert.equal((await change([{ operation: 'update', path: 'a.md', sha: id, content: b64('mine') }])).status, 409);
-    // Or between its checks and its push: the push is refused.
+    // Or between its checks and its push: the push is refused, with 403, as Forgejo 16.0.6 refused one of two at the same moment.
     const now = await shaOf('a.md');
     fj.duringChange(() => fj.commitAs('me/backup', { 'a.md': 'theirs again' }, 'x'));
     const pushed = await change([{ operation: 'update', path: 'a.md', sha: now, content: b64('mine') }]);
-    assert.deepEqual([pushed.status, /rejected/.test(pushed.json.message)], [500, true]);
+    assert.equal(pushed.status, 403);
+    assert.match(pushed.json.message, /^PushRejected Error: .*! \[remote rejected\] [0-9a-f]{40} -> main \(incorrect old value provided\)/s);
     assert.equal(fj.files('me/backup').get('a.md')?.toString(), 'theirs again');
     // Over its quota, Forgejo refuses more; a proxy in front refuses a large request without CORS headers.
     fj.setQuota(1);

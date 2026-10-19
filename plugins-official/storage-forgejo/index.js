@@ -485,14 +485,14 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
       if (op.operation === 'delete' || (res === null && !(await answers(g, branch)))) throw unreachable(g);
       throw new E('refused', `${g.host} didn't take ${shown(op.path)} (${size(op.size)}): it, or a proxy in front of it, takes no uploads this large. Raise its limit (for nginx, client_max_body_size), then back up again.`);
     }
-    // A file's id that no longer matches, a file already there, or a push refused: the branch may have moved.
-    if ([409, 422, 500].includes(res.status)) {
-      const now = await headOf(g, branch).catch(() => null);
-      if (now && now.sha !== expected) {
-        const remote = await newest(g, branch, now).catch(() => describe(now));
-        if (remote.device !== g.device.id && remote.id !== base) throw new E('newer', `Another device backed up to ${repo.full_name} at the same moment.`, { remote });
-        throw new E('other', `${repo.full_name} changed while annai backed up. annai tries again later.`);
-      }
+    // Any refusal may be the branch moving meanwhile, whatever its status says: a file's id that no longer
+    // matches (409, 422 on Gitea), a file already there (422) or gone (500, 404 on Gitea), or a push refused
+    // because the branch moved after the checks (403 on both). If it moved, that is another backup.
+    const now = await headOf(g, branch).catch(() => null);
+    if (now && now.sha !== expected) {
+      const remote = (await newest(g, branch, now).catch(() => null)) ?? describe(now);
+      if (remote.device !== g.device.id && remote.id !== base) throw new E('newer', `Another device backed up to ${repo.full_name} at the same moment.`, { remote });
+      throw new E('other', `${repo.full_name} changed while annai backed up. annai tries again later.`);
     }
     throw await failure(g, res);
   };

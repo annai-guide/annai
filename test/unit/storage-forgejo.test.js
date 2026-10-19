@@ -202,8 +202,10 @@ test("a newer backup from another device is refused, never overwritten; this dev
   }
 });
 
-test('two devices at the same moment: whichever way the branch moves meanwhile, nothing is overwritten', async () => {
-  for (const [flavor, when] of /** @type {const} */ ([['forgejo', 'before'], ['gitea', 'before'], ['forgejo', 'during']])) {
+test('two devices at the same moment: whichever way the branch moves meanwhile, nothing is overwritten, and the one that lost is offered the other backup', async () => {
+  // before: the other backup lands first, so a file's id no longer matches (409, or 422 on Gitea); during: it lands
+  // between this request's checks and its push, which is refused with 403, as both real servers do.
+  for (const [flavor, when] of /** @type {const} */ ([['forgejo', 'before'], ['gitea', 'before'], ['forgejo', 'during'], ['gitea', 'during']])) {
     const fj = await startForgejo({ repos: { [REPO]: {} }, flavor });
     try {
       const { type } = forgejo();
@@ -220,6 +222,28 @@ test('two devices at the same moment: whichever way the branch moves meanwhile, 
     } finally {
       await fj.stop();
     }
+  }
+});
+
+test('on Gitea, another device that deleted the same file first is a newer backup too, not a missing repository (its 404)', async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {} }, flavor: 'gitea' });
+  try {
+    const { type } = forgejo();
+    const d = await device();
+    await d.ws.write(d.trip, '/notes/gone.md', 'Soon gone', { author: 'user' });
+    const first = await type.put(ctx(fj), await archive(d), opts());
+    await d.ws.delete(d.trip, '/notes/gone.md', { author: 'user' });
+    const path = `trips/${d.trip}/notes/gone.md`;
+    fj.beforeChange(() => {
+      const files = Object.fromEntries(fj.files(REPO));
+      delete files[path];
+      fj.commitAs(REPO, { ...files, 'annai-archive.json': '{"theirs":true}' }, 'annai backup from Android phone\n\nDevice: phone-b\nannai test\n');
+    });
+    await assert.rejects(type.put(ctx(fj), await archive(d), opts({ base: first.id })), (/** @type {any} */ e) =>
+      refused('newer', /at the same moment/)(e) && e.remote.device === 'phone-b');
+    assert.ok(fj.log.some((/** @type {any} */ l) => l.method === 'POST' && l.status === 404), 'Gitea answered 404');
+  } finally {
+    await fj.stop();
   }
 });
 
