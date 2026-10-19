@@ -3,6 +3,8 @@
 // SHA-256 of every file, which annai checks before installing (spec §5.3). Every plugin's manifest is
 // checked as annai checks one, and every provider's requirements and abilities are checked against the
 // catalog: each requirement is there in range, and each ability's type comes from a plugin it requires.
+// It also writes src/core/official-names.js: the names of the kinds handed keys that official plugins provide, so
+// none is ever a third party's, even before annai's own is installed (K4 review).
 // With --check it only says whether the committed catalog is current (npm run check, CI).
 import { readFile, readdir, writeFile, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -11,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { checkManifest } from '../src/core/packages.js';
 import { catalogFacts } from '../src/core/catalog-facts.js';
 import { satisfies } from '../src/core/requires.js';
+import { KEYED } from '../src/core/registry.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const dir = join(root, 'plugins-official');
@@ -69,13 +72,20 @@ if (wrong.length) {
 }
 
 const text = JSON.stringify({ format: 1, plugins }, null, 2) + '\n';
+const keyed = Object.fromEntries([...KEYED].sort().map((kind) => [kind, Object.fromEntries(plugins.flatMap((p) => (p.provides?.[kind] ?? []).map((n) => [n, p.id])))]));
+const namesOut = join(root, 'src', 'core', 'official-names.js');
+const names = `// Written by scripts/catalog.mjs: the names of the kinds handed keys that annai's official plugins provide (spec §5.6),
+// so none is a third party's, even before annai's own is installed.
+export const OFFICIAL_NAMES = Object.freeze(${JSON.stringify(keyed)});
+`;
 if (process.argv.includes('--check')) {
-  if ((await readFile(out, 'utf8').catch(() => '')) !== text) {
-    console.error('catalog/plugins.json is stale: run npm run catalog');
+  if ((await readFile(out, 'utf8').catch(() => '')) !== text || (await readFile(namesOut, 'utf8').catch(() => '')) !== names) {
+    console.error('catalog/plugins.json or src/core/official-names.js is stale: run npm run catalog, then npm run stamp');
     process.exit(1);
   }
   console.log('catalog/plugins.json is current');
 } else {
   await writeFile(out, text);
+  await writeFile(namesOut, names);
   console.log(`catalog/plugins.json: ${plugins.length} plugin(s)`);
 }
