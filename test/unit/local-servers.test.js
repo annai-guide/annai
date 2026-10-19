@@ -280,6 +280,10 @@ test("Test also asks at the level a role will use: a model Main asks at medium t
     await saveRoles(k.ws, { ...cfg.roles, main: { models: [], level: 'high' } });
     assert.equal((await k.llm.test(modelId)).steps.some((x) => x.step === 'level'), false);
     assert.equal(posts().length - before, 4, 'two calls each');
+    // Koe asks at low by default (the user, 2026-10-19): Test asks there too.
+    await saveModel(k.ws, { ...rec, user: { ...rec.user, reasoning: { off: { reasoning_effort: 'none' }, low: { reasoning_effort: 'low' } } } });
+    await saveRoles(k.ws, { ...cfg.roles, main: { models: [], level: 'high' }, koe: { models: [modelId], level: (await readConfig(k.ws)).roles.koe.level } });
+    assert.equal((await k.llm.test(modelId)).steps.find((x) => x.step === 'level')?.detail, 'At Koe\'s level (low), this model refused: "llama3.2:latest" does not support thinking. Lower Koe\'s level in Settings → Models, or change this model\'s Reasoning levels on its page.');
   } finally {
     await s.stop();
   }

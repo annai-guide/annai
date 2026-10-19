@@ -4,8 +4,8 @@
  */
 export const LEVELS = Object.freeze(['off', 'low', 'medium', 'high', 'max']);
 
-/** Each role's default level, which the user can change. Koe answers at once, so it doesn't think. */
-export const ROLE_LEVELS = Object.freeze({ main: 'medium', utility: 'low', decide: 'off', koe: 'off' });
+/** Each role's default level, which the user can change. Koe answers at once, so it thinks little (the user, 2026-10-19: low over off). */
+export const ROLE_LEVELS = Object.freeze({ main: 'medium', utility: 'low', decide: 'off', koe: 'low' });
 
 /** @param {Record<string, any> | undefined} map @param {string} level @returns {string | null} */
 export function nearestLevel(map, level) {
