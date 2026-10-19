@@ -24,7 +24,7 @@ import { SYS } from '../../core/scopes.js';
 /** @type {Record<string, string>} */
 const KIND_NAMES = { providers: 'Model providers', speech: 'Voices and transcription', backup: 'Backup places', tools: 'Tools and MCP', skills: 'Skills and personalities', developer: 'Developer' };
 /** @type {Record<string, string>} */
-const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice' };
+const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' };
 /** Where Add was opened from (?from=), for its crumb; Plugins otherwise. @type {Record<string, [string, string]>} */
 const FROM = { models: ['#/models', '← Models'], experimental: ['#/experimental', '← Experimental'] };
 const NOT_INSTALLABLE = "That file isn't something annai can install";

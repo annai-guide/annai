@@ -176,17 +176,18 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "1.2.0",
-      "description": "Gemini models through Google's OpenAI-compatible endpoint.",
+      "version": "1.3.0",
+      "description": "Gemini models through Google's OpenAI-compatible endpoint, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
       "abilities": [
-        "chat"
+        "chat",
+        "realtime"
       ],
       "free": false,
       "local": false,
       "code": false,
-      "size": 911,
+      "size": 2123,
       "requires": [
         {
           "id": "chat-completions",
@@ -195,7 +196,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "5fb33ea0abb312b9f67a27eece05428a4275f51a56ac968ddf25b237829b47c9"
+        "annai-plugin.json": "232f62de0ea7578b39a5403d9f9b9be1c5836134abf1b66d47c9acdc0bf31e9d"
       }
     },
     {

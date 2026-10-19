@@ -1,4 +1,4 @@
-import { ProviderError, KINDS } from '../llm/contract.js';
+import { ProviderError, KINDS, explain } from '../llm/contract.js';
 import { NO_USAGE, costOf, addCost } from '../llm/cost.js';
 import { addressProblem } from '../llm/provider-desc.js';
 import { isPluginBug } from '../registry.js';
@@ -250,4 +250,47 @@ export function openLive(c) {
     },
   };
   return session;
+}
+
+/**
+ * The Test button for a realtime model (K4): its session opens, is asked "Say OK.", and must answer aloud, with
+ * its words, within ms; then it closes. onAudio: its voice, to play as it comes.
+ * @param {LiveSession} session @param {{ onAudio?: (data: Uint8Array) => void, ms?: number }} [o]
+ * @returns {Promise<{ ok: boolean, steps: import('../llm/check.js').TestStep[] }>}
+ */
+export async function testLive(session, { onAudio, ms = 10_000 } = {}) {
+  let said = '';
+  let heard = 0;
+  /** @type {(end: string) => void} */
+  let ended = () => {};
+  const end = new Promise((r) => { ended = r; });
+  const off = session.on((e) => {
+    if (e.type === 'said') said += e.text;
+    if (e.type === 'audio') {
+      heard += e.data.length;
+      onAudio?.(e.data);
+    }
+    if (e.type === 'turn') ended(e.end);
+  });
+  try {
+    try {
+      await session.ready;
+    } catch (e) {
+      const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
+      return { ok: false, steps: [{ step: err.kind === 'auth' || err.kind === 'credit' ? 'key' : 'access', ok: false, detail: explain(err) }] };
+    }
+    const timer = setTimeout(() => ended('late'), ms);
+    session.closed.then(({ kind }) => ended(kind ?? 'closed'));
+    session.text('Say OK.');
+    const how = await end;
+    clearTimeout(timer);
+    const words = said.replace(/[.!\s]+$/, '').trim();
+    const ok = Boolean(heard && words);
+    const detail = ok ? `It answered aloud: ${words}.` : how === 'late' ? `It didn't answer aloud within ${ms / 1000} seconds.`
+      : how === 'complete' || how === 'interrupted' ? 'It answered, but not aloud in words.' : `The session closed before it answered. ${explain(new ProviderError(/** @type {any} */ (how), ''))}`;
+    return { ok, steps: [{ step: 'access', ok: true, detail: 'annai can open a live session at this address from the browser.' }, { step: 'key', ok: true, detail: 'The key works.' }, { step: 'live', ok, detail }] };
+  } finally {
+    off();
+    session.close('test');
+  }
 }

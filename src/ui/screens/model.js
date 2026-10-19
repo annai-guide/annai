@@ -1,6 +1,6 @@
 import { h, savedField, savedCheck, autosave, twoStep, jsonField, numberIn } from '../dom.js';
 import { modelOf, modelBase, providerOf, endpointOf, saveModel, removeModel, diffLayer } from '../../core/llm/config.js';
-import { testPanel } from '../model-check.js';
+import { testPanel, liveTestPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
 
@@ -66,7 +66,7 @@ export async function renderModel(ctx, id) {
   const back = `#/models/provider?id=${encodeURIComponent(rec.provider)}`;
   // Its provider and ability, as the provider's page names them.
   const of = h('p', { class: 'sub', text: `${ep.name} · ${ability.name}${ability.on ? '' : ' (switched off)'}` });
-  const speech = ability.kind === 'transcription' ? 'in' : ability.kind === 'voice' ? 'out' : null;
+  const speech = ability.kind === 'transcription' ? 'in' : ability.kind === 'voice' ? 'out' : ability.kind === 'realtime' ? 'live' : null;
   if (speech) return renderSpeechModel(ctx, rec, speech, ep, back, of);
   const save = fieldSaver(ctx, id);
   const title = h('h1', { class: 'title', text: m.name });
@@ -109,9 +109,9 @@ export async function renderModel(ctx, id) {
 }
 
 /**
- * A transcription model or a voice (spec §9.2, §10): its name, id, voice, prices and Test, each
- * saved as it changes. Speech models have Test, not "Try this model".
- * @param {any} ctx @param {import('../../core/llm/config.js').ModelRecord} rec @param {'in' | 'out'} kind
+ * A transcription model, a voice, or a live voice model (K4) (spec §9.2, §10): its name, id, voice, prices and Test,
+ * each saved as it changes. They have Test, not "Try this model".
+ * @param {any} ctx @param {import('../../core/llm/config.js').ModelRecord} rec @param {'in' | 'out' | 'live'} kind
  * @param {import('../../core/llm/config.js').Endpoint} ep @param {string} back @param {HTMLElement} of its provider and ability
  */
 function renderSpeechModel(ctx, rec, kind, ep, back, of) {
@@ -120,7 +120,7 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
   const save = fieldSaver(ctx, rec.id);
   const title = h('h1', { class: 'title', text: m.name });
   const { voice: voiceId, ...otherTunables } = m.tunables;
-  const voice = kind === 'out' ? h('input', { id: 'model-voice', autocomplete: 'off', autocapitalize: 'off', value: String(voiceId ?? ''), placeholder: String(ep.tunables.voice ?? '') }) : null;
+  const voice = kind !== 'in' ? h('input', { id: 'model-voice', autocomplete: 'off', autocapitalize: 'off', value: String(voiceId ?? ''), placeholder: String(ep.tunables.voice ?? '') }) : null;
   /** The tunables with the voice typed in, which has a field of its own. @param {Record<string, any>} t */
   const withVoice = (t) => {
     const { voice: _, ...rest } = t;
@@ -135,15 +135,15 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
     h('p', { class: 'crumbs' }, h('a', { href: back }, `← ${ep.name}`)),
     title,
     of,
-    h('p', { class: 'sub', text: kind === 'in' ? 'A transcription model: it turns what you say into text.' : 'A voice: Shiori speaks with it.' }),
+    h('p', { class: 'sub', text: { in: 'A transcription model: it turns what you say into text.', out: 'A voice: Shiori speaks with it.', live: 'A live voice: it hears and speaks in one stream, as Koe for talking.' }[kind] }),
     h('section', { class: 'panel', 'aria-label': 'Model' },
       h('p', { class: 'sub', text: 'Each setting is saved as you change it.' }),
       ...nameFields(save, m, base.name, title),
       voice ? savedField('Voice', voice, () => voice.value.trim(), () => save('tunables', (/** @type {any} */ now) => withVoice(now.tunables))) : null,
-      modelJson(save, kind === 'in' ? 'Prices, USD (JSON: perMinute, minSeconds)' : 'Prices, USD (JSON: perMillionChars)', 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
+      modelJson(save, { in: 'Prices, USD (JSON: perMinute, minSeconds)', out: 'Prices, USD (JSON: perMillionChars)', live: 'Prices, USD per million tokens (JSON: input, audioIn, output, audioOut)' }[kind], 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
       h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => showTunables(await save('tunables', withVoice(t))))),
       modelJson(save, 'Extra request fields (JSON)', 'model-extra', 'extraBody', m.extraBody)),
-    speechTestPanel(ctx, m, kind, rec.verified),
+    kind === 'live' ? liveTestPanel(ctx, rec.id, rec.verified) : speechTestPanel(ctx, m, kind, rec.verified),
     h('div', { class: 'acts' }, twoStep('Remove model', 'Tap again to remove it', async () => {
       await removeModel(ctx.ws, rec.id);
       ctx.go(back);

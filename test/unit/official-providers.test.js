@@ -9,6 +9,8 @@ import { createLlm } from '../../src/core/llm/service.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 import { hostKit } from './package-kit.js';
 import { officialManifests, official } from './provider-kit.js';
+import { useSuggestion } from '../../src/core/llm/providers.js';
+import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 const root = new URL('../../', import.meta.url);
 const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8')).plugins;
@@ -242,4 +244,57 @@ test('every official transcription and Chat Completions ability declares the aud
   assert.deepEqual(declared['provider-openrouter/voice'], ['mp3'], "OpenRouter's voices send MP3 (or raw PCM) only");
   assert.deepEqual(declared['provider-openai/voice'], ['opus', 'aac', 'mp3', 'flac', 'wav']);
   assert.deepEqual(declared['provider-local-speech/voice'], ['mp3', 'wav'], 'Speaches refuses opus and aac; Kokoro-FastAPI takes MP3 too');
+});
+
+test("Gemini's Live voice: off until switched on, which installs gemini-live; Test opens a session that answers OK aloud, recorded on the model; the recommended models put it in Koe for talking (K4)", async () => {
+  const desc = (await official('provider-gemini')).provider;
+  const live = /** @type {any} */ (desc.abilities.live);
+  assert.deepEqual([live.kind, live.type, live.name, live.on, live.baseUrl], ['realtime', 'gemini-live', 'Live voice', false, 'https://generativelanguage.googleapis.com']);
+  assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking']);
+  assert.deepEqual(live.models[0].prices, { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 });
+  assert.deepEqual(desc.roles?.recommended?.['koe-talk'], ['gemini-3.8-live']);
+  assert.ok(!(await official('provider-gemini')).provider.roles?.recommended?.main, 'Main stays as the user sets it');
+  const GKEY = 'AIza-stand-in-gemini-key-0123456789';
+  const s = await startRealtimeServer({ flavour: 'gemini', key: GKEY, pace: 0.05, turns: [{ said: 'OK.', audio: new Uint8Array(9600), usage: { promptTokenCount: 500, responseTokenCount: 20, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 500 }], responseTokensDetails: [{ modality: 'AUDIO', tokenCount: 20 }] } }] });
+  try {
+    const k = await hostKit();
+    const fetch = async (/** @type {any} */ url) => {
+      try {
+        return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+      } catch {
+        return new Response('not found', { status: 404 });
+      }
+    };
+    const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+    const id = await llm.addProvider('provider-gemini', { key: GKEY, abilities: { live: { on: false, baseUrl: s.origin } } });
+    assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['chat-completions', 'provider-gemini'], 'nothing for live sessions until they are switched on');
+    const cfg = await readConfig(k.ws);
+    assert.deepEqual(cfg.roles['koe-talk'].models, [], 'adding Gemini never fills Koe (the split is opt-in)');
+    const liveId = /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'gemini-3.8-live')?.id);
+    await llm.setAbility(id, 'live', true);
+    assert.ok((await k.host.installed())['gemini-live'], 'switching it on installs its protocol');
+    /** @type {number[]} */
+    const heard = [];
+    const r = await llm.test(liveId, { onAudio: (/** @type {Uint8Array} */ d, /** @type {any} */ f) => heard.push(d.length, f.rate) });
+    assert.deepEqual(r.steps.map((/** @type {any} */ x) => [x.step, x.ok]), [['access', true], ['key', true], ['live', true]]);
+    assert.equal(r.steps[2].detail, 'It answered aloud: OK.');
+    assert.equal(heard.reduce((n, x, i) => (i % 2 ? n : n + x), 0), 9600, 'its voice, to play');
+    assert.equal(heard[1], 24_000);
+    assert.equal(s.received()[0].setup.model, 'models/gemini-3.8-live');
+    assert.deepEqual(s.received()[1], { clientContent: { turns: [{ role: 'user', parts: [{ text: 'Say OK.' }] }], turnComplete: true } });
+    const verified = (await readConfig(k.ws)).models[liveId].verified;
+    assert.deepEqual([verified?.access, verified?.key, verified?.live], [true, true, true]);
+    assert.ok(!JSON.stringify(await k.log()).includes(GKEY), 'no key in any entry');
+    // A key Gemini refuses is said as one.
+    await llm.unbench(id);
+    const { setKey } = await import('../../src/core/llm/config.js');
+    await setKey(k.store, id, 'AIza-wrong');
+    const bad = await llm.test(liveId);
+    assert.deepEqual(bad.steps.map((/** @type {any} */ x) => [x.step, x.ok]), [['key', false]]);
+    assert.match(bad.steps[0].detail, /key was rejected/);
+    await useSuggestion(k, id, await official('provider-gemini'), 'recommended');
+    assert.deepEqual((await readConfig(k.ws)).roles['koe-talk'].models, [liveId], '"Use the recommended models" puts Live in Koe for talking');
+  } finally {
+    await s.stop();
+  }
 });

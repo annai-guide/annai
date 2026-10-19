@@ -11,7 +11,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request', 'pack.download'],
-  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session'],
   Housekeeping: ['compaction'],
   // Live is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
@@ -135,6 +135,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
     // Whose turn: Koe's, Kokoro's, or Shiori's as one half.
     const who = d.tag === 'koe' ? 'Koe · ' : d.half === 'kokoro' ? 'Kokoro · ' : d.tag === 'conversation' ? 'Shiori · ' : '';
     return `${who}${d.role}: ${d.answeredBy ?? 'no answer'} · ${n} attempt${n === 1 ? '' : 's'}${d.cost !== undefined ? ` · ${formatCost(d.cost)}` : ''}`;
+  }
+  // A live session's life (K4): never its address or key, which annai never keeps.
+  if (e.type === 'live.session') {
+    return [`live session ${d.state}`, d.model, d.ms !== undefined ? `${(d.ms / 1000).toFixed(1)} s` : null, d.why ? cut(d.why) : null, d.kind,
+      d.bytesIn !== undefined ? `${bytes(d.bytesIn)} in, ${bytes(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null].filter(Boolean).join(' · ');
   }
   if (e.type === 'net.request') {
     // Each clip's format and size (spec §10.6).
