@@ -331,3 +331,25 @@ test('the OpenAI stand-in: a tool call as function_call_arguments.done and in re
     await shut.stop();
   }
 });
+
+test("the Gemini flavour's late and early words (K5's, kept here for the merge): heardFirst at the user's activityStart, once; heardAfter and saidAfter after turnComplete", async () => {
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, pace: 0, turns: [{ heard: 'Where is lunch?', heardFirst: true, said: 'Checking.', heardAfter: ' near here', saidAfter: ' now' }] });
+  try {
+    const c = client(`${s.ws}${GEMINI_PATH('v1alpha')}?key=${KEY}`);
+    await c.opened;
+    c.send(setup());
+    await c.until(() => c.got.some((g) => g.json.setupComplete));
+    c.send({ realtimeInput: { activityStart: {} } });
+    await c.until(() => c.got.some((g) => g.json.serverContent?.inputTranscription));
+    c.send({ realtimeInput: { activityStart: {} } });
+    c.send({ realtimeInput: { activityEnd: {} } });
+    await c.until(() => c.got.some((g) => g.json.serverContent?.outputTranscription?.text === ' now'));
+    const sc = c.got.map((g) => g.json.serverContent).filter(Boolean);
+    assert.deepEqual(sc.filter((x) => x.inputTranscription).map((x) => x.inputTranscription.text), ['Where is lunch?', ' near here'], 'heard first once, not again with the answer');
+    const done = sc.findIndex((x) => x.turnComplete);
+    assert.ok(sc.findIndex((x) => x.inputTranscription?.text === ' near here') > done && sc.findIndex((x) => x.outputTranscription?.text === ' now') > done);
+    c.ws.close();
+  } finally {
+    await s.stop();
+  }
+});
