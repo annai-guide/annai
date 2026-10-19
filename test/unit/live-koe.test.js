@@ -140,3 +140,69 @@ test('with "Keep voice clips", what was said live is kept with its line, in the 
     await k.done();
   }
 });
+
+// Task 4: tool calls answered at once (decision 10).
+/** The stand-in's tool answers. @param {any} k */
+const answers = (k) => got(k, 'toolResponse').flatMap((/** @type {any} */ m) => m.toolResponse.functionResponses);
+
+test('tell_kokoro is answered "sent", with scheduling SILENT, while Kokoro is still working; Kokoro reads Koe\'s question', async () => {
+  const k = await liveKit([{ heard: 'Is Nepenthe open now?', said: "I'm checking.", audio: tone(0.3), tool: { name: 'tell_kokoro', args: { text: 'Is Nepenthe open now?' } } }], {
+    kokoro: [{ rules: [{ match: '.', reply: { delayMs: 400, toolCalls: [{ name: 'sleep', input: {} }] } }] }],
+  });
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await say(k, 'where-eat');
+    await until(() => answers(k).length === 1);
+    assert.ok(k.agent.kokoro.busy, 'Kokoro is still at work: Koe never waits for it');
+    const [a] = answers(k);
+    assert.deepEqual([a.name, a.response, a.scheduling], ['tell_kokoro', { result: 'sent' }, 'SILENT']);
+    await k.agent.idle();
+    const calls = (await k.events(['tool.call', 'tool.result'])).filter((/** @type {any} */ e) => e.data.half === 'koe').map((/** @type {any} */ e) => [e.type, e.data.name, e.data.half]);
+    assert.deepEqual(calls, [['tool.call', 'tell_kokoro', 'koe'], ['tool.result', 'tell_kokoro', 'koe']]);
+    assert.equal(k.sent['model-0'].length, 1, 'one Kokoro call for the question');
+    const lines = read(k.agent.kokoro).join('|');
+    assert.ok(lines.indexOf('speech:Is Nepenthe open now?') < lines.indexOf('[Koe asks] "Is Nepenthe open now?"'), lines);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a read answers with its result, and Koe goes on talking after it (no SILENT)', async () => {
+  const k = await liveKit([{ said: 'Let me look.', audio: tone(0.2), tool: { name: 'list', args: { path: '/trip/' } } }]);
+  try {
+    k.agent.send("What's in the trip?");
+    await until(() => answers(k).length === 1);
+    const [a] = answers(k);
+    assert.equal(a.name, 'list');
+    assert.match(a.response.result, /^path\ttype\tsize/);
+    assert.match(a.response.result, /\/trip\/trip\.json/);
+    assert.equal(a.scheduling, undefined);
+  } finally {
+    await k.done();
+  }
+});
+
+test('ask shows its buttons and is answered at once; the tap comes as the next text turn, and Kokoro reads it as chosen', async () => {
+  const k = await liveKit([
+    { said: 'Tacos or ramen?', audio: tone(0.2), tool: { name: 'ask', args: { question: 'Tacos or ramen?', options: ['Tacos', 'Ramen'] } } },
+    { said: 'Ramen it is.', audio: tone(0.2) },
+  ]);
+  try {
+    k.agent.send('Lunch?');
+    await until(() => answers(k).length === 1);
+    const [a] = answers(k);
+    assert.deepEqual([a.response.result, a.scheduling], ['Shown; their tap comes as their next turn.', 'SILENT']);
+    await k.agent.idle();
+    const [ask] = await k.events(['out.ask']);
+    assert.deepEqual([ask.data.question, ask.data.options, ask.data.half], ['Tacos or ramen?', ['Tacos', 'Ramen'], 'koe']);
+    k.agent.answer(ask.data.id, 'Ramen');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Ramen it is.'));
+    assert.equal(texts(k).at(-1), '[the user chose] "Ramen"');
+    const chosen = (await k.events(['msg.user'])).at(-1);
+    assert.deepEqual([chosen.data.chose, chosen.data.split], [true, true]);
+    assert.ok(read(k.agent.kokoro).includes('[the user chose] "Ramen"'));
+  } finally {
+    await k.done();
+  }
+});
