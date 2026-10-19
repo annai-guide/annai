@@ -8,11 +8,15 @@ import { createHash } from 'node:crypto';
  * CORS behaviour (measured 2026-10-18, see docs/superpowers/plans/2026-10-18-storage-forgejo.md),
  * including its tree pages that all say truncated. It hashes git objects with code of its own
  * (node:crypto), in SHA-1 or SHA-256 repositories. Tests and the end-to-end suite run it on a port
- * of its own (port 0).
+ * of its own (port 0). The account and the repository search answer as both servers did for each
+ * token's scopes (2026-10-18): GET /user needs User: Read, which TOKEN and READ_TOKEN lack and
+ * USER_TOKEN has; the search needs only Repository, and the permissions it gives are the user's,
+ * whatever the token may do.
  * @typedef {{ type: 'blob', data: Buffer } | { type: 'tree', entries: { name: string, mode: string, sha: string }[] }
  *   | { type: 'commit', tree: string, parents: string[], message: string, date: string }} GitObject
  * @typedef {{ name: string, private: boolean, archived: boolean, format: 'sha1' | 'sha256', defaultBranch: string,
- *   objects: Map<string, GitObject>, refs: Map<string, string> }} Repo
+ *   push: boolean, mirror: boolean, objects: Map<string, GitObject>, refs: Map<string, string> }} Repo
+ *   push: whether the user may change it (a collaborator may only read); mirror: a pull mirror
  * @typedef {Map<string, { sha: string, mode: string }>} Files path → file
  * @typedef {{ files: Map<string, { sha: string, mode: string }>, dirs: Map<string, Dir> }} Dir
  * @typedef {{ status: number, json?: any, raw?: Buffer, headers?: Record<string, string>, cors?: boolean, drop?: boolean }} Answer
@@ -21,6 +25,8 @@ import { createHash } from 'node:crypto';
 
 export const TOKEN = 'f0rgej0standin0123456789abcdef01234567';
 export const READ_TOKEN = 'f0rgej0standinreadonly0123456789abcdef';
+/** A token with Repository: Read and write and User: Read. */
+export const USER_TOKEN = 'f0rgej0standinuser0123456789abcdef0123';
 /** The headers the user's own server allows web apps to send. */
 const ALLOWED_HEADERS = ['authorization', 'content-type', 'accept'];
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
@@ -50,13 +56,13 @@ function idOf(format, o) {
 }
 
 /**
- * @param {{ token?: string, repos?: Record<string, { private?: boolean, archived?: boolean, format?: 'sha1' | 'sha256', defaultBranch?: string,
- *   files?: Record<string, string | Buffer> }>, cors?: boolean | string, perPage?: number, flavor?: 'forgejo' | 'gitea', maxBody?: number }} [opts]
- *   repos: each one empty, or with one commit holding files; cors: true allows any origin, a string only that origin, false none
+ * @param {{ token?: string, user?: string, repos?: Record<string, { private?: boolean, archived?: boolean, format?: 'sha1' | 'sha256', defaultBranch?: string,
+ *   push?: boolean, mirror?: boolean, files?: Record<string, string | Buffer> }>, cors?: boolean | string, perPage?: number, flavor?: 'forgejo' | 'gitea', maxBody?: number }} [opts]
+ *   user: the tokens' account; repos: each one empty, or with one commit holding files; cors: true allows any origin, a string only that origin, false none
  *   (Forgejo's default); perPage: the most tree entries a page holds; flavor: Gitea says truncated only while more pages follow,
  *   and answers a stale sha with 422; maxBody: a proxy in front refuses larger requests with 413, without CORS headers
  */
-export async function startForgejo({ token = TOKEN, repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity } = {}) {
+export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity } = {}) {
   /** @type {Map<string, Repo>} */
   const all = new Map();
   /** @type {{ method: string, path: string, status: number, body: string }[]} */
@@ -156,14 +162,15 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
 
   /** @param {Repo} repo */
   const repoJson = (repo) => ({
-    id: 1, name: repo.name.split('/')[1], full_name: repo.name, owner: { login: repo.name.split('/')[0] }, private: repo.private, internal: false,
-    empty: repo.refs.size === 0, archived: repo.archived, default_branch: repo.defaultBranch, object_format_name: repo.format,
-    permissions: { admin: true, push: true, pull: true },
+    id: 1, name: repo.name.split('/')[1], full_name: repo.name, owner: { id: 1, login: repo.name.split('/')[0] }, private: repo.private, internal: false,
+    empty: repo.refs.size === 0, archived: repo.archived, mirror: repo.mirror, default_branch: repo.defaultBranch, object_format_name: repo.format,
+    permissions: { admin: repo.name.startsWith(`${user}/`), push: repo.push, pull: true },
   });
 
   for (const [name, r] of Object.entries(repos)) {
     /** @type {Repo} */
-    const repo = { name, private: r.private ?? true, archived: r.archived ?? false, format: r.format ?? 'sha1', defaultBranch: r.defaultBranch ?? 'main', objects: new Map(), refs: new Map() };
+    const repo = { name, private: r.private ?? true, archived: r.archived ?? false, format: r.format ?? 'sha1', defaultBranch: r.defaultBranch ?? 'main',
+      push: r.push ?? true, mirror: r.mirror ?? false, objects: new Map(), refs: new Map() };
     all.set(name, repo);
     if (r.files) {
       /** @type {Files} */
@@ -174,7 +181,7 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
 
   /** ChangeFiles, as Forgejo's services/repository/files/update.go does it. @param {Repo} repo @param {any} body @param {string} authed @returns {Answer} */
   function changeFiles(repo, body, authed) {
-    if (authed !== token) return { status: 403, json: err('token does not have at least one of required scope(s): [write:repository]') };
+    if (authed !== token && authed !== USER_TOKEN) return { status: 403, json: err('token does not have at least one of required scope(s): [write:repository]') };
     if (repo.archived) return { status: 423, json: err(`<Repository 1:${repo.name}> is archived`) };
     if (used() > quota) return { status: 413, json: { message: 'quota exceeded', user_id: 1, username: repo.name.split('/')[0] } };
     if (!Array.isArray(body?.files)) return { status: 422, json: err('[Files]: Required') };
@@ -266,7 +273,21 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
     const m = /^\/api\/v1\/repos\/([^/]+)\/([^/]+)(\/.*)?$/.exec(url.pathname);
     const auth = /^(?:token|bearer) (.+)$/i.exec(String(headers.authorization ?? ''))?.[1] ?? '';
     if (!headers.authorization) return { status: 401, json: err('token is required') };
-    if (auth !== token && auth !== READ_TOKEN) return { status: 401, json: err(`access token does not exist [sha: ${auth.slice(0, 40)}]`) };
+    if (auth !== token && auth !== READ_TOKEN && auth !== USER_TOKEN) return { status: 401, json: err(`access token does not exist [sha: ${auth.slice(0, 40)}]`) };
+    if (method === 'GET' && url.pathname === '/api/v1/user') {
+      return auth === USER_TOKEN ? { status: 200, json: { id: 1, login: user, username: user } } : { status: 403, json: err('token does not have at least one of required scope(s): [read:user]') };
+    }
+    if (method === 'GET' && url.pathname === '/api/v1/repos/search') {
+      // What the user may see, by name; is_private and archived filter, q matches part of a name.
+      const q = url.searchParams;
+      const flag = (/** @type {string} */ k) => (q.has(k) ? q.get(k) === 'true' : null);
+      const [priv, archived, words] = [flag('is_private'), flag('archived'), (q.get('q') ?? '').toLowerCase()];
+      const found = [...all.values()].filter((x) => (priv === null || x.private === priv) && (archived === null || x.archived === archived) && x.name.split('/')[1].toLowerCase().includes(words))
+        .sort((a, b) => (a.name.split('/')[1] < b.name.split('/')[1] ? -1 : 1));
+      const limit = Math.min(50, Number(q.get('limit')) || 30);
+      const start = (Math.max(1, Number(q.get('page')) || 1) - 1) * limit;
+      return { status: 200, json: { ok: true, data: found.slice(start, start + limit).map(repoJson) }, headers: { 'x-total-count': String(found.length) } };
+    }
     const repo = m ? all.get(`${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`) : undefined;
     if (!m || !repo) return notFound();
     const rest = m[3] ?? '';
