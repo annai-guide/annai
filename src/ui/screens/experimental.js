@@ -1,4 +1,4 @@
-import { h, checkbox } from '../dom.js';
+import { h, savedCheck } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 
 /**
@@ -9,9 +9,7 @@ import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 export async function renderExperimental(ctx) {
   const app = await readAppSettings(ctx.ws);
   const traceInstalled = Boolean((await ctx.plugins?.installed?.().catch(() => ({})))?.['remote-trace']);
-  const swipes = checkbox('Swipe sideways to move between tabs', app.experimental?.swipeTabs === true);
-  swipes.input.addEventListener('change', async () => {
-    const on = swipes.input.checked;
+  const swipes = savedCheck('Swipe sideways to move between tabs', app.experimental?.swipeTabs === true, async (on) => {
     await updateAppSettings(ctx.ws, { experimental: { swipeTabs: on } });
     ctx.setSwipes?.(on);
   });

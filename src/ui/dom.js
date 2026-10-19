@@ -42,9 +42,9 @@ export function checkbox(label, checked) {
  * @param {string} legend
  * @param {[string, string][]} options [value, label]
  * @param {string} value
- * @param {(value: string) => void} onChange
+ * @param {(value: string) => void} [onChange]
  */
-export function radios(legend, options, value, onChange) {
+export function radios(legend, options, value, onChange = () => {}) {
   const name = `r-${Math.random().toString(36).slice(2)}`;
   return h('fieldset', { class: 'radios' }, h('legend', { text: legend }),
     ...options.map(([v, label]) => {
@@ -86,22 +86,111 @@ export function twoStep(label, confirmLabel, action) {
 }
 
 /**
- * A labelled JSON editor for a settings object. read() parses it, or throws in plain words.
+ * A labelled JSON editor for a settings object. read() parses it, or throws in plain words;
+ * show() puts a value in it.
  * @param {string} label @param {string} id @param {any} value
  */
 export function jsonField(label, id, value) {
   const area = h('textarea', { id, rows: 4, spellcheck: 'false', autocapitalize: 'off', class: 'mono' });
-  area.value = JSON.stringify(value ?? {}, null, 2);
+  const show = (/** @type {any} */ v) => { area.value = JSON.stringify(v ?? {}, null, 2); };
+  show(value);
   return {
     el: field(label, area),
+    area,
+    show,
     read() {
       const text = area.value.trim();
       if (!text) return {};
+      /** @type {any} */
+      let v;
       try {
-        return JSON.parse(text);
+        v = JSON.parse(text);
       } catch {
         throw new Error(`${label} isn't valid JSON.`);
       }
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(`${label} has to be an object: { … }.`);
+      return v;
     },
   };
+}
+
+/** What went wrong, in plain words; for a ValidationError, its own words without the field path. @param {any} e */
+export function messageOf(e) {
+  if (Array.isArray(e?.errors)) return e.errors.map((/** @type {string} */ x) => x.replace(/^\$[^:]*: /, '')).join(' ');
+  return String(e?.message ?? e);
+}
+
+/**
+ * A field's number for autosave's read(): null when empty (unless needed), else lo to hi, whole when asked; anything else throws words.
+ * @param {HTMLInputElement} input @param {number} lo @param {number} hi @param {string} words @param {{ whole?: boolean, need?: boolean }} [o]
+ */
+export function numberIn(input, lo, hi, words, { whole = false, need = false } = {}) {
+  const t = input.value.trim();
+  if (!t && !need && !input.validity?.badInput) return null;
+  const n = Number(t);
+  if (!t || !(n >= lo && n <= hi) || (whole && !Number.isInteger(n))) throw new Error(words);
+  return n;
+}
+
+let saving = Promise.resolve();
+
+/**
+ * Runs a save after those waiting, so saves that read, change and write a setting lose nothing to
+ * each other. Save buttons use it too; a save it runs never calls it (it would wait for itself).
+ * @template T @param {() => Promise<T>} fn @returns {Promise<T>}
+ */
+export function queueSave(fn) {
+  const run = saving.then(fn, fn);
+  saving = run.then(() => {}, () => {});
+  return run;
+}
+
+/**
+ * A setting saved as it changes (spec §16.1): on `change`, so a text field saves once committed
+ * or left, never per keystroke. read() throws in plain words for a value that isn't valid: nothing
+ * is saved, and the words show by the field. Saved, a quiet "Saved" shows by it for a moment.
+ * @param {HTMLElement} control an input, select, textarea or fieldset @param {() => any} read @param {(value: any) => unknown} save
+ * @returns {HTMLElement[]} the note and the error, to put by the field
+ */
+export function autosave(control, read, save) {
+  const note = h('span', { class: 'saved', role: 'status' });
+  const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  const run = async () => {
+    try {
+      await save(read());
+      error.hidden = true;
+      control.removeAttribute('aria-invalid');
+      note.textContent = 'Saved';
+      timer = setTimeout(() => { note.textContent = ''; }, 4000);
+    } catch (e) {
+      error.textContent = messageOf(e);
+      error.hidden = false;
+      control.setAttribute('aria-invalid', 'true');
+    }
+  };
+  control.addEventListener('change', () => {
+    clearTimeout(timer);
+    note.textContent = '';
+    queueSave(run);
+  });
+  return [note, error];
+}
+
+/** A labelled field that saves as it changes (autosave). @param {string} label @param {HTMLElement} control @param {() => any} read @param {(value: any) => unknown} save */
+export function savedField(label, control, read, save) {
+  return h('div', { class: 'saving' }, field(label, control), ...autosave(control, read, save));
+}
+
+/** A checkbox that saves as it changes. @param {string} label @param {boolean} checked @param {(on: boolean) => unknown} save */
+export function savedCheck(label, checked, save) {
+  const c = checkbox(label, checked);
+  return { input: c.input, el: h('div', { class: 'saving' }, c.el, ...autosave(c.input, () => c.input.checked, save)) };
+}
+
+/** Radios that save as they change. @param {string} legend @param {[string, string][]} options @param {string} value @param {(value: string) => unknown} save */
+export function savedRadios(legend, options, value, save) {
+  const set = radios(legend, options, value);
+  return h('div', { class: 'saving' }, set, ...autosave(set, () => /** @type {HTMLInputElement} */ (set.querySelector('input:checked')).value, save));
 }

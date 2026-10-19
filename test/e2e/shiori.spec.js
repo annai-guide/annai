@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, startServer, addEndpoint, anthropicToolReply, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addEndpoint, anthropicToolReply, filterTrace, savedBy } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/#/trips');
@@ -438,8 +438,7 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
       await page.getByRole('link', { name: new RegExp(ep) }).click();
       await page.getByRole('link', { name: new RegExp(`^${m}`) }).click();
       await page.getByLabel('Takes photos').check();
-      await page.getByRole('button', { name: 'Save' }).click();
-      await expect(page.getByLabel('Takes photos')).toBeChecked();
+      await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
     }
     await page.goto('/#/models');
     for (const m of ['a-model', 'b-model']) {
