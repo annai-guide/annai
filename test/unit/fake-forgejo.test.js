@@ -165,6 +165,20 @@ test('the stand-in refuses what Forgejo refuses, guards files by their ids, and 
   }
 });
 
+test("the stand-in's ChangeFiles leaves out files over 10 MiB as each server does, and an empty repository's first branch becomes its default", async () => {
+  for (const [flavor, none] of /** @type {const} */ ([['forgejo', ''], ['gitea', null]])) {
+    const fj = await startForgejo({ repos: { 'me/backup': {} }, flavor });
+    try {
+      const r = await api(fj.origin)('POST', '/repos/me/backup/contents', { branch: 'backups', files: [
+        { operation: 'create', path: 'big', content: Buffer.alloc(11 * 1024 * 1024, 7).toString('base64') }, { operation: 'create', path: 'small', content: 'eA==' }] });
+      assert.deepEqual(r.json.files.map((/** @type {any} */ f) => f.content), [none, 'eA=='], flavor);
+      assert.equal((await api(fj.origin)('GET', '/repos/me/backup')).json.default_branch, 'backups', flavor);
+    } finally {
+      await fj.stop();
+    }
+  }
+});
+
 test('without [cors] ENABLED, a preflight gets 405 and no answer carries CORS headers', async () => {
   const fj = await startForgejo({ repos: { 'me/backup': {} }, cors: false });
   try {
