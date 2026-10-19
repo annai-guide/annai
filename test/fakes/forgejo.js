@@ -276,6 +276,12 @@ export async function startForgejo({ token = TOKEN, repos = {}, cors = true, per
       const c = /** @type {any} */ (repo.objects.get(sha));
       return { status: 200, json: { name: branch, commit: { id: sha, message: c.message, timestamp: c.date, author: { name: 'me', email: 'me@example.com', username: 'me' } }, protected: false, user_can_push: true } };
     }
+    if (method === 'GET' && (r = /^\/git\/commits\/([0-9a-f]+)$/.exec(rest))) {
+      const c = /** @type {any} */ (repo.objects.get(r[1]));
+      if (c?.type !== 'commit') return flavor === 'gitea' ? { status: 404, json: err(`commit doesn't exist: ${r[1]}`) } : { status: 404, json: err(r[1], []) };
+      const j = commitJson(r[1], c);
+      return { status: 200, json: { sha: r[1], created: c.date, commit: { message: j.message, author: j.author, committer: j.committer, tree: j.tree }, parents: j.parents } };
+    }
     if (method === 'GET' && (r = /^\/git\/trees\/([0-9a-f]+)$/.exec(rest))) {
       const tree = treeOf(repo, r[1]);
       if (!tree) return { status: 400, json: err(`sha not found [${r[1]}]`) };

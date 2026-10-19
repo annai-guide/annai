@@ -38,9 +38,13 @@ const MANIFEST_MAX = 8 * 1024 * 1024;
 const PER_PAGE = 1000;
 /** The most tree pages annai reads: 100,000 files and folders. */
 const MAX_PAGES = 100;
-/** Commits a page of the list holds (servers give at most [api] MAX_RESPONSE_ITEMS, 50), how many pages annai looks through, and how many backups it lists. */
+/**
+ * Commits a page of the list holds (servers give at most [api] MAX_RESPONSE_ITEMS, 50), how many pages
+ * annai looks through for backups (2,000 commits: past the parts of a very large backup cut off half
+ * way), and how many backups it lists.
+ */
 const COMMITS_PAGE = 50;
-const COMMIT_PAGES = 5;
+const COMMIT_PAGES = 40;
 const LISTED = 30;
 const MANIFEST = 'annai-archive.json';
 /** The top-level files and folders of annai's backups. */
@@ -49,6 +53,8 @@ const OURS = new Set([MANIFEST, 'me', 'trips', 'system', 'blobs']);
 const EXTRAS = /^(readme|license|licence|copying|notice)(\.[\w-]+)?$|^\.(gitignore|gitattributes|forgejo|gitea)$/i;
 /** A commit annai made that is a backup; the parts before one aren't. */
 const BACKUP = /^annai backup\b/;
+/** A commit of a backup's parts, sent before the commit that is the backup. */
+const PARTIAL = /^Part of an annai backup\b/;
 /** A git object's id, SHA-1 or SHA-256. */
 const HEX = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
@@ -333,10 +339,15 @@ async function backupsOn(g, branch, want) {
   return out.slice(0, want);
 }
 
-/** The newest backup at a branch whose head is this commit: the head itself, or the newest backup before it. @param {F} g @param {string} branch @param {Commit} head */
+/**
+ * The newest backup at a branch whose head is this commit: the head itself, or the newest backup
+ * before it, past parts and commits made by hand. A commit made by hand with no backup before it
+ * counts as itself; parts with none before them are no backup, so null.
+ * @param {F} g @param {string} branch @param {Commit} head
+ */
 async function newest(g, branch, head) {
   if (BACKUP.test(head.message)) return describe(head);
-  return (await backupsOn(g, branch, 1))[0] ?? describe(head);
+  return (await backupsOn(g, branch, 1))[0] ?? (PARTIAL.test(head.message) ? null : describe(head));
 }
 
 /** The backups on the branch, newest first. @param {F} g */
@@ -393,7 +404,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     if (!snap) throw unreadable(g);
     old = snap;
     const remote = await newest(g, branch, head);
-    if (old.has(MANIFEST) && remote.id !== base && remote.device !== g.device.id) throw new E('newer', `There is a newer backup in ${repo.full_name}.`, { remote });
+    if (remote && old.has(MANIFEST) && remote.id !== base && remote.device !== g.device.id) throw new E('newer', `There is a newer backup in ${repo.full_name}.`, { remote });
     const foreign = [...new Set([...old.keys()].map(top))].filter((t) => !OURS.has(t) && !EXTRAS.test(t));
     if (foreign.length) {
       throw new E('refused', `${repo.full_name} holds other files (${foreign.slice(0, 3).join(', ')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
@@ -490,8 +501,8 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     // because the branch moved after the checks (403 on both). If it moved, that is another backup.
     const now = await headOf(g, branch).catch(() => null);
     if (now && now.sha !== expected) {
-      const remote = (await newest(g, branch, now).catch(() => null)) ?? describe(now);
-      if (remote.device !== g.device.id && remote.id !== base) throw new E('newer', `Another device backed up to ${repo.full_name} at the same moment.`, { remote });
+      const remote = await newest(g, branch, now).catch(() => null);
+      if (remote && remote.device !== g.device.id && remote.id !== base) throw new E('newer', `Another device backed up to ${repo.full_name} at the same moment.`, { remote });
       throw new E('other', `${repo.full_name} changed while annai backed up. annai tries again later.`);
     }
     throw await failure(g, res);
@@ -522,7 +533,15 @@ async function answers(g, branch) {
 async function get(g, id, { onProgress = () => {}, signal } = {}) {
   ready(g);
   const E = g.TargetError;
-  const files = HEX.test(id) ? await snapshot(g, id, signal) : null;
+  const commit = HEX.test(id) ? await call(g, 'GET', `/git/commits/${id}?stat=false&verification=false&files=false`, { signal }) : null;
+  if (!commit || [400, 404, 422].includes(commit.status)) throw new E('missing', `That backup isn't in ${named(g)} on ${g.host}.`);
+  if (!commit.ok) throw await failure(g, commit);
+  const c = await g.read(commit, 'json', g.host);
+  if (!isObject(c)) throw unreadable(g);
+  if (PARTIAL.test(String(c.commit?.message ?? ''))) {
+    throw new E('missing', "That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.");
+  }
+  const files = await snapshot(g, id, signal);
   if (!files) throw new E('missing', `That backup isn't in ${named(g)} on ${g.host}.`);
   if (!files.has(MANIFEST)) throw new E('missing', "That commit isn't an annai backup.");
   const manifestBytes = await raw(g, MANIFEST, id, signal, MANIFEST_MAX);
