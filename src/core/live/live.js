@@ -617,8 +617,10 @@ export class Live {
 
   /** Live mode's own work failed: told once for each problem, so a card says so (spec §17 rule 4), and it goes on. @param {unknown} e */
   #fail(e) {
-    const key = String(/** @type {any} */ (e)?.message ?? e);
+    // The same problem whatever its numbers say ("12 bytes left", a seq), and told once; the list stays short.
+    const key = `${/** @type {any} */ (e)?.name}: ${String(/** @type {any} */ (e)?.message ?? e).replace(/\d+/g, '#')}`;
     if (this.#told.has(key)) return;
+    if (this.#told.size >= 50) this.#told.clear();
     this.#told.add(key);
     console.warn('live mode: a check failed', e);
     try {
