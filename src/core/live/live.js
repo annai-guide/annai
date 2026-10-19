@@ -120,6 +120,8 @@ export class Live {
   #away = null;
   /** @type {{ how: 'start' | 'shown', since: number | null, from: Fix | null, fired: Fired[], timer: any } | null} a catch-up collecting what fires (spec §11.4) */
   #catch = null;
+  /** The first fix after annai was away is still to come: the way since then counts at once, whenever it comes. */
+  #back = false;
   /** @type {{ scope: string, text: string }[]} what fired while there was no connection */
   #held = [];
   /** @type {number | null} when the connection went */
@@ -283,6 +285,7 @@ export class Live {
     this.#tracker.reset();
     this.#kept = null;
     this.#odo = null;
+    this.#back = false;
     this.#away = null;
     this.#held = [];
     this.#offlineSince = null;
@@ -831,9 +834,10 @@ export class Live {
     }
     // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
     // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
-    // away counts the way since then at once, in the catch-up (spec §11.4), not as a jump when the user next moves.
-    // Only while the catch-up waits for it: a first fix after FIX_WAIT_MS counts as any fix does.
-    const back = this.#catch !== null;
+    // away counts the way since then at once, in the catch-up (spec §11.4) when it comes in time, not as a
+    // jump when the user next moves; one after FIX_WAIT_MS does too, as the catch-up has gone.
+    const back = this.#back;
+    this.#back = false;
     if (!this.#odo) this.#odo = fix;
     else if ((moving || back) && fix.accuracy <= 100 && meters(this.#odo, fix) >= (back ? Math.max(STOP_M, 2 * fix.accuracy) : Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy))) {
       this.odometer += meters(this.#odo, fix) / 1000;
@@ -908,6 +912,7 @@ export class Live {
     if (this.#catch) await this.#endCatchUp();
     const c = { ...gap, fired: /** @type {Fired[]} */ ([]), timer: /** @type {any} */ (null) };
     this.#catch = c;
+    this.#back = true;
     // What the phone's notifications did meanwhile, before the firings that may be theirs (spec §11.6).
     await this.#hear(await this.#readNews());
     await this.#check({ past: true });
