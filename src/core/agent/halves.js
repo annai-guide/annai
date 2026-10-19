@@ -107,6 +107,13 @@ export class Halves {
   #answered = false;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
+  /** Koe's reply asks Kokoro, so its question wakes Kokoro, not its answer (owed: unless the question fails). */
+  #asking = false;
+  #owed = false;
+  /** A question of Koe's reached Kokoro, unanswered yet: someone waits for Kokoro. */
+  #asked = false;
+  /** Why Kokoro's list last failed, in plain words: what its models rest for. */
+  #why = '';
   /** When the first line Kokoro hasn't read came; 0: none. */
   #unseen = 0;
   /** @type {string[]} what Kokoro told Koe that Koe hasn't said since */
@@ -136,7 +143,11 @@ export class Halves {
           this.#koeOpen();
           this.koe.enqueue(w);
         },
-        kokoro: (w) => { if (!(w.from === 'koe' && this.#answered)) this.#wakeKokoro(w); },
+        kokoro: (w) => {
+          if (w.from === 'koe' && this.#answered) return;
+          this.#asked ||= w.from === 'koe';
+          this.#wakeKokoro(w);
+        },
       },
       cut: { koe: () => this.koe.cutIn(), kokoro: () => this.kokoro.cutIn() },
     });
@@ -155,7 +166,7 @@ export class Halves {
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.koeState === 'text' ? { aside: true } : {}) } : {}),
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
         gate: (call) => this.#gate(call),
-        failed: (why, e, kinds) => this.#kokoroFailed(why, e, kinds),
+        failed: (why, e) => this.#kokoroFailed(why, e),
         calling: () => {
           this.#nothingTold = false;
           this.#unseen = 0; // it reads every line so far
@@ -180,8 +191,7 @@ export class Halves {
           return !this.kokoro.owed;
         },
         logged: (e, r) => this.#koeLogged(e, r),
-        // A reply that asks Kokoro wakes it with the question, not the answer before it.
-        replied: (names) => { if (names.includes('tell_kokoro')) this.#cue = false; },
+        replied: (names) => { this.#asking = names.includes('tell_kokoro'); },
         failed: () => this.#koeFailed(),
         ended: (t) => { if (t.ok) this.#unsaid = []; },
       },
@@ -435,7 +445,7 @@ export class Halves {
 
   /** Its next call reads every line so far. @param {Wake} w */
   #wakeKokoro(w) {
-    this.#cue = false;
+    this.#cue = this.#owed = false;
     this.#unseen = 0;
     this.kokoro.enqueue(w);
   }
@@ -452,7 +462,11 @@ export class Halves {
       this.#answered = false;
       this.#failTold = false;
     }
-    const answered = e.type.startsWith('out.') && this.#cue;
+    // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails.
+    const out = e.type.startsWith('out.') && this.#cue;
+    const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed;
+    if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
+    const answered = (out && !(this.#owed = this.#asking)) || failed;
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
     else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
@@ -475,18 +489,20 @@ export class Halves {
   }
 
   /**
-   * Koe tells the user Kokoro couldn't check, once, in plain words; no card (plan decision 21). A check
-   * nobody waited for (Koe's answer, a review) stays in the Trace. @param {string} why @param {unknown} e @param {string[]} kinds
+   * Koe tells the user Kokoro couldn't check, once, in plain words; no card (plan decision 21). Only while
+   * someone waits for Kokoro (Koe asked it, or waits): a check nobody waited for stays in the Trace. @param {string} why @param {unknown} e
    */
-  #kokoroFailed(why, e, kinds) {
+  #kokoroFailed(why, e) {
     if (this.koeState !== 'text') return false;
-    if (!this.#failTold && !kinds.every((k) => k === 'cue')) {
+    const attempts = e instanceof AllFailedError ? e.attempts : [];
+    const rest = attempts.find((a) => a.error?.startsWith('its daily limit'));
+    const kind = attempts.map((a) => a.outcome).find((o) => o !== 'benched' && o !== 'ok');
+    // Only resting models: why they rest is the failure before.
+    if (rest || kind || !attempts.length) this.#why = rest ? `${rest.name}: ${rest.error}.` : kind ? explain(new ProviderError(/** @type {any} */ (kind), why)) : why;
+    if (!this.#failTold && (this.#asked || this.koe.waiting)) {
       this.#failTold = true;
-      const attempts = e instanceof AllFailedError ? e.attempts : [];
-      const rest = attempts.find((a) => a.error?.startsWith('its daily limit'));
-      const kind = attempts.map((a) => a.outcome).find((o) => o !== 'benched' && o !== 'ok');
-      const plain = rest ? `${rest.name}: ${rest.error}.` : kind ? explain(new ProviderError(/** @type {any} */ (kind), why)) : attempts.length ? 'its models are resting after errors.' : why;
-      this.channel.send('kokoro', `Kokoro couldn't check: ${plain} Tell the user you couldn't check, and offer to try again.`, 'append', 'kokoro-failed').catch(() => {});
+      this.#asked = false;
+      this.channel.send('kokoro', `Kokoro couldn't check: ${this.#why || 'its models are resting after errors.'} Tell the user you couldn't check, and offer to try again.`, 'append', 'kokoro-failed').catch(() => {});
     }
     return true;
   }
@@ -509,6 +525,7 @@ export class Halves {
    */
   #kokoroEnded(t) {
     if (this.#later) this.#route(() => this.#refresh());
+    if (t.ok) this.#why = '';
     if (this.koeState !== 'text') return;
     let told = t.told;
     if (t.ok && t.finalText && !t.told && !t.slept) {
@@ -517,6 +534,7 @@ export class Halves {
     } else if (!told && this.koe.waiting) this.#nothingToAdd(t.ok ? 'Kokoro has nothing to add.' : 'Kokoro was stopped.');
     if (told) {
       this.#answered = true;
+      this.#asked = false;
       this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe');
     }
   }
