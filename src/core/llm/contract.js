@@ -73,6 +73,9 @@ const PLAIN = Object.freeze({
   'type-missing': "This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.",
 });
 
+/** Every error kind, for checking one a plugin gives. */
+export const KINDS = new Set([...Object.keys(PLAIN), 'redirect']);
+
 export class ProviderError extends Error {
   /**
    * @param {ErrorKind} kind @param {string} message

@@ -42,7 +42,7 @@ const ACME = {
     return annai.providers.setup({
       keyField: t.keyField,
       panel: (ui, provider) => t.panel(ui, provider),
-      classify: (status, body, ability) => (/quota for today/.test(body) ? 'rate' : null),
+      classify: (status, body, ability) => (/quota for today/.test(body) ? 'rate' : /odd kind/.test(body) ? 'banana' : /a number/.test(body) ? 42 : null),
       headers: (ability) => ({ 'x-acme-ability': ability, ...t.headers }),
       list: (c) => t.list(c),
     });
@@ -162,9 +162,12 @@ test("classify sharpens an error's kind before the protocol's; headers join the 
   const sent = k.reached.find((r) => r.url === 'https://acme.test/v1/chat');
   assert.equal(sent?.init.headers['x-acme-ability'], 'chat');
   assert.equal(sent?.init.headers.authorization, 'Bearer sk-acme-1');
-  answer = () => new Response(JSON.stringify({ error: { message: 'Something else.' } }), { status: 400 });
-  await k.llm.unbench(id);
-  await assert.rejects(k.llm.call({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } }), (/** @type {any} */ e) => e.attempts?.[0]?.outcome === 'bad-request');
+  // Only a kind annai knows counts: anything else is left for the protocol's reading (fix pass).
+  for (const message of ['Something else.', 'An odd kind of error.', 'Here is a number.']) {
+    answer = () => new Response(JSON.stringify({ error: { message } }), { status: 400 });
+    await k.llm.unbench(id);
+    await assert.rejects(k.llm.call({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } }), (/** @type {any} */ e) => e.attempts?.[0]?.outcome === 'bad-request', message);
+  }
 
   // list: in place of the protocol's, with the protocol's own to build on.
   answer = (url) => (url.endsWith('/props') ? Response.json({ n_ctx: 32768 }) : Response.json({ data: [{ id: 'listed-1' }, { id: 'listed-2' }] }));

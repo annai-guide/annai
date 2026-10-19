@@ -1,4 +1,5 @@
 import { isPluginBug } from '../registry.js';
+import { KINDS } from './contract.js';
 
 /**
  * The provider contract (decision 15; docs/plugins.md, "Model providers with code"): a provider
@@ -46,7 +47,10 @@ export function adjusted(registry, pluginId, type, endpoint, keyHeader = '') {
   const headers = Object.fromEntries(Object.entries(own && typeof own === 'object' ? own : {}).filter(([k, v]) => typeof v === 'string' && !keys.includes(k.toLowerCase())));
   const classify = s?.classify;
   return {
-    type: classify ? { ...type, classify: (/** @type {number} */ status, /** @type {string} */ body) => guarded(registry, pluginId, 'provider classify', () => classify(status, body, endpoint.ability)) ?? type.classify?.(status, body) ?? null } : type,
+    type: classify ? { ...type, classify: (/** @type {number} */ status, /** @type {string} */ body) => {
+      const kind = guarded(registry, pluginId, 'provider classify', () => classify(status, body, endpoint.ability));
+      return KINDS.has(kind) ? kind : type.classify?.(status, body) ?? null; // only a kind annai knows
+    } } : type,
     endpoint: Object.keys(headers).length ? { ...endpoint, headers: { ...endpoint.headers, ...headers } } : endpoint,
   };
 }
