@@ -14,32 +14,36 @@ const usage = { promptTokenCount: 900, responseTokenCount: 40, promptTokensDetai
 const sse = (/** @type {{ name: string, input: any }[]} */ calls) => ({ status: 200, type: 'text/event-stream', body: anthropicToolReply(calls) });
 const sleep = { name: 'sleep', input: {} };
 
+/** The two realtime providers, as their pages name them. */
+const GEMINI = { provider: 'Google Gemini', key: KEY, ability: 'Live voice', address: (/** @type {string} */ o) => o, model: 'Gemini 3.8 Live' };
+const OPENAI = { provider: 'OpenAI', key: 'sk-proj-e2e-koe-live-stand-in-0123456789abcdef', ability: 'Realtime voice', address: (/** @type {string} */ o) => `${o}/v1`, model: 'GPT Realtime 2.1' };
+
 /**
- * Kokoro on Another address, then Google Gemini with its Live voice at the stand-in, Gemini 3.8 Live in Koe for talking,
- * a trip, and voice on. @param {import('@playwright/test').Page} page @param {string} kokoro @param {string} live
+ * Kokoro on Another address, then a realtime provider (Gemini by default) with its realtime voice at the stand-in, its
+ * model in Koe for talking, a trip, and voice on. @param {import('@playwright/test').Page} page @param {string} kokoro @param {string} live
  */
-async function liveSetUp(page, kokoro, live) {
+async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${kokoro}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByText('1. kokoro-model')).toBeVisible();
-  await pickProvider(page, 'Google Gemini');
-  await page.getByLabel('API key').fill(KEY);
+  await pickProvider(page, p.provider);
+  await page.getByLabel('API key').fill(p.key);
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-  const region = page.getByRole('region', { name: 'Live voice', exact: true });
-  const use = region.getByLabel('Use Live voice');
+  const region = page.getByRole('region', { name: p.ability, exact: true });
+  const use = region.getByLabel(`Use ${p.ability}`);
   await use.check();
   await expect(savedBy(use)).toHaveText('Saved', { timeout: 30_000 });
   const address = region.getByLabel('Its own address');
-  await address.fill(live);
+  await address.fill(p.address(live));
   await leaveSaved(address);
   await page.goto('/#/models');
-  await page.getByLabel('Add a model to Koe for talking').selectOption({ label: 'Gemini 3.8 Live' });
+  await page.getByLabel('Add a model to Koe for talking').selectOption({ label: p.model });
   await page.getByRole('button', { name: 'Add to Koe for talking' }).click();
-  await expect(page.getByLabel('Add a model to Koe for talking').locator('option', { hasText: /^Gemini 3\.8 Live$/ })).toHaveCount(0);
+  await expect(page.getByLabel('Add a model to Koe for talking').locator('option', { hasText: new RegExp(`^${p.model.replace(/\./g, '\\.')}$`) })).toHaveCount(0);
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
   await page.getByRole('button', { name: 'Start trip' }).click();
@@ -128,6 +132,53 @@ test('the page out of view: the session closes and the microphone stops; back in
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });
     await expect(page.getByText(/live session closed · Gemini 3\.8 Live/).first()).toContainText('away');
+  } finally {
+    await s.stop();
+    await kokoro.stop();
+  }
+});
+
+// K6's plan, Task 3: the same conversation through OpenAI Realtime, against the stand-in's openai flavour.
+test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoken question answered and passed to Kokoro, whose note goes in marked and is said; voice off closes it; the key never shows", async ({ page }) => {
+  const usage = { input_tokens: 900, output_tokens: 40, input_token_details: { text_tokens: 600, audio_tokens: 300 }, output_token_details: { audio_tokens: 40 } };
+  const s = await startRealtimeServer({
+    flavour: 'openai', key: OPENAI.key,
+    turns: [
+      { heard: 'Is Nepenthe open now?', said: "I'm checking.", audio: voice(0.6), tool: { name: 'tell_kokoro', args: { text: 'Is Nepenthe open now?' } }, usage },
+      { said: "It's open until ten tonight.", audio: voice(0.8), usage },
+    ],
+  });
+  const kokoro = await startModelServer({ '/kokoro/v1/messages': [sse([{ name: 'tell_koe', input: { text: 'Nepenthe is open until 22:00 tonight (nepenthe.com).' } }, sleep]), sse([sleep])] });
+  try {
+    await fakeMicrophone(page, [clipPath('where-eat')]);
+    await liveSetUp(page, kokoro.origin, s.origin, OPENAI);
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect(page.locator('.voice-chip')).toHaveText('Listening live');
+    /** The text items annai sent. */
+    const items = () => s.received().filter((/** @type {any} */ m) => m.type === 'conversation.item.create' && m.item.type === 'message').map((/** @type {any} */ m) => m.item.content[0].text);
+    await expect.poll(() => items().length, { timeout: 30_000 }).toBe(1);
+    expect(items()[0]).toMatch(/^<from_kokoro id="[0-9a-f]{16}">Nepenthe is open until 22:00 tonight \(nepenthe\.com\)\.<\/from_kokoro>$/);
+    const answer = s.received().find((/** @type {any} */ m) => m.item?.type === 'function_call_output');
+    expect(answer.item.output).toBe('sent');
+    // One sentence of μ-law, committed at its end; nothing appended after it.
+    const kinds = s.received().map((/** @type {any} */ m) => m.type);
+    expect(kinds.filter((/** @type {string} */ k) => k === 'input_audio_buffer.commit')).toHaveLength(1);
+    expect(kinds.filter((/** @type {string} */ k) => k === 'input_audio_buffer.append').length).toBeGreaterThan(5);
+    expect(kinds.lastIndexOf('input_audio_buffer.append')).toBeLessThan(kinds.indexOf('input_audio_buffer.commit'));
+    await page.getByRole('link', { name: 'Conversation' }).click();
+    await expect(page.locator('.convo .you')).toHaveText(['Is Nepenthe open now?']);
+    const said = page.locator('.convo .shiori.said');
+    await expect(said).toHaveCount(2, { timeout: 20_000 });
+    await expect(said.nth(1)).toContainText("It's open until ten tonight.");
+    await page.locator('.voice-chip').click();
+    await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Off' }).click();
+    await expect(page.locator('.voice-chip')).toHaveText('Voice off');
+    await page.goto('/#/trace');
+    await filterTrace(page, { kind: 'Models', type: 'live.session' });
+    const closed = page.getByText(/live session closed · GPT Realtime 2\.1/).first();
+    await expect(closed).toBeVisible({ timeout: 15_000 });
+    await expect(closed).toContainText('voice off');
+    expect(await page.content()).not.toContain(OPENAI.key);
   } finally {
     await s.stop();
     await kokoro.stop();
