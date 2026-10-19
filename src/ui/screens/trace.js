@@ -128,7 +128,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
     return `${d.role}: ${d.answeredBy ?? 'no answer'} · ${n} attempt${n === 1 ? '' : 's'}${d.cost !== undefined ? ` · ${formatCost(d.cost)}` : ''}`;
   }
   if (e.type === 'net.request') {
-    // Each clip's format and size (Koe and Kokoro design, "Audio formats").
+    // Each clip's format and size (spec §10.6).
     const clips = d.format ? ` · ${d.format}, ${bytes(d.bytes ?? 0)}` : d.audio?.length ? ` · audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${bytes(a.bytes)}`).join('; ')}` : '';
     return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms${clips}`;
   }
@@ -162,8 +162,18 @@ function storedText(ctx, e) {
       const texts = [];
       for (const [i, hash] of e.refs.entries()) {
         const b = await ctx.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(hash));
-        // A kept voice clip plays here, as it was kept (spec §10.2).
-        if (b?.type.startsWith('audio/')) out.after(h('audio', { controls: true, src: URL.createObjectURL(new Blob([b.data], { type: b.type })) }));
+        // A kept voice clip plays here, as it was kept (spec §10.2); its address goes with the player.
+        if (b?.type.startsWith('audio/')) {
+          const src = URL.createObjectURL(new Blob([b.data], { type: b.type }));
+          const player = h('audio', { controls: true, src });
+          out.after(player);
+          const gone = new MutationObserver(() => {
+            if (player.isConnected) return;
+            gone.disconnect();
+            URL.revokeObjectURL(src);
+          });
+          gone.observe(document.body, { childList: true, subtree: true });
+        }
         const body = !b ? '(no longer stored)'
           : /^text\/|json/.test(b.type) ? new TextDecoder().decode(new Uint8Array(b.data).subarray(0, 200_000))
             : `(${b.type}, ${b.size} bytes)`;
