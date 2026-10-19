@@ -41,7 +41,7 @@ export class HeardMemory {
   /** @type {Map<string, Kept>} */
   #all = new Map();
   #bytes = 0;
-  /** The words of the last segments let go once written down: a request built just before (the other half's) still sends them. @type {Map<string, string>} */
+  /** The words of the last segments let go once written down, for a request built just before. @type {Map<string, string>} */
   #words = new Map();
 
   constructor({ maxBytes = HEARD_MAX_BYTES } = {}) {

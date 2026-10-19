@@ -103,7 +103,7 @@ export class Halves {
   #koeTrip = undefined;
   /** Kokoro told Koe since the user last typed or spoke: Koe asking about it again wakes nobody. */
   #answered = false;
-  /** Heard words Kokoro hasn't woken for: Koe answering them wakes it (the design's cues). */
+  /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
   /** When the first line Kokoro hasn't read came; 0: none. */
   #unseen = 0;
@@ -122,7 +122,7 @@ export class Halves {
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set() };
 
-  /** @param {ConstructorParameters<typeof Agent>[0]} c what each half is made with: one voice, which only the half that talks uses (plan decision 17) */
+  /** @param {ConstructorParameters<typeof Agent>[0]} c what each half is made with: one voice, the talking half's (plan decision 17) */
   constructor(c) {
     this.nonce = newNonce();
     this.clock = c.now ?? Date.now;
@@ -165,7 +165,7 @@ export class Halves {
       ...c,
       half: {
         name: 'koe', tag: KOE_TAG, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
-        // Voice on uses "Koe for talking", off "Koe for typing", whatever the turn speaks (the design).
+        // Voice on: Koe for talking; off: Koe for typing (the design).
         role: async () => ({ role: (this.#koeRole = koeList(await this.llm.config(), Boolean(this.voice?.on)).role) }),
         voice: () => this.koeState === 'text',
         system: (s) => koeSystem(s),
@@ -178,6 +178,8 @@ export class Halves {
           return !this.kokoro.owed;
         },
         logged: (e, r) => this.#koeLogged(e, r),
+        // A reply that asks Kokoro wakes it with the question, not the answer before it.
+        replied: (names) => { if (names.includes('tell_kokoro')) this.#cue = false; },
         failed: () => this.#koeFailed(),
         ended: (t) => { if (t.ok) this.#unsaid = []; },
       },
@@ -253,7 +255,7 @@ export class Halves {
   #stateOf(half, s) {
     if (half === this.talking) this.#emit('state', s);
     if (half === this.kokoro) this.#emitHalves();
-    // Koe waits on a Kokoro with nothing to do: nothing to add (the wait, listening or not, is set up right after its state).
+    // Koe waits on a Kokoro with nothing to do: nothing to add (the wait is set up right after its state).
     if (half === this.koe && (s.name === 'waiting' || s.name === 'listening')) queueMicrotask(() => { if (this.koe.waiting && !this.kokoro.busy && this.koeState === 'text') this.#nothingToAdd(); });
   }
 
@@ -359,7 +361,7 @@ export class Halves {
       if (!w.aloud && !THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
       this.#koeOpen();
       this.koe.enqueue(w);
-      // Asked to hear her (the recap told aloud), the half with the voice tells it; Kokoro hears it told.
+      // Asked to hear her (the recap told aloud): the half with the voice tells it.
       if (!w.aloud) this.#wakeKokoro({ ...w, fallbacks: [] });
     });
     return Promise.resolve();
