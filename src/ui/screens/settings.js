@@ -163,6 +163,8 @@ function eraseControls(ctx) {
       ctx.store.close();
       await eraseDatabase();
       try { await caches.delete('annai-inbox'); } catch { /* no caches */ }
+      // Not while a tap's sound unlock starts its clip: that deadlocks WebKit on Linux (welcome.spec.js).
+      await ctx.voice?.settled();
       // No hashchange: nothing may render against the closed store before the reload. annai starts again at
       // its plain start, as on a new device, so the welcome shows again.
       history.replaceState(null, '', location.pathname);

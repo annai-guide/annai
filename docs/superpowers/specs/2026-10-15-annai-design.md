@@ -510,7 +510,12 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   - It refreshes when the app is online.
   - Users' settings are copies. When a template changes, they're offered the update, never changed silently.
 - **Default onboarding is "Sign in with OpenRouter"** (OAuth PKCE, with no client registration on our side). It creates the endpoint and suggests models for each role.
-  - OpenRouter's free models allow 50 requests per day (1,000 per day after $10 of lifetime purchases), enough to try annai.
+  - OpenRouter's free models allow 50 requests per day (1,000 per day after $10 of lifetime purchases), enough to try annai. The chat roles get free models.
+  - It also adds OpenRouter's transcription and voices (its OpenAI-compatible audio API), as endpoints of their own, each with its own copy of the key. Their models go at the end of the speech lists, behind phone dictation and the browser voice, so trying annai stays free; using them first is the user's choice, by moving them up under Roles (the user, 2026-10-18).
+  - Nothing that costs money goes ahead of something free. OpenRouter's free voice (Fish Audio's, in its default voice) comes first among its voices: each sentence it says uses one of the free requests a day that the free chat models use too (the user, 2026-10-18: free audio is worth having). OpenRouter has no free transcription model. The others need credits bought at OpenRouter.
+  - The card that says sign-in finished says what it set up, that the free voice shares the free requests, and how to move them up.
+  - Someone who signed in before the voice was added is offered it on the OpenRouter endpoint's page, with that endpoint's key. It is never added silently.
+  - The key OpenRouter makes is labelled "annai" in the user's OpenRouter keys. Back from OpenRouter, Settings → Models shows at once and says the sign-in is being finished.
   - Templates cover Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral and local servers. The local-server template notes that a phone needs an HTTPS address, such as a tunnel.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
@@ -541,7 +546,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 ### 10.1 Speaking
 
 - **Sentence by sentence.** The text of `speak` streams in as the model generates it (read from partial tool arguments), and `Intl.Segmenter` cuts it into sentences.
-- **Each sentence goes to the first working entry in the speech-out list.** The list is user-ordered; the browser voice sits last by default.
+- **Each sentence goes to the first working entry in the speech-out list.** The list is user-ordered; the browser voice sits last by default. A voice a template adds goes ahead of it; those Sign in with OpenRouter adds go behind it, the free one first, until the user moves them up (§9.8).
 - **No gaps.** With API voices, the next sentence's audio is fetched while the current one plays.
 - **Mid-answer fallback.** If a voice fails partway through, the same sentence replays on the next voice in the list, and the failed voice is benched.
 - **Audio unlock.** Playback goes through one audio player, unlocked by the first tap of each session (an iOS rule).
@@ -574,7 +579,7 @@ Entries:
 - one stand-in entry, **"Send audio to the model"**
 - phone dictation, where available. The browser's own speech service hears it (Google on Chrome, Apple on Safari), unless it recognizes speech on the device (§11.7).
 
-The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template. With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
+The default order is "Send audio to the model", then phone dictation. Transcription models are added by the user or by a template, after "Send audio to the model"; the one Sign in with OpenRouter adds goes after phone dictation (§9.8). With no usable entry (for example, on iOS with a text-only model and no transcription model), the mic button explains what to add.
 
 **The list is resolved again for each model attempt, against the model actually receiving the speech.** That applies to any role, including quick decision.
 - "Send audio to the model" is used only if that model accepts audio. Otherwise it's skipped.
@@ -752,16 +757,21 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 
 - **Interface:** archive-level `put / get / list / delete`, via storage plugins.
 - **Automatic backup:** daily or after changes, while on Wi-Fi with the app open. It runs alongside the install nudge, not instead of it.
-- **Git targets store the unpacked tree, not a zip.** One backup is one commit, and only changed files are uploaded.
+  - **The pace after changes:** git targets (GitHub, Forgejo / Gitea) back up within the hour, since each backup sends only what changed. Targets that keep the whole archive file (S3, WebDAV) back up at most every 6 hours.
+- **Git targets store the unpacked tree, not a zip.** One backup is one commit, and only changed files are uploaded. They are unencrypted, so public repositories are refused.
 - **Single writer.** A newer remote backup from another device triggers a warning and an offer to import it as a copy.
 - **First targets:**
   - **GitHub:** through its web API (the Git Data API), which accepts browser calls.
+  - **Forgejo / Gitea**, such as the user's own server or Codeberg (which runs Forgejo): through its API, which accepts browser calls once the server allows annai's address. We show the lines to add to its app.ini.
+    - Commits are made with ChangeFiles. Each update and delete names the file it replaces, so another device's backup made meanwhile is refused, never overwritten.
+    - The user makes the private repository; the token needs only Repository: Read and write.
+    - **Large backups:** one request carries at most 8 MiB and 200 files. A larger backup goes as several commits: the parts first, then the commit with the new `annai-archive.json`, which is the only one listed or restored. A backup cut off half way carries on from its parts. A request the server, or a proxy in front of it, refuses as too large goes again in halves; a single file too large is named, with the limit to raise.
   - **S3-compatible:** the user configures the bucket's browser-access (CORS) rules; we show the exact JSON to paste.
   - **WebDAV:** where the server allows browser access.
 - **Later targets:**
   - GitLab
   - Google Drive and Dropbox (each needs us to register an OAuth app)
-  - the user's own git server (needs browser-access headers in Apache, plus a small commit-and-push git client of our own)
+  - the user's own git server without Forgejo or Gitea (needs browser-access headers in Apache, plus a small commit-and-push git client of our own)
 - **iCloud** is manual only, through the share sheet.
 
 ## 13. After the trip

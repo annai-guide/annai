@@ -1,8 +1,9 @@
 import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave } from '../dom.js';
-import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer } from '../../core/llm/config.js';
+import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { templateUpdates, applyTemplate, addListedModel, useSuggestion } from '../../core/llm/templates.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
+import { addOpenRouterVoice, voiceMissing, BEHIND } from '../openrouter.js';
 
 export { messageOf };
 
@@ -103,6 +104,7 @@ export async function renderEndpoint(ctx, id) {
       })),
       h('div', { class: 'saving' }, extra.el, ...autosave(extra.area, extra.read, async (x) => extra.show((await saveFields({ extraBody: x })).extraBody)))),
     from?.roles ? suggestionsPanel(ctx, id, from) : null,
+    rec.template?.id === 'openrouter' && voiceMissing(cfg, catalog).length ? voicePanel(ctx, id, hasKey, catalog) : null,
     modelsSection(ctx, id, models),
     models[0] && type?.speech ? speechTestPanel(ctx, models[0], type.speech, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
     models[0] && !type?.speech ? testPanel(ctx, models[0].id, cfg.models[models[0].id].verified, `Test ${models[0].name}`) : null,
@@ -217,12 +219,39 @@ function listedModels(ctx, endpointId, listed, have) {
   return h('div', {}, field('Filter the list', filter), list);
 }
 
+/**
+ * Signed in before sign-in added OpenRouter's voice: added when asked, with this endpoint's key.
+ * @param {any} ctx @param {string} id @param {boolean} hasKey @param {import('../../core/llm/templates.js').TemplateCatalog} catalog
+ */
+function voicePanel(ctx, id, hasKey, catalog) {
+  const status = h('p', { class: 'sub', role: 'status', text: hasKey ? '' : "Save this endpoint's key first: they use the same one." });
+  const add = h('button', {
+    class: 'btn', type: 'button', disabled: !hasKey,
+    onclick: async () => {
+      add.disabled = true;
+      try {
+        await addOpenRouterVoice(ctx, await ctx.llm.keyFor(id), catalog);
+        ctx.notices.toast("OpenRouter's transcription and voice added, behind the phone's own");
+        ctx.render();
+      } catch (e) {
+        status.textContent = messageOf(e);
+        add.disabled = false;
+      }
+    },
+  }, "Add OpenRouter's voice");
+  return h('section', { class: 'panel', 'aria-label': "OpenRouter's voice" },
+    h('p', { text: `OpenRouter can also write down what you say, and give Shiori a voice. annai adds its transcription and voices with this endpoint's key, ${BEHIND} in Settings → Models.` }),
+    h('div', { class: 'acts' }, add),
+    status);
+}
+
 /** Buttons that put a template's suggested models in the roles ("free", "recommended"). @param {any} ctx @param {string} id @param {import('../../core/llm/templates.js').EndpointTemplate} tpl */
 function suggestionsPanel(ctx, id, tpl) {
+  const speech = Object.values(tpl.roles ?? {}).some((r) => SPEECH_ROLES.some((role) => role in r));
   /** @type {Record<string, string>} */
   const labels = { free: 'Use the free models', recommended: 'Use the recommended models' };
   return h('section', { class: 'panel', 'aria-label': 'Suggested models' },
-    h('p', { class: 'sub', text: `annai's ${tpl.name} template suggests a model for each role.` }),
+    h('p', { class: 'sub', text: `annai's ${tpl.name} template suggests a model for each role.${speech ? " Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them." : ''}` }),
     h('div', { class: 'acts' }, ...Object.keys(tpl.roles ?? {}).map((which) => h('button', {
       class: 'btn', type: 'button',
       onclick: async () => {
