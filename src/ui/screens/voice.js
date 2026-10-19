@@ -21,6 +21,9 @@ export async function renderVoice(ctx) {
   const synth = voice.platform?.synth;
   const cfg = await ctx.llm.config();
   const dictation = { available: Boolean(voice.platform?.dictation.available()), local: await voice.dictationLocal() };
+  // What this phone makes and plays (Koe and Kokoro design, "Audio formats"), for the device checks.
+  const records = (voice.platform?.encoder?.records?.() ?? []).map((/** @type {any} */ r) => r.format);
+  const formats = `Speech leaves this phone in the smallest format each service takes. Made here: ${(await voice.makes()).join(', ')}${records.length ? ` (recorded: ${records.join(', ')})` : ''}. Played here: ${voice.plays().join(', ')}.`;
   /** Where your voice goes (spec §11.7), one entry a row. @param {import('../../core/voice/where.js').Where[]} rows */
   const whereRows = (rows) => rows.map((r) => h('li', {}, h('strong', { text: r.name }), h('p', { class: 'sub', text: r.where })));
   const heardWhere = h('ol', { class: 'where' }, ...whereRows(whereHeard(cfg, { dictation })));
@@ -134,7 +137,8 @@ export async function renderVoice(ctx) {
       savedField('Pause that ends a sentence (ms)', pause, () => numberIn(pause, 300, 3000, 'The pause goes from 300 to 3000 milliseconds; 700 is the usual.', { whole: true, need: true }), (ms) => save({ pauseMs: ms })),
       meter, h('div', { class: 'acts' }, micButton), micStatus,
       clips.el,
-      h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' })),
+      h('p', { class: 'sub', text: 'Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.' }),
+      h('p', { class: 'sub', text: formats })),
     section('Where your voice goes',
       h('p', { class: 'sub' }, 'What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to ', h('a', { href: '#/models' }, 'Settings → Models'), '.'),
       h('h3', { class: 'section', text: 'What you say' }), heardWhere,
