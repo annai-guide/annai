@@ -22,11 +22,11 @@ import { createHash } from 'node:crypto';
  * Unit tests reach it with Node's WebSocket, and end-to-end tests from the page, at ws://127.0.0.1:<port> (WebKit
  * can't stand in for a page's own requests).
  * @typedef {{ heard?: string, said?: string, audio?: Uint8Array, tool?: { name: string, args: any }, goAway?: number, handle?: string,
- *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity' }} Turn
+ *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string }} Turn
  *   one answer, played when a clientContent turn or an activityEnd comes (openai: a response.create); turns are given in order,
  *   and the last repeats. audio: 24 kHz 16-bit PCM (openai: in the session's output format); tool: a call it makes after its words;
  *   goAway, handle: Gemini's, seconds left, sent after the turn; usage: Gemini's usageMetadata, or OpenAI's response usage;
- *   interruptOn: only this cuts a Gemini turn off (default: either)
+ *   interruptOn: only this cuts a Gemini turn off (default: either); refuse: OpenAI refuses the response.create with this error code
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
  *   pace?: number, chunkBytes?: number }} Options
  *   key: the one key it takes (none: any); models: the ids it knows (none: any); closeWith: how it closes each session at its setup (openai: its session.update);
@@ -304,8 +304,10 @@ function openaiSession(c) {
   const id = (/** @type {string} */ prefix) => `${prefix}_${String(++counter.ids).padStart(3, '0')}`;
   /** @param {any} m */
   const send = (m) => conn.send({ type: m.type, event_id: `event_${++n}`, ...m });
+  /** The client event being handled: an error names it, as OpenAI's do. @type {any} */
+  let current = null;
   /** @param {string} code @param {string} message @param {string | null} [param] @param {string} [type] */
-  const error = (code, message, param = null, type = 'invalid_request_error') => send({ type: 'error', error: { type, code, message, param, event_id: null } });
+  const error = (code, message, param = null, type = 'invalid_request_error') => send({ type: 'error', error: { type, code, message, param, event_id: current?.event_id ?? null } });
   const model = url.searchParams.get('model') ?? '';
   /** The session as the client set it, from OpenAI's defaults. @type {any} */
   const session = {
@@ -346,6 +348,7 @@ function openaiSession(c) {
   };
   const respond = () => {
     const turn = turns[Math.min(counter.next++, turns.length - 1)];
+    if (turn?.refuse) return error(turn.refuse, 'The response could not be created.');
     const r = { id: id('resp'), timer: /** @type {NodeJS.Timeout | null} */ (null), output: /** @type {any[]} */ ([]), usage: turn?.usage };
     active = r;
     send({ type: 'response.created', response: { id: r.id, object: 'realtime.response', status: 'in_progress', output: [], usage: null } });
@@ -398,6 +401,7 @@ function openaiSession(c) {
     stop: () => { if (active?.timer) clearTimeout(active.timer); },
     handle(m) {
       if (refuse) return;
+      current = m;
       switch (m?.type) {
         case 'session.update': {
           const s = m.session ?? {};
