@@ -71,8 +71,10 @@ export function closeKind(type, code, reason) {
 export function openLive(c) {
   const { type, endpoint, model, key, setup, trace, registry, wake, now = Date.now, readyMs = READY_MS } = c;
   const socket = c.socket ?? ((url, protocols) => new WebSocket(url, protocols));
-  if (key) trace?.secret(key);
-  const blank = (/** @type {string} */ t) => (key ? t.split(key).join('«key»') : t);
+  // The key as given, and as an address escapes it (a protocol may put it in the query): an echo of either is blanked.
+  const forms = key ? [...new Set([key, encodeURIComponent(key), new URLSearchParams({ k: key }).toString().slice(2)])].sort((a, b) => b.length - a.length) : [];
+  for (const f of forms) trace?.secret(f);
+  const blank = (/** @type {string} */ t) => forms.reduce((x, f) => x.split(f).join('«key»'), t);
   /** A bug in the protocol's code counts against its plugin (spec §5.5). @param {string} what @param {unknown} e */
   const bug = (what, e) => { if (isPluginBug(e)) registry?.fail(type.pluginId, `live ${what}`, e); };
   /** @param {Record<string, any>} tunables @returns {{ url: string, protocols?: string[] }} */

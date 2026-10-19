@@ -301,3 +301,25 @@ test('callRole skips a realtime model as not-chat; a chat role never sends it a 
   await assert.rejects(llm.live('m-nope', { instructions: '', context: '', tools: [] }), (e) => e instanceof ProviderError && e.kind === 'not-found');
   assert.ok(!JSON.stringify(await events(store)).includes(KEY));
 });
+
+test('a key with characters an address escapes is blanked in both forms: in the close, the error and the trace (review)', async () => {
+  FakeSocket.made = [];
+  const key = 'fake+key/with=specials&0 123456789';
+  const forms = [key, encodeURIComponent(key), new URLSearchParams({ k: key }).toString().slice(2)];
+  assert.equal(new Set(forms).size, 3, 'three different forms');
+  const store = createMemoryStore();
+  const type = { ...ECHO, open: (/** @type {any} */ { endpoint, key: k }) => ({ url: `${endpoint.baseUrl.replace(/^http/, 'ws')}/live?key=${encodeURIComponent(k)}` }) };
+  const session = openLive({ type, endpoint: endpoint('https://live.test'), model: model(), key, tunables: {}, setup, trace: modelTrace(store, SYS), socket });
+  await tick();
+  FakeSocket.made[0].drop(1007, `Refused: wss://live.test/live?key=${forms[1]} (or ${forms[2]}) is not valid.`);
+  const end = await session.closed;
+  /** @type {any} */
+  let err = null;
+  await session.ready.catch((e) => { err = e; });
+  await tick();
+  const json = JSON.stringify(await events(store));
+  for (const f of forms) {
+    assert.ok(!end.reason.includes(f) && !err.message.includes(f) && !json.includes(f), f.replace(/./g, '·'));
+  }
+  assert.match(end.reason, /key=«key» \(or «key»\)/);
+});
