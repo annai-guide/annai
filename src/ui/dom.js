@@ -114,10 +114,15 @@ export function jsonField(label, id, value) {
   };
 }
 
-/** What went wrong, in plain words; for a ValidationError, its own words without the field path. @param {any} e */
+/** What went wrong, in plain words; for a ValidationError, without the path but with the key refused ("maxEdge must be at least 16"). @param {any} e */
 export function messageOf(e) {
-  if (Array.isArray(e?.errors)) return e.errors.map((/** @type {string} */ x) => x.replace(/^\$[^:]*: /, '')).join(' ');
-  return String(e?.message ?? e);
+  if (!Array.isArray(e?.errors)) return String(e?.message ?? e);
+  return e.errors.map((/** @type {string} */ x) => {
+    const m = /^\$([^:]*): (.*)$/s.exec(x);
+    if (!m) return x;
+    const key = m[1].split('.').pop();
+    return key && /^(must|expected|does not|is required|is not allowed)/.test(m[2]) ? `${key} ${m[2]}` : m[2];
+  }).join(' ');
 }
 
 /**
@@ -148,7 +153,8 @@ export function queueSave(fn) {
 /**
  * A setting saved as it changes (spec §16.1): on `change`, so a text field saves once committed
  * or left, never per keystroke. read() throws in plain words for a value that isn't valid: nothing
- * is saved, and the words show by the field. Saved, a quiet "Saved" shows by it for a moment.
+ * is saved, and the words show by the field. A failed save says why and shows what is stored again.
+ * Saved, a quiet "Saved" shows by it for a moment.
  * @param {HTMLElement} control an input, select, textarea or fieldset @param {() => any} read @param {(value: any) => unknown} save
  * @returns {HTMLElement[]} the note and the error, to put by the field
  */
@@ -157,17 +163,31 @@ export function autosave(control, read, save) {
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
+  const say = (/** @type {unknown} */ e) => { error.textContent = messageOf(e); error.hidden = false; };
+  /** @type {any[]} */
+  const inputs = control.matches('input, select, textarea') ? [control] : [...control.querySelectorAll('input, select, textarea')];
+  const ticks = (/** @type {any} */ x) => x.type === 'checkbox' || x.type === 'radio';
+  const shown = () => inputs.map((x) => (ticks(x) ? x.checked : x.value));
+  let stored = shown();
   const run = async () => {
+    let value;
     try {
-      await save(read());
+      value = read();
+    } catch (e) {
+      say(e);
+      control.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    control.removeAttribute('aria-invalid');
+    try {
+      await save(value);
       error.hidden = true;
-      control.removeAttribute('aria-invalid');
+      stored = shown();
       note.textContent = 'Saved';
       timer = setTimeout(() => { note.textContent = ''; }, 4000);
     } catch (e) {
-      error.textContent = messageOf(e);
-      error.hidden = false;
-      control.setAttribute('aria-invalid', 'true');
+      inputs.forEach((x, i) => { if (ticks(x)) x.checked = stored[i]; else x.value = stored[i]; });
+      say(e);
     }
   };
   control.addEventListener('change', () => {

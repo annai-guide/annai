@@ -121,23 +121,23 @@ function rolesSection(ctx, cfg) {
     const roles = (await ctx.llm.config()).roles;
     await saveRoles(ctx.ws, { ...roles, [role]: change(roles[role]) });
   };
-  /** A button's change to a role's list, after the saves waiting; the list is drawn again if it is still shown. @param {string} role @param {(models: string[]) => string[]} change */
+  /** A button's change to a role's list, after the saves waiting; Models is drawn again unless another screen was opened meanwhile. @param {string} role @param {(models: string[]) => string[]} change */
   const list = async (role, change) => {
+    const here = location.hash;
     await queueSave(() => edit(role, (r) => ({ ...r, models: change(r.models) })));
-    if (panel.isConnected) ctx.render();
+    if (location.hash === here) ctx.render();
   };
   /** A speech list can take its own stand-ins and the models of its direction. @param {string} role */
   const speechChoices = (role) => [
     ...Object.entries(STAND_INS).filter(([, s]) => s.role === role).map(([id, s]) => ({ id, name: s.name })),
     ...models.filter((m) => kind(m.id) === (role === 'speech-in' ? 'in' : 'out')),
   ];
-  const panel = h('section', { class: 'panel', 'aria-label': 'Roles' },
+  return h('section', { class: 'panel', 'aria-label': 'Roles' },
     h('h2', { class: 'section', text: 'Roles' }),
     h('p', { class: 'sub', text: 'Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list.' }),
     ...CHAT_ROLES.map((role) => roleBlock(role, cfg.roles, models.filter((m) => !kind(m.id)), nameOf, list, edit)),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
     ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
-  return panel;
 }
 
 /**

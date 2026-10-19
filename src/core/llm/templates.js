@@ -211,6 +211,11 @@ export async function applyTemplate({ ws }, endpointId, tpl) {
   await saveEndpoint(ws, { ...endpoint, template: { id: tpl.id, version: tpl.version, values: endpointValues(tpl) } }, models);
 }
 
+/** What a model added by id or from a list starts with, by endpoint type: Claude models take both cache lifetimes. @type {Readonly<Record<string, import('./config.js').ModelValues>>} */
+const START = Object.freeze({ 'anthropic-messages': { cacheTtls: ['5m', '1h'] } });
+/** @param {import('./config.js').ModelConfig} cfg @param {string} endpointId */
+const startFor = (cfg, endpointId) => structuredClone(START[cfg.endpoints[endpointId]?.type] ?? {});
+
 /**
  * Adds a model from an endpoint's fetched list: what the list said is its template layer.
  * @param {{ ws: Workspace }} c @param {string} endpointId @param {import('./contract.js').ListedModel} listed
@@ -219,10 +224,17 @@ export async function applyTemplate({ ws }, endpointId, tpl) {
 export async function addListedModel({ ws }, endpointId, listed) {
   const cfg = await readConfig(ws);
   const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
-  const rec = newModel(endpointId, { template: { id: `list/${listed.providerId}`, version: 0, values: listed } });
+  const rec = newModel(endpointId, { template: { id: `list/${listed.providerId}`, version: 0, values: { ...startFor(cfg, endpointId), ...listed } } });
   const name = modelOf(rec).name;
   const unique = uniqueName(name, taken);
   if (unique !== name) rec.user = { name: unique };
+  await saveModel(ws, rec);
+  return rec.id;
+}
+
+/** Adds a model by its provider id. @param {{ ws: Workspace }} c @param {string} endpointId @param {string} providerId @returns {Promise<string>} its id */
+export async function addModelById({ ws }, endpointId, providerId) {
+  const rec = newModel(endpointId, { user: { ...startFor(await readConfig(ws), endpointId), providerId } });
   await saveModel(ws, rec);
   return rec.id;
 }

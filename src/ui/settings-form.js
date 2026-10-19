@@ -1,4 +1,4 @@
-import { h, field, savedField, savedCheck, queueSave } from './dom.js';
+import { h, field, savedField, savedCheck, queueSave, messageOf } from './dom.js';
 import { validate } from '../core/schema.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
 
@@ -101,17 +101,25 @@ export async function settingsForm(ctx, pluginId, schema) {
       const has = await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${pluginId}:${f.key}`)).catch(() => undefined);
       const input = h('input', { id, type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: has === undefined ? '' : 'saved' });
       const note = h('span', { class: 'sub', role: 'status' });
+      const error = h('p', { class: 'error', role: 'alert', hidden: true });
       const save = h('button', {
         class: 'btn', type: 'button',
         onclick: () => queueSave(async () => {
           if (!input.value) return;
-          await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret(`plugin:${pluginId}:${f.key}`, input.value));
+          try {
+            await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret(`plugin:${pluginId}:${f.key}`, input.value));
+          } catch (e) {
+            error.textContent = `${f.label} wasn't saved: ${messageOf(e)}`;
+            error.hidden = false;
+            return;
+          }
+          error.hidden = true;
           input.value = '';
           input.placeholder = 'saved';
           note.textContent = 'Saved';
         }),
       }, 'Save');
-      rows.push(field(f.label, input), hint, h('div', { class: 'acts' }, save, note));
+      rows.push(field(f.label, input), hint, h('div', { class: 'acts' }, save, note), error);
       continue;
     }
     // One field's own schema: an empty field is allowed, and clears it.
