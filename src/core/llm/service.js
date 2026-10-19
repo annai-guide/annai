@@ -3,7 +3,7 @@ import { readConfig, getKey, endpointOf, modelOf, saveModel, saveProvider, provi
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
-import { endpointTypes, ProviderError, errorFromResponse } from './contract.js';
+import { endpointTypes, ProviderError, errorFromResponse, sameOrigin } from './contract.js';
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune } from '../requires.js';
@@ -321,6 +321,7 @@ export function createLlm({
       if (type.list) return type.list({ endpoint, key });
       if (!type.listRequest || !type.readList) throw new ProviderError('bad-request', `${ability.name} can't list its models here. Add them by id.`);
       const r = type.listRequest({ endpoint, key });
+      sameOrigin(endpoint, r.url); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
       try {

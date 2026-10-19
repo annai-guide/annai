@@ -52,7 +52,8 @@ test('a rejected key is a key problem, in plain words', async () => {
 
 test('"this address blocks web apps" is told apart from "annai couldn\'t reach it"', async () => {
   const type = /** @type {any} */ ({ type: 'http', name: 'HTTP', pluginId: 'p', build: () => ({ url: 'https://llm.test/v1/chat', headers: {}, body: {} }), read: async function* () {} });
-  const base = { ...scriptedCase([]), type, fetch: async () => { throw new TypeError('Failed to fetch'); } };
+  const c = scriptedCase([]);
+  const base = { ...c, endpoint: { ...c.endpoint, baseUrl: 'https://llm.test/v1' }, type, fetch: async () => { throw new TypeError('Failed to fetch'); } };
   const blocked = await testModel({ ...base, probe: async () => true });
   assert.match(blocked.steps[0].detail, /doesn't allow web apps/);
   const down = await testModel({ ...base, probe: async () => false });
@@ -135,7 +136,8 @@ test('the service passes on the model to prefer and the photo repair (spec §9.6
 
 test('the Test button checks photo uploads where the endpoint stores files (spec §9.8)', async () => {
   const withUploads = (/** @type {any} */ c) => ({
-    ...c, type: { ...c.type, uploadRequest: () => ({ url: 'https://files.test/v1/files', headers: {}, body: new FormData() }), readUpload: (/** @type {any} */ j) => ({ id: j.id }) },
+    ...c, endpoint: { ...c.endpoint, baseUrl: 'https://files.test/v1' },
+    type: { ...c.type, uploadRequest: () => ({ url: 'https://files.test/v1/files', headers: {}, body: new FormData() }), readUpload: (/** @type {any} */ j) => ({ id: j.id }) },
   });
   const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
   const ok = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response(JSON.stringify({ id: 'file_1' })) });
