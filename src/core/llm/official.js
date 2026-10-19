@@ -146,6 +146,7 @@ const inFlight = new WeakMap();
 /** @param {PluginHost} host @param {string} kind @param {string} type @param {FetchOptions} opts */
 async function ensureNow(host, kind, type, opts) {
   const what = KINDS[kind] ?? kind;
+  // A third party's serves offline only for a name no official plugin provides: annai's own names are never theirs (Registry.owner).
   const theirs = provided(host.registry, kind).has(type);
   const entry = (await officialPlugins(opts).catch((e) => { if (theirs) return []; throw e; })).find((p) => p.provides?.[kind]?.includes(type));
   if (!entry && theirs) return;
