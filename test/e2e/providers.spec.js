@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, zipOf } from './helpers.js';
+import { openApp, waitForServiceWorker, zipOf, savedBy } from './helpers.js';
 
 /** The version annai ships of an official plugin, read from its manifest. @param {string} id */
 const shipped = async (id) => JSON.parse(await readFile(new URL(`../../plugins-official/${id}/annai-plugin.json`, import.meta.url), 'utf8')).version;
@@ -181,4 +181,28 @@ test('moving over: endpoints from before providers, with their keys, are removed
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
   await expect(page.locator('.notice', { hasText: 'Settings → Models changed' })).toHaveCount(0);
+});
+
+test("fix pass: an address typed without https:// isn't saved, on the provider and on an ability, and the words say what to type", async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await add(page, 'Another address');
+  await page.getByLabel('Address', { exact: true }).fill('llm.example.com/v1');
+  await page.getByLabel('API key').fill('sk-test-typed-address-1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/llm\.example\.com\/v1 isn't a web address/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Address', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
+  await page.getByLabel('Address', { exact: true }).fill('https://llm.example.com/v1');
+  await page.getByLabel('API key').fill('sk-test-typed-address-1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  const voice = page.getByRole('region', { name: 'Voice', exact: true });
+  await voice.getByLabel('Use Voice').check();
+  await expect(savedBy(voice.getByLabel('Use Voice'))).toHaveText('Saved', { timeout: 30_000 });
+  const own = voice.getByLabel('Its own address');
+  await own.fill('http://192.168.1.5:8880/v1');
+  await own.blur();
+  await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)/);
 });

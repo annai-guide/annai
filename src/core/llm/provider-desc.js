@@ -59,10 +59,15 @@ export function checkProviderDesc(desc) {
   const abilities = Object.entries(desc.abilities);
   if (!abilities.length) errors.push('$.abilities: a provider needs at least one ability');
   // Every address a key may go to must be one (security review): none is dropped, and none is plain http to another machine.
-  if (desc.baseUrl) addressProblem('$.baseUrl', desc.baseUrl, errors);
+  /** @param {string} at @param {string} url */
+  const address = (at, url) => {
+    const wrong = addressProblem(url);
+    if (wrong) errors.push(`${at}: ${wrong}`);
+  };
+  if (desc.baseUrl) address('$.baseUrl', desc.baseUrl);
   for (const [id, a] of abilities) {
     if (!ABILITY_ID.test(id)) errors.push(`$.abilities.${id}: an ability id is lowercase letters, digits and dashes, starting with a letter`);
-    if (a.baseUrl !== undefined) addressProblem(`$.abilities.${id}.baseUrl`, a.baseUrl, errors);
+    if (a.baseUrl !== undefined) address(`$.abilities.${id}.baseUrl`, a.baseUrl);
     // A protocol joins these onto the address: each must be a path from it (fix pass, Critical).
     const paths = (/** @type {string} */ at, /** @type {any} */ t) => {
       for (const k of PATH_TUNABLES) {
@@ -89,22 +94,20 @@ export function checkProviderDesc(desc) {
 }
 
 /**
- * Why an address can't be one a key is sent to, added to errors: it must parse, and be https, or http
- * only for localhost and 127.0.0.1, as annai's security policy allows (spec §15, connect-src).
- * @param {string} at @param {string} url @param {string[]} errors
+ * Why an address can't be one a key is sent to, in words, or null: it must parse, and be https, or http
+ * only for localhost and 127.0.0.1, as annai's security policy allows (spec §15, connect-src). The
+ * provider's page checks a typed address with it too (fix pass). @param {string} url @returns {string | null}
  */
-function addressProblem(at, url, errors) {
+export function addressProblem(url) {
   /** @type {URL} */
   let u;
   try {
     u = new URL(url);
   } catch {
-    errors.push(`${at}: "${url}" isn't a web address`);
-    return;
+    return `${url} isn't a web address: give it with https:// in front.`;
   }
-  if (u.protocol === 'https:' && u.hostname) return;
-  if (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')) return;
-  errors.push(`${at}: an address must start with https:// (http:// only for localhost or 127.0.0.1)`);
+  if ((u.protocol === 'https:' && u.hostname) || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
+  return 'An address must start with https:// (http:// only for localhost or 127.0.0.1).';
 }
 
 /** An address's origin (scheme, host and port); one that doesn't parse is kept as it is, never dropped. @param {string} url */

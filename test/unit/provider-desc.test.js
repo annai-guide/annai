@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkProviderDesc, descOrigins, ABILITY_KINDS, CATEGORIES, ROLE_KIND } from '../../src/core/llm/provider-desc.js';
+import { checkProviderDesc, descOrigins, addressProblem, ABILITY_KINDS, CATEGORIES, ROLE_KIND } from '../../src/core/llm/provider-desc.js';
 import { OPENAI_LIKE, LOCAL_SPEECH } from './provider-kit.js';
 
 /** @param {any} desc @param {string} id @param {any} ability */
@@ -43,4 +43,11 @@ test('the kinds, categories and which ability kind each role takes', () => {
   assert.deepEqual(ABILITY_KINDS, ['chat', 'transcription', 'voice']);
   assert.deepEqual(CATEGORIES, ['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
   assert.deepEqual(ROLE_KIND, { main: 'chat', utility: 'chat', decide: 'chat', 'speech-in': 'transcription', 'speech-out': 'voice' });
+});
+
+test('fix pass: an address typed on a provider\'s page is checked by the same rule: https, or http only for localhost or 127.0.0.1, in words', () => {
+  for (const ok of ['https://api.example.com/v1', 'http://localhost:8000/v1', 'http://127.0.0.1:9931/v1']) assert.equal(addressProblem(ok), null, ok);
+  assert.match(String(addressProblem('api.example.com/v1')), /isn't a web address.*https:\/\//);
+  assert.match(String(addressProblem('http://192.168.1.5:8080/v1')), /must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)/);
+  assert.match(String(addressProblem('ftp://example.com')), /must start with https/);
 });
