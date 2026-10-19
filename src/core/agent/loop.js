@@ -1056,6 +1056,8 @@ export class Agent {
       const koe = this.#half.koe?.() ?? null;
       const tail = this.#half.tail ? await this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now()), ...(koe ? { koe } : {}) });
       const snapshot = /** @type {import('./context.js').Snapshot} */ (this.#snapshot);
+      // What the request holds: the other half's lines that come after it follow this reply (Transcript).
+      const context = { from: this.transcript.from, to: this.transcript.to };
       const request = {
         ...buildRequest({ snapshot, ...(this.#half.system ? { system: this.#half.system(snapshot) } : {}), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }),
         ...providerTools,
@@ -1094,7 +1096,7 @@ export class Agent {
         this.#callCut = cut;
         result = await this.llm.call({
           role, request, signal: AbortSignal.any([abort.signal, cut.signal]), scope: this.scope, prefer,
-          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context: { from: this.transcript.from, to: this.transcript.to }, keepParts: true },
+          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),

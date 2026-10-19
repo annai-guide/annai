@@ -56,7 +56,7 @@ export class SimRun {
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
-   *   agent: import('../agent/loop.js').Agent, live: import('./live.js').Live, base?: import('./clock.js').Clock }} c
+   *   agent: import('../agent/loop.js').Agent | import('../agent/halves.js').Halves, live: import('./live.js').Live, base?: import('./clock.js').Clock }} c
    *   base: the clock a timed simulation plays on (the real one; tests pass a manual one)
    */
   constructor(c) {
