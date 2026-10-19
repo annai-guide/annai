@@ -216,6 +216,18 @@ test("a tool's result reaches a live Koe escaped, as a text Koe's does: no file 
   }
 });
 
+test('a tool call that fails on annai\'s side is still answered, with what went wrong: the model never waits for it', async () => {
+  const k = await liveKit([{ said: 'Let me look.', audio: tone(0.1), tool: { name: 'list', args: {} } }]);
+  try {
+    k.agent.koe.liveCall = async () => { throw new Error('The phone is out of space.'); };
+    k.agent.send('List my files.');
+    await until(() => answers(k).length === 1);
+    assert.equal(answers(k)[0].response.result, 'Error: The phone is out of space.');
+  } finally {
+    await k.done();
+  }
+});
+
 test('ask shows its buttons and is answered at once; the tap comes as the next text turn, and Kokoro reads it as chosen', async () => {
   const k = await liveKit([
     { said: 'Tacos or ramen?', audio: tone(0.2), tool: { name: 'ask', args: { question: 'Tacos or ramen?', options: ['Tacos', 'Ramen'] } } },
