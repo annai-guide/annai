@@ -56,9 +56,9 @@ export function retryDelay(count) {
 
 /**
  * @param {{ store: Store, ws: Workspace, registry: Registry, app: string, label: string, noun?: string,
- *   ensure?: (type: string) => Promise<void>, now?: () => number }} deps
+ *   ensure?: (type: string, o?: { keepOff?: boolean }) => Promise<void>, now?: () => number }} deps
  *   label: what this device is called in its backups ("iPhone"); noun: what the user calls it ("phone");
- *   ensure: makes a kind of place available, installing its plugin (spec §5.3)
+ *   ensure: makes a kind of place available, installing its plugin (spec §5.3); keepOff: one the user turned off stays off
  */
 export function createBackups({ store, ws, registry, app, label, noun = 'device', ensure = async () => {}, now = () => Date.now() }) {
   /** @type {Set<() => void>} */
@@ -268,10 +268,14 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     typeOf,
     types: () => [...storageTypes(registry).values()],
 
-    /** Adds a place of a kind, installing its plugin when needed (spec §5.3). @param {string} type @returns {Promise<string>} */
+    /**
+     * Adds a place of a kind, installing its plugin when needed (spec §5.3). A plugin the user turned off
+     * stays off, and the words say so (fix pass): the place's Turn it on is the tap for that.
+     * @param {string} type @returns {Promise<string>}
+     */
     async add(type) {
       try {
-        await ensure(type);
+        await ensure(type, { keepOff: true });
       } catch (e) {
         throw await clean(e);
       }
