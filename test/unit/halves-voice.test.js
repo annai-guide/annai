@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, hear } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { clip, quiet, cat } from './voice-kit.js';
 
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 /** A reply that calls tools, then sleeps. @param {...[string, any]} calls */
@@ -342,4 +343,120 @@ test("Kokoro's request built before Koe wrote the words down still sends the wor
   const texts = userTexts(k.sent['model-0'][0]);
   assert.ok(texts.includes('what is that bridge'), JSON.stringify(texts));
   assert.ok(!texts.includes('[audio, not transcribed]'));
+});
+
+// K2 Task 3: waiting for Kokoro, and notes while Koe speaks.
+test("with voice on, Koe's wait listens: Kokoro's note ends it and Koe says it aloud; the user speaking first ends it too", async () => {
+  const checking = { toolCalls: [{ name: 'speak', input: { text: "I'm checking." } }, { name: 'tell_kokoro', input: { text: 'Is Nepenthe open now?' } }, { name: 'wait', input: { seconds: 30 } }] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: { delayMs: 100, ...calls(['tell_koe', { text: 'Open till 10 tonight (nepenthe.com).' }]) } }] }], {
+    // A note after the results reads to the stand-in as a new wake: times and a rule for the note pick the step.
+    koe: { talk: { rules: [
+      { match: 'the user spoke', times: 1, reply: checking },
+      { match: 'a note from Kokoro', reply: calls(['speak', { text: "It's open till 10 tonight." }]) },
+    ] } },
+    voice: { speechIn: ['m-hear'], hears: ['is nepenthe open'] },
+  });
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 50));
+  await k.agent.idle();
+  assert.deepEqual(plays(k), ["I'm checking.", "It's open till 10 tonight."]);
+  assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud.', "Koe's speak doesn't listen when its question and wait follow");
+  assert.equal((await results(k, 'wait'))[0].data.content, 'Kokoro: see the note below.');
+  assert.equal(micOpens(k), 2, "the tap's window, then the wait's");
+  assert.equal(k.sent['model-0'].length, 1);
+  // The user speaking first ends it too.
+  const k2 = await agentKit([{ rules: [{ match: '.', reply: { delayMs: 400, ...sleep } }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', times: 1, reply: checking },
+      { match: 'the user spoke', reply: calls(['speak', { text: 'Tomorrow too, I think.' }]) },
+    ] } },
+    voice: { speechIn: ['m-hear'], hears: ['is nepenthe open', 'and tomorrow'] },
+  });
+  k2.agent.tap();
+  await until(() => k2.agent.state.name === 'listening');
+  await hear(k2, 'where-eat');
+  await until(() => k2.agent.koe.waiting && k2.agent.state.name === 'listening');
+  assert.equal(k2.agent.kokoroWorking, true, 'the sign shows while Koe listens');
+  await hear(k2, 'first-one');
+  await k2.agent.idle();
+  const [wait] = await results(k2, 'wait');
+  assert.equal(wait.data.content, 'The user said:');
+  assert.equal((await k2.events(['heard'])).find((e) => e.data.answer === wait.data.id)?.data.half, 'koe');
+});
+
+test("Kokoro sleeps without telling while Koe's wait listens: the wait ends with nothing to add", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', times: 1, reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me see.' } }, { name: 'wait', input: { seconds: 60 } }] } }] } },
+    voice: { speechIn: ['m-hear'] },
+  });
+  const started = Date.now();
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 50));
+  await k.agent.idle();
+  assert.equal((await results(k, 'wait'))[0]?.data.content, 'Kokoro: see the note below.');
+  assert.deepEqual((await k.events(['note'])).map((e) => [e.data.from, e.data.why]), [['kokoro', 'nothing-to-add']]);
+  assert.ok(Date.now() - started < 590, 'well before the wait ran out');
+});
+
+test('an immediate correction cuts Koe mid-sentence; Koe corrects itself; the cut point is in its speak result', async () => {
+  const k = await agentKit([{ rules: [{ match: 'Koe answered the user', reply: calls(['tell_koe', { text: 'Wrong: Bixby Bridge is a 1932 concrete arch (Caltrans).', mode: 'immediate' }]) }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', reply: calls(['speak', { text: 'Bixby Bridge is a steel suspension bridge. It opened in the 1950s.' }]) },
+      { match: 'a note from Kokoro', reply: calls(['speak', { text: "Sorry, I misspoke: it's a 1932 concrete arch." }]) },
+    ] } },
+    voice: { playMs: 150, speechIn: ['m-hear'] },
+  });
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 50));
+  await k.agent.idle();
+  assert.deepEqual(plays(k), ['Bixby Bridge is a steel suspension bridge.', "Sorry, I misspoke: it's a 1932 concrete arch."]);
+  const [cut] = await results(k, 'speak');
+  assert.match(cut.data.content, /^A note stopped you after: ".+…"\. It follows\.$/);
+  assert.deepEqual((await k.events(['note'])).map((e) => [e.data.from, e.data.mode]), [['kokoro', 'immediate']]);
+});
+
+test("a note ends Koe's listening after it spoke, unless the user is speaking: no dead air while it waits", async () => {
+  const k = await agentKit([{ rules: [{ match: 'Koe answered the user', reply: calls(['tell_koe', { text: 'The opening scenes of a TV series were filmed there.' }]) }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', times: 1, reply: { toolCalls: [{ name: 'speak', input: { text: "That's Bixby Bridge." } }] } },
+      { match: 'a note from Kokoro', reply: calls(['speak', { text: 'A TV series opened with it, too.' }]) },
+    ] } },
+    voice: { speechIn: ['m-hear'] },
+  });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 60 } });
+  const started = Date.now();
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 50));
+  await k.agent.idle();
+  assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Kokoro: see the note below.');
+  assert.deepEqual(plays(k), ["That's Bixby Bridge.", 'A TV series opened with it, too.']);
+  assert.ok(Date.now() - started < 590, 'well before the silence limit');
+});
+
+test("a note that comes while the user is speaking waits for their words, and follows them", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', times: 1, reply: { toolCalls: [{ name: 'speak', input: { text: "That's Bixby Bridge." } }] } },
+      { match: 'the user spoke', reply: calls(['speak', { text: 'Yes, and a TV series opened with it.' }]) },
+    ] } },
+    voice: { speechIn: ['m-hear'], hears: ['what is that bridge', 'is it famous'] },
+  });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 60 } });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => k.agent.state.name === 'listening' && plays(k).length === 1);
+  const words = await clip('first-one');
+  k.platform.mic.feed(cat(quiet(0.3), words.subarray(0, Math.floor(words.length / 2))), 16_000);
+  await until(() => k.agent.koe.state.name === 'hearing');
+  await k.agent.channel.send('kokoro', 'A TV series opened with it.', 'append', 'tool');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(k.agent.koe.state.name, 'hearing', 'still listening to the user');
+  k.platform.mic.feed(cat(words.subarray(Math.floor(words.length / 2)), quiet(1)), 16_000);
+  await k.agent.idle();
+  const [speak] = await results(k, 'speak');
+  assert.equal(speak.data.content, 'Said aloud. The user said:');
+  const last = k.sent['model-koet'].at(-1);
+  const texts = userTexts(last);
+  assert.ok(texts.includes('is it famous') && texts.some((t) => t.startsWith('<from_kokoro')), JSON.stringify(texts));
 });

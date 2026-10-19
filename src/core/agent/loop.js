@@ -55,6 +55,7 @@ import { validate } from '../schema.js';
  * @property {(voiceOn: boolean) => Promise<{ role: string }>} role
  * @property {boolean} registryTools false: its own loop tools only @property {() => boolean} voice whether it may use the voice now
  * @property {boolean} logVoice @property {boolean} housekeeping @property {string} [nonce] Koe's, in its notes' marker
+ * @property {boolean} [listenLast] its speak listens only as its reply's last call: a question to the other half, or a wait, runs at once
  * @property {() => import('./transcript.js').HalfName} [rules] whose rules its transcript reads now
  * @property {(snapshot: import('./context.js').Snapshot) => string} [system]
  * @property {(c: { now: number, timeZone: string, voice: string, online: boolean, reasons: string[], place?: string, activity?: string, voiceWhy?: string }) => Promise<string>} [tail] in place of the now block
@@ -437,12 +438,19 @@ export class Agent {
   /** @param {Wake} w */
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME });
-    // A note ends a wait for one (Koe's wait means "Kokoro is working").
+    if (w.kind === 'note') this.#noted();
+  }
+
+  /**
+   * A note queued ends a wait for one (Koe's wait means "Kokoro is working"), and Koe's listening after
+   * it spoke, so the note is said with no dead air; while the user speaks, their words come first.
+   */
+  #noted() {
     const p = this.#pending;
-    if (w.kind === 'note' && p?.tool) {
-      this.#pending = null;
-      p.resolve({ note: w.from ?? 'kokoro' });
-    }
+    const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
+    if (!note || !p || !(p.tool || (p.listening && p.kind === 'wait')) || this.state.name === 'hearing') return;
+    this.#pending = null;
+    p.resolve({ note: note.from ?? 'kokoro' });
   }
 
   /**
@@ -1155,8 +1163,9 @@ export class Agent {
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
-      for (const c of ordered) {
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off });
+      for (const [i, c] of ordered.entries()) {
+        const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name !== 'sleep');
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more });
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
@@ -1376,7 +1385,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[] }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -1396,7 +1405,7 @@ export class Agent {
     else {
       const call = {
         id: c.id, scope: this.scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, ...(o.more ? { more: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
       };
       ({ output, ms } = await runTool(tool, input, call));
@@ -1665,6 +1674,7 @@ export class Agent {
     if (spoken.cut) this.#cut = true;
     const before = spokenText(spoken);
     if (call.sleeping) return spoken.cut ? `${before} The microphone is open: what they say next wakes you.` : before;
+    if (call.more) return before;
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const { silenceSeconds } = await voice.settings();
     return this.#answer(before, await this.#listenFor(call.id, 'wait', silenceSeconds), call, `Heard nothing (${silenceSeconds} seconds).`);
@@ -1725,6 +1735,7 @@ export class Agent {
       return `${lead}The user wrote: ${got.text}`;
     }
     if (got.deaf) return `${lead}annai couldn't listen: ${got.deaf} The user may type.`;
+    if (got.note) return `${lead}${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
     if (got.earlier) return `${lead}Not listening for an answer: the user spoke while you were thinking; it follows.`;
     return `${lead}${silence}`;
   }
@@ -1739,6 +1750,8 @@ export class Agent {
     const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (typed >= 0) return { text: this.#queue.splice(typed, 1)[0].text };
     if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
+    const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
+    if (note) return { note: note.from ?? 'kokoro' };
     const deaf = await this.#openEar('turn');
     if (deaf) return { deaf };
     this.#setState('listening');
@@ -1893,12 +1906,13 @@ export class Agent {
     if (!this.voice?.speaker.speaking) this.#setState('hearing');
   }
 
-  /** What began like speech wasn't (a click): the silence limit starts again. */
+  /** What began like speech wasn't (a click): the silence limit starts again, or a note waiting is taken. */
   #speechStopped() {
     this.#pending?.arm?.();
     const tapped = this.#ear?.owner === 'tap' && !this.#busy;
     if (tapped) this.#armQuiet();
     if (this.state.name === 'hearing') this.#setState(this.#pending?.listening || tapped ? 'listening' : 'thinking');
+    this.#noted();
   }
 
   /** The microphone stopped while listening (another app took it, say): a card says why, and a wait for an answer ends. @param {Error} e */
