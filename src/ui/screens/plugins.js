@@ -1,18 +1,19 @@
 import { h, twoStep, messageOf as message } from '../dom.js';
 import { andList } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
-import { officialUpdates, officialPlugins } from '../../core/llm/official.js';
-import { addFromCatalog } from '../../core/requires.js';
+import { officialUpdates } from '../../core/llm/official.js';
 import { providerOf } from '../../core/llm/config.js';
 import { applyUpdates, knownAddressUpdates } from '../plugin-updates.js';
 import { sourceLine } from './plugin-install.js';
 import { tracedFetch } from '../../core/agent/net.js';
 import { SYS } from '../../core/scopes.js';
 import { renderPlugin } from './plugin.js';
+import { finder, byKind } from './add.js';
 
 /**
- * Settings → Plugins (spec §5.3): what is installed, with updates, and installing from annai's
- * catalog; Add opens the catalog's Add screen, where a file or an address is installed from.
+ * Settings → Plugins (spec §5.3, §16.2): what is installed, with updates, searched and filtered as
+ * the catalog is (provider plugins under Model providers, naming the providers made from them). Add
+ * opens the catalog's Add screen, where annai's catalog, a file or an address is installed from.
  * A plugin's own page is #/plugins/<id> (milestone 8b, choice 11).
  * @param {any} ctx @param {{ parts?: string[] }} [route]
  */
@@ -21,43 +22,14 @@ export async function renderPlugins(ctx, route) {
   const rows = await ctx.plugins.describe();
   const told = await removalWords(ctx, rows);
   const updates = [...await officialUpdates(ctx.plugins).catch(() => []), ...await knownAddressUpdates(ctx.plugins).catch(() => [])];
-  const catalog = await officialPlugins().catch(() => null);
-  const installed = new Set(rows.map((/** @type {any} */ r) => r.id));
-  // Model providers are added in Settings → Models, which makes the provider too (Milestone 3 brings one Add screen for both).
-  const offered = (catalog ?? []).filter((p) => !installed.has(p.id) && !p.abilities?.length);
+  // Built in, or from annai's catalog, is official; from a file or an address, third-party.
+  const entries = rows.map((/** @type {any} */ r) => ({ ...r, official: r.builtin || r.source === 'official' }));
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Plugins' }),
     h('p', { class: 'risk-note', text: "A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust." }),
     h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add' }, 'Add')),
-    h('ul', { class: 'cards' }, ...rows.map((/** @type {any} */ r) => row(ctx, r, updates.find((u) => u.id === r.id), told.get(r.id)))),
-    h('section', { class: 'panel', 'aria-label': "From annai's catalog" },
-      h('h2', { class: 'section', text: "From annai's catalog" }),
-      h('p', { class: 'sub' }, 'Model providers are added in ', h('a', { href: '#/models' }, 'Settings → Models'), '.'),
-      catalog === null ? h('p', { class: 'sub', text: "annai's catalog couldn't be loaded. Check the connection and open this screen again." })
-        : offered.length ? h('ul', { class: 'cards' }, ...offered.map((p) => catalogRow(ctx, p)))
-          : h('p', { class: 'sub', text: "Every plugin in annai's catalog is installed." })));
-}
-
-/** @param {any} ctx @param {any} entry an official plugin from annai's catalog */
-function catalogRow(ctx, entry) {
-  return h('li', { class: 'card' },
-    h('span', { class: 'name', text: `${entry.name} ${entry.version}` }),
-    h('div', { class: 'acts' }, h('button', {
-      class: 'btn', type: 'button', 'aria-label': `Install ${entry.name}`,
-      onclick: async (/** @type {Event} */ e) => {
-        const b = /** @type {HTMLButtonElement} */ (e.currentTarget);
-        b.disabled = true;
-        try {
-          if (!navigator.serviceWorker?.controller) throw new Error("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.");
-          await addFromCatalog(ctx.plugins, entry.id, { tap: true }); // with what it requires
-          ctx.notices.toast(`Installed ${entry.name}.`);
-        } catch (err) {
-          if (!explainStorageFull(ctx, err)) ctx.notices.card({ tone: 'warn', title: `${entry.name} wasn't installed`, body: message(err) });
-        }
-        ctx.render();
-      },
-    }, 'Install')));
+    finder({ label: 'Search your plugins', entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);
 }
 
 /** The update offered for a plugin now, if any. @param {any} ctx @param {string} id */
@@ -91,7 +63,7 @@ export async function removalWords(ctx, rows) {
     const needs = rows.filter((o) => o.id !== r.id && (o.requires ?? []).some((/** @type {any} */ q) => q.id === r.id)).map((o) => o.name);
     const lines = [];
     if (r.provider) lines.push(providers.length ? `Providers: ${providers.map((p) => p.name).join(', ')}.` : 'No provider is set up from it yet.');
-    if (r.provider && providers.length) lines.push(`Removing it removes ${andList(providers.map((p) => p.name))}, with their keys and models.`);
+    if (r.provider && providers.length) lines.push(`Removing it removes ${andList(providers.map((p) => p.name))}, with ${providers.length > 1 ? 'their keys' : 'its key'} and models.`);
     if (needs.length) lines.push(`Needed by ${andList(needs)}.`);
     out.set(r.id, { providers, lines });
   }
