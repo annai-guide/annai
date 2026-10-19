@@ -27,6 +27,7 @@ memories afterwards.
 
 ## Models
 
+- A server you run has a provider of its own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama or LM Studio. Each knows its usual address and how its thinking is switched off for quick decisions, and its page says what the server needs to let annai in. annai reaches a server at `localhost` on the device it runs on; from a phone, the server needs an HTTPS address, such as Tailscale Serve or a tunnel puts in front of it.
 - A server that never streams, such as an LLM router that sends each answer whole, works through Chat Completions or OpenAI Responses. annai sees nothing of an answer until all of it has come, so the wait for her first words must cover the whole answer: with voice on, Settings → Voice → Wait for her first words (15 seconds unless changed); otherwise the role's "Wait for the first words" in Settings → Models (30 seconds unless changed). Raise it if long answers stop with "No output started in time."
 
 ## Plan and bookings

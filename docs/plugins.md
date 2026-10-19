@@ -240,6 +240,17 @@ A model provider is usually data: one `annai-plugin.json` with a `provider` desc
 - **One key per provider.** The user may add several providers from one plugin (two accounts); each has its own key, models and places in roles. annai keeps the key in its secrets; your plugin never sees it.
 - **Updates:** when your plugin's version changes, the providers made from it take the new description; the user's own changes stay, new models join no role, and a new ability arrives switched off.
 
+**Quirks are data.** A server's differences are written in its description, not in code. The servers people run show how (`plugins-official/provider-llamacpp`, `-vllm`, `-sglang`, `-ollama`, `-lmstudio`): each has its default address, `local: true`, notes on how to let annai's address in, and how its thinking is switched, as the reasoning map every model added from its list starts with. llama.cpp's, trimmed:
+
+```json
+"chat": { "kind": "chat", "type": "chat-completions",
+  "modelDefaults": { "reasoning": {
+    "off": { "reasoning_effort": "none", "chat_template_kwargs": { "enable_thinking": false } },
+    "medium": { "reasoning_effort": "medium", "chat_template_kwargs": { "enable_thinking": true } } } } }
+```
+
+Each level is a patch merged into the request body (spec §9.3), and level off is what a quick decision asks for. vLLM's and SGLang's maps switch `chat_template_kwargs` alone (`enable_thinking` and `thinking`, as their models' templates read one or the other); Ollama's sends `reasoning_effort`. Where reasoning comes back, and usage in the stream, are the protocol's (Chat Completions reads `reasoning_content` and `reasoning`), so they need nothing. `keywords` let a search find a plugin by another name: llama.cpp's include Unsloth and KoboldCpp, which run it.
+
 ## Protocols (endpoint types)
 
 An endpoint type teaches annai one model protocol. The core contains none (spec §9.1).
@@ -278,6 +289,7 @@ export function activate(annai) {
   - `logprobs`: how many alternatives to report for the first token, as `{ type: 'logprobs', top: [{ token, logprob }] }`.
   - `document` parts: PDFs, base64.
 - **A paused turn** (the provider stopped early and wants the reply back) stops with `pause`.
+- **A server that ignores `stream`** may answer with one whole JSON reply. Read it as the same events, in a stream's order, when the answer is `application/json` (and only then: NDJSON and `problem+json` are not whole replies): annai's Chat Completions and OpenAI Responses do. A connection that drops while you read it is `network`, as a stream's is.
 - **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.
