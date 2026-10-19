@@ -166,7 +166,8 @@ export async function renderTalk(ctx) {
       return others.length ? h('li', { class: 'system-line', text: `Shiori woke: ${why.length > 160 ? `${why.slice(0, 160)}…` : why}` }) : null;
     }
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
-    if (e.type === 'error' && d.quiet) return null; // the other half told the user, in its own words
+    // The other half told the user, in its own words; and Kokoro's own errors are Kokoro's while Koe talks (a card still says them).
+    if (e.type === 'error' && (d.quiet || d.half === 'kokoro')) return null;
     if (e.type === 'error') return h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? "Shiori couldn't reach her model" : d.kind === 'budget' ? 'A budget ended her turn' : 'Her turn ended' }), h('p', { text: String(d.message ?? '') }));
     return null;
   };

@@ -221,3 +221,21 @@ test('opening another conversation stops both halves at once, so neither writes 
   const late = (await k.events()).filter((e) => e.type === 'model.turn' && e.data.answeredBy);
   assert.equal(late.length, 0, 'both calls were stopped');
 });
+
+test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a tap goes to the half that talks", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, then: sleep },
+  ] } } });
+  k.agent.send('Book Nepenthe');
+  await until(() => k.agent.koe.pendingId !== null);
+  assert.equal(k.agent.talking, k.agent.koe);
+  const id = /** @type {string} */ (k.agent.koe.pendingId);
+  k.agent.answer(id, 'Dinner');
+  await k.agent.idle();
+  const ask = (await k.events(['tool.result'])).find((e) => e.data.name === 'ask');
+  assert.equal(ask?.data.content, 'The user chose: Dinner');
+  const chose = (await k.events(['msg.user'])).find((e) => e.data.answer === id);
+  assert.deepEqual([chose?.data.split, chose?.data.chose], [true, true]);
+  assert.ok(k.sent['model-0'].some((/** @type {any} */ r) => userTexts(r).includes('[the user chose] "Dinner"')), 'Kokoro reads it, and woke for it');
+  assert.equal(k.agent.tap(), 'typing', 'voice off, nobody talking: typing opens');
+});
