@@ -30,6 +30,8 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     await chat.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(chat.getByText('1 model.')).toBeVisible();
     await chat.getByRole('button', { name: 'Add qwen3.8-flash' }).click();
+    // The context the server serves, from its /props (decision 22).
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toContainText('33K context');
     // The list said it reads images: it takes photos.
     await page.getByRole('link', { name: /^qwen3\.8-flash/ }).click();
     await expect(page.getByLabel('Takes photos')).toBeChecked();
