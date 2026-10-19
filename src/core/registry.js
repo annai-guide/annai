@@ -9,11 +9,7 @@ export const TURN_ON = 'Turn it on in Settings → Plugins, then try again.';
 
 /** A named item's name, read from its field f. */
 const by = (/** @type {string} */ f) => (/** @type {any} */ x) => String(x?.[f]);
-/**
- * The kinds whose items have a name only one plugin may hold (the provider plan's milestone 6), each with
- * how its name is read. Hooks and the slots that add things up (chips, sections, tabs, screens) never clash.
- * @type {Record<string, (item: any) => string>}
- */
+/** The kinds whose items have a name one plugin holds (milestone 6), with how it is read; hooks and adding slots never clash. @type {Record<string, (item: any) => string>} */
 export const NAMED = Object.freeze({
   tool: by('name'), 'endpoint-type': by('type'), 'storage-type': by('type'), skill: by('name'), personality: by('name'), 'ui:component': by('name'), 'ui:card-type': by('type'), search: by('id'),
 });
@@ -21,10 +17,9 @@ export const NAMED = Object.freeze({
 export const KEYED = new Set(['endpoint-type', 'storage-type']);
 
 /**
- * How a name's owner is found. rank: lower comes first (the host's: built-ins 0, official 1, third-party 2, then
- * install time, then id); choice: the plugin the user chose for a name; reserved: 'only' for a name annai keeps
- * (the loop's own tools: nothing replaces them), 'own' for one annai has its own of (its components, a built-in's
- * provides), used unless the user chooses a plugin's.
+ * How a name's owner is found. rank: lower first (built-ins 0, official 1, third-party 2, then install time, then id);
+ * choice: the user's; reserved: 'only' for a name annai keeps (the loop's own tools), 'own' for one annai has its own
+ * of (its components, a built-in's provides), used unless the user chooses a plugin's.
  * @typedef {{ rank: (pluginId: string) => (number | string)[], choice: (kind: string, name: string) => string | undefined,
  *   reserved: (kind: string, name: string) => 'only' | 'own' | null }} Rules
  * @typedef {{ kind: string, name: string, owner: string, used: boolean, reserved: boolean, chosen: boolean }} Clash
@@ -144,10 +139,10 @@ export class Registry {
     if (how === 'only') return { pluginId: 'annai', chosen: false };
     const read = NAMED[kind] ?? (() => '');
     const live = (this.#items.get(kind) ?? []).filter((e) => !this.#disabled.has(e.pluginId) && read(e.item) === name);
-    const chosen = KEYED.has(kind) ? undefined : this.#rules.choice(kind, name);
+    const chosen = this.choosable(kind, name) && this.#rules.choice(kind, name);
     if (chosen && live.some((e) => e.pluginId === chosen)) return { pluginId: chosen, chosen: true };
     const rank = (/** @type {{ pluginId: string, seq: number }} */ e) => [...this.#rules.rank(e.pluginId), e.seq];
-    const [first] = live.map((e) => ({ e, r: rank(e) })).sort((a, b) => compareRanks(a.r, b.r)).map((x) => x.e);
+    const [first] = live.sort((a, b) => compareRanks(rank(a), rank(b)));
     if (how === 'own' && (!first || this.#rules.rank(first.pluginId)[0] !== 0)) return { pluginId: 'annai', chosen: false };
     return first ? { pluginId: first.pluginId, chosen: false } : null;
   }
