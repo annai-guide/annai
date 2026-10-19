@@ -277,9 +277,17 @@ export class Halves {
     this.koe.open(this.kokoro.target).catch((e) => console.warn('Koe could not open the conversation', e));
   }
 
-  /** @param {string | null} trip */
+  /**
+   * Opens a trip's conversation (or "me"'s). A Koe that has a conversation open stops and follows at
+   * once, so neither half writes into the one being left (a trip being removed, say).
+   * @param {string | null} trip
+   */
   open(trip) {
     const opening = this.kokoro.open(trip);
+    if (this.#koeTrip !== undefined) {
+      this.#koeTrip = trip;
+      return Promise.all([opening, this.koe.open(trip)]).then(() => {});
+    }
     this.#route(async () => {
       await this.#refresh();
       if (this.#split) this.#koeOpen();
