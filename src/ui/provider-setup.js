@@ -129,7 +129,7 @@ export function featuredStart(ctx) {
 /**
  * When this page load is annai's address coming back to the plugin that expected it (decision 16): the
  * query leaves the address, Models says it is finishing, and the plugin's returned() takes the rest once
- * plugins have started; how it ends is on a card. Any other query is removed and ignored.
+ * plugins have started; how it ends is on a card. Any other query is removed, and a card says a sign-in came back too late.
  * @param {any} ctx llm, store, registry, plugins, notices, render, go
  * @param {{ location?: { search: string, pathname: string, hash: string }, history?: { replaceState: History['replaceState'] }, storage?: KeyValue, now?: number }} [env]
  * @returns {Promise<boolean>} whether it was a return
@@ -139,7 +139,11 @@ export async function finishReturn(ctx, env = {}) {
   if (!loc.search) return false;
   const back = returnFor(loc.search, env);
   (env.history ?? history).replaceState(null, '', `${loc.pathname}${back ? '#/models' : loc.hash}`);
-  if (!back) return false;
+  if (!back) {
+    // In annai's own words: no plugin's are known for it.
+    if (new URLSearchParams(loc.search).size) ctx.notices.card({ tone: 'warn', title: 'A sign-in came back too late', body: 'A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.' });
+    return false;
+  }
   const name = String((await ctx.plugins.installed())[back.plugin]?.name ?? back.plugin);
   finishing = name;
   try {

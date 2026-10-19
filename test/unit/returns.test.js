@@ -67,7 +67,7 @@ test('a return goes to the plugin that expected it, once, within 15 minutes; the
   assert.deepEqual(a.cards, []);
 });
 
-test("a ?code= nobody expected, or one past 15 minutes, goes to no plugin and is removed; a plugin's failure, or its absence, is said on a card", async () => {
+test("a ?code= nobody expected, or one past 15 minutes, goes to no plugin, is removed, and is said on a card; a plugin's failure, or its absence, is said on a card", async () => {
   const storage = memoryStorage();
   assert.equal(returnFor('?code=abc', { storage }), null, 'no one expected it');
   assert.equal(returnFor('', { storage }), null);
@@ -82,8 +82,17 @@ test("a ?code= nobody expected, or one past 15 minutes, goes to no plugin and is
   assert.equal(await a.start('?code=abc', storage), false);
   assert.deepEqual(a.addresses, ['/#/trips'], 'the query goes; the screen stays');
   assert.equal(asked, 0);
+  assert.deepEqual(a.cards, [{ tone: 'warn', title: "A sign-in came back too late", body: 'A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.' }]);
+  // Too late (past 15 minutes): the same words.
+  const late = app(async () => { asked++; });
+  expectReturn('provider-acme', { storage, now: 0 });
+  assert.equal(await late.start('?code=abc', storage, 16 * 60_000), false);
+  assert.equal(asked, 0);
+  assert.equal(late.cards.length, 1);
   assert.equal(await a.start('', storage), false);
-  assert.deepEqual(a.addresses, ['/#/trips'], 'no query: the address is left alone');
+  assert.equal(await a.start('?', storage), false);
+  assert.deepEqual(a.addresses, ['/#/trips', '/#/trips'], 'no query: the address is left alone; an empty one goes, saying nothing');
+  assert.equal(a.cards.length, 1);
 
   // The plugin's own words, on a card titled by its name.
   const refused = app(async () => { throw new Error("Acme didn't take the code."); });
