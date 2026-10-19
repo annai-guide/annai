@@ -433,7 +433,7 @@ There's no special machinery:
 - its default address and port, and whether it takes a key (Ollama takes none);
 - how its thinking is switched, as `modelDefaults.reasoning`: llama.cpp's `reasoning_effort` with `chat_template_kwargs.enable_thinking`, vLLM's and SGLang's `chat_template_kwargs` (`enable_thinking` and `thinking`), Ollama's `reasoning_effort`. Level off sends the switch, so a quick decision doesn't think. LM Studio doesn't document its switch, so it has none;
 - the reasoning field: the protocol's `auto` reads `reasoning_content` and `reasoning`, which covers them all;
-- usage in the stream: the protocol asks for it (`stream_options`), as each of them answers it;
+- usage in the stream: the protocol asks for it (`stream_options`), which llama.cpp, vLLM, SGLang and Ollama answer (LM Studio doesn't say);
 - the context window: vLLM's and SGLang's lists give it as `max_model_len`. llama.cpp's list gives only the training context, and Ollama's and LM Studio's give none, so until their plugins read it from the server (milestone 4 of the provider plan) it is set on each model's page;
 - notes in plain words: how to let annai's address in (Ollama's `OLLAMA_ORIGINS`, LM Studio's Enable CORS, llama.cpp's `--cors-origins` when `--tools` narrows it), the flags tool calls need (vLLM, SGLang), Ollama's small default context.
 
