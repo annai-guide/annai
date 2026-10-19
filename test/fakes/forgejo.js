@@ -57,12 +57,15 @@ function idOf(format, o) {
 
 /**
  * @param {{ token?: string, user?: string, repos?: Record<string, { private?: boolean, archived?: boolean, format?: 'sha1' | 'sha256', defaultBranch?: string,
- *   push?: boolean, mirror?: boolean, files?: Record<string, string | Buffer> }>, cors?: boolean | string, perPage?: number, flavor?: 'forgejo' | 'gitea', maxBody?: number }} [opts]
+ *   push?: boolean, mirror?: boolean, files?: Record<string, string | Buffer> }>, cors?: boolean | string, perPage?: number, flavor?: 'forgejo' | 'gitea',
+ *   maxBody?: number, lfs?: boolean }} [opts]
  *   user: the tokens' account; repos: each one empty, or with one commit holding files; cors: true allows any origin, a string only that origin, false none
  *   (Forgejo's default); perPage: the most tree entries a page holds; flavor: Gitea says truncated only while more pages follow,
- *   and answers a stale sha with 422; maxBody: a proxy in front refuses larger requests with 413, without CORS headers
+ *   and answers a stale sha with 422; maxBody: a proxy in front refuses larger requests with 413, without CORS headers;
+ *   lfs: the server keeps files .gitattributes sends to Git LFS ([server] LFS_START_SERVER): ChangeFiles commits a pointer
+ *   to the content in their place, as both servers did (2026-10-18), and /media gives the content
  */
-export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity } = {}) {
+export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cors = true, perPage = 1000, flavor = 'forgejo', maxBody = Infinity, lfs = false } = {}) {
   /** @type {Map<string, Repo>} */
   const all = new Map();
   /** @type {{ method: string, path: string, status: number, body: string }[]} */
@@ -85,6 +88,26 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
   };
   /** @param {Repo} repo @param {Buffer} data */
   const blob = (repo, data) => keep(repo, { type: 'blob', data });
+  /** What Git LFS keeps, by the content's SHA-256. @type {Map<string, Buffer>} */
+  const kept = new Map();
+  /** A file's text on a branch, or ''. @param {Repo} repo @param {{ sha: string } | undefined} f */
+  const text = (repo, f) => (f ? /** @type {any} */ (repo.objects.get(f.sha))?.data?.toString() ?? '' : '');
+  /**
+   * What the tree holds for a file: itself, or, where .gitattributes says filter=lfs, a pointer to it (Forgejo's lfs.Pointer.StringContent).
+   * @param {Repo} repo @param {string} attributes @param {string} path @param {Buffer} data
+   */
+  const stored = (repo, attributes, path, data) => {
+    const lfsd = attributes.split('\n').some((line) => {
+      const [pattern, ...attrs] = line.trim().split(/\s+/);
+      if (!pattern || !attrs.includes('filter=lfs')) return false;
+      const re = new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\u0000/g, '.*')}$`);
+      return re.test(pattern.includes('/') ? path : /** @type {string} */ (path.split('/').pop()));
+    });
+    if (!lfsd) return data;
+    const oid = createHash('sha256').update(data).digest('hex');
+    kept.set(oid, data);
+    return Buffer.from(`version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize ${data.length}\n`);
+  };
   const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 
   /** @param {Repo} repo @param {Files} files */
@@ -229,10 +252,12 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
         if (f.operation === 'create' && had) return { status: 422, json: err(`repository file already exists [path: ${f.path}]`) };
       }
     }
+    // Forgejo reads the attributes as the branch has them; Gitea also takes a .gitattributes the same request brings.
+    const attributes = lfs ? text(repo, base.get('.gitattributes')) + (flavor === 'gitea' ? body.files.filter((/** @type {any} */ f) => f.path === '.gitattributes' && f.content).map((/** @type {any} */ f) => Buffer.from(f.content, 'base64').toString()).join('\n') : '') : '';
     const files = new Map(base);
     for (const f of body.files) {
       if (f.operation === 'delete') files.delete(f.path);
-      else files.set(f.path, { sha: blob(repo, Buffer.from(String(f.content ?? ''), 'base64')), mode: '100644' });
+      else files.set(f.path, { sha: blob(repo, stored(repo, attributes, f.path, Buffer.from(String(f.content ?? ''), 'base64'))), mode: '100644' });
     }
     const during = duringChange;
     duringChange = null;
@@ -321,12 +346,15 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
       const end = Math.min(start + per, entries.length);
       return { status: 200, json: { ...json, tree: entries.slice(start, end), truncated: flavor === 'gitea' ? end < entries.length : entries.length > per } };
     }
-    if (method === 'GET' && (r = /^\/(?:raw|media)\/(.+)$/.exec(rest))) {
+    if (method === 'GET' && (r = /^\/(raw|media)\/(.+)$/.exec(rest))) {
       const at = resolve(repo, url.searchParams.get('ref') ?? repo.defaultBranch);
-      const path = r[1].split('/').map(decodeURIComponent).join('/');
+      const path = r[2].split('/').map(decodeURIComponent).join('/');
       const f = at ? flatten(repo, /** @type {string} */ (treeOf(repo, at))).get(path) : undefined;
       const b = f ? repo.objects.get(f.sha) : undefined;
-      return b?.type === 'blob' ? { status: 200, raw: b.data } : notFound();
+      if (b?.type !== 'blob') return notFound();
+      // /media follows a pointer to the content Git LFS keeps; /raw gives the pointer.
+      const oid = /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:([0-9a-f]{64})\n/.exec(b.data.toString('latin1'))?.[1];
+      return { status: 200, raw: r[1] === 'media' && oid && kept.has(oid) ? /** @type {Buffer} */ (kept.get(oid)) : b.data };
     }
     if (method === 'GET' && rest === '/commits') {
       if (repo.refs.size === 0) return { status: 409, json: err('Git Repository is empty.') };
