@@ -104,6 +104,23 @@ test('markup in the output transcript never reaches the log; a turn with no real
   }
 });
 
+test("words that trail Koe's turn are its own while it is still being said; they never start a turn of their own", async () => {
+  const k = await liveKit([{ said: 'It is open', saidAfter: ' until ten.', audio: tone(0.5) }, { said: 'Yes.', saidAfter: ' Sure.', audio: tone(0.1) }]);
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Is it open?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    assert.equal((await k.events(['out.speak']))[0].data.text, 'It is open until ten.');
+    assert.equal(k.platform.streams.length, 1);
+    assert.ok(k.platform.streams.every((/** @type {any} */ s) => s.ended || s.stopped));
+    assert.equal(k.agent.live.busy, false);
+  } finally {
+    await k.done();
+  }
+});
+
 test('cut off by voice: her voice stops at once, what was still to come is dropped, and the line is cut where it was heard, marked ✂', async () => {
   const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
   const k = await liveKit([{ said: words, audio: tone(3) }, { heard: 'Wait', said: 'Yes?', audio: tone(0.2) }], { pace: 1 });

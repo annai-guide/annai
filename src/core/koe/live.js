@@ -81,8 +81,8 @@ export class LiveKoe {
   #t = null;
   /** The turn whose sound still plays. @type {Turn | null} */
   #sounding = null;
-  /** Words still coming for a turn that was cut off, until new sound comes. */
-  #trailing = false;
+  /** The turn just ended: words still coming for it, until new sound comes, are its own (dropped once it was cut). @type {Turn | null} */
+  #trail = null;
   /** What waits for Koe's turn and its sound to end, or for the page to be in view: Kokoro's notes as Koe reads them, a trigger's words. @type {string[]} */
   #notes = [];
   /** @type {any} */
@@ -149,13 +149,13 @@ export class LiveKoe {
   /** @param {string} why */
   async #start(why) {
     const id = this.c.model();
-    const gen = ++this.#gen;
     // Never from a page out of view: what comes meanwhile waits for it (shown()).
-    if (!id || !this.c.visible() || (await this.#over())) return false;
-    this.state = 'opening';
+    if (!id || !this.c.visible()) return false;
+    const gen = ++this.#gen;
+    this.state = 'opening'; // a close from now on wins
     this.#changed();
     // A session that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
-    const s = await this.#connect(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
+    const s = (await this.#over()) ? null : await this.#connect(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
     if (gen !== this.#gen || !s) {
       s?.close('closed');
       if (gen === this.#gen) this.state = 'closed';
@@ -371,7 +371,7 @@ export class LiveKoe {
 
   /** A text turn: Koe answers it. cut: it cuts Koe off, which was heard this far. @param {string} text @param {{ playedMs?: number }} [cut] */
   #text(text, cut) {
-    this.#trailing = false;
+    this.#trail = null;
     this.#poke();
     this.#send((s) => s.text(text, { interrupt: Boolean(cut), ...cut }));
   }
@@ -389,7 +389,7 @@ export class LiveKoe {
       this.#hear = { id: newId('h'), text: '', at: now, ms: 0, pcm: [], logged: null };
     } else {
       if (this.#hear) this.#hear.ms = now - this.#hear.at;
-      this.#trailing = false;
+      this.#trail = null;
     }
     this.#poke();
     this.#send((s) => s.activity(edge, cut));
@@ -418,19 +418,22 @@ export class LiveKoe {
       this.#idle();
     } else if (e.type === 'turn') {
       if (e.end === 'interrupted') {
-        // Cut off: what was said stops where it played; words still coming for it are dropped until new sound comes.
+        // Cut off: what was said stops where it played; words still coming for it are dropped.
         if (this.#t) this.#stop(this.#t);
+        this.#trail = this.#t ?? newTurn();
+        this.#trail.cut = true;
         this.#t = null;
-        this.#trailing = true;
       } else this.#complete();
     } else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
     else if (e.type === 'audio') {
-      this.#trailing = false;
+      this.#trail = null;
       const t = (this.#t ??= newTurn());
       t.bytes += e.data.length;
       if (t.stream) t.stream.push(samples(e.data));
       else if (!t.cut) t.held.push(e.data);
-    } else if (e.type === 'said' && !this.#trailing) {
+    } else if (e.type === 'said' && !this.#t && this.#trail) {
+      if (!this.#trail.cut && !this.#trail.logged) this.#trail.said += e.text;
+    } else if (e.type === 'said') {
       const t = (this.#t ??= newTurn());
       t.said += e.text;
       if (!t.spoken && realWord(t.said)) this.#speak(t);
@@ -457,6 +460,7 @@ export class LiveKoe {
   #complete() {
     const t = this.#t;
     this.#t = null;
+    this.#trail = t;
     if (t?.stream) t.stream.end();
     else if (t?.spoken) this.#said(t, null);
     // Heard, and answered by nothing at all: it wasn't meant for Koe (the model's own choice, proactive audio).
@@ -591,6 +595,7 @@ export class LiveKoe {
     }
     this.#poke();
     this.#changed();
+    this.#idle();
     return Boolean(s);
   }
 
