@@ -199,6 +199,16 @@ export class Voice {
     return Promise.race([this.#unlocking, new Promise((r) => { t = setTimeout(r, limitMs); })]).then(() => clearTimeout(t));
   }
 
+  /** Whether a tap has unlocked sound (spec §10.1). */
+  get unlocked() {
+    return this.#unlocked;
+  }
+
+  /** A live session's sound, for the glow (K5). @param {number} x @param {'her' | 'you'} who */
+  level(x, who) {
+    this.#level(x, who);
+  }
+
   /** The glow follows the sound (spec §16.3): her voice, or yours. @param {LevelListener} fn @returns {() => void} */
   onLevel(fn) {
     this.#levels.add(fn);

@@ -22,6 +22,11 @@ import { decide } from '../../src/core/llm/decide.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { fakePlatform } from './voice-fakes.js';
 import { clip, quiet, cat } from './voice-kit.js';
+import { openLive } from '../../src/core/realtime/open.js';
+import { endpointOf, providerOf, modelOf } from '../../src/core/llm/config.js';
+import { COOLDOWN_MS } from '../../src/core/llm/fallback.js';
+import { toBase64, fromBase64 } from '../../src/core/bytes.js';
+import { activate as geminiLive } from '../../plugins-official/gemini-live/index.js';
 
 /**
  * A codec that "decodes" a source written as "WxH" and reports what it was asked.
@@ -55,15 +60,18 @@ export function fakeCodec(formats) {
  * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
- *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> } }} [opts]
+ *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
+ *   live?: { origin: string, roles?: string[], first?: boolean } }} [opts]
  *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
  *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for Koe's models,
- *   "Koe for typing" (m-koe, model-koe) and "Koe for talking" (m-koet, model-koet), and the inputs Koe's models take
+ *   "Koe for typing" (m-koe, model-koe) and "Koe for talking" (m-koet, model-koet), and the inputs Koe's models take;
+ *   live: a realtime model (m-live, Gemini Live's protocol) at the stand-in realtime server's origin, first in roles (Koe for talking by
+ *   default); first false puts it after the chat models there
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe, live } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -100,6 +108,13 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     add('pv-koet', 'm-koet', 'KoeT', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.talk) ? { script: koe.talk } : koe.talk }, { providerId: 'model-koet', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'] });
     config.roles['koe-talk'] = { models: ['m-koet'], level: 'off' };
   }
+  if (live) {
+    add('pv-live', 'm-live', 'Gemini', { kind: 'realtime', type: 'gemini-live', baseUrl: live.origin }, { providerId: 'gemini-3.8-live', name: 'Gemini 3.8 Live', prices: { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }, input: ['text', 'image'] });
+    for (const r of live.roles ?? ['koe-talk']) {
+      const had = config.roles[r]?.models ?? [];
+      config.roles[r] = { models: live.first === false ? [...had, 'm-live'] : ['m-live', ...had], level: 'off' };
+    }
+  }
   if (utility) {
     add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] });
     config.roles.utility.models = ['m-u'];
@@ -120,6 +135,9 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   await saveRoles(ws, config.roles);
   /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
   const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);
+  geminiLive({ providers: { register: (/** @type {any} */ x) => { types.set('gemini-live', { ...x, pluginId: 'gemini-live' }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } } });
+  /** Every live session opened, in order. @type {any[]} */
+  const sessions = [];
   /** @type {string[]} what the voice was asked to say */
   const said = [];
   /** @type {string[]} the transcription models asked, in turn */
@@ -148,6 +166,18 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
       if (v?.failing?.includes(c.modelId)) throw new ProviderError('server', `${c.modelId} is down`);
       return { text: hears.length > 1 ? hears.shift() : hears[0], cost: 0, ms: 1 };
     },
+    /** A live session at the stand-in, as the service opens one: a refused key, a limit or a server failure rests the model. @param {string} modelId @param {any} setup @param {{ scope?: string, wake?: string }} [o] */
+    live: async (modelId, setup, o = {}) => {
+      const cfg = await readConfig(ws);
+      const rec = cfg.models[modelId];
+      const pRec = cfg.providers[rec.provider];
+      const type = /** @type {any} */ (types.get(providerOf(pRec).abilities[rec.ability].type));
+      const endpoint = endpointOf(pRec, rec.ability, type.tunables);
+      const s = openLive({ type, endpoint, model: modelOf(rec), key: 'k-live', tunables: { ...type.tunables, proactive: false }, setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace: modelTrace(store, o.scope ?? SYS), wake: o.wake });
+      s.closed.then(({ kind }) => { if (kind === 'auth' || kind === 'rate' || kind === 'server' || kind === 'not-found') bench.bench(modelId, COOLDOWN_MS); });
+      sessions.push(s);
+      return s;
+    },
     /** @param {any} c */
     gate: async (c) => decide({ prompt: c.prompt, options: c.options, parts: c.parts, fallback: false, call: (role, request) => llm.call({ role, request, speech: c.speech, scope: c.scope, record: { tag: 'gate' } }) }),
   };
@@ -167,7 +197,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     await voice.refresh(); // as the app does when it starts
   }
   /** @type {any} */
-  const agent = halves || koe
+  const agent = halves || koe || live
     ? new Halves({ store, ws, llm, registry, codec, voice, timeZone: () => 'UTC', secondMs: 10, ...agentOpts })
     : new Agent({ store, ws, llm, registry, codec, voice, timeZone: () => 'UTC', secondMs: 10, ...agentOpts });
   agent.addLoopTools(selfTools(agent.kokoro ?? agent));
@@ -178,7 +208,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   if (open) await agent.open(trip);
   /** @param {string[]} [types] */
   const events = (types) => store.tx(['events'], 'readonly', (t) => t.listEvents(trip, types ? { types } : {}));
-  return { store, ws, trip, registry, host, agent, llm, requests, sent, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed };
+  return { store, ws, trip, registry, host, agent, llm, requests, sent, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed, sessions };
 }
 
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */
