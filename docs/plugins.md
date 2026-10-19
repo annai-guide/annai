@@ -252,7 +252,7 @@ export function activate(annai) {
 
 ## Backup places
 
-A backup place keeps annai's backups somewhere else: a git repository, a bucket, a folder on a server. annai builds each backup (a Backup of everything, spec §12.2) and decides when; your type only moves it. annai's own GitHub type is a plugin too: see `plugins-official/storage-github/`.
+A backup place keeps annai's backups somewhere else: a git repository, a bucket, a folder on a server. annai builds each backup (a Backup of everything, spec §12.2) and decides when; your type only moves it. annai's own GitHub and Forgejo / Gitea types are plugins too: see `plugins-official/storage-github/` and `plugins-official/storage-forgejo/`.
 
 ```js
 export function activate(annai) {

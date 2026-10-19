@@ -750,16 +750,21 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 
 - **Interface:** archive-level `put / get / list / delete`, via storage plugins.
 - **Automatic backup:** daily or after changes, while on Wi-Fi with the app open. It runs alongside the install nudge, not instead of it.
-- **Git targets store the unpacked tree, not a zip.** One backup is one commit, and only changed files are uploaded.
+  - **The pace after changes:** git targets (GitHub, Forgejo / Gitea) back up within the hour, since each backup sends only what changed. Targets that keep the whole archive file (S3, WebDAV) back up at most every 6 hours.
+- **Git targets store the unpacked tree, not a zip.** One backup is one commit, and only changed files are uploaded. They are unencrypted, so public repositories are refused.
 - **Single writer.** A newer remote backup from another device triggers a warning and an offer to import it as a copy.
 - **First targets:**
   - **GitHub:** through its web API (the Git Data API), which accepts browser calls.
+  - **Forgejo / Gitea**, such as the user's own server or Codeberg (which runs Forgejo): through its API, which accepts browser calls once the server allows annai's address. We show the lines to add to its app.ini.
+    - Commits are made with ChangeFiles. Each update and delete names the file it replaces, so another device's backup made meanwhile is refused, never overwritten.
+    - The user makes the private repository; the token needs only Repository: Read and write.
+    - **Large backups:** one request carries at most 8 MiB and 200 files. A larger backup goes as several commits: the parts first, then the commit with the new `annai-archive.json`, which is the only one listed or restored. A backup cut off half way carries on from its parts. A request the server, or a proxy in front of it, refuses as too large goes again in halves; a single file too large is named, with the limit to raise.
   - **S3-compatible:** the user configures the bucket's browser-access (CORS) rules; we show the exact JSON to paste.
   - **WebDAV:** where the server allows browser access.
 - **Later targets:**
   - GitLab
   - Google Drive and Dropbox (each needs us to register an OAuth app)
-  - the user's own git server (needs browser-access headers in Apache, plus a small commit-and-push git client of our own)
+  - the user's own git server without Forgejo or Gitea (needs browser-access headers in Apache, plus a small commit-and-push git client of our own)
 - **iCloud** is manual only, through the share sheet.
 
 ## 13. After the trip
