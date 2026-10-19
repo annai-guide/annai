@@ -3,6 +3,7 @@ import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { ME } from '../../core/scopes.js';
 import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core/agent/personalities.js';
 import { LABELS } from '../../core/agent/loop.js';
+import { wantedTtl } from '../../core/agent/warmth.js';
 import { createAvatar } from '../avatar.js';
 
 /** @param {string} title @param {...any} children */
@@ -104,7 +105,7 @@ export async function renderShiori(ctx, route) {
     section('Cache',
       h('p', { class: 'sub', text: 'Providers keep the start of the conversation for a while, so the next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often.' }),
       h('fieldset', {}, h('legend', { text: 'Keep it for' }), ...[['5m', '5 minutes'], ['1h', '1 hour']].map(([v, label]) => h('label', { class: 'check' },
-        h('input', { type: 'radio', name: 'cache-ttl', value: v, checked: (app.shiori?.cacheTtl ?? '5m') === v, onchange: () => updateAppSettings(ctx.ws, { shiori: { cacheTtl: v } }) }),
+        h('input', { type: 'radio', name: 'cache-ttl', value: v, checked: wantedTtl(app.shiori?.cacheTtl) === v, onchange: () => updateAppSettings(ctx.ws, { shiori: { cacheTtl: v } }) }),
         h('span', { text: label }))))));
 }
 
