@@ -38,6 +38,8 @@ A plugin's manifest:
   - `requires`: the plugins yours needs, `[{ "id": "chat-completions", "version": "^0" }, { "id": "acme-proto", "version": "^2", "homepage": "https://…" }]`, at most 10. A range is `^N`, the same major; for a protocol plugin the major is its interface version. annai's own come with yours from its catalog; a third party's must be installed first, and the install stops naming it, with its `homepage` (https). A package can't require itself.
   - `category`: `providers`, `speech`, `backup`, `tools`, `skills` or `developer`, the kind it is listed under on the Add screen and in Settings → Plugins (Model providers, Voices and transcription, Backup places, Tools and MCP, Skills and personalities, Developer). When absent it is worked out: a provider with chat is `providers`, one with speech only `speech`, a backup place's plugin `backup`, a protocol `developer`, skills or personalities without code `skills`, other code `tools`.
   - `keywords`: up to 20 other names it is searched by, 1 to 40 characters each, written as they are shown (`["Unsloth", "LM Studio"]`). They aren't hidden: a row found by a keyword says so, "Also for: LM Studio". A name match ranks above a keyword match, so a plugin made for LM Studio comes before one that lists it as a keyword. Give the names of things your plugin also serves (a server built on the one you describe, a product's other spelling), not words for what it does: its description and its abilities are searched too.
+  - `featured`: a sentence of up to 200 characters for the one-tap start on Models and the welcome. It counts only in annai's own catalog: a third party's is ignored.
+  - `catchAll`: `true` for a provider of any address (annai's Another address), listed after the others when the Add screen is browsed.
   - `templates` (endpoint templates, before providers) is refused: "Endpoint templates were replaced by `provider`".
   - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing"). A module you leave out isn't there once installed from an address, and the plugin won't start; the error is the browser's own, and it names your entry file, not the missing module (Chrome: "Failed to fetch dynamically imported module: …/index.js"; Safari names no file at all: "Importing a module script failed.").
   - `settings`: a JSON Schema object; annai draws a form from it on your plugin's page in Settings → Plugins. See "Settings" below.
@@ -72,6 +74,7 @@ export function activate(annai) {
 | `annai.events.append(scope, type, data, keep?)` | appends an entry to a scope's log, signed `plugin:<id>`. `keep = { texts: [[name, text]], blobs: [{ bytes, type }] }` stores content and names it in the entry's refs; long texts are kept that way, short ones go in `data`. Returns the entry. |
 | `annai.files` | the files of every scope: `read`, `readText`, `readJSON`, `list`, `write`, `patch`, `delete`, `history`, `restore` |
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Protocols (endpoint types)" below |
+| `annai.providers.setup(setup)` | a provider plugin's own setup and quirks, once: see "Model providers with code" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
 | `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
@@ -249,7 +252,58 @@ A model provider is usually data: one `annai-plugin.json` with a `provider` desc
     "medium": { "reasoning_effort": "medium", "chat_template_kwargs": { "enable_thinking": true } } } } }
 ```
 
-Each level is a patch merged into the request body (spec §9.3), and level off is what a quick decision asks for. vLLM's and SGLang's maps send `reasoning_effort` and `chat_template_kwargs` (`enable_thinking` and `thinking`, as their models' templates read one or another; the explicit kwargs win where a server derives them from the effort); Ollama's names only off (`"reasoning_effort": "none"`) and leaves low, medium and high empty, so they send nothing and Ollama decides how hard a model thinks: it refuses any named level for a model that can't think. An empty level is still a level, and the nearest one to a level the map lacks. A tunable can be a quirk too: llama.cpp's chat turns on Chat Completions' `enforceToolCall`, so a tool annai forces (the quick decision's) goes as `tool_choice: "required"` when it is the only tool offered, as llama-server accepts a named tool but doesn't force it. Where reasoning comes back, and usage in the stream, are the protocol's (Chat Completions reads `reasoning_content` and `reasoning`), so they need nothing. `keywords` let a search find a plugin by another name: llama.cpp's include Unsloth and KoboldCpp, which run it.
+Each level is a patch merged into the request body (spec §9.3), and level off is what a quick decision asks for. vLLM's and SGLang's maps send `reasoning_effort` and `chat_template_kwargs` (`enable_thinking` and `thinking`, as their models' templates read one or another; the explicit kwargs win where a server derives them from the effort); Ollama's names only off (`"reasoning_effort": "none"`) and leaves low, medium and high empty, so they send nothing: it refuses any named level for a model that can't think. (Its plugin's list gives a model that can think the named levels: see below.) An empty level is still a level, and the nearest one to a level the map lacks. A tunable can be a quirk too: llama.cpp's chat turns on Chat Completions' `enforceToolCall`, so a tool annai forces (the quick decision's) goes as `tool_choice: "required"` when it is the only tool offered, as llama-server accepts a named tool but doesn't force it. Where reasoning comes back, and usage in the stream, are the protocol's (Chat Completions reads `reasoning_content` and `reasoning`), so they need nothing. `keywords` let a search find a plugin by another name: llama.cpp's include Unsloth and KoboldCpp, which run it.
+
+## Model providers with code
+
+Most providers are data. A provider with quirks no data can carry (a sign-in, a model list in a shape of its own, an error that means something else) has an `entry` too, and its `activate` calls `annai.providers.setup` once. It must describe a provider (`provider` in its manifest). Every part is optional:
+
+```js
+export function activate(annai) {
+  return annai.providers.setup({
+    panel(ui, provider) { … },          // → an element, or null
+    keyField: true,                     // false: no standard key field after the panel
+    async returned(params, ui) { … },   // annai's address came back after ui.expectReturn()
+    classify(status, body, ability) { … },  // → an error kind, or null
+    headers(ability) { … },             // → { name: value }
+    async list({ ability, endpoint, key, fetch, protocolList }) { … },  // → listed models
+  });
+}
+```
+
+- **`panel(ui, provider)`** draws your part of the setup. With `provider` `{ id, name, key }` (key: whether one is saved), it is drawn on that provider's page, in the key's place; the standard key field follows unless `keyField` is false. With `provider` null, it is your own start: annai draws it as the one-tap start when your plugin is the featured one. Build it with `ui.h`. What it throws, or a panel that isn't an element, counts against your plugin, and the screen draws without it.
+- **`ui`** (the setup's own) has `h`, `go(hash)`, `toast(text)`, `card({ title, body, tone })`, `render()` (draws the screen again) and `returnsElsewhere` (true on an iPhone Home Screen app, where a page you open comes back to Safari, not to annai: show a code to paste there). And:
+  - `ui.add({ key, roles, name, baseUrl, abilities })` adds a provider from your description, installing the protocols of the abilities turned on; `roles` is `"recommended"` (the default), `"free"` or null. It gives the provider's id.
+  - `ui.keep(providerId, key)` sets the key of one of your own providers (null removes it). Another plugin's provider is refused.
+  - Both keep the key in annai's secrets, for that provider alone: your plugin never stores it. A key given as a function is called only once everything else is in place (the plugin, what it requires, the provider found), so a key made for annai, such as a sign-in's, is never lost to a failed install.
+  - `ui.expectReturn()` says you are sending the browser away, to come back to annai's address (`location.origin + '/'`). The next load of that address with a query, within 15 minutes, calls your `returned(params, ui)` once plugins have started, with the query's parameters; the query leaves the address, Settings → Models says the sign-in is being finished, and what you throw is shown on a card titled by your plugin's name. A query no plugin expected is removed and ignored.
+- **The page must not wait before opening another.** An iPhone opens a page only from the tap itself: make a link's address before the tap (a pending sign-in can wait in your own localStorage key), never after an `await`.
+- **`classify(status, body, ability)`** is asked before the protocol's own, for an error response from one of your abilities: give a sharper kind (`rate`, `credit`, …) or null.
+- **`headers(ability)`** gives headers that join each request of that ability, after the description's and the user's; the key's own header still wins.
+- **`list(...)`** lists an ability's models in the protocol's place. `protocolList()` gives the protocol's own list, to build on. `fetch` sends only to the ability's address (another origin is refused, unsent) and never follows a redirect, as annai's own requests with a key don't. A crash in it counts against your plugin, and the protocol's list answers.
+- **`featured`** in your manifest counts only in annai's own catalog.
+
+OpenRouter's (`plugins-official/provider-openrouter`) is a sign-in panel, `returned` and `classify` (its free-model limit is too many requests, not an account out of credit). llama.cpp's, Ollama's and LM Studio's are a `list` each, which reads the context a server serves from its own API. llama.cpp's, whole:
+
+```js
+const root = (base) => String(base).replace(/\/+$/, '').replace(/\/v1$/, '');
+export async function list({ endpoint, key, fetch, protocolList }) {
+  const listed = await protocolList();
+  const props = await fetch(`${root(endpoint.baseUrl)}/props`, { headers: { ...endpoint.headers, ...(key ? { authorization: `Bearer ${key}` } : {}) } })
+    .then((res) => (res.ok ? res.json() : null)).catch(() => null);
+  const n = props?.default_generation_settings?.n_ctx;
+  const kinds = props?.modalities;
+  const loaded = listed.find((m) => m.providerId === props?.model_alias) ?? (listed.length === 1 ? listed[0] : null);
+  return listed.map((m) => (m !== loaded ? m : {
+    ...m,
+    ...(Number.isInteger(n) && n > 0 ? { contextWindow: n } : {}),
+    ...(kinds && typeof kinds === 'object' ? { input: ['text', ...(kinds.vision ? ['image'] : []), ...(kinds.audio ? ['audio'] : [])] } : {}),
+  }));
+}
+export function activate(annai) {
+  return annai.providers.setup({ list });
+}
+```
 
 ## Protocols (endpoint types)
 
