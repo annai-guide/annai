@@ -1,7 +1,7 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
-import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES, KOE_ROLES } from './config.js';
+import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_ROLES } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
 import { adjusted } from './setup.js';
 import { formatRefused } from '../voice/formats.js';
@@ -76,9 +76,9 @@ export class AllFailedError extends Error {
  * list uses the other Koe list, and never Main: no Koe model means no Koe. @param {ModelConfig} config @param {string} role
  */
 export function candidates(config, role) {
-  const own = config.roles[role]?.models ?? [];
+  const own = koeOwn(config, role);
   if (own.length || role === 'main') return own;
-  if (KOE_ROLES.includes(role)) return config.roles[KOE_ROLES.find((r) => r !== role) ?? '']?.models ?? [];
+  if (KOE_ROLES.includes(role)) return koeOwn(config, KOE_ROLES.find((r) => r !== role) ?? '');
   if (!CHAT_ROLES.includes(role)) return own;
   return config.roles.main?.models ?? [];
 }
@@ -90,7 +90,16 @@ export function koeList(cfg, voiceOn) {
 }
 
 /** Whether Shiori is two halves: a Koe list holds a model. @param {ModelConfig} cfg */
-export const splitOn = (cfg) => KOE_ROLES.some((r) => (cfg.roles?.[r]?.models?.length ?? 0) > 0);
+export const splitOn = (cfg) => KOE_ROLES.some((r) => koeOwn(cfg, r).length > 0);
+
+/**
+ * A role's own models; in a Koe list, none that are realtime, until live sessions reach Koe (K5 drops this):
+ * a list of only those counts as empty, so the other list answers. @param {ModelConfig} cfg @param {string} role @returns {string[]}
+ */
+function koeOwn(cfg, role) {
+  const own = cfg.roles?.[role]?.models ?? [];
+  return KOE_ROLES.includes(role) ? own.filter((id) => abilityOf(cfg, id)?.kind !== 'realtime') : own;
+}
 
 /** A rough token count, enough to skip models whose window is clearly too small. @param {Request} request */
 export function estimateTokens(request) {
