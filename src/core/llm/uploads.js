@@ -43,13 +43,9 @@ export class Uploads {
     delete map[endpointId];
     await this.ws.write(SYS_SETTINGS, PATH, map, { author: 'system' });
   }
-  /** Forgets every upload to a provider's abilities, when it is removed (spec §4.9). @param {string} providerId */
-  async forgetProvider(providerId) {
-    const map = await this.#load();
-    const gone = Object.keys(map).filter((k) => k.startsWith(`${providerId}/`));
-    if (!gone.length) return;
-    for (const k of gone) delete map[k];
-    await this.ws.write(SYS_SETTINGS, PATH, map, { author: 'system' });
+  /** Reads the file again at the next use: a provider's removal took its uploads out of it (spec §4.9). */
+  reload() {
+    this.#map = null;
   }
   /** @param {string} endpointId */
   off(endpointId) {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { satisfies, checkRequires, installWith, addFromCatalog, prune, dependents, checkPackageId } from '../../src/core/requires.js';
+import { satisfies, checkRequires, installWith, addFromCatalog, prune, checkPackageId } from '../../src/core/requires.js';
 import { updateOfficial } from '../../src/core/llm/official.js';
 import { files, hostKit } from './package-kit.js';
 import { PROTO, PROVIDER, site } from './provider-kit.js';
@@ -120,12 +120,10 @@ test('prune removes official protocol plugins nothing requires and no ability us
   assert.deepEqual(Object.keys(await host.installed()), ['proto-mine']);
 });
 
-test("dependents names the installed plugins that require one; an official install over a third-party package with that id is refused, saying so", async () => {
+test("an official install over a third-party package with that id is refused, saying so", async () => {
   const { host } = await hostKit();
   const s = await CATALOG();
   await addFromCatalog(host, 'provider-x', { fetch: s.fetch });
-  assert.deepEqual(await dependents(host, 'proto-a'), [{ id: 'provider-x', name: 'Provider provider-x' }]);
-  assert.deepEqual(await dependents(host, 'provider-x'), []);
   const { host: other } = await hostKit();
   await other.install(files(PROTO('proto-a', 'type-a', '0.3.0')), { source: 'file' });
   await assert.rejects(addFromCatalog(other, 'provider-x', { fetch: s.fetch }), /proto-a.*isn't annai's own/s);

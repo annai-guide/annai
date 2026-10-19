@@ -1,5 +1,5 @@
 import { sha256Hex } from '../hash.js';
-import { PluginError } from '../registry.js';
+import { PluginError, NOT_OWN, TURN_ON } from '../registry.js';
 import { refuseBreaking, installRequirements } from '../requires.js';
 
 /**
@@ -9,7 +9,7 @@ import { refuseBreaking, installRequirements } from '../requires.js';
  * @typedef {import('../plugins.js').PluginHost} PluginHost
  * @typedef {{ id: string, name: string, version: string, provides: Record<string, string[]>, files: Record<string, string>,
  *   description?: string, category?: string, keywords?: string[], abilities?: string[], free?: boolean, local?: boolean, code?: boolean, size?: number,
- *   requires?: import('../packages.js').Requirement[] }} CatalogPlugin  the facts catalogFacts gives (src/core/catalog-facts.js), and its files' hashes
+ *   requires?: import('../packages.js').Requirement[] }} CatalogPlugin  the facts catalogFacts gives (scripts/catalog-facts.mjs), and its files' hashes
  * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, keepOff?: boolean }} FetchOptions
  *   keepOff: a plugin the user switched off is never switched on by this (security review): it stops, saying how to turn it on
  */
@@ -143,13 +143,13 @@ async function ensureNow(host, kind, type, opts) {
   if (!entry) throw new PluginError(type, `isn't ${what} annai knows. Install a plugin that provides it.`);
   const state = (await host.installed())[entry.id];
   // A package from elsewhere with annai's own id is neither used nor overwritten (security review).
-  if (state && state.source !== 'official') throw new PluginError(entry.id, `annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.`);
+  if (state && state.source !== 'official') throw new PluginError(entry.id, NOT_OWN);
   // Only files that match the catalog run as an official plugin; anything else, such as a copy a
   // restored backup brought, is fetched again from annai and checked (spec §5.3).
   if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
     // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on,
     // except one the user turned off when the caller keeps it off (the model service's setup taps).
-    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, `${entry.name}, which you turned off, isn't switched on by this. Turn it on in Settings → Plugins, then try again.`);
+    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, `${entry.name}, which you turned off, isn't switched on by this. ${TURN_ON}`);
     if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
   } else {

@@ -6,7 +6,7 @@ import { addressParts } from '../../core/address.js';
 import { addsAnything } from '../../core/packages.js';
 import { descOrigins } from '../../core/llm/provider-desc.js';
 import { officialPlugins } from '../../core/llm/official.js';
-import { satisfies, installWith, checkPackageId } from '../../core/requires.js';
+import { checkRequires, installWith, checkPackageId } from '../../core/requires.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
@@ -39,30 +39,21 @@ export function keysNote(pkg) {
 }
 
 /**
- * What a package needs, one line each, and whether all of it can be had now (spec §5.3): annai's own
- * come with it; a third party's must be installed already, and one the user switched off stays off.
- * @param {any} ctx @param {{ id: string, requires?: import('../../core/packages.js').Requirement[] }} pkg @returns {Promise<{ lines: string[], ok: boolean }>}
+ * What a package needs, in words, and whether it can be had now (spec §5.3), as the install will judge
+ * it (checkRequires): annai's own come with it; a third party's must be installed already.
+ * @param {any} ctx @param {{ id: string, name: string, requires?: import('../../core/packages.js').Requirement[] }} pkg @returns {Promise<{ text: string, ok: boolean }>}
  */
 export async function needsOf(ctx, pkg) {
   const requires = (pkg.requires ?? []).filter((r) => r.id !== pkg.id);
-  if (!requires.length) return { lines: [], ok: true };
+  if (!requires.length) return { text: '', ok: true };
   const catalog = await officialPlugins().catch(() => null);
-  const state = await ctx.plugins.installed();
-  let ok = true;
-  const lines = requires.map((r) => {
-    const s = state[r.id];
-    const e = catalog?.find((x) => x.id === r.id);
-    const fine = (/** @type {string} */ line) => line;
-    const not = (/** @type {string} */ line) => { ok = false; return line; };
-    if (s?.enabled === false) return not(`${s.name ?? r.id}, which you turned off. Turn it on in Settings → Plugins first`);
-    if (s && satisfies(String(s.version), r.version)) return fine(`${s.name ?? r.id} (installed)`);
-    if (e && satisfies(e.version, r.version) && s?.source !== 'url' && s?.source !== 'file') return fine(`${e.name} (from annai, installed with it)`);
-    if (e) return not(`${e.name} ${r.version}, and annai's catalog has version ${e.version}`);
-    if (s) return not(`${r.id} ${r.version}, and version ${s.version} is installed. Update it first`);
-    if (!catalog) return not(`${r.id}: annai's catalog couldn't be loaded to look for it. Connect to the internet and try again`);
-    return not(`${r.id}, which isn't installed. Install it ${r.homepage ? `from ${r.homepage} ` : ''}first`);
-  });
-  return { lines, ok };
+  try {
+    const plan = await checkRequires(ctx.plugins, requires, catalog ?? [], { who: pkg.name, except: pkg.id });
+    const state = await ctx.plugins.installed();
+    return { ok: true, text: `It needs: ${requires.map((r) => (plan.some((e) => e.id === r.id) ? `${plan.find((e) => e.id === r.id)?.name} (from annai, installed with it)` : `${state[r.id]?.name ?? r.id} (installed)`)).join('; ')}.` };
+  } catch (e) {
+    return { ok: false, text: catalog ? message(e) : "annai's catalog couldn't be loaded to look for what it needs. Connect to the internet and try again." };
+  }
 }
 
 /** A provider's abilities in words: "chat, transcription and voice". @param {any} desc */
@@ -143,7 +134,7 @@ export async function renderPluginInstall(ctx) {
     h('section', { class: 'panel', 'aria-label': 'What it brings' },
       h('h2', { class: 'section', text: 'What it brings' }),
       h('ul', { class: 'brings' }, ...whatItBrings(pkg).map((t) => h('li', { text: t }))),
-      needs.lines.length ? h('p', { class: needs.ok ? 'sub' : 'error', text: `It needs: ${needs.lines.join('; ')}.` }) : null),
+      needs.text ? h('p', { class: needs.ok ? 'sub' : 'error', text: needs.text }) : null),
     pkg.code
       ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), h('p', { text: 'Only install it if you trust where it came from.' }), keysNote(pkg) ? h('p', { text: keysNote(pkg) }) : null)
       : pkg.provider

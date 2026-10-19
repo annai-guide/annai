@@ -1,4 +1,4 @@
-import { PluginError } from './registry.js';
+import { PluginError, TAKEN, TURN_ON } from './registry.js';
 import { officialPlugins, download } from './llm/official.js';
 import { SYS_PLUGINS } from './scopes.js';
 
@@ -34,11 +34,6 @@ async function manifests(host) {
 /** @param {any} m @param {string} id */
 const needOf = (m, id) => (Array.isArray(m.requires) ? m.requires : []).find((/** @type {any} */ r) => r?.id === id);
 
-/** The installed plugins that require one. @param {PluginHost} host @param {string} id @returns {Promise<{ id: string, name: string }[]>} */
-export async function dependents(host, id) {
-  return Object.entries(await manifests(host)).filter(([o, m]) => o !== id && needOf(m, id)).map(([o, m]) => ({ id: o, name: String(m.name ?? o) }));
-}
-
 /**
  * Refuses a version another installed plugin doesn't accept, naming it. except: a plugin replaced in
  * the same install. @param {PluginHost} host @param {string} id @param {string} version @param {string} name @param {string} [except]
@@ -68,7 +63,7 @@ export async function checkRequires(host, requires, catalog, { who = 'This plugi
     const e = catalog.find((p) => p.id === r.id);
     const s = state[r.id];
     const no = (/** @type {string} */ words) => new PluginError(who, `needs ${words}`);
-    if (s?.enabled === false) throw no(`${e?.name ?? s.name ?? r.id}, which you turned off. Turn it on in Settings → Plugins, then try again.`);
+    if (s?.enabled === false) throw no(`${e?.name ?? s.name ?? r.id}, which you turned off. ${TURN_ON}`);
     if (!e) {
       if (!s) throw no(`${r.id}, which isn't installed. Install it ${r.homepage ? `from ${r.homepage} ` : ''}first, then try again.`);
       if (!satisfies(String(s.version), r.version)) throw no(`${r.id} ${r.version}, and version ${s.version} is installed. Update it, then try again.`);
@@ -159,7 +154,7 @@ async function storedFiles(host, id) {
 export async function checkPackageId(host, id, source, env = {}) {
   if (source === 'official') return;
   const own = (env.catalog ?? await officialPlugins(env).catch(() => null))?.find((p) => p.id === id);
-  if (own || (await host.installed())[id]?.source === 'official') throw new PluginError(id, `annai's own plugin uses this name (${own?.name ?? id}), so a package from elsewhere can't have it. Ask its author to rename it.`);
+  if (own || (await host.installed())[id]?.source === 'official') throw new PluginError(id, TAKEN);
 }
 
 /**
@@ -185,7 +180,7 @@ export async function addFromCatalog(host, id, env = {}) {
   if (!entry) throw new PluginError(id, "isn't in annai's catalog.");
   const s = (await host.installed())[id];
   if (s && s.source !== 'official') throw new PluginError(id, "is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.");
-  if (s?.enabled === false) throw new PluginError(id, `${entry.name}, which you turned off, isn't switched on by adding it. Turn it on in Settings → Plugins, then try again.`);
+  if (s?.enabled === false) throw new PluginError(id, `${entry.name}, which you turned off, isn't switched on by adding it. ${TURN_ON}`);
   const requires = entry.requires ?? [];
   if (s && s.version === entry.version && (await host.verifyOfficial(id, entry))) {
     await installRequirements(host, requires, { ...env, catalog }, { who: entry.name, id });
