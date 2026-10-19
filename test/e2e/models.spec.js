@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider } from './helpers.js';
 
 test('providers, models and roles are set in Settings → Models, survive a reload, and the key is never shown', async ({ page }) => {
   await openApp(page, '#/models');
@@ -41,8 +41,11 @@ test('a model is edited on its own page', async ({ page }) => {
 test('the Test button checks access, the key, tool calls and photos', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await page.getByLabel('Add a provider').selectOption({ label: 'Scripted model (for testing)' });
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // The scripted model is for developers: Add a provider opens on model providers, so that chip comes off.
+  await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
+  await page.getByRole('button', { name: 'Model providers', exact: true }).click();
+  await page.getByLabel('Search the catalog').fill('scripted');
+  await page.getByRole('button', { name: 'Add Scripted model (for testing)' }).click();
   await expect(page.getByRole('heading', { name: 'Scripted model (for testing)' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByLabel('API key')).toHaveCount(0); // it needs none
   await page.getByLabel('Tunables (JSON)').fill(JSON.stringify({ script: [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }] }));
@@ -252,9 +255,7 @@ test('Another address with OpenAI Responses switched on: its model list, the Tes
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await page.getByLabel('Add a provider').selectOption({ label: 'Another address' });
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Another address' })).toBeVisible({ timeout: 30_000 });
+    await pickProvider(page, 'Another address');
     await page.getByLabel('Name', { exact: true }).fill('Responses stand-in');
     await page.getByLabel('Address', { exact: true }).fill(`${llm.origin}/v1`);
     await page.getByLabel('API key').fill('sk-test-secret-r');

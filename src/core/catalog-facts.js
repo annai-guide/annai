@@ -1,10 +1,7 @@
 /**
- * What the catalog says of a plugin (spec §16.2), from its manifest: the facts scripts/catalog.mjs
- * writes for annai's official catalog. It isn't shipped yet: when the app reads the same facts for an
- * installed third-party plugin (the Add screen and the Plugins page, milestone 3), it moves to
- * src/core/catalog-facts.js and joins the service worker's shell.
+ * A plugin's facts in the catalog (spec §5.3), for annai's and an installed one alike.
  * @typedef {{ id: string, name: string, version: string, description: string, category: string, keywords: string[], abilities: string[],
- *   free: boolean, local: boolean, code: boolean, size: number, requires: import('../src/core/packages.js').Requirement[] }} CatalogFacts
+ *   free: boolean, local: boolean, code: boolean, size: number, requires: import('./packages.js').Requirement[] }} CatalogFacts
  *   abilities: the kinds of a provider's abilities, in order, once each; free: a model of it costs nothing; size: its files' bytes
  */
 
@@ -14,12 +11,7 @@ function isFree(prices) {
   return numbers.length > 0 && numbers.every((v) => v === 0);
 }
 
-/**
- * A plugin's kind when its manifest names none (milestone 1, decision 13): a provider with a chat
- * ability is a model provider, one with speech alone is speech; a backup place's plugin is backup, a
- * protocol plugin developer; skills or personalities without code are skills; other code is tools.
- * @param {any} manifest
- */
+/** A plugin's kind when its manifest names none (spec §5.2). @param {any} manifest */
 export function categoryOf(manifest) {
   if (manifest.category) return String(manifest.category);
   const kinds = Object.values(manifest.provider?.abilities ?? {}).map((/** @type {any} */ a) => a?.kind);

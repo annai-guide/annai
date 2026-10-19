@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker } from './helpers.js';
+import { openApp, waitForServiceWorker, pickFile, pickProvider, fixtureFiles, zipOf } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 
 /** A test plugin from test/fixtures/plugins, as a zip. @param {string} [dir] */
@@ -26,7 +26,7 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
   await page.goto('/#/plugins');
   await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   await expect(page.getByText('Trip record checks')).toBeVisible();
-  await page.getByLabel('Install from a file').setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
   await expect(page.getByRole('heading', { name: 'Install Hello checks?' })).toBeVisible();
   await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
   await page.getByRole('button', { name: 'Install', exact: true }).click();
@@ -55,7 +55,7 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
 test('a bad plugin file is refused with a reason', async ({ page }) => {
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
-  await page.getByLabel('Install from a file').setInputFiles({ name: 'junk.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') });
+  await pickFile(page, { name: 'junk.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') });
   await expect(page.getByText("That file isn't something annai can install")).toBeVisible();
 });
 
@@ -81,12 +81,11 @@ test("a plugin that never finishes starting doesn't keep annai from opening", as
 test('reinstalling a plugin that is running asks for a restart, which runs the new version', async ({ page }) => {
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
-  const input = page.getByLabel('Install from a file');
-  await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
   await page.getByRole('button', { name: 'Install', exact: true }).click();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
   // A new version: its code differs from what ran (the same files again start at once, with no restart).
-  await input.setInputFiles({ name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip('hello', '1.0.1') });
+  await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip('hello', '1.0.1') });
   await expect(page.getByText('Version 1.0.0 is installed now. Installing replaces it.')).toBeVisible();
   await page.getByRole('button', { name: 'Install', exact: true }).click();
 
@@ -99,8 +98,53 @@ test('reinstalling a plugin that is running asks for a restart, which runs the n
 test("a plugin that installs but won't start says so, and stays installed", async ({ page }) => {
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
-  await page.getByLabel('Install from a file').setInputFiles({ name: 'broken.zip', mimeType: 'application/zip', buffer: await fixtureZip('broken') });
+  await pickFile(page, { name: 'broken.zip', mimeType: 'application/zip', buffer: await fixtureZip('broken') });
   await page.getByRole('button', { name: 'Install', exact: true }).click();
   await expect(page.getByText("Broken was installed, but it didn't start")).toBeVisible();
   await expect(page.getByText('Broken 0.0.1')).toBeVisible();
+});
+
+test('the installed list can be searched and filtered: provider plugins under Model providers name their providers; a skill under Skills and personalities', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'OpenAI');
+  await page.getByLabel('Name', { exact: true }).fill('OpenAI (work)');
+  await page.getByLabel('Name', { exact: true }).blur();
+  await expect(page.getByRole('heading', { level: 1, name: 'OpenAI (work)' })).toBeVisible();
+  await pickFile(page, { name: 'tide-pools.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('tide-pools'), 'tide-pools-main') });
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Plugins' })).toBeVisible();
+
+  // Nothing typed: grouped by kind, only kinds with something in them.
+  const providers = page.getByRole('region', { name: 'Model providers' });
+  await expect(providers.locator('.card')).toHaveCount(1);
+  await expect(providers).toContainText('Providers: OpenAI (work).');
+  await expect(page.getByRole('region', { name: 'Skills and personalities' })).toContainText('tide-pools 1.2');
+  await expect(page.getByRole('region', { name: 'Developer' })).toContainText('OpenAI Responses');
+  await expect(page.getByRole('region', { name: 'Tools and MCP' })).toContainText('Trip record checks');
+  await expect(page.getByRole('region', { name: 'Backup places' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Add', exact: true })).toHaveAttribute('href', '#/add');
+  // annai's catalog is on the Add screen now, not here.
+  await expect(page.getByRole('button', { name: /^Install / })).toHaveCount(0);
+
+  const cards = page.locator('.found .card');
+  await page.getByLabel('Search your plugins').fill('tide');
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText('tide-pools 1.2');
+  // Found by what it does, as in the catalog: the voices of OpenAI, and the speech protocol it needs.
+  await page.getByLabel('Search your plugins').fill('voices');
+  await expect(cards).toHaveCount(2);
+  await page.getByLabel('Search your plugins').fill('');
+  // The Voice chip keeps the provider plugin that has a voice, not the protocol it talks through.
+  await page.getByRole('button', { name: 'Voice', exact: true }).click();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText('Providers: OpenAI (work).');
+  await page.getByRole('button', { name: 'Voice', exact: true }).click();
+  await page.getByRole('button', { name: 'Third-party', exact: true }).click();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText('tide-pools 1.2');
+  await page.getByRole('button', { name: 'Third-party', exact: true }).click();
+  await page.getByRole('button', { name: 'Model providers', exact: true }).click();
+  await expect(cards).toHaveCount(1);
+  await expect(page.getByRole('region', { name: 'Developer' })).toHaveCount(0);
 });

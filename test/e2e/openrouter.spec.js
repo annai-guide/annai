@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone, pickProvider } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Sign in with OpenRouter sets up one provider, OpenRouter, with one key for its chat, transcription and
@@ -121,9 +121,7 @@ test("OpenRouter added from Add a provider with a key: one provider whose chat, 
     await fakeMicrophone(page, [clipPath('where-lunch')]);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await page.getByLabel('Add a provider').selectOption({ label: 'OpenRouter' });
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
+    await pickProvider(page, 'OpenRouter');
     await expect(page.getByRole('link', { name: 'Get a key' })).toHaveAttribute('href', 'https://openrouter.ai/settings/keys');
     for (const ability of ['Chat', 'Transcription', 'Voice']) await expect(page.getByLabel(`Use ${ability}`)).toBeChecked();
     // Its one address: the stand-in, for every ability.
