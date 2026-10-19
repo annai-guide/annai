@@ -4,7 +4,7 @@ import { hostKit, files } from './package-kit.js';
 import { site } from './provider-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { getKey, readConfig, saveRoles, saveProvider, providerOf } from '../../src/core/llm/config.js';
-import { setupUi, drawPanel } from '../../src/ui/provider-setup.js';
+import { setupUi, drawPanel, readyFeatured } from '../../src/ui/provider-setup.js';
 import { setupOf } from '../../src/core/llm/setup.js';
 import { SYS } from '../../src/core/scopes.js';
 
@@ -32,7 +32,7 @@ const PROTO_R = {
 };
 /** A provider with code: its panel, error kinds, headers and list, as the test asks of it through globalThis.acme. */
 const ACME = {
-  'annai-plugin.json': JSON.stringify({ id: 'provider-acme', name: 'Acme', version: '1.0.0', api: 1, entry: 'index.js', requires: [{ id: 'proto-h', version: '^0' }],
+  'annai-plugin.json': JSON.stringify({ id: 'provider-acme', name: 'Acme', version: '1.0.0', api: 1, entry: 'index.js', requires: [{ id: 'proto-h', version: '^0' }], featured: 'Acme is the quickest start.',
     provider: { baseUrl: 'https://acme.test/v1', key: 'required', abilities: {
       chat: { kind: 'chat', type: 'type-h', models: [{ providerId: 'acme-1', name: 'Acme one' }] },
       other: { kind: 'chat', type: 'type-r', on: false },
@@ -282,5 +282,20 @@ test("the headers hook can't set the key's own headers: authorization, x-api-key
     assert.equal(sent.Authorization, undefined);
   } finally {
     /** @type {any} */ (globalThis).acme.headers = {};
+  }
+});
+
+test("the featured start doesn't wait on annai's catalog when annai's own featured plugin is installed and running: a flaky connection still draws the sign-in (fix pass)", async () => {
+  const k = await kit();
+  await k.llm.prepareStart('provider-acme');
+  const was = globalThis.fetch;
+  /** @type {string[]} */
+  const asked = [];
+  globalThis.fetch = /** @type {any} */ (async (/** @type {any} */ url) => { asked.push(String(url)); throw new TypeError('Failed to fetch'); });
+  try {
+    assert.deepEqual(await readyFeatured({ ...k.ctx, plugins: k.host }), { id: 'provider-acme', name: 'Acme', featured: 'Acme is the quickest start.' });
+    assert.deepEqual(asked, [], 'no request for the catalog');
+  } finally {
+    globalThis.fetch = was;
   }
 });
