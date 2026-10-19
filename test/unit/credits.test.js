@@ -56,10 +56,16 @@ async function hostsInCode() {
   return out;
 }
 
-/** Hosts of the providers in annai's catalog: endpoints the user chooses, and their key pages. */
+/** Hosts of the model providers in annai's catalog (their provider plugins' manifests): addresses the user chooses, and their key pages. */
 async function providerHosts() {
-  const text = await readFile(new URL('catalog/templates.json', root), 'utf8');
-  return new Set([...text.matchAll(/https:\/\/([a-z0-9.-]+)/gi)].map((m) => m[1].toLowerCase()));
+  /** @type {Set<string>} */
+  const out = new Set();
+  for (const d of await readdir(new URL('plugins-official/', root))) {
+    if (!d.startsWith('provider-')) continue;
+    const text = await readFile(new URL(`plugins-official/${d}/annai-plugin.json`, root), 'utf8');
+    for (const m of text.matchAll(/https:\/\/([a-z0-9.-]+)/gi)) out.add(m[1].toLowerCase());
+  }
+  return out;
 }
 
 const hostOf = (/** @type {string} */ href) => new URL(href).hostname;

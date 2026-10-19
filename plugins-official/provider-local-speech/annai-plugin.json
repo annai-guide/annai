@@ -1,0 +1,38 @@
+{
+  "id": "provider-local-speech",
+  "name": "Local speech server",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
+  "category": "speech",
+  "keywords": [
+    "Speaches",
+    "whisper.cpp",
+    "Kokoro"
+  ],
+  "requires": [
+    {
+      "id": "speech-openai",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "http://localhost:8000/v1",
+    "key": "optional",
+    "local": true,
+    "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on.",
+    "abilities": {
+      "transcription": {
+        "kind": "transcription",
+        "type": "openai-transcription",
+        "note": "Speaches or whisper.cpp, at the provider's address. Add models by id, or with Fetch model list."
+      },
+      "voice": {
+        "kind": "voice",
+        "type": "openai-speech",
+        "baseUrl": "http://localhost:8880/v1",
+        "note": "Kokoro or Speaches, at its own address. Add a voice model by id."
+      }
+    }
+  }
+}

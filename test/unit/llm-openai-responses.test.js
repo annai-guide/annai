@@ -11,8 +11,9 @@ import { testModel } from '../../src/core/llm/check.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
-import { readConfig, modelOf as recordModel } from '../../src/core/llm/config.js';
-import { addFromTemplate } from '../../src/core/llm/templates.js';
+import { readConfig, modelOf as recordModel, providerOf } from '../../src/core/llm/config.js';
+import { addProvider } from '../../src/core/llm/providers.js';
+import { official } from './provider-kit.js';
 
 /** The endpoint type, registered the way annai's plugin host would. @returns {any} */
 function load() {
@@ -30,7 +31,7 @@ function endpointOf(over = {}) {
 }
 /** @param {any} [over] */
 function modelOf(over = {}) {
-  return { id: 'm-r', endpoint: 'ep-r', name: 'Luna', providerId: MODEL, input: ['text', 'image'], tools: true, contextWindow: 922000, maxOutput: 128000, prices: null, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over };
+  return { id: 'm-r', provider: 'pv-r', ability: 'chat', name: 'Luna', providerId: MODEL, input: ['text', 'image'], tools: true, contextWindow: 922000, maxOutput: 128000, prices: null, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over };
 }
 /** A spec for one call. @param {any} [over] */
 function spec(over = {}) {
@@ -428,48 +429,14 @@ test('the Test button with a Responses endpoint: access, the key, the tool and t
   assert.equal(asked[2].body.get('expires_after[seconds]'), '3600');
 });
 
-test('the OpenAI (Responses) template: current models with prices, windows, photos, web search and the efforts each takes; the other templates', async () => {
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
-  const tpl = catalog.endpoints.find((/** @type {any} */ t) => t.id === 'openai-responses');
-  assert.equal(tpl.type, 'openai-responses');
-  assert.equal(tpl.baseUrl, 'https://api.openai.com/v1');
-  const byId = Object.fromEntries(tpl.models.map((/** @type {any} */ m) => [m.providerId, m]));
-  assert.deepEqual(Object.keys(byId), ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna']);
-  // The efforts OpenAI documents for each (plan, fact 3): Astra and Sol have no "none", so they have no "off".
-  const efforts = (/** @type {any} */ m) => Object.fromEntries(Object.entries(m.reasoning).map(([level, patch]) => [level, /** @type {any} */ (patch).reasoning.effort]));
-  assert.deepEqual(efforts(byId['gpt-6-astra']), { low: 'low', medium: 'medium', high: 'high', max: 'max' });
-  assert.deepEqual(efforts(byId['gpt-6.1-sol']), { low: 'low', medium: 'medium', high: 'high', max: 'max' });
-  assert.deepEqual(efforts(byId['gpt-6-luna']), { off: 'none', low: 'low', medium: 'medium', high: 'high', max: 'max' });
-  for (const m of tpl.models) {
-    assert.deepEqual(Object.keys(m.prices).sort(), ['cacheRead', 'cacheWrite', 'input', 'output', 'tiers'], m.providerId);
-    assert.equal(m.prices.tiers[0].above, 272000, 'prompts over 272K cost more');
-    assert.equal(m.prices.tiers[0].input, m.prices.input * 2);
-    assert.equal(m.prices.tiers[0].output, m.prices.output * 1.5);
-    assert.equal(m.contextWindow, 922000, 'the most input the 1,050,000-token window takes');
-    assert.equal(m.maxOutput, 128000);
-    assert.deepEqual(m.input, ['text', 'image']);
-    assert.deepEqual(m.images, { formats: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], maxEdge: 5000, maxBytes: 20000000, maxCount: 1500 });
-    assert.equal(m.tools, true);
-    assert.deepEqual(m.providerTools, [{ id: 'openai-web-search', name: 'OpenAI web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search' }] }, pricePerCall: 0.01, usageKey: 'web_search_requests' }]);
-  }
-  assert.deepEqual(tpl.roles.recommended, { main: ['gpt-6.1-sol'], utility: ['gpt-6-luna'], decide: ['gpt-6-luna'] });
-  const other = catalog.endpoints.find((/** @type {any} */ t) => t.id === 'custom-openai-responses');
-  assert.equal(other.type, 'openai-responses');
-  assert.equal(other.name, 'Other: OpenAI Responses');
-  const chat = catalog.endpoints.find((/** @type {any} */ t) => t.id === 'openai');
-  assert.equal(chat.type, 'chat-completions', 'the Chat Completions template stays');
-  assert.match(chat.note, /OpenAI \(Responses\)/);
-});
-
-test('adding the OpenAI (Responses) template saves its models and fills the empty roles', async () => {
+test('adding OpenAI saves its Responses models, its transcription and voices, and fills the empty roles', async () => {
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
-  const id = await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'openai-responses'), { key: 'sk-test-r' });
+  const id = await addProvider({ ws, store }, await official('provider-openai'), { key: 'sk-test-r' });
   const cfg = await readConfig(ws);
-  assert.equal(cfg.endpoints[id].type, 'openai-responses');
+  assert.equal(providerOf(cfg.providers[id]).abilities.chat.type, 'openai-responses');
   const name = (/** @type {string} */ m) => recordModel(cfg.models[m]).name;
-  assert.deepEqual(Object.keys(cfg.models).map(name).sort(), ['GPT-6 Astra', 'GPT-6 Luna', 'GPT-6.1 Sol']);
+  assert.deepEqual(Object.values(cfg.models).filter((m) => m.ability === 'chat').map((m) => name(m.id)).sort(), ['GPT-6 Astra', 'GPT-6 Luna', 'GPT-6.1 Sol']);
   assert.deepEqual([cfg.roles.main.models.map(name), cfg.roles.utility.models.map(name), cfg.roles.decide.models.map(name)], [['GPT-6.1 Sol'], ['GPT-6 Luna'], ['GPT-6 Luna']]);
 });

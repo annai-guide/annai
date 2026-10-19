@@ -1,0 +1,26 @@
+{
+  "id": "provider-gemini",
+  "name": "Google Gemini",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Gemini models through Google's OpenAI-compatible endpoint.",
+  "category": "providers",
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "key": "required",
+    "keyUrl": "https://aistudio.google.com/apikey",
+    "note": "Uses Gemini's OpenAI-compatible endpoint. Add models with Fetch model list.",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions"
+      }
+    }
+  }
+}

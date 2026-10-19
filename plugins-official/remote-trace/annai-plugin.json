@@ -1,8 +1,9 @@
 {
   "id": "remote-trace",
   "name": "Remote trace (for developers)",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "api": 1,
+  "category": "developer",
   "entry": "index.js",
   "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
   "homepage": "https://github.com/annai-guide/annai/blob/main/docs/plugins.md#remote-trace-for-developers",

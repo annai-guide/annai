@@ -1,0 +1,59 @@
+{
+  "id": "provider-another-address",
+  "name": "Another address",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, then switch on what it offers.",
+  "category": "providers",
+  "keywords": [
+    "OpenAI-compatible",
+    "router",
+    "proxy",
+    "self-hosted"
+  ],
+  "provider": {
+    "baseUrl": "",
+    "key": "optional",
+    "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on.",
+    "abilities": {
+      "chat-completions": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "name": "Chat Completions",
+        "on": false
+      },
+      "responses": {
+        "kind": "chat",
+        "type": "openai-responses",
+        "name": "OpenAI Responses",
+        "on": false,
+        "note": "For servers that speak OpenAI's Responses API. If one refuses requests, try \"phase\": false, \"nowRole\": \"user\" or \"encryptedReasoning\": false in the tunables. Give a reasoning model its Reasoning levels on its page; without them it thinks without showing progress, and may run past the time limit."
+      },
+      "messages": {
+        "kind": "chat",
+        "type": "anthropic-messages",
+        "name": "Anthropic Messages",
+        "on": false,
+        "modelDefaults": {
+          "cacheTtls": [
+            "5m",
+            "1h"
+          ]
+        },
+        "note": "Give the address without /v1: Anthropic Messages adds /v1/messages itself."
+      },
+      "transcription": {
+        "kind": "transcription",
+        "type": "openai-transcription",
+        "name": "Transcription",
+        "on": false
+      },
+      "voice": {
+        "kind": "voice",
+        "type": "openai-speech",
+        "name": "Voice",
+        "on": false
+      }
+    }
+  }
+}

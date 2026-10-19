@@ -11,7 +11,8 @@ import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js'
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { ensureType } from '../../src/core/llm/official.js';
-import { addFromTemplate, withSpeech, speechAdd } from '../../src/core/llm/templates.js';
+import { addProvider, withSpeech, speechAdd } from '../../src/core/llm/providers.js';
+import { official } from './provider-kit.js';
 import { readConfig, modelOf } from '../../src/core/llm/config.js';
 
 /** @type {Record<string, any>} */
@@ -108,7 +109,7 @@ test('choosing a speech endpoint type installs the official plugin, checked agai
   assert.deepEqual([...endpointTypes(registry).keys()].sort(), ['openai-speech', 'openai-transcription']);
 });
 
-test('a template speech model joins its list: transcription after "Send audio to the model", a voice ahead of the browser voice (spec §10.3)', async () => {
+test('a suggested speech model joins its list: transcription after "Send audio to the model", a voice ahead of the browser voice (spec §10.3); a provider added puts its own behind the free entries (decision 6)', async () => {
   assert.deepEqual(withSpeech(['send-audio', 'dictation'], ['m-1'], 'speech-in'), ['send-audio', 'm-1', 'dictation']);
   assert.deepEqual(withSpeech(['dictation'], ['m-1'], 'speech-in'), ['m-1', 'dictation']);
   assert.deepEqual(withSpeech(['m-0', 'browser-voice'], ['m-1', 'm-0'], 'speech-out'), ['m-0', 'm-1', 'browser-voice']);
@@ -117,15 +118,13 @@ test('a template speech model joins its list: transcription after "Send audio to
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
-  const catalog = JSON.parse(await readFile(new URL('catalog/templates.json', root), 'utf8'));
-  const tpl = (/** @type {string} */ id) => catalog.endpoints.find((/** @type {any} */ t) => t.id === id);
-  await addFromTemplate({ ws, store }, tpl('groq-transcription'));
-  await addFromTemplate({ ws, store }, tpl('openai-speech'));
+  await addProvider({ ws, store }, await official('provider-groq'));
+  await addProvider({ ws, store }, await official('provider-openai'));
   const cfg = await readConfig(ws);
   const name = (/** @type {string} */ id) => (cfg.models[id] ? modelOf(cfg.models[id]).name : id);
-  assert.deepEqual(cfg.roles['speech-in'].models.map(name), ['send-audio', 'Groq: Whisper large v3 turbo', 'dictation']);
-  assert.deepEqual(cfg.roles['speech-out'].models.map(name), ['OpenAI: GPT-4o mini TTS (Marin)', 'browser-voice']);
-  assert.deepEqual(cfg.roles.main.models, [], 'a speech template suggests nothing for chat roles');
+  assert.deepEqual(cfg.roles['speech-in'].models.map(name), ['send-audio', 'dictation', 'Groq: Whisper large v3 turbo', 'OpenAI: GPT Transcribe']);
+  assert.deepEqual(cfg.roles['speech-out'].models.map(name), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)']);
+  assert.deepEqual(cfg.roles.main.models.map(name), ['GPT-6.1 Sol'], "Groq suggests nothing for chat roles; OpenAI's fill the empty ones");
 });
 
 test('a speech model the user adds goes where a template would put it; a stand-in added back goes last', () => {

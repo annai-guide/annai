@@ -5,6 +5,15 @@
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
       "version": "0.3.0",
+      "description": "Talks to Anthropic's Messages API and to endpoints that speak it.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 12672,
+      "requires": [],
       "provides": {
         "endpoint-type": [
           "anthropic-messages"
@@ -19,6 +28,15 @@
       "id": "chat-completions",
       "name": "Chat Completions",
       "version": "0.3.1",
+      "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 13159,
+      "requires": [],
       "provides": {
         "endpoint-type": [
           "chat-completions"
@@ -33,6 +51,15 @@
       "id": "openai-responses",
       "name": "OpenAI Responses",
       "version": "0.1.0",
+      "description": "Talks to OpenAI's Responses API and to servers that speak it, keeping nothing on the server.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 16820,
+      "requires": [],
       "provides": {
         "endpoint-type": [
           "openai-responses"
@@ -44,12 +71,295 @@
       }
     },
     {
-      "id": "remote-trace",
-      "name": "Remote trace (for developers)",
-      "version": "0.1.0",
+      "id": "provider-another-address",
+      "name": "Another address",
+      "version": "1.0.0",
+      "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, then switch on what it offers.",
+      "category": "providers",
+      "keywords": [
+        "OpenAI-compatible",
+        "router",
+        "proxy",
+        "self-hosted"
+      ],
+      "abilities": [
+        "chat",
+        "transcription",
+        "voice"
+      ],
+      "free": false,
+      "local": false,
+      "code": false,
+      "size": 1854,
+      "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "24fc3deeda8ac000ad296d8fca21e32a1fdf05c9456265e9d471cb652eab442c",
+        "annai-plugin.json": "0ef4d4689895afd1718f954614f55b079a2fbe7fb8d6aaef964f33e78e006003"
+      }
+    },
+    {
+      "id": "provider-anthropic",
+      "name": "Anthropic",
+      "version": "1.0.0",
+      "description": "Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": false,
+      "code": false,
+      "size": 9286,
+      "requires": [
+        {
+          "id": "anthropic-messages",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "19baff782181ae19d18e790a475fc9b941573eb59b3b45b9af90f978c64c7de9"
+      }
+    },
+    {
+      "id": "provider-deepseek",
+      "name": "DeepSeek",
+      "version": "1.0.0",
+      "description": "DeepSeek's models, with their reasoning shown as they think.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": false,
+      "code": false,
+      "size": 668,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "668d5b5f52aa3be1f67307f775b15b08617100446424a45860cefbdc151230a9"
+      }
+    },
+    {
+      "id": "provider-gemini",
+      "name": "Google Gemini",
+      "version": "1.0.0",
+      "description": "Gemini models through Google's OpenAI-compatible endpoint.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": false,
+      "code": false,
+      "size": 653,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "2e2a7030ddbc3c3f6f892a6360055e117a8f5caa66f880b8ada8231cb31465f6"
+      }
+    },
+    {
+      "id": "provider-groq",
+      "name": "Groq",
+      "version": "1.0.0",
+      "description": "Fast open models, and fast Whisper transcription.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat",
+        "transcription"
+      ],
+      "free": false,
+      "local": false,
+      "code": false,
+      "size": 1424,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        },
+        {
+          "id": "speech-openai",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "486deb789765385f011486151e74ed5a4b35ab4984eea3cdfec4b13b7c9dcb13"
+      }
+    },
+    {
+      "id": "provider-local-speech",
+      "name": "Local speech server",
+      "version": "1.0.0",
+      "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
+      "category": "speech",
+      "keywords": [
+        "Speaches",
+        "whisper.cpp",
+        "Kokoro"
+      ],
+      "abilities": [
+        "transcription",
+        "voice"
+      ],
+      "free": false,
+      "local": true,
+      "code": false,
+      "size": 1084,
+      "requires": [
+        {
+          "id": "speech-openai",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "cdcb214c562a94ab0d293276906cafaac7cb0b0e0f77bd71ae27586bc048399a"
+      }
+    },
+    {
+      "id": "provider-mistral",
+      "name": "Mistral",
+      "version": "1.0.0",
+      "description": "Mistral's models.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": false,
+      "code": false,
+      "size": 540,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "8e907e7e22c967e71c6817baf20558d56f18c2ff9f4caafe5504c98c6ed1c20f"
+      }
+    },
+    {
+      "id": "provider-openai",
+      "name": "OpenAI",
+      "version": "1.0.0",
+      "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, on one key.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat",
+        "transcription",
+        "voice"
+      ],
+      "free": false,
+      "local": false,
+      "code": false,
+      "size": 9765,
+      "requires": [
+        {
+          "id": "openai-responses",
+          "version": "^0"
+        },
+        {
+          "id": "speech-openai",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "07c48272b74198f3cdce06090a81b6173f8280a649f0707bb4dcc59af84a89f0"
+      }
+    },
+    {
+      "id": "provider-openrouter",
+      "name": "OpenRouter",
+      "version": "1.0.0",
+      "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat",
+        "transcription",
+        "voice"
+      ],
+      "free": true,
+      "local": false,
+      "code": false,
+      "size": 12277,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        },
+        {
+          "id": "speech-openai",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "f0c28243c5c0a068f292753db9d085e3337482afdf51e44614fbf6c86787ced5"
+      }
+    },
+    {
+      "id": "provider-scripted",
+      "name": "Scripted model (for testing)",
+      "version": "1.0.0",
+      "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": true,
+      "local": false,
+      "code": false,
+      "size": 884,
+      "requires": [
+        {
+          "id": "scripted-model",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "616a37fadeb69c42b73865c169d208331db11f8f686635728a784cb9d33437ef"
+      }
+    },
+    {
+      "id": "remote-trace",
+      "name": "Remote trace (for developers)",
+      "version": "0.1.1",
+      "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 19395,
+      "requires": [],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "89a4b8619a9a6e43e9e8f22d01ea488744fdbeb76dc33d54fc4590e4b19c58b4",
         "index.js": "f92387d45592c957b3a1f914eacb42512d4d59158b79fb5f184d00897126282d"
       }
     },
@@ -57,6 +367,15 @@
       "id": "scripted-model",
       "name": "Scripted model",
       "version": "0.4.0",
+      "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 5862,
+      "requires": [],
       "provides": {
         "endpoint-type": [
           "scripted"
@@ -71,6 +390,15 @@
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
       "version": "0.2.0",
+      "description": "Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 5028,
+      "requires": [],
       "provides": {
         "endpoint-type": [
           "openai-transcription",
@@ -86,6 +414,15 @@
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
       "version": "0.1.0",
+      "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
+      "category": "backup",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 36387,
+      "requires": [],
       "provides": {
         "storage-type": [
           "forgejo"
@@ -101,6 +438,15 @@
       "id": "storage-github",
       "name": "GitHub",
       "version": "0.1.0",
+      "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",
+      "category": "backup",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 26785,
+      "requires": [],
       "provides": {
         "storage-type": [
           "github"
@@ -116,6 +462,15 @@
       "id": "storage-s3",
       "name": "S3-compatible storage",
       "version": "0.1.0",
+      "description": "Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.",
+      "category": "backup",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 15125,
+      "requires": [],
       "provides": {
         "storage-type": [
           "s3"
@@ -131,6 +486,15 @@
       "id": "storage-webdav",
       "name": "WebDAV",
       "version": "0.1.0",
+      "description": "Backs up everything to a folder on a WebDAV server that allows browser access, one archive file per backup.",
+      "category": "backup",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 9638,
+      "requires": [],
       "provides": {
         "storage-type": [
           "webdav"
