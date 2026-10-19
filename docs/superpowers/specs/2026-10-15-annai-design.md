@@ -936,7 +936,7 @@ Reference: mockups draft 6.
   - **Plan:** day tabs, a timetable with ● fixed and ○ flexible, drive legs between stops, and "Check this" chips
   - **Booking confirmation**
   - **Trips:** the install warning, trip cards with stamps, backup status (when each trip was last backed up), "Open a trip someone sent you"
-  - **Conversation:** what the user said and what Shiori said, showed and asked. While she is two halves (§6.8), that is Koe's: Kokoro's wakes, the notes between the halves, annai's blocks and the errors the other half told the user of stay out, until "Show what the halves tell each other" (at the foot, remembered on this device) shows the notes as quiet lines.
+  - **Conversation:** what the user said and what Shiori said, showed and asked. While she is two halves (§6.8), that is Koe's: Kokoro's wakes and errors, the notes between the halves, annai's blocks and the errors the other half told the user of stay out (a card still says what needs saying), until "Show what the halves tell each other" (at the foot, remembered on this device) shows the notes as quiet lines.
   - **Files**
   - **Trace:** filters plus tool switches. Model turns say whose they are (Koe, Kokoro or Shiori), notes and blocks have lines of their own, and a Halves kind shows them.
   - **Settings,** in the order a user reaches for them, most often first: Models, Voice, Notifications, Backup (with "Open an annai file"), Shiori, Photos, Tools, Plugins and the pages plugins add, Storage; then Updates, About, Diagnostics, Developer, Experimental, and Erase last. While an update waits, of annai or of a plugin, Updates comes first, with a line saying what waits.

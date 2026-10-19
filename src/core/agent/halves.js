@@ -244,6 +244,7 @@ export class Halves {
    * instruction block in its messages, never its system text). @param {{ tell?: boolean }} [o] tell: false as annai starts, before a conversation is open
    */
   async #refresh({ tell = true } = {}) {
+    await this.voice?.refresh().catch(() => {}); // Auto follows the car's audio and the drive: read now, not at Kokoro's next turn
     const cfg = await this.llm.config();
     this.#split = splitOn(cfg);
     const benched = candidates(cfg, 'koe-type').length > 0 && candidates(cfg, 'koe-type').every((id) => (this.llm.bench?.until(id) ?? 0) > Date.now());
