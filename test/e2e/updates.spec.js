@@ -126,7 +126,7 @@ test('Settings → Updates shows the build running and says when everything is u
 test("Check now finds an official plugin's update in annai's catalog; Settings lists Updates first while it waits; Update applies it", async ({ page }) => {
   const site = await startSite();
   try {
-    await page.goto(`${site.origin}/#/plugins`);
+    await page.goto(`${site.origin}/#/add`);
     await waitForServiceWorker(page);
     await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
     await expect(page.getByText('Installed Remote trace (for developers).')).toBeVisible();

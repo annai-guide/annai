@@ -1,6 +1,7 @@
 // Provider descriptions the provider tests share (M1).
 import { utf8 } from '../../src/core/bytes.js';
 import { sha256Hex } from '../../src/core/hash.js';
+import { catalogFacts } from '../../src/core/catalog-facts.js';
 
 /** @typedef {import('../../src/core/llm/provider-desc.js').ProviderDesc} ProviderDesc */
 
@@ -115,7 +116,7 @@ export async function site(plugins) {
     /** @type {Record<string, string>} */
     const hashes = {};
     for (const [name, text] of Object.entries(f)) hashes[name] = await sha256Hex(utf8(text));
-    entries.push({ id, name: m.name, version: m.version, provides: m.provides ?? {}, requires: m.requires ?? [], files: hashes });
+    entries.push({ ...catalogFacts(m), id, provides: m.provides ?? {}, files: hashes }); // as scripts/catalog.mjs writes it
   }
   const s = {
     /** @type {string[]} */ asked: [],

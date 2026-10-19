@@ -53,6 +53,8 @@ a { color: var(--ai); }
 .cards { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .card { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); color: var(--ink); text-decoration: none; }
 .card .name { font-family: var(--f-display); font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
+/* A plugin's own words (a description, a host, a keyword) can be one long word: it breaks rather than widen the page. */
+.card .sub, .plugin-install p, .plugin-install li { overflow-wrap: anywhere; }
 .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
 dialog.ask { width: min(100% - 32px, 420px); padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); color: var(--ink); }
 dialog.ask::backdrop { background: rgb(0 0 0 / 0.45); }
@@ -179,7 +181,10 @@ a.chip { min-height: 44px; }
 .chip.check { background: var(--amber-wash); color: var(--amber); }
 .chip.warn { background: var(--risk-wash); color: var(--risk); }
 .chip.ok { background: var(--ok-wash); color: var(--ok); }
-button.chip.undo { min-height: 44px; border: 1px solid var(--line); cursor: pointer; font: inherit; font-size: 13px; }
+button.chip.undo, button.chip.filter { min-height: 44px; border: 1px solid var(--line); cursor: pointer; font: inherit; font-size: 13px; }
+button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai-ink); border-color: var(--ai); }
+/* The Add screen's and the Plugins page's search, chips and what they find (spec §16.2) */
+.finder, .found, .found .kind { display: flex; flex-direction: column; gap: 12px; }
 .leg { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0 6px calc(6.5em + 1.2em + 16px); color: var(--ink-2); font-size: 14px; border-bottom: 1px dashed var(--line); }
 /* Now and Driving (spec §16.2) */
 .now-place { font-family: var(--f-display); font-weight: 700; font-size: 20px; overflow-wrap: anywhere; }
