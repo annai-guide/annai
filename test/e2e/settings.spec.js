@@ -54,7 +54,7 @@ test('Settings → Experimental points developers to Remote trace: install it fr
   await openApp(page, '#/experimental');
   const panel = page.getByRole('region', { name: 'Remote trace (for developers)' });
   await expect(panel).toContainText("Sends annai's trace to a server you run");
-  await expect(panel.getByRole('link', { name: 'Find it in Settings → Plugins' })).toHaveAttribute('href', '#/plugins');
+  await expect(panel.getByRole('link', { name: "Get it from annai's catalog" })).toHaveAttribute('href', '#/add');
 });
 
 // Settings → Models takes the request settings, and settings save as they change (the user, 2026-10-18).

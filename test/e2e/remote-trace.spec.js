@@ -55,10 +55,10 @@ test('Remote trace, installed from the catalog, sends a conversation to a sink t
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
 
-    await page.goto('/#/plugins');
+    await page.goto('/#/add');
     await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
     await expect(page.getByText('Installed Remote trace (for developers).')).toBeVisible();
-    await page.getByRole('link', { name: /^Remote trace \(for developers\)/ }).click();
+    await page.getByRole('link', { name: 'Open Remote trace (for developers)' }).click();
     await expect(page.getByRole('heading', { name: 'Remote trace (for developers)' })).toBeVisible();
     // Off until configured: no chip yet.
     await expect(page.getByRole('button', { name: 'Sending trace' })).toHaveCount(0);
