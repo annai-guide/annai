@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved } from './helpers.js';
 
-test('endpoints, models and roles are set in Settings → Models, survive a reload, and the key is never shown', async ({ page }) => {
+test('providers, models and roles are set in Settings → Models, survive a reload, and the key is never shown', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: 'https://a.example.test/v1', key: 'sk-test-secret-a', model: 'a-model' });
+  await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Endpoint A', url: 'https://a.example.test/v1', key: 'sk-test-secret-a', model: 'a-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'a-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByText('1. a-model')).toBeVisible();
@@ -23,7 +23,7 @@ test('endpoints, models and roles are set in Settings → Models, survive a relo
 test('a model is edited on its own page', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: 'https://a.example.test/v1', key: 'sk-a', model: 'a-model' });
+  await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Endpoint A', url: 'https://a.example.test/v1', key: 'sk-a', model: 'a-model' });
   await page.getByRole('link', { name: /Endpoint A/ }).click();
   await page.getByRole('link', { name: /^a-model/ }).click();
   await expect(page.getByLabel('Provider model id')).toHaveValue('a-model');
@@ -41,9 +41,10 @@ test('a model is edited on its own page', async ({ page }) => {
 test('the Test button checks access, the key, tool calls and photos', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await page.getByLabel('Add an endpoint').selectOption({ label: 'Scripted model (for testing)' });
+  await page.getByLabel('Add a provider').selectOption({ label: 'Scripted model (for testing)' });
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Scripted model (for testing)' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByLabel('API key')).toHaveCount(0); // it needs none
   await page.getByLabel('Tunables (JSON)').fill(JSON.stringify({ script: [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }] }));
   await leaveSaved(page.getByLabel('Tunables (JSON)'));
   await page.getByRole('button', { name: 'Test', exact: true }).click();
@@ -59,8 +60,8 @@ test('a conversation falls back from one provider to another, and the trace show
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
     for (const m of ['a-model', 'b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
@@ -94,8 +95,8 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
     for (const m of ['a-model', 'b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
@@ -186,16 +187,16 @@ test("on an iPhone Home Screen app, Sign in with OpenRouter is a link made befor
   await expect(page.getByRole('link', { name: 'Sign in with OpenRouter' })).toHaveAttribute('href', href);
 });
 
-test('an endpoint that stores files has a switch for photo uploads, kept when saved (spec §4.8)', async ({ page }) => {
+test('an ability whose protocol stores files has a switch for photo uploads, kept when saved (spec §4.8)', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model' });
   await page.getByRole('link', { name: /Stand-in/ }).click();
   const uploads = page.getByLabel('Upload photos to this provider (each expires after 48 hours)');
   await expect(uploads).toBeChecked();
   await uploads.uncheck();
   await expect(savedBy(uploads)).toHaveText('Saved'); // as it changes: the Save button is the connection's
-  await expect(page.locator('#endpoint-tunables')).toHaveValue(/"uploads": false/); // shown once it is saved
+  await expect(page.locator('#ability-messages-tunables')).toHaveValue(/"uploads": false/); // shown once it is saved
   await page.reload();
   await expect(page.getByLabel('Upload photos to this provider (each expires after 48 hours)')).not.toBeChecked();
 });
@@ -203,7 +204,7 @@ test('an endpoint that stores files has a switch for photo uploads, kept when sa
 test('a model keeps its photo limits on its page, to see and change (spec §9.2)', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model' });
   await page.getByRole('link', { name: /Stand-in/ }).click();
   await page.getByRole('link', { name: /^b-model/ }).click();
   const limits = page.getByLabel('Photo limits (JSON)');
@@ -219,14 +220,14 @@ test('a model keeps its photo limits on its page, to see and change (spec §9.2)
   await expect(page.getByRole('alert')).toHaveText('maxEdge must be at least 16');
   await page.reload();
   await expect(page.getByLabel('Photo limits (JSON)')).toHaveValue(/"maxEdge": 1568/);
-  // Added by id on an Anthropic endpoint, it takes both cache lifetimes, so it gets the hour (review, 2026-10-18).
+  // Added by id to an Anthropic Messages ability, it takes both cache lifetimes, so it gets the hour (review, 2026-10-18).
   await expect(page.getByLabel('Cache lifetimes (5m, 1h)')).toHaveValue('5m, 1h');
   // A save that fails puts the field back to what is stored, and says why.
   await page.getByRole('link', { name: '← Stand-in' }).click();
   await page.getByLabel('Add a model by id').fill('c-model');
   await page.getByRole('button', { name: 'Add model' }).click();
   await page.getByRole('link', { name: /^c-model/ }).click();
-  await expect(page.getByRole('heading', { name: 'c-model', level: 1 })).toBeVisible(); // not the endpoint's Name, still shown a moment
+  await expect(page.getByRole('heading', { name: 'c-model', level: 1 })).toBeVisible(); // not the provider's Name, still shown a moment
   const name = page.getByLabel('Name', { exact: true });
   await name.fill('b-model');
   await name.blur();
@@ -235,7 +236,7 @@ test('a model keeps its photo limits on its page, to see and change (spec §9.2)
   await expect(name).not.toHaveAttribute('aria-invalid', 'true');
 });
 
-test('an OpenAI Responses endpoint: its model list, the Test button with the tool, the photo and the upload, and a conversation with one tool call (stood in for)', async ({ page }) => {
+test('Another address with OpenAI Responses switched on: its model list, the Test button with the tool, the photo and the upload, and a conversation with one tool call (stood in for)', async ({ page }) => {
   const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
   const encrypted = 'gAAAAABe2eEncryptedReasoning==';
   const llm = await startModelServer({
@@ -251,16 +252,20 @@ test('an OpenAI Responses endpoint: its model list, the Test button with the too
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await page.getByLabel('Add an endpoint').selectOption({ label: 'Other: OpenAI Responses' });
+    await page.getByLabel('Add a provider').selectOption({ label: 'Another address' });
     await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Other: OpenAI Responses' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Another address' })).toBeVisible({ timeout: 30_000 });
     await page.getByLabel('Name', { exact: true }).fill('Responses stand-in');
-    await page.getByLabel('Base URL').fill(`${llm.origin}/v1`);
+    await page.getByLabel('Address', { exact: true }).fill(`${llm.origin}/v1`);
     await page.getByLabel('API key').fill('sk-test-secret-r');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('heading', { name: 'Responses stand-in' })).toBeVisible();
     await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-    await expect(page.getByLabel('Upload photos to this provider (each expires after 48 hours)')).toBeChecked();
+    // Another address's abilities start off: switching one on installs its protocol, and its panel opens.
+    const responses = page.getByRole('region', { name: 'OpenAI Responses', exact: true });
+    await expect(responses.getByRole('button', { name: 'Fetch model list' })).toHaveCount(0);
+    await responses.getByLabel('Use OpenAI Responses').check();
+    await expect(responses.getByLabel('Upload photos to this provider (each expires after 48 hours)')).toBeChecked({ timeout: 30_000 });
     // The model list, from GET /models.
     await page.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(page.getByText('2 models.')).toBeVisible();

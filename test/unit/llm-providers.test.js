@@ -97,6 +97,7 @@ test("a newer plugin version refreshes its providers: the user's renames, prices
   assert.deepEqual(p.headers, { 'X-Title': 'annai' });
   assert.equal(p.abilities.voice.on, false);
   assert.equal(p.abilities.transcription.on, false, 'a new ability arrives off');
+  assert.deepEqual(cfg.providers[id].template?.added, ['transcription'], 'its page says it is new');
   assert.equal(cfg.providers[id].template?.version, '1.1.0');
   const mine = modelOf(cfg.models[big.id]);
   assert.deepEqual([mine.name, mine.prices, mine.contextWindow], ['Big one', { input: 1, output: 5 }, 2000000]);

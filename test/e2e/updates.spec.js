@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { parseHeaders, headersFor } from '../../scripts/headers.mjs';
-import { openApp, waitForServiceWorker, addEndpoint, startModelServer, anthropicToolReply } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply } from './helpers.js';
 
 // Updates (the user, 2026-10-18): "currently I need to close the added to homescreen app and reopen for annai
 // to check for updates." annai checks when it comes back to the screen, and Settings → Updates checks on a tap.
@@ -66,7 +66,7 @@ test('a new build is found when annai comes back to the screen, without a reload
     // Coming back is checked at most every 15 minutes: the phone was set aside for 16.
     await page.clock.setSystemTime(Date.now() + 16 * 60_000);
     await go(page, '#/models');
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await go(page, '#/trips');

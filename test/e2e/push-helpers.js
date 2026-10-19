@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addEndpoint, startTrip } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startTrip } from './helpers.js';
 import { startRelay } from '../../relay/serve.mjs';
 import { newVapidJwk } from '../../relay/src/vapid.js';
 import { startPushService } from '../fakes/push-service.js';
@@ -58,7 +58,7 @@ export const plus = (t, ms) => new Date(t + ms).toISOString().replace(/\.\d+Z$/,
 export async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');

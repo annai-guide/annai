@@ -4,9 +4,9 @@ import { createHash } from 'node:crypto';
 import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
-// Sign in with OpenRouter also sets up OpenRouter's transcription and a voice, behind the phone's own
-// dictation and the browser voice (the user, 2026-10-18: "Add, behind phone"). OpenRouter is stood in
-// for by a server on its own port; no request reaches the real one.
+// Sign in with OpenRouter sets up one provider, OpenRouter, with one key for its chat, transcription and
+// voice; its speech models go behind the phone's own dictation and the browser voice (the user, 2026-10-18:
+// "Add, behind phone"). OpenRouter is stood in for by a server on its own port; no request reaches the real one.
 
 const clipPath = (/** @type {string} */ name) => fileURLToPath(new URL(`../fixtures/voice/${name}.wav`, import.meta.url));
 /** The stand-in voice's clip: a 0.3 s tone. */
@@ -19,21 +19,29 @@ const OUT = "Speech out: Shiori's voice";
 const PHONE_IN = ['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; usually goes to Google or Apple)", '3. OpenAI: Whisper Large V3 Turbo'];
 const PHONE_OUT = ["1. Browser voice (the browser's own; some voices go online)", '2. Fish Audio: S2.1 Pro Free (free)', '3. SpaceXAI: Grok Voice TTS 1.0 (Ara)'];
 const KEY = 'sk-or-test-key-123';
+/** The ids of the secrets annai keeps, read through its own modules in the page. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
+const secretIds = (page) => page.evaluate(async () => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const store = await createIdbStore();
+  const ids = await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.listSecretIds());
+  store.close();
+  return ids;
+});
 
 /** From the Models screen: plays the voice's sample, then has the transcription model write down what the (fake) microphone says. @param {import('@playwright/test').Page} page */
 async function testBoth(page) {
-  await page.getByRole('link', { name: /^OpenRouter: voice/ }).click();
-  await page.getByRole('link', { name: /^SpaceXAI: Grok Voice TTS 1\.0 \(Ara\)/ }).click();
+  await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^SpaceXAI: Grok Voice TTS 1\.0 \(Ara\)/ }).click();
   await page.getByRole('button', { name: 'Play a sample' }).click();
   await expect(page.getByText('It works: that was this voice.')).toBeVisible();
   await page.goto('/#/models');
-  await page.getByRole('link', { name: /^OpenRouter: transcription/ }).click();
-  await page.getByRole('link', { name: /^OpenAI: Whisper Large V3 Turbo/ }).click();
+  await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await page.getByRole('region', { name: 'Transcription', exact: true }).getByRole('link', { name: /^OpenAI: Whisper Large V3 Turbo/ }).click();
   await page.getByRole('button', { name: 'Say something' }).click();
   await expect(page.getByText('It heard: "Where should we stop for lunch?"')).toBeVisible({ timeout: 20_000 });
 }
 
-test("Sign in with OpenRouter sets up free chat models, and OpenRouter's transcription and voice behind the phone's own; their Tests reach OpenRouter's audio API", async ({ page, browserName }) => {
+test("Sign in with OpenRouter makes one provider with one key: free chat models, and its transcription and voice behind the phone's own; their Tests reach OpenRouter's audio API", async ({ page, browserName }) => {
   // WebKit doesn't let page.route stand in for a page's requests while a service worker controls it, and the
   // sign-in's addresses are OpenRouter's own; the next test covers WebKit, the unit tests cover the rest.
   test.skip(browserName === 'webkit', "Playwright can't stand in for OpenRouter's sign-in in WebKit");
@@ -86,6 +94,11 @@ test("Sign in with OpenRouter sets up free chat models, and OpenRouter's transcr
     await expect(page.getByText('1. Google: Gemma 4 31B (free)')).toBeVisible();
     await expect(roleItems(page, IN)).toHaveText(PHONE_IN);
     await expect(roleItems(page, OUT)).toHaveText(PHONE_OUT);
+    // One provider, with its three abilities, and one key.
+    const providers = page.getByRole('region', { name: 'Providers' }).getByRole('listitem');
+    await expect(providers).toHaveCount(1);
+    await expect(providers).toContainText('Chat, Transcription, Voice');
+    expect(await secretIds(page)).toHaveLength(1);
     await testBoth(page);
     const [said] = server.bodies('/api/v1/audio/speech');
     expect(said).toMatchObject({ model: 'x-ai/grok-voice-tts-1.0', voice: 'ara', response_format: 'mp3' });
@@ -101,38 +114,27 @@ test("Sign in with OpenRouter sets up free chat models, and OpenRouter's transcr
   }
 });
 
-test("signed in before the voice came: the OpenRouter endpoint's page adds OpenRouter's transcription and voice with its key, behind the phone's own, and their Tests work", async ({ page }) => {
+test("OpenRouter added from Add a provider with a key: one provider whose chat, transcription and voice share its address and key; speech behind the phone's own; their Tests work", async ({ page }) => {
   const server = await startModelServer({ '/api/v1/audio/speech': wav, '/api/v1/audio/transcriptions': heard });
   try {
     await fakeMicrophone(page, [clipPath('where-lunch')]);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    // The chat endpoint only, as Sign in with OpenRouter set it up before.
-    await page.getByLabel('Add an endpoint').selectOption({ label: 'OpenRouter' });
+    await page.getByLabel('Add a provider').selectOption({ label: 'OpenRouter' });
     await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'OpenRouter', exact: true })).toBeVisible({ timeout: 30_000 });
-    const add = page.getByRole('button', { name: "Add OpenRouter's voice" });
-    await expect(add).toBeDisabled();
+    await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('link', { name: 'Get a key' })).toHaveAttribute('href', 'https://openrouter.ai/settings/keys');
+    for (const ability of ['Chat', 'Transcription', 'Voice']) await expect(page.getByLabel(`Use ${ability}`)).toBeChecked();
+    // Its one address: the stand-in, for every ability.
+    await page.getByLabel('Address', { exact: true }).fill(`${server.origin}/api/v1`);
     await page.getByLabel('API key').fill(KEY);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-    await expect(add).toBeEnabled();
-    await add.click();
-    await expect(add).toBeHidden();
+    await expect(page.getByLabel('Address', { exact: true })).toHaveValue(`${server.origin}/api/v1`);
     await page.getByRole('link', { name: '← Models' }).click();
     await expect(roleItems(page, IN)).toHaveText(PHONE_IN);
     await expect(roleItems(page, OUT)).toHaveText(PHONE_OUT);
-    // Each endpoint has the key of its own: it says so, and the key is never shown.
-    for (const name of ['OpenRouter: voice', 'OpenRouter: transcription']) {
-      await page.getByRole('link', { name: new RegExp(`^${name}`) }).click();
-      await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-      // Its suggestion would put them ahead of the phone's own: the button's line says so.
-      await expect(page.getByText('any that cost money are tried before them')).toBeVisible();
-      await page.getByLabel('Base URL').fill(`${server.origin}/api/v1`);
-      await page.getByRole('button', { name: 'Save' }).click();
-      await expect(page.getByLabel('Base URL')).toHaveValue(`${server.origin}/api/v1`);
-      await page.getByRole('link', { name: '← Models' }).click();
-    }
+    expect(await secretIds(page)).toHaveLength(1);
     await testBoth(page);
     expect(server.bodies('/api/v1/audio/speech')[0]).toMatchObject({ model: 'x-ai/grok-voice-tts-1.0', voice: 'ara', response_format: 'mp3' });
     expect(Buffer.from(server.bodies('/api/v1/audio/transcriptions')[0]).toString('latin1')).toContain('openai/whisper-large-v3-turbo');

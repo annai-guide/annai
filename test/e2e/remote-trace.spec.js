@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startModelServer, anthropicToolReply, addEndpoint, openApp, waitForServiceWorker, startTrip } from './helpers.js';
+import { startModelServer, anthropicToolReply, addProvider, openApp, waitForServiceWorker, startTrip } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const TOKEN = 'e2e-trace-token-0123456789abcdef';
@@ -49,7 +49,7 @@ test('Remote trace, installed from the catalog, sends a conversation to a sink t
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${llm.origin}/b`, key: KEY, model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: KEY, model: 'b-model' });
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');

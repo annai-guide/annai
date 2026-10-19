@@ -1,5 +1,5 @@
 import { h, savedField, savedCheck, autosave, twoStep, jsonField, numberIn } from '../dom.js';
-import { modelOf, modelBase, endpointOf, saveModel, removeModel, diffLayer } from '../../core/llm/config.js';
+import { modelOf, modelBase, providerOf, endpointOf, saveModel, removeModel, diffLayer } from '../../core/llm/config.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
@@ -60,11 +60,14 @@ export async function renderModel(ctx, id) {
   if (!rec) return h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'This model no longer exists' }), h('p', {}, h('a', { href: '#/models' }, 'Back to Models')));
   const m = modelOf(rec);
   const base = modelBase(rec);
-  const epRec = cfg.endpoints[rec.endpoint];
-  const ep = endpointOf(epRec, ctx.llm.types().get(epRec.type)?.tunables);
-  const back = `#/models/endpoint?id=${encodeURIComponent(rec.endpoint)}`;
-  const speech = ctx.llm.types().get(epRec.type)?.speech;
-  if (speech === 'in' || speech === 'out') return renderSpeechModel(ctx, rec, speech, ep, back);
+  const pRec = cfg.providers[rec.provider];
+  const ability = providerOf(pRec).abilities[rec.ability];
+  const ep = endpointOf(pRec, rec.ability, ctx.llm.types().get(ability.type)?.tunables);
+  const back = `#/models/provider?id=${encodeURIComponent(rec.provider)}`;
+  // Its provider and ability, as the provider's page names them.
+  const of = h('p', { class: 'sub', text: `${ep.name} · ${ability.name}${ability.on ? '' : ' (switched off)'}` });
+  const speech = ability.kind === 'transcription' ? 'in' : ability.kind === 'voice' ? 'out' : null;
+  if (speech) return renderSpeechModel(ctx, rec, speech, ep, back, of);
   const save = fieldSaver(ctx, id);
   const title = h('h1', { class: 'title', text: m.name });
   const images = savedCheck('Takes photos', m.input.includes('image'), (on) => save('input', (/** @type {any} */ now) => [...new Set([...now.input.filter((/** @type {string} */ x) => x !== 'image'), ...(on ? ['image'] : [])])]));
@@ -81,6 +84,7 @@ export async function renderModel(ctx, id) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: back }, `← ${ep.name}`)),
     title,
+    of,
     h('section', { class: 'panel', 'aria-label': 'Model' },
       h('p', { class: 'sub', text: 'Each setting is saved as you change it.' }),
       ...nameFields(save, m, base.name, title),
@@ -108,9 +112,9 @@ export async function renderModel(ctx, id) {
  * A transcription model or a voice (spec §9.2, §10): its name, id, voice, prices and Test, each
  * saved as it changes. Speech models have Test, not "Try this model".
  * @param {any} ctx @param {import('../../core/llm/config.js').ModelRecord} rec @param {'in' | 'out'} kind
- * @param {import('../../core/llm/config.js').Endpoint} ep @param {string} back
+ * @param {import('../../core/llm/config.js').Endpoint} ep @param {string} back @param {HTMLElement} of its provider and ability
  */
-function renderSpeechModel(ctx, rec, kind, ep, back) {
+function renderSpeechModel(ctx, rec, kind, ep, back, of) {
   const m = modelOf(rec);
   const base = modelBase(rec);
   const save = fieldSaver(ctx, rec.id);
@@ -130,6 +134,7 @@ function renderSpeechModel(ctx, rec, kind, ep, back) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: back }, `← ${ep.name}`)),
     title,
+    of,
     h('p', { class: 'sub', text: kind === 'in' ? 'A transcription model: it turns what you say into text.' : 'A voice: Shiori speaks with it.' }),
     h('section', { class: 'panel', 'aria-label': 'Model' },
       h('p', { class: 'sub', text: 'Each setting is saved as you change it.' }),

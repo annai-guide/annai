@@ -75,6 +75,8 @@ export function createLlm({
     const role = (await readConfig(ws)).roles[dir === 'in' ? 'speech-in' : 'speech-out'];
     return { type, endpoint, model, key, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
   };
+  /** The types the providers' switched-on abilities use: their protocol plugins stay. @param {import('./config.js').ProviderRecord[]} list */
+  const inUse = (list) => new Set(list.flatMap((p) => Object.values(providerOf(p).abilities).filter((a) => a.on).map((a) => a.type)));
   /** Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. */
   const sync = () => syncProviders({ ws }, providers());
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -144,8 +146,23 @@ export function createLlm({
         await plugins.uninstall(rec.plugin);
         plugin = rec.plugin;
       }
-      const inUse = new Set(left.flatMap((p) => Object.values(providerOf(p).abilities).filter((a) => a.on).map((a) => a.type)));
-      return { plugin, protocols: await prune(plugins, inUse) };
+      return { plugin, protocols: await prune(plugins, inUse(left)) };
+    },
+    /**
+     * Uninstalls a provider plugin (spec §4.9): the providers made from it go first, each with its key,
+     * models and places in roles, then the plugin, then the protocol plugins nothing needs any more.
+     * @param {string} plugin @returns {Promise<{ providers: number, protocols: string[] }>}
+     */
+    async removeProviderPlugin(plugin) {
+      const ids = Object.values((await readConfig(ws)).providers).filter((p) => p.plugin === plugin).map((p) => p.id);
+      /** @type {string[]} */
+      const protocols = [];
+      for (const id of ids) protocols.push(...(await service.removeProvider(id)).protocols);
+      if ((await plugins.installed())[plugin]) {
+        await plugins.uninstall(plugin);
+        protocols.push(...await prune(plugins, inUse(Object.values((await readConfig(ws)).providers))));
+      }
+      return { providers: ids.length, protocols };
     },
     /**
      * Switches an ability on or off, saved at once. Turning one on installs its official protocol

@@ -26,10 +26,11 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  *   what photos the model accepts (spec §9.2): from the template, then corrected by refusals (§4.8)
  * @typedef {{ id: string, name: string, kind: 'search' | 'fetch' | 'other', patch: Record<string, any>, pricePerCall?: number, usageKey?: string }} ProviderTool
  *   a tool the provider runs itself (spec §9.5): the patch enables it; pricePerCall (USD) × the usage count named by usageKey is its cost
- * @typedef {{ id: string, plugin: string, template: { version: string, values: ProviderValues, models?: string[] } | null, user: ProviderValues,
+ * @typedef {{ id: string, plugin: string, template: { version: string, values: ProviderValues, models?: string[], added?: string[] } | null, user: ProviderValues,
  *   verified?: Record<string, any>, created: number }} ProviderRecord
  *   plugin: the provider plugin it was made from; template.version: that plugin's version; template.models: the description's
- *   models as of that version, as "<ability>/<provider model id>", so a model the user removed isn't added again by the next update
+ *   models as of that version, as "<ability>/<provider model id>", so a model the user removed isn't added again by the next update;
+ *   template.added: the abilities that version brought, which arrived switched off (its page says they are new)
  * @typedef {{ id: string, provider: string, ability: string, template: { id: string, version: string, values: ModelValues } | null, user: ModelValues,
  *   verified?: Record<string, any>, created: number }} ModelRecord
  *   template.id: "<plugin>/<ability>/<provider model id>" from a description, "list/<provider model id>" from a list (version '')
@@ -118,7 +119,9 @@ const PROVIDER_SCHEMA = {
   required: ['id', 'plugin', 'template', 'user', 'created'],
   properties: {
     id: ID, plugin: { type: 'string', minLength: 1, maxLength: 64 }, user: PROVIDER_VALUES, verified: OBJECT, created: { type: 'number' },
-    template: { type: ['object', 'null'], required: ['version', 'values'], properties: { version: { type: 'string' }, values: PROVIDER_VALUES, models: { type: 'array', items: { type: 'string' } } } },
+    template: { type: ['object', 'null'], required: ['version', 'values'], properties: {
+      version: { type: 'string' }, values: PROVIDER_VALUES, models: { type: 'array', items: { type: 'string' } }, added: { type: 'array', items: { type: 'string' } },
+    } },
   },
 };
 const MODEL_SCHEMA = {

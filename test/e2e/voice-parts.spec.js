@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, fakeMicrophone, filterTrace, leaveSaved } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, fakeMicrophone, filterTrace, leaveSaved } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 const clipPath = (/** @type {string} */ name) => fileURLToPath(new URL(`../fixtures/voice/${name}.wav`, import.meta.url));
@@ -14,7 +14,7 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Stand-in voice', url: `${speech.origin}/v1`, key: 'sk-voice-test', model: 'tts-test' });
+    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Stand-in voice', url: `${speech.origin}/v1`, key: 'sk-voice-test', model: 'tts-test' });
     await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)"]);
     await expect(roleItems(page, 'Speech in: how Shiori hears you')).toHaveText(['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; usually goes to Google or Apple)"]);
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'tts-test' })).toHaveCount(0);
@@ -41,7 +41,7 @@ test("a transcription model's Test: you say something and it writes it down (spe
     await fakeMicrophone(page, [clipPath('where-lunch')]);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: OpenAI-compatible transcription', { name: 'Stand-in ears', url: `${asr.origin}/v1`, key: 'sk-asr-test', model: 'asr-test' });
+    await addProvider(page, 'Another address', { ability: 'Transcription', name: 'Stand-in ears', url: `${asr.origin}/v1`, key: 'sk-asr-test', model: 'asr-test' });
     await page.getByRole('link', { name: /Stand-in ears/ }).click();
     await page.getByRole('link', { name: /^asr-test/ }).click();
     await page.getByRole('button', { name: 'Say something' }).click();
@@ -67,9 +67,9 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await fakeMicrophone(page, [clipPath('gas-station')]);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Voice A', url: `${server.origin}/bad`, key: 'sk-a-test', model: 'voice-a' });
-    await addEndpoint(page, 'Other: OpenAI-compatible voice', { name: 'Voice B', url: `${server.origin}/good`, key: 'sk-b-test', model: 'voice-b' });
-    await addEndpoint(page, 'Other: OpenAI-compatible transcription', { name: 'Ears', url: `${server.origin}/ears`, key: 'sk-e-test', model: 'ears' });
+    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Voice A', url: `${server.origin}/bad`, key: 'sk-a-test', model: 'voice-a' });
+    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Voice B', url: `${server.origin}/good`, key: 'sk-b-test', model: 'voice-b' });
+    await addProvider(page, 'Another address', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-e-test', model: 'ears' });
     for (const m of ['voice-a', 'voice-b']) {
       await page.getByLabel('Add a model to speech-out').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to speech-out' }).click();

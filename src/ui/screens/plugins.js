@@ -1,6 +1,8 @@
 import { h, twoStep } from '../dom.js';
 import { explainStorageFull } from '../storage-full.js';
-import { officialUpdates, officialPlugins, installOfficial } from '../../core/llm/official.js';
+import { officialUpdates, officialPlugins } from '../../core/llm/official.js';
+import { addFromCatalog } from '../../core/requires.js';
+import { providerOf } from '../../core/llm/config.js';
 import { applyUpdates, knownAddressUpdates } from '../plugin-updates.js';
 import { setPendingPackage } from '../plugin-pending.js';
 import { sourceLine } from './plugin-install.js';
@@ -23,6 +25,7 @@ const NOT_INSTALLABLE = "That file isn't something annai can install";
 export async function renderPlugins(ctx, route) {
   if (route?.parts?.[1]) return renderPlugin(ctx, route.parts[1]);
   const rows = await ctx.plugins.describe();
+  const told = await removalWords(ctx, rows);
   const updates = [...await officialUpdates(ctx.plugins).catch(() => []), ...await knownAddressUpdates(ctx.plugins).catch(() => [])];
   const catalog = await officialPlugins().catch(() => null);
   const input = h('input', {
@@ -42,8 +45,8 @@ export async function renderPlugins(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Plugins' }),
-    h('p', { class: 'risk-note', text: 'A plugin gets full access to your trips and API keys. Only install plugins you trust.' }),
-    h('ul', { class: 'cards' }, ...rows.map((/** @type {any} */ r) => row(ctx, r, updates.find((u) => u.id === r.id)))),
+    h('p', { class: 'risk-note', text: "A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust." }),
+    h('ul', { class: 'cards' }, ...rows.map((/** @type {any} */ r) => row(ctx, r, updates.find((u) => u.id === r.id), told.get(r.id)))),
     h('section', { class: 'panel', 'aria-label': 'Add a plugin or skill' },
       h('h2', { class: 'section', text: 'Add a plugin or skill' }),
       h('div', { class: 'acts' }, h('label', { class: 'btn pri', for: 'plugin-file' }, 'Install from a file'), input),
@@ -129,7 +132,7 @@ function catalogRow(ctx, entry) {
         b.disabled = true;
         try {
           if (!navigator.serviceWorker?.controller) throw new Error("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.");
-          await installOfficial(ctx.plugins, entry);
+          await addFromCatalog(ctx.plugins, entry.id, { tap: true }); // with what it requires
           ctx.notices.toast(`Installed ${entry.name}.`);
         } catch (err) {
           if (!explainStorageFull(ctx, err)) ctx.notices.card({ tone: 'warn', title: `${entry.name} wasn't installed`, body: message(err) });
@@ -155,13 +158,38 @@ export function stateOf(r) {
   return r.active ? 'On' : "On, but it didn't start";
 }
 
-/** @param {any} ctx @param {any} r @param {any} [update] */
-function row(ctx, r, update) {
+/** "a, b and c". @param {string[]} list */
+const andList = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] ?? '');
+
+/**
+ * What Plugins says of each installed plugin besides its state (milestone 1): a provider plugin's
+ * providers, what removing it takes with it, and the plugins that need one.
+ * @param {any} ctx @param {any[]} rows @returns {Promise<Map<string, { providers: { id: string, name: string }[], lines: string[] }>>}
+ */
+export async function removalWords(ctx, rows) {
+  const cfg = await ctx.llm?.config().catch(() => null);
+  /** @type {Map<string, { providers: { id: string, name: string }[], lines: string[] }>} */
+  const out = new Map();
+  for (const r of rows) {
+    const providers = Object.values(cfg?.providers ?? {}).filter((p) => p.plugin === r.id).map((p) => ({ id: p.id, name: providerOf(p).name }));
+    const needs = rows.filter((o) => o.id !== r.id && (o.requires ?? []).some((/** @type {any} */ q) => q.id === r.id)).map((o) => o.name);
+    const lines = [];
+    if (r.provider) lines.push(providers.length ? `Providers: ${providers.map((p) => p.name).join(', ')}.` : 'No provider is set up from it yet.');
+    if (r.provider && providers.length) lines.push(`Removing it removes ${andList(providers.map((p) => p.name))}, with their keys and models.`);
+    if (needs.length) lines.push(`Needed by ${andList(needs)}.`);
+    out.set(r.id, { providers, lines });
+  }
+  return out;
+}
+
+/** @param {any} ctx @param {any} r @param {any} [update] @param {{ lines: string[] }} [told] */
+function row(ctx, r, update, told) {
   return h('li', { class: 'card' },
     h('a', { class: 'name', href: `#/plugins/${encodeURIComponent(r.id)}`, text: [r.name, r.shownVersion].filter(Boolean).join(' ') }),
     h('span', { class: 'sub', text: stateOf(r) }),
-    r.builtin ? null : h('span', { class: 'sub', text: [r.kind === 'skill' ? 'Skill' : null, sourceLine(r)].filter(Boolean).join(' · ') }),
+    r.builtin ? null : h('span', { class: 'sub', text: [r.kind === 'skill' ? 'Skill' : r.provider ? 'Model provider' : null, sourceLine(r)].filter(Boolean).join(' · ') }),
     r.description ? h('p', { class: 'sub', text: r.description }) : null,
+    ...(told?.lines ?? []).map((t) => h('p', { class: 'sub', text: t })),
     r.builtin ? null : pluginActions(ctx, r, update));
 }
 
@@ -199,7 +227,9 @@ export function pluginActions(ctx, r, update) {
       }, on ? 'Turn off' : 'Turn on'),
       twoStep('Remove', 'Tap again to remove', async () => {
         try {
-          await ctx.plugins.uninstall(r.id);
+          // A provider plugin takes the providers made from it, and the protocols nothing needs any more (spec §4.9).
+          if (r.provider && ctx.llm) await ctx.llm.removeProviderPlugin(r.id);
+          else await ctx.plugins.uninstall(r.id);
         } catch (e) {
           if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name} wasn't removed`, body: `${message(e)} Try again.` });
         }

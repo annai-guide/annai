@@ -59,7 +59,8 @@ const WENT = {
 
 test("today's 22 templates are all somewhere: models, prices, notes and roles kept (OpenRouter's three in one provider)", async () => {
   assert.equal(Object.keys(WENT).length, 22);
-  for (const [tpl, [plugin, ability, type, models]] of Object.entries(WENT)) {
+  for (const [tpl, went] of Object.entries(WENT)) {
+    const [plugin, ability, type, models] = /** @type {[string, string, string, string[]]} */ (went);
     const a = (await official(plugin)).provider.abilities[ability];
     assert.ok(a, `${tpl} → ${plugin}/${ability}`);
     assert.equal(a.type, type, tpl);

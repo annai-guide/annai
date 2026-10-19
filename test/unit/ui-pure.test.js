@@ -12,7 +12,7 @@ import { follow } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
-import { priceLine } from '../../src/ui/screens/endpoint.js';
+import { priceLine } from '../../src/ui/screens/provider.js';
 import { mediaKeys } from '../../src/ui/media-keys.js';
 import { restoreFrom } from '../../src/ui/auto-backup.js';
 import { packWords } from '../../src/ui/offline-pack.js';

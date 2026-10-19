@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const sleep = { name: 'sleep', input: {} };
@@ -11,7 +11,7 @@ const plus = (t, min) => new Date(t + min * 60_000).toISOString().replace(/\.\d+
 async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply, startTrip, watchConsole } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, watchConsole } from './helpers.js';
 import { seedMorning } from './after-kit.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
@@ -10,8 +10,8 @@ const RECAP = '# A morning on Highway 1\n\n## Friday, November 27\n\nThe fog lif
 async function models(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Writer', url: `${origin}/u`, key: 'sk-test-u', model: 'u-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Writer', url: `${origin}/u`, key: 'sk-test-u', model: 'u-model' });
   // Each role's list is drawn again once a model joins it: wait for that before the next.
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();

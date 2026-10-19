@@ -4,6 +4,8 @@ import { explainStorageFull } from '../storage-full.js';
 import { addressParts } from '../../core/address.js';
 import { addsAnything } from '../../core/packages.js';
 import { descOrigins } from '../../core/llm/provider-desc.js';
+import { officialPlugins } from '../../core/llm/official.js';
+import { satisfies, installWith } from '../../core/requires.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
@@ -36,6 +38,33 @@ export function keysNote(pkg) {
   if (!pkg.provider) return null;
   const origins = descOrigins(pkg.provider);
   return origins.length ? `Keys you give this provider are sent to ${andList(origins)}.` : 'Keys you give this provider are sent only to the address you give it.';
+}
+
+/**
+ * What a package needs, one line each, and whether all of it can be had now (spec §5.3): annai's own
+ * come with it; a third party's must be installed already, and one the user switched off stays off.
+ * @param {any} ctx @param {{ id: string, requires?: import('../../core/packages.js').Requirement[] }} pkg @returns {Promise<{ lines: string[], ok: boolean }>}
+ */
+export async function needsOf(ctx, pkg) {
+  const requires = (pkg.requires ?? []).filter((r) => r.id !== pkg.id);
+  if (!requires.length) return { lines: [], ok: true };
+  const catalog = await officialPlugins().catch(() => null);
+  const state = await ctx.plugins.installed();
+  let ok = true;
+  const lines = requires.map((r) => {
+    const s = state[r.id];
+    const e = catalog?.find((x) => x.id === r.id);
+    const fine = (/** @type {string} */ line) => line;
+    const not = (/** @type {string} */ line) => { ok = false; return line; };
+    if (s?.enabled === false) return not(`${s.name ?? r.id}, which you turned off. Turn it on in Settings → Plugins first`);
+    if (s && satisfies(String(s.version), r.version)) return fine(`${s.name ?? r.id} (installed)`);
+    if (e && satisfies(e.version, r.version) && s?.source !== 'url' && s?.source !== 'file') return fine(`${e.name} (from annai, installed with it)`);
+    if (e) return not(`${e.name} ${r.version}, and annai's catalog has version ${e.version}`);
+    if (s) return not(`${r.id} ${r.version}, and version ${s.version} is installed. Update it first`);
+    if (!catalog) return not(`${r.id}: annai's catalog couldn't be loaded to look for it. Connect to the internet and try again`);
+    return not(`${r.id}, which isn't installed. Install it ${r.homepage ? `from ${r.homepage} ` : ''}first`);
+  });
+  return { lines, ok };
 }
 
 /** A provider's abilities in words: "chat, transcription and voice". @param {any} desc */
@@ -99,10 +128,11 @@ export async function renderPluginInstall(ctx) {
       h('p', {}, "There's nothing to install. ", h('a', { href: '#/plugins' }, 'Go back to Plugins.')));
   }
   const { pkg, from } = p;
-  const what = pkg.kind === 'skill' ? 'A skill' : pkg.code ? 'A plugin' : 'A package without code';
+  const what = pkg.kind === 'skill' ? 'A skill' : pkg.provider && !pkg.code ? 'A model provider · data only' : pkg.code ? 'A plugin' : 'A package without code';
   const line = [what, pkg.shownVersion ? `version ${pkg.shownVersion}` : null, pkg.author ? `by ${pkg.author}` : null].filter(Boolean).join(' · ');
   const home = webAddress(pkg.homepage);
-  const install = h('button', { class: 'btn pri', type: 'button', onclick: () => installPending(ctx, install) }, 'Install');
+  const needs = await needsOf(ctx, pkg);
+  const install = h('button', { class: 'btn pri', type: 'button', disabled: !needs.ok, onclick: () => installPending(ctx, install) }, 'Install');
   return h('div', { class: 'screen plugin-install' }, back,
     h('h1', { class: 'title', text: `Install ${pkg.name}?` }),
     h('p', { class: 'sub', text: line }),
@@ -111,7 +141,8 @@ export async function renderPluginInstall(ctx) {
     h('p', { class: 'sub', text: sourceLine(from) }),
     h('section', { class: 'panel', 'aria-label': 'What it brings' },
       h('h2', { class: 'section', text: 'What it brings' }),
-      h('ul', { class: 'brings' }, ...whatItBrings(pkg).map((t) => h('li', { text: t })))),
+      h('ul', { class: 'brings' }, ...whatItBrings(pkg).map((t) => h('li', { text: t }))),
+      needs.lines.length ? h('p', { class: needs.ok ? 'sub' : 'error', text: `It needs: ${needs.lines.join('; ')}.` }) : null),
     pkg.code
       ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), h('p', { text: 'Only install it if you trust where it came from.' }), keysNote(pkg) ? h('p', { text: keysNote(pkg) }) : null)
       : pkg.provider
@@ -134,8 +165,17 @@ async function installPending(ctx, button) {
   const { pkg } = p;
   button.disabled = true;
   try {
-    if (pkg.code && !navigator.serviceWorker?.controller) {
+    // What it needs (annai's own, from its catalog) may be code too.
+    if ((pkg.code || pkg.requires?.length) && !navigator.serviceWorker?.controller) {
       throw new Error("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.");
+    }
+    if (pkg.requires?.length) {
+      // With what it requires, all or nothing, and started (spec §5.3).
+      await installWith(ctx.plugins, p.files, p.from, { tap: true });
+      setPendingPackage(null);
+      ctx.notices.toast(`Installed ${pkg.name}.`);
+      ctx.go('#/plugins');
+      return;
     }
     await ctx.plugins.install(p.files, p.from);
   } catch (e) {

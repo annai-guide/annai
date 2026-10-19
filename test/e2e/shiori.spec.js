@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, startServer, addEndpoint, anthropicToolReply, filterTrace, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/#/trips');
@@ -251,7 +251,7 @@ const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-st
 async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
@@ -335,8 +335,8 @@ test('done: a conversation with tool use, with fallback across two providers, su
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
     for (const m of ['a-model', 'b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
@@ -430,8 +430,8 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: Chat Completions', { name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
     // Both take photos: a model that doesn't is skipped for a photo turn, and A is meant to be tried.
     for (const [ep, m] of [['Endpoint A', 'a-model'], ['Endpoint B', 'b-model']]) {
       await page.goto('/#/models');

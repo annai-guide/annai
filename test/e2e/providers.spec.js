@@ -1,0 +1,150 @@
+import { test, expect } from '@playwright/test';
+import { openApp, waitForServiceWorker, zipOf } from './helpers.js';
+
+// Providers as plugins (milestone 1): a provider is one address and one key with several abilities;
+// adding one installs its plugin and what it requires, from annai's catalog, with no question.
+
+/** The ids of the secrets annai keeps, read through its own modules in the page. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
+const secretIds = (page) => page.evaluate(async () => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const store = await createIdbStore();
+  const ids = await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.listSecretIds());
+  store.close();
+  return ids;
+});
+/** The plugins installed, by id. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
+const installedIds = (page) => page.evaluate(async () => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+  const store = await createIdbStore();
+  const state = await new Workspace(store).readJSON('sys:plugins', '/installed.json');
+  store.close();
+  return Object.keys(state ?? {}).sort();
+});
+/** Adds a provider from the Models screen and waits for its page. @param {import('@playwright/test').Page} page @param {string} option @param {string} [name] its page's title */
+async function add(page, option, name = option) {
+  await page.getByLabel('Add a provider').selectOption({ label: option });
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
+}
+/** @param {import('@playwright/test').Page} page @param {string} heading */
+const roleItems = (page, heading) => page.locator('.role', { has: page.getByRole('heading', { name: heading }) }).locator('.role-item > span');
+
+test('adding OpenAI installs it and what it needs with no question; its page shows the key once, its abilities and their models; Remove takes the key, models, role entries, the plugin and the protocol plugins nothing else needs', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await add(page, 'OpenAI');
+  expect(await installedIds(page)).toEqual(['openai-responses', 'provider-openai', 'speech-openai']);
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
+  await expect(page.getByRole('link', { name: 'Get a key' })).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
+  for (const [ability, on] of [['Chat (Responses)', true], ['Chat (Chat Completions)', false], ['Transcription', true], ['Voice', true]]) {
+    const panel = page.getByRole('region', { name: /** @type {string} */ (ability), exact: true });
+    await expect(panel.getByLabel(`Use ${ability}`)).toBeChecked({ checked: /** @type {boolean} */ (on) });
+  }
+  await expect(page.getByRole('region', { name: 'Chat (Responses)', exact: true }).getByRole('link', { name: /^GPT-6\.1 Sol/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^OpenAI: GPT-4o mini TTS \(Marin\)/ })).toBeVisible();
+  await page.getByLabel('API key').fill('sk-test-openai-123456');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  expect(await page.content()).not.toContain('sk-test-openai-123456');
+  expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toHaveLength(1);
+  // Chat models in the empty roles; its voice behind the browser's, never ahead of it.
+  await page.getByRole('link', { name: '← Models' }).click();
+  await expect(page.getByText('1. GPT-6.1 Sol')).toBeVisible();
+  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI: GPT-4o mini TTS (Marin)']);
+  // Remove: everything it brought goes.
+  await page.getByRole('link', { name: /^OpenAI/ }).click();
+  await expect(page.getByText('Removes its key, its models and their places in roles, and the OpenAI plugin.')).toBeVisible();
+  const remove = page.getByRole('button', { name: 'Remove provider' });
+  await remove.click();
+  await page.getByRole('button', { name: 'Tap again to remove it' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await expect(page.getByText('No providers yet. Add one below.')).toBeVisible();
+  await expect(page.getByText('No models yet. Add one.')).toBeVisible();
+  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)"]);
+  expect(await installedIds(page)).toEqual([]);
+  expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toEqual([]);
+});
+
+test('two OpenAI providers keep a key each; removing one keeps the other and the plugin', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  for (const [name, key] of [['OpenAI (work)', 'sk-test-work-1234567'], ['OpenAI (home)', 'sk-test-home-1234567']]) {
+    await add(page, 'OpenAI');
+    await page.getByLabel('Name', { exact: true }).fill(name);
+    await page.getByLabel('API key').fill(key);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    await page.getByRole('link', { name: '← Models' }).click();
+  }
+  // The second one's models have names of their own.
+  await page.getByRole('link', { name: /^OpenAI \(home\)/ }).click();
+  await expect(page.getByRole('link', { name: /^GPT-6 Luna \(2\)/ })).toBeVisible();
+  // It isn't the last of its plugin: the plugin stays.
+  await expect(page.getByText('Removes its key, its models and their places in roles.')).toBeVisible();
+  await page.getByRole('button', { name: 'Remove provider' }).click();
+  await page.getByRole('button', { name: 'Tap again to remove it' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Providers' }).getByRole('listitem')).toHaveCount(1);
+  await expect(page.getByRole('link', { name: /^OpenAI \(work\)/ })).toBeVisible();
+  expect(await installedIds(page)).toContain('provider-openai');
+  expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toHaveLength(1);
+});
+
+/** A third party's provider, data only, needing annai's Chat Completions, or a protocol of its own. @param {any[]} requires */
+const kit = (requires) => zipOf({
+  'annai-plugin.json': Buffer.from(JSON.stringify({
+    id: 'trail-llm-kit', name: 'Trail LLM kit', version: '1.0.0', api: 1, description: 'A model provider for trails.', requires,
+    provider: { baseUrl: 'https://llm.trails.example/v1', key: 'required', abilities: { chat: { kind: 'chat', type: 'chat-completions', models: [{ providerId: 'trail-1', name: 'Trail one' }] } } },
+  })),
+});
+
+test("a third-party data-only provider from a file: the install screen says it can't run anything and where keys go, without the full-access words; one needing a third-party protocol that isn't installed can't be installed and names it", async ({ page }) => {
+  await openApp(page, '#/plugins');
+  await waitForServiceWorker(page);
+  await page.getByLabel('Install from a file').setInputFiles({ name: 'trail-llm-kit.zip', mimeType: 'application/zip', buffer: await kit([{ id: 'acme-proto', version: '^2', homepage: 'https://acme.example/annai' }]) });
+  await expect(page.getByRole('heading', { name: 'Install Trail LLM kit?' })).toBeVisible();
+  await expect(page.getByText(/acme-proto, which isn't installed\. Install it from https:\/\/acme\.example\/annai first/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Install', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByLabel('Install from a file').setInputFiles({ name: 'trail-llm-kit.zip', mimeType: 'application/zip', buffer: await kit([{ id: 'chat-completions', version: '^0' }]) });
+  await expect(page.getByText('A model provider · data only · version 1.0.0')).toBeVisible();
+  await expect(page.getByText("It can't run anything: it is data that tells annai how to reach a model provider.")).toBeVisible();
+  await expect(page.getByText('Keys you give this provider are sent to https://llm.trails.example.')).toBeVisible();
+  await expect(page.getByText('It needs: Chat Completions (from annai, installed with it)')).toBeVisible();
+  await expect(page.getByText('full access to your trips and API keys')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Trail LLM kit 1.0.0' })).toBeVisible({ timeout: 30_000 });
+  expect(await installedIds(page)).toEqual(['chat-completions', 'trail-llm-kit']);
+  await page.goto('/#/models');
+  await add(page, 'Trail LLM kit (from a file)', 'Trail LLM kit');
+  await expect(page.getByRole('link', { name: /^Trail one/ })).toBeVisible();
+});
+
+test('the Plugins page names the providers made from a provider plugin, and its Remove confirmation names them and what needs it', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  for (const name of ['OpenAI (work)', 'OpenAI (home)']) {
+    await add(page, 'OpenAI');
+    await page.getByLabel('Name', { exact: true }).fill(name);
+    await page.getByLabel('Name', { exact: true }).blur();
+    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+    await page.getByRole('link', { name: '← Models' }).click();
+  }
+  await page.goto('/#/plugins');
+  /** An installed plugin's row on Plugins, by the link its name is. @param {string} name */
+  const installedRow = (name) => page.locator('.card', { has: page.getByRole('link', { name, exact: true }) });
+  const row = installedRow('OpenAI 1.0.0');
+  await expect(row).toContainText('Providers: OpenAI (work), OpenAI (home)');
+  await expect(row).toContainText('Removing it removes OpenAI (work) and OpenAI (home), with their keys and models.');
+  // A protocol plugin says what needs it.
+  await expect(installedRow('OpenAI Responses 0.1.0')).toContainText('Needed by OpenAI.');
+  await row.getByRole('button', { name: 'Remove' }).click();
+  await row.getByRole('button', { name: 'Tap again to remove' }).click();
+  await expect(installedRow('OpenAI 1.0.0')).toHaveCount(0);
+  expect(await installedIds(page)).toEqual([]);
+  await page.goto('/#/models');
+  await expect(page.getByText('No providers yet. Add one below.')).toBeVisible();
+  expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toEqual([]);
+});

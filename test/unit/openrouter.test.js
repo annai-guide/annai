@@ -5,6 +5,8 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { readConfig, modelOf, getKey } from '../../src/core/llm/config.js';
+import { createLlm } from '../../src/core/llm/service.js';
+import { hostKit } from './package-kit.js';
 import { signInUrl, codeSignIn, tapCode, callbackFrom, exchange, finishSignIn, signingIn, AUTH_URL, KEYS_URL } from '../../src/ui/openrouter.js';
 
 /** A Storage-like map. */
@@ -73,11 +75,22 @@ test("a code OpenRouter won't take, an old sign-in and an empty paste each say w
   await assert.rejects(exchange({ code: 'again', state: 'x', fetch: expired, storage, now: 2000 }), /^Error: annai has no sign-in waiting for this code: it was used already, or began in another browser\.$/);
 });
 
-test('finishing a sign-in: the address is cleaned, the endpoint, key and free models are set up, and the user is told', async () => {
-  const store = createMemoryStore();
-  const ws = new Workspace(store);
-  await ensureBaseScopes(ws);
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
+/** annai's model service on a fresh device, its official plugins served from this repository. */
+async function device() {
+  const k = await hostKit();
+  const root = new URL('../../', import.meta.url);
+  const fetch = async (/** @type {any} */ url) => {
+    try {
+      return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+  return { ...k, llm: createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch }) };
+}
+
+test('finishing a sign-in: the address is cleaned, one OpenRouter provider, its one key and free models are set up, and the user is told', async () => {
+  const { ws, store, llm } = await device();
   const storage = memoryStorage();
   const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
   /** @type {any[]} */
@@ -87,8 +100,7 @@ test('finishing a sign-in: the address is cleaned, the endpoint, key and free mo
   /** @type {boolean[]} */
   const drawn = [];
   const ctx = {
-    ws, store,
-    llm: { templates: async () => catalog, ensureType: async () => {} },
+    ws, store, llm,
     notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) },
     // The Models screen is drawn as soon as the address is clean, saying the sign-in is being finished.
     render: () => drawn.push(signingIn()),
@@ -104,10 +116,13 @@ test('finishing a sign-in: the address is cleaned, the endpoint, key and free mo
   assert.deepEqual(drawn, [true]);
   assert.equal(signingIn(), false);
   const cfg = await readConfig(ws);
-  const endpoint = /** @type {any} */ (Object.values(cfg.endpoints).find((e) => e.template?.id === 'openrouter'));
-  assert.equal(await getKey(store, endpoint.id), 'sk-or-signed-in');
+  const providers = Object.values(cfg.providers);
+  assert.deepEqual(providers.map((p) => p.plugin), ['provider-openrouter'], 'one provider');
+  assert.equal(await getKey(store, providers[0].id), 'sk-or-signed-in');
+  assert.deepEqual(await store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), [`llm:${providers[0].id}`], 'one key');
   assert.deepEqual(cfg.roles.main.models.map((id) => modelOf(cfg.models[id]).name), ['Google: Gemma 4 31B (free)']);
   assert.deepEqual(cards.map((c) => [c.tone, c.title]), [['ok', 'Signed in with OpenRouter']]);
+  assert.match(cards[0].body, /also added OpenRouter's transcription and voices, behind the phone's own dictation/);
   assert.equal(await finishSignIn(ctx, { location: /** @type {any} */ ({ search: '', pathname: '/' }) }), false);
 });
 
@@ -119,8 +134,8 @@ test("a sign-in that came back but didn't finish says why on a card, and isn't l
   const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
   /** @type {any[]} */
   const cards = [];
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
-  const ctx = { ws, store, llm: { templates: async () => catalog, ensureType: async () => {} }, notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) } };
+  const { llm } = await device();
+  const ctx = { ws, store, llm, notices: { toast: () => {}, card: (/** @type {any} */ c) => cards.push(c) } };
   await finishSignIn(ctx, {
     location: /** @type {any} */ ({ search: `?code=abc&state=${url.searchParams.get('state')}`, pathname: '/' }),
     history: /** @type {any} */ ({ replaceState: () => {} }),
@@ -194,11 +209,10 @@ test("on an iPhone Home Screen app, annai's 15 minutes count from the tap, not f
   assert.equal(await exchange({ code: 'new', state: null, pasted: true, fetch: ok, storage, now: 50 * 60_000 }), 'sk-or-new');
 });
 
-test('annai gets ready before it asks OpenRouter for a key: with no OpenRouter template, or a plugin that fails to install, no key is made that annai would lose (fix pass)', async () => {
+test("annai gets ready before it asks OpenRouter for a key: with annai's catalog out of reach, or a plugin that fails to install, no key is made that annai would lose (fix pass)", async () => {
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
-  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
   /** @param {any} llm */
   const attempt = async (llm) => {
     const storage = memoryStorage();
@@ -214,12 +228,12 @@ test('annai gets ready before it asks OpenRouter for a key: with no OpenRouter t
     });
     return { asked, cards, waiting: storage.getItem('annai.openrouter') !== null };
   };
-  const noTemplate = await attempt({ templates: async () => ({ format: 1, endpoints: [] }), ensureType: async () => {} });
-  assert.equal(noTemplate.asked, 0);
-  assert.match(noTemplate.cards[0].body, /template isn't available/);
-  const noPlugin = await attempt({ templates: async () => catalog, ensureType: async (/** @type {string} */ t) => { if (t === 'openai-speech') throw new Error("speech-openai couldn't be downloaded."); } });
-  assert.equal(noPlugin.asked, 0, 'the speech plugins are installed before the code is traded, too');
+  const noCatalog = await attempt({ installProvider: async () => { throw new Error("catalog: annai's list of plugins couldn't be loaded. Check the connection and try again."); }, addProvider: async () => 'x' });
+  assert.equal(noCatalog.asked, 0);
+  assert.match(noCatalog.cards[0].body, /couldn't be loaded.*Nothing was sent to OpenRouter/);
+  const noPlugin = await attempt({ installProvider: async () => { throw new Error("speech-openai: couldn't be downloaded."); }, addProvider: async () => 'x' });
+  assert.equal(noPlugin.asked, 0, 'what it requires is installed before the code is traded, too');
   assert.match(noPlugin.cards[0].body, /couldn't be downloaded.*Nothing was sent to OpenRouter/);
   assert.equal(noPlugin.waiting, true, 'the sign-in still waits, so trying again costs nothing');
-  assert.deepEqual(Object.keys((await readConfig(ws)).endpoints), []);
+  assert.deepEqual(Object.keys((await readConfig(ws)).providers), []);
 });

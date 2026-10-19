@@ -1,5 +1,3 @@
-import { addFromTemplate } from '../core/llm/templates.js';
-import { readConfig } from '../core/llm/config.js';
 import { platform, isStandalone } from './platform.js';
 
 /**
@@ -7,8 +5,8 @@ import { platform, isStandalone } from './platform.js';
  * side. The browser goes to OpenRouter, which sends it back with a code; the code, with a secret
  * only this browser knows (the verifier), buys a key. An iPhone Home Screen app keeps its storage
  * apart from Safari, where OpenRouter would send it back, so there OpenRouter shows the code
- * and the user pastes it instead. Sign-in also adds OpenRouter's transcription and voice, behind
- * the free ones (the user, 2026-10-18).
+ * and the user pastes it instead. Sign-in makes one OpenRouter provider with one key, for its chat,
+ * transcription and voice; its speech models go behind the free ones (the user, 2026-10-18).
  * @typedef {{ getItem(k: string): string | null, setItem(k: string, v: string): void, removeItem(k: string): void }} KeyValue
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  */
@@ -16,8 +14,8 @@ export const AUTH_URL = 'https://openrouter.ai/auth';
 export const KEYS_URL = 'https://openrouter.ai/api/v1/auth/keys';
 const SLOT = 'annai.openrouter';
 const MAX_AGE = 15 * 60_000;
-/** OpenRouter's transcription and voice, which sign-in adds too. */
-export const VOICE_TEMPLATES = Object.freeze(['openrouter-transcription', 'openrouter-speech']);
+/** OpenRouter's provider plugin, which sign-in adds (it moves into that plugin in milestone 4). */
+const PLUGIN = 'provider-openrouter';
 const AGAIN = 'Tap Sign in with OpenRouter to start again.';
 /** A sign-in that came back is being finished: the Models screen says so. */
 let finishing = false;
@@ -131,20 +129,16 @@ export async function exchange({ code, state, pasted = false, fetch: get = (url,
 }
 
 /**
- * What signing in needs before OpenRouter is asked for a key: annai's templates and the plugins for
- * their endpoint types. None needs the key, so a failure here costs nothing: no key is made that
- * annai would then lose (fix pass). @param {any} ctx llm @returns {Promise<{ endpoints: any[] }>} the catalog
+ * What signing in needs before OpenRouter is asked for a key: OpenRouter's provider plugin and what it
+ * requires. None needs the key, so a failure here costs nothing: no key is made that annai would then
+ * lose (fix pass). @param {any} ctx llm
  */
 export async function readyForSignIn(ctx) {
-  const catalog = await ctx.llm.templates();
-  const tpls = ['openrouter', ...VOICE_TEMPLATES].map((id) => catalog.endpoints.find((/** @type {any} */ t) => t.id === id)).filter(Boolean);
-  if (tpls[0]?.id !== 'openrouter') throw new Error("annai's OpenRouter template isn't available yet. Connect to the internet and try again.");
   try {
-    for (const type of new Set(tpls.map((t) => t.type))) await ctx.llm.ensureType(type);
+    await ctx.llm.installProvider(PLUGIN);
   } catch (e) {
     throw new Error(`${String(/** @type {any} */ (e)?.message ?? e)} Nothing was sent to OpenRouter yet: try again.`);
   }
-  return catalog;
 }
 
 /**
@@ -152,65 +146,32 @@ export async function readyForSignIn(ctx) {
  * what it set up. @param {any} ctx @param {() => Promise<string>} get
  */
 export async function signIn(ctx, get) {
-  const catalog = await readyForSignIn(ctx);
-  signedIn(ctx, await connectOpenRouter(ctx, await get(), catalog));
+  await readyForSignIn(ctx);
+  await connectOpenRouter(ctx, await get());
+  signedIn(ctx);
 }
 
 /**
- * Sets annai up with an OpenRouter key: the OpenRouter endpoint from annai's template, its key,
- * and free models in the roles that are still empty, so trying annai costs nothing; then its voice.
- * @param {any} ctx llm, ws and store @param {string} key @param {{ endpoints: any[] }} catalog from readyForSignIn
- * @returns {Promise<{ id: string, voice: string[] | null }>} the endpoint's id; the voice templates added, null if that failed
+ * Sets annai up with an OpenRouter key: one OpenRouter provider with that key, free models in the chat
+ * roles that are still empty, so trying annai costs nothing, and its transcription and voices behind
+ * the phone's own (decision 6). @param {any} ctx llm @param {string} key @returns {Promise<string>} the provider's id
  */
-export async function connectOpenRouter(ctx, key, catalog) {
-  const tpl = catalog.endpoints.find((/** @type {any} */ t) => t.id === 'openrouter');
-  const id = await addFromTemplate(ctx, tpl, { key, roles: 'free' });
-  // Chat is enough to start: the voice can be added later from the endpoint's page.
-  const voice = await addOpenRouterVoice(ctx, key, catalog).catch(() => null);
-  return { id, voice };
-}
-
-/** The voice templates annai has that no endpoint was made from yet. @param {import('../core/llm/config.js').ModelConfig} cfg @param {{ endpoints: any[] }} catalog */
-export function voiceMissing(cfg, catalog) {
-  const have = new Set(Object.values(cfg.endpoints).map((e) => e.template?.id));
-  return VOICE_TEMPLATES.filter((id) => !have.has(id) && catalog.endpoints.some((t) => t.id === id));
-}
-
-/**
- * Adds OpenRouter's transcription and voice, each endpoint with its own copy of the key, their models
- * at the end of the speech lists, so nothing that costs money comes first.
- * @param {any} ctx llm, ws and store @param {string} key @param {{ endpoints: any[] }} [catalog]
- * @returns {Promise<string[]>} the templates added
- */
-export async function addOpenRouterVoice(ctx, key, catalog) {
-  if (!key) throw new Error("This endpoint has no key yet. Save OpenRouter's key on it first.");
-  const cat = catalog ?? await ctx.llm.templates();
-  /** @type {string[]} */
-  const added = [];
-  for (const id of voiceMissing(await readConfig(ctx.ws), cat)) {
-    const tpl = cat.endpoints.find((t) => t.id === id);
-    await ctx.llm.ensureType(tpl.type);
-    await addFromTemplate(ctx, tpl, { key, roles: 'recommended', behind: true });
-    added.push(id);
-  }
-  return added;
+export function connectOpenRouter(ctx, key) {
+  return ctx.llm.addProvider(PLUGIN, { key, roles: 'free' });
 }
 
 /** Where OpenRouter's speech models go, and how to use them. */
 export const BEHIND = "behind the phone's own dictation and the browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles";
 
-/** Says on a card what sign-in set up. @param {any} ctx @param {{ voice: string[] | null }} done */
-export function signedIn(ctx, { voice }) {
-  const start = 'Shiori thinks with free models to start, so trying annai costs nothing.';
-  const body = voice === null ? `${start} annai couldn't add all of OpenRouter's voice just now: the OpenRouter endpoint's page can add the rest.`
-    : voice.length ? `${start} annai also added OpenRouter's transcription and voices, ${BEHIND}.` : `${start} You can change them under Roles.`;
-  ctx.notices.card({ tone: 'ok', title: 'Signed in with OpenRouter', body });
+/** Says on a card what sign-in set up. @param {any} ctx */
+export function signedIn(ctx) {
+  ctx.notices.card({ tone: 'ok', title: 'Signed in with OpenRouter', body: `Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, ${BEHIND}.` });
 }
 
 /**
  * Finishes a sign-in when this page load is OpenRouter's callback: takes the code out of the
  * address, shows Models (which says it is finishing), trades the code for a key, sets up the
- * endpoints, and says how it went.
+ * provider, and says how it went.
  * @param {any} ctx llm, ws, store, notices and render
  * @param {{ fetch?: Fetch, storage?: KeyValue, location?: { search: string, pathname: string }, history?: { replaceState: History['replaceState'] } }} [env]
  * @returns {Promise<boolean>} whether this page load was a callback

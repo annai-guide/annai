@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, anthropicToolReply, startTrip, writeRecords } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
@@ -11,7 +11,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     await page.clock.install({ time: new Date() });
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addEndpoint(page, 'Other: Anthropic Messages', { name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
