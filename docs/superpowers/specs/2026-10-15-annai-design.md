@@ -609,7 +609,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   | bad request | hint: check the ability's tunables |
   | network | retry with backoff |
 
-  "Wait as instructed" reads a `retry-after` header, or a Google API error's RetryInfo (Gemini sends its errors as a list of one). Gemini's `RESOURCE_EXHAUSTED`, its free tier's limits included, is rate-limited, never "out of credit", though its words say "quota" (checked against Gemini, 2026-10-19).
+  "Wait as instructed" reads a `retry-after` header, or a Google API error's RetryInfo (Gemini sends its errors as a list of one). Gemini's `RESOURCE_EXHAUSTED` on a 429, its free tier's limits included, is rate-limited, never "out of credit", though its words say "quota"; on a 402 (prepaid credit used up) it is out of credit (checked against Gemini, 2026-10-19). A rest of more than 10 minutes is said plainly, on the model's line in a card and to Koe: "its daily limit is used up; it rests until 07:30", not in the provider's billing words.
 - **Keys** live only in `secrets`. They're never in context and are redacted from the trace.
 
 ## 10. Voice
