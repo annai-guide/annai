@@ -77,7 +77,7 @@ export function activate(annai) {
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Protocols (endpoint types)" below |
 | `annai.providers.setup(setup)` | a provider plugin's own setup and quirks, once: see "Model providers with code" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
-| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`) |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`), `base64` (`encode(bytes)`, `decode(text)`) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
 | `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or provider's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
@@ -256,8 +256,8 @@ A model provider is usually data: one `annai-plugin.json` with a `provider` desc
 
 - **The provider:** `baseUrl` (empty when the user gives one); `key`: `required`, `optional` or `none` (no key field); `keyHeader` when the key goes in a header of its own rather than the protocol's way (annai puts it there and gives the protocol no key); `keyUrl` and `note` for its page; `headers` sent with every ability's requests; `local: true` for a server the user runs. Every address must be https, or http only for `localhost` or `127.0.0.1`.
 - **Where a key goes is checked where it is sent.** annai fetches what a protocol builds only at the origin of its ability's address; any other request is refused, unsent ("…built a request to <origin>, not its address <origin>. Check its tunables."). A tunable a protocol joins onto the address (`path`, `listPath`), on an ability, a model or `modelDefaults`, must be a path from it: starting with `/`, with no `//` or `@`.
-- **Each ability** (an id of lowercase letters, digits and dashes) has a `kind` (`chat`, `transcription`, `voice`), a protocol's `type`, and optionally a `name`, `on: false` to start switched off, its own `baseUrl`, `tunables`, `extraBody`, a `note`, `modelDefaults` (what a model added by id or from a list starts with, such as `providerTools` or `cacheTtls`) and `models` (each with a `providerId`, and the model settings of spec §9.2).
-- **`roles`** suggests models: `recommended` and `free`, each role to provider model ids among the abilities of its kind (chat roles `main`, `utility`, `decide`; `speech-in` transcription; `speech-out` voices). Adding a provider fills chat roles still empty; its speech models go behind the free entries.
+- **Each ability** (an id of lowercase letters, digits and dashes) has a `kind` (`chat`, `transcription`, `voice`, `realtime`), a protocol's `type`, and optionally a `name`, `on: false` to start switched off, its own `baseUrl`, `tunables`, `extraBody`, a `note`, `modelDefaults` (what a model added by id or from a list starts with, such as `providerTools` or `cacheTtls`) and `models` (each with a `providerId`, and the model settings of spec §9.2).
+- **`roles`** suggests models: `recommended` and `free`, each role to provider model ids among the abilities of its kind (chat roles `main`, `utility`, `decide`; Koe's `koe-talk` and `koe-type`, chat or realtime; `speech-in` transcription; `speech-out` voices). Adding a provider fills chat roles still empty, never Koe's (only "Use the recommended models" does); its speech models go behind the free entries.
 - **`requires`** must cover every protocol of an ability that starts on. One that starts off brings its protocol when the user turns it on.
 - **One key per provider.** The user may add several providers from one plugin (two accounts); each has its own key, models and places in roles. annai keeps the key in its secrets, and hands it only to the protocol a call goes through, never to another provider's plugin. A data-only provider can't read it at all; a plugin with code runs with annai's full access (the install screen says so), so the user trusts it with every key.
 - **Updates:** when your plugin's version changes, the providers made from it take the new description; the user's own changes stay, new models join no role, and a new ability arrives switched off.
@@ -414,6 +414,56 @@ Speech travels in the smallest format both the phone and the provider handle (sp
 - **What your code gets:** an `audio` part's `mediaType` (`audio/ogg`, `audio/webm`, `audio/mp4`, `audio/aac`, `audio/mpeg`, `audio/flac` or `audio/wav`), or a transcription's `audio.mediaType`. Name the file or format for it, as Chat Completions does (`audio/mp4` → `m4a`).
 - **When a provider refuses** a format it was said to take, annai asks again in WAV (a transcription after any bad request; a chat model when the 400 names the audio or its format), and keeps sending that model WAV until it restarts if WAV works. A voice that refuses its format is asked for MP3, then WAV. So keep `classify` from turning such a refusal into another kind.
 - **A failed upload** (network or server) is sent again with the very same bytes: don't change the audio between attempts.
+
+### Realtime voice protocols
+
+A realtime protocol speaks to a model that hears and talks in one stream over a WebSocket, such as Gemini Live (`plugins-official/gemini-live`). annai opens the socket; your type builds its address and drives it. A provider's ability of kind `realtime` uses it, and Koe talks through it.
+
+```js
+export function activate(annai) {
+  const { base64 } = annai.helpers;
+  return annai.providers.register({
+    type: 'my-live',
+    name: 'My live voice',
+    realtime: true,
+    tunables: { voice: '' },
+    audio: { in: [{ format: 'pcm16', rate: 16000 }], out: [{ format: 'pcm16', rate: 24000 }] },   // preferred first
+    open: ({ endpoint, key, tunables }) => ({ url: `${endpoint.baseUrl.replace(/^http/, 'ws')}/live?key=${encodeURIComponent(key)}`, protocols: [] }),
+    attach(socket, { model, tunables, setup, emit }) {
+      let ready;
+      socket.on((data) => {                     // a string, or bytes
+        const m = JSON.parse(typeof data === 'string' ? data : new TextDecoder().decode(data));
+        if (m.ready) ready();
+        if (m.audio) emit({ type: 'audio', data: base64.decode(m.audio) });
+        if (m.said) emit({ type: 'said', text: m.said });
+        // { type: 'heard', text }, { type: 'tool', id, name, input }, { type: 'turn', end: 'complete' | 'interrupted' },
+        // { type: 'usage', usage: { input, output, audioIn, audioOut } }, { type: 'resume', handle }, { type: 'goaway', ms }
+      });
+      socket.send(JSON.stringify({ setup: { model: model.providerId, instructions: setup.instructions + '\n\n' + setup.context, tools: setup.tools, resume: setup.resume } }));
+      return {
+        ready: new Promise((r) => { ready = r; }),
+        audio: (chunk) => socket.send(JSON.stringify({ audio: base64.encode(chunk) })),   // 16-bit PCM at setup.audioIn's rate
+        activity: (edge) => socket.send(JSON.stringify({ activity: edge })),                // 'start' or 'end' of someone speaking
+        text: (text, { interrupt } = {}) => socket.send(JSON.stringify({ text, interrupt })),
+        image: ({ mediaType, data }) => socket.send(JSON.stringify({ image: { mediaType, data } })),
+        answer: (id, name, output, { silent } = {}) => socket.send(JSON.stringify({ answer: { id, name, output, silent } })),
+      };
+    },
+    classifyClose: (code, reason) => (/bad key/i.test(reason) ? 'auth' : null),
+  });
+}
+```
+
+- **What annai does around it:**
+  - It opens the socket at the address `open()` gives, only at the origin of the ability's address: `wss:` for an `https` address, `ws:` only for `localhost` and `127.0.0.1`. Any other is refused before anything opens. A socket can't follow a redirect, so the key reaches only the provider.
+  - It calls `attach()` once the socket is open. Set `socket.on()` there: messages before it are dropped.
+  - It waits for `ready` (15 s), then hands the session to Koe. Before `ready`, a close may ask for one more try: `reopen(code, reason, tunables)` gives the tunables to open with (Gemini Live answers v1alpha's proactive audio, refused on v1beta, so).
+  - It reads a close into an error kind: your `classifyClose`, then annai's (a refused key is `auth`; quota `rate`; 1008 or "not found" `not-found`; 1011 `server`; anything else `network`).
+  - It prices each `usage` you emit (one per turn) by the model's prices, `audioIn` and `audioOut` among them, and counts it in Spend per day. It traces the session's life as `live.session` entries, with the data both ways, and never its address, subprotocols or key.
+  - A crash in your code counts against your plugin, as for any protocol.
+- **Audio:** `audio()` gets 16-bit PCM at `setup.audioIn`'s rate, and `audio` events carry it at `setup.audioOut`'s. annai streams only speech: `activity('start')`, the audio, then `activity('end')` at the end of the sentence, from its own end-of-sentence detector. Nothing is sent while nobody speaks.
+- **Answers:** annai answers every tool call at once. `silent` means "say nothing more for this answer" (Gemini's `scheduling: "SILENT"`, without which it adds a filler turn).
+- **The stand-in** (`test/fakes/realtime-server.js`) speaks Gemini Live as it was measured to, for your tests: `startRealtimeServer({ flavour: 'gemini', key, turns })`.
 
 ## Backup places
 
