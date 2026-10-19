@@ -48,8 +48,10 @@ export function anotherAddress(io) {
       const { h } = ui;
       const results = h('div', {});
       const status = h('p', { class: 'sub', role: 'status' });
-      // A look is for the address and key it looked with: changing either asks for another.
+      // A look is for the address and key it looked with: changing either, even while it runs, asks for another.
+      let looks = 0;
       const changed = () => {
+        looks += 1;
         results.replaceChildren();
         status.textContent = '';
       };
@@ -93,12 +95,14 @@ export function anotherAddress(io) {
         onclick: async () => {
           look.disabled = true;
           changed();
+          const mine = looks;
           status.textContent = 'Looking: the model list, then an empty request to each known path…';
           try {
             const k = key.value.trim() || null;
-            show(await probe(address.value, k, io), k);
+            const r = await probe(address.value, k, io);
+            if (mine === looks) show(r, k);
           } catch (e) {
-            status.textContent = words(e);
+            if (mine === looks) status.textContent = words(e);
           } finally {
             look.disabled = false;
           }
