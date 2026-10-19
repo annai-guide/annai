@@ -362,6 +362,7 @@
               "audioIn": 32,
               "cacheReadAudio": 0.4,
               "image": 5,
+              "cacheReadImage": 0.5,
               "output": 24,
               "audioOut": 64
             }
@@ -387,6 +388,7 @@
               "audioIn": 10,
               "cacheReadAudio": 0.3,
               "image": 0.8,
+              "cacheReadImage": 0.08,
               "output": 2.4,
               "audioOut": 20
             }

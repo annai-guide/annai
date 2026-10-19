@@ -81,7 +81,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 20477,
+      "size": 20527,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -90,7 +90,7 @@
       },
       "files": {
         "annai-plugin.json": "43b1136c29a01d3d0541ee6223192e52e665a32b28866af13230ca6228c92ac0",
-        "index.js": "89711c8332ac474f50a9c74962557cbfa230cb6a0ba9dc4353b3cfe5c4e6de81"
+        "index.js": "b84fa51506e0a6d13a061b75d0192db811ff762c9ce6879e1d9cdb0e0ff02b6f"
       }
     },
     {
@@ -406,7 +406,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 12010,
+      "size": 12085,
       "requires": [
         {
           "id": "openai-responses",
@@ -419,7 +419,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "9b4e0a2bbc819e25616e3b8020cfe1215289ea22924094236ce00dde365a66e8"
+        "annai-plugin.json": "c7600ea38755f2b12fa102e32a1d9442b9d065e722f6d6486494cfcb0b80e6f9"
       }
     },
     {

@@ -62,6 +62,13 @@ test("a realtime model's cached audio tokens are priced by cacheReadAudio, else 
   assert.deepEqual(addUsage({ ...NO_USAGE, cacheReadAudio: 3 }, { ...NO_USAGE }), { ...NO_USAGE, cacheReadAudio: 3 });
 });
 
+test("a realtime model's cached image tokens are priced by cacheReadImage, else as cache reads, else as images (OpenAI's: $0.50 against $0.40 for cached text) (review)", () => {
+  close(costOf({ ...NO_USAGE, cacheRead: 1000, cacheReadImage: 2000 }, { input: 4, cacheRead: 0.4, cacheReadImage: 0.5, image: 5 }), (1000 * 0.4 + 2000 * 0.5) / 1e6);
+  close(costOf({ ...NO_USAGE, cacheReadImage: 2000 }, { input: 4, cacheRead: 0.4, image: 5 }), (2000 * 0.4) / 1e6);
+  close(costOf({ ...NO_USAGE, cacheReadImage: 2000 }, { input: 4, image: 5 }), (2000 * 5) / 1e6);
+  assert.deepEqual(addUsage({ ...NO_USAGE, cacheReadImage: 3 }, { ...NO_USAGE, cacheReadImage: 4 }), { ...NO_USAGE, cacheReadImage: 7 });
+});
+
 test("reasoning levels: the model's own, else the nearest, the cheaper on a tie (spec §9.3)", () => {
   assert.deepEqual(LEVELS, ['off', 'low', 'medium', 'high', 'max']);
   assert.deepEqual(ROLE_LEVELS, { main: 'medium', utility: 'low', decide: 'off', 'koe-talk': 'off', 'koe-type': 'off' });

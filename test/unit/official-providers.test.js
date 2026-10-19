@@ -305,8 +305,8 @@ test("OpenAI's Realtime voice: off until switched on, which installs openai-real
   assert.deepEqual([rt.kind, rt.type, rt.name, rt.on, rt.baseUrl], ['realtime', 'openai-realtime', 'Realtime voice', false, undefined], 'at the provider\'s own address');
   assert.deepEqual(rt.models.map((/** @type {any} */ m) => m.providerId), ['gpt-realtime-2.1', 'gpt-realtime-2.1-mini']);
   assert.deepEqual(rt.models.map((/** @type {any} */ m) => m.prices), [
-    { input: 4, cacheRead: 0.4, audioIn: 32, cacheReadAudio: 0.4, image: 5, output: 24, audioOut: 64 },
-    { input: 0.6, cacheRead: 0.06, audioIn: 10, cacheReadAudio: 0.3, image: 0.8, output: 2.4, audioOut: 20 },
+    { input: 4, cacheRead: 0.4, audioIn: 32, cacheReadAudio: 0.4, image: 5, cacheReadImage: 0.5, output: 24, audioOut: 64 },
+    { input: 0.6, cacheRead: 0.06, audioIn: 10, cacheReadAudio: 0.3, image: 0.8, cacheReadImage: 0.08, output: 2.4, audioOut: 20 },
   ]);
   assert.ok(rt.models.every((/** @type {any} */ m) => m.input.includes('image') && m.contextWindow === 128000));
   assert.match(rt.note, /short-lived/);
