@@ -3,8 +3,8 @@ import { ME } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 
 /**
- * Tools (spec §5.4, §7.2). The loop's own tools come first, then every running plugin's, in the
- * order they registered; switches come from the app settings, so they cover any plugin's tool.
+ * Tools (spec §5.4, §7.2). The loop's own tools come first, then each name's owner among running
+ * plugins' (milestone 6); switches come from the app settings, so they cover any plugin's tool.
  * @typedef {{ mediaType: string, hash?: string, data?: string, path?: string, region?: number[], name?: string }} Media
  * @typedef {{ content: string, images?: Media[], document?: Media, isError?: boolean, heard?: string[], endTurn?: boolean, told?: boolean }} ToolOutput
  *   heard: segments the user said in answer, which follow the result (spec §10.3); endTurn: the turn ends after this step (chatter heard, §10.4);
@@ -35,8 +35,8 @@ export function checkTool(t) {
 }
 
 /**
- * The tools Shiori has now: the loop's, then plugins'; the first tool with a name wins, and a
- * switched-off tool is left out.
+ * The tools Shiori has now: the loop's, then the owners of plugins' names (a name the loop has is
+ * the loop's alone); a switched-off tool is left out.
  * @param {{ registry: import('../registry.js').Registry, switches: Record<string, boolean>, loop?: (Tool & { pluginId: string })[] }} c
  * @returns {(Tool & { pluginId: string })[]}
  */

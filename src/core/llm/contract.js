@@ -255,12 +255,9 @@ export function safeId(id) {
  */
 
 /**
- * The endpoint types running plugins provide, by type id; the first plugin to provide a type wins.
+ * The endpoint types running plugins provide, by type id: each type's owner (milestone 6), annai's own first, then by install time.
  * @param {import('../registry.js').Registry} registry @returns {Map<string, EndpointType>}
  */
 export function endpointTypes(registry) {
-  /** @type {Map<string, EndpointType>} */
-  const out = new Map();
-  for (const t of registry.list('endpoint-type')) if (!out.has(t.type)) out.set(t.type, t);
-  return out;
+  return new Map(registry.list('endpoint-type').map((t) => [t.type, t]));
 }

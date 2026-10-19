@@ -169,10 +169,9 @@ export function slotEntries(ctx, kind) {
   return ctx.registry?.entries(kind) ?? [];
 }
 
-/** The replacement for a named component (the last one registered wins), or null (choice 4). @param {any} ctx @param {string} name @returns {Entry | null} */
+/** A plugin's replacement for a named component, when it owns the name (the user chose it: milestone 6), or null: annai's own. @param {any} ctx @param {string} name @returns {Entry | null} */
 export function component(ctx, name) {
-  const list = slotEntries(ctx, 'ui:component').filter((e) => e.item?.name === name);
-  return list[list.length - 1] ?? null;
+  return slotEntries(ctx, 'ui:component').find((e) => e.item?.name === name) ?? null;
 }
 
 /** Which plugins' dock and avatar replace annai's now: when it changes, the dock is made again (choice 9). @param {any} ctx */

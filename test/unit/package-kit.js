@@ -23,6 +23,16 @@ export const KIT = (more = {}) => files({
   'personalities/ranger.md': '# Ranger\nCalm and practical.',
 });
 
+/** A code plugin: its activate() is body. @param {string} id @param {string} body @param {any} [more] manifest changes */
+export const codePlugin = (id, body, more = {}) => files({
+  'annai-plugin.json': JSON.stringify({ id, name: id[0].toUpperCase() + id.slice(1), version: '1.0.0', api: 1, entry: 'index.js', ...more }),
+  'index.js': `export function activate(annai) { ${body} }`,
+});
+
+/** A built-in plugin's module, as a data: address addBuiltin can import. @param {string} id @param {string} body its activate() */
+export const builtinUrl = (id, body) => `data:text/javascript;base64,${Buffer.from(`export const manifest = ${JSON.stringify({ id, name: `Built-in ${id}`, version: '1.0.0', api: 1 })};
+export function activate(annai) { ${body} }`).toString('base64')}`;
+
 /** A host on memory storage, its log appends handed to plugins' hooks, that loads installed modules from storage as data: URLs (as plugins.test.js does). */
 export async function hostKit() {
   const registry = new Registry();

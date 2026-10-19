@@ -7,17 +7,18 @@ export const NOT_OWN = `${OWN}, but the one installed came from elsewhere, so an
 /** A plugin the user switched off stays off (security review). */
 export const TURN_ON = 'Turn it on in Settings → Plugins, then try again.';
 
+/** A named item's name, read from its field f. */
+const by = (/** @type {string} */ f) => (/** @type {any} */ x) => String(x?.[f]);
 /**
  * The kinds whose items have a name only one plugin may hold (the provider plan's milestone 6), each with
  * how its name is read. Hooks and the slots that add things up (chips, sections, tabs, screens) never clash.
  * @type {Record<string, (item: any) => string>}
  */
 export const NAMED = Object.freeze({
-  tool: (x) => String(x?.name), 'endpoint-type': (x) => String(x?.type), 'storage-type': (x) => String(x?.type), skill: (x) => String(x?.name),
-  personality: (x) => String(x?.name), 'ui:component': (x) => String(x?.name), 'ui:card-type': (x) => String(x?.type), search: (x) => String(x?.id),
+  tool: by('name'), 'endpoint-type': by('type'), 'storage-type': by('type'), skill: by('name'), personality: by('name'), 'ui:component': by('name'), 'ui:card-type': by('type'), search: by('id'),
 });
 /** Kinds handed the keys the user gives: a protocol gets a provider's, a kind of backup place a place's. Rank alone owns them, never a choice. */
-const KEYED = new Set(['endpoint-type', 'storage-type']);
+export const KEYED = new Set(['endpoint-type', 'storage-type']);
 
 /**
  * How a name's owner is found. rank: lower comes first (the host's: built-ins 0, official 1, third-party 2, then
@@ -32,14 +33,9 @@ const KEYED = new Set(['endpoint-type', 'storage-type']);
 /** @type {Rules} before setRules: the first to register owns a name */
 const FIRST = { rank: () => [], choice: () => undefined, reserved: () => null };
 
-/** Two ranks compared element by element: below 0 when a comes first. @param {(number | string)[]} a @param {(number | string)[]} b */
-function before(a, b) {
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if (a[i] === b[i]) continue;
-    if (a[i] === undefined) return -1;
-    if (b[i] === undefined) return 1;
-    return a[i] < b[i] ? -1 : 1;
-  }
+/** Two ranks of one length compared element by element: below 0 when a comes first. @param {(number | string)[]} a @param {(number | string)[]} b */
+export function compareRanks(a, b) {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
   return 0;
 }
 
@@ -151,7 +147,7 @@ export class Registry {
     const chosen = KEYED.has(kind) ? undefined : this.#rules.choice(kind, name);
     if (chosen && live.some((e) => e.pluginId === chosen)) return { pluginId: chosen, chosen: true };
     const rank = (/** @type {{ pluginId: string, seq: number }} */ e) => [...this.#rules.rank(e.pluginId), e.seq];
-    const [first] = live.map((e) => ({ e, r: rank(e) })).sort((a, b) => before(a.r, b.r)).map((x) => x.e);
+    const [first] = live.map((e) => ({ e, r: rank(e) })).sort((a, b) => compareRanks(a.r, b.r)).map((x) => x.e);
     if (how === 'own' && (!first || this.#rules.rank(first.pluginId)[0] !== 0)) return { pluginId: 'annai', chosen: false };
     return first ? { pluginId: first.pluginId, chosen: false } : null;
   }
