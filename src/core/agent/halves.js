@@ -130,6 +130,8 @@ export class Halves {
   #lastView = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
   #liveId = null;
+  /** The Koe list a text Koe calls: its own, or the other one's when its own can't answer. @type {string | null} */
+  #textRole = null;
   #voiceWas = false;
   #lastCard = { key: '', at: 0 };
   /** The open conversation's next reminder, for Koe's view (set by the app). @type {(() => Promise<{ due: number, text: string } | null>) | null} */
@@ -189,7 +191,7 @@ export class Halves {
       half: {
         name: 'koe', tag: KOE_TAG, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
         // Voice on: Koe for talking; off: Koe for typing (the design).
-        role: async () => ({ role: (this.#koeRole = koeList(await this.llm.config(), Boolean(this.voice?.on)).role) }),
+        role: async () => ({ role: (this.#koeRole = this.#textRole ?? koeList(await this.llm.config(), Boolean(this.voice?.on)).role) }),
         voice: () => this.koeState === 'text',
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
@@ -335,16 +337,18 @@ export class Halves {
     const cfg = await this.llm.config();
     this.#split = splitOn(cfg);
     const voiceOn = Boolean(this.voice?.on);
-    const { role } = koeList(cfg, voiceOn);
     const path = koePath(cfg, { voiceOn, types: this.llm.types?.() ?? new Map(), until: (id) => this.llm.bench?.until(id) ?? 0, now: Date.now() });
+    // A text Koe's list that failed whole rests a while.
+    const resting = path?.kind === 'text' && this.#down.role === path.role && this.clock() < this.#down.until;
     /** @type {Told} */
-    let told = (this.#down.role === role && this.clock() < this.#down.until) || !path ? 'koe-down' : 'koe-up';
+    let told = resting || !path ? 'koe-down' : 'koe-up';
     // One voice at a time: Kokoro keeps it to the end of a turn that has it, then Koe takes over (#kokoroEnded asks again).
     this.#later = told === 'koe-up' && this.koeState === 'down' && this.kokoro.voicing;
     if (this.#later) told = 'koe-down';
     const was = this.state.name;
     this.koeState = !this.#split ? 'off' : told === 'koe-down' ? 'down' : path?.kind === 'live' ? 'live' : 'text';
     this.#liveId = path?.kind === 'live' && this.koeState === 'live' ? path.modelId : null;
+    this.#textRole = path?.kind === 'text' ? path.role : null;
     // A live session closes when voice goes off, or Koe's pathway leaves its model: its microphone never stays open otherwise.
     const model = this.live.modelId;
     if (this.live.state !== 'closed' && (!this.#liveId || (model && model !== this.#liveId) || (this.#voiceWas && !voiceOn))) this.live.close(voiceOn ? 'pathway' : 'voice off');
