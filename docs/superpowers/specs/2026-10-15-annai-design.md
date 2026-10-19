@@ -722,6 +722,8 @@ The setting is always one tap away. **Auto:**
 
 Where the browser can't detect headphones, Auto falls back to the user's last explicit choice in that situation.
 
+With a realtime model as Koe (§10.8), the mode decides whether a live session speaks and, at a tap, listens: voice off closes one, and a session for typing shows Koe's words.
+
 ### 10.6 Audio formats
 
 The user: "use the most efficient codec each provider supports … to cut down data usage and increase reliability on trips". The Koe and Kokoro design (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md, "Audio formats") has the measurements.
@@ -754,6 +756,22 @@ While Shiori is two halves (§6.8), the one voice is Koe's:
 - **Koe's `speak` doesn't listen when its question to Kokoro or its `wait` follows it** in the same reply: they run at once. Followed by anything else (a card, say), it listens as Shiori's always did. With voice on, `wait` listens: it ends on Kokoro's note, the user speaking or typing, "Kokoro has nothing to add", or its time limit. Meanwhile the sign shows, and the user can keep talking.
 - **A note from Kokoro ends Koe's listening,** so Kokoro's answer is said without dead air. While the user is speaking, their words come first, and the note with them. An immediate note also cuts Koe's speech where it is; its `speak` result says where, and Koe corrects itself. Cut while the reply still streamed in, what Koe had said aloud is written into the conversation, marked cut, and Koe hears "a note stopped you after: …".
 - **Chatter** goes through the quick-decision gate (§10.4) as before. Dismissed, it still goes into both transcripts, labelled as not meant for Shiori even inside the result of Koe's listening, and wakes neither half.
+
+### 10.8 Live sessions
+
+When the first model of Koe's list that can answer is a realtime one (§9.1, Gemini Live), Koe talks in live sessions: one stream both ways, its own voice, both transcripts (the Koe and Kokoro design, "Realtime sessions"). Its pathway walks its list, then the other Koe list: a live model resting, off or without its protocol running is passed over.
+- **Opening,** never by itself, so no microphone stays open between sessions:
+  - a tap on Shiori, with voice on: the session and the microphone;
+  - a typed message or a photo: a session without the microphone. With voice off, its reply is Koe's bubble (its transcript) and its sound is dropped; when voice comes on, the same session speaks, and a tap gives it the microphone;
+  - a trigger, or a note from Kokoro, to say: a session that speaks, then listens once a tap has unlocked sound;
+  - nothing from a page out of view, and nothing streams from one: what comes meanwhile waits, and is said when the page is back, without the microphone.
+- **Closing,** with the microphone, and full-quality playback back (§10.1): voice off; another conversation, or Erase, which forget its handle; the page going out of view or away; a tap while it listens; Spend per day reached (with its card, §6.6); and a quiet spell, "Close a live session after" in Settings → Voice, 30 seconds by default (10 to 300), with no speech either way and no tool call. 30 s is longer than a pause in talk, short enough for the car's music to come back soon and the free tier not to be spent holding it.
+- **Sound:** the microphone streams only speech, through annai's end-of-sentence detector and the API's manual turns (§10.6): nothing while nobody speaks. While Koe plays, a start needs 6 dB more ("Cut her off by speaking", on by default; off, only a tap does). Koe's voice plays from its first real word: a turn with none (markup, a pause, a sound) plays nothing and is logged as nothing. One voice and one microphone at a time: the speech pipeline lets go of both as a session takes them.
+- **What is logged,** for both halves, per turn: what was heard and what Koe said, markup gone and every word escaped. A line cut off (by the user's voice, a tap, a note or a drop) is kept up to where it was heard, marked ✂. Words heard late are added. Speech the model leaves unanswered (Gemini's proactive audio) is heard, not meant for Shiori, and wakes nobody. Kept clips as §10.2.
+- **Tools** are answered at once: `tell_kokoro` "sent", `show` and `ask` (whose tap comes as the next text turn) without more speech; reads and light changes with their result, escaped as a text Koe reads one. A live Koe has no `speak`, `wait` or `sleep`.
+- **Notes** from Kokoro are text turns in `<from_kokoro id="…">`: an append once Koe's turn and voice have ended, an immediate one at once, cutting Koe off. Kokoro reads a block when a session opens, closes or drops, never a change of its system text or tools.
+- **Going on:** at GoAway, annai reconnects with the resume handle at the next pause. A drop keeps the lines it cut and resumes once, at once. Failing that, the model rests, Kokoro is told, and Koe's next model (its list, then the other) finishes a cut answer through the speech pipeline, or Kokoro does while Koe is down. Handles are kept in memory only.
+- **Its setup:** Koe's live instructions, Shiori's personality and the profile; the conversation's last 12 lines, every word quoted and escaped; the now block, `<today>` and the notes' nonce.
 
 ## 11. Triggers and live mode
 
@@ -978,6 +996,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - Imported and fetched content is the user's responsibility.
   - The trace makes everything the agent sent and read visible.
   - A request a protocol plugin builds is sent only to the origin of its provider ability's address, so a description's tunables can't send a key to another host while the install screen names the right one. A live voice session's WebSocket is held to the same rule (§9.1): annai opens it, never the protocol, and refuses any other origin before anything opens. A key a provider takes only in the address, as Gemini Live's, goes nowhere else, and is never traced.
+  - **Listening live.** While a live session's microphone is open (§10.8), what the user says goes to the provider as it is said, only while someone speaks: the voice chip says "Listening live", and Settings → Voice names where it goes. Sessions close when the page goes out of view or away, and before Erase wipes anything; nothing opens or streams from a page out of view. The Trace records each session's opening, closing, data and cost, and its tool calls.
   - Third-party code plugins run with full trust, and their install screen says so. Data-only plugins (a provider, skills, personalities) can't run anything and get no such warning; a provider's install screen says where keys go, and an update that sends them to a new origin asks first (§5.3).
 - **No telemetry.** "Copy diagnostics" produces a redacted report for the user to share if they choose.
 - **Credits.** Every data source annai contacts is credited in Settings → About, with the attribution its licence or policy asks for:
@@ -1007,7 +1026,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 
 Reference: mockups draft 6.
 
-- **The dock** sits at the bottom of every screen: camera · Shiori · type. Voice layouts, such as driving, enlarge the dock; they never move it. While Kokoro works behind Koe (§6.8), a sign says "Kokoro is working", with Stop, which ends Kokoro's turn alone.
+- **The dock** sits at the bottom of every screen: camera · Shiori · type. Voice layouts, such as driving, enlarge the dock; they never move it. While Kokoro works behind Koe (§6.8), a sign says "Kokoro is working", with Stop, which ends Kokoro's turn alone. While a live session's microphone is open (§10.8), the voice chip says "Listening live"; while one is open for typing, "· live".
 - **One Shiori per screen.** Speech bubbles carry a "SHIORI" label instead of a second avatar.
 - **The top bar** shows the trip name (tap to switch trips) and a menu: Plan, Conversation, Files, Trace, Settings.
 - **Screens:**
