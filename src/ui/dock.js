@@ -163,7 +163,8 @@ export function createDock(ctx) {
 /**
  * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art),
  * else annai's own. A plugin's that fails counts against it: made, and each call after (minors 12),
- * where three throws give annai's own back in its place.
+ * where three throws in a row give annai's own back in its place. A call that works ends its own run,
+ * and its plugin's (fix pass 8b-4); a setLevel that works doesn't end a setState's.
  * @param {any} ctx
  */
 function dockAvatar(ctx) {
@@ -171,16 +172,22 @@ function dockAvatar(ctx) {
   const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
     a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : 'its avatar create() must return el, setState and setLevel');
   if (!a) return createAvatar({ size: 'dock' });
-  /** @type {any} annai's own, once theirs threw three times */
+  /** @type {any} annai's own, once theirs threw three times in a row */
   let own = null;
-  let throws = 0;
+  /** @type {Record<string, number>} each call's throws in a row */
+  const runs = {};
   const call = (/** @type {string} */ name) => (/** @type {any[]} */ ...args) => {
     if (own) return own[name](...args);
     try {
       if (typeof a[name] === 'function') a[name](...args);
+      if (runs[name]) {
+        runs[name] = 0;
+        ctx.registry?.succeeded(c.pluginId);
+      }
     } catch (e) {
       ctx.registry?.fail(c.pluginId, `avatar ${name}`, e);
-      if (++throws < 3) return;
+      runs[name] = (runs[name] ?? 0) + 1;
+      if (Object.values(runs).reduce((n, x) => n + x, 0) < 3) return;
       own = createAvatar({ size: 'dock' });
       own.setState(ctx.agent.state.name);
       own[name](...args);
