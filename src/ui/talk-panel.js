@@ -1,37 +1,31 @@
 import { h, field } from './dom.js';
 import { AllFailedError } from '../core/llm/fallback.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
+import { withoutSecrets } from '../core/agent/net.js';
 import { formatCost, outcomeText } from './format.js';
 
-const SYSTEM = 'You are a helpful travel assistant inside the annai app. This conversation only checks that the models work, so keep your replies short.';
+const SYSTEM = 'You are a helpful travel assistant inside the annai app. This conversation only checks that the model works, so keep your replies short.';
 
-/** The line under a reply: who answered, the tokens, the cost, and which models failed first. @param {any} result */
+/** The line under a reply: its tokens and its cost. @param {any} result */
 function metaLine(result) {
   const u = result.usage;
-  const tokens = u.input + u.cacheRead + u.cacheWrite + u.cacheWrite1h + u.output;
-  const failed = result.attempts.filter((/** @type {any} */ a) => a.outcome !== 'ok');
-  let line = `${result.answeredBy} · ${tokens} tokens · ${formatCost(result.cost)}`;
-  if (failed.length) line += `, after ${failed.length} failed attempt${failed.length === 1 ? '' : 's'} (${failed.map((/** @type {any} */ a) => `${a.name}: ${outcomeText(a.outcome)}`).join('; ')})`;
-  return line;
+  return `${u.input + u.cacheRead + u.cacheWrite + u.cacheWrite1h + u.output} tokens · ${formatCost(result.cost)}`;
 }
 
-/** @param {unknown} err */
-function failure(err) {
-  if (err instanceof AllFailedError) {
-    if (!err.attempts.length) return 'No model is set for the main role. Add one under Roles.';
-    return `No model answered: ${err.attempts.map((a) => `${a.name}: ${outcomeText(a.outcome)}`).join('; ')}.`;
-  }
-  if (err instanceof ProviderError) return explain(err);
-  return String(/** @type {any} */ (err)?.message ?? err);
+/** Why the model didn't answer, in plain words, with any key blanked (spec §9.9). @param {any} ctx @param {unknown} err @param {string} name */
+function failure(ctx, err, name) {
+  const a = err instanceof AllFailedError ? err.attempts[0] : null;
+  const why = a ? `${outcomeText(a.outcome)}${a.error ? ` (${a.error})` : ''}` : err instanceof ProviderError ? explain(err) : String(/** @type {any} */ (err)?.message ?? err);
+  return withoutSecrets(ctx.store, `${name} didn't answer: ${why}. No other model was asked.`);
 }
 
 /**
- * "Talk to your models": a plain text conversation through the main role, with fallback, to try
- * the models. Nothing is kept but the trace; Shiori's real conversation comes in milestone 2's
- * second part. Replies only ever go into textContent (spec §15).
- * @param {any} ctx
+ * "Try this model" on a chat model's page (the user, 2026-10-18): a plain text conversation with
+ * that model alone, with no fallback, each reply with its tokens and cost. Nothing is kept but the
+ * trace. Replies only ever go into textContent (spec §15).
+ * @param {any} ctx @param {import('../core/llm/config.js').Model} model
  */
-export function talkPanel(ctx) {
+export function tryPanel(ctx, model) {
   /** @type {import('../core/llm/contract.js').Message[]} */
   const messages = [];
   const log = h('ol', { class: 'talk', 'aria-live': 'polite' });
@@ -56,8 +50,9 @@ export function talkPanel(ctx) {
       send.disabled = true;
       stop.hidden = false;
       try {
-        const result = await ctx.llm.call({
-          role: 'main', request: { system: SYSTEM, messages, maxOutput: 1024 }, signal: running.signal,
+        // Room for a model that thinks before it answers, as the Test button gives it.
+        const result = await ctx.llm.callModel({
+          modelId: model.id, request: { system: SYSTEM, messages, maxOutput: Math.min(4096, model.maxOutput ?? 4096) }, signal: running.signal,
           onEvent: (/** @type {any} */ ev) => { if (ev.type === 'text') reply.textContent += ev.text; },
         });
         reply.textContent = result.reply.text;
@@ -65,8 +60,7 @@ export function talkPanel(ctx) {
         meta.textContent = metaLine(result);
       } catch (err) {
         messages.pop();
-        meta.textContent = failure(err);
-        if (err instanceof AllFailedError) ctx.notices.card({ tone: 'warn', title: "Shiori can't reach her model", body: failure(err) });
+        meta.textContent = await failure(ctx, err, model.name);
       } finally {
         running = null;
         send.disabled = false;
@@ -74,9 +68,9 @@ export function talkPanel(ctx) {
       }
     },
   }, field('Message', input), h('div', { class: 'acts' }, send, stop));
-  return h('section', { class: 'panel', 'aria-label': 'Talk to your models' },
-    h('h2', { class: 'section', text: 'Talk to your models' }),
-    h('p', { class: 'sub', text: 'A plain conversation through the main role, to try your models. Each request shows in Trace.' }),
+  return h('section', { class: 'panel', 'aria-label': 'Try this model' },
+    h('h2', { class: 'section', text: 'Try this model' }),
+    h('p', { class: 'sub', text: 'A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.' }),
     log,
     form);
 }

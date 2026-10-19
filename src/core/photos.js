@@ -46,8 +46,9 @@ export function photoSettings(app) {
   const read = (i = {}, d) => ({
     formats: Array.isArray(i.formats) && i.formats.length > 0 && i.formats.every((/** @type {unknown} */ f) => typeof f === 'string' && f.startsWith('image/')) ? [...i.formats] : [...d.formats],
     quality: num(i.quality, 0.1, 1) ?? d.quality,
-    maxEdge: i.maxEdge === null ? null : num(i.maxEdge, 16, 65535) ?? d.maxEdge,
-    maxBytes: i.maxBytes === null ? null : num(i.maxBytes, 1024, 2 ** 40) ?? d.maxBytes,
+    // No limit is null, or 0: a merge patch can't write null, which deletes and brings the default back.
+    maxEdge: i.maxEdge === null || i.maxEdge === 0 ? null : num(i.maxEdge, 16, 65535) ?? d.maxEdge,
+    maxBytes: i.maxBytes === null || i.maxBytes === 0 ? null : num(i.maxBytes, 1024, 2 ** 40) ?? d.maxBytes,
   });
   return {
     keepOriginals: p.keepOriginals === true,

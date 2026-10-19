@@ -1,15 +1,11 @@
-import { h, field, twoStep, jsonField, checkbox } from '../dom.js';
-import { endpointOf, endpointBase, modelOf, newModel, saveEndpoint, saveModel, setKey, removeEndpoint, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
-import { templateUpdates, applyTemplate, addListedModel, useSuggestion } from '../../core/llm/templates.js';
+import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave } from '../dom.js';
+import { endpointOf, endpointBase, modelOf, saveEndpoint, setKey, removeEndpoint, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
+import { templateUpdates, applyTemplate, addListedModel, addModelById, useSuggestion } from '../../core/llm/templates.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { addOpenRouterVoice, voiceMissing, BEHIND } from '../openrouter.js';
 
-/** An error in plain words; for a ValidationError, its own words without the field path. @param {any} e */
-export function messageOf(e) {
-  if (Array.isArray(e?.errors)) return e.errors.map((/** @type {string} */ x) => x.replace(/^\$[^:]*: /, '')).join(' ');
-  return String(e?.message ?? e);
-}
+export { messageOf };
 
 /** @param {string} text */
 function gone(text) {
@@ -41,48 +37,75 @@ export async function renderEndpoint(ctx, id) {
   const update = templateUpdates(cfg, catalog).find((u) => u.endpoint === id);
   const from = rec.template ? catalog.endpoints.find((t) => t.id === rec.template?.id) : undefined;
   const status = h('p', { class: 'sub', role: 'status' });
+  const title = h('h1', { class: 'title', text: e.name });
+  /**
+   * Saves fields into the user's layer of the endpoint as it is now (a function works a value out
+   * from it), and puts its models back in use: what failed may be fixed. Gives the endpoint.
+   * @param {Record<string, any>} fields
+   */
+  const saveFields = async (fields) => {
+    const now = (await ctx.llm.config()).endpoints[id];
+    if (!now) throw new Error('This endpoint no longer exists.');
+    const was = endpointOf(now, type?.tunables);
+    const values = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, typeof v === 'function' ? v(was) : v]));
+    const user = { ...now.user };
+    for (const k of Object.keys(values)) delete /** @type {any} */ (user)[k];
+    const next = { ...now, user: { ...user, ...diffLayer(values, endpointBase(now, type?.tunables)) } };
+    await saveEndpoint(ctx.ws, next);
+    await ctx.llm.unbench(id);
+    return endpointOf(next, type?.tunables);
+  };
   const name = h('input', { id: 'endpoint-name', autocomplete: 'off', value: e.name });
   const url = h('input', { id: 'endpoint-url', autocomplete: 'off', autocapitalize: 'off', inputmode: 'url', value: e.baseUrl, placeholder: 'https://…' });
   const key = h('input', { id: 'endpoint-key', type: 'password', autocomplete: 'off', placeholder: hasKey ? 'saved (type a new one to replace it)' : 'not set' });
   const headers = jsonField('Extra headers (JSON)', 'endpoint-headers', e.headers);
   const tunables = jsonField('Tunables (JSON)', 'endpoint-tunables', e.tunables);
   const extra = jsonField('Extra request fields (JSON)', 'endpoint-extra', e.extraBody);
-  // Where the endpoint type stores files, photos go there once, then by id (spec §4.8).
-  const uploads = type?.uploadRequest ? checkbox('Upload photos to this provider (each expires after 48 hours)', e.tunables?.uploads !== false) : null;
+  // Where the endpoint type stores files, photos go there once, then by id (spec §4.8). The switch is a tunable.
+  const uploads = type?.uploadRequest ? savedCheck('Upload photos to this provider (each expires after 48 hours)', e.tunables?.uploads !== false,
+    async (on) => tunables.show((await saveFields({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
+  // The address, key and extra headers (often a credential too) are saved together with a button, so a half-typed connection is never used.
   const save = h('button', {
     class: 'btn pri', type: 'button',
-    onclick: async () => {
-      try {
-        const edited = {
-          name: name.value.trim() || base.name, baseUrl: url.value.trim(), headers: headers.read(),
-          tunables: { ...tunables.read(), ...(uploads ? { uploads: uploads.input.checked } : {}) }, extraBody: extra.read(),
-        };
-        await saveEndpoint(ctx.ws, { ...rec, user: diffLayer(edited, base) });
-        if (key.value.trim()) await setKey(ctx.store, id, key.value.trim());
-        await ctx.llm.unbench(id);
-        ctx.notices.toast('Saved');
-        ctx.render();
-      } catch (err) {
-        status.textContent = messageOf(err);
-      }
+    onclick: () => {
+      const here = location.hash;
+      queueSave(async () => {
+        try {
+          await saveFields({ baseUrl: url.value.trim(), headers: headers.read() });
+          if (key.value.trim()) await setKey(ctx.store, id, key.value.trim());
+          ctx.notices.toast('Saved');
+          if (location.hash === here) ctx.render(); // not on a screen opened meanwhile
+        } catch (err) {
+          status.textContent = messageOf(err);
+        }
+      });
     },
   }, 'Save');
   const models = Object.values(cfg.models).filter((m) => m.endpoint === id).map(modelOf);
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/models' }, '← Models')),
-    h('h1', { class: 'title', text: e.name }),
+    title,
     h('p', { class: 'sub', text: [type?.name ?? rec.type, rec.template ? `from annai's ${rec.template.values.name ?? rec.template.id} template` : null].filter(Boolean).join(' · ') }),
     type ? null : installPanel(ctx, rec.type),
     update ? updatePanel(ctx, id, update.template) : null,
     h('section', { class: 'panel', 'aria-label': 'Endpoint' },
-      field('Name', name), field('Base URL', url), field('API key', key),
+      savedField('Name', name, () => name.value.trim() || base.name, async (v) => { title.textContent = (await saveFields({ name: v })).name; }),
+      h('h3', { text: 'Connection' }),
+      field('Base URL', url), field('API key', key),
       from?.note || from?.keyUrl
         ? h('p', { class: 'sub' }, from.note ?? '', from.note && from.keyUrl ? ' ' : '', from.keyUrl ? h('a', { href: from.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
-      uploads?.el ?? null, headers.el, tunables.el, extra.el,
+      headers.el,
       h('div', { class: 'acts' }, save,
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
-      status),
+      status,
+      h('h3', { text: 'How annai asks it' }),
+      h('p', { class: 'sub', text: 'These are saved as you change them.' }),
+      uploads?.el ?? null,
+      h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => {
+        tunables.show((await saveFields({ tunables: uploads ? { ...t, uploads: uploads.input.checked } : t })).tunables);
+      })),
+      h('div', { class: 'saving' }, extra.el, ...autosave(extra.area, extra.read, async (x) => extra.show((await saveFields({ extraBody: x })).extraBody)))),
     from?.roles ? suggestionsPanel(ctx, id, from) : null,
     rec.template?.id === 'openrouter' && voiceMissing(cfg, catalog).length ? voicePanel(ctx, id, hasKey, catalog) : null,
     modelsSection(ctx, id, models),
@@ -139,7 +162,7 @@ function modelsSection(ctx, endpointId, models) {
       const value = providerId.value.trim();
       if (!value) return;
       try {
-        await saveModel(ctx.ws, newModel(endpointId, { user: { providerId: value } }));
+        await addModelById(ctx, endpointId, value);
         ctx.render();
       } catch (e) {
         status.textContent = messageOf(e);

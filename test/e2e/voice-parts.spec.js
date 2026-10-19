@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, startModelServer, addEndpoint, fakeMicrophone, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addEndpoint, fakeMicrophone, filterTrace, leaveSaved } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 const clipPath = (/** @type {string} */ name) => fileURLToPath(new URL(`../fixtures/voice/${name}.wav`, import.meta.url));
@@ -88,7 +88,7 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
     expect(server.bodies('/good/audio/speech')).toHaveLength(2);
     await page.getByLabel('Pause that ends a sentence (ms)').fill('900');
-    await page.getByRole('button', { name: 'Save the pause' }).click();
+    await leaveSaved(page.getByLabel('Pause that ends a sentence (ms)'));
     await page.getByRole('button', { name: 'Test the microphone' }).click();
     await expect(page.getByText(/ears heard: "Is there a gas station nearby\?"/)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/^Heard \d\.\d seconds of speech\./)).toBeVisible();

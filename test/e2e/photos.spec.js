@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, buildAndSave } from './helpers.js';
+import { openApp, waitForServiceWorker, buildAndSave, savedBy, leaveSaved } from './helpers.js';
 import { readZip } from '../../src/core/zip.js';
 import { readPhotoMeta } from '../../src/core/photo-meta.js';
 import { text } from '../../src/core/bytes.js';
@@ -132,9 +132,9 @@ test('Keep originals stores photos as taken, and JPEG can be chosen over WebP', 
   await startTrip(page, 'Big Sur');
   const trip = page.url();
   await page.getByRole('link', { name: 'Settings' }).click();
-  await page.getByLabel('Keep originals: store photos exactly as taken').check();
-  await page.getByRole('button', { name: 'Save photo settings' }).click();
-  await expect(page.getByText('Photo settings saved')).toBeVisible();
+  const keep = page.getByLabel('Keep originals: store photos exactly as taken');
+  await keep.check();
+  await expect(savedBy(keep)).toHaveText('Saved'); // saved as it changes: no Save button
   await page.goto(trip);
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904\.jpg/ }).click();
@@ -143,8 +143,7 @@ test('Keep originals stores photos as taken, and JPEG can be chosen over WebP', 
   await page.getByRole('link', { name: 'Settings' }).click();
   await page.getByLabel('Keep originals: store photos exactly as taken').uncheck();
   await page.getByLabel('Save photos as').selectOption('jpeg');
-  await page.getByRole('button', { name: 'Save photo settings' }).click();
-  await expect(page.getByText('Photo settings saved').last()).toBeVisible();
+  await expect(savedBy(page.getByLabel('Save photos as'))).toHaveText('Saved');
   await page.goto(trip);
   await page.getByLabel('Add photos or files').setInputFiles(await photo('screenshot.png'));
   await expect(page.getByRole('link', { name: /\/files\/screenshot\.jpg/ })).toBeVisible();
@@ -227,20 +226,25 @@ test('Photos for Shiori: how large the photos she is sent may be, kept after a r
   await expect(page.getByLabel('Quality sent (0.5 to 1)')).toHaveValue('0.9');
   await expect(page.getByText('A closer look always sends more detail, so small settings stay usable.')).toBeVisible();
   await page.getByLabel('Longest side sent, pixels').fill('1200');
-  await page.getByRole('button', { name: 'Save photo settings' }).click();
-  await expect(page.getByText('Photo settings saved')).toBeVisible();
+  await leaveSaved(page.getByLabel('Longest side sent, pixels'));
   await page.reload();
   await expect(page.getByLabel('Longest side sent, pixels')).toHaveValue('1200');
   // The format list for photos sent (spec §4.8: a format list for both ingest and request).
   await expect(page.getByLabel('Send photos as')).toHaveValue('webp');
   await page.getByLabel('Send photos as').selectOption('jpeg');
-  await page.getByRole('button', { name: 'Save photo settings' }).click();
-  await expect(page.getByText('Photo settings saved').last()).toBeVisible();
+  await expect(savedBy(page.getByLabel('Send photos as'))).toHaveText('Saved');
+  // Empty is no limit, and stays empty: not annai's own limit back again.
+  await page.getByLabel('Largest photo sent, MB').fill('');
+  await leaveSaved(page.getByLabel('Largest photo sent, MB'));
   await page.reload();
   await expect(page.getByLabel('Send photos as')).toHaveValue('jpeg');
-  await page.getByLabel('Largest photo sent, MB').fill('0.01');
-  await page.getByRole('button', { name: 'Save photo settings' }).click();
-  await expect(page.getByRole('alert')).toContainText('photos sent to Shiori');
+  await expect(page.getByLabel('Largest photo sent, MB')).toHaveValue('');
+  // A value that isn't allowed says why by its field, and isn't saved.
+  await page.getByLabel('Longest side sent, pixels').fill('100');
+  await page.getByLabel('Longest side sent, pixels').blur();
+  await expect(page.getByRole('alert')).toContainText('at least 256');
+  await page.reload();
+  await expect(page.getByLabel('Longest side sent, pixels')).toHaveValue('1200');
 });
 
 test('Show Shiori this part: zoomed in, the part on screen goes to her in your message (spec §16.2)', async ({ page }) => {

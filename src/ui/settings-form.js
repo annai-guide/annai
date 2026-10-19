@@ -1,4 +1,4 @@
-import { h, field } from './dom.js';
+import { h, field, savedField, savedCheck, queueSave, messageOf } from './dom.js';
 import { validate } from '../core/schema.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
 
@@ -81,66 +81,78 @@ export function readForm(schema, raw) {
 }
 
 /**
- * The form on a plugin's page: what is saved now, Save, and what is wrong under it.
+ * The form on a plugin's page, with what is saved now. Each plain field saves as it changes, alone,
+ * once it is valid (spec §16.1); a secret has a Save button of its own, and is never shown again.
  * @param {any} ctx @param {string} pluginId @param {any} schema @returns {Promise<HTMLElement>}
  */
 export async function settingsForm(ctx, pluginId, schema) {
   const path = `/plugin-settings/${pluginId}.json`;
   const saved = (await ctx.ws.readJSON(SYS_SETTINGS, path).catch(() => null)) ?? {};
-  const fields = formFields(schema);
-  /** @type {Map<string, HTMLInputElement | HTMLSelectElement>} */
-  const inputs = new Map();
   const rows = [];
-  for (const f of fields) {
+  for (const f of formFields(schema)) {
     const id = `setting-${pluginId}-${f.key}`;
     const now = saved[f.key] ?? f.default;
-    /** @type {any} */
-    let input;
+    const hint = f.hint ? h('p', { class: 'sub', text: f.hint }) : null;
     if (f.kind === 'unsupported') {
       rows.push(h('p', { class: 'sub', text: `${f.label}: annai can't show this setting.` }));
       continue;
     }
-    if (f.kind === 'boolean') {
-      input = h('input', { id, type: 'checkbox' });
-      input.checked = Boolean(now);
-      inputs.set(f.key, input);
-      rows.push(h('label', { class: 'check' }, input, h('span', { text: f.label })), f.hint ? h('p', { class: 'sub', text: f.hint }) : null);
+    if (f.kind === 'secret') {
+      const has = await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${pluginId}:${f.key}`)).catch(() => undefined);
+      const input = h('input', { id, type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: has === undefined ? '' : 'saved' });
+      const note = h('span', { class: 'sub', role: 'status' });
+      const error = h('p', { class: 'error', role: 'alert', hidden: true });
+      const save = h('button', {
+        class: 'btn', type: 'button',
+        onclick: () => queueSave(async () => {
+          if (!input.value) return;
+          try {
+            await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret(`plugin:${pluginId}:${f.key}`, input.value));
+          } catch (e) {
+            error.textContent = `${f.label} wasn't saved: ${messageOf(e)}`;
+            error.hidden = false;
+            return;
+          }
+          error.hidden = true;
+          input.value = '';
+          input.placeholder = 'saved';
+          note.textContent = 'Saved';
+        }),
+      }, 'Save');
+      rows.push(field(f.label, input), hint, h('div', { class: 'acts' }, save, note), error);
       continue;
     }
+    // One field's own schema: an empty field is allowed, and clears it.
+    const one = { type: 'object', properties: { [f.key]: schema.properties[f.key] } };
+    /** @param {string | boolean} raw */
+    const value = (raw) => {
+      const { values, errors } = readForm(one, { [f.key]: raw });
+      if (errors.length) throw new Error(errors.join(' '));
+      return values[f.key];
+    };
+    /** @param {any} v */
+    const write = (v) => ctx.ws.patch(SYS_SETTINGS, path, { [f.key]: v }, { author: 'user', create: true });
+    if (f.kind === 'boolean') {
+      const c = savedCheck(f.label, Boolean(now), (on) => write(value(on)));
+      c.input.id = id;
+      rows.push(c.el, hint);
+      continue;
+    }
+    /** @type {any} */
+    let input;
     if (f.kind === 'select') {
       input = h('select', { id }, h('option', { value: '', text: '—' }), ...(f.options ?? []).map((o) => h('option', { value: o, text: o })));
       input.value = now === undefined || now === null ? '' : String(now);
-    } else if (f.kind === 'secret') {
-      const has = await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${pluginId}:${f.key}`)).catch(() => undefined);
-      input = h('input', { id, type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: has === undefined ? '' : 'saved' });
     } else {
       input = h('input', {
         id, type: f.kind === 'text' ? 'text' : 'number', autocomplete: 'off', value: now === undefined || now === null ? '' : String(now),
         ...(f.kind === 'integer' ? { step: '1' } : {}), ...(f.min !== undefined ? { min: String(f.min) } : {}), ...(f.max !== undefined ? { max: String(f.max) } : {}),
       });
     }
-    inputs.set(f.key, input);
-    rows.push(field(f.label, input), f.hint ? h('p', { class: 'sub', text: f.hint }) : null);
+    rows.push(savedField(f.label, input, () => {
+      if (input.validity?.badInput) throw new Error(`${f.label} is ${f.kind === 'integer' ? 'a whole number' : 'a number'}.`);
+      return value(input.value);
+    }, write), hint);
   }
-  if (!inputs.size) return h('div', {}, ...rows);
-  const error = h('p', { class: 'error', role: 'alert', hidden: true });
-  const save = h('button', {
-    class: 'btn pri', type: 'button',
-    onclick: async () => {
-      /** @type {Record<string, string | boolean>} */
-      const raw = {};
-      for (const [key, input] of inputs) raw[key] = input instanceof HTMLInputElement && input.type === 'checkbox' ? input.checked : input.value;
-      const { values, secrets, errors } = readForm(schema, raw);
-      error.hidden = !errors.length;
-      error.textContent = errors.join(' ');
-      if (errors.length) return;
-      await ctx.ws.patch(SYS_SETTINGS, path, values, { author: 'user', create: true });
-      await ctx.store.tx(['secrets'], 'readwrite', async (/** @type {any} */ t) => {
-        for (const [key, value] of Object.entries(secrets)) await t.putSecret(`plugin:${pluginId}:${key}`, value);
-      });
-      ctx.notices.toast('Saved.');
-      ctx.render();
-    },
-  }, 'Save');
-  return h('div', { class: 'settings-form' }, ...rows, error, h('div', { class: 'acts' }, save));
+  return h('div', { class: 'settings-form' }, ...rows);
 }

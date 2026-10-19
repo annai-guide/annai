@@ -4,6 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { UPLOAD_TTL_S } from './uploads.js';
+import { ttlFor } from '../agent/warmth.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -76,7 +77,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
     if (/auth|key|token|secret|cookie|session|password/i.test(name)) trace?.secret(String(value).replace(/^(Bearer|Basic)\s+/i, ''));
   }
-  const req = await withUploads(type.tail ? request : withTail(request), { type, endpoint, model, key, uploads, get, trace, signal, now });
+  const sent = await withUploads(type.tail ? request : withTail(request), { type, endpoint, model, key, uploads, get, trace, signal, now });
+  // The cache lifetime this model has, as its warmth counts it (spec §6.4).
+  const req = sent.cacheTtl ? { ...sent, cacheTtl: ttlFor(model, sent.cacheTtl) } : sent;
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
   const started = now();
