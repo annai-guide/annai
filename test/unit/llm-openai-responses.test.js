@@ -516,3 +516,29 @@ test('a whole JSON response that failed, or an error in its place, is the error 
   await assert.rejects(readWhole(whole('not json')), (e) => e instanceof ProviderError && e.kind === 'server' && /can't read/.test(e.message));
   await assert.rejects(readWhole(whole('{"id":"resp"}')), (e) => e instanceof ProviderError && e.kind === 'server' && /no answer/.test(e.message));
 });
+
+test("a whole response whose connection drops part way is a dropped connection, tried again elsewhere, and never counted against the plugin (fix pass 1)", async () => {
+  const dropping = () => new Response(new ReadableStream({
+    start(c) {
+      c.enqueue(new TextEncoder().encode('{"status":"completed","output":[{"type":"mess'));
+      c.error(new TypeError('network error'));
+    },
+  }), { headers: { 'content-type': 'application/json' } });
+  await assert.rejects(readWhole(dropping()), (e) => e instanceof ProviderError && e.kind === 'network' && e.message === 'The connection dropped.');
+  const s = spec({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } });
+  let failed = 0;
+  await assert.rejects(callOnce({ type, endpoint: s.endpoint, model: s.model, key: s.key, request: s.request, fetch: async () => dropping(), registry: /** @type {any} */ ({ fail: () => { failed++; } }) }),
+    (e) => e instanceof ProviderError && e.kind === 'network');
+  assert.equal(failed, 0);
+});
+
+test('only application/json is a whole response: NDJSON, stream+json and problem+json are read as streams, and so is a stream sent as application/json (fix pass 3)', async () => {
+  const sseText = await fixture('tools.sse');
+  const streamed = [];
+  for await (const e of type.read(new Response(sseText), spec())) streamed.push(e);
+  for (const kind of ['application/x-ndjson', 'application/stream+json', 'application/problem+json', 'application/json']) {
+    const events = [];
+    for await (const e of type.read(new Response(sseText, { headers: { 'content-type': kind } }), spec())) events.push(e);
+    assert.deepEqual(events, streamed, kind);
+  }
+});

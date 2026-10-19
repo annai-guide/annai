@@ -272,3 +272,30 @@ test("a whole reply waits as a stream's first words do: one in time is taken, an
     await assert.rejects(call(after(400, early), 50), (e) => e instanceof ProviderError && e.kind === 'timeout' && e.message === 'No output started in time.', String(early));
   }
 });
+
+/** A whole JSON reply whose connection drops after its first piece. */
+const dropping = () => new Response(new ReadableStream({
+  start(c) {
+    c.enqueue(new TextEncoder().encode('{"choices":[{"message":{"content":"Kyo'));
+    c.error(new TypeError('network error'));
+  },
+}), { headers: { 'content-type': 'application/json' } });
+
+test("a whole reply whose connection drops part way is a dropped connection, tried again elsewhere, and never counted against the plugin (fix pass 1)", async () => {
+  await assert.rejects(readAll(dropping()), (e) => e instanceof ProviderError && e.kind === 'network' && e.message === 'The connection dropped.');
+  const s = spec({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } });
+  let failed = 0;
+  await assert.rejects(callOnce({ type, endpoint: s.endpoint, model: s.model, key: s.key, request: s.request, fetch: async () => dropping(), registry: /** @type {any} */ ({ fail: () => { failed++; } }) }),
+    (e) => e instanceof ProviderError && e.kind === 'network');
+  assert.equal(failed, 0);
+});
+
+test('only application/json is a whole reply: NDJSON, stream+json and problem+json are read as streams, and so is a stream sent as application/json (fix pass 3)', async () => {
+  const sseText = await fixture('tools.sse');
+  for (const kind of ['application/x-ndjson', 'application/stream+json', 'application/problem+json', 'application/json', 'application/json; charset=utf-8']) {
+    const events = await readAll(new Response(sseText, { headers: { 'content-type': kind } }));
+    assert.deepEqual(events.filter((e) => e.type === 'tool_input').map((e) => e.partial), ['', '{"col', '{"color":"red"}'], kind);
+    assert.deepEqual(events.at(-1), { type: 'stop', reason: 'tool' }, kind);
+  }
+  assert.equal((await readAll(json(await fixture('whole-text.json')))).find((e) => e.type === 'text')?.text, 'Kyoto is in Japan.');
+});
