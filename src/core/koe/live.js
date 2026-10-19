@@ -447,6 +447,7 @@ export class LiveKoe {
   #speak(t) {
     t.spoken = true;
     this.#answered(false);
+    this.unmute(); // a tap may have unlocked sound since the session opened
     const v = this.c.voice;
     if (this.voiced && v?.platform?.player.stream && !t.cut) {
       t.stream = v.platform.player.stream({ rate: this.#rate, onLevel: (x) => v.level(x, 'her') });
