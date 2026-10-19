@@ -169,3 +169,31 @@ test("vLLM's transcription starts off, and brings its protocol when turned on; A
   assert.match(another.provider.note, /Wait for the first words/);
   assert.match(another.provider.note, /never streams/);
 });
+
+test("the user's llama.cpp server (Unsloth Studio), as recorded on 2026-10-19, reads as its stand-in does: reasoning_content beside an empty content, a tool call in pieces, usage with cached tokens, and its own model list", async () => {
+  const { activate } = await import('../../plugins-official/chat-completions/index.js');
+  const { sse } = await import('../../src/core/llm/sse.js');
+  const { ProviderError, errorFromResponse } = await import('../../src/core/llm/contract.js');
+  /** @type {any} */
+  let type = null;
+  activate({ providers: { register: (/** @type {any} */ t) => { type = t; return () => {}; } }, helpers: { sse, ProviderError, errorFromResponse } });
+  const recorded = (/** @type {string} */ name) => readFile(new URL(`test/fixtures/llm/local/${name}`, root));
+  const read = async (/** @type {string} */ name) => {
+    const out = [];
+    for await (const e of type.read(new Response(await recorded(name), { headers: { 'content-type': 'text/event-stream; charset=utf-8' } }), { tunables: { ...type.tunables } })) out.push(e);
+    return out;
+  };
+  const plain = await read('unsloth-studio-reasoning.sse');
+  assert.ok(plain.filter((e) => e.type === 'reasoning_delta').length > 30);
+  assert.deepEqual(plain.filter((e) => e.type !== 'reasoning_delta').map((e) => e.type), ['reasoning', 'text', 'text', 'usage', 'stop']);
+  assert.equal(plain.filter((e) => e.type === 'text').map((e) => e.text).join(''), '42');
+  assert.deepEqual(plain.find((e) => e.type === 'usage').usage, { input: 22, cacheRead: 42, cacheWrite: 0, output: 41, reasoning: 0 });
+  const tool = await read('unsloth-studio-tool.sse');
+  assert.deepEqual(tool.filter((e) => e.type === 'tool_call').map((e) => [e.name, e.input]), [['weather', { place: 'Big Sur' }]]);
+  assert.equal(tool.at(-1).reason, 'tool');
+  // Studio lists its models in a shape of its own: context_length for a loaded model, and nothing on photos.
+  assert.deepEqual(type.readList(JSON.parse(String(await recorded('unsloth-studio-models.json')))), [
+    { providerId: 'unsloth/Qwen3.8-Flash-Next-GGUF', contextWindow: 262144 },
+    { providerId: 'unsloth/Qwen3.8-27B-GGUF' },
+  ]);
+});
