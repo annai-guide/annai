@@ -27,6 +27,7 @@ import { endpointOf, providerOf, modelOf } from '../../src/core/llm/config.js';
 import { COOLDOWN_MS } from '../../src/core/llm/fallback.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { activate as geminiLive } from '../../plugins-official/gemini-live/index.js';
+import { activate as openaiRealtime } from '../../plugins-official/openai-realtime/index.js';
 
 /**
  * A codec that "decodes" a source written as "WxH" and reports what it was asked.
@@ -61,7 +62,7 @@ export function fakeCodec(formats) {
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
- *   live?: { origin: string, roles?: string[], first?: boolean, key?: string, tunables?: Record<string, any> } }} [opts]
+ *   live?: { origin: string, roles?: string[], first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' } }} [opts]
  *   uploading: whether the main model's provider takes photos by upload
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
@@ -69,7 +70,8 @@ export function fakeCodec(formats) {
  *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for Koe's models,
  *   "Koe for typing" (m-koe, model-koe) and "Koe for talking" (m-koet, model-koet), and the inputs Koe's models take;
  *   live: a realtime model (m-live, Gemini Live's protocol) at the stand-in realtime server's origin, first in roles (Koe for talking by
- *   default); first false puts it after the chat models there; key and tunables, for the real service (test/live)
+ *   default); first false puts it after the chat models there; key and tunables, for the real service (test/live); type: OpenAI's protocol
+ *   (gpt-realtime-2.1, at <origin>/v1) in place of Gemini's
  */
 export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe, live } = {}) {
   const registry = new Registry();
@@ -109,7 +111,9 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.roles['koe-talk'] = { models: ['m-koet'], level: 'off' };
   }
   if (live) {
-    add('pv-live', 'm-live', 'Gemini', { kind: 'realtime', type: 'gemini-live', baseUrl: live.origin }, { providerId: 'gemini-3.8-live', name: 'Gemini 3.8 Live', prices: { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }, input: ['text', 'image'] });
+    const openai = live.type === 'openai-realtime';
+    add('pv-live', 'm-live', openai ? 'OpenAI' : 'Gemini', { kind: 'realtime', type: openai ? 'openai-realtime' : 'gemini-live', baseUrl: openai ? `${live.origin}/v1` : live.origin },
+      { providerId: openai ? 'gpt-realtime-2.1' : 'gemini-3.8-live', name: openai ? 'GPT Realtime 2.1' : 'Gemini 3.8 Live', prices: { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }, input: ['text', 'image'] });
     for (const r of live.roles ?? ['koe-talk']) {
       const had = config.roles[r]?.models ?? [];
       config.roles[r] = { models: live.first === false ? [...had, 'm-live'] : ['m-live', ...had], level: 'off' };
@@ -135,7 +139,9 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   await saveRoles(ws, config.roles);
   /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
   const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);
-  geminiLive({ providers: { register: (/** @type {any} */ x) => { types.set('gemini-live', { ...x, pluginId: 'gemini-live' }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } } });
+  for (const [id, activate] of /** @type {const} */ ([['gemini-live', geminiLive], ['openai-realtime', openaiRealtime]])) {
+    activate({ providers: { register: (/** @type {any} */ x) => { types.set(id, { ...x, pluginId: id }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } }, events: { append: async () => {} } });
+  }
   /** Every live session opened, in order, and every socket. @type {any[]} */
   const sessions = [];
   /** @type {WebSocket[]} */

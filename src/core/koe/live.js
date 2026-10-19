@@ -82,6 +82,8 @@ export class LiveKoe {
   #keep = false;
   #rotate = false;
   #tools = 0;
+  /** Connections tried again since Koe's last turn ended. */
+  #tries = 0;
   /** Each open or close: an opening that outlived it is let go. */
   #gen = 0;
   /** @type {Promise<boolean> | null} */
@@ -442,6 +444,7 @@ export class LiveKoe {
   #complete() {
     const t = (this.#trail = this.#t);
     this.#t = null;
+    this.#tries = 0;
     if (t?.stream) t.stream.end();
     else if (t?.spoken) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
@@ -577,25 +580,36 @@ export class LiveKoe {
   }
 
   /**
-   * A close annai didn't ask for: the lines it cut are kept, marked ✂; it resumes with its handle, once, at once (the
-   * model not resting for it); failing that, Halves goes on without it. @param {LiveSession} s @param {{ kind: string | null }} c @param {string} why
+   * A close annai didn't ask for: the lines it cut are kept, marked ✂, and it connects again, with its handle where it has
+   * one (OpenAI has none: a fresh session), the model not resting for it. Three tries with no turn between them, waiting
+   * longer each time; then Halves goes on without it. @param {LiveSession} s @param {{ kind: string | null }} c @param {string} why
    */
   async #closed(s, { kind }, why) {
     if (s !== this.#s || !kind) return;
     const cut = Boolean(this.#sounding || this.#t?.spoken);
     this.#cut();
     this.#t = null;
-    // The user's words cut off are kept, marked; what they say next is a line of its own.
+    this.#cutHearing();
+    if (s.handle) this.#handle = s.handle;
+    this.#s = null; // what is said meanwhile waits
+    const n = ++this.#tries;
+    const gen = this.#gen;
+    if (kind !== 'auth' && kind !== 'not-found' && n <= 3) {
+      await new Promise((r) => setTimeout(r, (250 * 2 ** (n - 1) * (this.c.secondMs ?? 1000)) / 1000));
+      if (gen === this.#gen && (await this.#reconnect(why))) {
+        this.c.llm.bench?.clear(/** @type {string} */ (this.modelId));
+        return;
+      }
+    }
+    this.#gone(cut);
+  }
+
+  /** The user's words cut off as they spoke are kept, marked ✂; what they say next is a line of its own. */
+  #cutHearing() {
     const h = this.#input?.active ? this.#hear : null;
     if (h?.text.trim()) h.text += '✂';
     this.#flushHeard(false);
     if (h) this.#hear = hearing();
-    if (s.handle) this.#handle = s.handle;
-    if (kind !== 'auth' && kind !== 'not-found' && this.#handle && (await this.#reconnect(why))) {
-      this.c.llm.bench?.clear(/** @type {string} */ (this.modelId));
-      return;
-    }
-    this.#gone(cut);
   }
 
   /** @param {boolean} cut */

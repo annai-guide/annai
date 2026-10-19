@@ -144,3 +144,44 @@ test('item 4 (probe H): a tap that cuts Koe off tells the provider how much of h
     await k.done();
   }
 });
+
+test('item 5 (probe L): a server that drops every session it resumes is given up on after three tries with no turn between them, waiting longer each time; Koe goes on without it', async () => {
+  const k = await liveKit([{ said: 'Hi.', audio: tone(0.1), handle: 'h' }]);
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hello');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    for (let i = 1; i <= 3; i++) {
+      k.server.close(1011, 'Internal error encountered.');
+      await until(() => k.server.connections().length === i + 1, 3000);
+      await soon(async () => k.agent.live.state === 'open' && !k.agent.live.busy);
+    }
+    k.server.close(1011, 'Internal error encountered.');
+    await soon(async () => (await blocks(k)).includes('live-dropped'));
+    await wait(100);
+    assert.equal(k.server.connections().length, 4, 'no fourth resume');
+    assert.notEqual(k.agent.koeState, 'live');
+    assert.ok(k.llm.bench.until('m-live') > Date.now(), 'the live model rests');
+  } finally {
+    await k.done();
+  }
+});
+
+test('item 14 (K6): a drop with no resume handle (OpenAI has none) still goes on, in a fresh session', async () => {
+  const k = await liveKit([{ said: 'Hi.', audio: tone(0.1) }, { said: 'Still here.', audio: tone(0.1) }], { live: { type: 'openai-realtime' } });
+  try {
+    k.agent.send('Hello');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    k.server.close(1011, 'server_error');
+    await until(() => k.server.connections().length === 2, 3000);
+    await soon(async () => k.agent.live.state === 'open' && !k.agent.live.busy);
+    k.agent.send('Are you there?');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    assert.equal(k.agent.koeState, 'live');
+    assert.deepEqual(await blocks(k), ['live-open'], 'one session, as Kokoro sees it');
+  } finally {
+    await k.done();
+  }
+});
