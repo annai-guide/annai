@@ -506,6 +506,11 @@ export class Agent {
     return Promise.resolve();
   }
 
+  /** Takes queued wakes out (Halves: a question of Koe's that Kokoro has just answered). @param {(w: Wake) => boolean} which */
+  drop(which) {
+    this.#queue = this.#queue.filter((w) => !which(w));
+  }
+
   /** Queues a wake for the open conversation and starts a turn, past the budgets' checks (admit). @param {Wake} w */
   enqueue(w) {
     this.#push(w);

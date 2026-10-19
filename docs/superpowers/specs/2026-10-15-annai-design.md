@@ -287,7 +287,7 @@ All wakes go into one queue:
 - User input goes ahead of triggers.
 - If the queue isn't empty when a turn ends, the next turn starts immediately.
 
-When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types goes to Koe, which writes it into the conversation; Kokoro reads it there and wakes for it. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. Kokoro also wakes for a note from Koe, and to look at what Koe said by itself after Kokoro last looked.
+When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types goes to Koe, which writes it into the conversation; Kokoro reads it there and wakes for it. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. Kokoro also wakes for a note from Koe, unless it has told Koe since the user last typed: one typed question costs one Kokoro call. What Koe said by itself is in what Kokoro reads at its next call.
 
 ### 6.2 A turn
 
@@ -380,7 +380,7 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 
 **The split is opt-in:** Shiori is two halves only while a Koe list holds a model (§9.6). Otherwise she is one, exactly as before, at one call per message. One personality is in both.
 
-**Notes.** `tell_kokoro` (Koe's) and `tell_koe` (Kokoro's) return at once, after the note is written into the conversation. append reaches the other half before its next model call, or starts its turn; immediate also cuts its model call (or its speech). Both are always on. When Kokoro's turn ends in plain text, having told Koe nothing and never slept, that text goes to Koe as a note. A Koe waiting on Kokoro (`wait`) hears "Kokoro has nothing to add" when Kokoro is done with nothing to tell.
+**Notes.** `tell_kokoro` (Koe's) and `tell_koe` (Kokoro's) return at once, after the note is written into the conversation. append reaches the other half before its next model call, or starts its turn; immediate also cuts its model call (or its speech). Both are always on. When Kokoro's turn ends in plain text, having told Koe nothing and never slept, that text goes to Koe as a note. A Koe waiting on Kokoro (`wait`) hears "Kokoro has nothing to add" when Kokoro is done with nothing to tell, or "Kokoro was stopped" after the sign's Stop.
 
 **Two transcripts from one log.** Each half writes its own model turns, tool calls and results, marked as its own; each reads only its own, and the other's lines as above.
 
