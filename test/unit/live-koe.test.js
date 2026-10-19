@@ -258,3 +258,115 @@ test('a photo goes in as a turn of its own, then the words that ask about it; Ko
     await k.done();
   }
 });
+
+// Task 7: when the session drops (Review Focus 4).
+test('a drop mid-sentence: the half-said line is kept, cut where it was heard; the handle resumes at once, and the conversation carries on there', async () => {
+  const k = await liveKit([
+    { said: 'Big Sur stretches ninety miles along the coast, from Carmel down to San Simeon, with redwoods and cliffs all the way.', audio: tone(5) },
+    { heard: 'And the weather?', said: "I'm checking.", audio: tone(0.2) },
+  ], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Tell me about Big Sur');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await new Promise((r) => setTimeout(r, 700));
+    k.server.close(1011, 'Internal error encountered.'); // a tunnel, a server's hiccup
+    await until(() => k.server.connections().length === 2);
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await soon(async () => k.agent.live.state === 'open' && !k.agent.live.busy);
+    const [cut] = await k.events(['out.speak']);
+    assert.equal(cut.data.cut, true);
+    assert.match(cut.data.text, /^Big Sur.*✂$/);
+    assert.ok(cut.data.text.length < 60);
+    assert.ok(k.platform.streams[0].stopped, 'her voice stopped with it');
+    assert.equal(got(k, 'setup')[1].setup.sessionResumption.handle, 'stand-in-1');
+    assert.ok(read(k.agent.kokoro).some((/** @type {string} */ l) => /^\[Koe said aloud\] "Big Sur.*✂"$/.test(l)), 'Kokoro sees the cut');
+    assert.deepEqual((await k.events(['halves'])).map((/** @type {any} */ e) => e.data.state), ['live-open'], 'one session, as Kokoro sees it');
+    // Resumed, its model doesn't rest for the close: Koe stays live, and the next question goes to the new connection.
+    k.agent.send('And the weather?');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    assert.equal(k.agent.koeState, 'live');
+    assert.equal(k.server.connections().length, 2);
+    assert.equal(texts(k).at(-1), 'And the weather?');
+  } finally {
+    await k.done();
+  }
+});
+
+test('a drop while the user speaks: their half-line is kept, marked ✂, and their speech goes on in the resumed session', async () => {
+  const k = await liveKit([{ heard: 'Where should we', heardFirst: true, heardAfter: 'eat tonight', said: 'Somewhere nice.', audio: tone(0.2) }]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const { clip, quiet, cat } = await import('./voice-kit.js');
+    const words = await clip('where-eat');
+    k.platform.mic.feed(cat(quiet(0.3), words.subarray(0, Math.floor(words.length / 2))), 16_000);
+    await until(() => texts(k).length === 0 && got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
+    await new Promise((r) => setTimeout(r, 50)); // the words heard so far
+    k.server.close(1001, 'Connection reset');
+    await until(() => k.server.connections().length === 2);
+    await soon(async () => (await k.events(['heard'])).length === 1);
+    const [half] = await k.events(['heard']);
+    assert.equal(half.data.text, 'Where should we✂');
+    // The rest of what they say starts again in the new connection.
+    k.platform.mic.feed(cat(words.subarray(Math.floor(words.length / 2)), quiet(1)), 16_000);
+    await soon(async () => (await k.events(['heard'])).length === 2 && (await k.events(['out.speak'])).length === 1);
+    assert.equal((await k.events(['out.speak']))[0].data.text, 'Somewhere nice.');
+    const second = k.server.received().slice(k.server.received().findLastIndex((/** @type {any} */ m) => m.setup));
+    const input = second.filter((/** @type {any} */ m) => m.realtimeInput).map((/** @type {any} */ m) => Object.keys(m.realtimeInput)[0]);
+    assert.equal(input[0], 'activityStart');
+    assert.equal(input.at(-1), 'activityEnd');
+    assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => e.data.text), ['Where should we✂', 'eat tonight']);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a drop that can't resume: its model rests, Kokoro is told, and the text model after it finishes the answer through the speech pipeline", async () => {
+  const k = await liveKit([{ said: 'Nepenthe is a restaurant high on the cliffs, and it has been there since 1949, with a view south along the coast.', audio: tone(5) }], {
+    pace: 1,
+    koe: { talk: { rules: [{ match: 'the live session dropped', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sorry, we got cut off: it has a view south along the coast.' } }, { name: 'sleep', input: {} }] } }] } },
+  });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('What is Nepenthe?');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await new Promise((r) => setTimeout(r, 500));
+    await k.server.stop(); // gone: no resuming
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    await k.agent.idle();
+    const said = (await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.text.replace(/^(.{12}).*✂$/, '$1…✂'), Boolean(e.data.live), Boolean(e.data.voice)]);
+    assert.deepEqual(said, [['Nepenthe is …✂', true, true], ['Sorry, we got cut off: it has a view south along the coast.', false, true]]);
+    assert.ok(k.platform.log.includes('play m-say:Sorry, we got cut off: it has a view south along the coast.'), 'through the speech pipeline');
+    assert.match(JSON.stringify(k.sent['model-koet'][0].messages), /\[annai\] \\"the live session dropped while you were answering; finish briefly\\"/);
+    assert.ok((await k.events(['halves'])).some((/** @type {any} */ e) => e.data.state === 'live-dropped'));
+    assert.equal(k.agent.koeState, 'text');
+    assert.ok(k.llm.bench.until('m-live') > Date.now(), 'the live model rests');
+  } finally {
+    await k.done();
+  }
+});
+
+test("a drop that can't resume, with no model after it: Koe is down, and Kokoro finishes the answer", async () => {
+  const k = await liveKit([{ said: 'The drive to Carmel takes about an hour along the coast road, with views all the way.', audio: tone(5) }], {
+    pace: 1,
+    kokoro: [{ rules: [{ match: "Koe can't speak", reply: { toolCalls: [{ name: 'speak', input: { text: 'We lost the line: about an hour.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }],
+  });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('How far is Carmel?');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await new Promise((r) => setTimeout(r, 400));
+    await k.server.stop();
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.half === 'kokoro'), 5000);
+    await k.agent.idle();
+    assert.equal(k.agent.koeState, 'down');
+    const states = (await k.events(['halves'])).map((/** @type {any} */ e) => e.data.state);
+    assert.ok(states.includes('live-dropped') && states.includes('koe-down'), states.join());
+  } finally {
+    await k.done();
+  }
+});
