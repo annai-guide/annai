@@ -1,7 +1,6 @@
 /**
- * annai's own audio files (Koe and Kokoro design, "Audio formats"; no library): the packets
- * WebCodecs' AudioEncoder makes, put into Ogg Opus (RFC 7845), WebM Opus, AAC in ADTS frames, and
- * FLAC. Pure: bytes in, bytes out. A segment is at most 30 s (the detector's limit).
+ * annai's own audio files (spec §10.6), with no library: AudioEncoder's
+ * packets in Ogg Opus (RFC 7845), WebM Opus, AAC's ADTS frames, and FLAC. A segment is at most 30 s.
  */
 
 /** @param {string} s */
@@ -17,7 +16,7 @@ export function cat(parts) {
   return out;
 }
 
-/** How many samples, at 48 kHz, an Opus packet decodes to: from its TOC byte (RFC 6716 §3.1). @param {Uint8Array} p */
+/** Samples at 48 kHz an Opus packet decodes to, from its TOC byte (RFC 6716 §3.1). @param {Uint8Array} p */
 export function opusSamples(p) {
   const config = p[0] >> 3;
   const frame = config < 12 ? [480, 960, 1920, 2880][config & 3] : config < 16 ? [480, 960][config & 1] : [120, 240, 480, 960][config & 3];
@@ -25,9 +24,9 @@ export function opusSamples(p) {
   return frame * (c === 0 ? 1 : c === 3 ? p[1] & 0x3f : 2);
 }
 
-/** @typedef {{ rate: number, preSkip: number, channels?: number, samples?: number }} OpusInfo  rate: the input's; samples: how many it had, to trim the end */
+/** @typedef {{ rate: number, preSkip: number, channels?: number, samples?: number }} OpusInfo  rate and samples: the input's (samples trim the end) */
 
-/** The OpusHead packet (RFC 7845 §5.1): mapping family 0, no gain. @param {OpusInfo} o */
+/** @param {OpusInfo} o */
 export function opusHead({ rate, preSkip, channels = 1 }) {
   const b = new Uint8Array(19);
   b.set(ascii('OpusHead'));
@@ -39,7 +38,7 @@ export function opusHead({ rate, preSkip, channels = 1 }) {
   return b;
 }
 
-// Ogg's own CRC: polynomial 0x04C11DB7, not reflected, starting at 0 (not the zip CRC).
+// Ogg's own CRC: polynomial 0x04C11DB7, not reflected, from 0 (not the zip CRC).
 const CRC = Uint32Array.from({ length: 256 }, (_, i) => {
   let r = i << 24;
   for (let k = 0; k < 8; k++) r = r & 0x80000000 ? (r << 1) ^ 0x04c11db7 : r << 1;
@@ -52,7 +51,7 @@ export function oggCrc(b) {
   return c;
 }
 
-/** One Ogg page. flags: 2 first, 4 last. @param {Uint8Array[]} packets @param {number} flags @param {number} granule @param {number} seq */
+/** @param {Uint8Array[]} packets @param {number} flags 2 first, 4 last @param {number} granule @param {number} seq */
 function page(packets, flags, granule, seq) {
   /** @type {number[]} */
   const lacing = [];
@@ -68,7 +67,7 @@ function page(packets, flags, granule, seq) {
   const dv = new DataView(head.buffer);
   dv.setUint32(6, granule >>> 0, true);
   dv.setUint32(10, Math.floor(granule / 2 ** 32), true);
-  dv.setUint32(14, 0x616e6e61, true); // the stream's serial number: one stream, always the same, so the same packets give the same file
+  dv.setUint32(14, 0x616e6e61, true); // one serial number always: the same packets give the same file
   dv.setUint32(18, seq, true);
   head[26] = lacing.length;
   head.set(lacing, 27);
@@ -77,16 +76,13 @@ function page(packets, flags, granule, seq) {
   return out;
 }
 
-/** The end of the sound, at 48 kHz, counting the pre-skip: trims what the last packet adds past the input. @param {Uint8Array[]} packets @param {OpusInfo} o */
+/** Where the sound ends, at 48 kHz with the pre-skip: what the last packet decodes past the input is cut. @param {Uint8Array[]} packets @param {OpusInfo} o */
 function ending(packets, o) {
   const total = packets.reduce((n, p) => n + opusSamples(p), 0);
   return o.samples === undefined ? total : Math.min(total, o.preSkip + Math.ceil((o.samples * 48_000) / o.rate));
 }
 
-/**
- * An Ogg Opus file (RFC 7845): OpusHead and OpusTags on pages of their own, then the packets, with
- * granule positions at 48 kHz; the last page ends the stream. @param {Uint8Array[]} packets @param {OpusInfo} o
- */
+/** An Ogg Opus file: OpusHead and OpusTags pages, then pages of at most 50 packets (about a second). @param {Uint8Array[]} packets @param {OpusInfo} o */
 export function oggOpus(packets, o) {
   const tags = cat([ascii('OpusTags'), Uint8Array.of(5, 0, 0, 0), ascii('annai'), new Uint8Array(4)]);
   const pages = [page([opusHead(o)], 2, 0, 0), page([tags], 0, 0, 1)];
@@ -96,7 +92,7 @@ export function oggOpus(packets, o) {
   let decoded = 0;
   for (const p of packets) {
     const n = Math.floor(p.length / 255) + 1;
-    if (laces + n > 255) {
+    if (laces + n > 255 || held.length === 50) {
       pages.push(page(held, 0, decoded, pages.length));
       held = [];
       laces = 0;
@@ -116,7 +112,7 @@ function vint(n) {
   }
   return Uint8Array.of(0x01, 0, 0, 0, (n / 2 ** 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff);
 }
-/** An EBML element: its id (as written, 1 to 4 bytes), size and body. @param {number} id @param {Uint8Array | Uint8Array[]} body */
+/** @param {number} id as written @param {Uint8Array | Uint8Array[]} body */
 function el(id, body) {
   const b = Array.isArray(body) ? cat(body) : body;
   const ids = [];
@@ -140,31 +136,29 @@ const float = (id, x) => {
 };
 
 /**
- * A WebM Opus file: the EBML header (DocType webm), one audio track A_OPUS with its OpusHead, and
- * the packets as SimpleBlocks in one cluster, at their times in milliseconds (16 bits: up to 32 s).
- * @param {Uint8Array[]} packets @param {OpusInfo} o
+ * A WebM Opus file: one A_OPUS track, the packets as SimpleBlocks in one cluster (times in ms,
+ * 16 bits), the last in a BlockGroup whose DiscardPadding trims the end. @param {Uint8Array[]} packets @param {OpusInfo} o
  */
 export function webmOpus(packets, o) {
-  const ms = (/** @type {number} */ samples) => Math.round(samples / 48);
+  const ns = (/** @type {number} */ samples) => Math.round((samples / 48_000) * 1e9);
+  const end = ending(packets, o);
   const header = el(0x1a45dfa3, [uint(0x4286, 1), uint(0x42f7, 1), uint(0x42f2, 4), uint(0x42f3, 8), el(0x4282, ascii('webm')), uint(0x4287, 4), uint(0x4285, 2)]);
-  const info = el(0x1549a966, [uint(0x2ad7b1, 1_000_000), el(0x4d80, ascii('annai')), el(0x5741, ascii('annai')), float(0x4489, ms(ending(packets, o) - o.preSkip))]);
+  const info = el(0x1549a966, [uint(0x2ad7b1, 1_000_000), float(0x4489, Math.round((end - o.preSkip) / 48))]);
   const track = el(0xae, [uint(0xd7, 1), uint(0x73c5, 1), uint(0x83, 2), el(0x86, ascii('A_OPUS')), el(0x63a2, opusHead(o)),
-    uint(0x56aa, Math.round((o.preSkip / 48_000) * 1e9)), uint(0x56bb, 80_000_000), el(0xe1, [float(0xb5, 48_000), uint(0x9f, o.channels ?? 1)])]);
+    uint(0x56aa, ns(o.preSkip)), uint(0x56bb, 80_000_000), el(0xe1, [float(0xb5, 48_000), uint(0x9f, o.channels ?? 1)])]);
   let at = 0;
-  const blocks = packets.map((p) => {
-    const t = ms(at);
+  const blocks = packets.map((p, i) => {
+    const t = Math.round(at / 48);
     at += opusSamples(p);
-    return el(0xa3, cat([Uint8Array.of(0x81, t >> 8, t & 0xff, 0x80), p]));
+    const block = cat([Uint8Array.of(0x81, t >> 8, t & 0xff, 0x80), p]);
+    return i < packets.length - 1 || at <= end ? el(0xa3, block) : el(0xa0, [el(0xa1, block), uint(0x75a2, ns(at - end))]);
   });
   return cat([header, el(0x18538067, [info, el(0x1654ae6b, [track]), el(0x1f43b675, [uint(0xe7, 0), ...blocks])])]);
 }
 
 const RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
 
-/**
- * AAC in ADTS frames (ISO 14496-3): a 7-byte header, without a checksum, before each raw AAC-LC
- * frame. Frames that are ADTS already are kept as they are. @param {Uint8Array[]} frames @param {{ rate: number, channels: number }} o
- */
+/** AAC-LC frames in ADTS (a 7-byte header each, no checksum); frames that are ADTS already stay. @param {Uint8Array[]} frames @param {{ rate: number, channels: number }} o */
 export function adts(frames, { rate, channels }) {
   const fi = RATES.indexOf(rate);
   if (fi < 0) throw new Error(`ADTS has no sample rate ${rate}.`);
@@ -176,9 +170,8 @@ export function adts(frames, { rate, channels }) {
 }
 
 /**
- * A FLAC file: "fLaC", the metadata blocks with the last one marked, then the frames, which carry
- * their own headers. Encoders give the metadata three ways: in the stream before the frames, in the
- * description after a mapping's header (Ogg FLAC's), or as a bare STREAMINFO.
+ * A FLAC file: "fLaC", the metadata with its last block marked, then the frames. Encoders give the
+ * metadata in the stream, after a mapping header in the description (Ogg FLAC's), or as a bare STREAMINFO.
  * @param {Uint8Array | null} description @param {Uint8Array[]} frames
  */
 export function flacFile(description, frames) {
@@ -188,10 +181,9 @@ export function flacFile(description, frames) {
   const head = frames[0] && marker(frames[0], 0) ? [] : at >= 0 ? [d.subarray(at)] : d.length === 34 ? [ascii('fLaC'), Uint8Array.of(0, 0, 0, 34), d] : null;
   if (!head) throw new Error('The FLAC encoder gave no STREAMINFO.');
   const file = cat([...head, ...frames]);
-  // The block before the first frame (a frame starts 0xFF) is marked the last one.
   for (let i = 4; i + 4 <= file.length && !(file[i] & 0x80);) {
     const next = i + 4 + ((file[i + 1] << 16) | (file[i + 2] << 8) | file[i + 3]);
-    if (next >= file.length || file[next] === 0xff) file[i] |= 0x80;
+    if (next >= file.length || file[next] === 0xff) file[i] |= 0x80; // a frame starts 0xFF
     i = next;
   }
   return file;

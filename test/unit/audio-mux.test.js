@@ -82,7 +82,8 @@ test('an Ogg Opus file: OggS pages with valid CRCs, OpusHead then OpusTags, gran
   assert.equal(text(pages[1].packets[0].subarray(0, 8)), 'OpusTags');
   assert.deepEqual([pages[0].granule, pages[1].granule], [0, 0]);
   const audio = pages.slice(2);
-  assert.ok(audio.length >= 2, 'the packets need more than one page');
+  assert.ok(audio.every((p) => p.packets.length <= 50), 'a page holds at most 50 packets, about a second (RFC 7845)');
+  assert.equal(audio.length, 7);
   assert.deepEqual(audio.flatMap((p) => p.packets).map((p) => p.length), packets(301).map((p) => p.length), 'every packet, whole and in order');
   for (const [i, p] of audio.entries()) {
     const through = audio.slice(0, i + 1).reduce((n, q) => n + q.packets.length, 0) * 960;
@@ -119,9 +120,15 @@ test('a WebM Opus file: EBML header, DocType webm, one audio track A_OPUS, block
   const clusters = ebml(segment).filter(([id]) => id === 0x1f43b675).map(([, b]) => b);
   assert.equal(clusters.length, 1);
   const blocks = ebml(clusters[0]).filter(([id]) => id === 0xa3).map(([, b]) => b);
-  assert.equal(blocks.length, 101);
+  assert.equal(blocks.length, 100);
   assert.deepEqual(blocks.slice(0, 3).map((b) => [b[0], (b[1] << 8) | b[2], b[3]]), [[0x81, 0, 0x80], [0x81, 20, 0x80], [0x81, 40, 0x80]]);
-  assert.deepEqual([...blocks[100].subarray(4)], [...packets(101)[100]]);
+  // The last packet in a BlockGroup whose DiscardPadding trims what it decodes past the input: 101 × 960 − (312 + 32000 × 3) samples.
+  const group = /** @type {Uint8Array} */ (child(clusters[0], 0xa0));
+  const last = /** @type {Uint8Array} */ (child(group, 0xa1));
+  assert.deepEqual([last[0], (last[1] << 8) | last[2]], [0x81, 2000]);
+  assert.deepEqual([...last.subarray(4)], [...packets(101)[100]]);
+  assert.equal(num(child(group, 0x75a2)), Math.round((648 / 48_000) * 1e9));
+  assert.equal(child(info, 0x4d80), undefined, 'no MuxingApp or WritingApp');
 });
 
 test('ADTS frames carry the right length and sample-rate index; FLAC starts fLaC with STREAMINFO', () => {
