@@ -25,9 +25,9 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
- *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, secondMs?: number }} LiveHost
+ *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number }} LiveHost
  *   what Halves gives it: model, the realtime model of Koe's pathway; release: the speech pipeline lets go of the microphone and speaker;
- *   told: Kokoro's block; dropped: it couldn't resume (cut: mid-sentence)
+ *   told: Kokoro's block; dropped: it couldn't resume (cut: mid-sentence); asked: Kokoro works on Koe's question
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -644,7 +644,8 @@ export class LiveKoe {
   /** Re-arms the quiet spell: no speech either way and no tool call for that long closes it (decision 12). */
   #poke() {
     clearTimeout(this.#quiet);
-    if (this.state !== 'closed') this.#quiet = setTimeout(() => (this.busy ? this.#poke() : this.close('quiet')), this.#brief ? this.#answerMs : this.#quietMs);
+    // Kokoro working on Koe's question isn't quiet: its answer is coming.
+    if (this.state !== 'closed') this.#quiet = setTimeout(() => (this.busy || this.c.asked() ? this.#poke() : this.close('quiet')), this.#brief ? this.#answerMs : this.#quietMs);
   }
 
   /** Today's spend reached (Spend per day): none opens, and one open closes, with the budget card. @returns {Promise<boolean>} */

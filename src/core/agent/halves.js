@@ -232,6 +232,7 @@ export class Halves {
       changed: () => this.#liveChanged(),
       budgets: async () => (await this.kokoro.settings()).budgets,
       timeZone: () => this.kokoro.timeZone(), secondMs: c.secondMs,
+      asked: () => this.#asked && this.kokoro.busy,
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.#ready = this.#refresh({ tell: false }).catch(() => {});
