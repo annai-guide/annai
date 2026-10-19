@@ -115,11 +115,15 @@ test("a realtime model in Koe's lists is Koe's (K5): first, it runs a live sessi
   const free = { types, until: () => 0, now: 1000 };
   assert.deepEqual(koeList(cfg, true), { role: 'koe-talk', models: ['live', 'fast'] });
   assert.deepEqual(koePath(cfg, { voiceOn: true, ...free }), { kind: 'live', modelId: 'live' });
-  assert.deepEqual(koePath(cfg, { voiceOn: true, ...free, until: (/** @type {string} */ id) => (id === 'live' ? 5000 : 0) }), { kind: 'text' }, 'resting: the text model after it');
-  assert.deepEqual(koePath(cfg, { voiceOn: true, ...free, types: new Map([['chat-completions', {}]]) }), { kind: 'text' }, 'its protocol not running');
+  assert.deepEqual(koePath(cfg, { voiceOn: true, ...free, until: (/** @type {string} */ id) => (id === 'live' ? 5000 : 0) }), { kind: 'text', role: 'koe-talk' }, 'resting: the text model after it');
+  assert.deepEqual(koePath(cfg, { voiceOn: true, ...free, types: new Map([['chat-completions', {}]]) }), { kind: 'text', role: 'koe-talk' }, 'its protocol not running');
   const off = structuredClone(cfg);
   off.providers.pv.user.abilities.live.on = false;
-  assert.deepEqual(koePath(off, { voiceOn: true, ...free }), { kind: 'text' }, 'Live voice switched off');
+  assert.deepEqual(koePath(off, { voiceOn: true, ...free }), { kind: 'text', role: 'koe-talk' }, 'Live voice switched off');
+  // The live model alone for talking and resting: the typing list's model talks, through the speech pipeline (the design, "Failures").
+  const split = { ...cfg, roles: { ...cfg.roles, 'koe-talk': { models: ['live'], level: 'off' }, 'koe-type': { models: ['fast'], level: 'off' } } };
+  assert.deepEqual(koePath(split, { voiceOn: true, ...free, until: (/** @type {string} */ id) => (id === 'live' ? 5000 : 0) }), { kind: 'text', role: 'koe-type' });
+  assert.deepEqual(koePath(split, { voiceOn: true, ...free }), { kind: 'live', modelId: 'live' });
   // Voice off with only a realtime model: the typing list is empty, so it uses the talking one: live, muted.
   const liveOnly = { ...cfg, roles: { ...cfg.roles, 'koe-talk': { models: ['live'], level: 'off' } } };
   assert.equal(splitOn(liveOnly), true);

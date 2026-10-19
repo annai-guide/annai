@@ -93,18 +93,22 @@ export function koeList(cfg, voiceOn) {
 export const splitOn = (cfg) => KOE_ROLES.some((r) => (cfg.roles?.[r]?.models ?? []).length > 0);
 
 /**
- * Koe's pathway now (K5): the first model of its list that can answer. A realtime one runs a live session; a chat one,
- * the loop, which passes realtime ones over. A realtime model off, resting or without its protocol running is passed over,
- * and a chat model resting. null: none can. @param {ModelConfig} cfg
+ * Koe's pathway now (K5): the first model that can answer, in its list, then the other Koe list (a live model that can't go
+ * on falls back to the typing models and the speech pipeline: the design, "Failures"). A realtime one runs a live session;
+ * a chat one, the loop, with the list it is in (whose realtime models it passes over). A realtime model off, resting or
+ * without its protocol running is passed over, and a chat model resting. null: none can. @param {ModelConfig} cfg
  * @param {{ voiceOn: boolean, types: Map<string, { realtime?: boolean }>, until: (id: string) => number, now: number }} o
- * @returns {{ kind: 'live', modelId: string } | { kind: 'text' } | null}
+ * @returns {{ kind: 'live', modelId: string } | { kind: 'text', role: string } | null}
  */
 export function koePath(cfg, { voiceOn, types, until, now }) {
-  for (const id of koeList(cfg, voiceOn).models) {
-    const a = abilityOf(cfg, id);
-    if (!cfg.models[id] || until(id) > now) continue;
-    if (a?.kind !== 'realtime') return { kind: 'text' };
-    if (a.on && types.get(a.type)?.realtime) return { kind: 'live', modelId: id };
+  const own = koeList(cfg, voiceOn).role;
+  for (const role of [own, KOE_ROLES.find((r) => r !== own) ?? own]) {
+    for (const id of candidates(cfg, role)) {
+      const a = abilityOf(cfg, id);
+      if (!cfg.models[id] || until(id) > now) continue;
+      if (a?.kind !== 'realtime') return { kind: 'text', role };
+      if (a.on && types.get(a.type)?.realtime) return { kind: 'live', modelId: id };
+    }
   }
   return null;
 }
