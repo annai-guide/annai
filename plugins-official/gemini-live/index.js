@@ -23,17 +23,18 @@ const of = (details, modality) => (Array.isArray(details) ? details : []).filter
 const ms = (t) => Math.round((Number.parseFloat(String(t ?? '')) || 0) * 1000);
 
 /**
- * annai's usage from Gemini's: audio tokens apart, cached ones as cache reads, thinking counted in the output.
+ * annai's usage from Gemini's: audio, and image and video, tokens apart, cached ones as cache reads, thinking counted in the output.
  * @param {any} u @returns {Record<string, number>}
  */
 export function usageOf(u) {
   const audioIn = of(u.promptTokensDetails, 'AUDIO');
+  const image = of(u.promptTokensDetails, 'IMAGE') + of(u.promptTokensDetails, 'VIDEO');
   const audioOut = of(u.responseTokensDetails, 'AUDIO');
   const cacheRead = Number(u.cachedContentTokenCount) || 0;
   const reasoning = Number(u.thoughtsTokenCount) || 0;
   return {
-    input: Math.max(0, (Number(u.promptTokenCount) || 0) + (Number(u.toolUsePromptTokenCount) || 0) - audioIn - cacheRead),
-    cacheRead, audioIn,
+    input: Math.max(0, (Number(u.promptTokenCount) || 0) + (Number(u.toolUsePromptTokenCount) || 0) - audioIn - image - cacheRead),
+    cacheRead, audioIn, ...(image ? { image } : {}),
     output: Math.max(0, (Number(u.responseTokenCount) || 0) - audioOut) + reasoning,
     reasoning, audioOut,
   };

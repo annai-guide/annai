@@ -46,6 +46,13 @@ test('audio tokens are priced by audioIn and audioOut, else as input and output;
   assert.deepEqual(addUsage({ ...NO_USAGE, input: 1 }, { ...NO_USAGE, input: 2 }), { ...NO_USAGE, input: 3 });
 });
 
+test("a realtime model's image and video tokens are priced by its image price, else as input (review)", () => {
+  close(costOf({ ...NO_USAGE, input: 1000, image: 2000 }, { input: 0.75, image: 1, output: 4.5 }), (1000 * 0.75 + 2000 * 1) / 1e6);
+  close(costOf({ ...NO_USAGE, input: 1000, image: 2000 }, { input: 0.75, output: 4.5 }), (3000 * 0.75) / 1e6);
+  assert.deepEqual(addUsage({ ...NO_USAGE, image: 3 }, { ...NO_USAGE, image: 4 }), { ...NO_USAGE, image: 7 });
+  assert.deepEqual(mergeUsage({ ...NO_USAGE }, { image: 5 }), { ...NO_USAGE, image: 5 });
+});
+
 test("reasoning levels: the model's own, else the nearest, the cheaper on a tie (spec §9.3)", () => {
   assert.deepEqual(LEVELS, ['off', 'low', 'medium', 'high', 'max']);
   assert.deepEqual(ROLE_LEVELS, { main: 'medium', utility: 'low', decide: 'off', 'koe-talk': 'off', 'koe-type': 'off' });

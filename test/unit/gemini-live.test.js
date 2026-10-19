@@ -24,7 +24,7 @@ const TYPE = geminiLive();
 const endpoint = (baseUrl) => ({ id: 'pv-g/live', provider: 'pv-g', ability: 'live', type: 'gemini-live', name: 'Google Gemini', baseUrl, headers: {}, tunables: TYPE.tunables, extraBody: {} });
 /** @param {any} [over] @returns {any} */
 const model = (over = {}) => ({ id: 'm-l', provider: 'pv-g', ability: 'live', name: 'Gemini 3.8 Live', providerId: 'gemini-3.8-live', input: ['text', 'image'], tools: true, contextWindow: 128000, maxOutput: null,
-  prices: { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over });
+  prices: { input: 0.75, audioIn: 3, image: 1, output: 4.5, audioOut: 12 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {}, ...over });
 const TOOLS = [{ name: 'tell_kokoro', description: 'Ask Kokoro to check something.', input: { type: 'object', properties: { text: { type: 'string' }, mode: { type: 'string', enum: ['append', 'immediate'] } }, required: ['text'], additionalProperties: false } }];
 const setup = (/** @type {any} */ over = {}) => ({ instructions: 'You are Koe.', context: '<today>Big Sur, 10:00</today>', tools: TOOLS, audioIn: { format: /** @type {const} */ ('pcm16'), rate: 16000 }, audioOut: { format: /** @type {const} */ ('pcm16'), rate: 24000 }, ...over });
 
@@ -148,10 +148,11 @@ test('a tool answer carries scheduling SILENT; a text turn is clientContent with
   }
 });
 
-test('usage by modality becomes input, output, audioIn and audioOut, and is priced', async () => {
+test('usage by modality becomes input, output, audioIn, audioOut and image, and is priced', async () => {
   const usage = {
-    promptTokenCount: 646, responseTokenCount: 75, totalTokenCount: 721, thoughtsTokenCount: 21, cachedContentTokenCount: 100,
-    promptTokensDetails: [{ modality: 'TEXT', tokenCount: 359 }, { modality: 'AUDIO', tokenCount: 222 }], responseTokensDetails: [{ modality: 'AUDIO', tokenCount: 54 }],
+    promptTokenCount: 1166, responseTokenCount: 75, totalTokenCount: 1241, thoughtsTokenCount: 21, cachedContentTokenCount: 100,
+    promptTokensDetails: [{ modality: 'TEXT', tokenCount: 359 }, { modality: 'AUDIO', tokenCount: 222 }, { modality: 'IMAGE', tokenCount: 258 }, { modality: 'VIDEO', tokenCount: 262 }],
+    responseTokensDetails: [{ modality: 'AUDIO', tokenCount: 54 }],
   };
   const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, pace: 0, turns: [{ said: 'OK.', usage }] });
   try {
@@ -159,10 +160,10 @@ test('usage by modality becomes input, output, audioIn and audioOut, and is pric
     await session.ready;
     session.text('Say OK.');
     await until(() => events.some((e) => e.type === 'usage'));
-    // Prompt: 222 audio, 100 cached, the rest (324) text; response: 54 audio, 21 other, and 21 thinking counted as output.
-    assert.deepEqual(events.find((e) => e.type === 'usage').usage, { input: 324, cacheRead: 100, audioIn: 222, output: 42, reasoning: 21, audioOut: 54 });
+    // Prompt: 222 audio, 520 image and video, 100 cached, the rest (324) text; response: 54 audio, 21 other, and 21 thinking counted as output.
+    assert.deepEqual(events.find((e) => e.type === 'usage').usage, { input: 324, cacheRead: 100, audioIn: 222, image: 520, output: 42, reasoning: 21, audioOut: 54 });
     const [req] = await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['net.request'] }));
-    assert.ok(Math.abs(req.data.cost - (324 * 0.75 + 100 * 0.75 + 222 * 3 + 42 * 4.5 + 54 * 12) / 1e6) < 1e-12);
+    assert.ok(Math.abs(req.data.cost - (324 * 0.75 + 100 * 0.75 + 222 * 3 + 520 * 1 + 42 * 4.5 + 54 * 12) / 1e6) < 1e-12);
     session.close();
   } finally {
     await s.stop();

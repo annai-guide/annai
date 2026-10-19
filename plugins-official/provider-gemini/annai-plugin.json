@@ -47,6 +47,7 @@
             "prices": {
               "input": 0.75,
               "audioIn": 3,
+              "image": 1,
               "output": 4.5,
               "audioOut": 12
             }
@@ -58,6 +59,7 @@
             "prices": {
               "input": 0.75,
               "audioIn": 3,
+              "image": 1,
               "output": 4.5,
               "audioOut": 12
             }

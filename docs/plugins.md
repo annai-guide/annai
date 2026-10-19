@@ -437,7 +437,7 @@ export function activate(annai) {
         if (m.audio) emit({ type: 'audio', data: base64.decode(m.audio) });
         if (m.said) emit({ type: 'said', text: m.said });
         // { type: 'heard', text }, { type: 'tool', id, name, input }, { type: 'turn', end: 'complete' | 'interrupted' },
-        // { type: 'usage', usage: { input, output, audioIn, audioOut } }, { type: 'resume', handle }, { type: 'goaway', ms }
+        // { type: 'usage', usage: { input, output, audioIn, audioOut, image } }, { type: 'resume', handle }, { type: 'goaway', ms }
       });
       socket.send(JSON.stringify({ setup: { model: model.providerId, instructions: setup.instructions + '\n\n' + setup.context, tools: setup.tools, resume: setup.resume } }));
       return {
@@ -459,7 +459,7 @@ export function activate(annai) {
   - It calls `attach()` once the socket is open. Set `socket.on()` there: messages before it are dropped.
   - It waits for `ready` (15 s), then hands the session to Koe. Before `ready`, a close may ask for one more try: `reopen(code, reason, tunables)` gives the tunables to open with (Gemini Live answers v1alpha's proactive audio, refused on v1beta, so).
   - It reads a close into an error kind: your `classifyClose`, then annai's (a refused key is `auth`; quota `rate`; 1008 or "not found" `not-found`; 1011 `server`; anything else `network`).
-  - It prices each `usage` you emit (one per turn) by the model's prices, `audioIn` and `audioOut` among them, and counts it in Spend per day. It traces the session's life as `live.session` entries, with the data both ways, and never its address, subprotocols or key.
+  - It prices each `usage` you emit (one per turn) by the model's prices, `audioIn`, `audioOut` and `image` (image and video tokens) among them, and counts it in Spend per day. It traces the session's life as `live.session` entries, with the data both ways, and never its address, subprotocols or key.
   - A crash in your code counts against your plugin, as for any protocol.
 - **Audio:** `audio()` gets 16-bit PCM at `setup.audioIn`'s rate, and `audio` events carry it at `setup.audioOut`'s. annai streams only speech: `activity('start')`, the audio, then `activity('end')` at the end of the sentence, from its own end-of-sentence detector. Nothing is sent while nobody speaks.
 - **Answers:** annai answers every tool call at once. `silent` means "say nothing more for this answer" (Gemini's `scheduling: "SILENT"`, without which it adds a filler turn).

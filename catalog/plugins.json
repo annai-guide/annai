@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 8732,
+      "size": 8880,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -67,7 +67,7 @@
       },
       "files": {
         "annai-plugin.json": "2755ac40fecd66aadf7ba60b1af931ee1ee9dd806b575dbe27b7d9a502209957",
-        "index.js": "21ed13bf09b6bd961b2045befa64fcc96f4d0da56f6a18fe38f9c066c5a940db"
+        "index.js": "1574f204018f177991536baab9644f82768fd2d684f83776e72e496493a7a08c"
       }
     },
     {
@@ -187,7 +187,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 2123,
+      "size": 2175,
       "requires": [
         {
           "id": "chat-completions",
@@ -196,7 +196,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "232f62de0ea7578b39a5403d9f9b9be1c5836134abf1b66d47c9acdc0bf31e9d"
+        "annai-plugin.json": "707b412b42cfea52ba72fedb83273092c8d8932dc72039d86a872289f16ef69b"
       }
     },
     {
