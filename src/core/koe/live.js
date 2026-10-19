@@ -279,9 +279,11 @@ export class LiveKoe {
     return 'listening';
   }
 
-  /** Her voice stops now; the session stays. */
+  /** Her voice stops now, and the provider is told where (cut: OpenAI truncates its record there); the session stays. */
   interrupt() {
-    if (this.#sounding) this.#stop(this.#sounding);
+    if (!this.#sounding) return;
+    const playedMs = this.#stop(this.#sounding);
+    this.#send((s) => s.cut?.(playedMs));
   }
 
   /**

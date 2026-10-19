@@ -241,7 +241,7 @@ export function openLive(c) {
       listeners.add(fn);
       return () => { listeners.delete(fn); };
     },
-    ...Object.fromEntries(['audio', 'activity', 'text', 'image', 'answer', 'cancel'].map((m) => [m, (/** @type {any[]} */ ...a) => call(m, a)])),
+    ...Object.fromEntries(['audio', 'activity', 'text', 'image', 'answer', 'cancel', 'cut'].map((m) => [m, (/** @type {any[]} */ ...a) => call(m, a)])),
     close(why = 'closed') {
       if (done || asked) return;
       asked = why;

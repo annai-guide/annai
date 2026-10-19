@@ -378,6 +378,8 @@ export function activate(annai) {
           if (!o.silent) respond();
         },
         cancel: () => cut(),
+        // A tap stopped Koe's voice where it was heard (K5): the same cut, with nothing said after it.
+        cut: (/** @type {number | undefined} */ playedMs) => cut(playedMs),
         close: () => {
           clearTimeout(renew);
           for (const x of ending) clearTimeout(x);
