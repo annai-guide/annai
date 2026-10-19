@@ -135,9 +135,20 @@ export function createLlm({
      * @returns {Promise<string>} the provider's id
      */
     async addProvider(plugin, { official, ...o } = {}) {
-      const src = await service.installProvider(plugin, { official });
-      for (const [id, a] of Object.entries(src.provider.abilities)) if (o.abilities?.[id]?.on ?? a.on !== false) await ensure(a.type);
-      return addProviderRecords({ ws, store }, src, o);
+      const had = (await plugins.installed())[plugin];
+      try {
+        const src = await service.installProvider(plugin, { official });
+        for (const [id, a] of Object.entries(src.provider.abilities)) if (o.abilities?.[id]?.on ?? a.on !== false) await ensure(a.type);
+        return await addProviderRecords({ ws, store }, src, o);
+      } catch (e) {
+        // A failed add leaves no provider plugin it brought without a provider, nor what that alone required (fix pass).
+        const cfg = await readConfig(ws).catch(() => null);
+        if (!had && cfg && !Object.values(cfg.providers).some((p) => p.plugin === plugin) && (await plugins.installed())[plugin]) {
+          await plugins.uninstall(plugin).catch(() => {});
+          await prune(plugins, inUse(Object.values(cfg.providers))).catch(() => {});
+        }
+        throw e;
+      }
     },
     /**
      * Removes a provider: its key, models and their places in roles (spec §4.9). The last provider

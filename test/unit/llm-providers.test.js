@@ -6,7 +6,7 @@ import { ensureBaseScopes, SYS } from '../../src/core/scopes.js';
 import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase } from '../../src/core/llm/config.js';
 import { addProvider, syncProviders, useSuggestion, addListedModel, addModelById, withSpeech, speechAdd, speechBehind } from '../../src/core/llm/providers.js';
 import { ttlFor } from '../../src/core/agent/warmth.js';
-import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, site } from './provider-kit.js';
+import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, PROVIDER, site } from './provider-kit.js';
 import { hostKit } from './package-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
 
@@ -246,10 +246,10 @@ test('a call never installs a protocol plugin: a model whose type is missing is 
   const voice = /** @type {any} */ (Object.values(cfg.models).find((m) => m.ability === 'voice'));
   await assert.rejects(k.llm.synthesize({ modelId: voice.id, text: 'Hello.' }), (/** @type {any} */ e) => e.kind === 'type-missing' && /Settings → Models/.test(e.message));
   assert.equal(k.s.asked.length, 0);
-  // Setting up may install: Test fetches what the model needs (its code ran this session, so it runs after a restart).
-  await assert.rejects(k.llm.test(Object.values(cfg.models).find((m) => modelOf(m).providerId === 'x-1')?.id ?? ''), /Restart annai/);
+  // Setting up may install: Test fetches what the model needs, and its code (the same bytes) runs again at once.
+  await k.llm.test(Object.values(cfg.models).find((m) => modelOf(m).providerId === 'x-1')?.id ?? '');
   assert.ok(k.s.asked.includes('/plugins-official/proto-a/index.js'));
-  assert.ok((await k.host.installed())['proto-a']);
+  assert.ok(k.host.active.has('proto-a'));
 });
 
 test('removing the last provider of a plugin removes the plugin and the protocol plugins nothing else needs; removing one of two keeps both', async () => {
@@ -337,4 +337,36 @@ test("security review: an installed copy of an official provider's id that came 
   assert.equal(await host.verifyOfficial('provider-x', /** @type {any} */ (s.entries.find((e) => e.id === 'provider-x'))), false);
   await llm.installProvider('provider-x', { official: true });
   assert.equal(await host.verifyOfficial('provider-x', /** @type {any} */ (s.entries.find((e) => e.id === 'provider-x'))), true);
+});
+
+test('fix pass (Important): remove the last provider (its protocol is pruned), then add another needing the same protocol, in one session: it works, with no restart', async () => {
+  const k = await hostKit();
+  const s = await site({
+    'proto-a': PROTO('proto-a', 'type-a', '0.3.0'),
+    'provider-x': PROVIDER('provider-x', [{ id: 'proto-a', version: '^0' }], ['type-a']),
+    'provider-y': PROVIDER('provider-y', [{ id: 'proto-a', version: '^0' }], ['type-a']),
+  });
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: (/** @type {any} */ u) => s.fetch(u) });
+  const x = await llm.addProvider('provider-x', { key: 'k1' });
+  assert.ok(k.host.active.has('proto-a'));
+  assert.deepEqual(await llm.removeProvider(x), { plugin: 'provider-x', protocols: ['proto-a'] });
+  assert.equal(k.host.needsRestart('proto-a'), false, 'the same bytes are cached: starting them again is right');
+  const y = await llm.addProvider('provider-y', { key: 'k2' });
+  assert.ok(k.host.active.has('proto-a') && k.host.active.has('provider-y'));
+  assert.deepEqual(Object.keys((await llm.config()).providers), [y]);
+  await llm.ensureType('type-a');
+});
+
+test("fix pass: a failed add leaves no provider plugin installed without a provider, nor what it alone brought", async () => {
+  const k = await hostKit();
+  const s = await site({
+    'proto-a': PROTO('proto-a', 'type-a', '0.3.0'),
+    // Its second ability starts on, but its type is one annai has no plugin for.
+    'provider-z': PROVIDER('provider-z', [{ id: 'proto-a', version: '^0' }], ['type-a', 'type-nowhere']),
+  });
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: (/** @type {any} */ u) => s.fetch(u) });
+  await assert.rejects(llm.addProvider('provider-z', { key: 'k' }), /type-nowhere/);
+  assert.deepEqual(Object.keys(await k.host.installed()), []);
+  assert.deepEqual(Object.keys((await llm.config()).providers), []);
+  assert.deepEqual(await k.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
 });
