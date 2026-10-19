@@ -1,7 +1,8 @@
 /**
  * OpenAI-compatible speech (spec §9.1, §10): transcription through /audio/transcriptions and
- * voices through /audio/speech. OpenAI, Groq and local servers (Speaches, whisper.cpp's server,
- * Kokoro) speak this API; their differences are tunables.
+ * voices through /audio/speech. OpenAI, OpenRouter, Groq and local servers (Speaches, whisper.cpp's
+ * server, Kokoro) speak this API; their differences are tunables. OpenRouter lists its speech models
+ * apart from its chat models (listPath: /models?output_modalities=…).
  */
 const MEDIA = /** @type {Record<string, string>} */ ({ mp3: 'audio/mpeg', opus: 'audio/ogg', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav', pcm: 'audio/L16' });
 const EXT = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg' });
@@ -22,9 +23,10 @@ function classify(_status, body) {
 }
 
 /** @param {{ endpoint: any, key: string | null }} c */
-const listRequest = ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, '/models'), headers: auth(endpoint, key) });
+const listRequest = ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, endpoint.tunables?.listPath || '/models'), headers: auth(endpoint, key) });
 /** @param {any} json */
-const readList = (json) => (Array.isArray(json?.data) ? json.data : []).filter((/** @type {any} */ m) => typeof m?.id === 'string').map((/** @type {any} */ m) => ({ providerId: m.id }));
+const readList = (json) => (Array.isArray(json?.data) ? json.data : []).filter((/** @type {any} */ m) => typeof m?.id === 'string')
+  .map((/** @type {any} */ m) => (typeof m.name === 'string' && m.name ? { providerId: m.id, name: m.name } : { providerId: m.id }));
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -34,7 +36,7 @@ export function activate(annai) {
       type: 'openai-transcription',
       name: 'OpenAI-compatible transcription',
       speech: 'in',
-      tunables: { path: '/audio/transcriptions', language: '', prompt: '' },
+      tunables: { path: '/audio/transcriptions', listPath: '/models', language: '', prompt: '' },
       /** @param {any} c */
       transcribeRequest: ({ endpoint, model, key, tunables: t, audio }) => {
         const form = new FormData();
@@ -58,11 +60,12 @@ export function activate(annai) {
       type: 'openai-speech',
       name: 'OpenAI-compatible voice',
       speech: 'out',
-      tunables: { path: '/audio/speech', voice: 'marin', format: 'mp3', instructions: '', speed: null },
+      tunables: { path: '/audio/speech', listPath: '/models', voice: 'marin', format: 'mp3', instructions: '', speed: null },
       /** @param {any} c */
       speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
         /** @type {Record<string, any>} */
-        let body = { model: model.providerId, input: text, voice: t.voice, response_format: t.format };
+        let body = { model: model.providerId, input: text, response_format: t.format };
+        if (t.voice) body.voice = t.voice; // none: the provider's default voice (Fish Audio's on OpenRouter)
         if (t.instructions) body.instructions = t.instructions;
         if (t.speed) body.speed = t.speed;
         body = mergePatch(mergePatch(body, endpoint.extraBody ?? {}), model.extraBody ?? {});

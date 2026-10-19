@@ -51,6 +51,36 @@ test('Erase starts annai again as on a new device: the welcome shows again', asy
   expect(new URL(page.url()).hash).toBe('#/welcome');
 });
 
+// The tap on Erase can be a start's first, whose sound unlock starts a silent clip (spec §10.1). WebKit on
+// Linux deadlocks the page's process, and the service worker that shares it, when a clip is stopped while it
+// starts: the reload then never finished (the Erase hang, 2026-10-18).
+test("Erase as a start's first tap, five times over: the welcome shows each time, and no clip is still starting as annai goes away", async ({ page }) => {
+  await page.addInitScript(() => {
+    const play = HTMLMediaElement.prototype.play;
+    let plays = 0;
+    let starting = 0;
+    HTMLMediaElement.prototype.play = function () {
+      const p = play.call(this);
+      plays++;
+      starting++;
+      const done = () => { starting--; };
+      p.then(done, done);
+      return p;
+    };
+    addEventListener('beforeunload', () => sessionStorage.setItem('clips', `${sessionStorage.getItem('clips') ?? ''}${plays} played, ${starting} starting; `));
+  });
+  await openApp(page, '#/welcome');
+  for (let i = 1; i <= 5; i++) {
+    await page.evaluate(() => { location.hash = '#/settings'; });
+    await page.getByLabel('Type ERASE to confirm').fill('ERASE');
+    await page.getByRole('button', { name: 'Erase now' }).click();
+    await expect(h1(page), `Erase ${i}`).toHaveText(STEPS[0]);
+  }
+  const clips = String(await page.evaluate(() => sessionStorage.getItem('clips'))).split('; ').filter(Boolean);
+  expect(clips).toHaveLength(5);
+  for (const c of clips) expect(c).toMatch(/^[1-9]\d* played, 0 starting$/);
+});
+
 test("the last step, where annai isn't installed: on an iPhone in Safari, look around first, and set the model up in the Home Screen app; elsewhere, set up a model", async ({ page, browserName }) => {
   await openApp(page, '#/welcome/5');
   await expect(h1(page)).toHaveText(STEPS[4]);
