@@ -234,10 +234,10 @@ export class Halves {
     return run;
   }
 
-  /** In order with what the user typed before. @param {() => unknown} fn */
-  #route(fn) {
+  /** In order with what the user typed before. @param {() => unknown} fn @param {(e: unknown) => unknown} [failed] */
+  #route(fn, failed = (e) => console.warn('routing failed', e)) {
     this.#routes++;
-    this.#routing = this.#routing.then(fn).catch((e) => console.warn('routing failed', e)).finally(() => {
+    this.#routing = this.#routing.then(fn).catch(failed).finally(() => {
       this.#routes--;
     });
     return this.#routing;
@@ -312,6 +312,10 @@ export class Halves {
       if (this.koeState !== 'text' || this.kokoro.pendingId) return this.kokoro.send(text, o);
       this.#koeOpen();
       this.koe.send(text, o);
+    }, (e) => {
+      // Never dropped: Kokoro, Shiori as one, takes it.
+      this.kokoro.send(text, o);
+      this.#notice({ tone: 'warn', title: 'Shiori answers as one half for now', body: `annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.message ?? e)}` });
     });
   }
 
@@ -388,7 +392,8 @@ export class Halves {
   /** @param {string | null} detail */
   working(detail) { this.kokoro.working(detail); }
   cacheState() { return this.kokoro.cacheState(); }
-  loopTools() { return this.kokoro.loopTools(); }
+  /** Shiori's own tools, for Settings → Tools: tell_koe only while she is two halves. */
+  loopTools() { return this.kokoro.loopTools().filter((t) => this.#split || t.name !== 'tell_koe'); }
   /** @param {import('./loop.js').LoopTool[]} tools Shiori's own tools, which are Kokoro's */
   addLoopTools(tools) { this.kokoro.addLoopTools(tools); }
   /** @param {import('./loop.js').Reminder[]} list @param {string} [scope] */

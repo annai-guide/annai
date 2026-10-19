@@ -372,3 +372,25 @@ test('with no Koe model, Halves and the one Agent send the same requests and wri
   assert.deepEqual(two.events, one.events);
   assert.deepEqual(two.notices, one.notices);
 });
+
+test("Fix pass 6: Settings → Tools lists the tell tools only while Shiori is two halves", async () => {
+  const none = await agentKit([[sleep]], { halves: true });
+  await none.agent.split();
+  assert.ok(!none.agent.loopTools().some((/** @type {any} */ t) => t.name === 'tell_koe' || t.name === 'tell_kokoro'));
+  const two = await agentKit([[sleep]], { koe: { type: [sleep] } });
+  await two.agent.split();
+  assert.ok(two.agent.loopTools().some((/** @type {any} */ t) => t.name === 'tell_koe'));
+});
+
+test('Fix pass 7: a message that fails to be routed goes to Kokoro, with a card, never dropped', async () => {
+  const k = await agentKit([[calls(['tell_koe', { text: 'Got it.' }])]], { koe: { type: { rules: [{ match: 'a note from Kokoro', reply: calls(['speak', { text: 'Got it.' }]) }] } } });
+  await k.agent.idle();
+  const config = k.llm.config;
+  k.llm.config = async () => { k.llm.config = config; throw new Error('the settings could not be read'); };
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const [msg] = await k.events(['msg.user']);
+  assert.equal(msg?.data.text, 'Is Nepenthe open?');
+  assert.ok((await k.events(['out.speak'])).some((e) => e.data.text === 'Got it.'));
+  assert.ok(k.notices.some((/** @type {any} */ n) => /the settings could not be read/.test(n.body)), JSON.stringify(k.notices));
+});
