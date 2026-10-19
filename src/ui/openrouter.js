@@ -202,7 +202,7 @@ export const BEHIND = "behind the phone's own dictation and the browser voice. I
 /** Says on a card what sign-in set up. @param {any} ctx @param {{ voice: string[] | null }} done */
 export function signedIn(ctx, { voice }) {
   const start = 'Shiori thinks with free models to start, so trying annai costs nothing.';
-  const body = voice === null ? `${start} annai couldn't add OpenRouter's voice just now: the OpenRouter endpoint's page can.`
+  const body = voice === null ? `${start} annai couldn't add all of OpenRouter's voice just now: the OpenRouter endpoint's page can add the rest.`
     : voice.length ? `${start} annai also added OpenRouter's transcription and voices, ${BEHIND}.` : `${start} You can change them under Roles.`;
   ctx.notices.card({ tone: 'ok', title: 'Signed in with OpenRouter', body });
 }
