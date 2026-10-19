@@ -1,4 +1,4 @@
-import { h, field, savedField, savedCheck, autosave, numberIn } from '../dom.js';
+import { h, field, savedField, savedCheck, autosave, numberIn, queueSave, messageOf } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { ME } from '../../core/scopes.js';
 import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core/agent/personalities.js';
@@ -29,8 +29,19 @@ export async function renderShiori(ctx, route) {
   const app = await readAppSettings(ctx.ws);
   const active = app.shiori?.personality ?? 'shiori';
   const names = (await ctx.ws.list(ME, '/personalities/')).map((/** @type {any} */ f) => f.path.replace(/^\/personalities\/|\.md$/g, ''));
-  const editing = route.params.edit ?? active;
-  const text = h('textarea', { id: 'personality-text', rows: 12, maxlength: PERSONALITY_MAX, value: (await ctx.ws.readText(ME, `/personalities/${editing}.md`)) ?? '' });
+  let editing = route.params.edit ?? active;
+  let loaded = (await ctx.ws.readText(ME, `/personalities/${editing}.md`)) ?? '';
+  const text = h('textarea', { id: 'personality-text', rows: 12, maxlength: PERSONALITY_MAX, value: loaded });
+  const editor = field(`"${editing}"`, text);
+  const reset = h('button', { class: 'btn', type: 'button', hidden: !(PRESETS.includes(editing) && ctx.presets), onclick: async () => { await resetPersonality(ctx.ws, editing, ctx.presets); ctx.render(); } }, 'Reset to original');
+  /** The editor follows the choice, so Save and Reset act on it, unless opened on one or holding unsaved words. @param {string} n */
+  const follow = async (n) => {
+    if (route.params.edit || text.value !== loaded) return;
+    editing = n;
+    text.value = loaded = (await ctx.ws.readText(ME, `/personalities/${n}.md`)) ?? '';
+    editor.firstChild.textContent = `"${n}"`;
+    reset.hidden = !(PRESETS.includes(n) && ctx.presets);
+  };
   const compare = route.params.compare;
   const newName = h('input', { id: 'new-personality', autocomplete: 'off', spellcheck: 'false', placeholder: 'my-shiori' });
   const nameError = h('p', { class: 'error', role: 'alert', hidden: true });
@@ -46,11 +57,35 @@ export async function renderShiori(ctx, route) {
   const quietFrom = h('input', { id: 'quiet-from', type: 'time', value: b.quietHours?.from ?? '' });
   const quietTo = h('input', { id: 'quiet-to', type: 'time', value: b.quietHours?.to ?? '' });
   const quiet = h('div', { class: 'row' }, field('Quiet from', quietFrom), field('Quiet until', quietTo));
-  const readQuiet = () => {
-    if (quietFrom.value && quietTo.value) return { from: quietFrom.value, to: quietTo.value };
-    if (!quietFrom.value && !quietTo.value) return null;
-    throw new Error('Quiet hours need both times. Clear both for none.');
-  };
+  const quietNote = h('span', { class: 'saved', role: 'status' });
+  const quietHint = h('p', { class: 'sub', role: 'status', hidden: true });
+  const quietError = h('p', { class: 'error', role: 'alert', hidden: true });
+  const half = () => !quietFrom.value !== !quietTo.value;
+  const hint = (/** @type {boolean} */ on) => { quietHint.hidden = !on; quietHint.textContent = on ? 'Set the other time too.' : ''; };
+  // Saved once both are set, or both cleared. Halfway, a hint (an iPhone's wheel changes at each tick); left halfway, an alert.
+  quiet.addEventListener('change', () => {
+    quietNote.textContent = '';
+    hint(half());
+    if (half()) return;
+    quietError.hidden = true;
+    for (const i of [quietFrom, quietTo]) i.removeAttribute('aria-invalid');
+    queueSave(async () => {
+      try {
+        await budgets({ quietHours: quietFrom.value ? { from: quietFrom.value, to: quietTo.value } : null });
+        quietNote.textContent = 'Saved';
+      } catch (e) {
+        quietError.textContent = messageOf(e);
+        quietError.hidden = false;
+      }
+    });
+  });
+  quiet.addEventListener('focusout', (/** @type {FocusEvent} */ e) => {
+    if (quiet.contains(/** @type {Node | null} */ (e.relatedTarget)) || !half()) return;
+    hint(false);
+    quietError.textContent = 'Quiet hours need both times. Clear both for none.';
+    quietError.hidden = false;
+    for (const i of [quietFrom, quietTo]) if (!i.value) i.setAttribute('aria-invalid', 'true');
+  });
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
     h('h1', { class: 'title', text: 'Shiori' }),
@@ -59,17 +94,28 @@ export async function renderShiori(ctx, route) {
       looks()),
     section('Personality',
       h('p', { class: 'sub', text: 'How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.' }),
-      h('div', { class: 'saving' }, chosen, ...autosave(chosen, () => /** @type {HTMLInputElement} */ (chosen.querySelector('input:checked')).value, (n) => updateAppSettings(ctx.ws, { shiori: { personality: n } }))),
+      h('div', { class: 'saving' }, chosen, ...autosave(chosen, () => /** @type {HTMLInputElement} */ (chosen.querySelector('input:checked')).value, async (n) => {
+        await updateAppSettings(ctx.ws, { shiori: { personality: n } });
+        await follow(n);
+      })),
       fromPlugins(ctx, names),
       compare && ctx.presets?.[compare] ? h('div', { class: 'compare' },
         h('h3', { text: `The new original of "${compare}"` }), h('pre', { class: 'mono', text: ctx.presets[compare] }),
         h('div', { class: 'acts' },
           h('button', { class: 'btn', type: 'button', onclick: async () => { await keepMine(ctx.ws, compare, ctx.presets[compare]); ctx.go('#/shiori'); } }, 'Keep mine'),
           h('button', { class: 'btn', type: 'button', onclick: async () => { await resetPersonality(ctx.ws, compare, ctx.presets); ctx.go('#/shiori'); } }, 'Use the new original'))) : null,
-      field(`"${editing}"`, text),
+      editor,
       h('div', { class: 'acts' },
-        h('button', { class: 'btn pri', type: 'button', onclick: async () => { await ctx.ws.write(ME, `/personalities/${editing}.md`, text.value, { author: 'user' }); ctx.notices.toast('Saved. It applies at her next wake.'); } }, 'Save'),
-        PRESETS.includes(editing) && ctx.presets ? h('button', { class: 'btn', type: 'button', onclick: async () => { await resetPersonality(ctx.ws, editing, ctx.presets); ctx.render(); } }, 'Reset to original') : null,
+        h('button', {
+          class: 'btn pri', type: 'button',
+          onclick: async () => {
+            const words = text.value;
+            await ctx.ws.write(ME, `/personalities/${editing}.md`, words, { author: 'user' });
+            loaded = words;
+            ctx.notices.toast('Saved. It applies at her next wake.');
+          },
+        }, 'Save'),
+        reset,
         h('button', { class: 'btn', type: 'button', onclick: async () => {
           const name = newName.value.trim();
           nameError.hidden = /^[a-z0-9][a-z0-9-]{0,39}$/.test(name) && !names.includes(name);
@@ -87,7 +133,7 @@ export async function renderShiori(ctx, route) {
     section('How often she acts on her own',
       h('p', { class: 'sub', text: 'Plugins, reminders and live mode wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.' }),
       savedField('Wakes per hour, not counting yours', wakes, () => numberIn(wakes, 1, 10_000, 'Wakes per hour is a whole number from 1; leave it empty for no limit.', { whole: true }), (v) => budgets({ wakesPerHour: v })),
-      h('div', { class: 'saving' }, quiet, ...autosave(quiet, readQuiet, (q) => budgets({ quietHours: q }))),
+      h('div', { class: 'saving' }, quiet, quietNote, quietHint, quietError),
       savedField('Steps per wake', steps, () => numberIn(steps, 1, 10_000, 'Steps per wake is a whole number from 1; leave it empty for no limit.', { whole: true }), (v) => budgets({ stepsPerWake: v }))));
 }
 
