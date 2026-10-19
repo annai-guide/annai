@@ -1,7 +1,7 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { ProviderError } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
-import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES } from './config.js';
+import { modelOf, endpointOf, providerOf, sendKey, CHAT_ROLES, KOE_ROLES } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
 
 /**
@@ -50,10 +50,15 @@ export class AllFailedError extends Error {
   }
 }
 
-/** The models a role tries, in order: its own, or the main list for an empty chat role. @param {ModelConfig} config @param {string} role */
+/**
+ * The models a role tries, in order: its own, or the main list for an empty chat role. An empty Koe
+ * list uses the other Koe list, and never Main: no Koe model means no Koe. @param {ModelConfig} config @param {string} role
+ */
 export function candidates(config, role) {
   const own = config.roles[role]?.models ?? [];
-  if (own.length || role === 'main' || !CHAT_ROLES.includes(role)) return own;
+  if (own.length || role === 'main') return own;
+  if (KOE_ROLES.includes(role)) return config.roles[KOE_ROLES.find((r) => r !== role) ?? '']?.models ?? [];
+  if (!CHAT_ROLES.includes(role)) return own;
   return config.roles.main?.models ?? [];
 }
 
@@ -155,8 +160,8 @@ export async function callRole(c) {
   const record = (answeredBy, text, stop, reasoning, parts, citations) => c.trace?.turn(
     { role, level, answeredBy, attempts, usage, cost, ...meta, ...(stop ? { stop } : {}), ...(citations?.length ? { citations } : {}) },
     text, reasoning, keepParts ? parts : undefined);
-  // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable).
-  const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? 30) * 1000;
+  // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable); Koe answers at once.
+  const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? (KOE_ROLES.includes(role) ? 8 : 30)) * 1000;
   const list = c.models ?? candidates(config, role);
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;

@@ -19,8 +19,12 @@ import { validate } from '../schema.js';
 export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice']);
 /** A plugin's kind in the catalog and on the Plugins page (spec §16.2). */
 export const CATEGORIES = Object.freeze(['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
-/** Which ability's models each role takes. @type {Readonly<Record<string, string>>} */
-export const ROLE_KIND = Object.freeze({ main: 'chat', utility: 'chat', decide: 'chat', 'speech-in': 'transcription', 'speech-out': 'voice' });
+/** Which abilities' models each role takes. @type {Readonly<Record<string, readonly string[]>>} */
+export const ROLE_KINDS = Object.freeze({
+  main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat'], 'koe-type': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
+});
+/** Each role's first kind: what the catalog offers for it. @type {Readonly<Record<string, string>>} */
+export const ROLE_KIND = Object.freeze(Object.fromEntries(Object.entries(ROLE_KINDS).map(([role, kinds]) => [role, kinds[0]])));
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;
 /** The tunables protocols join onto an ability's address. */
@@ -81,13 +85,13 @@ export function checkProviderDesc(desc) {
   }
   for (const [which, roles] of Object.entries(desc.roles ?? {})) {
     for (const [role, ids] of Object.entries(/** @type {Record<string, string[]>} */ (roles))) {
-      const kind = ROLE_KIND[role];
-      if (!kind) {
+      const kinds = ROLE_KINDS[role];
+      if (!kinds) {
         errors.push(`$.roles.${which}.${role}: there is no such role`);
         continue;
       }
-      const have = new Set(abilities.filter(([, a]) => a.kind === kind).flatMap(([, a]) => (a.models ?? []).map((/** @type {any} */ m) => m.providerId)));
-      for (const p of ids) if (!have.has(p)) errors.push(`$.roles.${which}.${role}: ${p} isn't a ${kind} model of this provider`);
+      const have = new Set(abilities.filter(([, a]) => kinds.includes(a.kind)).flatMap(([, a]) => (a.models ?? []).map((/** @type {any} */ m) => m.providerId)));
+      for (const p of ids) if (!have.has(p)) errors.push(`$.roles.${which}.${role}: ${p} isn't a ${kinds.join(' or ')} model of this provider`);
     }
   }
   return errors;

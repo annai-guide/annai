@@ -48,6 +48,8 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
 
 /** The roles that call chat models; an empty one uses the main list (spec §9.6). */
 export const CHAT_ROLES = Object.freeze(['main', 'utility', 'decide']);
+/** Koe's lists, for talking and for typing (the Koe and Kokoro design): an empty one uses the other, never Main. */
+export const KOE_ROLES = Object.freeze(['koe-talk', 'koe-type']);
 /** The speech roles (spec §9.6, §10). Their lists hold stand-in entries besides models. */
 export const SPEECH_ROLES = Object.freeze(['speech-in', 'speech-out']);
 /** @type {Readonly<Record<string, { role: string, name: string }>>} */
@@ -265,7 +267,7 @@ export async function readConfig(ws) {
 }
 
 /**
- * Every chat and speech role with its level, keeping only models that exist and, in a speech
+ * Every chat, Koe and speech role with its level, keeping only models that exist and, in a speech
  * list, its own stand-ins. A speech list never saved holds the defaults; one the user emptied stays empty.
  * @param {any} saved @param {Record<string, ModelRecord>} models @returns {Roles}
  */
@@ -273,7 +275,7 @@ function rolesFrom(saved, models) {
   const s = saved && typeof saved === 'object' ? saved : {};
   /** @type {Roles} */
   const out = {};
-  for (const role of new Set([...CHAT_ROLES, ...SPEECH_ROLES, ...Object.keys(s)])) {
+  for (const role of new Set([...CHAT_ROLES, ...KOE_ROLES, ...SPEECH_ROLES, ...Object.keys(s)])) {
     const r = s[role] ?? {};
     const speech = SPEECH_ROLES.includes(role);
     const kept = (/** @type {any} */ id) => typeof id === 'string' && (Boolean(models[id]) || (speech && STAND_INS[id]?.role === role));
