@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider, startSettled } from './helpers.js';
 
 /** The plugins installed, by id. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
 const installedIds = (page) => page.evaluate(async () => {
@@ -52,6 +52,7 @@ test('the Test button checks access, the key, tool calls and photos', async ({ p
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   // The scripted model is for developers: Add a provider opens on model providers, so that chip comes off.
+  await startSettled(page);
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
   await page.getByRole('button', { name: 'Model providers', exact: true }).click();
   await page.getByLabel('Search the catalog').fill('scripted');
