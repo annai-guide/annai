@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { record, TALK_TAG, KOE_TAG } from '../../src/core/agent/log.js';
-import { resolveEvent } from '../../src/core/agent/transcript.js';
+import { resolveEvent, Transcript } from '../../src/core/agent/transcript.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -202,4 +202,36 @@ test("Koe's wait ends when a note is queued, and when nothing-to-add is; the use
   await k.agent.idle();
   const after = (await k.events(['tool.result'])).filter((e) => e.data.name === 'wait').map((e) => e.data.content);
   assert.deepEqual(after.slice(1), ['Kokoro: see the note below.', 'The user wrote: Never mind']);
+});
+
+// Fix pass 1 (the review's compaction-race probe): Kokoro tidies up while Koe's reply is written but not yet taken.
+test("Kokoro's housekeeping during Koe's model call: Koe reads its window again after the call's turn is taken, and never takes it twice", async () => {
+  const k = await agentKit([[{ text: 'unused' }], [
+    { toolCalls: [{ name: 'speak', input: { text: 'Hi there.' } }, { name: 'sleep', input: {} }] },
+    { toolCalls: [{ name: 'sleep', input: {} }] },
+  ]], { agent: { half: halfOf('koe') } });
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, 'koe-type': { models: ['m-1'], level: 'off' } });
+  const real = k.llm.call;
+  let raced = false;
+  k.llm.call = async (/** @type {any} */ c) => {
+    const r = await real(c);
+    if (!raced && c.record?.tag === KOE_TAG) {
+      raced = true;
+      // Kokoro's compaction lands now, which Koe observes (as Halves' logged hook passes it).
+      const done = await record(k.store, k.trip, { type: 'compaction', actor: 'system', data: { from: 1, to: 1, mode: 'cold' }, texts: [['summary', 'earlier talk']] });
+      await k.agent.observe(done, await resolveEvent(k.store, done));
+    }
+    return r;
+  };
+  k.agent.send('Hello');
+  await k.agent.idle();
+  const ids = k.agent.transcript.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : [])));
+  assert.equal(ids.length, new Set(ids).size, JSON.stringify(ids));
+  assert.equal(ids.length, 2);
+  k.agent.send('Again');
+  await k.agent.idle();
+  const sent = k.requests.at(-1).messages.filter((/** @type {any} */ m) => m.role === 'assistant').flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'tool_call').map((/** @type {any} */ p) => p.id));
+  assert.equal(sent.length, new Set(sent).size, 'no call sent twice');
+  assert.deepEqual((await Transcript.load(k.store, k.trip, { half: 'koe', nonce: 'testnonce' })).messages, k.agent.transcript.messages);
 });
