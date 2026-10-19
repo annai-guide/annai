@@ -5,6 +5,7 @@ import { addListedModel, addModelById, useSuggestion } from '../../core/llm/prov
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
+import { addressProblem } from '../../core/llm/provider-desc.js';
 
 export { messageOf };
 
@@ -51,6 +52,9 @@ export async function renderProvider(ctx, id) {
       const here = location.hash;
       queueSave(async () => {
         try {
+          // Checked as a description's is: a typed address without its scheme would send the key to annai's own site (fix pass).
+          const wrong = url.value.trim() ? addressProblem(url.value.trim()) : null;
+          if (wrong) throw new Error(wrong);
           await saveFields({ baseUrl: url.value.trim(), headers: headers.read() });
           if (key?.value.trim()) await setKey(ctx.store, id, key.value.trim());
           ctx.notices.toast('Saved');
@@ -169,7 +173,12 @@ async function abilityBody(view, abilityId) {
   const speech = a.kind === 'transcription' ? 'in' : a.kind === 'voice' ? 'out' : null;
   const first = models[0];
   return [
-    h('div', { class: 'saving' }, field('Its own address', address), ...autosave(address, () => address.value.trim(), (v) => saveAbility({ baseUrl: v }))),
+    h('div', { class: 'saving' }, field('Its own address', address), ...autosave(address, () => {
+      const v = address.value.trim();
+      const wrong = v ? addressProblem(v) : null;
+      if (wrong) throw new Error(wrong);
+      return v;
+    }, (v) => saveAbility({ baseUrl: v }))),
     h('p', { class: 'sub', text: "Empty: the provider's address. Each setting here is saved as you change it." }),
     uploads?.el ?? null,
     h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => {
