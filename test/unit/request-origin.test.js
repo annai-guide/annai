@@ -105,3 +105,10 @@ test("a photo upload a protocol built for anywhere but its address is never sent
   await callOnce({ type, endpoint, model, key: KEY, request: /** @type {any} */ ({ messages: [{ role: 'user', parts: [photo] }] }), fetch: s.fetch, uploads: new Uploads(ws) });
   assert.deepEqual(s.asked.map((a) => a.url), ['https://llm.example/chat']);
 });
+
+test("a refused address that doesn't parse is never repeated in the words, as it may hold a key (K4 review)", () => {
+  const endpoint = /** @type {any} */ ({ name: 'Gemini', ability: 'live', baseUrl: 'https://generativelanguage.googleapis.com' });
+  for (const url of ['https://[bad/ws?key=AIza-secret-0123', 'not an address ?key=AIza-secret-0123']) {
+    assert.throws(() => sameOrigin(endpoint, url), (e) => e instanceof ProviderError && /an address that isn't one/.test(e.message) && !e.message.includes('AIza-secret'));
+  }
+});
