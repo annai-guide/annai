@@ -5,8 +5,13 @@
  * @typedef {{ close(): void, take?(): Promise<Uint8Array | null>, again?(): void }} OpenMic  take: the file since the last cut; again: it, thrown away
  * @typedef {{ open(o: { onFrames: (pcm: Float32Array, sampleRate: number) => void, onError: (e: Error) => void, record?: string }): Promise<OpenMic> }} Mic
  *   the microphone: open only while listening (§10.2); record: a MediaRecorder type to record alongside
- * @typedef {{ unlock(): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }>, plays?(): string[] }} Player
- *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now; play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound
+ * @typedef {{ unlock(): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }>, plays?(): string[],
+ *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream }} Player
+ *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now; play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound;
+ *   stream(): a live session's voice, 16-bit PCM pushed as it arrives (K4)
+ * @typedef {{ push(pcm: Int16Array): void, end(): void, stop(): { playedMs: number }, done: Promise<{ playedMs: number }> }} PlayerStream
+ *   pieces play back to back, however fast they come; end: no more is coming, and done settles once it has all played; stop: silence now;
+ *   playedMs: how much was heard, for cutting what was said where it stopped
  * @typedef {{ makes(): Promise<string[]>, records?(): { type: string, format: string }[], encode(pcm: Int16Array, rate: number, format: string): Promise<Uint8Array>,
  *   decode?(data: Uint8Array, mediaType: string): Promise<{ pcm: Float32Array, rate: number }> }} Encoder  the audio encoders (§10.6); records: MediaRecorder's
  * @typedef {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }} SystemVoice

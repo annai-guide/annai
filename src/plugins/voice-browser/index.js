@@ -137,6 +137,57 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         }
         return played;
       },
+      // A live session's voice (K4): pieces scheduled back to back on the one unlocked context, however fast they come.
+      stream({ rate, onLevel = () => {} }) {
+        const c = context();
+        if (c.state !== 'running') c.resume().catch(() => {});
+        /** Each piece: when it plays on the context's clock, its source, and its loudness. @type {{ at: number, end: number, src: AudioBufferSourceNode, level: number }[]} */
+        const pieces = [];
+        let next = 0;
+        let ended = false;
+        /** @type {{ playedMs: number } | null} */
+        let result = null;
+        /** @type {(r: { playedMs: number }) => void} */
+        let settle = () => {};
+        const done = new Promise((r) => { settle = r; });
+        const finish = () => {
+          if (result) return result;
+          clearInterval(ticker);
+          onLevel(0);
+          // What was heard: sound only, never the gaps when pieces came late.
+          result = { playedMs: Math.round(pieces.reduce((s, p) => s + Math.max(0, Math.min(c.currentTime, p.end) - p.at), 0) * 1000) };
+          settle(result);
+          return result;
+        };
+        const ticker = setInterval(() => {
+          const now = c.currentTime;
+          onLevel(pieces.find((p) => p.at <= now && now < p.end)?.level ?? 0);
+          if (ended && now >= next) finish();
+        }, 50);
+        return {
+          push(pcm) {
+            if (result || !pcm.length) return;
+            const buf = c.createBuffer(1, pcm.length, rate);
+            const ch = buf.getChannelData(0);
+            let sum = 0;
+            for (let i = 0; i < pcm.length; i++) sum += (ch[i] = pcm[i] / 0x8000) ** 2;
+            const src = c.createBufferSource();
+            src.buffer = buf;
+            src.connect(c.destination);
+            const at = Math.max(next, c.currentTime + 0.03);
+            src.start(at);
+            next = at + buf.duration;
+            pieces.push({ at, end: next, src, level: Math.min(1, Math.sqrt(sum / pcm.length) * 4) });
+          },
+          end() { ended = true; },
+          stop() {
+            const r = finish();
+            for (const p of pieces) p.src.stop();
+            return r;
+          },
+          done,
+        };
+      },
       plays: () => CODEC_ORDER.flat().filter((f) => f !== 'opus' && player().canPlayType(mediaTypeOf(f) + (PARAMS[f] ?? '')) !== ''),
       async play(clip, { signal, onLevel = () => {} }) {
         if (signal.aborted) return { ended: false, fraction: 0 };
