@@ -14,9 +14,27 @@ You need a Gemini key from AI Studio (free). Before you start, open Settings →
 - [ ] **The halves' notes.** At the foot of the conversation, tick "Show what the halves tell each other": quiet lines "Koe to Kokoro: …" and "Kokoro to Koe: …" appear between the bubbles. Leave the screen and come back: still ticked. Untick it.
 - [ ] **Trace.** Trace → Kind **Halves**: the notes, and any "annai to Kokoro" block. Kind **Models**, Type contains `model.turn`: turns labelled `Koe · koe-type` and `Kokoro · main`.
 - [ ] **Stop.** Ask something that takes Kokoro a while ("Plan our afternoon around the sunset"). While "Kokoro is working" shows, tap **Stop** (a button as tall as the dock's others): the sign goes, Shiori's "checking" line stays, no error card; if she says more, it is that the check was stopped, never that there was nothing to add. Type again: Shiori answers.
-- [ ] **Voice on.** Turn voice on and ask aloud: Shiori talks as before (Koe types only, for now). Trace → Kind **Halves**: "Voice is on, and Koe can't speak aloud yet; talk to the user directly." Turn voice off and type: Koe answers again, and Trace has "Koe is speaking again; use tell_koe."
+- [ ] **Voice on** (K1 only; from K2 on, Koe talks aloud: see K2). Turn voice on and ask aloud: Shiori talks as before (Koe types only, for now). Trace → Kind **Halves**: "Voice is on, and Koe can't speak aloud yet; talk to the user directly." Turn voice off and type: Koe answers again, and Trace has "Koe is speaking again; use tell_koe."
 - [ ] **Spend per day counts both.** Settings → Models → Spend per day: after a few questions, today's spending includes both halves' calls (Trace shows each turn's cost).
 - [ ] **Free tier limits.** When `gemini-3.8-flash` has used its free requests (5 a minute, 20 a day), Trace → Type contains `net.request` says `rate (429)`, never "credit", and Main's next model answers. With no model of Main's left, no card shows while Koe talks: Koe says it couldn't check, and offers to try again. Once the day's 20 are used, with "Show what the halves tell each other" ticked, the note to Koe names the model and says "its daily limit is used up; it rests until" a time on your clock, not the provider's "quota" words.
+
+## K2: voice through the speech pipeline
+
+In the car, with the iPhone on the car's Bluetooth, and a passenger. Set up as for K1, and also:
+- **Koe for talking:** `gemini-3.5-flash-lite` (or leave it empty: voice then uses Koe for typing, and that is worth one drive too).
+- **Speech in:** "Send audio to the model" first (Gemini hears audio), or a transcription model such as Groq's (free).
+- **Quick decision:** `gemini-3.5-flash-lite`, so talk not meant for Shiori is left alone.
+- **Voice:** Auto (it turns on in the car) or On.
+
+- [ ] **A live question aloud.** Tap Shiori and ask "Is Nepenthe open now?". About a second after you stop, plus the voice's own start, Shiori says she's checking (that's Koe), and "Kokoro is working" shows. 10 to 15 seconds later she says the hours aloud, in her own words. While she waits, the microphone listens: say something else meanwhile, and she answers that first, then the hours.
+- [ ] **A stable question aloud.** "What's that bridge?" near Bixby Bridge: she answers at once. Trace → Kind **Models**, Type contains `model.turn`: a `Kokoro · main` turn after it, woken for "Koe answered the user". If Kokoro finds her wrong, she stops mid-sentence, corrects herself and apologises: write down what she said.
+- [ ] **A passenger.** While she listens after answering, the passenger says something to you, not to her ("Can you pass the water?"): she stays silent. The conversation shows "Heard, not for Shiori: …". Trace: no Kokoro turn for it. If she ever answers or remarks on it, write down what she said.
+- [ ] **Cut her off.** Tap Shiori while she speaks: she stops at once and listens. Say something: she answers it.
+- [ ] **A review.** Tap Shiori and say something to the passenger, not to her: she stays silent. More than 3 minutes later, do it again: Trace → Kind **Models**: a `Kokoro · main` turn woken for "a review", and Kokoro usually tells Koe nothing. With the toggle "Show what the halves tell each other" on, nothing new shows unless Kokoro found something.
+- [ ] **Music after she sleeps.** Play music in the car. Ask her something, and let her finish: within a few seconds of her going back to sleep, the music is back at full Bluetooth quality, not the narrow phone-call sound.
+- [ ] **Her voice is one voice.** With voice on, Shiori never talks over herself: Kokoro's notes come out only in her own words, after what she was saying (or, for a correction, cutting it).
+- [ ] **Hear Shiori tell it.** With voice off, a trip's Recap → **Hear Shiori tell it**: she tells it aloud, and doesn't listen afterwards.
+- [ ] **Voice off again.** Turn voice off and type: she answers in bubbles (Trace: `Koe · koe-type` turns).
 
 ## K3: Audio in the smallest format
 

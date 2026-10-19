@@ -42,8 +42,8 @@ import { validate } from '../schema.js';
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
- * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void }} Pending
- *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit
+ * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean }} Pending
+ *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's
  * @typedef {{ name: StateName, label: string, detail?: string }} State
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[] }} Notice
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
@@ -55,6 +55,7 @@ import { validate } from '../schema.js';
  * @property {(voiceOn: boolean) => Promise<{ role: string }>} role
  * @property {boolean} registryTools false: its own loop tools only @property {() => boolean} voice whether it may use the voice now
  * @property {boolean} logVoice @property {boolean} housekeeping @property {string} [nonce] Koe's, in its notes' marker
+ * @property {boolean} [listenLast] its speak doesn't listen when a question to the other half or a wait follows it: they run at once
  * @property {() => import('./transcript.js').HalfName} [rules] whose rules its transcript reads now
  * @property {(snapshot: import('./context.js').Snapshot) => string} [system]
  * @property {(c: { now: number, timeZone: string, voice: string, online: boolean, reasons: string[], place?: string, activity?: string, voiceWhy?: string }) => Promise<string>} [tail] in place of the now block
@@ -64,8 +65,9 @@ import { validate } from '../schema.js';
  * @property {<T>(fn: () => Promise<T>) => Promise<T>} [serial] both halves' writes, one at a time
  * @property {(e: any, r: Resolved) => Promise<void> | void} [logged] an event it wrote, for the other half
  * @property {(call: { id: string, name: string, input: any, wake: string }) => Promise<import('./tools.js').ToolOutput | null>} [gate] a call not run, and its result
- * @property {(why: string, e: unknown) => boolean} [failed] true: the other half tells the user, so no card
+ * @property {(why: string, e: unknown) => boolean} [failed] true: the other half tells the user (or nobody waited), so no card
  * @property {() => void} [calling] @property {() => Promise<unknown>} [ready] waited for before each turn
+ * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended]
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
@@ -203,6 +205,10 @@ export class Agent {
   #callCut = null;
   /** A note cut her speech: speak says so, and doesn't listen. */
   #noteCut = false;
+  /** A turn runs. */
+  #turning = false;
+  /** Whether the half might use the voice when its turn's voice was last worked out. */
+  #mayVoice = true;
   /** What the running turn did (Half.ended). */
   #facts = { finalText: '', told: false, slept: false, spoke: false, kinds: /** @type {string[]} */ ([]) };
 
@@ -437,12 +443,19 @@ export class Agent {
   /** @param {Wake} w */
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME });
-    // A note ends a wait for one (Koe's wait means "Kokoro is working").
+    if (w.kind === 'note') this.#noted();
+  }
+
+  /**
+   * A note queued ends a wait for one (Koe's wait means "Kokoro is working"), and Koe's listening after
+   * it spoke, so the note is said with no dead air; while the user speaks, their words come first.
+   */
+  #noted() {
     const p = this.#pending;
-    if (w.kind === 'note' && p?.kind === 'wait') {
-      this.#pending = null;
-      p.resolve({ note: w.from ?? 'kokoro' });
-    }
+    const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
+    if (!note || !p || !(p.tool || (p.listening && p.kind === 'wait')) || this.state.name === 'hearing') return;
+    this.#pending = null;
+    p.resolve({ note: note.from ?? 'kokoro' });
   }
 
   /**
@@ -547,8 +560,14 @@ export class Agent {
     }
   }
 
+  /** Its turn has the voice, or its tap's window is open: the other half waits to take the voice. */
+  get voicing() {
+    return (this.#turning && this.#voiceNow) || Boolean(this.#ear);
+  }
+
+  /** The wait tool runs (not speak's listening). */
   get waiting() {
-    return this.#pending?.kind === 'wait';
+    return Boolean(this.#pending?.tool);
   }
 
   get pendingId() {
@@ -607,10 +626,10 @@ export class Agent {
     this.#leaving = yes;
   }
 
-  /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7). */
+  /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7), and her voice if it is this half's. */
   interrupt() {
     this.#abort?.abort();
-    this.voice?.speaker.stop();
+    if (this.#half.voice()) this.voice?.speaker.stop();
     const p = this.#pending;
     this.#pending = null;
     p?.resolve({ stopped: true });
@@ -765,7 +784,7 @@ export class Agent {
     // The conversation only, by type (A6): what the summary is made of, and what the cut is measured on (not Koe's).
     const split = this.#rules() === 'kokoro';
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
-      .filter((e) => !NOT_SAID.has(e.type) && e.data?.half !== 'koe' && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
+      .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
@@ -989,19 +1008,18 @@ export class Agent {
     const wakeId = newId('w');
     const abort = new AbortController();
     this.#abort = abort;
-    const asked = wakes.some((w) => w.aloud);
-    this.#voiceNow = await this.#voiceOn(asked);
-    // Asked to hear her with voice mode off: she speaks, and the microphone stays off (spec §10.5, §6.2).
-    this.#aloudOnly = this.#voiceNow && asked && !this.voice?.on;
+    await this.#workOutVoice(wakes);
     this.#heardBy = null;
     this.#facts = { finalText: '', told: false, slept: false, spoke: false, kinds: wakes.map((w) => w.kind) };
     // Shiori became two halves, or one again.
     if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
     let ok = false;
+    this.#turning = true;
     try {
       ok = await this.#steps(wakes, wakeId, abort);
     } finally {
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn('the end of a turn failed', e));
+      this.#turning = false;
       try {
         this.#half.ended?.({ wakeId, ok, ...this.#facts });
       } catch (e) {
@@ -1041,6 +1059,8 @@ export class Agent {
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'budget', which: over.which, wake: wakeId, message: over.body } });
         break;
       }
+      // The voice changed hands mid-turn (Koe down, or back): this step follows it.
+      if (this.#half.voice() !== this.#mayVoice) await this.#workOutVoice(wakes);
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
       const { tools, via, providerTools } = await this.#toolsNow();
@@ -1078,6 +1098,7 @@ export class Agent {
       }
       const prefer = this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
       this.#cut = false;
+      this.#noteCut = false;
       this.#wentToSleep = false;
       this.#streaming = '';
       this.#setState('thinking');
@@ -1092,7 +1113,7 @@ export class Agent {
           role, request, signal: AbortSignal.any([abort.signal, cut.signal]), scope: this.scope, prefer,
           record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
-          onEvent: (/** @type {any} */ ev) => this.#streamed(ev),
+          onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
         });
@@ -1104,8 +1125,11 @@ export class Agent {
           this.#rereadDue = false;
           await this.#serially(() => this.reread());
         }
-        // Cut in by an immediate note: the turn goes on with what is queued.
+        // Cut in by an immediate note: the turn goes on with what is queued, and knows what it had said.
         if (cut.signal.aborted && !abort.signal.aborted) {
+          const said = await this.#cutSpeech(wakeId);
+          if (said && this.#noteCut) this.#push({ kind: 'cue', text: `a note stopped you after: ${said}` });
+          this.#noteCut = false;
           const more = this.#take();
           if (more.length) {
             await this.#logWakes(more, wakeId, true);
@@ -1144,6 +1168,7 @@ export class Agent {
       if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
+      this.#half.replied?.(calls.map((/** @type {any} */ c) => c.name));
       if (!calls.length) {
         if (result.reply.stop === 'pause') continue;
         this.#facts.finalText = String(result.reply.text ?? '').trim();
@@ -1154,8 +1179,9 @@ export class Agent {
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
-      for (const c of ordered) {
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off });
+      for (const [i, c] of ordered.entries()) {
+        const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more });
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
@@ -1375,7 +1401,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[] }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -1395,7 +1421,7 @@ export class Agent {
     else {
       const call = {
         id: c.id, scope: this.scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, ...(o.more ? { more: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
       };
       ({ output, ms } = await runTool(tool, input, call));
@@ -1446,10 +1472,12 @@ export class Agent {
         input: { type: 'object', properties: { text: { type: 'string', minLength: 1 } }, required: ['text'] },
         run: async (/** @type {{ text: string }} */ i, /** @type {any} */ call) => {
           const text = String(i.text ?? '');
-          const unsaid = call.voice && this.voice ? this.#unsaid(call.id) : '';
-          await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(call.voice && !unsaid ? { voice: true } : {}) }, texts: [['text', text]] });
+          // The other half may have the voice now; words already playing are said to the end.
+          const voiced = call.voice && this.voice && (this.#half.voice() || this.#utterances.has(call.id));
+          const unsaid = voiced ? this.#unsaid(call.id) : '';
+          await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(voiced && !unsaid ? { voice: true } : {}) }, texts: [['text', text]] });
           if (unsaid) return unsaid;
-          if (call.voice && this.voice) return this.#say(text, call);
+          if (voiced) return this.#say(text, call);
           this.#setState('speaking');
           return call.sleeping ? 'shown' : SPEAK_RESULT;
         },
@@ -1489,7 +1517,7 @@ export class Agent {
           }
           if (typeof i.question !== 'string' || !i.question.trim()) return { content: 'Error: ask needs a question.', isError: true };
           await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: i.question, options: i.options } });
-          if (call.voice && this.voice && !this.#aloudOnly) return this.#askAloud(i.question, call);
+          if (call.voice && this.voice && !this.#aloudOnly && this.#half.voice()) return this.#askAloud(i.question, call);
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
           if (got.chosen !== undefined) {
@@ -1507,7 +1535,7 @@ export class Agent {
         run: async (/** @type {{ seconds: number }} */ i, /** @type {any} */ call) => {
           const seconds = Math.min(600, Math.max(1, Number(i.seconds) || 8));
           if (call.voice && this.voice && !this.#aloudOnly) {
-            const heard = await this.#listenFor(call.id, 'wait', seconds);
+            const heard = await this.#listenFor(call.id, 'wait', seconds, true);
             if (!heard.deaf) return this.#answer('', heard, call, `Nothing yet (${seconds} seconds).`);
           }
           const got = await this.#waitFor(call.id, 'wait', seconds * this.secondMs);
@@ -1543,7 +1571,7 @@ export class Agent {
     return new Promise((resolve) => {
       /** @type {ReturnType<typeof setTimeout> | undefined} */
       let timer;
-      this.#pending = { id, kind, resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      this.#pending = { id, kind, tool: kind === 'wait', resolve: (v) => { clearTimeout(timer); resolve(v); } };
       if (ms > 0) timer = setTimeout(() => {
         if (this.#pending?.id === id) this.#pending = null;
         resolve({});
@@ -1568,6 +1596,17 @@ export class Agent {
   }
 
   /**
+   * The turn's voice, and whether it only speaks: asked to hear her with voice mode off, she speaks, and the
+   * microphone stays off (spec §10.5, §6.2). Always worked out together. @param {Wake[]} wakes
+   */
+  async #workOutVoice(wakes) {
+    const asked = wakes.some((w) => w.aloud);
+    this.#mayVoice = this.#half.voice();
+    this.#voiceNow = await this.#voiceOn(asked);
+    this.#aloudOnly = this.#voiceNow && asked && !this.voice?.on;
+  }
+
+  /**
    * Whether voice is on for this turn (spec §10.5): it is on, and speak isn't switched off (§7.2). A
    * wake that asks for her voice (the recap told aloud) has it whatever the mode (choice 6).
    * @param {boolean} [asked]
@@ -1589,16 +1628,14 @@ export class Agent {
   /**
    * Speech streams in while the model writes it, and plays sentence by sentence (spec §10.1). A
    * call that starts over (another model) drops what it had begun to say.
-   * @param {any} ev a stream event
+   * @param {any} ev a stream event @param {string} wakeId
    */
-  #streamed(ev) {
+  #streamed(ev, wakeId) {
     if (ev.type === 'restart') {
-      for (const u of this.#utterances.values()) u.stop();
-      this.#utterances.clear();
-      this.#streaming = '';
+      this.#cutSpeech(wakeId).catch(() => {});
       return;
     }
-    if (!this.#voiceNow || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
+    if (!this.#voiceNow || !this.#half.voice() || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
     let u = this.#utterances.get(ev.id);
     if (!u) {
       // Only the reply's first speak plays as it streams: a later one plays when its turn comes, after the first has listened.
@@ -1618,6 +1655,25 @@ export class Agent {
     } else {
       u.end(String(ev.input?.text ?? ''));
     }
+  }
+
+  /**
+   * Speech that streamed in and played but whose call never ran (the call was cut, or started over): what
+   * was said aloud is written into the conversation, marked cut. @param {string} wakeId @returns {Promise<string>} what was said
+   */
+  async #cutSpeech(wakeId) {
+    const begun = [...this.#utterances];
+    this.#utterances.clear();
+    this.#streaming = '';
+    let said = '';
+    for (const [id, u] of begun) {
+      u.stop();
+      const spoken = await u.done;
+      if (!spoken.heard) continue;
+      said = spoken.heard;
+      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] });
+    }
+    return said;
   }
 
   /**
@@ -1664,6 +1720,7 @@ export class Agent {
     if (spoken.cut) this.#cut = true;
     const before = spokenText(spoken);
     if (call.sleeping) return spoken.cut ? `${before} The microphone is open: what they say next wakes you.` : before;
+    if (call.more) return before;
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const { silenceSeconds } = await voice.settings();
     return this.#answer(before, await this.#listenFor(call.id, 'wait', silenceSeconds), call, `Heard nothing (${silenceSeconds} seconds).`);
@@ -1724,6 +1781,7 @@ export class Agent {
       return `${lead}The user wrote: ${got.text}`;
     }
     if (got.deaf) return `${lead}annai couldn't listen: ${got.deaf} The user may type.`;
+    if (got.note) return `${lead}${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
     if (got.earlier) return `${lead}Not listening for an answer: the user spoke while you were thinking; it follows.`;
     return `${lead}${silence}`;
   }
@@ -1732,12 +1790,15 @@ export class Agent {
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a
    * silence of seconds. Speech heard before isn't an answer: it reaches her as heard while she was
    * thinking, and with such speech waiting, speak and wait don't listen: it reaches her at once.
-   * @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @returns {Promise<Got>}
+   * @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @returns {Promise<Got>}
    */
-  async #listenFor(id, kind, seconds) {
+  async #listenFor(id, kind, seconds, tool = false) {
     const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (typed >= 0) return { text: this.#queue.splice(typed, 1)[0].text };
     if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
+    const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
+    if (note) return { note: note.from ?? 'kokoro' };
+    if (!this.#half.voice()) return { deaf: 'the other half has the microphone now.' };
     const deaf = await this.#openEar('turn');
     if (deaf) return { deaf };
     this.#setState('listening');
@@ -1752,7 +1813,7 @@ export class Agent {
           resolve({});
         }, seconds * this.secondMs);
       };
-      this.#pending = { id, kind, listening: true, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      this.#pending = { id, kind, listening: true, tool, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
       arm();
     });
   }
@@ -1773,7 +1834,7 @@ export class Agent {
     const voice = this.voice;
     if (!voice) return "voice isn't available here.";
     if (this.#ear) return null; // a tap's window stays the tap's until the first thing said: that needs no gate (choice 3)
-    const how = await voice.howToListen();
+    const how = await voice.howToListen((await this.#half.role(this.#voiceNow)).role);
     if ('why' in how) {
       // The mic button explains what to add (spec §10.3): on every tap, and once for her own listening.
       if (owner === 'tap' || !this.#toldDeaf) await this.#notice({ tone: 'warn', title: "Shiori can't hear you yet", body: how.why });
@@ -1892,12 +1953,13 @@ export class Agent {
     if (!this.voice?.speaker.speaking) this.#setState('hearing');
   }
 
-  /** What began like speech wasn't (a click): the silence limit starts again. */
+  /** What began like speech wasn't (a click): the silence limit starts again, or a note waiting is taken. */
   #speechStopped() {
     this.#pending?.arm?.();
     const tapped = this.#ear?.owner === 'tap' && !this.#busy;
     if (tapped) this.#armQuiet();
     if (this.state.name === 'hearing') this.#setState(this.#pending?.listening || tapped ? 'listening' : 'thinking');
+    this.#noted();
   }
 
   /** The microphone stopped while listening (another app took it, say): a card says why, and a wait for an answer ends. @param {Error} e */
@@ -1970,7 +2032,7 @@ export class Agent {
 
   /**
    * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
-   * tapped to talk (spec §6.2, §10.4); after a turn that worked, what was heard is written down.
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard.
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
@@ -1979,7 +2041,7 @@ export class Agent {
     if (this.#ear?.owner === 'turn') this.#closeEar();
     else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
-    if (ok) await this.#writeDown(wakeId);
+    if (ok && this.#half.voice()) await this.#writeDown(wakeId);
   }
 
   /**
@@ -1993,7 +2055,8 @@ export class Agent {
   async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false } = {}) {
     const voice = this.voice;
     if (!voice) return [];
-    const hearer = await this.#hearer();
+    const { role } = await this.#half.role(this.#voiceNow);
+    const hearer = await this.#hearer(role);
     /** @type {string[]} */
     const left = [];
     for (const id of ids) {
@@ -2003,7 +2066,7 @@ export class Agent {
         if (!clip) await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: NOT_TRANSCRIBED, by: null } });
         continue;
       }
-      const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}) }).catch(() => null);
+      const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}), ...(role === 'main' ? {} : { role }) }).catch(() => null);
       if (!r && !final) {
         // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again.
         const tries = (this.#writeTries.get(id) ?? 0) + 1;
@@ -2015,20 +2078,20 @@ export class Agent {
       }
       this.#writeTries.delete(id);
       await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null } });
-      voice.memory.drop(id);
+      voice.memory.drop(id, r?.text);
     }
     return left;
   }
 
   /**
    * Who writes heard sound down for "Send audio to the model" (spec §10.3): the model that heard it
-   * in this turn, else (housekeeping) the main role's first model that takes audio.
-   * @returns {Promise<string | undefined>}
+   * in this turn, else (housekeeping) the half's role's first model that takes audio.
+   * @param {string} role @returns {Promise<string | undefined>}
    */
-  async #hearer() {
+  async #hearer(role) {
     if (this.#heardBy) return this.#heardBy;
     const cfg = await this.llm.config();
-    return (cfg.roles?.main?.models ?? []).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
+    return candidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
   }
 
   /**
