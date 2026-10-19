@@ -1,7 +1,7 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "api": 1,
   "description": "Gemini models through Google's OpenAI-compatible endpoint, and Gemini Live for a voice conversation.",
   "category": "providers",
@@ -42,6 +42,10 @@
         "models": [
           {
             "providerId": "gemini-3.8-live",
+            "input": [
+              "text",
+              "image"
+            ],
             "name": "Gemini 3.8 Live",
             "contextWindow": 131072,
             "prices": {
@@ -54,6 +58,10 @@
           },
           {
             "providerId": "gemini-3.8-live-extended-thinking",
+            "input": [
+              "text",
+              "image"
+            ],
             "name": "Gemini 3.8 Live Extended Thinking",
             "contextWindow": 131072,
             "prices": {

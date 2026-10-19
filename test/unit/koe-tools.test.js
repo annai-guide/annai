@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
+import { readConfig, saveModel } from '../../src/core/llm/config.js';
 import { lightChange, BIGGER } from '../../src/core/koe/tools.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 
@@ -79,6 +80,18 @@ test("a refused change isn't made, and Koe hears to ask Kokoro", async () => {
   assert.equal(results[1][0], true);
   assert.ok(!(await k.ws.read(k.trip, '/bookings/b.json')));
   assert.equal(await k.ws.readText(k.trip, '/notes/n.md'), 'Sunset at 18:40');
+});
+
+test("a text Koe's photos are judged against its chat models only: a realtime model in its list that declares no photos doesn't keep them from it (fix pass)", async () => {
+  const k = await agentKit([[sleep]], { koe: { type: [sleep], input: ['text', 'image'] }, live: { origin: 'http://127.0.0.1:9' } });
+  const rec = (await readConfig(k.ws)).models['m-live'];
+  await saveModel(k.ws, { ...rec, user: { ...rec.user, input: ['text'] } });
+  await k.agent.split(); // voice off: the chat model after Live answers
+  assert.equal(k.agent.koeState, 'text');
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+  k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.ok(k.sent['model-koe'][0].messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.type === 'image')));
 });
 
 test('a photo reaches Koe only when its model takes photos; otherwise a stub, and Kokoro gets the photo', async () => {
