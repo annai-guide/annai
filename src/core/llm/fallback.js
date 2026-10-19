@@ -126,7 +126,8 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
- *   speech?: (model: Model, request: Request) => Promise<Request> }} c
+ *   speech?: (model: Model, request: Request) => Promise<Request>, models?: string[] }} c
+ *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
@@ -156,7 +157,7 @@ export async function callRole(c) {
     text, reasoning, keepParts ? parts : undefined);
   // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable).
   const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? 30) * 1000;
-  const list = candidates(config, role);
+  const list = c.models ?? candidates(config, role);
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
   let began = false;

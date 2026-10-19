@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, SYS_PLUGINS, SYS } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
@@ -206,4 +206,32 @@ test('every Test request leaves room for a model that must think before it answe
   const askedLevels = watch(levels);
   await testLevels(levels);
   assert.deepEqual(askedLevels, [4096, 4096]);
+});
+
+test('Try this model calls that model alone: no fallback when it fails, a model resting is still asked, and the trace keeps the call (the user, 2026-10-18)', async () => {
+  const { llm, ws, store } = await realLlm();
+  const catalog = JSON.parse(await readFile(new URL('../../catalog/templates.json', import.meta.url), 'utf8'));
+  await llm.ensureType('scripted');
+  await addFromTemplate({ ws, store }, catalog.endpoints.find((/** @type {any} */ t) => t.id === 'scripted'), { roles: null });
+  const cfg = await readConfig(ws);
+  const [one] = Object.keys(cfg.models);
+  const ep = cfg.endpoints[cfg.models[one].endpoint];
+  await saveEndpoint(ws, { ...ep, user: { ...ep.user, tunables: { script: [{ error: 'credit', status: 402 }] } } });
+  await saveEndpoint(ws, { ...ep, id: 'ep-two', user: { ...ep.user, name: 'Two', tunables: { script: [{ text: 'From two.' }] } } });
+  await saveModel(ws, { ...cfg.models[one], id: 'm-two', endpoint: 'ep-two', user: { ...cfg.models[one].user, providerId: 'scripted-2', name: 'Two' } });
+  await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: [one, 'm-two'], level: 'medium' } });
+  const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Hi' }] }] };
+  // The main role would fall back to Two; the one model asked does not.
+  const failed = await llm.callModel({ modelId: one, request }).then(() => null, (/** @type {any} */ e) => e);
+  assert.equal(failed?.name, 'AllFailedError');
+  assert.deepEqual(failed.attempts.map((/** @type {any} */ a) => [a.model, a.outcome]), [[one, 'credit']]);
+  assert.equal(llm.bench.until(one), 0, "a try doesn't rest the model for Shiori");
+  // A model resting is asked all the same, and once it answers it rests no more.
+  llm.bench.bench('m-two', 60_000);
+  const r = await llm.callModel({ modelId: 'm-two', request });
+  assert.equal(r.reply.text, 'From two.');
+  assert.equal(r.answeredBy, 'Two');
+  assert.equal(llm.bench.until('m-two'), 0);
+  const turns = await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }));
+  assert.deepEqual(turns.map((e) => [e.data.role, e.data.answeredBy, e.data.attempts.length]), [['try', null, 1], ['try', 'Two', 1]]);
 });
