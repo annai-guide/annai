@@ -564,11 +564,15 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     // Any refusal may be the branch moving meanwhile, whatever its status says: a file's id that no longer
     // matches (409, 422 on Gitea), a file already there (422) or gone (500, 404 on Gitea), or a push refused
     // because the branch moved after the checks (403 on both). If it moved, that is another backup.
-    const now = await headOf(g, branch).catch(() => null);
+    const now = await headOf(g, branch).catch(() => undefined);
     if (now && now.sha !== expected) {
       const remote = await newest(g, branch, now).catch(() => null);
       if (remote && remote.device !== g.device.id && remote.id !== base) throw new E('newer', `Another device backed up to ${repo.full_name} at the same moment.`, { remote });
       throw new E('other', `${repo.full_name} changed while annai backed up. annai tries again later.`);
+    }
+    // A branch there was is gone now (404, as a deleted repository answers too): someone deleted it meanwhile, if the repository is still there.
+    if (now === null && expected !== null && (await call(g, 'GET', '').catch(() => null))?.ok) {
+      throw new E('setup', `The branch ${branch} of ${repo.full_name} was deleted while annai backed up to it, so this backup stopped. Make it again on ${g.host}, or leave Branch empty to back up to ${repo.default_branch}, then back up again.`);
     }
     throw await failure(g, res);
   };

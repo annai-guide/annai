@@ -189,6 +189,7 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
     const before = beforeChange;
     beforeChange = null;
     before?.();
+    if (all.get(repo.name) !== repo) return notFound(); // deleted meanwhile
     const empty = repo.refs.size === 0;
     const head = repo.refs.get(branch);
     if (!head && !empty) return { status: 404, json: err(`branch does not exist [name: ${branch}]`) };
@@ -462,6 +463,19 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
     /** @param {string} name @param {boolean} value */
     setArchived(name, value) {
       repoOf(name).archived = value;
+    },
+    /** Someone makes a branch where another is. @param {string} name @param {string} branch @param {string} from */
+    branchFrom(name, branch, from) {
+      const repo = repoOf(name);
+      repo.refs.set(branch, /** @type {string} */ (repo.refs.get(from)));
+    },
+    /** Someone deletes a branch, as the web page's Branches tab does (never the default one). @param {string} name @param {string} branch */
+    deleteBranch(name, branch) {
+      repoOf(name).refs.delete(branch);
+    },
+    /** Someone deletes the whole repository. @param {string} name */
+    deleteRepo(name) {
+      all.delete(name);
     },
     stop: () => new Promise((resolve) => {
       server.closeAllConnections?.();
