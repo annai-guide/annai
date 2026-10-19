@@ -19,8 +19,8 @@ const SAY_OK = { system: 'This is a connection test.', messages: [{ role: 'user'
 const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
 
 /**
- * @typedef {{ step: 'access' | 'key' | 'tools' | 'images' | 'level' | 'upload', ok: boolean, detail: string }} TestStep
- *   upload is advice: when it fails, photos still go in each request, so the model still passes
+ * @typedef {{ step: 'access' | 'key' | 'tools' | 'images' | 'level' | 'upload' | 'live', ok: boolean, detail: string }} TestStep
+ *   upload is advice: when it fails, photos still go in each request, so the model still passes; live: a realtime model answered aloud
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
  *   role?: { name: string, level: string } }} TestCase  role: a role asking this model at a level of its own

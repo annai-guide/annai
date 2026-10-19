@@ -3,7 +3,7 @@ import { readConfig, getKey, endpointOf, modelOf, saveModel, saveProvider, provi
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
-import { endpointTypes, ProviderError, errorFromResponse, sameOrigin, noRedirect } from './contract.js';
+import { endpointTypes, ProviderError, errorFromResponse, sameOrigin, noRedirect, explain } from './contract.js';
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
@@ -15,7 +15,7 @@ import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
-import { openLive } from '../realtime/open.js';
+import { openLive, testLive } from '../realtime/open.js';
 
 /**
  * Everything the UI needs to talk to models (spec §9): providers and their settings, the protocol
@@ -386,15 +386,20 @@ export function createLlm({
     },
     /**
      * The Test button for one model; what it found is recorded on the model (spec §9.8). What it
-     * says may hold the provider's own words: shown with every key blanked (§9.9). @param {string} modelId
+     * says may hold the provider's own words: shown with every key blanked (§9.9). A realtime model's
+     * opens a live session that must answer aloud (K4); onAudio gets its voice, to play.
+     * @param {string} modelId @param {{ onAudio?: (data: Uint8Array, format: import('./contract.js').AudioFormat) => void }} [o]
      */
-    async test(modelId) {
+    async test(modelId, { onAudio } = {}) {
       const { rec, type, endpoint, model, key } = await resolve(modelId, { install: true });
       // Test asks at the level of the first role that asks this model at one (fix pass).
       const { roles } = await readConfig(ws);
       const r = ['main', 'utility'].find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
       const role = r ? { name: r[0].toUpperCase() + r.slice(1), level: roles[r].level } : undefined;
-      const result = await testModel({ type, endpoint, model, key, fetch: get, probe, role });
+      const out = type.audio?.out[0];
+      const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
+        : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
+          .then((s) => testLive(s, { onAudio: onAudio && out ? (d) => onAudio(d, out) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
       if (found.access && found.key !== false) bench.clear(modelId); // reachable with a working key: no reason to rest
       await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), ...found, at: Date.now() } });

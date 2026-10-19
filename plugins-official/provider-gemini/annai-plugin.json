@@ -1,9 +1,9 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "api": 1,
-  "description": "Gemini models through Google's OpenAI-compatible endpoint.",
+  "description": "Gemini models through Google's OpenAI-compatible endpoint, and Gemini Live for a voice conversation.",
   "category": "providers",
   "requires": [
     {
@@ -31,6 +31,45 @@
             "mp3"
           ]
         }
+      },
+      "live": {
+        "kind": "realtime",
+        "type": "gemini-live",
+        "name": "Live voice",
+        "on": false,
+        "baseUrl": "https://generativelanguage.googleapis.com",
+        "note": "A conversation in one stream, voice both ways, for Koe for talking (Gemini Live). While a session is open, what you say goes to Google as audio. Free on AI Studio's free tier.",
+        "models": [
+          {
+            "providerId": "gemini-3.8-live",
+            "name": "Gemini 3.8 Live",
+            "contextWindow": 131072,
+            "prices": {
+              "input": 0.75,
+              "audioIn": 3,
+              "output": 4.5,
+              "audioOut": 12
+            }
+          },
+          {
+            "providerId": "gemini-3.8-live-extended-thinking",
+            "name": "Gemini 3.8 Live Extended Thinking",
+            "contextWindow": 131072,
+            "prices": {
+              "input": 0.75,
+              "audioIn": 3,
+              "output": 4.5,
+              "audioOut": 12
+            }
+          }
+        ]
+      }
+    },
+    "roles": {
+      "recommended": {
+        "koe-talk": [
+          "gemini-3.8-live"
+        ]
       }
     }
   }
