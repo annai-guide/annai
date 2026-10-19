@@ -15,7 +15,7 @@ import { micProblem } from '../../src/ui/mic-help.js';
 import { priceLine } from '../../src/ui/screens/endpoint.js';
 import { mediaKeys } from '../../src/ui/media-keys.js';
 import { restoreFrom } from '../../src/ui/auto-backup.js';
-import { packWords } from '../../src/ui/offline-pack.js';
+import { packWords, downloadedWhen } from '../../src/ui/offline-pack.js';
 import { liveText, knownFix } from '../../src/ui/live-chip.js';
 
 test('parseHash: screens, parts and params', () => {
@@ -379,6 +379,15 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   assert.match(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, places: 1, summaries: 1, guides: [] } }), 'wifi').lines[0], / · 1 place, 1 Wikipedia summary, 0 Wikivoyage guides\.$/);
   assert.ok(packWords(/** @type {any} */ ({ ...base, manifest, cut: 3 }), 'wifi').lines.includes('This plan is longer than a pack holds, so some of the way between stops is left out.'));
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest, why: 'old' }), 'wifi').button, 'Update (about 120 KB)');
+});
+
+test("a pack whose manifest doesn't say when it was downloaded says only that it was, never \"just now\"", () => {
+  const base = { stops: 2, cut: 0, why: null, estimate: 120 * 1024, running: null };
+  const manifest = { at: '', bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [], failed: [], full: false, stopped: false };
+  assert.equal(packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi').lines[0], 'Downloaded · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 0 Wikivoyage guides.');
+  assert.equal(downloadedWhen(''), '');
+  assert.equal(downloadedWhen('not a time'), '');
+  assert.equal(downloadedWhen(new Date().toISOString()), ' just now');
 });
 
 test('the trace says what each offline pack download did', () => {
