@@ -1,4 +1,4 @@
-import { readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES } from './config.js';
+import { readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLE } from './config.js';
 import { ROLE_KINDS } from './provider-desc.js';
 
 /**
@@ -70,7 +70,7 @@ export function speechBehind(list, add) {
 
 /**
  * Roles with a suggestion filled in. onlyEmpty keeps chat roles the user set; speech models move ahead
- * of the stand-ins (withSpeech), or, behind, join the end. Koe's lists are filled only when koe is
+ * of the stand-ins (withSpeech), or, behind, join the end. Koe's list is filled only when koe is
  * asked (the tap on "Use the recommended models"): the split is opt-in, so adding a provider never turns it on.
  * @param {Roles} roles @param {(role: string, providerModelId: string) => string | undefined} pick the model id
  * @param {Record<string, string[]> | undefined} suggestion @param {{ onlyEmpty: boolean, behind: boolean, speech: boolean, chat: boolean, koe?: boolean }} o
@@ -78,7 +78,7 @@ export function speechBehind(list, add) {
 function suggested(roles, pick, suggestion, o) {
   const next = structuredClone(roles);
   for (const [role, ids] of Object.entries(suggestion ?? {})) {
-    if (KOE_ROLES.includes(role) && !o.koe) continue;
+    if (role === KOE_ROLE && !o.koe) continue;
     const models = ids.map((p) => pick(role, p)).filter((x) => typeof x === 'string');
     if (!models.length) continue;
     if (SPEECH_ROLES.includes(role)) {

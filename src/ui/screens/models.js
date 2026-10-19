@@ -11,12 +11,12 @@ import { featuredStart } from '../provider-setup.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
-  main: 'Main: talks with you', 'koe-talk': 'Koe for talking: answers you at once when voice is on', 'koe-type': 'Koe for typing: answers you at once when you type',
+  main: 'Main: talks with you', koe: 'Koe: answers you at once, typed or spoken',
   utility: 'Utility: summaries and small jobs', decide: 'Quick decision: yes-or-no checks',
   'speech-in': 'Speech in: how Shiori hears you', 'speech-out': "Speech out: Shiori's voice",
 };
-/** The chat roles in the order they are shown: Koe's two lists right after Main. */
-const CHAT_ORDER = ['main', 'koe-talk', 'koe-type', 'utility', 'decide'];
+/** The chat roles in the order they are shown: Koe right after Main. */
+const CHAT_ORDER = ['main', 'koe', 'utility', 'decide'];
 /** What each stand-in entry is (spec §10.1, §10.3). @type {Record<string, string>} */
 /** Short notes on the stand-ins; Settings → Voice says where each sends your voice (spec §11.7). */
 const STAND_IN_NOTES = { 'send-audio': 'when the model takes audio', dictation: "the phone's own; usually goes to Google or Apple", 'browser-voice': "the browser's own; some voices go online" };
@@ -120,7 +120,7 @@ function rolesSection(ctx, cfg) {
   ];
   return h('section', { class: 'panel', 'aria-label': 'Roles' },
     h('h2', { class: 'section', text: 'Roles' }),
-    h('p', { class: 'sub', text: "Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list; Koe's two lists use each other." }),
+    h('p', { class: 'sub', text: "Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe." }),
     ...CHAT_ORDER.map((role) => roleBlock(role, cfg.roles, models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')), nameOf, list, edit)),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
     ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
@@ -134,7 +134,8 @@ function rolesSection(ctx, cfg) {
  */
 function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } = {}) {
   const r = roles[role];
-  const called = role.startsWith('koe') ? ROLE_NAMES[role].split(':')[0] : role; // Koe's lists by name, the rest by id
+  const koe = role === 'koe';
+  const called = koe ? 'Koe' : role; // Koe by name, the rest by id
   /** Moves an entry up or down the list as it is when saved. @param {string} id @param {number} by */
   const move = (id, by) => list(role, (ids) => {
     const next = ids.slice();
@@ -151,7 +152,6 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false } 
   const pick = h('select', { id: `role-${role}-add` }, ...others.map((m) => h('option', { value: m.id, text: m.name })));
   const level = speech ? null : h('select', { id: `role-${role}-level` }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
   if (level) level.value = r.level;
-  const koe = role === 'koe-talk' || role === 'koe-type';
   const wait = h('input', { id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : koe ? '8' : '30', value: r.firstOutputSeconds ?? '' });
   const empty = role === 'main' ? 'No models yet. Add one.'
     : koe ? 'Empty: Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.'
