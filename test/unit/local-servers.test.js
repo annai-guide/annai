@@ -76,14 +76,15 @@ test('llama.cpp: keywords Unsloth, LM Studio and KoboldCpp; its default address 
 /** Each local server's thinking switch, at level off and at medium (the plan's Local servers table). */
 const CASES = /** @type {[string, import('../fakes/model-server.js').Flavour, Record<string, any>, Record<string, any>][]} */ ([
   ['provider-llamacpp', 'llamacpp', { reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false } }, { reasoning_effort: 'medium', chat_template_kwargs: { enable_thinking: true } }],
-  ['provider-vllm', 'vllm', { chat_template_kwargs: { enable_thinking: false, thinking: false } }, { chat_template_kwargs: { enable_thinking: true, thinking: true } }],
-  ['provider-sglang', 'sglang', { chat_template_kwargs: { enable_thinking: false, thinking: false } }, { chat_template_kwargs: { enable_thinking: true, thinking: true } }],
+  // vLLM and SGLang: reasoning_effort too, for models switched by effort (gpt-oss); explicit chat_template_kwargs win on both (fix pass 3).
+  ['provider-vllm', 'vllm', { reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false, thinking: false } }, { reasoning_effort: 'medium', chat_template_kwargs: { enable_thinking: true, thinking: true } }],
+  ['provider-sglang', 'sglang', { reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false, thinking: false } }, { reasoning_effort: 'medium', chat_template_kwargs: { enable_thinking: true, thinking: true } }],
   // Ollama decides how hard a model thinks: only off is named, as a named level is refused by a model that can't think (fix pass 1).
   ['provider-ollama', 'ollama', { reasoning_effort: 'none' }, {}],
   ['provider-lmstudio', 'lmstudio', {}, {}],
 ]);
 
-test("each local server's off level sends its own thinking switch: llama.cpp reasoning_effort none and enable_thinking false; vLLM and SGLang chat_template_kwargs; Ollama reasoning_effort none; LM Studio nothing", async () => {
+test("each local server's off level sends its own thinking switch: llama.cpp reasoning_effort none and enable_thinking false; vLLM and SGLang reasoning_effort and chat_template_kwargs; Ollama reasoning_effort none; LM Studio nothing", async () => {
   for (const [plugin, flavour, off, medium] of CASES) {
     const k = await kit();
     const s = await startFakeServer({ flavour, cors: '*' });

@@ -436,7 +436,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1889,
+      "size": 2058,
       "requires": [
         {
           "id": "chat-completions",
@@ -445,7 +445,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "277a0615121177b9ec48e6f99b5c1be6be057c7ce676db6c4aa83470f3386a4c"
+        "annai-plugin.json": "cc436e9b80287680fd8159324d9e596cbf30173304c34386c341baf9af3c77c4"
       }
     },
     {
@@ -462,7 +462,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 2212,
+      "size": 2381,
       "requires": [
         {
           "id": "chat-completions",
@@ -471,7 +471,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "ea391fc63b56fd8b197fa3d50ad88f32bc138374d0095667e39e33241601ce20"
+        "annai-plugin.json": "6a32bcdd9d338a37ef6b2263b2b044ced82e6cbc8ca773544ceb583da9b98f14"
       }
     },
     {
