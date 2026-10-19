@@ -18,7 +18,7 @@ test("a realtime model first in Koe's list: Koe is live; resting, the text model
   }
 });
 
-test("Koe's pathway is its list's order, whatever the voice: a chat model first talks through the loop, voice on or off; resting, the realtime model after it is live, voice off too (the user, 2026-10-19: one Koe list)", async () => {
+test("Koe's pathway follows its list's order: a chat model first talks through the loop, voice on or off; resting, the realtime model after it is live, muted with voice off (the user, 2026-10-19: one Koe list)", async () => {
   const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
     assert.equal(k.agent.koeState, 'text', 'voice on');
@@ -29,6 +29,27 @@ test("Koe's pathway is its list's order, whatever the voice: a chat model first 
     k.llm.bench.bench('m-koe', 60_000);
     assert.equal(await k.agent.split(), true);
     assert.equal(k.agent.koeState, 'live', 'a session for typing, muted');
+  } finally {
+    await k.done();
+  }
+});
+
+test("voice off, a chat model later in Koe's list answers before the realtime one ahead of it, saving the session's unheard audio; voice on, the realtime one is live again", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    assert.equal(k.agent.koeState, 'live', 'voice on: Gemini Live, first in the list');
+    await updateAppSettings(k.ws, { voice: { mode: 'off' } });
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.equal(k.agent.koeState, 'text', 'voice off: the chat model after it');
+    k.llm.bench.bench('m-koe', 60_000);
+    assert.equal(await k.agent.split(), true);
+    assert.equal(k.agent.koeState, 'live', 'the chat model resting: the live one, muted');
+    k.llm.bench.clear('m-koe');
+    await updateAppSettings(k.ws, { voice: { mode: 'on' } });
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.equal(k.agent.koeState, 'live');
   } finally {
     await k.done();
   }

@@ -110,7 +110,7 @@ test("Koe's wait for the first words is 8 seconds unless the user set one (Koe a
   assert.ok(waits.includes(3000), 'its own setting');
 });
 
-test("Koe's pathway is the first model in its list that can answer, whatever the voice: a realtime one runs a live session, a chat one the loop", () => {
+test("Koe's pathway, voice on: the first model in its list that can answer; a realtime one runs a live session, a chat one the loop", () => {
   /** @type {any} */
   const cfg = {
     providers: { pv: { id: 'pv', plugin: 'provider-gemini', template: null, created: 0, user: { name: 'Gemini', abilities: { live: { kind: 'realtime', type: 'gemini-live' }, chat: { kind: 'chat', type: 'chat-completions' } } } } },
@@ -121,23 +121,44 @@ test("Koe's pathway is the first model in its list that can answer, whatever the
     roles: { main: { models: [], level: 'off' }, koe: { models: ['live', 'fast'], level: 'off' } },
   };
   const types = new Map([['gemini-live', { realtime: true }], ['chat-completions', {}]]);
-  const free = { types, until: () => 0, now: 1000 };
-  assert.deepEqual(koePath(cfg, free), { kind: 'live', modelId: 'live' });
+  const on = { voiceOn: true, types, until: () => 0, now: 1000 };
+  assert.deepEqual(koePath(cfg, on), { kind: 'live', modelId: 'live' });
   // A live model that can't go on (resting after a drop or a limit, off, or its protocol not running): the next model down.
-  assert.deepEqual(koePath(cfg, { ...free, until: (/** @type {string} */ id) => (id === 'live' ? 5000 : 0) }), { kind: 'text' }, 'resting: the text model after it');
-  assert.deepEqual(koePath(cfg, { ...free, types: new Map([['chat-completions', {}]]) }), { kind: 'text' }, 'its protocol not running');
+  assert.deepEqual(koePath(cfg, { ...on, until: (/** @type {string} */ id) => (id === 'live' ? 5000 : 0) }), { kind: 'text' }, 'resting: the text model after it');
+  assert.deepEqual(koePath(cfg, { ...on, types: new Map([['chat-completions', {}]]) }), { kind: 'text' }, 'its protocol not running');
   const off = structuredClone(cfg);
   off.providers.pv.user.abilities.live.on = false;
-  assert.deepEqual(koePath(off, free), { kind: 'text' }, 'Live voice switched off');
-  // A chat model first: the loop, though a realtime model follows it (and with voice on or off alike).
+  assert.deepEqual(koePath(off, on), { kind: 'text' }, 'Live voice switched off');
+  // A chat model first: the loop, though a realtime model follows it.
   const chatFirst = { ...cfg, roles: { ...cfg.roles, koe: { models: ['fast', 'live'], level: 'off' } } };
-  assert.deepEqual(koePath(chatFirst, free), { kind: 'text' });
-  assert.deepEqual(koePath(chatFirst, { ...free, until: (/** @type {string} */ id) => (id === 'fast' ? 5000 : 0) }), { kind: 'live', modelId: 'live' }, 'the chat model resting: the live one after it');
+  assert.deepEqual(koePath(chatFirst, on), { kind: 'text' });
+  assert.deepEqual(koePath(chatFirst, { ...on, until: (/** @type {string} */ id) => (id === 'fast' ? 5000 : 0) }), { kind: 'live', modelId: 'live' }, 'the chat model resting: the live one after it');
   // The realtime model alone: live; resting, with nothing after it, Koe is down.
   const liveOnly = { ...cfg, roles: { ...cfg.roles, koe: { models: ['live'], level: 'off' } } };
   assert.equal(splitOn(liveOnly), true);
-  assert.deepEqual(koePath(liveOnly, free), { kind: 'live', modelId: 'live' });
-  assert.equal(koePath(liveOnly, { ...free, until: () => 5000 }), null, 'resting, and nothing after it: Koe is down');
+  assert.deepEqual(koePath(liveOnly, on), { kind: 'live', modelId: 'live' });
+  assert.equal(koePath(liveOnly, { ...on, until: () => 5000 }), null, 'resting, and nothing after it: Koe is down');
   // A text Koe calls the same list; its realtime models are passed over by callRole as not-chat.
   assert.deepEqual(candidates(cfg, 'koe'), ['live', 'fast']);
+});
+
+test("Koe's pathway, voice off: a chat model that can answer comes before a realtime one ahead of it in the list (a live session's reply is sound nobody hears); with none, the realtime one runs muted", () => {
+  /** @type {any} */
+  const cfg = {
+    providers: { pv: { id: 'pv', plugin: 'provider-gemini', template: null, created: 0, user: { name: 'Gemini', abilities: { live: { kind: 'realtime', type: 'gemini-live' }, chat: { kind: 'chat', type: 'chat-completions' } } } } },
+    models: {
+      live: { id: 'live', provider: 'pv', ability: 'live', template: null, created: 0, user: { providerId: 'gemini-3.8-live' } },
+      fast: { id: 'fast', provider: 'pv', ability: 'chat', template: null, created: 0, user: { providerId: 'gemini-3.5-flash-lite' } },
+    },
+    roles: { main: { models: [], level: 'off' }, koe: { models: ['live', 'fast'], level: 'off' } },
+  };
+  const off = { voiceOn: false, types: new Map([['gemini-live', { realtime: true }], ['chat-completions', {}]]), until: () => 0, now: 1000 };
+  assert.deepEqual(koePath(cfg, off), { kind: 'text' }, 'Gemini Live first, flash-lite after it: flash-lite, in the loop');
+  assert.deepEqual(koePath(cfg, { ...off, voiceOn: true }), { kind: 'live', modelId: 'live' }, 'voice on: Gemini Live');
+  assert.deepEqual(koePath(cfg, { ...off, until: (/** @type {string} */ id) => (id === 'fast' ? 5000 : 0) }), { kind: 'live', modelId: 'live' }, 'the chat model resting: the live one, muted');
+  const liveOnly = { ...cfg, roles: { ...cfg.roles, koe: { models: ['live'], level: 'off' } } };
+  assert.deepEqual(koePath(liveOnly, off), { kind: 'live', modelId: 'live' }, 'no chat model: the live one, muted');
+  assert.equal(koePath(liveOnly, { ...off, until: () => 5000 }), null);
+  const chatFirst = { ...cfg, roles: { ...cfg.roles, koe: { models: ['fast', 'live'], level: 'off' } } };
+  assert.deepEqual(koePath(chatFirst, off), { kind: 'text' });
 });
