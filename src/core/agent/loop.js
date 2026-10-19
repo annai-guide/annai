@@ -607,10 +607,10 @@ export class Agent {
     this.#leaving = yes;
   }
 
-  /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7). */
+  /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7); the voice only if it is this half's. */
   interrupt() {
     this.#abort?.abort();
-    this.voice?.speaker.stop();
+    if (this.#half.voice()) this.voice?.speaker.stop();
     const p = this.#pending;
     this.#pending = null;
     p?.resolve({ stopped: true });
@@ -1773,7 +1773,7 @@ export class Agent {
     const voice = this.voice;
     if (!voice) return "voice isn't available here.";
     if (this.#ear) return null; // a tap's window stays the tap's until the first thing said: that needs no gate (choice 3)
-    const how = await voice.howToListen();
+    const how = await voice.howToListen((await this.#half.role(this.#voiceNow)).role);
     if ('why' in how) {
       // The mic button explains what to add (spec §10.3): on every tap, and once for her own listening.
       if (owner === 'tap' || !this.#toldDeaf) await this.#notice({ tone: 'warn', title: "Shiori can't hear you yet", body: how.why });
@@ -1970,7 +1970,8 @@ export class Agent {
 
   /**
    * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
-   * tapped to talk (spec §6.2, §10.4); after a turn that worked, what was heard is written down.
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, what was heard is written down, by
+   * the half that hears (Koe while it talks: once, plan K2).
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
@@ -1979,7 +1980,7 @@ export class Agent {
     if (this.#ear?.owner === 'turn') this.#closeEar();
     else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
-    if (ok) await this.#writeDown(wakeId);
+    if (ok && this.#half.voice()) await this.#writeDown(wakeId);
   }
 
   /**
@@ -1993,7 +1994,8 @@ export class Agent {
   async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false } = {}) {
     const voice = this.voice;
     if (!voice) return [];
-    const hearer = await this.#hearer();
+    const { role } = await this.#half.role(this.#voiceNow);
+    const hearer = await this.#hearer(role);
     /** @type {string[]} */
     const left = [];
     for (const id of ids) {
@@ -2003,7 +2005,7 @@ export class Agent {
         if (!clip) await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: NOT_TRANSCRIBED, by: null } });
         continue;
       }
-      const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}) }).catch(() => null);
+      const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}), ...(role === 'main' ? {} : { role }) }).catch(() => null);
       if (!r && !final) {
         // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again.
         const tries = (this.#writeTries.get(id) ?? 0) + 1;
@@ -2022,13 +2024,13 @@ export class Agent {
 
   /**
    * Who writes heard sound down for "Send audio to the model" (spec §10.3): the model that heard it
-   * in this turn, else (housekeeping) the main role's first model that takes audio.
-   * @returns {Promise<string | undefined>}
+   * in this turn, else (housekeeping) the half's role's first model that takes audio.
+   * @param {string} role @returns {Promise<string | undefined>}
    */
-  async #hearer() {
+  async #hearer(role) {
     if (this.#heardBy) return this.#heardBy;
     const cfg = await this.llm.config();
-    return (cfg.roles?.main?.models ?? []).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
+    return candidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
   }
 
   /**
