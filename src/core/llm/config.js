@@ -7,7 +7,7 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
 /**
  * Providers, their models and roles (spec §9.2, §9.6), as files in the settings scope; one API key per
  * provider, only in secrets (§9.9). A provider is one address and one key with abilities (chat,
- * transcription, voice), each through a protocol's endpoint type; a model belongs to one ability. Each
+ * transcription, voice, realtime voice), each through a protocol's endpoint type; a model belongs to one ability. Each
  * record has two layers, the description's (or a list's) and the user's: effective values are the
  * protocol's defaults, then the description, then the user's (§9.2), so an update never overwrites them.
  * @typedef {import('../workspace.js').Workspace} Workspace @typedef {import('../types.js').Store} Store
@@ -67,7 +67,7 @@ const ROLES_PATH = '/llm/roles.json';
 const UPLOADS_PATH = '/llm/uploads.json';
 const secretId = (/** @type {string} */ providerId) => `llm:${providerId}`;
 /** What each kind of ability is called, when its description gives no name. @type {Record<string, string>} */
-const KIND_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice' };
+const KIND_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' };
 const MODEL_DEFAULTS = Object.freeze({
   name: '', providerId: '', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: null,
   cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {},
@@ -101,7 +101,7 @@ const ID = { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,80}$' };
 const ABILITY_VALUES = {
   type: 'object',
   properties: {
-    on: { type: 'boolean' }, kind: { enum: ['chat', 'transcription', 'voice'] }, type: { type: 'string', maxLength: 41 }, name: { type: 'string', maxLength: 80 },
+    on: { type: 'boolean' }, kind: { enum: ['chat', 'transcription', 'voice', 'realtime'] }, type: { type: 'string', maxLength: 41 }, name: { type: 'string', maxLength: 80 },
     baseUrl: { type: 'string', maxLength: 2000 }, tunables: OBJECT, extraBody: OBJECT, modelDefaults: VALUES,
   },
 };

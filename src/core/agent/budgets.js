@@ -1,12 +1,12 @@
 /**
  * Budgets and safeguards (spec §6.6). All are opt-in, with no defaults. Cost is always visible:
- * per wake and per trip, from the model.turn records and speech requests.
+ * per wake and per trip, from the model.turn records, speech requests and live sessions' turns.
  * @typedef {import('../types.js').Store} Store
  * @typedef {import('./loop.js').Budgets} Budgets
  */
 
-/** Whether an entry carries a call's cost: a role call's model.turn, or a speech request (their costs aren't in any model.turn). @param {any} e */
-const priced = (e) => e.type === 'model.turn' || (e.type === 'net.request' && String(e.data?.kind ?? '').startsWith('speech-'));
+/** Whether an entry carries a call's cost: a role call's model.turn, or a speech request or a live session's turn (their costs aren't in any model.turn). @param {any} e */
+const priced = (e) => e.type === 'model.turn' || (e.type === 'net.request' && /^(speech-|realtime$)/.test(String(e.data?.kind ?? '')));
 
 /** Minutes since local midnight. @param {number} now @param {string} timeZone */
 function minutes(now, timeZone) {

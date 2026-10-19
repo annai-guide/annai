@@ -40,9 +40,13 @@ test('security review: every address must parse, and be https, or http only for 
 });
 
 test('the kinds, categories and which ability kind each role takes', () => {
-  assert.deepEqual(ABILITY_KINDS, ['chat', 'transcription', 'voice']);
+  assert.deepEqual(ABILITY_KINDS, ['chat', 'transcription', 'voice', 'realtime']);
   assert.deepEqual(CATEGORIES, ['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
-  assert.deepEqual(ROLE_KINDS, { main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat'], 'koe-type': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'] });
+  // Koe's lists take realtime voice models too (K4); no other role does.
+  assert.deepEqual(ROLE_KINDS, { main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-talk': ['chat', 'realtime'], 'koe-type': ['chat', 'realtime'], 'speech-in': ['transcription'], 'speech-out': ['voice'] });
+  const live = { baseUrl: 'https://live.test', key: 'required', abilities: { live: { kind: 'realtime', type: 'gemini-live', on: false, models: [{ providerId: 'live-1' }] } } };
+  assert.deepEqual(checkProviderDesc({ ...live, roles: { recommended: { 'koe-talk': ['live-1'] } } }), []);
+  assert.deepEqual(checkProviderDesc({ ...live, roles: { recommended: { main: ['live-1'] } } }), ['$.roles.recommended.main: live-1 isn\'t a chat model of this provider']);
 });
 
 test('fix pass: an address typed on a provider\'s page is checked by the same rule: https, or http only for localhost or 127.0.0.1, in words', () => {
