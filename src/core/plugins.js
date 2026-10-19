@@ -24,6 +24,7 @@ import { descOrigins, addressProblem } from './llm/provider-desc.js';
 import { checkSetup } from './llm/setup.js';
 import { catalogFacts } from './catalog-facts.js';
 import { toBase64, fromBase64 } from './bytes.js';
+import { OFFICIAL_NAMES } from './official-names.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -100,7 +101,9 @@ export class PluginHost {
       if (kind === 'tool' && [...TALK, ...ALWAYS_ON, ...(this.#services.agent?.loopTools?.() ?? []).map((/** @type {any} */ t) => t.name)].includes(name)) return 'only';
       return (kind === 'ui:component' && COMPONENTS.includes(name)) || [...this.builtins.values()].some((m) => m.provides?.[kind]?.includes(name)) ? 'own' : null;
     },
-    official: (kind, name) => Object.keys(this.#known).find((id) => this.#known[id]?.source === 'official' && [this.#known[id].provides?.[kind]].flat().includes(name)),
+    // Installed, or in the catalog this annai shipped with: a keyed name of annai's is never a third party's, even before it is installed.
+    official: (kind, name) => Object.keys(this.#known).find((id) => this.#known[id]?.source === 'official' && [this.#known[id].provides?.[kind]].flat().includes(name))
+      ?? /** @type {Record<string, Record<string, string>>} */ (OFFICIAL_NAMES)[kind]?.[name],
   };
 
   /**

@@ -105,14 +105,14 @@ test('M6: an official install never overwrites a third-party package with its id
   assert.equal((await host.installed())['scripted-model'].source, 'file', 'not overwritten');
 });
 
-test("M6: a third party's protocol with the type of annai's own doesn't keep annai's own out: when the type is needed, annai's is installed and used; offline, the third party's stays", async () => {
+test("M6: a third party's protocol with the type of annai's own doesn't keep annai's own out: when the type is needed, annai's is installed and used; offline, before annai's is installed, nobody's serves it (K4 review)", async () => {
   const { host, registry } = await setup();
   const mine = new Map([['annai-plugin.json', utf8(JSON.stringify({ id: 'my-scripted', name: 'My scripted', version: '1.0.0', api: 1, entry: 'index.js' }))],
     ['index.js', utf8("export function activate(annai) { return annai.providers.register({ type: 'scripted', async *run() {} }); }")]]);
   await host.install(mine, { source: 'file' });
   await host.start('my-scripted');
-  await ensureType(host, 'scripted', { fetch: async () => { throw new TypeError('Failed to fetch'); } });
-  assert.equal(endpointTypes(registry).get('scripted')?.pluginId, 'my-scripted');
+  await assert.rejects(ensureType(host, 'scripted', { fetch: async () => { throw new TypeError('Failed to fetch'); } }), /couldn't be loaded/);
+  assert.equal(endpointTypes(registry).get('scripted'), undefined, "annai's own name, though annai's isn't installed yet");
   await ensureType(host, 'scripted', { fetch: repoFetch().get });
   assert.equal((await host.installed())['scripted-model']?.source, 'official');
   assert.equal(endpointTypes(registry).get('scripted')?.pluginId, 'scripted-model');
@@ -205,4 +205,22 @@ test('catalog/plugins.json lists every official plugin', async () => {
   const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
   const dirs = (await readdir(new URL('plugins-official/', root), { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name).sort();
   assert.deepEqual(catalog.plugins.map((/** @type {any} */ p) => p.id).sort(), dirs);
+});
+
+test("K4 review: every keyed name annai's catalog provides is annai's from the start; a third party's own names stay its own", async () => {
+  const { OFFICIAL_NAMES } = await import('../../src/core/official-names.js');
+  const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8')).plugins;
+  for (const kind of ['endpoint-type', 'storage-type']) {
+    const want = Object.fromEntries(catalog.flatMap((/** @type {any} */ p) => (p.provides?.[kind] ?? []).map((/** @type {string} */ n) => [n, p.id])));
+    assert.deepEqual(/** @type {any} */ (OFFICIAL_NAMES)[kind], want, kind);
+  }
+  assert.equal(/** @type {any} */ (OFFICIAL_NAMES)['endpoint-type']['gemini-live'], 'gemini-live');
+  const { host, registry } = await setup();
+  const theirs = new Map([['annai-plugin.json', utf8(JSON.stringify({ id: 'their-live', name: 'Their live', version: '1.0.0', api: 1, entry: 'index.js' }))],
+    ['index.js', utf8("export function activate(annai) { annai.providers.register({ type: 'gemini-live', async *run() {} }); annai.providers.register({ type: 'their-own', async *run() {} }); }")]]);
+  await host.install(theirs, { source: 'file' });
+  await host.start('their-live');
+  assert.equal(endpointTypes(registry).get('gemini-live'), undefined);
+  assert.equal(endpointTypes(registry).get('their-own')?.pluginId, 'their-live');
+  assert.deepEqual(registry.clashes('their-live').map((c) => [c.name, c.owner, c.reserved]), [['gemini-live', 'gemini-live', true]]);
 });
