@@ -1,0 +1,63 @@
+{
+  "id": "provider-llamacpp",
+  "name": "llama.cpp",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Models on a llama.cpp server you run (llama-server), or one built on it such as Unsloth Studio or KoboldCpp. Their thinking is switched off for quick decisions.",
+  "category": "providers",
+  "keywords": [
+    "Unsloth",
+    "LM Studio",
+    "KoboldCpp"
+  ],
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "http://localhost:9931/v1",
+    "key": "optional",
+    "local": true,
+    "note": "llama-server listens on port 9931 unless --port says otherwise; give it a key with --api-key, or leave the key empty. Unsloth Studio serves at its own address (port 8888 unless changed), with a key (sk-unsloth-…) from its Settings → API. From a phone, the server needs an HTTPS address: put HTTPS in front of it, such as Tailscale Serve or a tunnel. localhost only reaches the device annai runs on, and browsers block plain http:// to another computer.",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "tunables": {
+          "enforceToolCall": true
+        },
+        "modelDefaults": {
+          "reasoning": {
+            "off": {
+              "reasoning_effort": "none",
+              "chat_template_kwargs": {
+                "enable_thinking": false
+              }
+            },
+            "low": {
+              "reasoning_effort": "low",
+              "chat_template_kwargs": {
+                "enable_thinking": true
+              }
+            },
+            "medium": {
+              "reasoning_effort": "medium",
+              "chat_template_kwargs": {
+                "enable_thinking": true
+              }
+            },
+            "high": {
+              "reasoning_effort": "high",
+              "chat_template_kwargs": {
+                "enable_thinking": true
+              }
+            }
+          }
+        },
+        "note": "Add models with Fetch model list. Then, on each model's page, set its context window to what the server holds (llama-server's -c, or the context length set in Unsloth Studio), and tick Takes photos if it reads images and the list didn't say so (Unsloth Studio's doesn't). llama-server started with --tools or --agent lets in only pages on its own computer: add annai's address with --cors-origins https://annai.guide."
+      }
+    }
+  }
+}

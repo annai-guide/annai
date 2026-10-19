@@ -1,0 +1,27 @@
+{
+  "id": "provider-lmstudio",
+  "name": "LM Studio",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Models on LM Studio's server.",
+  "category": "providers",
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "http://localhost:1234/v1",
+    "key": "optional",
+    "local": true,
+    "note": "In LM Studio's server settings, turn on Enable CORS so annai's page may call it, and Serve on Local Network if it's reached from another computer. It listens on port 1234 unless changed. If you turned on its authentication, give its API token as the key. From a phone, the server needs an HTTPS address: put HTTPS in front of it, such as Tailscale Serve or a tunnel. localhost only reaches the device annai runs on, and browsers block plain http:// to another computer.",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "note": "Add models with Fetch model list, then set each one's context window on its page. LM Studio doesn't document how thinking is switched: set a model's Reasoning levels on its page if it thinks."
+      }
+    }
+  }
+}
