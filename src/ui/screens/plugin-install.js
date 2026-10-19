@@ -57,7 +57,7 @@ function webAddress(url) {
 export function restartCard(ctx, name) {
   ctx.notices.card({
     title: `Restart annai to run the new version of ${name}.`, body: 'The browser keeps the old code until annai starts again.',
-    actions: [{ label: 'Restart annai', primary: true, run: () => location.reload() }],
+    actions: [{ label: 'Restart annai', primary: true, run: () => ctx.updates?.restart() ?? location.reload() }], // after Shiori's turn (Updates.restart)
   });
 }
 
