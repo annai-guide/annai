@@ -200,7 +200,10 @@ export function openLive(c) {
       s.addEventListener('close', (/** @type {CloseEvent} */ e) => {
         clearTimeout(timer);
         const reason = String(e.reason ?? '');
-        if (st.up) return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason));
+        if (st.up) {
+          if (!asked) call('close', []); // its own close: the protocol lets go too (annai's called it already)
+          return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason));
+        }
         try {
           const next = asked || !st.opened || again || st.late || st.broken ? null : type.reopen?.(e.code, reason, tunables);
           if (next) return attempt(build((session.tunables = next)), next, true);
