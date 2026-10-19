@@ -53,6 +53,15 @@ test("a realtime model's image and video tokens are priced by its image price, e
   assert.deepEqual(mergeUsage({ ...NO_USAGE }, { image: 5 }), { ...NO_USAGE, image: 5 });
 });
 
+test("a realtime model's cached audio tokens are priced by cacheReadAudio, else as cache reads, else as audio in (OpenAI's mini: $0.30 against $0.06 for cached text) (K6)", () => {
+  const mini = { input: 0.6, cacheRead: 0.06, cacheReadAudio: 0.3, audioIn: 10, output: 2.4, audioOut: 20 };
+  close(costOf({ ...NO_USAGE, input: 100, cacheRead: 1000, cacheReadAudio: 2000, audioIn: 50, output: 10, audioOut: 300 }, mini), (100 * 0.6 + 1000 * 0.06 + 2000 * 0.3 + 50 * 10 + 10 * 2.4 + 300 * 20) / 1e6);
+  close(costOf({ ...NO_USAGE, cacheReadAudio: 2000 }, { input: 4, cacheRead: 0.4, audioIn: 32 }), (2000 * 0.4) / 1e6);
+  close(costOf({ ...NO_USAGE, cacheReadAudio: 2000 }, { input: 4, audioIn: 32 }), (2000 * 32) / 1e6);
+  assert.deepEqual(mergeUsage({ ...NO_USAGE }, { cacheReadAudio: 5 }), { ...NO_USAGE, cacheReadAudio: 5 });
+  assert.deepEqual(addUsage({ ...NO_USAGE, cacheReadAudio: 3 }, { ...NO_USAGE }), { ...NO_USAGE, cacheReadAudio: 3 });
+});
+
 test("reasoning levels: the model's own, else the nearest, the cheaper on a tie (spec §9.3)", () => {
   assert.deepEqual(LEVELS, ['off', 'low', 'medium', 'high', 'max']);
   assert.deepEqual(ROLE_LEVELS, { main: 'medium', utility: 'low', decide: 'off', 'koe-talk': 'off', 'koe-type': 'off' });

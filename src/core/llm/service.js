@@ -334,7 +334,7 @@ export function createLlm({
       if (secret) trace.secret(secret);
       const tunables = { ...endpoint.tunables, ...model.tunables, ...liveTunables.get(modelId) };
       const session = openLive({
-        type, endpoint, model, key, tunables, setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace,
+        type, endpoint, model, key, tunables, setup, trace,
         registry: plugins.registry, wake, ...(openSocket ? { socket: openSocket } : {}),
       });
       session.ready.then(() => { if (session.tunables !== tunables) liveTunables.set(modelId, session.tunables); }, () => {});
@@ -396,10 +396,9 @@ export function createLlm({
       const { roles } = await readConfig(ws);
       const r = ['main', 'utility'].find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
       const role = r ? { name: r[0].toUpperCase() + r.slice(1), level: roles[r].level } : undefined;
-      const out = type.audio?.out[0];
       const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
         : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
-          .then((s) => testLive(s, { onAudio: onAudio && out ? (d) => onAudio(d, out) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
+          .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
       if (found.access && found.key !== false) bench.clear(modelId); // reachable with a working key: no reason to rest
       await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), ...found, at: Date.now() } });

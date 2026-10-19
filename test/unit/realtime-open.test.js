@@ -323,3 +323,61 @@ test('a key with characters an address escapes is blanked in both forms: in the 
   }
   assert.match(end.reason, /key=«key» \(or «key»\)/);
 });
+
+test('a session takes the audio its protocol prefers first, or the formats its tunables input and output name, and says which; a setup that names its own wins (K6)', async () => {
+  FakeSocket.made = [];
+  const MU = { format: /** @type {const} */ ('pcmu'), rate: 8000 };
+  /** @type {any[]} */
+  const attached = [];
+  const type = { ...ECHO, audio: { in: [MU, PCM16(24000)], out: [PCM16(24000), MU] }, attach: (/** @type {any} */ s, /** @type {any} */ c) => (attached.push(c.setup), ECHO.attach(s, c)) };
+  const bare = { instructions: 'You are Koe.', context: '', tools: [] };
+  /** @param {Record<string, any>} tunables @param {any} [over] */
+  const one = (tunables, over = {}) => openLive({ type, endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables, setup: { ...bare, ...over }, trace: null, socket });
+  const sessions = [one({}), one({ input: 'pcm16', output: 'pcmu' }), one({ input: 'opus' }), one({ input: 'pcm16' }, { audioIn: PCM16(16000) })];
+  assert.deepEqual(sessions.map((s) => [s.audioIn, s.audioOut]), [[MU, PCM16(24000)], [PCM16(24000), MU], [MU, PCM16(24000)], [PCM16(16000), PCM16(24000)]]);
+  await tick();
+  assert.deepEqual(attached.map((x) => [x.audioIn, x.audioOut]), sessions.map((s) => [s.audioIn, s.audioOut]), 'the protocol is set up with the same');
+  for (const s of sessions) s.close();
+});
+
+test("a protocol's ready that fails with a ProviderError says why: its kind and words, the key blanked, never against its plugin; any other failure is the plugin's (K6)", async () => {
+  FakeSocket.made = [];
+  /** @type {string[]} */
+  const failed = [];
+  const registry = { fail: (/** @type {string} */ _id, /** @type {string} */ what) => { failed.push(what); } };
+  /** @param {unknown} e @returns {any} */
+  const failing = (e) => ({ ...ECHO, attach: (/** @type {any} */ s, /** @type {any} */ c) => ({ ...ECHO.attach(s, c), ready: Promise.reject(e) }) });
+  const store = createMemoryStore();
+  const refused = openLive({ type: failing(new ProviderError('auth', `Incorrect API key provided: ${KEY}.`)), endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: modelTrace(store, SYS), socket, registry });
+  await assert.rejects(refused.ready, (e) => e instanceof ProviderError && e.kind === 'auth' && e.message === 'Incorrect API key provided: «key».');
+  assert.equal((await refused.closed).kind, 'auth');
+  assert.ok(FakeSocket.made[0].closedWith, 'annai closes the socket');
+  assert.deepEqual(failed, [], "a refusal isn't the plugin's bug");
+  const closed = (await events(store)).find((e) => e.type === 'live.session' && e.data.state === 'closed');
+  assert.equal(closed?.data.kind, 'auth');
+  assert.ok(!JSON.stringify(await events(store)).includes(KEY));
+  const broken = openLive({ type: failing(new TypeError("Cannot read properties of undefined (reading 'x')")), endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket, registry });
+  await assert.rejects(broken.ready, (e) => e instanceof ProviderError && e.kind === 'plugin');
+  assert.deepEqual(failed, ['live ready']);
+});
+
+test('once a session has closed, nothing more is told: a protocol timer that fires late reaches no listener and no trace (K6)', async () => {
+  FakeSocket.made = [];
+  /** @type {(e: any) => void} */
+  let late = () => {};
+  const type = { ...ECHO, attach: (/** @type {any} */ s, /** @type {any} */ c) => { late = c.emit; return ECHO.attach(s, c); } };
+  const store = createMemoryStore();
+  const session = openLive({ type, endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: modelTrace(store, SYS), socket });
+  /** @type {any[]} */
+  const heard = [];
+  session.on((e) => heard.push(e));
+  await tick();
+  FakeSocket.made[0].receive({ ready: true });
+  await session.ready;
+  FakeSocket.made[0].drop(1006, '');
+  await session.closed;
+  late({ type: 'goaway', ms: 300_000 });
+  late({ type: 'usage', usage: { input: 10 } });
+  assert.deepEqual(heard, []);
+  assert.deepEqual((await events(store)).map((e) => e.data.state ?? e.type), ['open', 'ready', 'closed']);
+});

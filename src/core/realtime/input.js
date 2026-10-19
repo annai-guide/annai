@@ -28,12 +28,12 @@ export class LiveInput {
   #n = 0;
 
   /**
-   * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void },
+   * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void, audioIn?: { rate: number } },
    *   rate?: number, pauseMs?: number, startDb?: number, minSpeechMs?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
    *   speaking?: () => boolean, onLevel?: (x: number) => void, onError?: (e: Error) => void }} o
-   *   rate: what the session takes; speaking: whether Koe's voice is playing; bargeInDb: Infinity turns cutting in by voice off
+   *   rate: what the session takes (send's audioIn, K6); speaking: whether Koe's voice is playing; bargeInDb: Infinity turns cutting in by voice off
    */
-  constructor({ mic, send, rate = 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6, speaking = () => false, onLevel, onError }) {
+  constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6, speaking = () => false, onLevel, onError }) {
     this.mic = mic;
     this.send = send;
     this.rate = rate;
