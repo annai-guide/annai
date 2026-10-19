@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
  * unknown model with 1008, and `proactivity` on v1beta with 1007 "Unknown name"; a resumption handle at once
  * and after each turn; each turn's audio in a burst, its transcripts beside it, and turnComplete, with the
  * turn's usage, only when playing it in real time would end; `interrupted` when an activityStart or a
- * clientContent comes before that. Unit tests reach it with Node's WebSocket, and end-to-end tests from the
+ * clientContent comes before that, and then the cut turn's turnComplete. Unit tests reach it with Node's WebSocket, and end-to-end tests from the
  * page, at ws://127.0.0.1:<port> (WebKit can't stand in for a page's own requests).
  * @typedef {{ heard?: string, said?: string, audio?: Uint8Array, tool?: { name: string, args: any }, goAway?: number, handle?: string,
  *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity' }} Turn
@@ -158,11 +158,13 @@ export async function startRealtimeServer(o) {
       if (ms <= 0) done();
       else playing = { turn, timers: [setTimeout(done, ms)] };
     };
-    /** Something the user did while a turn plays cuts it off. @param {'text' | 'activity'} by */
+    /** Something the user did while a turn plays cuts it off; the cut turn still ends, with its usage, as Gemini's do. @param {'text' | 'activity'} by */
     const cut = (by) => {
       if (!playing || (playing.turn.interruptOn && playing.turn.interruptOn !== by)) return;
+      const { turn } = playing;
       stopTurn();
       send({ serverContent: { interrupted: true } });
+      send({ serverContent: { turnComplete: true }, ...(turn.usage ? { usageMetadata: turn.usage } : {}) });
     };
     /** @param {any} m */
     const handle = (m) => {
