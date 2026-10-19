@@ -214,3 +214,77 @@ test('Erase closes the session and forgets it before anything is wiped: what com
     await k.done();
   }
 });
+
+// Task 5: notes, and Kokoro's blocks (decision 14; Review Focus 2).
+test("an append note waits for Koe's turn to end and its voice to finish playing, then goes in as <from_kokoro> text, and Koe says it", async () => {
+  const k = await liveKit([{ said: 'Nepenthe is a restaurant on the cliffs.', audio: tone(1) }, { said: "It's open until ten tonight.", audio: tone(0.3) }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('What is Nepenthe?');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await k.agent.channel.send('kokoro', 'Nepenthe is open until 22:00 today (nepenthe.com).', 'append', 'tool');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.deepEqual(texts(k), ['What is Nepenthe?'], 'not while she speaks');
+    await soon(async () => texts(k).length === 2);
+    const [stream] = k.platform.streams;
+    assert.ok(stream.ended && !stream.stopped && stream.playedMs >= 950, 'her voice played to its end first');
+    assert.equal(texts(k)[1], `<from_kokoro id="${k.agent.nonce}">Nepenthe is open until 22:00 today (nepenthe.com).</from_kokoro>`);
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.text, e.data.cut]), [['Nepenthe is a restaurant on the cliffs.', undefined], ["It's open until ten tonight.", undefined]]);
+  } finally {
+    await k.done();
+  }
+});
+
+test('an immediate note goes in at once and cuts Koe off mid-sentence; her line is kept up to there, and she corrects herself', async () => {
+  const k = await liveKit([
+    { said: 'Bixby Bridge is a steel suspension bridge from the nineteen fifties, built for the highway.', audio: tone(6) },
+    { said: "Sorry, I was wrong: it's a concrete arch from 1932.", audio: tone(0.3) },
+  ], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Tell me about Bixby Bridge');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await new Promise((r) => setTimeout(r, 600));
+    const at = Date.now();
+    await k.agent.channel.send('kokoro', "It's a concrete arch bridge, opened in 1932 (Caltrans).", 'immediate', 'tool');
+    await until(() => texts(k).length === 2);
+    assert.ok(Date.now() - at < 300, 'at once');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    const [cut, fixed] = await k.events(['out.speak']);
+    assert.equal(cut.data.cut, true);
+    assert.match(cut.data.text, /^Bixby.*✂$/);
+    assert.ok(!cut.data.text.includes('steel'), 'cut before the wrong claim was heard');
+    assert.ok(cut.data.text.length < 60, cut.data.text);
+    assert.equal(fixed.data.text, "Sorry, I was wrong: it's a concrete arch from 1932.");
+    assert.ok(k.platform.streams[0].stopped);
+  } finally {
+    await k.done();
+  }
+});
+
+test("opening and closing sessions again and again: Kokoro's system text and tools stay byte for byte the same; only blocks are added (Review Focus 2)", async () => {
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }], { kokoro: [{ rules: [{ match: '.', reply: sleep }] }] });
+  try {
+    for (let i = 0; i < 3; i++) {
+      k.agent.send(`Question ${i}`);
+      await soon(async () => (k.sent['model-0']?.length ?? 0) === i + 1);
+      await k.agent.idle();
+      k.agent.hush('away');
+    }
+    const asks = k.sent['model-0'];
+    for (const r of asks.slice(1)) {
+      assert.equal(r.system, asks[0].system);
+      assert.deepEqual(r.tools, asks[0].tools);
+    }
+    await soon(async () => (await blocks(k)).length === 6);
+    assert.deepEqual(await blocks(k), ['live-open', 'live-closed', 'live-open', 'live-closed', 'live-open', 'live-closed']);
+    const last = JSON.stringify(asks[2].messages);
+    assert.ok(last.includes('[annai] A live voice session opened: Koe speaks natively, and its words reach you as [Koe said aloud].'), last);
+    assert.ok(last.includes('[annai] The live voice session closed.'));
+  } finally {
+    await k.done();
+  }
+});
