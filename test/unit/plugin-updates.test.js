@@ -241,6 +241,46 @@ test('an update from an address with nothing new is applied as before', async ()
   assert.equal((await host.installed()).kit.version, '1.0.1');
 });
 
+/** A provider description at an address. @param {string} baseUrl */
+const LLM = (baseUrl) => ({ baseUrl, key: 'required', abilities: { chat: { kind: 'chat', type: 'scripted' } } });
+
+test('an update from an address whose provider sends keys to a new origin asks first, and changes nothing until agreed (decision 11)', async () => {
+  let site = kitSite({ ...KIT_V1, provider: LLM('https://llm.trails.example/v1') }, SAFETY);
+  const get = (/** @type {string} */ url) => site(url);
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(KIT_ADDR, { fetch: get }), { source: 'url', url: KIT_ADDR });
+  site = kitSite({ ...KIT_V1, version: '1.1.0', provider: LLM('http://localhost:9931/v1') }, SAFETY);
+  const offers = await addressUpdates(host, { fetch: get });
+  assert.deepEqual(offers[0].added.origins, ['http://localhost:9931']);
+  const notices = fakeNotices();
+  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get });
+  assert.equal((await host.installed()).kit.version, '1.0.0');
+  const [ask] = notices.cards;
+  assert.match(ask.body, /sends keys you give it to http:\/\/localhost:9931/);
+  assert.doesNotMatch(ask.body, /full access/);
+  await assert.rejects(updateFromAddress(host, 'kit', { fetch: get }), /haven't agreed to: a provider that sends keys to http:\/\/localhost:9931/);
+  await ask.actions[0].run();
+  assert.equal((await host.installed()).kit.version, '1.1.0');
+  assert.deepEqual((await host.installed()).kit.origins, ['http://localhost:9931']);
+});
+
+test('an update from an address that now requires one of annai\'s plugins installs it on Update, from annai\'s catalog', async () => {
+  let site = kitSite({ ...KIT_V1, provider: LLM('https://llm.trails.example/v1') }, SAFETY);
+  const get = (/** @type {string} */ url) => site(url);
+  const { host, registry } = await hostKit();
+  await host.install(await fetchPackage(KIT_ADDR, { fetch: get }), { source: 'url', url: KIT_ADDR });
+  site = kitSite({ ...KIT_V1, version: '1.0.1', provider: LLM('https://llm.trails.example/v1'), requires: [{ id: 'scripted-model', version: '^0' }] }, SAFETY);
+  const notices = fakeNotices();
+  await applyUpdates({ plugins: host, notices }, await addressUpdates(host, { fetch: get }), { addressFetch: get, fetch: await repo() });
+  assert.deepEqual(notices.toasts, ['Plugins updated.']);
+  assert.equal((await host.installed())['scripted-model']?.source, 'official');
+  assert.ok(registry.list('endpoint-type').some((t) => t.type === 'scripted'));
+  // Offline, nothing changes, and the words say why.
+  site = kitSite({ ...KIT_V1, version: '1.0.2', provider: LLM('https://llm.trails.example/v1'), requires: [{ id: 'storage-webdav', version: '^0' }] }, SAFETY);
+  await assert.rejects(updateFromAddress(host, 'kit', { fetch: get, official: { fetch: async () => { throw new TypeError('Failed to fetch'); } } }), /couldn't be loaded/);
+  assert.equal((await host.installed()).kit.version, '1.0.1');
+});
+
 // Fix pass 8a-1: a key in a package's address lives in the package's secret, never in installed.json.
 const KEY = 'zap1a2b3c4d5e6f7g8h9';
 const KEYED = `https://trails.example/s/${KEY}/tide-pools/SKILL.md`;

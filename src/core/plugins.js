@@ -641,6 +641,11 @@ export class PluginHost {
     if (manifest.provider) this.registry.add(id, 'provider', { plugin: id, name: String(manifest.name ?? id), version: String(manifest.version ?? ''), provider: manifest.provider });
   }
 
+  /** An installed package's manifest as stored and checked, or null when it can't be read. @param {string} id @returns {Promise<any>} */
+  async manifestOf(id) {
+    return this.#stored(id).catch(() => null);
+  }
+
   /** The stored manifest, checked again: storage can hold one that was never installed through install(). @param {string} id */
   async #stored(id) {
     if (kindOfState((await this.installed())[id]) === 'skill') return skillManifest(await this.#storedSkill(id));
