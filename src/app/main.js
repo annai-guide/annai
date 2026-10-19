@@ -14,6 +14,7 @@ import { isStandalone, requestPersist, watchForUpdates, restartInto, platform, d
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
+import { moveOver } from '../core/llm/move-over.js';
 import { finishSignIn } from '../ui/openrouter.js';
 import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
 import { disabledCard } from '../ui/plugin-cards.js';
@@ -74,6 +75,8 @@ async function boot() {
   await ensureBaseScopes(ws);
   // What a late request wrote into a removed trip goes now; if this fails, it goes at the next start (spec §4.9).
   await removeLeftovers(store).catch(() => {});
+  // Endpoints from before providers go, with their keys, before Models is first drawn; a card says so once the shell is up.
+  const moved = await moveOver(ws, store).catch((e) => { console.warn("the old endpoints couldn't be moved over", e); return null; });
   syncTripTitles(ws);
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);
@@ -163,6 +166,13 @@ async function boot() {
   updates.notices = shell.notices;
   updates.changed = (waits) => { if (/^#\/updates\b/.test(location.hash) || (waits && /^#\/(settings|plugins)\b/.test(location.hash))) shell.redraw(); };
   pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: 'Notifications', run: () => { location.hash = '#/notifications'; } }] });
+  if (moved) {
+    shell.notices.card({
+      title: 'Settings → Models changed',
+      body: `annai now sets up providers: one address and one key for all a provider offers. Your endpoints (${moved.names.join(', ')}) and their keys were removed. Add them again in Settings → Models.`,
+      actions: [{ label: 'Open Models', primary: true, run: () => { location.hash = '#/models'; } }],
+    });
+  }
   for (const n of early.splice(0)) pushCard(n);
   // A plugin switched off after repeated errors gets a card saying why (spec §5.5), with no key in it.
   registry.onDisabled(async (d) => {
