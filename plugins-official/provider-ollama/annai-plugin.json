@@ -1,0 +1,46 @@
+{
+  "id": "provider-ollama",
+  "name": "Ollama",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Models on Ollama, with their thinking switched off for quick decisions.",
+  "category": "providers",
+  "requires": [
+    {
+      "id": "chat-completions",
+      "version": "^0"
+    }
+  ],
+  "provider": {
+    "baseUrl": "http://localhost:11434/v1",
+    "key": "none",
+    "local": true,
+    "note": "Ollama lets in only pages on its own computer: start it with OLLAMA_ORIGINS=https://annai.guide so annai's page may call it. It listens on port 11434. From a phone, the server needs an HTTPS address: put HTTPS in front of it, such as Tailscale Serve or a tunnel. localhost only reaches the device annai runs on, and browsers block plain http:// to another computer.",
+    "abilities": {
+      "chat": {
+        "kind": "chat",
+        "type": "chat-completions",
+        "modelDefaults": {
+          "reasoning": {
+            "off": {
+              "reasoning_effort": "none"
+            },
+            "low": {
+              "reasoning_effort": "low"
+            },
+            "medium": {
+              "reasoning_effort": "medium"
+            },
+            "high": {
+              "reasoning_effort": "high"
+            },
+            "max": {
+              "reasoning_effort": "max"
+            }
+          }
+        },
+        "note": "Add models with Fetch model list. Ollama holds only 4K tokens of a conversation unless told (with under 24 GiB of video memory), far less than Shiori needs: start it with OLLAMA_CONTEXT_LENGTH=64000, and set each model's context window on its page to match. Ollama can't be made to call a given tool, so a quick decision may go to the main model instead."
+      }
+    }
+  }
+}

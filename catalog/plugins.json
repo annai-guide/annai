@@ -73,7 +73,7 @@
     {
       "id": "provider-another-address",
       "name": "Another address",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, then switch on what it offers.",
       "category": "providers",
       "keywords": [
@@ -90,11 +90,11 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 1854,
+      "size": 2146,
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "0ef4d4689895afd1718f954614f55b079a2fbe7fb8d6aaef964f33e78e006003"
+        "annai-plugin.json": "511d00724b07a89f94fd2403e9b03306a4f8d2cc7e9b1df5680b585e35df0dfa"
       }
     },
     {
@@ -203,6 +203,60 @@
       }
     },
     {
+      "id": "provider-llamacpp",
+      "name": "llama.cpp",
+      "version": "1.0.0",
+      "description": "Models on a llama.cpp server you run (llama-server), or one built on it such as Unsloth Studio or KoboldCpp. Their thinking is switched off for quick decisions.",
+      "category": "providers",
+      "keywords": [
+        "Unsloth",
+        "LM Studio",
+        "KoboldCpp"
+      ],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": true,
+      "code": false,
+      "size": 2352,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "07e6fbf33c3dfd7ff9b4f44074fae7a0d6d6ef2b8373556a5fdd0cc740f6cb79"
+      }
+    },
+    {
+      "id": "provider-lmstudio",
+      "name": "LM Studio",
+      "version": "1.0.0",
+      "description": "Models on LM Studio's server.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": true,
+      "code": false,
+      "size": 1163,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "0417c103cd627f54d66e71413472ad51a93abec2386d5b23efc4cef5f3c01ce3"
+      }
+    },
+    {
       "id": "provider-local-speech",
       "name": "Local speech server",
       "version": "1.0.0",
@@ -255,6 +309,31 @@
       "provides": {},
       "files": {
         "annai-plugin.json": "8e907e7e22c967e71c6817baf20558d56f18c2ff9f4caafe5504c98c6ed1c20f"
+      }
+    },
+    {
+      "id": "provider-ollama",
+      "name": "Ollama",
+      "version": "1.0.0",
+      "description": "Models on Ollama, with their thinking switched off for quick decisions.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": true,
+      "code": false,
+      "size": 1719,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "fb972c61ecd527c32c78adaa70e9363367f06a1f8f939089bc0e70cb451cacc0"
       }
     },
     {
@@ -342,6 +421,57 @@
       "provides": {},
       "files": {
         "annai-plugin.json": "616a37fadeb69c42b73865c169d208331db11f8f686635728a784cb9d33437ef"
+      }
+    },
+    {
+      "id": "provider-sglang",
+      "name": "SGLang",
+      "version": "1.0.0",
+      "description": "Models on an SGLang server you run, with their thinking switched through the chat template.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat"
+      ],
+      "free": false,
+      "local": true,
+      "code": false,
+      "size": 1889,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "277a0615121177b9ec48e6f99b5c1be6be057c7ce676db6c4aa83470f3386a4c"
+      }
+    },
+    {
+      "id": "provider-vllm",
+      "name": "vLLM",
+      "version": "1.0.0",
+      "description": "Models on a vLLM server you run, with their thinking switched through the chat template, and Whisper models for transcription.",
+      "category": "providers",
+      "keywords": [],
+      "abilities": [
+        "chat",
+        "transcription"
+      ],
+      "free": false,
+      "local": true,
+      "code": false,
+      "size": 2212,
+      "requires": [
+        {
+          "id": "chat-completions",
+          "version": "^0"
+        }
+      ],
+      "provides": {},
+      "files": {
+        "annai-plugin.json": "ea391fc63b56fd8b197fa3d50ad88f32bc138374d0095667e39e33241601ce20"
       }
     },
     {
