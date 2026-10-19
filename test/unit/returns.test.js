@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { expectReturn, returnFor } from '../../src/ui/returns.js';
-import { finishReturn, returning } from '../../src/ui/provider-setup.js';
+import { expectReturn, returnFor, finishReturn } from '../../src/ui/provider-setup.js';
 import { Registry } from '../../src/core/registry.js';
 
 // A sign-in coming back to annai's address goes to the plugin that started it (decision 16).
@@ -25,7 +24,7 @@ function app(returned) {
   if (returned) registry.add('provider-acme', 'provider-setup', { returned, keyField: true });
   /** @type {any[]} */
   const cards = [];
-  /** @type {(string | null)[]} */
+  /** @type {string[]} what happened, in order */
   const drawn = [];
   /** @type {string[]} */
   const addresses = [];
@@ -34,7 +33,7 @@ function app(returned) {
     plugins: { installed: async () => ({ 'provider-acme': { name: 'Acme' } }) },
     llm: { ready: Promise.resolve(), providers: () => [], config: async () => ({ providers: {} }) },
     notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} },
-    render: () => drawn.push(returning()),
+    render: () => drawn.push('drawn'),
   };
   /** @param {string} search @param {any} storage @param {number} [now] */
   const start = (search, storage, now = 2000) => finishReturn(ctx, {
@@ -57,14 +56,14 @@ test('a return goes to the plugin that expected it, once, within 15 minutes; the
   /** @type {any[]} */
   const calls = [];
   const a = app(async (params, ui) => {
-    calls.push([params.get('code'), params.get('state'), typeof ui.add, typeof ui.keep, returning()]);
+    a.drawn.push('returned');
+    calls.push([params.get('code'), params.get('state'), typeof ui.add, typeof ui.keep]);
   });
   expectReturn('provider-acme', { storage, now: 1000 });
   assert.equal(await a.start('?code=abc&state=xyz', storage), true);
   assert.deepEqual(a.addresses, ['/#/models']);
-  assert.deepEqual(a.drawn, ['Acme'], 'drawn at once, saying whose sign-in is being finished');
-  assert.deepEqual(calls, [['abc', 'xyz', 'function', 'function', 'Acme']]);
-  assert.equal(returning(), null);
+  assert.deepEqual(a.drawn, ['drawn', 'returned'], 'Models drawn at once (saying whose sign-in is being finished), before the plugin takes it');
+  assert.deepEqual(calls, [['abc', 'xyz', 'function', 'function']]);
   assert.deepEqual(a.cards, []);
 });
 

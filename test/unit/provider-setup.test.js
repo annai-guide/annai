@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { hostKit, files } from './package-kit.js';
 import { site } from './provider-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
-import { getKey, readConfig, saveRoles, providerOf } from '../../src/core/llm/config.js';
-import { setupUi, drawPanel, connection } from '../../src/ui/provider-setup.js';
+import { getKey, readConfig, saveRoles, saveProvider, providerOf } from '../../src/core/llm/config.js';
+import { setupUi, drawPanel } from '../../src/ui/provider-setup.js';
+import { setupOf } from '../../src/core/llm/setup.js';
 import { SYS } from '../../src/core/scopes.js';
 
 // The provider contract (decision 15): a provider plugin with code may draw its own setup panel, hand annai
@@ -13,14 +14,14 @@ import { SYS } from '../../src/core/scopes.js';
 class FakeNode {}
 /** @type {any} */ (globalThis).Node = FakeNode;
 
-/** A protocol over HTTP: chat at <address>/chat, its list at <address>/models; it reads no error kinds of its own. */
+/** A protocol over HTTP: chat at <address>/chat, its list at <address>/models; it reads no error kinds of its own. Its headers go after the key, as the shipped protocols' do. */
 const PROTO_H = {
   'annai-plugin.json': JSON.stringify({ id: 'proto-h', name: 'Proto H', version: '0.1.0', api: 1, entry: 'index.js', provides: { 'endpoint-type': ['type-h'] } }),
   'index.js': `export function activate(annai) { return annai.providers.register({ type: 'type-h', name: 'Type H',
-    build: (c) => ({ url: c.endpoint.baseUrl + '/chat', headers: { ...c.endpoint.headers, ...(c.key ? { authorization: 'Bearer ' + c.key } : {}) }, body: { model: c.model.providerId } }),
+    build: (c) => ({ url: c.endpoint.baseUrl + '/chat', headers: { ...(c.key ? { authorization: 'Bearer ' + c.key } : {}), ...c.endpoint.headers }, body: { model: c.model.providerId } }),
     read: async function* () { yield { type: 'text', text: 'hello' }; yield { type: 'stop', reason: 'end' }; },
     classify: () => null,
-    listRequest: ({ endpoint, key }) => ({ url: endpoint.baseUrl + '/models', headers: { ...endpoint.headers, ...(key ? { authorization: 'Bearer ' + key } : {}) } }),
+    listRequest: ({ endpoint, key }) => ({ url: endpoint.baseUrl + '/models', headers: { ...(key ? { authorization: 'Bearer ' + key } : {}), ...endpoint.headers } }),
     readList: (j) => j.data.map((m) => ({ providerId: m.id })),
   }); }`,
 };
@@ -42,7 +43,7 @@ const ACME = {
       keyField: t.keyField,
       panel: (ui, provider) => t.panel(ui, provider),
       classify: (status, body, ability) => (/quota for today/.test(body) ? 'rate' : null),
-      headers: (ability) => ({ 'x-acme-ability': ability }),
+      headers: (ability) => ({ 'x-acme-ability': ability, ...t.headers }),
       list: (c) => t.list(c),
     });
   }`,
@@ -53,7 +54,7 @@ const OTHER = {
     provider: { baseUrl: 'https://other.test/v1', key: 'required', abilities: { chat: { kind: 'chat', type: 'type-h' } } } }),
 };
 
-/** @type {any} */ (globalThis).acme = { keyField: undefined, panel: () => new FakeNode(), list: (/** @type {any} */ c) => c.protocolList() };
+/** @type {any} */ (globalThis).acme = { keyField: undefined, panel: () => new FakeNode(), list: (/** @type {any} */ c) => c.protocolList(), headers: {} };
 
 /**
  * The model service with a stand-in catalog, and a stand-in Acme at https://acme.test: what reached it is kept.
@@ -84,30 +85,26 @@ test("a plugin's panel is drawn in the key's place; what it throws counts agains
   const id = await k.llm.addProvider('provider-acme', {});
   /** @type {any[]} */
   const seen = [];
-  /** @type {any} */ (globalThis).acme.panel = (/** @type {any} */ ui, /** @type {any} */ provider) => { seen.push([typeof ui.add, typeof ui.keep, typeof ui.expectReturn, provider]); return new FakeNode(); };
-  const drawn = connection(k.ctx, 'provider-acme', { id, name: 'Acme', key: false });
-  assert.ok(drawn.panel instanceof FakeNode);
-  assert.equal(drawn.keyField, true, 'by default the standard key field follows the panel');
-  assert.deepEqual(seen, [['function', 'function', 'function', { id, name: 'Acme', key: false }]]);
+  /** @type {any} */ (globalThis).acme.panel = (/** @type {any} */ ui, /** @type {any} */ provider) => { seen.push([typeof ui.add, typeof ui.keep, typeof ui.expectReturn, typeof ui.render, provider]); return new FakeNode(); };
+  assert.ok(drawPanel(k.ctx, 'provider-acme', { id, name: 'Acme', key: false }) instanceof FakeNode);
+  assert.equal(setupOf(k.registry, 'provider-acme')?.keyField, true, 'by default the standard key field follows the panel');
+  assert.deepEqual(seen, [['function', 'function', 'function', 'function', { id, name: 'Acme', key: false }]]);
   assert.equal(drawPanel(k.ctx, 'provider-acme', null) instanceof FakeNode, true, "null: the plugin's own Add flow");
-  // A panel that throws: no panel, its plugin's failure counted, and the key field drawn after all.
+  // A panel that throws: no panel, its plugin's failure counted; the provider's page then draws its key field (keyField counts only beside a panel).
   /** @type {any} */ (globalThis).acme.panel = () => { throw new TypeError('boom'); };
   /** @type {any} */ (globalThis).acme.keyField = false;
   await k.host.stop('provider-acme');
   await k.host.start('provider-acme');
-  const failed = connection(k.ctx, 'provider-acme', { id, name: 'Acme', key: false });
-  assert.deepEqual([failed.panel, failed.keyField], [null, true]);
+  assert.equal(drawPanel(k.ctx, 'provider-acme', { id, name: 'Acme', key: false }), null);
   const errors = k.events.filter((e) => e.type === 'plugin.error' && e.actor === 'plugin:provider-acme');
   assert.equal(errors.length, 1);
   assert.match(errors[0].data.message, /boom/);
-  // One that draws, with keyField false: no key field.
-  /** @type {any} */ (globalThis).acme.panel = () => new FakeNode();
-  assert.equal(connection(k.ctx, 'provider-acme', { id, name: 'Acme', key: false }).keyField, false);
+  assert.equal(setupOf(k.registry, 'provider-acme')?.keyField, false);
   // Something that isn't an element counts against it too.
   /** @type {any} */ (globalThis).acme.panel = () => 'Sign in';
   assert.equal(drawPanel(k.ctx, 'provider-acme', null), null);
-  // A provider whose plugin has no setup: no panel, the key field.
-  assert.deepEqual(connection(k.ctx, 'provider-other', { id: 'x', name: 'Other', key: false }), { panel: null, keyField: true });
+  // A provider whose plugin has no setup: no panel.
+  assert.equal(drawPanel(k.ctx, 'provider-other', { id: 'x', name: 'Other', key: false }), null);
   /** @type {any} */ (globalThis).acme.keyField = undefined;
   /** @type {any} */ (globalThis).acme.panel = () => new FakeNode();
 });
@@ -259,4 +256,31 @@ test("the featured start never uses a copy from elsewhere with annai's id; addin
   assert.ok(ready);
   assert.ok((await readConfig(k.ws)).providers[id]);
   assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['proto-h', 'provider-other']);
+});
+
+test("the headers hook can't set the key's own headers: authorization, x-api-key, or the provider's keyHeader, in any case (fix pass)", async () => {
+  const k = await kit(() => Response.json({ data: [] }));
+  const id = await k.llm.addProvider('provider-acme', { key: 'sk-acme-users-own' });
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, main: { models: Object.keys(cfg.models), level: 'off' } });
+  /** @type {any} */ (globalThis).acme.headers = { Authorization: 'Bearer FROM-PLUGIN', 'X-API-Key': 'from-plugin', 'Api-Key': 'from-plugin', 'x-acme-extra': 'kept' };
+  try {
+    await k.llm.call({ request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } });
+    let sent = /** @type {any} */ (k.reached.find((r) => r.url === 'https://acme.test/v1/chat')).init.headers;
+    assert.equal(sent.authorization, 'Bearer sk-acme-users-own', "the user's key, not the plugin's");
+    assert.equal(sent.Authorization, undefined);
+    assert.equal(sent['X-API-Key'], undefined);
+    assert.equal(sent['x-acme-extra'], 'kept');
+    assert.equal(sent['Api-Key'], 'from-plugin', 'not a key header for this provider');
+    // A provider whose key goes in a header of its own (decision 25): that one is the key's too.
+    await saveProvider(k.ws, { ...(await readConfig(k.ws)).providers[id], user: { keyHeader: 'api-key' } });
+    k.reached.length = 0;
+    await k.llm.listModels(id, 'chat');
+    sent = /** @type {any} */ (k.reached.find((r) => r.url === 'https://acme.test/v1/models')).init.headers;
+    assert.equal(sent['api-key'], 'sk-acme-users-own');
+    assert.equal(sent['Api-Key'], undefined);
+    assert.equal(sent.Authorization, undefined);
+  } finally {
+    /** @type {any} */ (globalThis).acme.headers = {};
+  }
 });

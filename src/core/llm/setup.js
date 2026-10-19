@@ -33,14 +33,17 @@ function guarded(registry, pluginId, what, fn) {
 }
 
 /**
- * One ability's call as its plugin's setup adjusts it: its headers join the ability's (a key's own
- * header, set later, still wins), and its classify is asked before the protocol's.
- * @param {import('../registry.js').Registry | undefined} registry @param {string} pluginId @param {import('./contract.js').EndpointType} type @param {import('./config.js').Endpoint} endpoint
+ * One ability's call as its plugin's setup adjusts it: its headers join the ability's, but never one
+ * that carries the key (authorization, x-api-key, the provider's keyHeader: protocols put their own
+ * headers after the key's), and its classify is asked before the protocol's.
+ * @param {import('../registry.js').Registry | undefined} registry @param {string} pluginId @param {import('./contract.js').EndpointType} type
+ * @param {import('./config.js').Endpoint} endpoint @param {string} [keyHeader]
  */
-export function adjusted(registry, pluginId, type, endpoint) {
+export function adjusted(registry, pluginId, type, endpoint, keyHeader = '') {
   const s = setupOf(registry, pluginId);
   const own = s?.headers && guarded(registry, pluginId, 'provider headers', () => s.headers?.(endpoint.ability));
-  const headers = Object.fromEntries(Object.entries(own && typeof own === 'object' ? own : {}).filter(([, v]) => typeof v === 'string'));
+  const keys = ['authorization', 'x-api-key', keyHeader.toLowerCase()];
+  const headers = Object.fromEntries(Object.entries(own && typeof own === 'object' ? own : {}).filter(([k, v]) => typeof v === 'string' && !keys.includes(k.toLowerCase())));
   const classify = s?.classify;
   return {
     type: classify ? { ...type, classify: (/** @type {number} */ status, /** @type {string} */ body) => guarded(registry, pluginId, 'provider classify', () => classify(status, body, endpoint.ability)) ?? type.classify?.(status, body) ?? null } : type,
