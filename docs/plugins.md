@@ -40,6 +40,7 @@ A plugin's manifest:
   - `keywords`: up to 20 other names it is searched by, 1 to 40 characters each, written as they are shown (`["Unsloth", "LM Studio"]`). They aren't hidden: a row found by a keyword says so, "Also for: LM Studio". A name match ranks above a keyword match, so a plugin made for LM Studio comes before one that lists it as a keyword. Give the names of things your plugin also serves (a server built on the one you describe, a product's other spelling), not words for what it does: its description and its abilities are searched too.
   - `featured`: a sentence of up to 200 characters for the one-tap start on Models and the welcome. It counts only in annai's own catalog: a third party's is ignored.
   - `catchAll`: `true` for a provider of any address (annai's Another address), listed after the others when the Add screen is browsed.
+  - `replaces`: up to 20 names your plugin registers and means to replace, such as `["weather", "avatar"]`: a tool, a component, a skill, a personality, a card type or a search provider, by its bare name. The install screen asks the user (see "Names and conflicts").
   - `templates` (endpoint templates, before providers) is refused: "Endpoint templates were replaced by `provider`".
   - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing"). A module you leave out isn't there once installed from an address, and the plugin won't start; the error is the browser's own, and it names your entry file, not the missing module (Chrome: "Failed to fetch dynamically imported module: …/index.js"; Safari names no file at all: "Importing a module script failed.").
   - `settings`: a JSON Schema object; annai draws a form from it on your plugin's page in Settings → Plugins. See "Settings" below.
@@ -47,7 +48,7 @@ A plugin's manifest:
 
 annai copies the package into its own storage, so the plugin works offline, and serves its files at `/plugins/<id>/…`. Relative imports between a plugin's own modules therefore just work. A package's files keep no history: installing it again replaces them.
 
-A package's id is one name space with every other package: a skill is installed under its own name, and a skill name Shiori already has (one of annai's own, or another package's, on or off) can't be installed again. The id of one of annai's own plugins (any in its catalog) can't be taken by a package from a file or an address: "annai's own plugin uses this name".
+A package's id is one name space with every other package: a skill is installed under its own name. The id of one of annai's own plugins (any in its catalog) can't be taken by a package from a file or an address: "annai's own plugin uses this name". Names inside a package (a tool, a skill, a component) can be shared: see "Names and conflicts".
 
 ## The entry module
 
@@ -68,7 +69,7 @@ export function activate(annai) {
 | | |
 |---|---|
 | `annai.id` | your plugin's id |
-| `annai.register(kind, item)` | adds something to the registry; returns a function that removes it |
+| `annai.register(kind, item)` | adds something to the registry; returns a function that removes it. A model provider's description and setup aren't registered this way: annai makes them from your manifest and `annai.providers.setup`. |
 | `annai.schemas.register({ scope, pattern, schema })` | a JSON Schema that files at matching paths must pass. An invalid write is refused, and the refusal says why. |
 | `annai.tools.register(tool)` | a tool: a name (letters, digits, `_` and `-`, up to 64), a description, an input JSON Schema and `run(input, call)` (spec §5.4). `call` has `trip` (the open trip's scope, or null), `signal` (stop when it aborts), `model` (the model that called it) and `fetch` (traced). Errors become results Shiori sees. Every tool can be switched off in Settings → Tools. |
 | `annai.events.append(scope, type, data, keep?)` | appends an entry to a scope's log, signed `plugin:<id>`. `keep = { texts: [[name, text]], blobs: [{ bytes, type }] }` stores content and names it in the entry's refs; long texts are kept that way, short ones go in `data`. Returns the entry. |
@@ -89,7 +90,7 @@ export function activate(annai) {
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
 | `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change); a key nothing is saved for has your schema's `default` |
 | `annai.searchProviders()` | the search providers, in the order the user set |
-| `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has is refused. Skills in a package's `skills` don't need this. |
+| `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has isn't used until the user chooses yours (see "Names and conflicts"). Skills in a package's `skills` don't need this. |
 | `annai.register('search', { id, name, needsKey?, search(query, { key, fetch, signal }) })` | a search provider for `web_search`: returns `[{ title, url, snippet }]` |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
@@ -129,10 +130,24 @@ Pools are safest from an hour before low tide until low tide. Read [the safety n
 
   The site must let web apps read it (GitHub's raw files do; a `github.com/…/blob/…` page is read from there). At most 200 files and 64 MB. A key in the address (a path segment or a query value that looks like one) is kept in a secret of annai's own, apart from your plugin's `annai.secrets`, which annai uses to look for updates; the address is shown and kept everywhere else with `«key»` in its place. An address with a name and password before an `@` is refused.
 - **From annai's catalog:** the Add screen lists annai's own plugins and what is installed, yours among them, searched by name, `keywords` and description (see "The package"). A model provider is added there, which makes the provider too: Settings → Models → Add a provider opens it on model providers. Only annai's catalog and installed plugins are listed; a plugin of yours is found there once installed from its address.
-- **The install screen** comes first, for a file or an address: what the package is, where it came from, what it brings, and what it needs ("It needs: Chat Completions (from annai, installed with it)"). A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys." A provider says where keys go, by origin: "Keys you give this provider are sent to https://llm.example." Install stays off while a requirement can't be had (a third party's not installed, or one the user switched off).
+- **The install screen** comes first, for a file or an address: what the package is, where it came from, what it brings, what it needs ("It needs: Chat Completions (from annai, installed with it)"), and what it replaces (see "Names and conflicts"). Over an installed package of its id, it says which version is there; when that one came from another place (another address, or a file over an address), it says so, and that the new one gets the settings and keys the installed one keeps. A package with code says, in the spec's words, "This plugin gets full access to your trips and API keys." A provider says where keys go, by origin: "Keys you give this provider are sent to https://llm.example." Install stays off while a requirement can't be had (a third party's not installed, or one the user switched off).
 - **Requirements** are installed with your plugin, all or nothing: if a download fails or the connection drops, nothing stays half-installed. A plugin the user switched off is never switched on for yours: the install stops and says how.
 - **Updates:** a package installed from an address is checked there when annai starts, when it comes back to the screen at most once a day (so your site isn't asked at every return), and on Check now in Settings → Updates; a changed package (its files, not just its version) is offered on a card, in Settings → Updates and in Settings → Plugins. Nothing changes until the user taps Update. An update that brings something new (code where there was none, new skills or personalities, or a provider that sends keys to a new origin: scheme, host and port) lists it and asks again, with the full-trust words for new code. What an update now requires is installed on Update. Code that already ran runs the new version from the next start.
 - **Removing** removes everything the package stored: its files, its settings (`annai.settings`), its secrets (`annai.secrets`), its tools' switches, and what it kept in the system log with `annai.events.append('sys', …)`. What it wrote into a trip stays: that is the trip's. Removing a provider plugin removes the providers made from it, with their keys and models; removing the last provider made from it removes the plugin. Then annai's own protocol plugins that nothing requires and no switched-on ability uses go too; a third party's stays.
+
+## Names and conflicts
+
+Some things plugins register have a name only one plugin can hold: tools, protocols (endpoint types), kinds of backup place, skills, personalities, card types, search providers, and the components (`avatar`, `dock`, `now-card`, `plan-row`). Hooks and the slots that add things up (chips, Now sections, dock actions, tabs, settings pages, screens, themes) never clash.
+
+- **One owner per name,** in a fixed order: annai's built-ins, then its official plugins, then third-party plugins by when each was first installed (an update keeps its place), then by id. Plugins start in that order. annai's own components, and the skills it ships, are annai's even when nothing draws them.
+- **The user's choice comes first.** A plugin whose name is taken isn't used, and its page says "Not used: the tool weather is already provided by Places tools", with **Use this one instead**. The choice is kept, shown on both plugins' pages ("The tool weather: this one is used (your choice)") with **Undo**, and holds while your plugin runs; while it is off, the next in order is used. Removing a plugin forgets the choices that named it.
+- **`replaces`** in your manifest names what you mean to replace. The install screen says "It replaces how Shiori looks from annai", with **Install and use it** and **Install, keep annai's**; nothing is chosen until one is tapped. Without `replaces`, your plugin installs, and the user finds the switch on its page.
+- **What no choice moves:**
+  - the agent loop's own tools (`speak`, `show`, `ask`, `wait`, `sleep`, `skill`, `tell_koe`, `tell_kokoro` and the rest of Shiori's own): a plugin's tool by one of those names is never used;
+  - protocols and kinds of backup place: they are handed the keys the user gives (a provider's, a place's), so the one used is annai's own, else the one installed first. When a protocol annai has is needed, annai's own is installed, even if yours has its name. Give yours a name of its own.
+- **Your provider's id is your plugin's id,** and only your plugin's description and setup are its.
+
+A plugin that registers a name twice uses the first.
 
 ## The UI
 
@@ -162,7 +177,7 @@ To change what a chip or a section shows, keep the element it was given and chan
   - `'trip-tab'`, `{ id, title, render(el, ui, { trip }) }`: a button on a trip's page, after Replay, opening a page of yours for that trip.
   - `'settings-page'`, `{ id, title, render(el, ui) }`: a page listed under Settings → From plugins and on your plugin's page.
 - **Card types,** `annai.ui.cardType({ type, name, description, schema?, render(data, el, ui) })`: a kind of card Shiori can show. Her `show` tool gains `type` and `data`, and its description lists your type with its description; `data` must pass `schema` when you give one, or Shiori is told why. The card's label reads "SHIORI · <NAME>". A card of your type shown while your plugin is off shows its title and text.
-- **Components,** `annai.ui.component(name, impl)`; the last plugin to register one wins, and annai's own is used when yours fails:
+- **Components,** `annai.ui.component(name, impl)`. A component is a name with one owner, annai's own until the user chooses yours: declare it in `replaces`, and your install screen asks ("It replaces how Shiori looks from annai"); without it, your plugin's page says Not used, with a switch. annai's own is used when yours fails:
   - `'avatar'`, `{ create({ size }) }` returning `{ el, setState(state), setLevel(0..1, who), glance(dx, dy), blink() }` (spec §16.3).
   - `'now-card'`, `{ render(el, ui, { title, place, chips, liveOn }) }`: the top of the Now card.
   - `'dock'`, `{ create(ui) }` returning `{ el }`: the whole dock.
