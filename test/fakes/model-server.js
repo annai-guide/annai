@@ -10,8 +10,11 @@ import http from 'node:http';
  * piece, and usage with timings in a last chunk with no choices. Tests and the end-to-end suite run it on
  * 127.0.0.1, on a port of its own (port 0).
  * @typedef {'llamacpp' | 'vllm' | 'sglang' | 'ollama' | 'lmstudio' | 'whole'} Flavour
- * @typedef {{ text?: string, reasoning?: string, calls?: { name: string, input: any }[], usage?: { input: number, output: number, cached?: number } }} Reply
- *   one answer to a chat request; replies are given in turn, and the last repeats
+ * @typedef {{ text?: string, reasoning?: string, calls?: { name: string, input: any }[], forced?: { name: string, input: any },
+ *   usage?: { input: number, output: number, cached?: number } }} Reply
+ *   one answer to a chat request; replies are given in turn, and the last repeats. forced: the call the model makes, in place
+ *   of its words, when the server forces a tool call (llama.cpp only for tool_choice "required", as measured on 2026-10-19;
+ *   Ollama never, as it doesn't support tool_choice; the others for "required" or a named function)
  * @typedef {{ method: string, path: string, headers: Record<string, any>, body: any }} Seen
  *   body: parsed JSON, or the text ('' for none)
  * @typedef {{ flavour: Flavour, key?: string, cors?: '*' | string[] | false, spa?: boolean, authEverywhere?: boolean,
@@ -27,11 +30,16 @@ const OLLAMA_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0'];
 const CREATED = 1792400000;
 const CHAT = '/v1/chat/completions';
 
-/** Each flavour: its routes, its reasoning field, its default CORS, and its model list. @type {Record<Flavour, { post: string[], get: string[], reasoning: string, cors: '*' | 'ollama' | false, whole?: boolean, timings?: boolean, callsWhole?: boolean, models: () => object[] }>} */
+/**
+ * Each flavour: its routes, its reasoning field, its default CORS, its model list, which tool_choice forces a call, and the
+ * models that can't think (Ollama refuses a named thinking level for them).
+ * @type {Record<Flavour, { post: string[], get: string[], reasoning: string, cors: '*' | 'ollama' | false, whole?: boolean, timings?: boolean, callsWhole?: boolean,
+ *   forces: 'required' | 'any' | 'never', noThinking?: string[], models: () => object[] }>}
+ */
 const FLAVOURS = {
   llamacpp: {
     post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/embeddings'], get: ['/v1/models', '/props', '/health'],
-    reasoning: 'reasoning_content', cors: '*', timings: true,
+    reasoning: 'reasoning_content', cors: '*', timings: true, forces: 'required',
     models: () => [{
       id: 'qwen3.8-flash', object: 'model', created: CREATED, owned_by: 'llamacpp',
       architecture: { input_modalities: ['text', 'image'], output_modalities: ['text'] },
@@ -40,27 +48,27 @@ const FLAVOURS = {
   },
   vllm: {
     post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/audio/transcriptions'], get: ['/v1/models'],
-    reasoning: 'reasoning', cors: '*',
+    reasoning: 'reasoning', cors: '*', forces: 'any',
     models: () => [{ id: 'Qwen/Qwen3-8B', object: 'model', created: CREATED, owned_by: 'vllm', root: 'Qwen/Qwen3-8B', parent: null, max_model_len: 32768, permission: [] }],
   },
   sglang: {
     post: [CHAT, '/v1/completions'], get: ['/v1/models'],
-    reasoning: 'reasoning_content', cors: '*',
+    reasoning: 'reasoning_content', cors: '*', forces: 'any',
     models: () => [{ id: 'Qwen/Qwen3-8B', object: 'model', created: CREATED, owned_by: 'sglang', root: 'Qwen/Qwen3-8B', max_model_len: 32768 }],
   },
   ollama: {
     post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/embeddings'], get: ['/v1/models'],
-    reasoning: 'reasoning', cors: 'ollama', callsWhole: true,
-    models: () => [{ id: 'qwen3:8b', object: 'model', created: CREATED, owned_by: 'library' }],
+    reasoning: 'reasoning', cors: 'ollama', callsWhole: true, forces: 'never', noThinking: ['llama3.2:latest'],
+    models: () => [{ id: 'qwen3:8b', object: 'model', created: CREATED, owned_by: 'library' }, { id: 'llama3.2:latest', object: 'model', created: CREATED, owned_by: 'library' }],
   },
   lmstudio: {
     post: [CHAT, '/v1/completions', '/v1/responses', '/v1/messages', '/v1/embeddings'], get: ['/v1/models'],
-    reasoning: 'reasoning_content', cors: false,
+    reasoning: 'reasoning_content', cors: false, forces: 'any',
     models: () => [{ id: 'qwen/qwen3-8b', object: 'model', owned_by: 'organization_owner' }],
   },
   whole: {
     post: [CHAT, '/v1/responses', '/v1/embeddings'], get: ['/v1/models'],
-    reasoning: 'reasoning_content', cors: '*', whole: true,
+    reasoning: 'reasoning_content', cors: '*', whole: true, forces: 'any',
     models: () => [{ id: 'router-model', object: 'model', created: CREATED, owned_by: 'router' }],
   },
 };
@@ -83,9 +91,10 @@ export async function startFakeServer(o) {
   let calls = 0;
   /** Whether a page at this origin may read the answers. @param {string | undefined} origin */
   const allowed = (origin) => {
-    if (!origin) return false;
+    if (!origin || cors === false) return false;
     if (cors === '*') return true;
     if (Array.isArray(cors) && cors.includes(origin)) return true;
+    // Ollama's own origins are allowed, and OLLAMA_ORIGINS adds to them.
     if (f.cors !== 'ollama') return false;
     try {
       return OLLAMA_HOSTS.includes(new URL(origin).hostname);
@@ -138,7 +147,13 @@ export async function startFakeServer(o) {
       if (!body || typeof body !== 'object') return send(400, 'application/json', error('missing required field: model', 'invalid_request_error'));
       if (path !== CHAT) return send(501, 'application/json', error('This stand-in answers only chat completions.', 'not_implemented'));
       if (!Array.isArray(body.messages)) return send(400, 'application/json', error("'messages' is required", 'invalid_request_error'));
-      const reply = replies[Math.min(served++, replies.length - 1)];
+      const effort = body.reasoning_effort;
+      if (f.noThinking?.includes(body.model) && typeof effort === 'string' && effort !== 'none') return send(400, 'application/json', error(`"${body.model}" does not support thinking`, 'invalid_request_error'));
+      const queued = replies[Math.min(served++, replies.length - 1)];
+      const choice = body.tool_choice;
+      const forcing = f.forces === 'required' ? choice === 'required' : f.forces === 'any' ? choice === 'required' || Boolean(choice?.function?.name) : false;
+      /** @type {Reply} */
+      const reply = forcing && queued.forced ? { ...queued, text: undefined, calls: [queued.forced] } : queued;
       const ids = (reply.calls ?? []).map(() => `call_${++calls}`);
       if (f.whole || body.stream !== true) return send(200, 'application/json', JSON.stringify(completion(f, body, reply, ids)));
       res.writeHead(200, { ...allow, 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache' });

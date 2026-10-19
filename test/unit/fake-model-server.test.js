@@ -84,7 +84,7 @@ test("ollama allows only its own origins unless told: annai's page is blocked; w
     await assert.rejects(fetchAs(`${own.origin}/v1/models`), TypeError);
     await assert.rejects(fetchAs(`${own.origin}/v1/chat/completions`, chat()), TypeError);
     assert.equal((await browserFetch('http://localhost:5173')(`${own.origin}/v1/models`)).status, 200, 'its own origins');
-    assert.deepEqual((await (await fetchAs(`${told.origin}/v1/models`)).json()).data.map((/** @type {any} */ m) => m.id), ['qwen3:8b']);
+    assert.deepEqual((await (await fetchAs(`${told.origin}/v1/models`)).json()).data.map((/** @type {any} */ m) => m.id), ['qwen3:8b', 'llama3.2:latest']);
     const cs = await chunks(await fetchAs(`${told.origin}/v1/chat/completions`, chat()));
     assert.equal(cs.at(-1), '[DONE]');
     await assert.rejects(fetchAs(`${lms.origin}/v1/models`), TypeError);
@@ -149,5 +149,48 @@ test('gapMs spreads a stream out, so words can be seen arriving before it ends',
     assert.ok((at.at(-1) ?? 0) - at[0] >= 200, `spread out: ${at.join(', ')}`);
   } finally {
     await s.stop();
+  }
+});
+
+test('cors: false lets no page in, whatever the flavour: Ollama then refuses even its own origins (fix pass 6)', async () => {
+  const s = await startFakeServer({ flavour: 'ollama', cors: false });
+  try {
+    await assert.rejects(browserFetch('http://localhost:5173')(`${s.origin}/v1/models`), TypeError);
+    await assert.rejects(fetchAs(`${s.origin}/v1/models`), TypeError);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("Ollama refuses a named thinking level for a model that can't think, and takes none; it streams no forced call", async () => {
+  const s = await startFakeServer({ flavour: 'ollama', cors: '*', replies: [{ text: 'B.', forced: { name: 'decide', input: { option: 'B' } } }] });
+  try {
+    const no = await fetchAs(`${s.origin}/v1/chat/completions`, chat({ model: 'llama3.2:latest', reasoning_effort: 'medium' }));
+    assert.equal(no.status, 400);
+    assert.equal((await no.json()).error.message, '"llama3.2:latest" does not support thinking');
+    for (const more of [{ reasoning_effort: 'none' }, {}]) assert.equal((await fetchAs(`${s.origin}/v1/chat/completions`, chat({ model: 'llama3.2:latest', ...more }))).status, 200);
+    assert.equal((await fetchAs(`${s.origin}/v1/chat/completions`, chat({ model: 'qwen3:8b', reasoning_effort: 'high' }))).status, 200, 'a model that thinks takes a level');
+    const cs = await chunks(await fetchAs(`${s.origin}/v1/chat/completions`, chat({ tools: [{ type: 'function', function: { name: 'decide' } }], tool_choice: 'required' })));
+    assert.deepEqual([joined(cs, 'content'), cs.some((c) => c.choices?.[0]?.delta?.tool_calls)], ['B.', false], 'tool_choice is not supported');
+  } finally {
+    await s.stop();
+  }
+});
+
+test('llama.cpp accepts a tool_choice naming one function but doesn\'t force it (measured); "required" forces a call; vLLM forces either', async () => {
+  const reply = { text: 'B. To someone else.', forced: { name: 'decide', input: { option: 'B' } } };
+  const tools = [{ type: 'function', function: { name: 'decide', parameters: { type: 'object' } } }];
+  for (const [flavour, choice, forced] of /** @type {const} */ ([
+    ['llamacpp', { type: 'function', function: { name: 'decide' } }, false], ['llamacpp', 'required', true], ['llamacpp', undefined, false],
+    ['vllm', { type: 'function', function: { name: 'decide' } }, true], ['vllm', 'required', true],
+  ])) {
+    const s = await startFakeServer({ flavour, cors: '*', replies: [reply] });
+    try {
+      const cs = await chunks(await fetchAs(`${s.origin}/v1/chat/completions`, chat({ tools, ...(choice ? { tool_choice: choice } : {}) })));
+      const args = cs.flatMap((c) => c.choices?.[0]?.delta?.tool_calls ?? []).map((p) => p.function.arguments).join('');
+      assert.deepEqual(forced ? [joined(cs, 'content'), JSON.parse(args)] : [joined(cs, 'content'), args], forced ? ['', { option: 'B' }] : ['B. To someone else.', ''], `${flavour} ${JSON.stringify(choice)}`);
+    } finally {
+      await s.stop();
+    }
   }
 });
