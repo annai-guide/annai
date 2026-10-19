@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf } from './mode.js';
 import { SYS } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, NETWORK_RETRIES } from '../llm/fallback.js';
+import { COOLDOWN_MS, NETWORK_RETRIES, candidates } from '../llm/fallback.js';
 import { speechKind, modelOf, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries } from './speaker.js';
 import { voicePlatform } from './platform.js';
@@ -427,13 +427,13 @@ export class Voice {
     this.registry.onChange(() => follow(true));
   }
 
-  /** How to listen now (spec §10.3), against the first main model that isn't resting: it is expected to hear. */
-  async howToListen() {
+  /** How to listen now (spec §10.3), against the first model of the role that hears (Koe's, or main) that isn't resting. @param {string} [role] */
+  async howToListen(role = 'main') {
     const cfg = await this.llm.config();
     const types = this.llm.types();
     const now = this.now();
     const free = (/** @type {string} */ id) => this.llm.bench.until(id) <= now;
-    const mainId = (cfg.roles.main?.models ?? []).find((/** @type {string} */ id) => cfg.models[id] && free(id));
+    const mainId = candidates(cfg, role).find((/** @type {string} */ id) => cfg.models[id] && free(id));
     return listenKind({
       list: cfg.roles['speech-in']?.models ?? [],
       model: mainId ? modelOf(cfg.models[mainId]) : null,
@@ -462,7 +462,7 @@ export class Voice {
         platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError, local, recording,
         onLevel: (x) => this.#level(x, 'you'),
         onSegment: (h) => {
-          this.memory.keep(h);
+          this.memory.keep(h, scope);
           onSegment(h);
         },
         onSwitch: () => { this.dictationFailed = true; },
@@ -514,11 +514,11 @@ export class Voice {
   /**
    * A segment's words, for the log (spec §10.3): a transcript made already, dictation's, or the
    * first entry that can write it down; for "Send audio to the model", the model that heard it
-   * (hearer) is asked. null when nothing could, or the segment isn't in memory.
-   * @param {string} id @param {{ scope: string, wake?: string, hearer?: string }} o
+   * (hearer), of its role, is asked. null when nothing could, or the segment isn't in memory.
+   * @param {string} id @param {{ scope: string, wake?: string, hearer?: string, role?: string }} o
    * @returns {Promise<{ text: string, by: string } | null>} by: who wrote it down, by name
    */
-  async writeDown(id, { scope, wake, hearer }) {
+  async writeDown(id, { scope, wake, hearer, role = 'main' }) {
     const kept = this.memory.get(id);
     if (!kept) return null;
     let who = hearer ?? '';
@@ -528,7 +528,7 @@ export class Voice {
         hearer: async (/** @type {import('./resolve.js').Kept} */ k) => {
           // The sound goes as each model it reaches takes it, and only as sound.
           const out = await this.llm.call({
-            role: 'main', prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
+            role, prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
             request: { system: WRITE_DOWN, messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
           });
           who = out.modelId ?? hearer;

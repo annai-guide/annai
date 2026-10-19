@@ -181,14 +181,14 @@ test("Kokoro's system text and tool definitions are byte-identical across voice 
   await k.agent.idle(); // Koe fails: down
   await updateAppSettings(k.ws, { voice: { mode: 'on' } });
   await k.voice.refresh();
-  k.agent.send('Two');
-  await k.agent.idle(); // voice on: Koe can't speak aloud yet
-  await updateAppSettings(k.ws, { voice: { mode: 'off' } });
-  await k.voice.refresh();
   clock += 10 * 60_000;
   k.llm.bench.clear('m-koe');
+  k.agent.send('Two');
+  await k.agent.idle(); // Koe up again, and talks aloud (K2)
+  await updateAppSettings(k.ws, { voice: { mode: 'off' } });
+  await k.voice.refresh();
   k.agent.send('Three');
-  await k.agent.idle(); // Koe up again
+  await k.agent.idle(); // Koe types
   assert.ok(kokoro().length >= 3, String(kokoro().length));
   const first = kokoro()[0];
   for (const r of kokoro()) {
@@ -196,7 +196,7 @@ test("Kokoro's system text and tool definitions are byte-identical across voice 
     assert.deepEqual(r.tools, first.tools);
     assert.equal(await prefixFingerprint(r, 0), await prefixFingerprint(first, 0));
   }
-  assert.deepEqual((await k.events(['halves'])).map((e) => e.data.state), ['koe-down', 'voice-later', 'koe-up']);
+  assert.deepEqual((await k.events(['halves'])).map((e) => e.data.state), ['koe-down', 'koe-up'], 'voice on and off is no block of its own (K2)');
   for (let i = 1; i < kokoro().length; i++) assert.ok(kokoro()[i].messages.length >= kokoro()[i - 1].messages.length, 'only messages grow');
 });
 

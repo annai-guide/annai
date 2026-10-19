@@ -10,7 +10,8 @@ import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
  * are all a dictated segment has. Text versions are made lazily (textVersion).
  * @typedef {{ id: string, source: 'mic' | 'dictation', audio?: { data: Uint8Array, mediaType: string, seconds: number }, text?: string, ms: number, at: number,
  *   encoded?: Map<string, Promise<Uint8Array | null>> }} Heard  audio: the microphone's 16 kHz WAV, or a kept clip; encoded: its other files, by format
- * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }> }} Kept
+ * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }>, scope?: string }} Kept
+ *   scope: the conversation it was heard for
  * @typedef {import('../llm/contract.js').Request} Request
  * @typedef {import('../llm/contract.js').Part} Part
  * @typedef {import('./platform.js').Encoder} Encoder
@@ -41,15 +42,17 @@ export class HeardMemory {
   /** @type {Map<string, Kept>} */
   #all = new Map();
   #bytes = 0;
+  /** The words of the last segments let go once written down, for a request built just before. @type {Map<string, { words: string, scope?: string }>} */
+  #words = new Map();
 
   constructor({ maxBytes = HEARD_MAX_BYTES } = {}) {
     this.maxBytes = maxBytes;
   }
 
-  /** @param {Heard} h */
-  keep(h) {
+  /** @param {Heard} h @param {string} [scope] the conversation it was heard for */
+  keep(h, scope) {
     if (this.#all.has(h.id)) return;
-    this.#all.set(h.id, { ...h, transcripts: new Map(), encoded: new Map(h.encoded) });
+    this.#all.set(h.id, { ...h, scope, transcripts: new Map(), encoded: new Map(h.encoded) });
     this.#bytes += bytesOf(h);
     for (const id of this.#all.keys()) {
       if (this.#bytes <= this.maxBytes || id === h.id) break;
@@ -62,11 +65,25 @@ export class HeardMemory {
     return this.#all.get(id) ?? null;
   }
 
-  /** @param {string} id */
-  drop(id) {
+  /** @param {string} id @param {string} [words] what it said, written down */
+  drop(id, words) {
     const kept = this.#all.get(id);
     if (kept) this.#bytes -= bytesOf(kept);
     this.#all.delete(id);
+    if (words === undefined) return;
+    this.#words.set(id, { words, scope: kept?.scope });
+    for (const old of this.#words.keys()) if (this.#words.size > 64) this.#words.delete(old);
+  }
+
+  /** @param {string} id */
+  words(id) {
+    return this.#words.get(id)?.words;
+  }
+
+  /** What was heard for a conversation, sound and words: its trip was removed (spec §4.9). @param {string} scope */
+  forget(scope) {
+    for (const [id, k] of this.#all) if (k.scope === scope) this.drop(id);
+    for (const [id, w] of this.#words) if (w.scope === scope) this.#words.delete(id);
   }
 
   get size() {
@@ -171,7 +188,8 @@ async function resolvePart(p, model, c) {
     if (got) c.memory.keep({ id: p.id, source: 'mic', audio: { ...got, seconds: 0 }, ms: 0, at: 0 });
   }
   const kept = c.memory.get(p.id);
-  if (!kept) return { type: 'text', text: NOT_TRANSCRIBED };
+  const words = c.memory.words(p.id);
+  if (!kept) return { type: 'text', text: words === undefined ? NOT_TRANSCRIBED : said(words) };
   if (!kept.audio) return { type: 'text', text: said(kept.text ?? '') };
   for (const id of c.list) {
     if (id === 'send-audio') {
