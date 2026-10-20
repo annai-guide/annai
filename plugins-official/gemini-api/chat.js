@@ -71,8 +71,8 @@ function build({ endpoint, model, key, request }) {
   // Thought summaries show progress, so a thinking model never looks stalled; the reasoning level's patch adds thinking_level.
   config.thinking_summaries = 'auto';
   if (request.toolChoice) config.tool_choice = { allowed_tools: { mode: 'any', tools: [request.toolChoice] } };
-  /** @type {Record<string, any>} */
   // An id from the OpenAI-compatible endpoint's list, before provider-gemini 2.0, is "models/<id>".
+  /** @type {Record<string, any>} */
   const body = { model: String(model.providerId).replace(/^models\//, ''), store: false, stream: true };
   if (request.system) body.system_instruction = request.system;
   if (request.tools?.length) body.tools = request.tools.map(toolSchema);
@@ -159,7 +159,7 @@ export function readList(json) {
 
 /** Whether an error Google sent is its safety filter's block (measured 2026-10-19: a 400, streamed too). @param {any} e */
 function blocked(e) {
-  return isObject(e) && /safety|prohibited use/i.test(`${e.message ?? ''} ${e.code ?? ''}`);
+  return isObject(e) && /blocked due to safety|prohibited use/i.test(`${e.message ?? ''} ${e.code ?? ''}`);
 }
 
 /** Google's reason for a block, in words. @param {any} e */
