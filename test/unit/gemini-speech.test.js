@@ -78,10 +78,14 @@ test("transcribeRequest: Google's transcription model gets its own transcription
   assert.deepEqual(ja.generation_config.transcription_config.language_codes, ['ja-JP', 'en-US']);
 });
 
-test('readTranscript: the words of the model_output, as Google sent them', async () => {
+test('readTranscript: the words of the model_output, as Google sent them, without its tags for sounds (fix pass)', async () => {
   assert.deepEqual(await hear.readTranscript(json(await fixture('transcribe-lite.json'))), { text: 'Where should we eat?' });
   const none = { status: 'completed', steps: [{ type: 'thought', signature: 'x' }] };
   assert.deepEqual(await hear.readTranscript(json(JSON.stringify(none))), { text: '' }, 'nothing heard');
+  // Google's tags for what isn't words ("<noise>", measured 2026-10-20) never reach Shiori as the user's: nothing heard.
+  const said = (/** @type {string} */ text) => json(JSON.stringify({ status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'text', text }] }] }));
+  assert.deepEqual(await hear.readTranscript(said('<noise>')), { text: '' });
+  assert.deepEqual(await hear.readTranscript(said('<noise> Where should <laughs>we eat? <silence>')), { text: 'Where should we eat?' });
   await assert.rejects(hear.readTranscript(json(JSON.stringify({ status: 'failed', error: { code: 'internal', message: 'Something broke.' } }))), (e) => e instanceof ProviderError && e.kind === 'server');
   await assert.rejects(hear.readTranscript(json('not json')), (e) => e instanceof ProviderError && e.kind === 'server');
 });
@@ -147,6 +151,10 @@ test('readSpeech: a stream read whole is one WAV clip; so is a whole reply, μ-l
   const asWav = { status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'audio', mime_type: 'audio/wav', data: toBase64(wav) }] }] };
   assert.deepEqual(await say.readSpeech(json(JSON.stringify(asWav)), spec(say, 't')), { data: wav, mediaType: 'audio/wav' });
   await assert.rejects(say.readSpeech(json(JSON.stringify({ status: 'completed', steps: [] })), spec(say, 't')), (e) => e instanceof ProviderError && e.kind === 'server', 'no audio is no clip');
+  // A "WAV" that isn't one is the server's fault, never the plugin's (fix pass).
+  const notWav = { status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'audio', mime_type: 'audio/wav', data: toBase64(new Uint8Array([1, 2, 3])) }, { type: 'audio', mime_type: 'audio/wav', data: toBase64(new Uint8Array([4])) }] }] };
+  await assert.rejects(say.readSpeech(json(JSON.stringify(notWav)), spec(say, 't')), (e) => e instanceof ProviderError && e.kind === 'server');
+  await assert.rejects(all(say.readSpeechStream(json(JSON.stringify(notWav)), spec(say, 't'))), (e) => e instanceof ProviderError && e.kind === 'server');
 });
 
 test('Fetch model list: voices are the TTS models; transcription, Google\'s transcription model and the flash models', async () => {

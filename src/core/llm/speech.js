@@ -3,6 +3,9 @@ import { cannotConnect, asProviderError } from './call.js';
 import { speechCost } from './cost.js';
 import { pickOut, formatOf } from '../voice/formats.js';
 
+/** A piece of a voice's stream that a player can take: 16-bit PCM at a finite rate (fix pass). @param {any} p */
+const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
+
 /**
  * Speech calls (spec §9.1, §10): one transcription, or one voice clip, from a speech endpoint type.
  * The type builds the HTTP request and reads the reply; annai sends it with a time limit, reads
@@ -89,6 +92,7 @@ export async function speechCall(c) {
       const pieces = /** @type {NonNullable<EndpointType['readSpeechStream']>} */ (type.readSpeechStream)(res, spec)[Symbol.asyncIterator]();
       const first = await pieces.next();
       if (first.done) throw new ProviderError('server', 'The voice sent back no audio.');
+      if (!playable(first.value) || !(first.value.rate >= 3000)) throw new ProviderError('server', 'The voice sent no sound annai can play.');
       firstMs = now() - started;
       handed = true;
       return { stream: { rate: first.value.rate, chunks: rest(first.value, pieces) }, cost, ms: now() - started };
@@ -119,6 +123,7 @@ export async function speechCall(c) {
         const next = await pieces.next();
         clearTimeout(t);
         if (next.done) break;
+        if (!playable(next.value)) throw new ProviderError('server', 'The voice sent no sound annai can play.');
         sound.bytes += next.value.pcm.byteLength;
         yield next.value.pcm;
       }
