@@ -4,6 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { UPLOAD_TTL_S } from './uploads.js';
+import { deleteTurn } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
 
@@ -101,6 +102,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   /** @type {string | null} the turn the provider kept */
   let keptId = null;
   let bytes = 0;
+  /** A kept turn this call made, deleted: queued, or now when its provider was removed meanwhile (the key goes with it). @param {string} id */
+  const unkeep = async (id) => {
+    if (keeping && !(await keeping.kept.discard(id, endpoint.id, days))) await deleteTurn({ type, endpoint, key, id, fetch: get, trace, now });
+  };
   const started = now();
   const timer = new AbortController();
   const late = () => timer.abort(new DOMException('No output in time.', 'TimeoutError'));
@@ -193,7 +198,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
     // A turn the provider kept for a call that failed is deleted (spec §4.9); one it forgot goes with its chain. Forgotten
     // means something only when the call continued a kept turn: else the provider doesn't know the model or address.
-    if (keeping && keptId) await keeping.kept.discard(keptId, endpoint.id, days).catch((x) => console.warn("a kept turn couldn't be queued for deletion", x));
+    if (keptId) await unkeep(keptId).catch((x) => console.warn("a kept turn couldn't be queued for deletion", x));
     if (err.kind === 'forgotten') {
       if (keeping && spec.kept) await keeping.kept.forget(spec.kept.id).catch(() => {});
       else err.kind = 'not-found';
@@ -203,11 +208,12 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   }
   clearTimeout(t);
   // A refused turn isn't continued (what was refused would be in every later turn's history): it is deleted.
-  if (keeping && keptId && /** @type {StopReason} */ (stop) === 'refusal') await keeping.kept.discard(keptId, endpoint.id, days).catch(() => {});
+  if (keeping && keptId && /** @type {StopReason} */ (stop) === 'refusal') await unkeep(keptId).catch(() => {});
   else if (keeping && keptId) {
     // The turn the provider kept, to continue next time: fingerprints of what was sent, never what was.
-    await keeping.kept.record({ id: keptId, endpoint: endpoint.id, model: model.providerId, scope: keeping.scope, messages: spec.request.messages, reply: { role: 'assistant', parts }, days, ...(spec.kept ? { after: spec.kept.id } : {}) })
+    const remembered = await keeping.kept.record({ id: keptId, endpoint: endpoint.id, model: model.providerId, scope: keeping.scope, messages: spec.request.messages, reply: { role: 'assistant', parts }, days, ...(spec.kept ? { after: spec.kept.id } : {}) })
       .catch((x) => console.warn("a kept turn couldn't be recorded", x));
+    if (remembered === false) await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now });
   }
   const cost = endpoint.free ? 0 : costOf(usage, model.prices, model.providerTools); // a free-tier key costs nothing
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
