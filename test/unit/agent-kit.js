@@ -28,6 +28,7 @@ import { COOLDOWN_MS } from '../../src/core/llm/fallback.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { activate as geminiLive } from '../../plugins-official/gemini-live/index.js';
 import { activate as openaiRealtime } from '../../plugins-official/openai-realtime/index.js';
+import { g711 } from '../../src/core/voice/g711.js';
 
 /**
  * A codec that "decodes" a source written as "WxH" and reports what it was asked.
@@ -139,7 +140,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
   const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);
   for (const [id, activate] of /** @type {const} */ ([['gemini-live', geminiLive], ['openai-realtime', openaiRealtime]])) {
-    activate({ providers: { register: (/** @type {any} */ x) => { types.set(id, { ...x, pluginId: id }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } }, events: { append: async () => {} } });
+    activate({ providers: { register: (/** @type {any} */ x) => { types.set(id, { ...x, pluginId: id }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 }, g711 }, events: { append: async () => {} } });
   }
   /** Every live session opened, in order, and every socket. @type {any[]} */
   const sessions = [];
