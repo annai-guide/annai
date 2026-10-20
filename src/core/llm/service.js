@@ -3,7 +3,7 @@ import { readConfig, getKey, endpointOf, modelOf, saveModel, saveProvider, provi
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
-import { endpointTypes, ProviderError, errorFromResponse, sameOrigin, noRedirect, explain } from './contract.js';
+import { endpointTypes, ProviderError, typeError, sameOrigin, noRedirect, explain } from './contract.js';
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
@@ -464,11 +464,7 @@ export function createLlm({
         const r = type.listRequest({ endpoint, key });
         const res = await send(r.url, { headers: r.headers });
         if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          const err = errorFromResponse(res.status, text, res.headers);
-          const sharper = type.classify?.(res.status, text);
-          if (sharper) err.kind = /** @type {any} */ (sharper);
-          throw err;
+          throw typeError(type, res.status, await res.text().catch(() => ''), res.headers);
         }
         return type.readList(await res.json());
       };

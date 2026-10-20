@@ -141,6 +141,19 @@ export function errorFromResponse(status, body, headers) {
   return new ProviderError(kindOf(status, message), message, { status, retryAfter: retryAfterOf(headers) ?? retryDelayOf(body) });
 }
 
+/**
+ * An error response as a ProviderError: core's reading, then its endpoint type's sharper kind, and the wait
+ * its words ask for when no header or RetryInfo says (Gemini's "Please retry in 7h40m31s").
+ * @param {EndpointType} type @param {number} status @param {string} body @param {Headers} [headers]
+ */
+export function typeError(type, status, body, headers) {
+  const err = errorFromResponse(status, body, headers);
+  const sharper = type.classify?.(status, body);
+  if (sharper) err.kind = sharper;
+  err.retryAfter ??= type.retryAfter?.(body);
+  return err;
+}
+
 /** The wait a Google API error asks for in its RetryInfo ("23s"), in ms, when no header says. @param {string} body @returns {number | undefined} */
 function retryDelayOf(body) {
   try {
@@ -229,7 +242,7 @@ export function safeId(id) {
  * @property {Request} request
  * @property {AbortSignal} [signal]
  * @typedef {{ providerId: string, name?: string, contextWindow?: number, maxOutput?: number, input?: string[], tools?: boolean,
- *   prices?: import('./cost.js').Prices }} ListedModel
+ *   prices?: import('./cost.js').Prices, reasoning?: Record<string, any> }} ListedModel  reasoning: its level map (spec §9.3)
  * @typedef {{ endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null, tunables: Record<string, any> }} SpeechSpec
  *   what a speech endpoint type is given for one call; a request's body is sent as given (a string or a FormData)
  * @typedef {object} EndpointType  what an endpoint-type plugin registers (spec §9.1)
@@ -242,6 +255,7 @@ export function safeId(id) {
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
  * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
+ * @property {(body: string) => number | undefined} [retryAfter]  ms an error response's words ask to wait, when no header says
  * @property {(status: number, body: string) => string | null} [refusal]  an error response that is the model declining (a safety block):
  *   its words, which end the turn as a reply that stops with 'refusal', so no other model is tried; null for any other error
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => { url: string, headers: Record<string, string> }} [listRequest]

@@ -6,6 +6,7 @@ import { applyPatches, callOnce } from '../../src/core/llm/call.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
+import { levelsFor } from '../../plugins-official/gemini-api/levels.js';
 
 const type = loadGemini();
 const fixture = (/** @type {string} */ name) => readFile(new URL(`../fixtures/gemini/${name}`, import.meta.url), 'utf8');
@@ -65,4 +66,88 @@ test("a safety block (Google's 400, streamed or not) ends the turn as a refusal 
     type, endpoint: endpointOf(type), model: modelOf(), key: KEY, request: { messages: [] },
     fetch: async () => new Response(await fixture('unsigned-call-400.json'), { status: 400 }),
   }), { kind: 'bad-request' });
+});
+
+test('classify: what Gemini says, as annai\'s kinds', async () => {
+  const err = (/** @type {string} */ message, code = 'invalid_request') => JSON.stringify({ error: { message, code } });
+  const cases = /** @type {[number, string, string | null][]} */ ([
+    [400, JSON.stringify([{ error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT' } }]), 'auth'],
+    [401, err('Unauthenticated.', 'unauthenticated'), 'auth'],
+    [403, err('The caller does not have permission.', 'permission_denied'), 'auth'],
+    [429, await fixture('rate-per-minute-429.txt'), 'rate'],
+    [429, await fixture('rate-per-day-429.txt'), 'rate'],
+    [429, err('Your project has exceeded a quota. See https://ai.dev/rate-limit to manage your rate limits.', 'too_many_requests'), 'rate'],
+    [503, err('The model is overloaded. Please try again later.', 'unavailable'), 'overloaded'],
+    [400, err('The input token count (1200000) exceeds the maximum number of tokens allowed (1048576).'), 'context'],
+    [400, err('Unsupported MIME type: audio/ogg'), null],
+    [400, err('Unable to process input image. Please retry or report in https://developers.generativeai.google/guide/troubleshooting'), null],
+    [404, await fixture('continue-deleted-404.json'), 'not-found'],
+    [403, await fixture('unknown-file-403.json'), 'upload'],
+  ]);
+  for (const [status, body, kind] of cases) assert.equal(type.classify(status, body), kind, body);
+});
+
+test('retryAfter: the wait a 429 asks for in its words, in ms', async () => {
+  assert.equal(type.retryAfter('Please retry in 44s or upgrade your tier'), 44000);
+  assert.equal(type.retryAfter(await fixture('rate-per-day-429.txt')), 27631000);
+  assert.equal(type.retryAfter('retry in 1m2.5s'), 62500);
+  assert.equal(type.retryAfter('Slow down.'), undefined);
+});
+
+test('a 429 carries its wait as retryAfter, and the per-day one says when, in words, as the model rests until then', async () => {
+  const body = await fixture('rate-per-day-429.txt');
+  await assert.rejects(callOnce({ type, endpoint: endpointOf(type), model: modelOf(), key: KEY, request: { messages: [] }, fetch: async () => new Response(body, { status: 429 }) }),
+    { kind: 'rate', retryAfter: 27631000 });
+  const { callRole, Bench } = await import('../../src/core/llm/fallback.js');
+  const now = Date.UTC(2026, 9, 19, 23, 0);
+  const bench = new Bench();
+  const config = /** @type {any} */ ({
+    providers: { 'pv-g': { id: 'pv-g', plugin: 'provider-gemini', template: null, user: { name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com', abilities: { chat: { kind: 'chat', type: 'gemini' } } }, created: 0 } },
+    models: { 'm-g': { id: 'm-g', provider: 'pv-g', ability: 'chat', template: null, user: { providerId: 'gemini-3.6-flash' }, created: 0 } },
+    roles: { main: { models: ['m-g'], level: 'off' } },
+  });
+  await assert.rejects(callRole({
+    role: 'main', config, types: new Map([['gemini', type]]), bench, keyFor: async () => KEY, now: () => now, sleep: async () => {},
+    request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] }, fetch: async () => new Response(body, { status: 429 }),
+  }), (/** @type {any} */ e) => {
+    const end = new Date(now + 27631000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    assert.match(e.attempts[0].error, new RegExp(`its daily limit is used up; it rests until .*${end}`));
+    return true;
+  });
+  assert.equal(bench.until('m-g'), now + 27631000);
+});
+
+test('the model list: chat models with their windows, output limits and thinking levels; speech, live, image and other models left out', async () => {
+  const listed = type.readList(JSON.parse(await fixture('models.json')));
+  assert.deepEqual(listed.map((/** @type {any} */ m) => m.providerId), [
+    'gemini-2.5-flash', 'gemma-4-31b-it', 'gemini-3-flash-preview', 'gemini-3.1-pro-preview', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash',
+  ], "in Google's order");
+  const lite = listed.find((/** @type {any} */ m) => m.providerId === 'gemini-3.5-flash-lite');
+  assert.deepEqual(lite, { providerId: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', contextWindow: 1048576, maxOutput: 65536, input: ['text', 'image', 'pdf', 'audio'], reasoning: levelsFor('gemini-3.5-flash-lite') });
+  assert.equal(listed.find((/** @type {any} */ m) => m.providerId === 'gemma-4-31b-it').reasoning, undefined, 'a family Google documents no levels for gets none: the model chooses');
+  assert.deepEqual(type.listRequest({ endpoint: endpointOf(type), key: KEY }), { url: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000', headers: { 'x-goog-api-key': KEY } });
+  assert.deepEqual(type.readList({}), []);
+});
+
+test("levelsFor: each family's levels as Google documents them, annai's off as minimal where there is one, max as high", () => {
+  const level = (/** @type {any} */ map) => Object.fromEntries(Object.entries(map).map(([k, v]) => [k, /** @type {any} */ (v).generation_config.thinking_level]));
+  for (const id of ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview']) {
+    assert.deepEqual(level(levelsFor(id)), { off: 'minimal', low: 'low', medium: 'medium', high: 'high', max: 'high' }, id);
+  }
+  for (const id of ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-2.5-pro']) {
+    assert.deepEqual(level(levelsFor(id)), { low: 'low', medium: 'medium', high: 'high', max: 'high' }, id);
+  }
+  assert.deepEqual(level(levelsFor('gemini-3-pro-preview')), { low: 'low', high: 'high', max: 'high' });
+  assert.equal(levelsFor('gemma-4-31b-it'), undefined);
+});
+
+test('uploads: one multipart request to the Files API, as measured; the answer gives the file\'s address and when Gemini deletes it', async () => {
+  const r = type.uploadRequest({ endpoint: endpointOf(type), key: KEY, tunables: type.tunables, bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/png', name: 'annai-0123456789abcdef.png', expiresInSeconds: 172800 });
+  assert.equal(r.url, 'https://generativelanguage.googleapis.com/upload/v1beta/files');
+  assert.deepEqual(r.headers, { 'x-goog-api-key': KEY, 'x-goog-upload-protocol': 'multipart' });
+  assert.ok(r.body instanceof FormData);
+  assert.deepEqual(JSON.parse(await /** @type {Blob} */ (r.body.get('metadata')).text()), { file: { display_name: 'annai-0123456789abcdef.png' } });
+  const file = /** @type {File} */ (r.body.get('file'));
+  assert.deepEqual([file.name, file.type, [...new Uint8Array(await file.arrayBuffer())]], ['annai-0123456789abcdef.png', 'image/png', [1, 2, 3]]);
+  assert.deepEqual(type.readUpload(JSON.parse(await fixture('upload-200.json'))), { id: 'https://generativelanguage.googleapis.com/v1beta/files/rg15gsb4uz8n', expiresAt: Date.parse('2026-10-21T23:51:27.665Z') });
 });

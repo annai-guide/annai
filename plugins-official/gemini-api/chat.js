@@ -1,4 +1,5 @@
 import { toInput, toolSchema } from './steps.js';
+import { levelsFor } from './levels.js';
 
 /**
  * The `gemini` chat type: annai's request as one Interactions request (`POST /v1beta/interactions`),
@@ -24,7 +25,11 @@ export function auth(endpoint, key) {
   return { ...(endpoint.headers ?? {}), ...(key ? { 'x-goog-api-key': key } : {}) };
 }
 
-/** The chat type. @param {any} annai */
+/**
+ * The chat type. Photos go to Gemini's Files API as one multipart request (measured 2026-10-19: a
+ * FormData with x-goog-upload-protocol: multipart is taken), and Gemini deletes them after 48 hours.
+ * @param {any} annai
+ */
 export function chatType(annai) {
   const { sse, ProviderError } = annai.helpers;
   return {
@@ -35,15 +40,25 @@ export function chatType(annai) {
     build,
     /** @param {Response} res */
     read: (res) => read(res, { sse, ProviderError }),
+    classify,
+    retryAfter,
     /** A safety block, which Google sends as an error response: an answer that declines, so no other model is tried. @param {number} _status @param {string} body */
     refusal: (_status, body) => {
-      try {
-        const e = JSON.parse(body)?.error;
-        return blocked(e) ? refusalText(e) : null;
-      } catch {
-        return null;
-      }
+      const e = errorOf(body);
+      return blocked(e) ? refusalText(e) : null;
     },
+    /** @param {{ endpoint: any, key: string | null }} c */
+    listRequest: ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, '/v1beta/models?pageSize=1000'), headers: auth(endpoint, key) }),
+    readList,
+    /** @param {{ endpoint: any, key: string | null, bytes: Uint8Array, mediaType: string, name: string }} c */
+    uploadRequest: ({ endpoint, key, bytes, mediaType, name }) => {
+      const body = new FormData();
+      body.set('metadata', new Blob([JSON.stringify({ file: { display_name: name } })], { type: 'application/json' }));
+      body.set('file', new Blob([/** @type {BlobPart} */ (bytes)], { type: mediaType }), name);
+      return { url: join(endpoint.baseUrl, '/upload/v1beta/files'), headers: { ...auth(endpoint, key), 'x-goog-upload-protocol': 'multipart' }, body };
+    },
+    /** @param {any} j */
+    readUpload: (j) => ({ id: String(j?.file?.uri ?? ''), ...(Date.parse(j?.file?.expirationTime) ? { expiresAt: Date.parse(j.file.expirationTime) } : {}) }),
   };
 }
 
@@ -80,6 +95,65 @@ const CODES = {
 export function codeKind(code, message) {
   if (/\bfile\b/i.test(String(message ?? '')) && /not exist|not found|permission to access/i.test(String(message ?? ''))) return 'upload';
   return CODES[String(code ?? '').toLowerCase()] ?? null;
+}
+
+/** The error in a body Google sent: one object, or a list of one. @param {string} body @returns {any} */
+function errorOf(body) {
+  try {
+    const j = JSON.parse(body);
+    return (Array.isArray(j) ? j[0] : j)?.error ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A sharper kind for an error response, or null for core's own reading. A 429 is too many requests,
+ * whatever its words say ("quota"), and its daily free limit too; a 400 core reads as it is, so a photo
+ * Gemini refused is repaired and an audio format it refused is sent again as WAV (spec §10.6).
+ * @param {number} status @param {string} body
+ */
+export function classify(status, body) {
+  const e = errorOf(body) ?? {};
+  const message = String(e.message ?? body);
+  if (status === 429) return 'rate';
+  if (status === 503) return 'overloaded';
+  if (/api key not valid|api_key_invalid/i.test(message)) return 'auth';
+  const kind = codeKind(e.status ?? e.code, message);
+  if (kind === 'upload') return kind;
+  if (status === 401 || status === 403) return 'auth';
+  if (status === 400) return /token count|maximum number of tokens|context window/i.test(message) ? 'context' : null;
+  return kind;
+}
+
+/**
+ * The wait a 429 asks for in its words, in ms ("Please retry in 44s", "retry in 7h40m31s"), or undefined.
+ * @param {string} body
+ */
+export function retryAfter(body) {
+  const m = /retry in ((\d+)h)?((\d+)m)?((\d+(\.\d+)?)s)?/i.exec(String(body));
+  if (!m || !(m[1] || m[3] || m[5])) return undefined;
+  return Math.round(((Number(m[2] ?? 0) * 60 + Number(m[4] ?? 0)) * 60 + Number(m[6] ?? 0)) * 1000);
+}
+
+/** Models that generate content but aren't for chat: speech, live, images, music, embeddings, agents and the like. */
+const NOT_CHAT = /tts|live|embedding|image|native-audio|transcribe|translate|robotics|lyria|nano-banana|veo|computer-use|deep-research|antigravity|aqa/;
+
+/**
+ * The chat models a model list names, with their windows, output limits and thinking levels (spec §9.2).
+ * @param {any} json @returns {import('../../src/core/llm/contract.js').ListedModel[]}
+ */
+export function readList(json) {
+  return (Array.isArray(json?.models) ? json.models : []).flatMap((/** @type {any} */ m) => {
+    const id = String(m?.name ?? '').replace(/^models\//, '');
+    if (!id || !m.supportedGenerationMethods?.includes?.('generateContent') || NOT_CHAT.test(id)) return [];
+    const reasoning = m.thinking ? levelsFor(id) : undefined;
+    return [{
+      providerId: id, ...(m.displayName ? { name: String(m.displayName) } : {}),
+      ...(Number.isInteger(m.inputTokenLimit) ? { contextWindow: m.inputTokenLimit } : {}), ...(Number.isInteger(m.outputTokenLimit) ? { maxOutput: m.outputTokenLimit } : {}),
+      input: ['text', 'image', 'pdf', 'audio'], ...(reasoning ? { reasoning } : {}),
+    }];
+  });
 }
 
 /** Whether an error Google sent is its safety filter's block (measured 2026-10-19: a 400, streamed too). @param {any} e */
