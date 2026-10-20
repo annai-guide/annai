@@ -151,3 +151,39 @@ test('uploads: one multipart request to the Files API, as measured; the answer g
   assert.deepEqual([file.name, file.type, [...new Uint8Array(await file.arrayBuffer())]], ['annai-0123456789abcdef.png', 'image/png', [1, 2, 3]]);
   assert.deepEqual(type.readUpload(JSON.parse(await fixture('upload-200.json'))), { id: 'https://generativelanguage.googleapis.com/v1beta/files/rg15gsb4uz8n', expiresAt: Date.parse('2026-10-21T23:51:27.665Z') });
 });
+
+test("the move-over: a model added from the OpenAI-compatible endpoint's list before provider-gemini 2.0 (\"models/<id>\") is asked for by its id, and its own signed steps still go back to it", () => {
+  const model = modelOf({ providerId: 'models/gemini-3.6-flash' });
+  const built = type.build(spec(type, { model, request: { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Weather?' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'c1', name: 'get_weather', input: {}, extra: { signature: 'SIG' }, model: 'models/gemini-3.6-flash' }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: '18°C' }] },
+  ] } }));
+  assert.equal(built.body.model, 'gemini-3.6-flash');
+  assert.equal(built.body.input[1].signature, 'SIG');
+});
+
+test('against the stand-in Gemini server: a streamed answer, a whole one, a call with its signature, the model list and an upload; the key only ever in x-goog-api-key', async () => {
+  const { startGeminiServer } = await import('../fakes/gemini-server.js');
+  const s = await startGeminiServer({ key: KEY, replies: [{ thought: { summary: 'Hmm.', signature: 'TS' }, text: 'Hello there.' }, (b) => ({ text: b.stream ? 'streamed' : 'whole' }), { calls: [{ name: 'get_weather', input: { city: 'Kyoto' }, signature: 'CS' }] }] });
+  try {
+    const endpoint = endpointOf(type, { baseUrl: s.url });
+    const call = (/** @type {any} */ request) => callOnce({ type, endpoint, model: modelOf(), key: KEY, request });
+    const first = await call({ messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] });
+    assert.deepEqual([first.text, first.parts[0]], ['Hello there.', { type: 'reasoning', text: 'Hmm.', signature: 'TS', model: 'gemini-3.5-flash-lite' }]);
+    assert.equal((await call({ messages: [] })).text, 'streamed');
+    const called = await call({ messages: [], tools: [TOOL] });
+    assert.deepEqual([called.stop, called.parts[0]], ['tool', { type: 'tool_call', id: 'call_1', name: 'get_weather', input: { city: 'Kyoto' }, extra: { signature: 'CS' }, model: 'gemini-3.5-flash-lite' }]);
+    const listed = type.readList(await (await fetch(type.listRequest({ endpoint, key: KEY }).url, { headers: type.listRequest({ endpoint, key: KEY }).headers })).json());
+    assert.ok(listed.some((/** @type {any} */ m) => m.providerId === 'gemini-3.8-flash'));
+    const up = type.uploadRequest({ endpoint, key: KEY, tunables: {}, bytes: new Uint8Array(4), mediaType: 'image/png', name: 'annai-x.png', expiresInSeconds: 3600 });
+    assert.match(type.readUpload(await (await fetch(up.url, { method: 'POST', headers: up.headers, body: up.body })).json()).id, /\/v1beta\/files\/stand-in-/);
+    for (const r of s.requests()) {
+      assert.equal(r.headers['x-goog-api-key'], KEY, r.url);
+      assert.ok(!r.url.includes(KEY) && !JSON.stringify(r.body).includes(KEY), r.url);
+    }
+    await assert.rejects(callOnce({ type, endpoint, model: modelOf(), key: 'AIza-wrong', request: { messages: [] } }), { kind: 'auth' });
+  } finally {
+    await s.close();
+  }
+});

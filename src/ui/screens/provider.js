@@ -1,7 +1,7 @@
 import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave, whenGone } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
-import { addListedModel, addModelById, useSuggestion } from '../../core/llm/providers.js';
+import { addListedModel, addModelById } from '../../core/llm/providers.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
@@ -344,8 +344,12 @@ function suggestionsPanel(ctx, id, src) {
     h('div', { class: 'acts' }, ...Object.keys(roles).map((which) => h('button', {
       class: 'btn', type: 'button',
       onclick: async () => {
-        await useSuggestion(ctx, id, src, which);
-        ctx.notices.toast('Roles updated');
+        try {
+          await ctx.llm.useSuggestion(id, which); // switches on what it names first
+          ctx.notices.toast('Roles updated');
+        } catch (e) {
+          ctx.notices.toast(messageOf(e));
+        }
         ctx.render();
       },
     }, labels[which] ?? `Use the ${which} models`))));
