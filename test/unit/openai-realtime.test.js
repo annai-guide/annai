@@ -32,6 +32,11 @@ function openaiRealtime(more = {}) {
 }
 const { type: TYPE, notes: NOTES } = openaiRealtime();
 
+test("on an annai from before G.711 was its own (an official update fetched by an older shell), it doesn't start, saying to restart annai (fix pass)", () => {
+  assert.throws(() => activate({ providers: { register: () => () => {} }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } }, events: { append: async () => {} } }),
+    /needs a newer annai: restart annai to update it/);
+});
+
 /** @param {string} baseUrl @returns {any} */
 const endpoint = (baseUrl) => ({ id: 'pv-o/realtime', provider: 'pv-o', ability: 'realtime', type: 'openai-realtime', name: 'OpenAI', baseUrl, headers: {}, tunables: TYPE.tunables, extraBody: {} });
 /** @param {any} [over] @returns {any} */

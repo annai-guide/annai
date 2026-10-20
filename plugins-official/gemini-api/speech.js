@@ -177,12 +177,16 @@ export function speechType(annai) {
       stream: { label: 'Stream her voice, so she starts sooner (off: each sentence arrives whole first)' },
     },
     /** @param {any} c */
-    speechRequest: ({ endpoint, model, key, tunables: t, text }) => post(endpoint, key, {
-      model: idOf(model.providerId), store: false, stream: true,
-      input: [{ type: 'user_input', content: [{ type: 'text', text }] }],
-      response_format: { type: 'audio', ...(FORMATS[t.format] ?? FORMATS.pcm24) },
-      generation_config: { speech_config: [{ voice: String(t.voice || 'Kore') }] },
-    }),
+    speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
+      // An update reaches an annai still running its older shell, without G.711 and WAV, until a restart.
+      if (!g711 || !wav) throw new Error('Gemini API voice needs a newer annai: restart annai to update it.');
+      return post(endpoint, key, {
+        model: idOf(model.providerId), store: false, stream: true,
+        input: [{ type: 'user_input', content: [{ type: 'text', text }] }],
+        response_format: { type: 'audio', ...(FORMATS[t.format] ?? FORMATS.pcm24) },
+        generation_config: { speech_config: [{ voice: String(t.voice || 'Kore') }] },
+      });
+    },
     /** @param {Response} res */
     readSpeechStream: (res) => pieces(res),
     /** @param {Response} res */

@@ -167,3 +167,14 @@ test('Fetch model list: voices are the TTS models; transcription, Google\'s tran
   assert.equal(hear.classify(429, '{"error":{"message":"Quota exceeded"}}'), 'rate');
   assert.equal(say.retryAfter('Please retry in 44s.'), 44000);
 });
+
+test("on an annai from before G.711 and WAV were its own, chat and transcription work, and the voice says to restart annai (fix pass)", async () => {
+  const { activate } = await import('../../plugins-official/gemini-api/index.js');
+  const { sse } = await import('../../src/core/llm/sse.js');
+  /** @type {Map<string, any>} */
+  const old = new Map();
+  activate({ providers: { register: (/** @type {any} */ t) => { old.set(t.type, t); return () => {}; } }, helpers: { sse, ProviderError, base64: { encode: toBase64, decode: fromBase64 } } });
+  assert.deepEqual([...old.keys()], ['gemini', 'gemini-transcription', 'gemini-speech']);
+  assert.ok(old.get('gemini-transcription').transcribeRequest({ ...spec(hear, 'gemini-3.5-transcribe'), audio: { data: new Uint8Array(1), mediaType: 'audio/ogg' } }).body);
+  assert.throws(() => old.get('gemini-speech').speechRequest({ ...spec(say, 'gemini-3.8-flash-lite-tts'), text: 'Hi.' }), /needs a newer annai: restart annai to update it/);
+});
