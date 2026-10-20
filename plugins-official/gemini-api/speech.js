@@ -84,8 +84,9 @@ export function transcriptionType(annai) {
         generation_config: { temperature: 0, ...lowest(id) },
       });
     },
+    // Google's tags for what isn't words ("<noise>", 2026-10-20) go, as Koe's cleanSaid takes them out: never the user's words.
     /** @param {Response} res */
-    readTranscript: async (res) => ({ text: blocks(await whole(res, ProviderError), 'text').map((c) => String(c.text ?? '')).join('') }),
+    readTranscript: async (res) => ({ text: blocks(await whole(res, ProviderError), 'text').map((c) => String(c.text ?? '')).join('').replace(/<[^<>]*>/g, ' ').replace(/\s+/g, ' ').trim() }),
     classify,
     retryAfter,
     listRequest,
@@ -114,7 +115,13 @@ export function speechType(annai) {
       let bytes = base64.decode(String(block.data ?? ''));
       if (type === 'audio/mulaw') return { pcm: g711.ulawToPcm(bytes), rate };
       if (type === 'audio/alaw') return { pcm: g711.alawToPcm(bytes), rate };
-      if (type === 'audio/wav') return wav.decode(bytes);
+      if (type === 'audio/wav') {
+        try {
+          return wav.decode(bytes);
+        } catch {
+          throw new ProviderError('server', "Gemini's voice sent a WAV file annai can't read.");
+        }
+      }
       if (odd) {
         const all = new Uint8Array(odd.length + bytes.length);
         all.set(odd);

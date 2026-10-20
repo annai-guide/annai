@@ -12,7 +12,7 @@ import { STAND_IN_SIGNATURE } from '../../plugins-official/gemini-api/steps.js';
 import { TEST_IMAGE } from '../../src/core/llm/check.js';
 import { loadGemini, loadTypes, endpointOf, modelOf } from '../unit/gemini-kit.js';
 import { speechCall } from '../../src/core/llm/speech.js';
-import { pcm16 } from '../../src/core/voice/pcm.js';
+import { pcm16, encodeWav } from '../../src/core/voice/pcm.js';
 
 const KEY = process.env.GEMINI_KEY ?? '';
 const skip = KEY ? false : 'GEMINI_KEY is not set';
@@ -134,6 +134,14 @@ test("an Opus clip transcribed by Google's transcription model, and by Flash Lit
 
 // First audio, measured from the free key with the connection's setup: Flash Lite TTS 0.6 s, Flash TTS 1.6 s (2026-10-20).
 const FIRST_MS = TTS.includes('lite') ? 1500 : 2500;
+
+test("a second of silence transcribed is nothing heard: Google's tags for sounds don't come through as words (fix pass)", { skip }, async (t) => {
+  const r = await speak(t, { ...speechSpec('gemini-transcription', 'gemini-3.5-transcribe', 'Transcribe'), audio: { data: encodeWav(new Float32Array(16000), 16000), mediaType: 'audio/wav', seconds: 1 } });
+  if (!r) return;
+  t.diagnostic(`heard: ${JSON.stringify(r.text)}`);
+  assert.doesNotMatch(String(r.text), /[<>]/);
+  assert.doesNotMatch(String(r.text), /noise|silence/i);
+});
 
 test('a 2-sentence voice reply, streamed at full quality: its first audio in under 1.5 s (Flash Lite TTS), each sentence 24 kHz PCM (G3)', { skip }, async (t) => {
   await pause();

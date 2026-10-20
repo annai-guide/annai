@@ -12,7 +12,8 @@ import { fakePlatform } from './voice-fakes.js';
 // comes gives 16-bit PCM pieces; annai traces the clip once it has all come, holds it until the start rule says it
 // won't stutter, plays it through the stream player, and gives up on a voice that fails partway, as on a whole clip.
 
-const RATE = 1000; // samples a second: a piece of 100 samples is 0.1 s
+const RATE = 4000; // samples a second (Web Audio plays 3 kHz and up): a piece of 400 samples is 0.1 s
+const PIECE = RATE / 10;
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -29,7 +30,7 @@ const slowFetch = (pieces) => async (/** @type {string} */ _url, /** @type {Requ
         await tick(t0 + p.at - Date.now());
         if (signal?.aborted) return;
         if (p.fail) return void ctl.error(new TypeError('terminated'));
-        ctl.enqueue(new Uint8Array((p.samples ?? 100) * 2));
+        ctl.enqueue(new Uint8Array((p.samples ?? PIECE) * 2));
       }
       ctl.close();
     },
@@ -74,16 +75,16 @@ const drain = async (chunks) => {
 test('a streamed voice: asked for, it resolves at its first piece with its rate; its pieces come as they arrive; it is traced once, when all of it is in, with its cost (G3)', async () => {
   const store = createMemoryStore();
   const r = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hello there.', stream: true, trace: modelTrace(store, SYS),
-    fetch: slowFetch([{ at: 0 }, { at: 20 }, { at: 40, samples: 50 }]) });
+    fetch: slowFetch([{ at: 0 }, { at: 20 }, { at: 40, samples: PIECE / 2 }]) });
   assert.equal(r.clip, undefined);
   assert.equal(r.stream?.rate, RATE);
   assert.deepEqual(await traced(store), [], 'nothing traced before it has all come');
-  assert.equal(await drain(/** @type {any} */ (r.stream).chunks), 250);
+  assert.equal(await drain(/** @type {any} */ (r.stream).chunks), 2.5 * PIECE);
   const [req] = await traced(store);
   assert.equal(req.kind, 'speech-out');
   assert.equal(req.outcome, 'ok');
-  assert.equal(req.format, 'streamed PCM at 1 kHz');
-  assert.equal(req.bytes, 500);
+  assert.equal(req.format, 'streamed PCM at 4 kHz');
+  assert.equal(req.bytes, 5 * PIECE);
   assert.ok(req.firstMs >= 0 && req.firstMs < req.ms, 'when the first audio came, and when the last did');
   assert.ok(Math.abs(req.cost - 12 * 10 / 1e6) < 1e-12, 'per character, as a whole clip');
 });
@@ -91,7 +92,7 @@ test('a streamed voice: asked for, it resolves at its first piece with its rate;
 test("stream off: with the voice's stream tunable off, or a caller that didn't ask, the whole clip comes, as before", async () => {
   const off = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint({ stream: false }), model, key: null, text: 'Hi.', stream: true, fetch: slowFetch([{ at: 0 }]) });
   assert.equal(off.stream, undefined);
-  assert.equal(off.clip?.data.length, 200);
+  assert.equal(off.clip?.data.length, 2 * PIECE);
   const unasked = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', fetch: slowFetch([{ at: 0 }]) });
   assert.equal(unasked.clip?.mediaType, 'audio/wav');
 });
@@ -105,8 +106,19 @@ test('the first piece must come within the time limit, and then no gap may be lo
   await assert.rejects(drain(/** @type {any} */ (gap.stream).chunks), (e) => e instanceof ProviderError && e.kind === 'timeout' && /stopped arriving/.test(e.message));
   const slow = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, timeoutMs: 60, trace,
     fetch: slowFetch([{ at: 0 }, { at: 30 }, { at: 60 }, { at: 90 }, { at: 120 }]) });
-  assert.equal(await drain(/** @type {any} */ (slow.stream).chunks), 500);
+  assert.equal(await drain(/** @type {any} */ (slow.stream).chunks), 5 * PIECE);
   assert.deepEqual((await traced(store)).map((d) => d.outcome), ['timeout', 'timeout', 'ok']);
+});
+
+test("a stream's first piece must be 16-bit PCM at a rate the phone plays (3 kHz and up), else the voice failed: traced as the server's (fix pass)", async () => {
+  const store = createMemoryStore();
+  const trace = modelTrace(store, SYS);
+  for (const piece of [{ pcm: [1, 2], rate: 24000 }, { pcm: new Int16Array(4), rate: 2000 }, { pcm: new Int16Array(4), rate: Number.NaN }]) {
+    const odd = { ...streams, async* readSpeechStream() { yield piece; } };
+    await assert.rejects(speechCall({ type: /** @type {any} */ (odd), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, trace, fetch: slowFetch([{ at: 0 }]) }),
+      (e) => e instanceof ProviderError && e.kind === 'server' && /no sound annai can play/.test(e.message));
+  }
+  assert.deepEqual((await traced(store)).map((d) => d.outcome), ['server', 'server', 'server']);
 });
 
 test('a stream that fails partway is traced as failed, without its cost: the sentence is paid for once, by the voice that says it', async () => {
@@ -133,7 +145,7 @@ function fakeStream({ n, at, now, failAfter, signal }) {
           if (signal?.aborted) throw new DOMException('Stopped.', 'AbortError');
           await tick(1);
         }
-        yield Int16Array.from({ length: 100 }, () => 1000);
+        yield Int16Array.from({ length: PIECE }, () => 1000);
       }
     })(),
   };
