@@ -256,8 +256,9 @@ export function safeId(id) {
  * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
  * @property {(body: string) => number | undefined} [retryAfter]  ms an error response's words ask to wait, when no header says
- * @property {(status: number, body: string) => string | null} [refusal]  an error response that is the model declining (a safety block):
- *   its words, which end the turn as a reply that stops with 'refusal', so no other model is tried; null for any other error
+ * @property {(status: number, body: string, c: CallSpec) => string | null} [refusal]  an error response that is the model declining (a safety block):
+ *   its words, which end the turn as a reply that stops with 'refusal', so no other model is tried; null for any other error. c: the call,
+ *   so the type can keep what was blocked out of its later requests (Gemini's)
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => { url: string, headers: Record<string, string> }} [listRequest]
  * @property {(json: any) => ListedModel[]} [readList]
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]

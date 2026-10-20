@@ -397,7 +397,7 @@ export function activate(annai) {
   - `classify(status, body)` can give a sharper kind for an error response.
   - `listRequest()` and `readList()` make "Fetch model list" work. A listed model may carry its `contextWindow`, `maxOutput`, `input` and its `reasoning` map (spec §9.3), as Gemini API's list does.
   - `retryAfter(body)` gives the wait, in ms, an error response's words ask for, when no `retry-after` header or Google RetryInfo says (Gemini: "Please retry in 7h40m31s"). A rest over 10 minutes is said in words.
-  - `refusal(status, body)` gives words for an error response that is the model declining, such as Gemini's safety block (a 400): the turn ends with them, stopping with `refusal`, and no other model is tried. Null for any other error.
+  - `refusal(status, body, c)` gives words for an error response that is the model declining, such as Gemini's safety block (a 400): the turn ends with them, stopping with `refusal`, and no other model is tried. Null for any other error. `c` is the call, so your type can keep what was blocked out of its later requests: Gemini API leaves the blocked message out of what it sends Gemini from then on, kept by a fingerprint in its own settings.
   - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the provider's page, per ability (the `uploads` tunable).
 
 ### Audio formats

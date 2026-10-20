@@ -12,6 +12,8 @@
  * with this it answers. Calls in earlier turns go unsigned, as Gemini accepts them (test/fixtures/gemini/current-turn).
  */
 export const STAND_IN_SIGNATURE = 'skip_thought_signature_validator';
+/** What a blocked tool result says in its place, so its call stays answered (blocked.js). */
+export const LEFT_OUT = "[Left out: Google's safety filter blocked what was here.]";
 /** Audio by the names Gemini's API takes: the phone's AAC in MP4 is m4a there. @type {Record<string, string>} */
 const AUDIO = { 'audio/mp4': 'audio/m4a', 'audio/x-m4a': 'audio/m4a', 'audio/x-wav': 'audio/wav' };
 
@@ -44,10 +46,11 @@ export function toolSchema(t) {
  * The conversation as steps. A user message's tool results come first, then the rest as one
  * user_input. An assistant message keeps its order: thoughts this model signed, its words, its
  * calls with their signatures, and its own server-tool steps. The now block goes last, in the final
- * user_input, or in one of its own after tool results.
- * @param {any[]} messages @param {{ model: string, tail?: string }} o @returns {Step[]}
+ * user_input, or in one of its own after tool results. A user message Google's safety filter blocked
+ * (leave) is left out: its tool results say so, and the rest of it goes nowhere.
+ * @param {any[]} messages @param {{ model: string, tail?: string, leave?: (m: any) => boolean }} o @returns {Step[]}
  */
-export function toInput(messages, { model, tail }) {
+export function toInput(messages, { model, tail, leave }) {
   /** @type {Map<string, string>} */
   const names = new Map();
   for (const m of messages) for (const p of m.parts) if (p.type === 'tool_call') names.set(p.id, p.name);
@@ -57,7 +60,7 @@ export function toInput(messages, { model, tail }) {
   const replies = [];
   for (const m of messages) {
     if (m.role !== 'assistant') {
-      steps.push(...userSteps(m.parts, names));
+      steps.push(...userSteps(m.parts, names, leave?.(m) ?? false));
       continue;
     }
     const own = assistantSteps(m.parts, model);
@@ -79,13 +82,13 @@ export function toInput(messages, { model, tail }) {
   return steps;
 }
 
-/** @param {any[]} parts @param {Map<string, string>} names @returns {Step[]} */
-function userSteps(parts, names) {
+/** @param {any[]} parts @param {Map<string, string>} names @param {boolean} left Google blocked it @returns {Step[]} */
+function userSteps(parts, names, left) {
   /** @type {Step[]} */
   const out = parts.filter((p) => p.type === 'tool_result').map((p) => ({
-    type: 'function_result', call_id: p.id, name: names.get(p.id) ?? 'tool', result: [{ type: 'text', text: p.content }], ...(p.isError ? { is_error: true } : {}),
+    type: 'function_result', call_id: p.id, name: names.get(p.id) ?? 'tool', result: [{ type: 'text', text: left ? LEFT_OUT : p.content }], ...(p.isError && !left ? { is_error: true } : {}),
   }));
-  const content = parts.flatMap((p) => (p.type === 'tool_result' ? [] : [toContent(p)].filter((c) => c !== null)));
+  const content = left ? [] : parts.flatMap((p) => (p.type === 'tool_result' ? [] : [toContent(p)].filter((c) => c !== null)));
   if (content.length) out.push({ type: 'user_input', content });
   return out;
 }
