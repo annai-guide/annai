@@ -15,13 +15,13 @@
     "baseUrl": "https://generativelanguage.googleapis.com",
     "key": "required",
     "keyUrl": "https://aistudio.google.com/apikey",
-    "freeTier": true,
+    "freeTier": "Google",
     "note": "Uses Gemini's own API. AI Studio shows each key's tier: a free key's requests are limited per minute and per day. Add more models with Fetch model list.",
     "abilities": {
       "chat": {
         "kind": "chat",
         "type": "gemini",
-        "note": "Since version 2.0 this goes through Gemini's own API, not its OpenAI-compatible endpoint. A model added before then is kept; if one of them doesn't answer, or shows no context window, remove it and add it again with Fetch model list.",
+        "noWindowNote": "Since version 2.0 this goes through Gemini's own API, not its OpenAI-compatible endpoint. A model without a context window here was added before then, or by id: if it doesn't answer, remove it and add it again with Fetch model list.",
         "models": [
           {
             "providerId": "gemini-3.8-flash",

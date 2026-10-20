@@ -12,7 +12,8 @@ import { follow } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
-import { priceLine } from '../../src/ui/screens/provider.js';
+import { priceLine, freeTierLabel } from '../../src/ui/screens/provider.js';
+import { metaLine } from '../../src/ui/talk-panel.js';
 import { mediaKeys } from '../../src/ui/media-keys.js';
 import { restoreFrom } from '../../src/ui/auto-backup.js';
 import { packWords, downloadedWhen } from '../../src/ui/offline-pack.js';
@@ -543,4 +544,14 @@ test("Reset M4: a Reset that fails on a full disk shows the storage-full card, a
   assert.deepEqual(cards.map((c) => [c.title, c.body]).slice(1), [["Park's settings weren't reset", 'The disk broke. Try again.']]);
   assert.equal(cards[0].title, "annai's storage is full");
   assert.equal(renders, 2);
+});
+
+test("the free-tier switch names who doesn't charge: the description's name for it, else the plugin's whole name", () => {
+  assert.equal(freeTierLabel('Google', 'Google Gemini'), "This key is on the free tier (Google doesn't charge)");
+  assert.equal(freeTierLabel(true, 'Hugging Face'), "This key is on the free tier (Hugging Face doesn't charge)");
+});
+
+test("Try this model's line counts every token a reply used: audio and images too", () => {
+  const usage = { input: 100, cacheRead: 20, cacheWrite: 0, cacheWrite1h: 0, output: 10, reasoning: 4, audioIn: 50, image: 30, cacheReadAudio: 5, cacheReadImage: 0, audioOut: 0 };
+  assert.equal(metaLine({ usage, cost: 0 }), '215 tokens · free');
 });

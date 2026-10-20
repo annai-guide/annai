@@ -21,6 +21,9 @@ export function priceLine(prices) {
   return `$${prices.input ?? '?'} in, $${prices.output ?? '?'} out per million tokens`;
 }
 
+/** The free-tier switch's words: who doesn't charge, as the description names it, else the plugin's name. @param {true | string} freeTier @param {string} pluginName */
+export const freeTierLabel = (freeTier, pluginName) => `This key is on the free tier (${typeof freeTier === 'string' ? freeTier : pluginName} doesn't charge)`;
+
 /**
  * One provider (spec §9.2, §9.8): its name, one key, its address and extra headers (saved together,
  * §16.1), then each ability with its switch, its own address, tunables, fields and models, and Remove.
@@ -93,9 +96,8 @@ export async function renderProvider(ctx, id) {
       desc?.note || desc?.keyUrl
         ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
-      // Named by the company, the first word of its name (Google Gemini: Google).
-      desc?.freeTier ? savedCheck(`This key is on the free tier (${pluginName.split(' ')[0]} doesn't charge)`, p.free, (on) => ctx.llm.setFree(id, on)).el : null,
-      desc?.freeTier ? h('p', { class: 'sub', text: "On, this provider's calls cost $0 in the Trace and in Spend per day." }) : null,
+      desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName), p.free, (on) => ctx.llm.setFree(id, on)).el : null,
+      desc?.freeTier ? h('p', { class: 'sub', text: 'On, its calls show as free in the Trace, and count nothing toward Spend per day.' }) : null,
       headers.el,
       h('div', { class: 'acts' }, save,
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
@@ -220,6 +222,8 @@ async function abilityBody(view, abilityId) {
   const uploads = type.uploadRequest ? savedCheck('Upload photos to this provider (each expires after 48 hours)', a.tunables?.uploads !== false,
     async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
+  // What to do with a model from before the provider's list gave windows, while there is one.
+  const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
   const speech = a.kind === 'transcription' ? 'in' : a.kind === 'voice' ? 'out' : null;
   const first = models[0];
   return [
@@ -236,6 +240,7 @@ async function abilityBody(view, abilityId) {
     })),
     h('div', { class: 'saving' }, extra.el, ...autosave(extra.area, extra.read, async (x) => extra.show((await saveAbility({ extraBody: x })).extraBody))),
     modelsPart(ctx, id, abilityId, models),
+    old,
     first && speech ? speechTestPanel(ctx, first, speech, cfg.models[first.id].verified, `Test ${first.name}`) : null,
     first && !speech ? testPanel(ctx, first.id, cfg.models[first.id].verified, `Test ${first.name}`, a.kind === 'realtime') : null,
     note,
