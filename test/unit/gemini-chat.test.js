@@ -12,9 +12,9 @@ const type = loadGemini();
 const fixture = (/** @type {string} */ name) => readFile(new URL(`../fixtures/gemini/${name}`, import.meta.url), 'utf8');
 const TOOL = { name: 'get_weather', description: 'Current weather in a city.', input: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] } };
 
-test('the type: Gemini API, placing the now block itself, taking every audio format Gemini takes, uploading photos', () => {
-  assert.deepEqual([type.type, type.name, type.tail], ['gemini', 'Gemini API', true]);
-  assert.deepEqual(type.tunables, { uploads: true, audioIn: ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'] });
+test('the type: Gemini API, placing the now block itself, taking every audio format Gemini takes, uploading photos, Google keeping the conversation', () => {
+  assert.deepEqual([type.type, type.name, type.tail, type.keeps], ['gemini', 'Gemini API', true, 'Google']);
+  assert.deepEqual(type.tunables, { uploads: true, audioIn: ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'], keep: true, keepDays: 55 });
 });
 
 test('build: the URL, the key header and the body', () => {
@@ -83,7 +83,8 @@ test('classify: what Gemini says, as annai\'s kinds', async () => {
     [400, err('The input token count (1200000) exceeds the maximum number of tokens allowed (1048576).'), 'context'],
     [400, err('Unsupported MIME type: audio/ogg'), null],
     [400, err('Unable to process input image. Please retry or report in https://developers.generativeai.google/guide/troubleshooting'), null],
-    [404, await fixture('continue-deleted-404.json'), 'not-found'],
+    [404, await fixture('continue-deleted-404.json'), 'forgotten'],
+    [404, await fixture('flash-2.5-gone-404.json'), 'not-found'],
     [403, await fixture('unknown-file-403.json'), 'upload'],
   ]);
   for (const [status, body, kind] of cases) assert.equal(type.classify(status, body), kind, body);
@@ -271,4 +272,78 @@ test('thought summaries go only to a model that thinks: one with levels, a famil
   assert.equal(config({ providerId: 'gemma-4-31b-it' }), 'auto');
   assert.equal(JSON.parse(await fixture('gemma-summaries-200.json')).steps[0].type, 'thought', 'Gemma 4 took it, and thought (2026-10-20)');
   assert.equal(config({ providerId: 'someone-elses-model' }), undefined);
+});
+
+// ---- Google keeps the conversation (G2) ----
+
+/** @param {'user' | 'assistant'} role @param {...any} parts @returns {any} */
+const msg = (role, ...parts) => ({ role, parts });
+
+test('kept turns: store as the call asks; continuing one, previous_interaction_id and only what follows it, a result named by its call before it', () => {
+  const messages = [
+    msg('user', { type: 'text', text: 'Weather?' }),
+    msg('assistant', { type: 'reasoning', text: '', signature: 'TS', model: 'gemini-3.5-flash-lite' }, { type: 'tool_call', id: 'c1', name: 'get_weather', input: { city: 'Kyoto' }, extra: { signature: 'CS' }, model: 'gemini-3.5-flash-lite' }),
+    msg('user', { type: 'tool_result', id: 'c1', content: '18°C' }),
+  ];
+  const kept = type.build(spec(type, { keep: true, request: { messages, tail: 'Now: 09:00.' } })).body;
+  assert.deepEqual([kept.store, kept.previous_interaction_id, kept.input.length], [true, undefined, 5], 'kept, sent whole: a new chain');
+  const chained = type.build(spec(type, { keep: true, kept: { id: 'v1_abc', from: 2 }, request: { messages, tail: 'Now: 09:00.' } })).body;
+  assert.equal(chained.store, true);
+  assert.equal(chained.previous_interaction_id, 'v1_abc');
+  assert.deepEqual(chained.input, [
+    { type: 'function_result', call_id: 'c1', name: 'get_weather', result: [{ type: 'text', text: '18°C' }] },
+    { type: 'user_input', content: [{ type: 'text', text: 'Now: 09:00.' }] },
+  ]);
+  assert.equal(type.build(spec(type, { request: { messages } })).body.store, false, 'a call that asks for nothing kept');
+});
+
+test('Review Focus 1: a fallback turn in between continues the chain, sending the other model\'s reply as a model_output, and nothing twice', () => {
+  // Kept: [m1] → r1 (Gemini). Then Gemini was rate-limited and another model answered m2 with r2, kept nowhere.
+  const messages = [
+    msg('user', { type: 'text', text: 'Where can we eat?' }),
+    msg('assistant', { type: 'reasoning', text: '', signature: 'TS', model: 'gemini-3.5-flash-lite' }, { type: 'text', text: 'Ichiran, 200 m away.' }),
+    msg('user', { type: 'text', text: 'Is it open?' }),
+    msg('assistant', { type: 'text', text: 'Yes, until 23:00.' }),
+    msg('user', { type: 'text', text: 'Book it.' }),
+  ];
+  const body = type.build(spec(type, { keep: true, kept: { id: 'v1_first', from: 2 }, request: { messages, tail: 'Now: 12:00.' } })).body;
+  assert.equal(body.previous_interaction_id, 'v1_first');
+  assert.deepEqual(body.input, [
+    { type: 'user_input', content: [{ type: 'text', text: 'Is it open?' }] },
+    { type: 'model_output', content: [{ type: 'text', text: 'Yes, until 23:00.' }] },
+    { type: 'user_input', content: [{ type: 'text', text: 'Book it.' }, { type: 'text', text: 'Now: 12:00.' }] },
+  ]);
+  assert.ok(!JSON.stringify(body.input).includes('Where can we eat?') && !JSON.stringify(body.input).includes('TS'));
+});
+
+test("Review Focus 2, the plugin's part: a chained turn carries no photo Google already has", () => {
+  const PHOTO = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const messages = [
+    msg('user', { type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/png', data: PHOTO, hash: 'h1' }),
+    msg('assistant', { type: 'text', text: 'A ramen shop.' }),
+    msg('user', { type: 'text', text: 'Is it open?' }),
+  ];
+  assert.ok(JSON.stringify(type.build(spec(type, { keep: true, request: { messages } })).body).includes(PHOTO));
+  const chained = type.build(spec(type, { keep: true, kept: { id: 'v1_first', from: 2 }, request: { messages } })).body;
+  assert.ok(!JSON.stringify(chained).includes(PHOTO));
+});
+
+test('read: a kept turn names its interaction (streamed or whole), only when the call asked to keep it', async () => {
+  const sse = await fixture('lite-result-chained.sse');
+  const events = async (/** @type {Response} */ res, /** @type {boolean} */ keep) => {
+    const out = [];
+    for await (const e of type.read(res, spec(type, { keep }))) out.push(e);
+    return out;
+  };
+  const kept = await events(new Response(sse, { headers: { 'content-type': 'text/event-stream' } }), true);
+  assert.deepEqual(kept[0], { type: 'kept', id: 'v1_ChdsNlhXYXR6SkZmNlpfdU1QaE9YNm9BdxIXcGFYV2FwVElMNzNnX3VNUHJzM215UWc' });
+  assert.equal(kept.filter((e) => e.type === 'kept').length, 1);
+  assert.equal((await events(new Response(sse, { headers: { 'content-type': 'text/event-stream' } }), false)).some((e) => e.type === 'kept'), false);
+  const whole = await events(new Response(await fixture('lite-foreign-output-chained.json'), { headers: { 'content-type': 'application/json' } }), true);
+  assert.deepEqual(whole[0], { type: 'kept', id: 'v1_ChdsNlhXYXR6SkZmNlpfdU1QaE9YNm9BdxIXdEtYV2FxZnNFTDNnX3VNUHJzM215UWc' });
+});
+
+test("forgetRequest: Google's delete call for one interaction, the key in its header", () => {
+  const r = type.forgetRequest({ endpoint: endpointOf(type), key: KEY, id: 'v1_a/b' });
+  assert.deepEqual(r, { url: 'https://generativelanguage.googleapis.com/v1beta/interactions/v1_a%2Fb', headers: { 'x-goog-api-key': KEY }, method: 'DELETE' });
 });

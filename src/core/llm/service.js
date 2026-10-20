@@ -13,6 +13,7 @@ import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
+import { Kept } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
 import { openLive, testLive } from '../realtime/open.js';
@@ -38,6 +39,8 @@ export function createLlm({
   const liveTunables = new Map();
   /** Photos uploaded to providers, by provider and ability (spec §4.8). */
   const uploads = new Uploads(ws);
+  /** Conversation turns providers keep on their side, and the deletions waiting (G2). */
+  const kept = new Kept({ ws });
   const types = () => endpointTypes(plugins.registry);
   /**
    * Makes a protocol's type available, installing its official plugin: setup actions only (adding,
@@ -324,7 +327,7 @@ export function createLlm({
       await ready;
       return callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope,
       });
     },
     /**

@@ -116,6 +116,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'tool.result') return `${d.name} · ${d.ok ? 'ok' : 'error'} · ${d.ms ?? 0} ms${d.content ? ` · ${cut(d.content)}` : ''}`;
   if (e.type === 'net.request' && d.kind === 'web') return `${d.tool} · ${d.method ?? 'GET'} ${d.url}${d.status ? ` · ${d.status}` : ''}${d.error ? ` · ${d.error}` : ''} · ${d.ms ?? '?'} ms`;
   if (e.type === 'net.request' && d.kind === 'upload') return `upload · ${d.endpoint} · ${d.url} · ${d.error ?? d.status} · ${d.ms ?? '?'} ms`;
+  // A deletion of a turn the provider kept (G2).
+  if (e.type === 'net.request' && d.kind === 'forget') return `kept turn ${d.outcome === 'ok' ? 'deleted' : 'not deleted yet'} · ${d.endpoint} · ${d.status || 'no answer'} · ${d.ms ?? '?'} ms`;
   if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
   if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
   if (e.type === 'location') return `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
@@ -144,7 +146,9 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'net.request') {
     // Each clip's format and size (spec §10.6).
     const clips = d.format ? ` · ${d.format}, ${bytes(d.bytes ?? 0)}` : d.audio?.length ? ` · audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${bytes(a.bytes)}`).join('; ')}` : '';
-    return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms${clips}`;
+    // How much a model request sent, and whether it went after a turn the provider kept, so sent only what was new (G2).
+    const sent = !d.format && d.bytes ? ` · ${bytes(d.bytes)} sent${d.kept ? ', after a kept turn' : ''}` : '';
+    return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms${clips}${sent}`;
   }
   if (e.type === 'pack.download') {
     return [`${d.files ?? 0} files`, bytes(d.bytes ?? 0), `${d.guides ?? 0} guide${d.guides === 1 ? '' : 's'}`, d.failed ? `${d.failed} failed` : null,
