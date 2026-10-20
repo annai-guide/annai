@@ -47,10 +47,12 @@ export function toolSchema(t) {
  * user_input. An assistant message keeps its order: thoughts this model signed, its words, its
  * calls with their signatures, and its own server-tool steps. The now block goes last, in the final
  * user_input, or in one of its own after tool results. A user message Google's safety filter blocked
- * (leave) is left out: its tool results say so, and the rest of it goes nowhere.
- * @param {any[]} messages @param {{ model: string, tail?: string, leave?: (m: any) => boolean }} o @returns {Step[]}
+ * (leave) is left out: its tool results say so, and the rest of it goes nowhere. from: the first message
+ * to send, after a turn Google keeps (the steps before it are on its side); the steps are worked out on
+ * the whole conversation all the same, so a result is named by its call and the current turn is Gemini's.
+ * @param {any[]} messages @param {{ model: string, tail?: string, leave?: (m: any) => boolean, from?: number }} o @returns {Step[]}
  */
-export function toInput(messages, { model, tail, leave }) {
+export function toInput(messages, { model, tail, leave, from = 0 }) {
   /** @type {Map<string, string>} */
   const names = new Map();
   for (const m of messages) for (const p of m.parts) if (p.type === 'tool_call') names.set(p.id, p.name);
@@ -58,7 +60,9 @@ export function toInput(messages, { model, tail, leave }) {
   const steps = [];
   /** @type {Step[][]} each assistant message's calls */
   const replies = [];
-  for (const m of messages) {
+  let first = 0;
+  for (const [i, m] of messages.entries()) {
+    if (i === from) first = steps.length;
     if (m.role !== 'assistant') {
       steps.push(...userSteps(m.parts, names, leave?.(m) ?? false));
       continue;
@@ -79,7 +83,7 @@ export function toInput(messages, { model, tail, leave }) {
   for (const calls of replies) {
     if (calls.length && !calls.some((c) => c.signature) && steps.indexOf(calls[0]) > start) for (const c of calls) c.signature = STAND_IN_SIGNATURE;
   }
-  return steps;
+  return from > 0 ? steps.slice(first) : steps;
 }
 
 /** @param {any[]} parts @param {Map<string, string>} names @param {boolean} left Google blocked it @returns {Step[]} */

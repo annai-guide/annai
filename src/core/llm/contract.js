@@ -46,13 +46,16 @@
  *   | { type: 'provider', block: any }
  *   | { type: 'citation', url: string, title?: string }
  *   | { type: 'stop', reason: StopReason }
- *   | { type: 'restart' }} StreamEvent
+ *   | { type: 'restart' }
+ *   | { type: 'kept', id: string }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
- *   model or the same one; what streamed before is void (only callRole sends it).
+ *   model or the same one; what streamed before is void (only callRole sends it). kept: the provider keeps this turn under id, as the call
+ *   asked (CallSpec.keep), for annai to continue or delete (G2); annai reads it, and passes it on to no one.
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
- *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect'} ErrorKind
- *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one; redirect: see noRedirect
+ *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect' | 'forgotten'} ErrorKind
+ *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one; redirect: see noRedirect;
+ *   forgotten: the provider no longer has the kept turn a call continued (G2); for a call that continued none, annai reads it as not-found
  */
 
 /** What the user is told, by kind of error (spec §9.9). */
@@ -74,6 +77,7 @@ const PLAIN = Object.freeze({
   cancelled: 'Stopped.',
   plugin: "The plugin for this model's protocol failed.",
   'type-missing': "This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.",
+  forgotten: 'The provider no longer has the earlier turns; annai sends the conversation whole.',
 });
 
 /** Every error kind, for checking one a plugin gives. */
@@ -241,6 +245,8 @@ export function safeId(id) {
  * @property {Record<string, any>} tunables  the endpoint's tunables with the model's over them
  * @property {Request} request
  * @property {AbortSignal} [signal]
+ * @property {boolean} [keep]  the provider keeps this turn on its side (a conversation's own turn, its ability's keep switch on; G2)
+ * @property {{ id: string, from: number } | null} [kept]  the kept turn this one continues: send only request.messages.slice(from), after id
  * @typedef {{ providerId: string, name?: string, contextWindow?: number, maxOutput?: number, input?: string[], tools?: boolean,
  *   prices?: import('./cost.js').Prices, reasoning?: Record<string, any> }} ListedModel  reasoning: its level map (spec §9.3)
  * @typedef {{ endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null, tunables: Record<string, any> }} SpeechSpec
@@ -264,6 +270,10 @@ export function safeId(id) {
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]
  *   a photo upload to the provider's files API (spec §4.8)
  * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
+ * @property {true | string} [keeps]  it can keep a conversation's turns on the provider's side (G2): with keep, build stores the turn and read
+ *   names it ({ type: 'kept', id }); with kept, build continues that turn. A string names who keeps them, in the switch's words ("Google")
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string>, method: 'DELETE' }} [forgetRequest]
+ *   the provider's delete call for one kept turn: annai counts a 200 or 404 as done
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
  * @property {'in' | 'out'} [speech]  a speech type (spec §9.1, §10): 'in' transcribes speech, 'out' is a voice
  * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string } }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]

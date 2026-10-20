@@ -50,15 +50,15 @@
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.1.0",
-      "description": "Talks to Gemini's own API (Interactions) for chat: every audio format, Gemini 3's thought signatures carried exactly, and its usage with cached and thinking tokens.",
+      "version": "0.2.0",
+      "description": "Talks to Gemini's own API (Interactions) for chat: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, and Google keeping the conversation between turns, so each sends only what is new.",
       "category": "developer",
       "keywords": [],
       "abilities": [],
       "free": false,
       "local": false,
       "code": true,
-      "size": 31028,
+      "size": 33042,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -66,12 +66,12 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "0ed67bc7dd5107d677af69186ed82f02b66925b4046e3f70c54d0c0d1ed7e855",
+        "annai-plugin.json": "8fe937e94e97a6060becf1aa8eaa8b4d802b177d427a9fd4d8a0c4572789a478",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
-        "chat.js": "03bf0676e468af38ef99eb6ef827f1ebf3184271d0965f76bef5b38199c8969e",
+        "chat.js": "246f648d7cf882a911daf1624fd6f3d1f4f3276f25db3bf694473f490e903eb6",
         "index.js": "5c2f000f15ffc7b9564921b3566810f7dec6dbbf583c3d443ed55a2384d88f07",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
-        "steps.js": "e8c38a8d0efe5502463a5aeffe681aea52e79e24d3572d8791c85cc19067d291"
+        "steps.js": "338b923af14d3b8517b4552e5bbc9edce3e9e8d7fc6a583ff989170fbaa2dfe0"
       }
     },
     {

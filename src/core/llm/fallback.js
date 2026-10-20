@@ -5,6 +5,7 @@ import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_RO
 import { ROLE_LEVELS } from './reasoning.js';
 import { adjusted } from './setup.js';
 import { formatRefused } from '../voice/formats.js';
+import { SYS } from '../scopes.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -151,6 +152,7 @@ function nextStep(err, retry) {
     case 'context':
     case 'image':
     case 'upload':
+    case 'forgotten':
     case 'bad-request':
       return {};
     default:
@@ -178,13 +180,16 @@ const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
- *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[] }} c
+ *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
+ *   kept?: import('./kept.js').Kept, scope?: string }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
  *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
  *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
+ *   kept: turns kept on the provider's side (G2). Only a conversation's own turn is kept, Main's or Koe's, its parts kept to rebuild it
+ *   (record.keepParts): never a one-off call. scope: the conversation's
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -198,6 +203,8 @@ export async function callRole(c) {
   /** @type {number | undefined} */
   let cost;
   const { keepParts, ...meta } = c.record ?? {};
+  // A conversation's own turn, kept on the provider's side where its ability can (decision 9 of the Gemini plan).
+  const keeps = c.kept && keepParts && (role === 'main' || role === KOE_ROLE) ? c.kept : null;
   // A plugin's call is its own in the trace too, so its hooks don't get the requests it caused (fix pass 8b-1).
   const trace = c.trace && typeof meta.tag === 'string' && meta.tag.startsWith('plugin:')
     ? { ...c.trace, request: (/** @type {any} */ i) => /** @type {any} */ (c.trace).request({ ...i, tag: meta.tag }) } : c.trace;
@@ -238,6 +245,7 @@ export async function callRole(c) {
     let repairs = 0;
     let uploadRetries = 0;
     let plain = false;
+    let whole = false;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
       let sendable = request;
@@ -255,7 +263,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads,
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
@@ -276,6 +284,11 @@ export async function callRole(c) {
           said += err.partial;
           request = continueAfter(c.request, said);
           break;
+        }
+        if (err.kind === 'forgotten' && !whole) {
+          // The provider no longer has the kept turn this continued: the same model again, whole, once.
+          whole = true;
+          continue;
         }
         if (err.kind === 'upload' && c.uploads && uploadRetries < 1) {
           // An expired or unknown upload (spec §9.9): upload again, once.

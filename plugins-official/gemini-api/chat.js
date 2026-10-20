@@ -6,12 +6,15 @@ import { blockedMessages } from './blocked.js';
  * The `gemini` chat type: annai's request as one Interactions request (`POST /v1beta/interactions`),
  * the key in `x-goog-api-key`, never in the address; the streamed steps read back as annai's events.
  * A thought comes back as reasoning with its signature, a call with its own signature as its extra:
- * both go back unchanged, and only to the model that wrote them (steps.js). Nothing is kept on
- * Google's side (`store: false`): the whole conversation goes each time.
+ * both go back unchanged, and only to the model that wrote them (steps.js). A conversation's own turn
+ * is kept on Google's side when annai asks (`store`), and the next one then sends only what is new after
+ * it (`previous_interaction_id`): annai keeps the record of which (the Gemini design, "Kept on Google's side").
  */
 export const TUNABLES = Object.freeze({
   uploads: true, // photos go to Gemini's Files API once, then by their address (spec §4.8); Gemini deletes them after 48 hours
   audioIn: Object.freeze(['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav']), // Gemini takes every format annai makes (spec §10.6)
+  keep: true, // Google keeps the conversation between turns, so each sends only what is new
+  keepDays: 55, // how long Google keeps a turn on a paid key (a free one's: a day); lower it to match AI Studio's setting
 });
 /** An interaction's status at its end, as a stop reason. @type {Record<string, string>} */
 const STOP = { completed: 'end', requires_action: 'tool', incomplete: 'length', budget_exceeded: 'length' };
@@ -39,10 +42,11 @@ export function chatType(annai) {
     name: 'Gemini API',
     tunables: TUNABLES,
     tail: true,
+    keeps: 'Google',
     /** @param {any} c */
     build: (c) => build(c, (m) => blocked.has(m)),
     /** @param {Response} res @param {any} c */
-    read: (res, c) => read(res, { sse, ProviderError, left: () => blocked.add(c?.request?.messages ?? []) }),
+    read: (res, c) => read(res, { sse, ProviderError, left: () => blocked.add(c?.request?.messages ?? []), keep: c?.keep === true }),
     classify,
     retryAfter,
     /**
@@ -53,6 +57,8 @@ export function chatType(annai) {
       const e = errorOf(body);
       return isBlock(e) ? refusalText(e, blocked.add(c?.request?.messages ?? [])) : null;
     },
+    /** Google's delete call for one kept interaction (measured: 200, and 200 again once it's gone). @param {{ endpoint: any, key: string | null, id: string }} c */
+    forgetRequest: ({ endpoint, key, id }) => ({ url: join(endpoint.baseUrl, `/v1beta/interactions/${encodeURIComponent(id)}`), headers: auth(endpoint, key), method: /** @type {const} */ ('DELETE') }),
     /** @param {{ endpoint: any, key: string | null }} c */
     listRequest: ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, '/v1beta/models?pageSize=1000'), headers: auth(endpoint, key) }),
     readList,
@@ -71,8 +77,11 @@ export function chatType(annai) {
   };
 }
 
-/** @param {any} c @param {(m: any) => boolean} leave a user message Google blocked */
-function build({ endpoint, model, key, request }, leave) {
+/**
+ * @param {any} c keep: Google keeps this turn; kept: the turn it continues, and the first message after it
+ * @param {(m: any) => boolean} leave a user message Google blocked
+ */
+function build({ endpoint, model, key, request, keep, kept }, leave) {
   /** @type {Record<string, any>} */
   const config = {};
   const max = request.maxOutput ?? model.maxOutput;
@@ -82,11 +91,12 @@ function build({ endpoint, model, key, request }, leave) {
   if (request.toolChoice) config.tool_choice = { allowed_tools: { mode: 'any', tools: [request.toolChoice] } };
   // An id from the OpenAI-compatible endpoint's list, before provider-gemini 2.0, is "models/<id>".
   /** @type {Record<string, any>} */
-  const body = { model: String(model.providerId).replace(/^models\//, ''), store: false, stream: true };
+  const body = { model: String(model.providerId).replace(/^models\//, ''), store: keep === true, stream: true };
   if (request.system) body.system_instruction = request.system;
   if (request.tools?.length) body.tools = request.tools.map(toolSchema);
   body.generation_config = config;
-  body.input = toInput(request.messages, { model: model.providerId, tail: request.tail, leave });
+  if (kept) body.previous_interaction_id = kept.id;
+  body.input = toInput(request.messages, { model: model.providerId, tail: request.tail, leave, from: kept?.from ?? 0 });
   return { url: join(endpoint.baseUrl, '/v1beta/interactions'), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body };
 }
 
@@ -127,6 +137,8 @@ export function classify(status, body) {
   const e = errorOf(body) ?? {};
   const message = String(e.message ?? body);
   if (status === 429) return 'rate';
+  // A kept turn Google no longer has (measured: continuing a deleted one); annai reads it so only for a call that continued one.
+  if (status === 404 && /requested entity was not found/i.test(message) && /not_found/i.test(String(e.code ?? e.status ?? ''))) return 'forgotten';
   if (status === 503) return 'overloaded';
   if (/api key not valid|api_key_invalid/i.test(message)) return 'auth';
   const kind = codeKind(e.status ?? e.code, message);
@@ -281,8 +293,9 @@ class Steps {
 /**
  * The events of a streamed interaction, or of a whole one from a server that ignores stream: only
  * application/json, and only when it isn't a stream after all.
- * @param {Response} res @param {{ sse: any, ProviderError: any, left: () => boolean }} h left: leaves the request's
- *   last user message out from now on, after a safety block (blocked.js); false when it has none
+ * @param {Response} res @param {{ sse: any, ProviderError: any, left: () => boolean, keep: boolean }} h left: leaves the request's
+ *   last user message out from now on, after a safety block (blocked.js); false when it has none. keep: Google keeps
+ *   this turn, so its interaction is named first, as a `kept` event
  */
 async function* read(res, h) {
   let body = res.body;
@@ -313,7 +326,8 @@ async function* read(res, h) {
       continue;
     }
     const type = e.event_type ?? event;
-    if (type === 'step.start') yield* steps.start(e.index, e.step ?? {});
+    if (type === 'interaction.created' && h.keep && e.interaction?.id) yield { type: 'kept', id: String(e.interaction.id) };
+    else if (type === 'step.start') yield* steps.start(e.index, e.step ?? {});
     else if (type === 'step.delta') yield* steps.delta(e.index, e.delta);
     else if (type === 'step.stop') yield* steps.stop(e.index);
     else if (type === 'error') {
@@ -366,6 +380,7 @@ function* readWhole(text, h) {
     return;
   }
   if (!isObject(r) || (!Array.isArray(r.steps) && r.status !== 'failed')) throw new h.ProviderError('server', 'Gemini answered with a whole reply that had no answer in it.');
+  if (h.keep && typeof r.id === 'string' && r.id) yield { type: 'kept', id: r.id };
   const steps = new Steps();
   for (const [i, step] of (r.steps ?? []).entries()) {
     if (!isObject(step)) continue;

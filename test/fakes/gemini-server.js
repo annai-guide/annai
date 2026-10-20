@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs';
  * from Google on 2026-10-19 (test/fixtures/gemini): the model list, interactions streamed as `event:`/`data:`
  * steps or whole as JSON (as the request's `stream` says), an interaction deleted, and a photo uploaded to the
  * Files API. It records each request's address, headers and body, so a test can check where the key went.
+ * An interaction asked to be stored is kept until it is deleted (or expire() says Google deleted it): a request
+ * that continues one it doesn't have is answered with Google's 404, as recorded.
  * Tests and the end-to-end suite run it on 127.0.0.1, on a port of its own (port 0), with CORS for any page.
  * @typedef {{ text?: string, thought?: { summary?: string, signature: string }, calls?: { name: string, input: any, signature?: string }[],
  *   usage?: Record<string, any>, status?: string, error?: { status: number, body: any } }} Reply
@@ -21,6 +23,8 @@ export async function startGeminiServer({ key, replies = [], models } = {}) {
   const seen = [];
   /** @type {string[]} */
   const deleted = [];
+  /** @type {Set<string>} the interactions it keeps */
+  const stored = new Set();
   let n = 0;
   const server = http.createServer((req, res) => {
     const cors = {
@@ -47,18 +51,22 @@ export async function startGeminiServer({ key, replies = [], models } = {}) {
       const path = new URL(String(req.url), 'http://localhost').pathname;
       if (req.method === 'GET' && path === '/v1beta/models') return void json(200, list);
       if (req.method === 'DELETE' && path.startsWith('/v1beta/interactions/')) {
-        deleted.push(decodeURIComponent(path.slice('/v1beta/interactions/'.length)));
-        return void json(200, {});
+        const id = decodeURIComponent(path.slice('/v1beta/interactions/'.length));
+        deleted.push(id);
+        stored.delete(id);
+        return void json(200, {}); // 200 again for one already gone, as Google answers
       }
       if (req.method === 'POST' && path === '/upload/v1beta/files') {
         const id = `stand-in-${++n}`;
         return void json(200, { file: { name: `files/${id}`, uri: `http://${req.headers.host}/v1beta/files/${id}`, mimeType: 'image/png', expirationTime: new Date(Date.now() + 48 * 3600_000).toISOString(), state: 'ACTIVE' } });
       }
       if (req.method !== 'POST' || path !== '/v1beta/interactions') return void json(404, { error: { message: 'Requested entity was not found.', code: 'not_found' } });
+      if (body?.previous_interaction_id && !stored.has(body.previous_interaction_id)) return void json(404, { error: { message: 'Requested entity was not found.', code: 'not_found' } });
       const pick = replies.length ? replies[Math.min(seen.filter((s) => s.url === req.url && s.method === 'POST').length - 1, replies.length - 1)] : answer;
       const reply = typeof pick === 'function' ? pick(body) : pick;
       if (reply.error) return void json(reply.error.status, reply.error.body);
       const id = `v1_stand-in-${++n}`;
+      if (body?.store) stored.add(id);
       if (body?.stream) {
         res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' });
         for (const e of events(id, body.model, reply)) res.write(`event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`);
@@ -76,6 +84,10 @@ export async function startGeminiServer({ key, replies = [], models } = {}) {
     /** The interactions' bodies, in order. */
     bodies: () => seen.filter((s) => s.method === 'POST' && s.url.startsWith('/v1beta/interactions')).map((s) => s.body),
     deleted: () => deleted.slice(),
+    /** The interactions it keeps now. */
+    stored: () => [...stored],
+    /** Google deleted it by itself (it expired). @param {string} id */
+    expire: (id) => { stored.delete(id); },
     close: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve(undefined)); }),
   };
 }

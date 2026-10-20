@@ -65,14 +65,21 @@ export function enabledProviderTools(model, request) {
 }
 
 /**
+ * How a conversation's own turn is kept on the provider's side (G2): kept, the turns remembered; scope, the conversation's;
+ * chain false sends it whole all the same (the provider forgot the turn it continued).
+ * @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean }} Keep
+ */
+
+/**
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
- *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads }} c
+ *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep }} c
  *   firstOutputMs: how long to wait for the first output, and then between pieces of output
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
+ *   keep: the turn is kept on the provider's side where its type can and its ability's keep switch is on, and continues one kept
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads }) {
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep }) {
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -83,6 +90,17 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const req = sent.cacheTtl ? { ...sent, cacheTtl: ttlFor(model, sent.cacheTtl) } : sent;
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
+  // Kept on the provider's side (G2): a free key's turns for a day, else the ability's keepDays.
+  const keeping = keep && type.keeps && spec.tunables.keep !== false ? keep : null;
+  const days = endpoint.free ? 1 : Number(spec.tunables.keepDays) > 0 ? Number(spec.tunables.keepDays) : 1;
+  if (keeping) {
+    spec.keep = true;
+    // A record that can't be read is a whole send.
+    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { free: Boolean(endpoint.free), keepDays: days, scope: keeping.scope }).catch(() => null) : null;
+  }
+  /** @type {string | null} the turn the provider kept */
+  let keptId = null;
+  let bytes = 0;
   const started = now();
   const timer = new AbortController();
   const late = () => timer.abort(new DOMException('No output in time.', 'TimeoutError'));
@@ -104,6 +122,11 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   let url = `${type.type}:`;
   /** @param {StreamEvent} ev */
   const take = (ev) => {
+    if (ev.type === 'kept') {
+      // Not output: the provider named the turn it keeps. Only annai reads it.
+      if (keeping) keptId = ev.id;
+      return;
+    }
     clearTimeout(t);
     t = setTimeout(late, firstOutputMs);
     if (firstMs === null && ev.type !== 'usage') firstMs = now() - started;
@@ -131,7 +154,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   };
   // Heard speech sent as audio: each clip's format and size (spec §10.6).
   const audio = request.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'audio' ? [{ format: formatOf(p.mediaType) ?? p.mediaType, bytes: Math.floor((p.data.length * 3) / 4) - (p.data.match(/=*$/)?.[0].length ?? 0) }] : [])));
-  const info = () => ({ endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url, status, ms: now() - started, firstMs, usage, ...(audio.length ? { audio } : {}) });
+  const info = () => ({
+    endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url, status, ms: now() - started, firstMs, usage, ...(audio.length ? { audio } : {}),
+    ...(spec.kept ? { kept: { from: spec.kept.from } } : {}), ...(bytes ? { bytes } : {}),
+  });
   try {
     if (type.run) {
       for await (const ev of untilAborted(type.run({ ...spec, signal: linked }), linked)) take(ev);
@@ -141,8 +167,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       sameOrigin(endpoint, built.url); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
+      const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request).map((t) => t.patch)));
+      bytes = body.length; // in the trace: how much a kept turn saves
       try {
-        res = await get(built.url, { method: 'POST', headers: built.headers, body: JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request).map((t) => t.patch))), signal: linked, redirect: 'manual' });
+        res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });
       } catch (e) {
         throw cannotConnect(e, linked);
       }
@@ -163,10 +191,22 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     clearTimeout(t);
     const err = asProviderError(e, linked, type, registry);
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
+    // A turn the provider kept for a call that failed is deleted (spec §4.9); one it forgot goes with its chain. Forgotten
+    // means something only when the call continued a kept turn: else the provider doesn't know the model or address.
+    if (keeping && keptId) await keeping.kept.discard(keptId, endpoint.id, days).catch((x) => console.warn("a kept turn couldn't be queued for deletion", x));
+    if (err.kind === 'forgotten') {
+      if (keeping && spec.kept) await keeping.kept.forget(spec.kept.id).catch(() => {});
+      else err.kind = 'not-found';
+    }
     await trace?.request({ ...info(), outcome: err.kind, error: err.message });
     throw err;
   }
   clearTimeout(t);
+  if (keeping && keptId) {
+    // The turn the provider kept, to continue next time: fingerprints of what was sent, never what was.
+    await keeping.kept.record({ id: keptId, endpoint: endpoint.id, model: model.providerId, scope: keeping.scope, messages: spec.request.messages, reply: { role: 'assistant', parts }, days, ...(spec.kept ? { after: spec.kept.id } : {}) })
+      .catch((x) => console.warn("a kept turn couldn't be recorded", x));
+  }
   const cost = endpoint.free ? 0 : costOf(usage, model.prices, model.providerTools); // a free-tier key costs nothing
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
   return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}) };
