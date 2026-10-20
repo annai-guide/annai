@@ -93,6 +93,8 @@ export class Voice {
       synthesize: (entry, text, signal) => this.#clip(entry.id, text, signal),
       platform: () => this.platform,
       now: () => this.now(),
+      // A stream the page couldn't play (an iPhone's audio suspended): whole clips until a tap unlocks sound again.
+      onBlocked: () => { this.#unlocked = false; },
       bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
       browserOptions: async () => {
         const s = voiceSettings(await readAppSettings(this.ws));
