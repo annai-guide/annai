@@ -266,11 +266,12 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
     };
     const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
     const id = await llm.addProvider('provider-gemini', { key: GKEY, abilities: { live: { on: false, baseUrl: s.origin } } });
-    assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['gemini-api', 'gemini-live', 'provider-gemini'], 'what it requires, all or nothing');
+    assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['gemini-api', 'provider-gemini'], 'nothing for live sessions until they are switched on');
     const cfg = await readConfig(k.ws);
     assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
     const liveId = /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'gemini-3.8-live')?.id);
     await llm.setAbility(id, 'live', true);
+    assert.ok((await k.host.installed())['gemini-live'], 'switching it on installs its protocol');
     /** @type {number[]} */
     const heard = [];
     const r = await llm.test(liveId, { onAudio: (/** @type {Uint8Array} */ d, /** @type {any} */ f) => heard.push(d.length, f.rate) });
@@ -302,7 +303,7 @@ test('provider-gemini 2.0.0: Gemini through its own API (gemini-api), its chat m
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
   assert.equal(m.version, '2.0.0');
-  assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }, { id: 'gemini-live', version: '^0' }], 'not chat-completions');
+  assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', true, 'https://aistudio.google.com/apikey']);
   const chat = /** @type {any} */ (d.abilities.chat);
@@ -348,6 +349,23 @@ test("the move-over from provider-gemini 1.x: the chat ability's type becomes ge
   await setKey(k.store, id, null);
 });
 
+test('Gemini can be added while the user has Gemini Live turned off: it requires only gemini-api, and Live stays off', async () => {
+  const k = await hostKit();
+  const fetch = async (/** @type {any} */ url) => {
+    try {
+      return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+  await llm.ensureType('gemini-live');
+  await k.host.setEnabled('gemini-live', false);
+  const id = await llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  assert.ok((await readConfig(k.ws)).providers[id]);
+  assert.equal((await k.host.installed())['gemini-live'].enabled, false, 'still off, as the user left it');
+});
+
 test('"Use the recommended models" switches on every ability whose models it names: Live, installing its protocol, then fills the roles; adding the provider alone leaves Koe empty', async () => {
   const k = await hostKit();
   const fetch = async (/** @type {any} */ url) => {
@@ -364,7 +382,7 @@ test('"Use the recommended models" switches on every ability whose models it nam
   assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
   assert.deepEqual(cfg.roles.main.models, ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'].map(byId));
   assert.equal(providerOf(cfg.providers[id]).abilities.live.on, false);
-  await k.host.uninstall('gemini-live'); // as on a phone where it was never installed
+  assert.equal((await k.host.installed())['gemini-live'], undefined);
   await llm.useSuggestion(id, 'recommended');
   const after = await readConfig(k.ws);
   assert.equal(providerOf(after.providers[id]).abilities.live.on, true);
