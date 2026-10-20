@@ -92,7 +92,7 @@ function build({ endpoint, model, key, request }, leave) {
 
 /** Google's error codes, as kinds. @type {Record<string, string>} */
 const CODES = {
-  too_many_requests: 'rate', resource_exhausted: 'rate', unavailable: 'overloaded', overloaded: 'overloaded',
+  too_many_requests: 'rate', resource_exhausted: 'rate', unavailable: 'overloaded', service_unavailable: 'overloaded', overloaded: 'overloaded',
   unauthenticated: 'auth', permission_denied: 'auth', not_found: 'not-found', invalid_request: 'bad-request', invalid_argument: 'bad-request',
   internal: 'server', gateway_timeout: 'server', deadline_exceeded: 'server',
 };

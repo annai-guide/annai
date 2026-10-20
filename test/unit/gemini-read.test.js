@@ -82,6 +82,8 @@ test('read: an error event throws a ProviderError of its kind', async () => {
     { event_type: 'error', error: { code: 'gateway_timeout', message: 'The server took too long.' } },
   ])), (/** @type {any} */ e) => e.name === 'ProviderError' && e.kind === 'server' && /took too long/.test(e.message));
   await assert.rejects(read(stream([{ event_type: 'error', error: { code: 'too_many_requests', message: 'Slow down.' } }])), { kind: 'rate' });
+  // Gemma's 503 said service_unavailable (2026-10-20): busy, so the next model is tried after a short wait.
+  await assert.rejects(read(stream([{ event_type: 'error', error: { code: 'service_unavailable', message: 'gemma-4-31b-it is currently experiencing high demand.' } }])), { kind: 'overloaded' });
   // A stream that ends before the interaction completed was cut off.
   await assert.rejects(read(new Response('event: step.start\ndata: {"index":0,"step":{"type":"model_output"}}\n\n', { headers: { 'content-type': 'text/event-stream' } })), { kind: 'network' });
 });
