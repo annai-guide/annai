@@ -129,5 +129,5 @@ test('stop: status completed → end, requires_action → tool, incomplete → l
 test('a safety block in the stream ends the turn as a refusal with Google\'s reason in words', async () => {
   const blocked = JSON.parse(await fixture('safety-block-400.json')).error;
   const events = await read(stream([{ event_type: 'error', error: blocked }]));
-  assert.deepEqual(events, [{ type: 'text', text: 'Google blocked this reply for safety (harmful content).' }, { type: 'stop', reason: 'refusal' }]);
+  assert.deepEqual(events, [{ type: 'text', text: 'Google blocked this reply for safety (harmful content).' }, { type: 'stop', reason: 'refusal' }], 'no message to leave out, so no word of one');
 });

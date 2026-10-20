@@ -4,16 +4,27 @@ import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
 
-/** The gemini-api plugin's endpoint types, registered the way annai's plugin host would, by type id. @returns {Map<string, any>} */
-export function loadTypes() {
+/**
+ * The gemini-api plugin's endpoint types, registered the way annai's plugin host would, by type id.
+ * @param {{ settings?: { get: () => Promise<any>, set: (changes: any) => Promise<unknown> } }} [o] its own settings (none: nothing kept)
+ * @returns {Map<string, any>}
+ */
+export function loadTypes({ settings } = {}) {
   /** @type {Map<string, any>} */
   const types = new Map();
-  activate({ providers: { register: (/** @type {any} */ t) => { types.set(t.type, { ...t, pluginId: 'gemini-api' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
+  activate({ providers: { register: (/** @type {any} */ t) => { types.set(t.type, { ...t, pluginId: 'gemini-api' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry }, settings });
   return types;
 }
 
-/** The chat type. @returns {any} */
-export const loadGemini = () => loadTypes().get('gemini');
+/** The chat type. @param {Parameters<typeof loadTypes>[0]} [o] @returns {any} */
+export const loadGemini = (o) => loadTypes(o).get('gemini');
+
+/** A plugin's own settings, as annai.settings keeps them (a merge into one file), in memory. */
+export function memorySettings() {
+  /** @type {Record<string, any>} */
+  let saved = {};
+  return { get: async () => structuredClone(saved), set: async (/** @type {Record<string, any>} */ changes) => { saved = { ...saved, ...structuredClone(changes) }; }, saved: () => saved };
+}
 
 export const KEY = 'AIza-stand-in-gemini-key-0123456789';
 /** @param {any} type @param {any} [over] */

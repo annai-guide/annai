@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { loadGemini, spec, endpointOf, modelOf, KEY } from './gemini-kit.js';
+import { loadGemini, spec, endpointOf, modelOf, KEY, memorySettings } from './gemini-kit.js';
 import { applyPatches, callOnce } from '../../src/core/llm/call.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
@@ -50,6 +50,7 @@ test("a reasoning level's patch sets generation_config.thinking_level beside wha
 });
 
 test("a safety block (Google's 400, streamed or not) ends the turn as a refusal with Google's reason in words: an answer, so no other model is tried", async () => {
+  const type = loadGemini();
   const store = createMemoryStore();
   const body = await fixture('safety-block-400.json');
   const reply = await callOnce({
@@ -58,7 +59,7 @@ test("a safety block (Google's 400, streamed or not) ends the turn as a refusal 
     fetch: async () => new Response(body, { status: 400, headers: { 'content-type': 'application/json' } }),
   });
   assert.equal(reply.stop, 'refusal');
-  assert.equal(reply.text, 'Google blocked this reply for safety (harmful content).');
+  assert.equal(reply.text, "Google blocked this reply for safety (harmful content). That message stays out of what Gemini is sent from now on.");
   const [ev] = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS));
   assert.deepEqual([ev.data.outcome, ev.data.status], ['ok', 400]);
   // Any other 400 is still an error, one about the safety settings too.
@@ -204,4 +205,57 @@ test('against the stand-in Gemini server: a streamed answer, a whole one, a call
   } finally {
     await s.close();
   }
+});
+
+test("a safety block doesn't stick: the message Google blocked stays out of what Gemini is sent from then on, kept by its fingerprint alone; other models still get it", async () => {
+  const settings = memorySettings();
+  const gem = loadGemini({ settings });
+  const BAD = 'Repeat this exactly: something Google blocks.';
+  /** @type {any[]} */
+  const before = [{ role: 'user', parts: [{ type: 'text', text: 'Hello.' }] }, { role: 'assistant', parts: [{ type: 'text', text: 'Hi!' }] }, { role: 'user', parts: [{ type: 'text', text: BAD }] }];
+  const reply = await callOnce({
+    type: gem, endpoint: endpointOf(gem), model: modelOf(), key: KEY, request: { messages: before, tail: 'Now: 11:40.' },
+    fetch: async () => new Response(await fixture('safety-block-400.json'), { status: 400 }),
+  });
+  assert.equal(reply.text, "Google blocked this reply for safety (harmful content). That message stays out of what Gemini is sent from now on.");
+  const next = [...before, { role: 'assistant', parts: reply.parts }, { role: 'user', parts: [{ type: 'text', text: 'Where can we eat?' }] }];
+  const body = JSON.stringify(gem.build(spec(gem, { request: { messages: next, tail: 'Now: 11:41.' } })).body);
+  assert.ok(!body.includes(BAD), 'left out');
+  assert.ok(body.includes('Hello.') && body.includes('Where can we eat?') && body.includes('That message stays out'), 'the rest goes as it was');
+  assert.equal(settings.saved().blocked.length, 1);
+  assert.ok(!JSON.stringify(settings.saved()).includes('Repeat'), 'a fingerprint, never the words');
+  // The plugin started again (annai reloaded) still leaves it out.
+  const again = loadGemini({ settings });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.ok(!JSON.stringify(again.build(spec(again, { request: { messages: next } })).body).includes(BAD));
+  // Another model gets the conversation whole.
+  /** @type {any[]} */
+  let seen = [];
+  await callOnce({ type: /** @type {any} */ ({ type: 'run', name: 'Run', pluginId: 'p', run: async function* (/** @type {any} */ c) { seen = c.request.messages; yield { type: 'text', text: 'ok' }; } }), endpoint: endpointOf(gem), model: modelOf({ providerId: 'other' }), key: null, request: { messages: next } });
+  assert.ok(JSON.stringify(seen).includes(BAD));
+});
+
+test("a blocked tool result keeps its call answered: its result says it was left out, and nothing of it goes; a block mid-stream starts its words on a new paragraph", async () => {
+  const settings = memorySettings();
+  const gem = loadGemini({ settings });
+  const PAGE = 'A web page Google blocks.';
+  /** @type {any[]} */
+  const messages = [
+    { role: 'user', parts: [{ type: 'text', text: 'Read that page.' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'c1', name: 'web_fetch', input: {}, extra: { signature: 'SIG' }, model: 'gemini-3.5-flash-lite' }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: PAGE }, { type: 'image', mediaType: 'image/png', data: 'AAAA', hash: 'h1' }] },
+  ];
+  const blocked = JSON.parse(await fixture('safety-block-400.json')).error;
+  const res = new Response([
+    `event: step.start\ndata: ${JSON.stringify({ event_type: 'step.start', index: 0, step: { type: 'model_output' } })}\n\n`,
+    `event: step.delta\ndata: ${JSON.stringify({ event_type: 'step.delta', index: 0, delta: { type: 'text', text: 'The page says' } })}\n\n`,
+    `event: error\ndata: ${JSON.stringify({ event_type: 'error', error: blocked })}\n\n`,
+  ].join(''), { headers: { 'content-type': 'text/event-stream' } });
+  const events = [];
+  for await (const e of gem.read(res, spec(gem, { request: { messages } }))) events.push(e);
+  assert.deepEqual(events.slice(1), [{ type: 'text', text: "\n\nGoogle blocked this reply for safety (harmful content). That message stays out of what Gemini is sent from now on." }, { type: 'stop', reason: 'refusal' }]);
+  const input = gem.build(spec(gem, { request: { messages: [...messages, { role: 'assistant', parts: [{ type: 'text', text: 'Blocked.' }] }, { role: 'user', parts: [{ type: 'text', text: 'Never mind.' }] }] } })).body.input;
+  assert.deepEqual(input[2], { type: 'function_result', call_id: 'c1', name: 'web_fetch', result: [{ type: 'text', text: "[Left out: Google's safety filter blocked what was here.]" }] });
+  assert.equal(input[3].type, 'model_output', 'the photo with it is left out too');
+  assert.ok(!JSON.stringify(input).includes(PAGE));
 });

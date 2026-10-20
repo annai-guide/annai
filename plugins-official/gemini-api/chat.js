@@ -1,5 +1,6 @@
 import { toInput, toolSchema } from './steps.js';
 import { levelsFor } from './levels.js';
+import { blockedMessages } from './blocked.js';
 
 /**
  * The `gemini` chat type: annai's request as one Interactions request (`POST /v1beta/interactions`),
@@ -32,20 +33,25 @@ export function auth(endpoint, key) {
  */
 export function chatType(annai) {
   const { sse, ProviderError } = annai.helpers;
+  const blocked = blockedMessages(annai.settings);
   return {
     type: 'gemini',
     name: 'Gemini API',
     tunables: TUNABLES,
     tail: true,
-    build,
-    /** @param {Response} res */
-    read: (res) => read(res, { sse, ProviderError }),
+    /** @param {any} c */
+    build: (c) => build(c, (m) => blocked.has(m)),
+    /** @param {Response} res @param {any} c */
+    read: (res, c) => read(res, { sse, ProviderError, left: () => blocked.add(c?.request?.messages ?? []) }),
     classify,
     retryAfter,
-    /** A safety block, which Google sends as an error response: an answer that declines, so no other model is tried. @param {number} _status @param {string} body */
-    refusal: (_status, body) => {
+    /**
+     * A safety block, which Google sends as an error response: an answer that declines, so no other model is tried. The
+     * message blocked stays out of what Gemini is sent from then on (blocked.js). @param {number} _status @param {string} body @param {any} [c]
+     */
+    refusal: (_status, body, c) => {
       const e = errorOf(body);
-      return blocked(e) ? refusalText(e) : null;
+      return isBlock(e) ? refusalText(e, blocked.add(c?.request?.messages ?? [])) : null;
     },
     /** @param {{ endpoint: any, key: string | null }} c */
     listRequest: ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, '/v1beta/models?pageSize=1000'), headers: auth(endpoint, key) }),
@@ -62,8 +68,8 @@ export function chatType(annai) {
   };
 }
 
-/** @param {any} c */
-function build({ endpoint, model, key, request }) {
+/** @param {any} c @param {(m: any) => boolean} leave a user message Google blocked */
+function build({ endpoint, model, key, request }, leave) {
   /** @type {Record<string, any>} */
   const config = {};
   const max = request.maxOutput ?? model.maxOutput;
@@ -77,7 +83,7 @@ function build({ endpoint, model, key, request }) {
   if (request.system) body.system_instruction = request.system;
   if (request.tools?.length) body.tools = request.tools.map(toolSchema);
   body.generation_config = config;
-  body.input = toInput(request.messages, { model: model.providerId, tail: request.tail });
+  body.input = toInput(request.messages, { model: model.providerId, tail: request.tail, leave });
   return { url: join(endpoint.baseUrl, '/v1beta/interactions'), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body };
 }
 
@@ -164,14 +170,14 @@ export function readList(json) {
 }
 
 /** Whether an error Google sent is its safety filter's block (measured 2026-10-19: a 400, streamed too). @param {any} e */
-function blocked(e) {
+function isBlock(e) {
   return isObject(e) && /blocked due to safety|prohibited use/i.test(`${e.message ?? ''} ${e.code ?? ''}`);
 }
 
-/** Google's reason for a block, in words. @param {any} e */
-function refusalText(e) {
+/** Google's reason for a block, in words, and that the message stays out from now on. @param {any} e @param {boolean} left */
+function refusalText(e, left) {
   const why = String(e.message ?? '').match(/\(([^)]{1,80})\)/)?.[1];
-  return `Google blocked this reply for safety${why ? ` (${why})` : ''}.`;
+  return `Google blocked this reply for safety${why ? ` (${why})` : ''}.${left ? ' That message stays out of what Gemini is sent from now on.' : ''}`;
 }
 
 /**
@@ -217,20 +223,22 @@ class Steps {
   /** @type {Map<number, any>} */
   #open = new Map();
   called = false;
+  /** Whether any words were given: a block's then start a new paragraph. */
+  said = false;
 
   /** @param {number} index @param {any} step @returns {any[]} */
   start(index, step) {
     const s = { ...step, summary: [], args: '' };
     this.#open.set(index, s);
     if (s.type === 'function_call') return [{ type: 'tool_input', id: String(s.id ?? ''), name: String(s.name ?? ''), partial: '' }];
-    if (s.type === 'model_output') return (Array.isArray(step.content) ? step.content : []).filter((c) => c?.type === 'text' && c.text).map((c) => ({ type: 'text', text: String(c.text) }));
+    if (s.type === 'model_output') return (Array.isArray(step.content) ? step.content : []).filter((c) => c?.type === 'text' && c.text).map((c) => this.#words(c.text));
     return [];
   }
 
   /** @param {number} index @param {any} d @returns {any[]} */
   delta(index, d) {
     const s = this.#open.get(index) ?? this.#open.set(index, { type: d?.type === 'text' ? 'model_output' : '', summary: [], args: '' }).get(index);
-    if (d?.type === 'text') return d.text ? [{ type: 'text', text: String(d.text) }] : [];
+    if (d?.type === 'text') return d.text ? [this.#words(d.text)] : [];
     if (d?.type === 'thought_signature') s.signature = String(d.signature ?? '');
     if (d?.type === 'thought_summary' && d.content?.text) {
       s.summary.push(String(d.content.text));
@@ -241,6 +249,12 @@ class Steps {
       return [{ type: 'tool_input', id: String(s.id ?? ''), name: String(s.name ?? ''), partial: s.args }];
     }
     return [];
+  }
+
+  /** @param {unknown} text */
+  #words(text) {
+    this.said = true;
+    return { type: 'text', text: String(text) };
   }
 
   /** @param {number} index @returns {any[]} */
@@ -262,7 +276,8 @@ class Steps {
 /**
  * The events of a streamed interaction, or of a whole one from a server that ignores stream: only
  * application/json, and only when it isn't a stream after all.
- * @param {Response} res @param {{ sse: any, ProviderError: any }} h
+ * @param {Response} res @param {{ sse: any, ProviderError: any, left: () => boolean }} h left: leaves the request's
+ *   last user message out from now on, after a safety block (blocked.js); false when it has none
  */
 async function* read(res, h) {
   let body = res.body;
@@ -297,34 +312,34 @@ async function* read(res, h) {
     else if (type === 'step.delta') yield* steps.delta(e.index, e.delta);
     else if (type === 'step.stop') yield* steps.stop(e.index);
     else if (type === 'error') {
-      yield* failed(e.error ?? e, h);
+      yield* failed(e.error ?? e, h, steps.said);
       return;
     } else if (type === 'interaction.completed') {
-      yield* end(e.interaction ?? {}, steps.called, h);
+      yield* end(e.interaction ?? {}, steps, h);
       return;
     }
   }
   throw new h.ProviderError('network', 'The reply stopped before it finished.');
 }
 
-/** A safety block as a refusal; any other error as the error it is. @param {any} err @param {any} h */
-function* failed(err, h) {
-  if (blocked(err)) {
-    yield { type: 'text', text: refusalText(err) };
+/** A safety block as a refusal, its words a paragraph of their own; any other error as the error it is. @param {any} err @param {any} h @param {boolean} said */
+function* failed(err, h, said) {
+  if (isBlock(err)) {
+    yield { type: 'text', text: `${said ? '\n\n' : ''}${refusalText(err, h.left())}` };
     yield { type: 'stop', reason: 'refusal' };
     return;
   }
   throw new h.ProviderError(codeKind(err?.code, err?.message) ?? 'server', String(err?.message ?? 'Gemini reported an error.'));
 }
 
-/** Usage and the stop reason of a finished interaction; a failed one is its error. @param {any} it @param {boolean} called @param {any} h */
-function* end(it, called, h) {
+/** Usage and the stop reason of a finished interaction; a failed one is its error. @param {any} it @param {Steps} steps @param {any} h */
+function* end(it, steps, h) {
   if (it.status === 'failed') {
-    yield* failed((Array.isArray(it.errors) ? it.errors[0] : it.error) ?? {}, h);
+    yield* failed((Array.isArray(it.errors) ? it.errors[0] : it.error) ?? {}, h, steps.said);
     return;
   }
   if (isObject(it.usage)) yield { type: 'usage', usage: usageOf(it.usage) };
-  const reason = it.status === 'completed' && called ? 'tool' : STOP[it.status] ?? 'other';
+  const reason = it.status === 'completed' && steps.called ? 'tool' : STOP[it.status] ?? 'other';
   yield { type: 'stop', reason };
 }
 
@@ -342,7 +357,7 @@ function* readWhole(text, h) {
     throw new h.ProviderError('server', "Gemini answered with a whole reply annai can't read, rather than a stream.");
   }
   if (isObject(r?.error) && !Array.isArray(r.steps)) {
-    yield* failed(r.error, h);
+    yield* failed(r.error, h, false);
     return;
   }
   if (!isObject(r) || (!Array.isArray(r.steps) && r.status !== 'failed')) throw new h.ProviderError('server', 'Gemini answered with a whole reply that had no answer in it.');
@@ -358,5 +373,5 @@ function* readWhole(text, h) {
     if (step.type === 'model_output') for (const c of Array.isArray(content) ? content : []) if (c?.type === 'text') yield* steps.delta(i, c);
     yield* steps.stop(i);
   }
-  yield* end(r, steps.called, h);
+  yield* end(r, steps, h);
 }
