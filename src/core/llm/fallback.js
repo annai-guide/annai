@@ -171,6 +171,11 @@ function prefixed(reply, said) {
 
 const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Parts made from heard speech keep its id (G2): as sound or words, the same to a kept turn. @param {Request} was @param {Request} now @returns {Request} */
+const heardIds = (was, now) => (was === now ? now : {
+  ...now, messages: now.messages.map((m, i) => ({ ...m, parts: m.parts.map((p, j) => { const h = was.messages[i]?.parts[j]; return h?.type === 'speech' ? /** @type {any} */ ({ ...p, heard: h.id }) : p; }) })),
+});
+
 /**
  * Calls a role's models in order until one answers (spec §9.6), and records the whole call as
  * one model.turn in the trace.
@@ -252,6 +257,7 @@ export async function callRole(c) {
       if (c.speech) {
         try {
           sendable = await c.speech(model, request, plain, c.signal);
+          if (keeps) sendable = heardIds(request, sendable);
         } catch (e) {
           attempts.push({ model: id, name: model.name, outcome: 'no-speech', ms: 0, error: String(/** @type {any} */ (e)?.message ?? e) });
           break;

@@ -171,8 +171,12 @@ function eraseControls(ctx) {
       go.disabled = true;
       // A live session closes and is forgotten first: its microphone with it (security review).
       ctx.agent?.hush?.('erase');
-      // What providers keep of the conversations is deleted first, while the keys are here, for up to 10 seconds (spec §4.9).
+      // Shiori's turn stops, then what providers keep is deleted, while the keys are here, for up to 10 seconds (spec §4.9).
       status.textContent = 'Erasing…';
+      ctx.agent?.leaving?.();
+      ctx.agent?.interrupt?.();
+      ctx.agent?.stopKokoro?.();
+      await Promise.race([ctx.agent?.idle?.(), new Promise((r) => { setTimeout(r, 3000); })]).catch(() => {});
       await ctx.llm?.forgetAll?.({ timeoutMs: 10_000 }).catch(() => {});
       ctx.store.close();
       await eraseDatabase();

@@ -202,7 +202,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     throw err;
   }
   clearTimeout(t);
-  if (keeping && keptId) {
+  // A refused turn isn't continued (what was refused would be in every later turn's history): it is deleted.
+  if (keeping && keptId && /** @type {StopReason} */ (stop) === 'refusal') await keeping.kept.discard(keptId, endpoint.id, days).catch(() => {});
+  else if (keeping && keptId) {
     // The turn the provider kept, to continue next time: fingerprints of what was sent, never what was.
     await keeping.kept.record({ id: keptId, endpoint: endpoint.id, model: model.providerId, scope: keeping.scope, messages: spec.request.messages, reply: { role: 'assistant', parts }, days, ...(spec.kept ? { after: spec.kept.id } : {}) })
       .catch((x) => console.warn("a kept turn couldn't be recorded", x));

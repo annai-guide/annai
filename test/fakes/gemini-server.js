@@ -10,8 +10,8 @@ import { readFileSync } from 'node:fs';
  * that continues one it doesn't have is answered with Google's 404, as recorded.
  * Tests and the end-to-end suite run it on 127.0.0.1, on a port of its own (port 0), with CORS for any page.
  * @typedef {{ text?: string, thought?: { summary?: string, signature: string }, calls?: { name: string, input: any, signature?: string }[],
- *   usage?: Record<string, any>, status?: string, error?: { status: number, body: any } }} Reply
- *   one answer to an interaction: a thought, words, calls (stop "requires_action"), or an error response
+ *   usage?: Record<string, any>, status?: string, error?: { status: number, body: any }, delayMs?: number }} Reply
+ *   one answer to an interaction: a thought, words, calls (stop "requires_action"), or an error response; delayMs: a pause after the interaction is named
  * @typedef {{ method: string, url: string, headers: Record<string, any>, body: any }} Seen  body: parsed JSON, else the bytes' length
  * @param {{ key?: string, replies?: (Reply | ((body: any) => Reply))[], models?: any }} [o]
  *   key: the only key it takes (else any); replies: given in turn, the last repeats; none: the default answers
@@ -69,8 +69,11 @@ export async function startGeminiServer({ key, replies = [], models } = {}) {
       if (body?.store) stored.add(id);
       if (body?.stream) {
         res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' });
-        for (const e of events(id, body.model, reply)) res.write(`event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`);
-        return void res.end('event: done\ndata: [DONE]\n\n');
+        const [created, ...rest] = events(id, body.model, reply).map((e) => `event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`);
+        res.write(created);
+        return void setTimeout(() => {
+          if (!res.destroyed) res.end(`${rest.join('')}event: done\ndata: [DONE]\n\n`);
+        }, reply.delayMs ?? 0);
       }
       json(200, whole(id, body?.model, reply));
     });
