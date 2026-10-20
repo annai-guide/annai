@@ -92,10 +92,14 @@ test('retryAfter: the wait a 429 asks for in its words, in ms', async () => {
   assert.equal(type.retryAfter('Please retry in 44s or upgrade your tier'), 44000);
   assert.equal(type.retryAfter(await fixture('rate-per-day-429.txt')), 27631000);
   assert.equal(type.retryAfter('retry in 1m2.5s'), 62500);
+  assert.equal(type.retryAfter('Please retry in 500ms.'), 500, "a Go duration's ms is milliseconds, not minutes");
+  assert.equal(type.retryAfter('Please retry in 1.5s.'), 1500);
+  assert.equal(type.retryAfter('retry in 2m500ms'), 120500);
+  assert.equal(type.retryAfter('retry in 3h'), 3 * 3600_000);
   assert.equal(type.retryAfter('Slow down.'), undefined);
 });
 
-test('a 429 carries its wait as retryAfter, and the per-day one says when, in words, as the model rests until then', async () => {
+test('a 429 carries its wait as retryAfter; the per-day one says when, in words, as the model rests until then, and the role falls to the next flash', async () => {
   const body = await fixture('rate-per-day-429.txt');
   await assert.rejects(callOnce({ type, endpoint: endpointOf(type), model: modelOf(), key: KEY, request: { messages: [] }, fetch: async () => new Response(body, { status: 429 }) }),
     { kind: 'rate', retryAfter: 27631000 });
@@ -104,18 +108,31 @@ test('a 429 carries its wait as retryAfter, and the per-day one says when, in wo
   const bench = new Bench();
   const config = /** @type {any} */ ({
     providers: { 'pv-g': { id: 'pv-g', plugin: 'provider-gemini', template: null, user: { name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com', abilities: { chat: { kind: 'chat', type: 'gemini' } } }, created: 0 } },
-    models: { 'm-g': { id: 'm-g', provider: 'pv-g', ability: 'chat', template: null, user: { providerId: 'gemini-3.6-flash' }, created: 0 } },
-    roles: { main: { models: ['m-g'], level: 'off' } },
+    models: {
+      'm-g': { id: 'm-g', provider: 'pv-g', ability: 'chat', template: null, user: { providerId: 'gemini-3.6-flash' }, created: 0 },
+      'm-l': { id: 'm-l', provider: 'pv-g', ability: 'chat', template: null, user: { providerId: 'gemini-3.5-flash-lite' }, created: 0 },
+    },
+    roles: { main: { models: ['m-g', 'm-l'], level: 'off' } },
   });
-  await assert.rejects(callRole({
+  const answer = await fixture('lite-result-chained.sse');
+  /** @type {string[]} */
+  const asked = [];
+  const call = () => callRole({
     role: 'main', config, types: new Map([['gemini', type]]), bench, keyFor: async () => KEY, now: () => now, sleep: async () => {},
-    request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] }, fetch: async () => new Response(body, { status: 429 }),
-  }), (/** @type {any} */ e) => {
-    const end = new Date(now + 27631000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    assert.match(e.attempts[0].error, new RegExp(`its daily limit is used up; it rests until .*${end}`));
-    return true;
+    request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] },
+    fetch: async (_url, init) => {
+      const model = JSON.parse(String(init.body)).model;
+      asked.push(model);
+      return model === 'gemini-3.6-flash' ? new Response(body, { status: 429 }) : new Response(answer, { headers: { 'content-type': 'text/event-stream' } });
+    },
   });
+  const r = await call();
+  assert.equal(r.modelId, 'm-l', "the role falls to the next flash, with a day's quota of its own");
+  const end = new Date(now + 27631000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  assert.match(String(r.attempts[0].error), new RegExp(`its daily limit is used up; it rests until .*${end}`));
   assert.equal(bench.until('m-g'), now + 27631000);
+  await call();
+  assert.deepEqual(asked, ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite'], 'while it rests, the next turn goes straight to the next flash');
 });
 
 test('the model list: chat models with their windows, output limits and thinking levels; speech, live, image and other models left out', async () => {
