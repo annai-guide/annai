@@ -25,6 +25,33 @@ export function priceLine(prices) {
 export const freeTierLabel = (freeTier, pluginName) => `This key is on the free tier (${typeof freeTier === 'string' ? freeTier : pluginName} doesn't charge)`;
 
 /**
+ * What a provider keeps of the conversations (G2), named before a removal or Erase: annai asks for its deletion first,
+ * and what it can't delete (offline) stays until it expires. '' when nothing is kept.
+ * @param {{ turns: number, waiting: number, days: number, who: string[] }} k @param {boolean} online
+ */
+export function keptWords({ turns, waiting, days, who }, online) {
+  const n = turns + waiting;
+  if (!n) return '';
+  const name = who.join(' and ') || 'The provider';
+  const until = `until ${n === 1 ? 'it expires' : 'they expire'}, up to ${days} day${days === 1 ? '' : 's'}`;
+  return online ? `First, annai asks ${name} to delete the ${n} turn${n === 1 ? '' : 's'} of your conversations it keeps; any it can't in 10 seconds, ${name} keeps ${until}.`
+    : `${name} keeps ${n} turn${n === 1 ? '' : 's'} ${until}.`;
+}
+
+/** keptWords as a line that follows the connection while it is shown. @param {any} ctx @param {{ provider?: string }} [o] */
+export function keptLine(ctx, o = {}) {
+  const el = h('p', { class: 'sub' });
+  /** @type {any} */
+  let k = null;
+  const show = () => { if (k) el.textContent = keptWords(k, navigator.onLine !== false); };
+  ctx.llm?.keptCount?.(o).then((/** @type {any} */ x) => { k = x; show(); }, () => {});
+  addEventListener('online', show);
+  addEventListener('offline', show);
+  whenGone(el, () => { removeEventListener('online', show); removeEventListener('offline', show); });
+  return el;
+}
+
+/**
  * One provider (spec §9.2, §9.8): its name, one key, its address and extra headers (saved together,
  * §16.1), then each ability with its switch, its own address, tunables, fields and models, and Remove.
  * Drawn from the provider plugin's description, as data; a plugin with code adds its own panel (decision 15).
@@ -106,6 +133,7 @@ export async function renderProvider(ctx, id) {
     ...await Promise.all(Object.values(p.abilities).map((a) => abilityPanel(view, a.id, (rec.template?.added ?? []).includes(a.id)))),
     h('div', { class: 'panel' },
       h('p', { class: 'sub', text: removes.join(' ') }),
+      keptLine(ctx, { provider: id }),
       h('div', { class: 'acts' }, twoStep('Remove provider', 'Tap again to remove it', async () => {
         try {
           await ctx.llm.removeProvider(id);
@@ -221,6 +249,13 @@ async function abilityBody(view, abilityId) {
   // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable.
   const uploads = type.uploadRequest ? savedCheck('Upload photos to this provider (each expires after 48 hours)', a.tunables?.uploads !== false,
     async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
+  // Where the protocol can, the provider keeps the conversation between turns (G2): a tunable too. Off, what it keeps is deleted.
+  const who = typeof type.keeps === 'string' ? type.keeps : providerOf(rec).name;
+  const keep = type.keeps ? savedCheck(`Let ${who} keep the conversation between turns: sends less each time.`, a.tunables?.keep !== false, async (on) => {
+    tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, keep: on }) })).tunables);
+    if (!on) await ctx.llm.forgetEndpoint(`${id}/${abilityId}`);
+  }) : null;
+  const waiting = keep ? (await ctx.llm.keptCount({ endpoint: `${id}/${abilityId}` })).waiting : 0;
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
   // What to do with a model from before the provider's list gave windows, while there is one.
   const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
@@ -235,8 +270,11 @@ async function abilityBody(view, abilityId) {
     }, (v) => saveAbility({ baseUrl: v }))),
     h('p', { class: 'sub', text: "Empty: the provider's address. Each setting here is saved as you change it." }),
     uploads?.el ?? null,
+    keep?.el ?? null,
+    keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, else up to ${Number(a.tunables?.keepDays) || 1} days, or less if you set it so with ${who} (then lower keepDays here to match). annai deletes them when you remove their trip, this provider or everything (Erase), or turn this off. Off, each turn sends the whole conversation.` }) : null,
+    waiting ? h('p', { class: 'sub', text: `${waiting} deletion${waiting === 1 ? '' : 's'} waiting: annai sends ${waiting === 1 ? 'it' : 'them'} when it can reach ${who}.` }) : null,
     h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => {
-      tunables.show((await saveAbility({ tunables: uploads ? { ...t, uploads: uploads.input.checked } : t })).tunables);
+      tunables.show((await saveAbility({ tunables: { ...t, ...(uploads ? { uploads: uploads.input.checked } : {}), ...(keep ? { keep: keep.input.checked } : {}) } })).tunables);
     })),
     h('div', { class: 'saving' }, extra.el, ...autosave(extra.area, extra.read, async (x) => extra.show((await saveAbility({ extraBody: x })).extraBody))),
     modelsPart(ctx, id, abilityId, models),

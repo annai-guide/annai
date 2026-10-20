@@ -100,7 +100,7 @@ test("a chain holds only while its first turn is there: Google drops a deleted o
   await kept.record(turn({ id: 'v1_b', messages: [m1, r1, tr], reply: r2, after: 'v1_a', days: 1 }));
   clock.t += 3.5 * 3600_000; // the first is 23.5 hours old, within the hour before Google deletes it
   assert.equal(await kept.match('pv-g/chat', [m1, r1, tr, r2, m3], { ...PAID, free: true }), null, 'sent whole: a new chain');
-  assert.deepEqual(await kept.count({ provider: 'pv-g' }), { turns: 2, waiting: 0, until: T0 + 20 * 3600_000 + DAY }, 'both kept until Google deletes them, to be deleted when removed');
+  assert.deepEqual(await kept.count({ provider: 'pv-g' }), { turns: 2, waiting: 0, until: T0 + 20 * 3600_000 + DAY, endpoints: ['pv-g/chat'] }, 'both kept until Google deletes them, to be deleted when removed');
 });
 
 test(`at most ${MAX_TURNS} turns: the oldest chains go whole, each queued for deletion`, async () => {
@@ -169,7 +169,7 @@ test("a conversation's turns are kept, and the next one sends only what is new, 
     const [q1, q2] = await c.requests();
     assert.deepEqual([q1.kept, q2.kept], [undefined, { from: 2 }]);
     assert.deepEqual([q1.bytes, q2.bytes], [JSON.stringify(b1).length, JSON.stringify(b2).length]);
-    assert.deepEqual(await c.kept.count(), { turns: 2, waiting: 0, until: T0 + 55 * DAY });
+    assert.deepEqual(await c.kept.count(), { turns: 2, waiting: 0, until: T0 + 55 * DAY, endpoints: ['pv-g/chat'] });
     // Its third turn continues the second.
     await c.call([m1, said, tr, msg('assistant', ...second.reply.parts), m3]);
     assert.equal(c.s.bodies()[2].previous_interaction_id, 'v1_stand-in-2');
@@ -237,12 +237,12 @@ test("only a conversation's own turns are kept: a utility call, a one-off call i
     await c.call([m1], { role: 'utility' });
     await c.call([m1], { record: { tag: 'fetch' } });
     assert.deepEqual(c.s.bodies().map((b) => b.store), [false, false]);
-    assert.deepEqual(await c.kept.count(), { turns: 0, waiting: 0, until: 0 });
+    assert.deepEqual(await c.kept.count(), { turns: 0, waiting: 0, until: 0, endpoints: [] });
     const off = await callKit([{ text: 'OK' }], { keep: false });
     try {
       await off.call([m1]);
       assert.equal(off.s.bodies()[0].store, false);
-      assert.deepEqual(await off.kept.count(), { turns: 0, waiting: 0, until: 0 });
+      assert.deepEqual(await off.kept.count(), { turns: 0, waiting: 0, until: 0, endpoints: [] });
     } finally {
       await off.s.close();
     }
@@ -274,4 +274,204 @@ test('the Trace says when a call continued a kept turn and how much it sent, and
   assert.equal(traceSummary({ type: 'net.request', data: { model: 'Gemini 3.5 Flash Lite', outcome: 'ok', status: 200, ms: 800, bytes: 24000 } }), 'Gemini 3.5 Flash Lite · ok (200) · 800 ms · 23 KB sent');
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'forget', endpoint: 'Google Gemini', outcome: 'ok', status: 200, ms: 120 } }), 'kept turn deleted · Google Gemini · 200 · 120 ms');
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'forget', endpoint: 'Google Gemini', outcome: 'waiting', status: 0, ms: 3 } }), 'kept turn not deleted yet · Google Gemini · no answer · 3 ms');
+});
+
+// ---- Deletions: a trip, the switch, the provider, Erase (Task 8), through the service with provider-gemini ----
+
+/**
+ * The service with Google Gemini added from annai's own files, at the stand-in's address, its recommended models in the roles,
+ * and two trips. online: false makes every request to the stand-in fail, as with no connection.
+ */
+async function serviceKit() {
+  const { hostKit } = await import('./package-kit.js');
+  const { createLlm } = await import('../../src/core/llm/service.js');
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const s = await startGeminiServer({ key: KEY, replies: [(b) => ({ text: `Answer ${b.input.length}` })] });
+  const k = await hostKit();
+  const root = new URL('../../', import.meta.url);
+  const net = { online: true };
+  /** @type {string[]} what happened, in order: each DELETE, and the key's removal */
+  const order = [];
+  const fetch = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    if (String(url).startsWith(s.url)) {
+      if (!net.online) throw new TypeError('Failed to fetch');
+      if (init?.method === 'DELETE') order.push(`DELETE ${decodeURIComponent(String(url).split('/').pop() ?? '')}`);
+      return globalThis.fetch(url, init);
+    }
+    try {
+      return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+  const id = await llm.addProvider('provider-gemini', { key: KEY, baseUrl: s.url, official: true });
+  const tripA = await createTrip(k.ws, { title: 'Kyoto' });
+  const tripB = await createTrip(k.ws, { title: 'Osaka' });
+  /** A conversation of n turns in a trip, each continuing the one before. @param {string} scope @param {number} n */
+  const talk = async (scope, n) => {
+    /** @type {any[]} */
+    const messages = [];
+    for (let i = 0; i < n; i++) {
+      messages.push(msg('user', text(`${scope}: question ${i}`)));
+      const r = await llm.call({ role: 'main', scope, request: { messages }, record: { keepParts: true } });
+      messages.push(msg('assistant', ...r.reply.parts));
+    }
+  };
+  const keptFile = async () => k.ws.readJSON(SYS_DEVICE, '/llm/kept.json');
+  return { s, ...k, llm, id, tripA, tripB, talk, net, order, keptFile, fetch };
+}
+
+test('removing a trip queues its kept turns\' deletions and runs them: one DELETE per turn of that trip, none of another\'s', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 2);
+    await c.talk(c.tripB, 1);
+    assert.deepEqual(c.s.bodies().map((b) => b.previous_interaction_id), [undefined, 'v1_stand-in-1', undefined], 'each trip its own chain');
+    assert.deepEqual(await c.llm.keptCount({ scope: c.tripA }), { turns: 2, waiting: 0, days: 55, who: ['Google'] });
+    const { removeTrip } = await import('../../src/core/scopes.js');
+    await removeTrip(c.store, c.tripA);
+    assert.deepEqual(await c.llm.forgetScope(c.tripA), { queued: 2 });
+    await c.llm.drainKept();
+    assert.deepEqual(c.s.deleted().sort(), ['v1_stand-in-1', 'v1_stand-in-2']);
+    assert.deepEqual(c.s.stored(), ['v1_stand-in-3'], "Osaka's stays");
+    assert.deepEqual(await c.llm.keptCount(), { turns: 1, waiting: 0, days: 55, who: ['Google'] });
+    // A request is traced as every one is, without the key or the turn's id.
+    const traced = (await c.store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }))).map((e) => e.data).filter((d) => d.kind === 'forget');
+    assert.deepEqual(traced.map((d) => [d.outcome, d.status]), [['ok', 200], ['ok', 200]]);
+    assert.ok(!JSON.stringify(traced).includes('v1_stand-in') && !JSON.stringify(traced).includes(KEY));
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('Review Focus 5: offline, deletions wait, kept across a restart, and run when a connection comes back; a turn whose trip is gone is found at the next drain', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 2);
+    const { removeTrip } = await import('../../src/core/scopes.js');
+    await removeTrip(c.store, c.tripA);
+    c.net.online = false;
+    await c.llm.forgetScope(c.tripA);
+    assert.deepEqual(await c.llm.drainKept(), { done: 0, left: 2 });
+    assert.deepEqual(await c.llm.keptCount({ provider: c.id }), { turns: 0, waiting: 2, days: 55, who: ['Google'] });
+    // annai starts again: the queue is in the file.
+    const again = new Kept({ ws: c.ws });
+    assert.deepEqual(await again.count(), { turns: 0, waiting: 2, until: (await c.keptFile()).forget[1].until, endpoints: [`${c.id}/chat`] });
+    c.net.online = true;
+    assert.deepEqual(await c.llm.drainKept(), { done: 2, left: 0 });
+    assert.equal(c.s.deleted().length, 2);
+    // A call that ended after its trip was removed kept a turn there: the next drain finds it.
+    await c.talk(c.tripB, 1);
+    await removeTrip(c.store, c.tripB);
+    assert.deepEqual(await c.llm.drainKept(), { done: 1, left: 0 });
+    assert.deepEqual(c.s.stored(), []);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('switching keep off queues all of that ability\'s turns and deletes them; switched back on, chains start afresh', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 2);
+    await c.talk(c.tripB, 1);
+    assert.deepEqual(await c.llm.forgetEndpoint(`${c.id}/chat`), { queued: 3 });
+    await c.llm.drainKept();
+    assert.deepEqual(c.s.stored(), []);
+    assert.equal(c.s.deleted().length, 3);
+    // Back on (as the switch saves it): a new chain, sent whole.
+    await c.talk(c.tripA, 1);
+    assert.equal(c.s.bodies().at(-1).previous_interaction_id, undefined);
+    assert.equal(c.s.bodies().at(-1).store, true);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('removing the provider deletes first, while its key is there; offline, what is left is named before (count and days), and goes from this phone with the key', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 2);
+    const { getKey } = await import('../../src/core/llm/config.js');
+    const removeKey = c.store.tx.bind(c.store);
+    // The key's removal joins the order the moment it happens.
+    c.store.tx = /** @type {any} */ (async (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => removeKey(stores, mode, async (/** @type {any} */ t) => {
+      if (stores.includes('secrets') && mode === 'readwrite') {
+        const del = t.deleteSecret.bind(t);
+        t = Object.assign(Object.create(t), { deleteSecret: async (/** @type {string} */ s) => { c.order.push('key removed'); return del(s); } });
+      }
+      return fn(t);
+    }));
+    await c.llm.removeProvider(c.id);
+    assert.deepEqual(c.order.slice(0, 3), ['DELETE v1_stand-in-1', 'DELETE v1_stand-in-2', 'key removed'], 'every DELETE before the key goes (its plugin\'s secrets go after)');
+    assert.equal(c.order.filter((x) => x.startsWith('DELETE')).length, 2);
+    assert.equal(await getKey(c.store, c.id), null);
+    assert.deepEqual(await c.keptFile(), { turns: [], forget: [] });
+
+    const off = await serviceKit();
+    try {
+      await off.talk(off.tripA, 3);
+      off.net.online = false;
+      assert.deepEqual(await off.llm.keptCount({ provider: off.id }), { turns: 3, waiting: 0, days: 55, who: ['Google'] });
+      const { keptWords } = await import('../../src/ui/screens/provider.js');
+      assert.equal(keptWords(await off.llm.keptCount({ provider: off.id }), false), 'Google keeps 3 turns until they expire, up to 55 days.');
+      const started = Date.now();
+      await off.llm.removeProvider(off.id);
+      assert.ok(Date.now() - started < 10_000);
+      assert.deepEqual(await off.keptFile(), { turns: [], forget: [] }, "none of that provider's");
+      assert.deepEqual(off.s.deleted(), []);
+    } finally {
+      await off.s.close();
+    }
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('Erase: forgetAll asks for every deletion first, for up to its time, and says what is left', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 1);
+    await c.talk(c.tripB, 1);
+    assert.deepEqual(await c.llm.forgetAll({ timeoutMs: 10_000 }), { left: 0 });
+    assert.deepEqual(c.s.stored(), []);
+    await c.talk(c.tripA, 1);
+    c.net.online = false;
+    assert.deepEqual(await c.llm.forgetAll({ timeoutMs: 200 }), { left: 1 });
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('keptWords: what Google keeps, named before a removal, online and off', async () => {
+  const { keptWords } = await import('../../src/ui/screens/provider.js');
+  assert.equal(keptWords({ turns: 0, waiting: 0, days: 0, who: [] }, true), '');
+  assert.equal(keptWords({ turns: 2, waiting: 1, days: 55, who: ['Google'] }, true), "First, annai asks Google to delete the 3 turns of your conversations it keeps; any it can't in 10 seconds, Google keeps until they expire, up to 55 days.");
+  assert.equal(keptWords({ turns: 1, waiting: 0, days: 1, who: ['Google'] }, false), 'Google keeps 1 turn until it expires, up to 1 day.');
+});
+
+test('annai starting again sends the deletions that waited, by itself', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 1);
+    c.net.online = false;
+    const { removeTrip } = await import('../../src/core/scopes.js');
+    await removeTrip(c.store, c.tripA);
+    await c.llm.forgetScope(c.tripA);
+    await c.llm.drainKept();
+    assert.deepEqual(c.s.deleted(), []);
+    c.net.online = true;
+    const { createLlm } = await import('../../src/core/llm/service.js');
+    /** @type {(v?: unknown) => void} */
+    let started = () => {};
+    createLlm({ store: c.store, ws: c.ws, plugins: c.host, fetch: c.fetch, ready: new Promise((r) => { started = r; }) });
+    await new Promise((r) => setTimeout(r, 20));
+    assert.deepEqual(c.s.deleted(), [], 'not before its plugins have started');
+    started();
+    for (let i = 0; i < 100 && !c.s.deleted().length; i++) await new Promise((r) => setTimeout(r, 10));
+    assert.deepEqual(c.s.deleted(), ['v1_stand-in-1']);
+  } finally {
+    await c.s.close();
+  }
 });

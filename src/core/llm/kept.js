@@ -198,12 +198,12 @@ export class Kept {
     });
   }
 
-  /** Turns kept and deletions waiting, and when the last expires (ms, 0: none). @param {Which} [o] */
+  /** Turns kept and deletions waiting, when the last expires (ms, 0: none), and their endpoints. @param {Which} [o] */
   count(o = {}) {
     return this.#change((f) => {
       const turns = f.turns.filter((t) => matches(t, o));
       const waiting = o.scope ? [] : f.forget.filter((d) => matches(d, o));
-      return { turns: turns.length, waiting: waiting.length, until: Math.max(0, ...turns.map(expiry), ...waiting.map((d) => d.until)) };
+      return { turns: turns.length, waiting: waiting.length, until: Math.max(0, ...turns.map(expiry), ...waiting.map((d) => d.until)), endpoints: [...new Set([...turns, ...waiting].map((x) => x.endpoint))] };
     });
   }
 

@@ -128,7 +128,7 @@ async function boot() {
   agent.next = async () => (await live.reminders())?.find((r) => r.scope === agent.scope && r.due >= Date.now()) ?? null;
   const awake = keepAwake({ live, ws });
   // Developer → Simulate a trip (spec §13): one at a time, shared by its screen and the live chip.
-  const sim = new SimRun({ store, ws, registry, agent, live });
+  const sim = new SimRun({ store, ws, registry, agent, live, llm });
   // The offline pack (spec §11.5): downloaded when asked, then kept up to date on Wi-Fi; it names places for live mode.
   const pack = new PackKeeper({ store, ws, agent, version: VERSION, connection: () => connectionOf(navigator), visible: () => document.visibilityState === 'visible' });
   live.namers.push((p) => pack.name(p));
@@ -192,6 +192,8 @@ async function boot() {
     closeNotifications(await live.newsArrived()).catch(() => {});
   });
   addEventListener('online', () => { push?.sync().catch(() => {}); });
+  // Deletions of what providers keep of the conversations, waiting for a connection (G2).
+  addEventListener('online', () => { llm.drainKept().catch(() => {}); });
   plugins.connect({ llm, agent, notices: shell.notices });
   agent.on('notice', (n) => shell.notices.card(n));
   tellGps({ live, notices: shell.notices });

@@ -56,7 +56,8 @@ export class SimRun {
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
-   *   agent: import('../agent/loop.js').Agent | import('../agent/halves.js').Halves, live: import('./live.js').Live, base?: import('./clock.js').Clock }} c
+   *   agent: import('../agent/loop.js').Agent | import('../agent/halves.js').Halves, live: import('./live.js').Live, base?: import('./clock.js').Clock,
+   *   llm?: { forgetScope: (scope: string) => Promise<unknown> } }} c llm: what a provider kept of a trip removed here goes too (G2)
    *   base: the clock a timed simulation plays on (the real one; tests pass a manual one)
    */
   constructor(c) {
@@ -254,6 +255,7 @@ export class SimRun {
           }
         } catch (e) {
           await removeTrip(store, id).catch(() => {});
+          await this.c.llm?.forgetScope(id).catch(() => {});
           throw e;
         }
         return id;

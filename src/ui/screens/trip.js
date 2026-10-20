@@ -94,6 +94,8 @@ async function askAndRemove(ctx, id, scope) {
     // Its offline pack's download has ended, its last file written, before the trip goes.
     if (ctx.pack?.running?.scope === id) await ctx.pack.stop();
     const { bytes: freed } = await removeTrip(ctx.store, id);
+    // What a provider keeps of its conversations is deleted too, when a connection allows (G2).
+    await ctx.llm?.forgetScope(id).catch((/** @type {unknown} */ e) => console.warn("a removed trip's kept turns couldn't be queued for deletion", e));
     // Its reminders leave live mode, and so the push relay, at once (spec §4.9); what was heard in it leaves memory.
     await ctx.live?.forget(id);
     ctx.agent?.voice?.memory.forget(id);

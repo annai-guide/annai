@@ -9,6 +9,7 @@ import { storageStatus, requestPersist, platform, isStandalone } from '../platfo
 import { exportPanel } from '../export-panel.js';
 import { openFileButton } from '../open-file.js';
 import { slotEntries } from '../slots.js';
+import { keptLine } from './provider.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -163,12 +164,16 @@ async function copyDiagnostics(ctx) {
 /** @param {any} ctx */
 function eraseControls(ctx) {
   const input = h('input', { id: 'erase-confirm', autocomplete: 'off', autocapitalize: 'characters' });
+  const status = h('p', { class: 'sub', role: 'status' });
   const go = h('button', {
     class: 'btn danger', type: 'button', disabled: true,
     onclick: async () => {
       go.disabled = true;
       // A live session closes and is forgotten first: its microphone with it (security review).
       ctx.agent?.hush?.('erase');
+      // What providers keep of the conversations is deleted first, while the keys are here, for up to 10 seconds (spec §4.9).
+      status.textContent = 'Erasing…';
+      await ctx.llm?.forgetAll?.({ timeoutMs: 10_000 }).catch(() => {});
       ctx.store.close();
       await eraseDatabase();
       try { await caches.delete('annai-inbox'); } catch { /* no caches */ }
@@ -189,8 +194,10 @@ function eraseControls(ctx) {
   input.addEventListener('input', () => { go.disabled = input.value.trim() !== 'ERASE'; });
   return h('div', { class: 'screen' },
     h('p', { class: 'sub', text: 'Deletes every trip, file, setting and key on this device. Export a backup first.' }),
+    keptLine(ctx),
     field('Type ERASE to confirm', input),
-    h('div', { class: 'acts' }, go));
+    h('div', { class: 'acts' }, go),
+    status);
 }
 
 /** Settings pages plugins add (spec §16.4), each with its plugin's name; nothing when there are none. @param {any} ctx */
