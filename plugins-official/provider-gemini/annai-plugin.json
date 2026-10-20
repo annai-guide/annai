@@ -1,9 +1,9 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "api": 1,
-  "description": "Gemini models through Google's own API, and Gemini Live for a voice conversation.",
+  "description": "Gemini models through Google's own API, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
   "requires": [
     {
@@ -152,6 +152,48 @@
           }
         ]
       },
+      "transcription": {
+        "kind": "transcription",
+        "type": "gemini-transcription",
+        "note": "Turns what you say into text, for a model that doesn't take audio. Gemini 3.5 Transcribe is Google's own; Flash Lite writes it down when asked, for less. Their prices are estimates from Google's rates for audio, about 25 tokens a second.",
+        "models": [
+          {
+            "providerId": "gemini-3.5-transcribe",
+            "name": "Gemini 3.5 Transcribe",
+            "prices": {
+              "perMinute": 0.005
+            }
+          },
+          {
+            "providerId": "gemini-3.5-flash-lite",
+            "name": "Gemini 3.5 Flash Lite (transcription)",
+            "prices": {
+              "perMinute": 0.0009
+            }
+          }
+        ]
+      },
+      "voice": {
+        "kind": "voice",
+        "type": "gemini-speech",
+        "note": "Shiori's voice, a sentence at a time, each sentence one request. It streams: she starts about half a second after a sentence is written, and on a weak connection she waits until it won't stutter. Switch streaming off to have each sentence arrive whole, as other voices do. On the free tier Google allows each of these voices only 10 requests a day and 3 a minute (measured 2026-10-20): far fewer than a day of replies, so after the first few sentences the next voice in the list speaks. Prices are estimates per character from Google's rate for audio, 25 tokens a second.",
+        "models": [
+          {
+            "providerId": "gemini-3.8-flash-lite-tts",
+            "name": "Gemini 3.8 Flash Lite TTS (Kore)",
+            "prices": {
+              "perMillionChars": 10
+            }
+          },
+          {
+            "providerId": "gemini-3.8-flash-tts",
+            "name": "Gemini 3.8 Flash TTS (Kore)",
+            "prices": {
+              "perMillionChars": 15
+            }
+          }
+        ]
+      },
       "live": {
         "kind": "realtime",
         "type": "gemini-live",
@@ -211,6 +253,14 @@
         "koe": [
           "gemini-3.8-live",
           "gemini-3.5-flash-lite"
+        ],
+        "speech-in": [
+          "gemini-3.5-transcribe",
+          "gemini-3.5-flash-lite"
+        ],
+        "speech-out": [
+          "gemini-3.8-flash-lite-tts",
+          "gemini-3.8-flash-tts"
         ]
       }
     }

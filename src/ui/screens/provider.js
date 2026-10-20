@@ -1,4 +1,4 @@
-import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave, whenGone } from '../dom.js';
+import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedRadios, autosave, queueSave, whenGone } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
@@ -221,6 +221,10 @@ async function abilityBody(view, abilityId) {
   // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable.
   const uploads = type.uploadRequest ? savedCheck('Upload photos to this provider (each expires after 48 hours)', a.tunables?.uploads !== false,
     async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
+  // Tunables the protocol offers in words (G3): one of its options, or a switch.
+  const tune = (/** @type {string} */ k) => async (/** @type {any} */ v) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, [k]: v }) })).tunables);
+  const choices = Object.entries(type.choices ?? {}).map(([k, c]) => (c.options ? savedRadios(c.label, Object.entries(c.options), String(a.tunables?.[k]), tune(k))
+    : savedCheck(c.label, a.tunables?.[k] !== false, tune(k)).el));
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
   // What to do with a model from before the provider's list gave windows, while there is one.
   const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
@@ -235,6 +239,7 @@ async function abilityBody(view, abilityId) {
     }, (v) => saveAbility({ baseUrl: v }))),
     h('p', { class: 'sub', text: "Empty: the provider's address. Each setting here is saved as you change it." }),
     uploads?.el ?? null,
+    ...choices,
     h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => {
       tunables.show((await saveAbility({ tunables: uploads ? { ...t, uploads: uploads.input.checked } : t })).tunables);
     })),
