@@ -1,4 +1,4 @@
-import { errorFromResponse, sameOrigin, noRedirect } from './contract.js';
+import { typeError, sameOrigin, noRedirect } from './contract.js';
 import { cannotConnect, asProviderError } from './call.js';
 import { speechCost } from './cost.js';
 import { pickOut, formatOf } from '../voice/formats.js';
@@ -58,11 +58,7 @@ export async function speechCall(c) {
     status = res.status;
     noRedirect(res, endpoint);
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      const err = errorFromResponse(res.status, body, res.headers);
-      const sharper = type.classify?.(res.status, body);
-      if (sharper) err.kind = sharper;
-      throw err;
+      throw typeError(type, res.status, await res.text().catch(() => ''), res.headers);
     }
     const out = hearing
       ? { text: String((await /** @type {NonNullable<EndpointType['readTranscript']>} */ (type.readTranscript)(res, spec)).text ?? '').trim() }

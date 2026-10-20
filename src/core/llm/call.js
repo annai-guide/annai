@@ -1,4 +1,4 @@
-import { ProviderError, errorFromResponse, portable, sameOrigin, noRedirect } from './contract.js';
+import { ProviderError, typeError, portable, sameOrigin, noRedirect } from './contract.js';
 import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
@@ -152,12 +152,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
         const text = await res.text().catch(() => '');
         // An error response that is the model declining (Gemini's safety block) is an answer: it ends the turn, as any refusal does.
         const declined = type.refusal?.(res.status, text);
-        if (!declined) {
-          const err = errorFromResponse(res.status, text, res.headers);
-          const sharper = type.classify?.(res.status, text);
-          if (sharper) err.kind = sharper;
-          throw err;
-        }
+        if (!declined) throw typeError(type, res.status, text, res.headers);
         take({ type: 'text', text: declined });
         take({ type: 'stop', reason: 'refusal' });
       } else {
