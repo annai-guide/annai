@@ -9,10 +9,6 @@
     {
       "id": "gemini-api",
       "version": "^0"
-    },
-    {
-      "id": "gemini-live",
-      "version": "^0"
     }
   ],
   "provider": {

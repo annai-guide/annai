@@ -237,20 +237,16 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 6170,
+      "size": 6108,
       "requires": [
         {
           "id": "gemini-api",
-          "version": "^0"
-        },
-        {
-          "id": "gemini-live",
           "version": "^0"
         }
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "1b3c3b24030c43e0b980df7155c32e6aab107dcec9224aee1ed17aaab4a1bfc7"
+        "annai-plugin.json": "84a6e89881ef5655f751afb3b96065cf7ce882f295ab6feeba116af833a93cf3"
       }
     },
     {
