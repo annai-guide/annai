@@ -172,6 +172,7 @@ export function speechType(annai) {
     // voice: one of Google's 30 (Kore, as measured); format: pcm24, full quality, or mulaw8, phone quality; stream: play
     // as it comes, once annai's start rule says it won't stutter (G3), else each sentence whole.
     tunables: { voice: 'Kore', format: 'pcm24', stream: true },
+    // Data a minute of speech, as measured on the wire, streamed (2026-10-20): 239 KB for 3.6 s at full quality, 42 KB for 3.15 s at phone quality.
     choices: {
       format: { label: 'Sound', options: { pcm24: 'Full quality (the most data: about 4 MB a minute of speech)', mulaw8: 'Phone quality, 8 kHz (about 0.8 MB a minute)' } },
       stream: { label: 'Stream her voice, so she starts sooner (off: each sentence arrives whole first)' },

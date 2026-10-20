@@ -350,11 +350,12 @@ test("provider-gemini 2.1.0's transcription and voices (G3): Google's transcript
     ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash Lite (transcription)', { perMinute: 0.0009 }],
   ]);
   assert.deepEqual(say.models.map((/** @type {any} */ x) => [x.providerId, x.name, x.prices]), [
-    ['gemini-3.8-flash-lite-tts', 'Gemini 3.8 Flash Lite TTS (Kore)', { perMillionChars: 10 }],
-    ['gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS (Kore)', { perMillionChars: 15 }],
+    ['gemini-3.8-flash-lite-tts', 'Gemini 3.8 Flash Lite TTS', { perMillionChars: 10 }],
+    ['gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS', { perMillionChars: 15 }],
   ]);
-  assert.match(say.note, /only 10 requests a day and 3 a minute .*far fewer than a day of replies/, "the free tier's limits, too small for a day of replies, in words");
+  assert.match(say.note, /only 10 requests a day and 3 a minute: far fewer than a day of replies/, "the free tier's limits, too small for a day of replies, in words");
   assert.match(say.note, /Switch streaming off/);
+  assert.doesNotMatch(`${say.note} ${hear.note}`, /measured|2026/, 'no dates in what the user reads (fix pass)');
 });
 
 test("the move-over from provider-gemini 1.x: the chat ability's type becomes gemini, the user's models and key stay, and 2.0's models join no role", async () => {

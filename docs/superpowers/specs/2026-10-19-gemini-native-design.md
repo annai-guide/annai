@@ -106,7 +106,7 @@ An official protocol plugin, like chat-completions or openai-responses, register
 - **Prices** (my call, from the builder check):
   - provider-gemini 2.0 lists its recommended models with Google's published paid prices, as the official providers list theirs: chat (gemini-3.5-flash-lite, gemini-3.8-flash), transcription (flash-lite) and voice (gemini-3.8-flash-lite-tts). Fetch model list adds the rest, unpriced, as today.
   - **A free-tier key costs nothing.** The provider page has "This key is on the free tier (Google doesn't charge)". With it on, the provider's calls cost $0 in Spend per day and the Trace. AI Studio's free and paid keys look the same, so the user says which.
-  - **Speech in tokens:** Gemini bills transcription and voices in tokens; core prices transcription per minute and voices per million characters. The plugin's data gives approximate per-minute and per-character prices from Google's token rates (32 audio tokens a second in, and the TTS output rate), noted as approximate. No contract change.
+  - **Speech in tokens:** Gemini bills transcription and voices in tokens; core prices transcription per minute and voices per million characters. The plugin's data gives approximate per-minute and per-character prices from Google's token rates (25 audio tokens a second, in and out: Google's pricing page, and a 0.85 s clip counted 22 tokens and 3.6 s of speech 90, measured 2026-10-20), noted as approximate. No contract change.
 - **`store` and `previous_interaction_id`:** see "Kept on Google's side".
 - **Usage:**
   - `total_input_tokens` → input;
@@ -159,7 +159,7 @@ An official protocol plugin, like chat-completions or openai-responses, register
 - **Each sentence is one request.** The free tier counts requests per minute and per day. The builder finds the TTS models' free limits (the rate-limits page, or a real call) and reports them. If they're too small to speak a day's replies, the provider page says so in words.
 - **Format:** Google sends voices only in two ways.
   - Uncompressed 16-bit PCM at 24 kHz: about 384 kbps, about a third more as base64 inside JSON.
-  - Phone-quality G.711 μ-law / A-law at 16 or 8 kHz: about 128 or 64 kbps.
+  - Phone-quality G.711 μ-law / A-law at 8 kHz: about 64 kbps. Asked for μ-law at 16 kHz, Google sends 8 kHz, streamed and whole (and asked for PCM at 16 kHz, it sends 24 kHz): measured 2026-10-20, so phone quality is 8 kHz only.
 
   annai's format list (`src/core/voice/formats.js`) has no μ-law, and MP3 doesn't exist here. So the plugin carries its own `format` tunable, decodes μ-law to WAV for playback (the decoder is in openai-realtime today: the builder moves it where both can use it), and core's "refused format → MP3, then WAV" retry ends at WAV. Which format is the default: the user's decision (see "Decided with the user").
 
