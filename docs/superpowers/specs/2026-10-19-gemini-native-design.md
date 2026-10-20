@@ -213,7 +213,7 @@ An official protocol plugin, like chat-completions or openai-responses, register
 - Anything the docs leave open, decided from Google's current docs and a real call with the free key, and noted in the report.
 
 ## Decided with the user
-- **The voice's default format: full quality** (24 kHz PCM), the user's choice on 2026-10-19 ("Full quality"). Phone quality at 16 kHz and 8 kHz (μ-law) stay selectable in the voice ability's format on the provider page, named by quality and data in plain words.
+- **The voice's default format: full quality** (24 kHz PCM), the user's choice on 2026-10-19 ("Full quality"). Phone quality at 8 kHz (μ-law) stays selectable in the voice ability's format on the provider page, named by quality and data in plain words. (16 kHz was planned, but asked for it, Google sends 8 kHz μ-law or 24 kHz PCM, measured 2026-10-19, so there's no 16 kHz choice.)
 
 - **Google keeps the conversation between turns, on by default, with a switch to turn it off** (the user, 2026-10-19; see "Kept on Google's side").
 
