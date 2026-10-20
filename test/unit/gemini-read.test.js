@@ -118,6 +118,8 @@ test('usage: thinking counts as output, cached tokens as cache reads, audio and 
   })]));
   assert.deepEqual(events[0], { type: 'usage', usage: { input: 900 - 300, cacheRead: 300, cacheReadAudio: 100, audioIn: 220, image: 280, output: 400, reasoning: 300 } });
   assert.equal(600 + 300 + 100 + 220 + 280, 1500, 'every input token counted once');
+  const tools = await read(stream([completed('completed', { ...usage, total_tool_use_tokens: 7 })]));
+  assert.equal(tools[0].usage.input, 27, "a tool's tokens Google counts apart are input too");
 });
 
 test('stop: status completed → end, requires_action → tool, incomplete → length', async () => {

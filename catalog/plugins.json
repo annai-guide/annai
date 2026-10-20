@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 29756,
+      "size": 30993,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -68,9 +68,9 @@
       "files": {
         "annai-plugin.json": "0ed67bc7dd5107d677af69186ed82f02b66925b4046e3f70c54d0c0d1ed7e855",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
-        "chat.js": "454b21e03b61dc3dc2403908605608c0fc01dfc2e212e9536785a48d12041fe4",
+        "chat.js": "8d06dc0c86f3e404bd6aa59c04d2ac08bc8b6d5ab7556860986307d0d750af33",
         "index.js": "5c2f000f15ffc7b9564921b3566810f7dec6dbbf583c3d443ed55a2384d88f07",
-        "levels.js": "87c5c72a93fca5a9ed0734c83949fb9dc180f41639d42ac063a0d79a02313caa",
+        "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "steps.js": "e8c38a8d0efe5502463a5aeffe681aea52e79e24d3572d8791c85cc19067d291"
       }
     },
