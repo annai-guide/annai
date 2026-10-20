@@ -128,3 +128,26 @@ test("a tool's definition is a function tool with its schema as parameters", () 
   assert.deepEqual(toolSchema({ name: 'get_weather', description: 'Weather.', input: { type: 'object', properties: { city: { type: 'string' } } } }),
     { type: 'function', name: 'get_weather', description: 'Weather.', parameters: { type: 'object', properties: { city: { type: 'string' } } } });
 });
+
+test("the current turn is Gemini's: a user_input right after function results (a photo, heard words, the now block) is still in it, so a call another model wrote before it gets the stand-in; one after the model's words starts a new turn", async () => {
+  const { readdir } = await import('node:fs/promises');
+  // Recorded on 2026-10-19 with gemini-3.5-flash-lite: each shape, with the call unsigned and signed.
+  const recorded = Object.fromEntries((await readdir(new URL('../fixtures/gemini/current-turn/', import.meta.url))).map((f) => {
+    const [, shape, signed, status] = /** @type {RegExpExecArray} */ (/^(.+)-(unsigned|signed)-(\d+)\.json$/.exec(f));
+    return [`${shape} ${signed}`, Number(status)];
+  }));
+  assert.deepEqual(recorded, {
+    'photo unsigned': 400, 'photo signed': 200, 'photo-tail unsigned': 400, 'photo-tail signed': 200, 'tail unsigned': 400, 'tail signed': 200, 'after-words unsigned': 200,
+  });
+  const ask = { role: 'user', parts: [say('Look at the photo I just took. Use the tool.')] };
+  const call = { role: 'assistant', parts: [{ type: 'tool_call', id: 'c1', name: 'show_photo', input: {} }] };
+  const photo = { type: 'image', mediaType: 'image/png', data: 'AAAA' };
+  const signature = (/** @type {any[]} */ messages, /** @type {string | undefined} */ tail = undefined) => toInput(messages, { model: MODEL, tail }).find((s) => s.type === 'function_call')?.signature;
+  assert.equal(signature([ask, call, { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'The photo follows.' }, photo] }]), STAND_IN_SIGNATURE, 'photo');
+  assert.equal(signature([ask, call, { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'The photo follows.' }, photo] }], 'Now: 11:40.'), STAND_IN_SIGNATURE, 'photo-tail');
+  assert.equal(signature([ask, call, { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'The photo follows.' }] }], 'Now: 11:40.'), STAND_IN_SIGNATURE, 'tail');
+  assert.equal(signature([ask, call, { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'ok' }, { type: 'text', text: '[heard] what about lunch?' }] }]), STAND_IN_SIGNATURE, 'heard words in the result');
+  assert.equal(signature([ask, call, { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'ok' }] }, { role: 'user', parts: [{ type: 'image', mediaType: 'image/png', data: '', missing: true }] }]), STAND_IN_SIGNATURE,
+    'a message that sends nothing (a photo whose bytes are gone) starts no turn');
+  assert.equal(signature([ask, call, { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'ok' }] }, { role: 'assistant', parts: [say('It is red.')] }, { role: 'user', parts: [say('Thanks.')] }]), undefined, 'after-words');
+});

@@ -9,7 +9,7 @@
 /**
  * The signature Google's docs give for a call no Gemini model wrote. Gemini 3 refuses a call in the
  * current turn without one (400 "invalid argument", measured 2026-10-19), as after a fallback mid-turn;
- * with this it answers. Calls in earlier turns go unsigned, as Gemini accepts them.
+ * with this it answers. Calls in earlier turns go unsigned, as Gemini accepts them (test/fixtures/gemini/current-turn).
  */
 export const STAND_IN_SIGNATURE = 'skip_thought_signature_validator';
 /** Audio by the names Gemini's API takes: the phone's AAC in MP4 is m4a there. @type {Record<string, string>} */
@@ -51,18 +51,30 @@ export function toInput(messages, { model, tail }) {
   /** @type {Map<string, string>} */
   const names = new Map();
   for (const m of messages) for (const p of m.parts) if (p.type === 'tool_call') names.set(p.id, p.name);
-  // The current turn starts after the last user message that isn't only tool results.
-  const turn = messages.findLastIndex((m) => m.role === 'user' && m.parts.some((/** @type {any} */ p) => p.type !== 'tool_result'));
   /** @type {Step[]} */
   const steps = [];
-  for (const [i, m] of messages.entries()) {
-    if (m.role === 'assistant') steps.push(...assistantSteps(m.parts, model, i > turn));
-    else steps.push(...userSteps(m.parts, names));
+  /** @type {Step[][]} each assistant message's calls */
+  const replies = [];
+  for (const m of messages) {
+    if (m.role !== 'assistant') {
+      steps.push(...userSteps(m.parts, names));
+      continue;
+    }
+    const own = assistantSteps(m.parts, model);
+    steps.push(...own);
+    replies.push(own.filter((s) => s.type === 'function_call'));
   }
   if (tail) {
     const last = steps.at(-1);
     if (last?.type === 'user_input') last.content.push({ type: 'text', text: tail });
     else steps.push({ type: 'user_input', content: [{ type: 'text', text: tail }] });
+  }
+  // The current turn, as Gemini counts it: from the last user_input that doesn't follow function results. One that does
+  // (a photo or heard words with a result, the now block) is part of the turn (measured 2026-10-19). A reply of the turn
+  // another model wrote gets the stand-in on its calls; Gemini's own carries its signature on its first call.
+  const start = steps.findLastIndex((s, i) => s.type === 'user_input' && steps[i - 1]?.type !== 'function_result');
+  for (const calls of replies) {
+    if (calls.length && !calls.some((c) => c.signature) && steps.indexOf(calls[0]) > start) for (const c of calls) c.signature = STAND_IN_SIGNATURE;
   }
   return steps;
 }
@@ -78,14 +90,9 @@ function userSteps(parts, names) {
   return out;
 }
 
-/**
- * @param {any[]} parts @param {string} model the model the request goes to
- * @param {boolean} current the message is in the current turn @returns {Step[]}
- */
-function assistantSteps(parts, model, current) {
+/** @param {any[]} parts @param {string} model the model the request goes to @returns {Step[]} */
+function assistantSteps(parts, model) {
   const signed = (/** @type {any} */ p) => p.model === model && isObject(p.extra) && typeof p.extra.signature === 'string';
-  // The stand-in only for a reply another model wrote: Gemini's own carries its signature on its first call.
-  const stand = current && !parts.some((p) => p.type === 'tool_call' && signed(p));
   /** @type {Step[]} */
   const out = [];
   for (const p of parts) {
@@ -97,9 +104,8 @@ function assistantSteps(parts, model, current) {
     } else if (p.type === 'reasoning') {
       if (p.signature && p.model === model) out.push({ type: 'thought', signature: p.signature, ...(p.text ? { summary: [{ type: 'text', text: p.text }] } : {}) });
     } else if (p.type === 'tool_call') {
-      const signature = signed(p) ? p.extra.signature : stand ? STAND_IN_SIGNATURE : undefined;
       // A call whose arguments were cut short kept them as text; the API takes an object.
-      out.push({ type: 'function_call', id: p.id, name: p.name, arguments: isObject(p.input) ? p.input : {}, ...(signature ? { signature } : {}) });
+      out.push({ type: 'function_call', id: p.id, name: p.name, arguments: isObject(p.input) ? p.input : {}, ...(signed(p) ? { signature: p.extra.signature } : {}) });
     } else if (p.type === 'provider' && p.model === model) {
       out.push(p.block);
     }
