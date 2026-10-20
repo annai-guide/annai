@@ -143,7 +143,9 @@ test('the model list: chat models with their windows, output limits and thinking
   ], "in Google's order");
   const lite = listed.find((/** @type {any} */ m) => m.providerId === 'gemini-3.5-flash-lite');
   assert.deepEqual(lite, { providerId: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', contextWindow: 1048576, maxOutput: 65536, input: ['text', 'image', 'pdf', 'audio'], reasoning: levelsFor('gemini-3.5-flash-lite') });
-  assert.equal(listed.find((/** @type {any} */ m) => m.providerId === 'gemma-4-31b-it').reasoning, undefined, 'a family Google documents no levels for gets none: the model chooses');
+  const gemma = listed.find((/** @type {any} */ m) => m.providerId === 'gemma-4-31b-it');
+  assert.equal(gemma.reasoning, undefined, 'a family Google documents no levels for gets none: the model chooses');
+  assert.deepEqual(gemma.input, ['text', 'image'], "Google says only Gemini's own models take PDFs and audio");
   assert.deepEqual(type.listRequest({ endpoint: endpointOf(type), key: KEY }), { url: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000', headers: { 'x-goog-api-key': KEY } });
   assert.deepEqual(type.readList({}), []);
 });
@@ -153,11 +155,12 @@ test("levelsFor: each family's levels as Google documents them, annai's off as m
   for (const id of ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview']) {
     assert.deepEqual(level(levelsFor(id)), { off: 'minimal', low: 'low', medium: 'medium', high: 'high', max: 'high' }, id);
   }
-  for (const id of ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-2.5-pro']) {
+  for (const id of ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.1-pro-preview', 'gemini-4-argon']) {
     assert.deepEqual(level(levelsFor(id)), { low: 'low', medium: 'medium', high: 'high', max: 'high' }, id);
   }
   assert.deepEqual(level(levelsFor('gemini-3-pro-preview')), { low: 'low', high: 'high', max: 'high' });
   assert.equal(levelsFor('gemma-4-31b-it'), undefined);
+  assert.equal(levelsFor('gemini-2.5-flash'), undefined, 'gone for new users (404, 2026-10-19), so never checked: no map');
 });
 
 test('uploads: one multipart request to the Files API, as measured; the answer gives the file\'s address and when Gemini deletes it', async () => {
@@ -169,6 +172,7 @@ test('uploads: one multipart request to the Files API, as measured; the answer g
   const file = /** @type {File} */ (r.body.get('file'));
   assert.deepEqual([file.name, file.type, [...new Uint8Array(await file.arrayBuffer())]], ['annai-0123456789abcdef.png', 'image/png', [1, 2, 3]]);
   assert.deepEqual(type.readUpload(JSON.parse(await fixture('upload-200.json'))), { id: 'https://generativelanguage.googleapis.com/v1beta/files/rg15gsb4uz8n', expiresAt: Date.parse('2026-10-21T23:51:27.665Z') });
+  assert.throws(() => type.readUpload({ file: { name: 'files/x' } }), /no address/, "an answer without the file's address isn't kept: the photo goes in the request");
 });
 
 test("the move-over: a model added from the OpenAI-compatible endpoint's list before provider-gemini 2.0 (\"models/<id>\") is asked for by its id, and its own signed steps still go back to it", () => {
@@ -258,4 +262,13 @@ test("a blocked tool result keeps its call answered: its result says it was left
   assert.deepEqual(input[2], { type: 'function_result', call_id: 'c1', name: 'web_fetch', result: [{ type: 'text', text: "[Left out: Google's safety filter blocked what was here.]" }] });
   assert.equal(input[3].type, 'model_output', 'the photo with it is left out too');
   assert.ok(!JSON.stringify(input).includes(PAGE));
+});
+
+test('thought summaries go only to a model that thinks: one with levels, a family Google documents thinking for, or Gemma 4 (measured); not to one annai knows nothing of', async () => {
+  const config = (/** @type {any} */ over) => type.build(spec(type, { model: modelOf(over), request: { messages: [] } })).body.generation_config.thinking_summaries;
+  assert.equal(config({ providerId: 'gemini-3.5-flash-lite', reasoning: levelsFor('gemini-3.5-flash-lite') }), 'auto');
+  assert.equal(config({ providerId: 'gemini-3.8-flash', reasoning: {} }), 'auto', 'added by id: its family thinks');
+  assert.equal(config({ providerId: 'gemma-4-31b-it' }), 'auto');
+  assert.equal(JSON.parse(await fixture('gemma-summaries-200.json')).steps[0].type, 'thought', 'Gemma 4 took it, and thought (2026-10-20)');
+  assert.equal(config({ providerId: 'someone-elses-model' }), undefined);
 });

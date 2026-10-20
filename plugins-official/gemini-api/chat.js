@@ -1,5 +1,5 @@
 import { toInput, toolSchema } from './steps.js';
-import { levelsFor } from './levels.js';
+import { levelsFor, thinks } from './levels.js';
 import { blockedMessages } from './blocked.js';
 
 /**
@@ -64,7 +64,10 @@ export function chatType(annai) {
       return { url: join(endpoint.baseUrl, '/upload/v1beta/files'), headers: { ...auth(endpoint, key), 'x-goog-upload-protocol': 'multipart' }, body };
     },
     /** @param {any} j */
-    readUpload: (j) => ({ id: String(j?.file?.uri ?? ''), ...(Date.parse(j?.file?.expirationTime) ? { expiresAt: Date.parse(j.file.expirationTime) } : {}) }),
+    readUpload: (j) => {
+      if (typeof j?.file?.uri !== 'string' || !j.file.uri) throw new Error("Gemini's answer to an upload has no address for the file.");
+      return { id: j.file.uri, ...(Date.parse(j.file.expirationTime) ? { expiresAt: Date.parse(j.file.expirationTime) } : {}) };
+    },
   };
 }
 
@@ -75,7 +78,7 @@ function build({ endpoint, model, key, request }, leave) {
   const max = request.maxOutput ?? model.maxOutput;
   if (max) config.max_output_tokens = max;
   // Thought summaries show progress, so a thinking model never looks stalled; the reasoning level's patch adds thinking_level.
-  config.thinking_summaries = 'auto';
+  if (Object.keys(model.reasoning ?? {}).length || thinks(model.providerId)) config.thinking_summaries = 'auto';
   if (request.toolChoice) config.tool_choice = { allowed_tools: { mode: 'any', tools: [request.toolChoice] } };
   // An id from the OpenAI-compatible endpoint's list, before provider-gemini 2.0, is "models/<id>".
   /** @type {Record<string, any>} */
@@ -164,7 +167,8 @@ export function readList(json) {
     return [{
       providerId: id, ...(m.displayName ? { name: String(m.displayName) } : {}),
       ...(Number.isInteger(m.inputTokenLimit) ? { contextWindow: m.inputTokenLimit } : {}), ...(Number.isInteger(m.outputTokenLimit) ? { maxOutput: m.outputTokenLimit } : {}),
-      input: ['text', 'image', 'pdf', 'audio'], ...(reasoning ? { reasoning } : {}),
+      // Google says Gemini's own models take PDFs and audio; another family (Gemma) words and photos.
+      input: id.startsWith('gemini-') ? ['text', 'image', 'pdf', 'audio'] : ['text', 'image'], ...(reasoning ? { reasoning } : {}),
     }];
   });
 }
@@ -194,7 +198,8 @@ export function usageOf(u) {
   const image = Math.max(0, by(u.input_tokens_by_modality, ['image', 'video']) - cachedImage);
   const thought = Number(u.total_thought_tokens) || 0;
   return {
-    input: Math.max(0, (Number(u.total_input_tokens) || 0) - cached - audio - image),
+    // A tool's tokens Google counts apart (total_tool_use_tokens) are input too.
+    input: Math.max(0, (Number(u.total_input_tokens) || 0) - cached - audio - image) + (Number(u.total_tool_use_tokens) || 0),
     cacheRead: Math.max(0, cached - cachedAudio - cachedImage),
     ...(cachedAudio ? { cacheReadAudio: cachedAudio } : {}),
     ...(cachedImage ? { cacheReadImage: cachedImage } : {}),
