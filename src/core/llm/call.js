@@ -91,9 +91,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const req = sent.cacheTtl ? { ...sent, cacheTtl: ttlFor(model, sent.cacheTtl) } : sent;
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
-  // Kept on the provider's side (G2): a free key's turns for a day, else the ability's keepDays.
+  // Kept on the provider's side (G2): a free key's turns for a day, else the ability's keepDays, never past the type's own (the provider's longest).
   const keeping = keep && type.keeps && spec.tunables.keep !== false ? keep : null;
-  const days = endpoint.free ? 1 : Number(spec.tunables.keepDays) > 0 ? Number(spec.tunables.keepDays) : 1;
+  const days = endpoint.free ? 1 : Math.min(Number(spec.tunables.keepDays) > 0 ? Number(spec.tunables.keepDays) : 1, Number(type.tunables?.keepDays) || Infinity);
   if (keeping) {
     spec.keep = true;
     // A record that can't be read is a whole send.
