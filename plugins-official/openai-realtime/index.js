@@ -63,6 +63,8 @@ function kindOf(e) {
 /** @param {any} annai */
 export function activate(annai) {
   const { base64, ProviderError, g711 } = annai.helpers;
+  // An official update reaches an annai still running its older shell until a restart: nothing ties the two (fix pass).
+  if (!g711) throw new Error('OpenAI Realtime needs a newer annai: restart annai to update it, and this plugin starts.');
   // G.711, the telephone's 8 kHz audio at a byte a sample, is audio/pcmu and audio/pcma to OpenAI; annai's helper codes it at the wire.
   /** G.711's coders, both ways, by annai's format. @type {Record<string, [(pcm: Int16Array) => Uint8Array, (b: Uint8Array) => Int16Array]>} */
   const G711 = { pcmu: [g711.pcmToUlaw, g711.ulawToPcm], pcma: [g711.pcmToAlaw, g711.alawToPcm] };
