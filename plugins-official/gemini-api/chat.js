@@ -1,0 +1,281 @@
+import { toInput, toolSchema } from './steps.js';
+
+/**
+ * The `gemini` chat type: annai's request as one Interactions request (`POST /v1beta/interactions`),
+ * the key in `x-goog-api-key`, never in the address; the streamed steps read back as annai's events.
+ * A thought comes back as reasoning with its signature, a call with its own signature as its extra:
+ * both go back unchanged, and only to the model that wrote them (steps.js). Nothing is kept on
+ * Google's side (`store: false`): the whole conversation goes each time.
+ */
+export const TUNABLES = Object.freeze({
+  uploads: true, // photos go to Gemini's Files API once, then by their address (spec §4.8); Gemini deletes them after 48 hours
+  audioIn: Object.freeze(['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav']), // Gemini takes every format annai makes (spec §10.6)
+});
+/** An interaction's status at its end, as a stop reason. @type {Record<string, string>} */
+const STOP = { completed: 'end', requires_action: 'tool', incomplete: 'length', budget_exceeded: 'length' };
+
+/** @param {string} base @param {string} path */
+export const join = (base, path) => String(base).replace(/\/+$/, '') + path;
+/** @param {unknown} x @returns {x is Record<string, any>} */
+const isObject = (x) => typeof x === 'object' && x !== null && !Array.isArray(x);
+
+/** The key in its header, after the ability's own headers, so none can replace it. @param {any} endpoint @param {string | null} key @returns {Record<string, string>} */
+export function auth(endpoint, key) {
+  return { ...(endpoint.headers ?? {}), ...(key ? { 'x-goog-api-key': key } : {}) };
+}
+
+/** The chat type. @param {any} annai */
+export function chatType(annai) {
+  const { sse, ProviderError } = annai.helpers;
+  return {
+    type: 'gemini',
+    name: 'Gemini API',
+    tunables: TUNABLES,
+    tail: true,
+    build,
+    /** @param {Response} res */
+    read: (res) => read(res, { sse, ProviderError }),
+    /** A safety block, which Google sends as an error response: an answer that declines, so no other model is tried. @param {number} _status @param {string} body */
+    refusal: (_status, body) => {
+      try {
+        const e = JSON.parse(body)?.error;
+        return blocked(e) ? refusalText(e) : null;
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+/** @param {any} c */
+function build({ endpoint, model, key, request }) {
+  /** @type {Record<string, any>} */
+  const config = {};
+  const max = request.maxOutput ?? model.maxOutput;
+  if (max) config.max_output_tokens = max;
+  // Thought summaries show progress, so a thinking model never looks stalled; the reasoning level's patch adds thinking_level.
+  config.thinking_summaries = 'auto';
+  if (request.toolChoice) config.tool_choice = { allowed_tools: { mode: 'any', tools: [request.toolChoice] } };
+  /** @type {Record<string, any>} */
+  const body = { model: model.providerId, store: false, stream: true };
+  if (request.system) body.system_instruction = request.system;
+  if (request.tools?.length) body.tools = request.tools.map(toolSchema);
+  body.generation_config = config;
+  body.input = toInput(request.messages, { model: model.providerId, tail: request.tail });
+  return { url: join(endpoint.baseUrl, '/v1beta/interactions'), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body };
+}
+
+/** Google's error codes, as kinds. @type {Record<string, string>} */
+const CODES = {
+  too_many_requests: 'rate', resource_exhausted: 'rate', unavailable: 'overloaded', overloaded: 'overloaded',
+  unauthenticated: 'auth', permission_denied: 'auth', not_found: 'not-found', invalid_request: 'bad-request', invalid_argument: 'bad-request',
+  internal: 'server', gateway_timeout: 'server', deadline_exceeded: 'server',
+};
+
+/**
+ * The kind of an error Google names by its code, or null for a code annai doesn't know. A file it can't
+ * find (one it deleted after 48 hours) is an upload to send again (measured 2026-10-19: 403 permission_denied).
+ * @param {unknown} code @param {unknown} message @returns {string | null}
+ */
+export function codeKind(code, message) {
+  if (/\bfile\b/i.test(String(message ?? '')) && /not exist|not found|permission to access/i.test(String(message ?? ''))) return 'upload';
+  return CODES[String(code ?? '').toLowerCase()] ?? null;
+}
+
+/** Whether an error Google sent is its safety filter's block (measured 2026-10-19: a 400, streamed too). @param {any} e */
+function blocked(e) {
+  return isObject(e) && /safety|prohibited use/i.test(`${e.message ?? ''} ${e.code ?? ''}`);
+}
+
+/** Google's reason for a block, in words. @param {any} e */
+function refusalText(e) {
+  const why = String(e.message ?? '').match(/\(([^)]{1,80})\)/)?.[1];
+  return `Google blocked this reply for safety${why ? ` (${why})` : ''}.`;
+}
+
+/**
+ * Usage, normalized: Google's input counts cached tokens and every modality, which annai counts apart;
+ * thinking is billed as output, and counted on its own too.
+ * @param {any} u
+ */
+export function usageOf(u) {
+  const by = (/** @type {any} */ list, /** @type {string[]} */ kinds) => (Array.isArray(list) ? list : []).reduce((n, m) => n + (kinds.includes(String(m?.modality).toLowerCase()) ? Number(m.tokens) || 0 : 0), 0);
+  const cached = Number(u.total_cached_tokens) || 0;
+  const cachedAudio = by(u.cached_tokens_by_modality, ['audio']);
+  const cachedImage = by(u.cached_tokens_by_modality, ['image', 'video']);
+  const audio = Math.max(0, by(u.input_tokens_by_modality, ['audio']) - cachedAudio);
+  const image = Math.max(0, by(u.input_tokens_by_modality, ['image', 'video']) - cachedImage);
+  const thought = Number(u.total_thought_tokens) || 0;
+  return {
+    input: Math.max(0, (Number(u.total_input_tokens) || 0) - cached - audio - image),
+    cacheRead: Math.max(0, cached - cachedAudio - cachedImage),
+    ...(cachedAudio ? { cacheReadAudio: cachedAudio } : {}),
+    ...(cachedImage ? { cacheReadImage: cachedImage } : {}),
+    ...(audio ? { audioIn: audio } : {}),
+    ...(image ? { image } : {}),
+    output: (Number(u.total_output_tokens) || 0) + thought,
+    reasoning: thought,
+  };
+}
+
+/** A call's arguments; the raw text when they aren't valid JSON, for the tool to refuse. @param {string} args @param {any} started */
+function parseArgs(args, started) {
+  if (!args) return isObject(started) ? started : {};
+  try {
+    return JSON.parse(args);
+  } catch {
+    return args;
+  }
+}
+
+/**
+ * Each step as it streams: a thought gathers its summary and signature, a call its arguments, and
+ * each is given whole at its step.stop; the words as they come.
+ */
+class Steps {
+  /** @type {Map<number, any>} */
+  #open = new Map();
+  called = false;
+
+  /** @param {number} index @param {any} step @returns {any[]} */
+  start(index, step) {
+    const s = { ...step, summary: [], args: '' };
+    this.#open.set(index, s);
+    if (s.type === 'function_call') return [{ type: 'tool_input', id: String(s.id ?? ''), name: String(s.name ?? ''), partial: '' }];
+    if (s.type === 'model_output') return (Array.isArray(step.content) ? step.content : []).filter((c) => c?.type === 'text' && c.text).map((c) => ({ type: 'text', text: String(c.text) }));
+    return [];
+  }
+
+  /** @param {number} index @param {any} d @returns {any[]} */
+  delta(index, d) {
+    const s = this.#open.get(index) ?? this.#open.set(index, { type: d?.type === 'text' ? 'model_output' : '', summary: [], args: '' }).get(index);
+    if (d?.type === 'text') return d.text ? [{ type: 'text', text: String(d.text) }] : [];
+    if (d?.type === 'thought_signature') s.signature = String(d.signature ?? '');
+    if (d?.type === 'thought_summary' && d.content?.text) {
+      s.summary.push(String(d.content.text));
+      return [{ type: 'reasoning_delta', text: String(d.content.text) }];
+    }
+    if (d?.type === 'arguments_delta' && typeof d.arguments === 'string') {
+      s.args += d.arguments;
+      return [{ type: 'tool_input', id: String(s.id ?? ''), name: String(s.name ?? ''), partial: s.args }];
+    }
+    return [];
+  }
+
+  /** @param {number} index @returns {any[]} */
+  stop(index) {
+    const s = this.#open.get(index);
+    this.#open.delete(index);
+    if (s?.type === 'thought') {
+      const text = s.summary.join('');
+      return s.signature || text ? [{ type: 'reasoning', text, ...(s.signature ? { signature: s.signature } : {}) }] : [];
+    }
+    if (s?.type === 'function_call') {
+      this.called = true;
+      return [{ type: 'tool_call', id: String(s.id ?? ''), name: String(s.name ?? ''), input: parseArgs(s.args, s.arguments), ...(s.signature ? { extra: { signature: s.signature } } : {}) }];
+    }
+    return [];
+  }
+}
+
+/**
+ * The events of a streamed interaction, or of a whole one from a server that ignores stream: only
+ * application/json, and only when it isn't a stream after all.
+ * @param {Response} res @param {{ sse: any, ProviderError: any }} h
+ */
+async function* read(res, h) {
+  let body = res.body;
+  if (/^application\/json\s*(;|$)/i.test(res.headers.get('content-type') ?? '')) {
+    /** @type {string} */
+    let text;
+    try {
+      text = await res.text();
+    } catch (e) {
+      // A connection that drops on the way is a dropped connection, as a stream's is: never a bug of the plugin's.
+      if (/** @type {any} */ (e)?.name === 'AbortError' || /** @type {any} */ (e)?.name === 'TimeoutError') throw e;
+      throw new h.ProviderError('network', 'The connection dropped.', { cause: e });
+    }
+    if (!/^\s*(data:|event:|:)/.test(text)) {
+      yield* readWhole(text, h);
+      return;
+    }
+    body = new Response(text).body;
+  }
+  const steps = new Steps();
+  for await (const { event, data } of h.sse(/** @type {ReadableStream<Uint8Array>} */ (body))) {
+    if (data === '[DONE]') break;
+    /** @type {any} */
+    let e;
+    try {
+      e = JSON.parse(data);
+    } catch {
+      continue;
+    }
+    const type = e.event_type ?? event;
+    if (type === 'step.start') yield* steps.start(e.index, e.step ?? {});
+    else if (type === 'step.delta') yield* steps.delta(e.index, e.delta);
+    else if (type === 'step.stop') yield* steps.stop(e.index);
+    else if (type === 'error') {
+      yield* failed(e.error ?? e, h);
+      return;
+    } else if (type === 'interaction.completed') {
+      yield* end(e.interaction ?? {}, steps.called, h);
+      return;
+    }
+  }
+  throw new h.ProviderError('network', 'The reply stopped before it finished.');
+}
+
+/** A safety block as a refusal; any other error as the error it is. @param {any} err @param {any} h */
+function* failed(err, h) {
+  if (blocked(err)) {
+    yield { type: 'text', text: refusalText(err) };
+    yield { type: 'stop', reason: 'refusal' };
+    return;
+  }
+  throw new h.ProviderError(codeKind(err?.code, err?.message) ?? 'server', String(err?.message ?? 'Gemini reported an error.'));
+}
+
+/** Usage and the stop reason of a finished interaction; a failed one is its error. @param {any} it @param {boolean} called @param {any} h */
+function* end(it, called, h) {
+  if (it.status === 'failed') {
+    yield* failed((Array.isArray(it.errors) ? it.errors[0] : it.error) ?? {}, h);
+    return;
+  }
+  if (isObject(it.usage)) yield { type: 'usage', usage: usageOf(it.usage) };
+  const reason = it.status === 'completed' && called ? 'tool' : STOP[it.status] ?? 'other';
+  yield { type: 'stop', reason };
+}
+
+/**
+ * The events of one whole interaction, in a stream's order: each step's own, then usage and the
+ * stop reason. An error in its place is that error, as an HTTP error's would be.
+ * @param {string} text @param {any} h
+ */
+function* readWhole(text, h) {
+  /** @type {any} */
+  let r;
+  try {
+    r = JSON.parse(text);
+  } catch {
+    throw new h.ProviderError('server', "Gemini answered with a whole reply annai can't read, rather than a stream.");
+  }
+  if (isObject(r?.error) && !Array.isArray(r.steps)) {
+    yield* failed(r.error, h);
+    return;
+  }
+  if (!isObject(r) || (!Array.isArray(r.steps) && r.status !== 'failed')) throw new h.ProviderError('server', 'Gemini answered with a whole reply that had no answer in it.');
+  const steps = new Steps();
+  for (const [i, step] of (r.steps ?? []).entries()) {
+    if (!isObject(step)) continue;
+    const { summary, signature, content, ...rest } = step;
+    yield* steps.start(i, step.type === 'model_output' ? rest : step);
+    if (step.type === 'thought') {
+      for (const s of Array.isArray(summary) ? summary : []) yield* steps.delta(i, { type: 'thought_summary', content: s });
+      if (signature) yield* steps.delta(i, { type: 'thought_signature', signature });
+    }
+    if (step.type === 'model_output') for (const c of Array.isArray(content) ? content : []) if (c?.type === 'text') yield* steps.delta(i, c);
+    yield* steps.stop(i);
+  }
+  yield* end(r, steps.called, h);
+}

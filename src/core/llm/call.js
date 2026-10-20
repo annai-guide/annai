@@ -150,12 +150,19 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       noRedirect(res, endpoint);
       if (!res.ok) {
         const text = await res.text().catch(() => '');
-        const err = errorFromResponse(res.status, text, res.headers);
-        const sharper = type.classify?.(res.status, text);
-        if (sharper) err.kind = sharper;
-        throw err;
+        // An error response that is the model declining (Gemini's safety block) is an answer: it ends the turn, as any refusal does.
+        const declined = type.refusal?.(res.status, text);
+        if (!declined) {
+          const err = errorFromResponse(res.status, text, res.headers);
+          const sharper = type.classify?.(res.status, text);
+          if (sharper) err.kind = sharper;
+          throw err;
+        }
+        take({ type: 'text', text: declined });
+        take({ type: 'stop', reason: 'refusal' });
+      } else {
+        for await (const ev of untilAborted(/** @type {NonNullable<EndpointType['read']>} */ (type.read)(res, spec), linked)) take(ev);
       }
-      for await (const ev of untilAborted(/** @type {NonNullable<EndpointType['read']>} */ (type.read)(res, spec), linked)) take(ev);
     }
   } catch (e) {
     clearTimeout(t);
