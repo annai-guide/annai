@@ -254,7 +254,7 @@ A model provider is usually data: one `annai-plugin.json` with a `provider` desc
 }
 ```
 
-- **The provider:** `baseUrl` (empty when the user gives one); `key`: `required`, `optional` or `none` (no key field); `keyHeader` when the key goes in a header of its own rather than the protocol's way (annai puts it there and gives the protocol no key); `keyUrl` and `note` for its page; `headers` sent with every ability's requests; `local: true` for a server the user runs. Every address must be https, or http only for `localhost` or `127.0.0.1`.
+- **The provider:** `baseUrl` (empty when the user gives one); `key`: `required`, `optional` or `none` (no key field); `keyHeader` when the key goes in a header of its own rather than the protocol's way (annai puts it there and gives the protocol no key); `keyUrl` and `note` for its page; `headers` sent with every ability's requests; `local: true` for a server the user runs; `freeTier: true` when its keys may be on a free tier the user can't tell from the key (Gemini's): its page then offers "This key is on the free tier (… doesn't charge)", and with it on, every call of that provider costs $0 in the Trace and Spend per day. Every address must be https, or http only for `localhost` or `127.0.0.1`.
 - **Where a key goes is checked where it is sent.** annai fetches what a protocol builds only at the origin of its ability's address; any other request is refused, unsent ("…built a request to <origin>, not its address <origin>. Check its tunables."). A tunable a protocol joins onto the address (`path`, `listPath`), on an ability, a model or `modelDefaults`, must be a path from it: starting with `/`, with no `//` or `@`.
 - **Each ability** (an id of lowercase letters, digits and dashes) has a `kind` (`chat`, `transcription`, `voice`, `realtime`), a protocol's `type`, and optionally a `name`, `on: false` to start switched off, its own `baseUrl`, `tunables`, `extraBody`, a `note`, `modelDefaults` (what a model added by id or from a list starts with, such as `providerTools` or `cacheTtls`) and `models` (each with a `providerId`, and the model settings of spec §9.2).
 - **`roles`** suggests models: `recommended` and `free`, each role to provider model ids among the abilities of its kind (chat roles `main`, `utility`, `decide`; `koe`, chat or realtime; `speech-in` transcription; `speech-out` voices). Adding a provider fills chat roles still empty, never Koe's (only "Use the recommended models" does); its speech models go behind the free entries. Koe's list was two, `koe-talk` and `koe-type`, before 2026-10-19: a description that still names them checks, and they are ignored.
@@ -356,7 +356,7 @@ export function activate(annai) {
 ## Protocols (endpoint types)
 
 An endpoint type teaches annai one model protocol. The core contains none (spec §9.1).
-annai's own Chat Completions, Anthropic Messages and OpenAI Responses types are plugins too: see `plugins-official/`. A protocol's `endpoint` is a provider's ability: `{ id: "<provider>/<ability>", provider, ability, type, name, baseUrl, headers, tunables, extraBody }`, its `name` the provider's. Providers require a protocol as `^N` of its version's major, so its major is its interface: change it only when a provider would have to change.
+annai's own Chat Completions, Anthropic Messages, OpenAI Responses and Gemini API types are plugins too: see `plugins-official/`. A protocol's `endpoint` is a provider's ability: `{ id: "<provider>/<ability>", provider, ability, type, name, baseUrl, headers, tunables, extraBody }`, its `name` the provider's, with `free: true` when the user marked its key as on a free tier. Providers require a protocol as `^N` of its version's major, so its major is its interface: change it only when a provider would have to change.
 
 ```js
 export function activate(annai) {
@@ -395,7 +395,9 @@ export function activate(annai) {
 - **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.
-  - `listRequest()` and `readList()` make "Fetch model list" work.
+  - `listRequest()` and `readList()` make "Fetch model list" work. A listed model may carry its `contextWindow`, `maxOutput`, `input` and its `reasoning` map (spec §9.3), as Gemini API's list does.
+  - `retryAfter(body)` gives the wait, in ms, an error response's words ask for, when no `retry-after` header or Google RetryInfo says (Gemini: "Please retry in 7h40m31s"). A rest over 10 minutes is said in words.
+  - `refusal(status, body)` gives words for an error response that is the model declining, such as Gemini's safety block (a 400): the turn ends with them, stopping with `refusal`, and no other model is tried. Null for any other error.
   - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the provider's page, per ability (the `uploads` tunable).
 
 ### Audio formats
@@ -407,7 +409,7 @@ Speech travels in the smallest format both the phone and the provider handle (sp
 - **`audioOut`** (a voice type): the formats `response_format` (or your equivalent) can ask for. With your `format` tunable set to `"auto"`, annai puts the smallest one the phone plays in `tunables.format` before calling `speechRequest`. Still treat `"auto"` as your default, as an older annai leaves it as it is.
 - **In a description,** set them per ability where the provider differs from the protocol, as the official ones do:
   - Groq's transcription takes `["webm", "ogg", "mp4", "mp3", "flac", "wav"]`;
-  - Gemini through Chat Completions only `["wav", "mp3"]`;
+  - Gemini, through its own API (the Gemini API type), all of them, so no phone sends it WAV; Chat Completions takes only `["wav", "mp3"]`, as OpenAI's and Gemini's compatible endpoints do;
   - OpenRouter's voices give only `["mp3"]`.
 
   A user can change them on the provider's page, per ability or model.
