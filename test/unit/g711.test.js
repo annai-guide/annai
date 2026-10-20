@@ -7,7 +7,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
-import { encodeWav } from '../../src/core/voice/pcm.js';
+import { encodeWav, pcm16 } from '../../src/core/voice/pcm.js';
 
 // G.711 (ITU-T G.711), which OpenAI Realtime takes as audio/pcmu and audio/pcma, and Gemini's voices send as audio/mulaw
 // and audio/alaw: 8 kHz, one byte a sample. It is annai's, for every plugin (annai.helpers.g711; G3). The
@@ -75,7 +75,7 @@ test('a 1 kHz tone at 8 kHz keeps its shape through μ-law (signal to noise over
   assert.equal(muLaw(tone).length, tone.length, 'one byte a sample: a quarter of 16-bit PCM at the same rate');
 });
 
-test("every plugin gets G.711 and a WAV writer in annai.helpers (G3: openai-realtime and gemini-api share them)", async () => {
+test("every plugin gets G.711, and WAV both ways, in annai.helpers (G3: openai-realtime and gemini-api share them)", async () => {
   const registry = new Registry();
   const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
@@ -86,4 +86,5 @@ test("every plugin gets G.711 and a WAV writer in annai.helpers (G3: openai-real
   assert.equal(helpers.g711, g711);
   assert.deepEqual(Object.keys(g711).sort(), ['alawToPcm', 'pcmToAlaw', 'pcmToUlaw', 'ulawToPcm']);
   assert.deepEqual([...helpers.wav.encode(Int16Array.of(1, -1), 8000)], [...encodeWav(Int16Array.of(1, -1), 8000)]);
+  assert.equal(helpers.wav.decode, pcm16, 'and a WAV file read back: its 16-bit samples and rate');
 });
