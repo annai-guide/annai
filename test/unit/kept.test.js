@@ -528,3 +528,20 @@ test('a turn still being answered when its provider is removed is deleted at onc
     await c.s.close();
   }
 });
+
+test("keepDays only lowers how long a turn counts as kept: raised past the type's own (Google's longest), the type's holds, so a chain Google has partly dropped isn't continued", async () => {
+  const c = await callKit([{ text: 'OK' }], { keepDays: 100 });
+  try {
+    await c.call([m1]);
+    assert.equal((await c.file()).turns[0].days, 55);
+    const low = await callKit([{ text: 'OK' }], { keepDays: 7 });
+    try {
+      await low.call([m1]);
+      assert.equal((await low.file()).turns[0].days, 7);
+    } finally {
+      await low.s.close();
+    }
+  } finally {
+    await c.s.close();
+  }
+});
