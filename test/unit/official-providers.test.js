@@ -305,11 +305,13 @@ test('provider-gemini 2.0.0: Gemini through its own API (gemini-api), its chat m
   assert.equal(m.version, '2.0.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
-  assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', true, 'https://aistudio.google.com/apikey']);
+  assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");
   const chat = /** @type {any} */ (d.abilities.chat);
   assert.deepEqual([chat.kind, chat.type, chat.baseUrl, chat.tunables], ['chat', 'gemini', undefined, undefined], 'no standInCallExtra, no audio limit');
   assert.ok(!JSON.stringify(m).includes('standInCallExtra'));
   // Paid prices from Google's pricing page, 2026-10-19 (Standard tier, through 2026-12-31). 3.7-flash is left out: Google answers it as 3.8-flash.
+  // No audioIn or cacheReadAudio: the page gives each one input and one caching price, for every kind of input (flash-lite's says
+  // "text / image / video / audio"; 3.8's and 3.6's have no audio row; checked again in the fix pass), so audio costs what words do.
   assert.deepEqual(chat.models.map((/** @type {any} */ x) => [x.providerId, x.prices]), [
     ['gemini-3.8-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
     ['gemini-3.6-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
@@ -324,7 +326,8 @@ test('provider-gemini 2.0.0: Gemini through its own API (gemini-api), its chat m
     main: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'], utility: ['gemini-3.5-flash-lite'], decide: ['gemini-3.5-flash-lite'],
     koe: ['gemini-3.8-live', 'gemini-3.5-flash-lite'],
   } }, 'different quotas: a used-up day falls to the next flash');
-  assert.match(chat.note ?? '', /Fetch model list/, 'what to do when a model from before 2.0 can\'t be kept, in words');
+  assert.match(chat.noWindowNote ?? '', /add it again with Fetch model list/, "what to do when a model from before 2.0 can't be kept, in words, shown while one is there");
+  assert.equal(chat.note, undefined);
 });
 
 test("the move-over from provider-gemini 1.x: the chat ability's type becomes gemini, the user's models and key stay, and 2.0's models join no role", async () => {

@@ -64,8 +64,13 @@ test('a server you run, at a plain http:// address on another computer, is told 
   assert.doesNotMatch(String(addressProblem('https://')), /another computer/);
 });
 
-test('freeTier in a description is a boolean or absent: a provider whose keys may be on a free tier', () => {
+test('freeTier in a description is true, false, the name of who doesn\'t charge, or absent: a provider whose keys may be on a free tier', () => {
   assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, freeTier: true }), []);
   assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, freeTier: false }), []);
-  assert.match(checkProviderDesc({ ...OPENAI_LIKE, freeTier: 'yes' }).join(), /\$\.freeTier/);
+  assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, freeTier: 'Google' }), [], "who doesn't charge, by name");
+  assert.match(checkProviderDesc({ ...OPENAI_LIKE, freeTier: 1 }).join(), /\$\.freeTier/);
+  assert.match(checkProviderDesc({ ...OPENAI_LIKE, freeTier: '' }).join(), /\$\.freeTier/);
+  // A note for models from before the provider's list gave windows, shown only while one of them is there.
+  assert.deepEqual(checkProviderDesc(withAbility(OPENAI_LIKE, 'native', { kind: 'chat', type: 'gemini', noWindowNote: 'Add it again with Fetch model list.' })), []);
+  assert.match(checkProviderDesc(withAbility(OPENAI_LIKE, 'native', { kind: 'chat', type: 'gemini', noWindowNote: 3 })).join(), /noWindowNote/);
 });

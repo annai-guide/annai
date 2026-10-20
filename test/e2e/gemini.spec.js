@@ -23,7 +23,8 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
     await expect(free).not.toBeChecked();
     const chat = page.getByRole('region', { name: 'Chat', exact: true });
     await expect(chat.getByText('Gemini API', { exact: true })).toBeVisible();
-    await expect(chat.getByText(/add it again with Fetch model list/)).toBeVisible();
+    // The note for models from before 2.0 shows only while one without a context window is there.
+    await expect(chat.getByText(/add it again with Fetch model list/)).toHaveCount(0);
     // Its list: chat models only, each added with its context window.
     await chat.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(chat.getByText('9 models.')).toBeVisible();
@@ -31,6 +32,11 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
     await expect(chat.locator('ul.listed').getByText(/-tts|-live|embedding|image/)).toHaveCount(0);
     await chat.getByRole('button', { name: 'Add gemini-3.7-flash' }).click();
     await expect(chat.getByRole('link', { name: /^Gemini 3\.7 Flash.*1049K context/ })).toBeVisible();
+    await expect(chat.getByText(/add it again with Fetch model list/)).toHaveCount(0);
+    await chat.getByLabel('Add a model by id').fill('gemini-3.5-flash');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(chat.getByRole('link', { name: /^gemini-3\.5-flash\s*$/ })).toBeVisible();
+    await expect(chat.getByText(/add it again with Fetch model list/)).toBeVisible();
     // Test: a tiny request, then one with the tool and the photo, at Main's level, and an upload.
     await expect(chat.getByRole('link', { name: /^Gemini 3\.8 Flash.*1049K context · \$0\.75 in, \$3\.75 out/ })).toBeVisible();
     await chat.getByRole('button', { name: 'Test', exact: true }).click();

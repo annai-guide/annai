@@ -6,10 +6,11 @@ import { formatCost, outcomeText } from './format.js';
 
 const SYSTEM = 'You are a helpful travel assistant inside the annai app. This conversation only checks that the model works, so keep your replies short.';
 
-/** The line under a reply: its tokens and its cost. @param {any} result */
-function metaLine(result) {
+/** The line under a reply: its tokens, audio and images too, and its cost. @param {any} result */
+export function metaLine(result) {
   const u = result.usage;
-  return `${u.input + u.cacheRead + u.cacheWrite + u.cacheWrite1h + u.output} tokens · ${formatCost(result.cost)}`;
+  const n = ['input', 'cacheRead', 'cacheWrite', 'cacheWrite1h', 'output', 'audioIn', 'audioOut', 'image', 'cacheReadAudio', 'cacheReadImage'].reduce((sum, k) => sum + (u[k] ?? 0), 0);
+  return `${n} tokens · ${formatCost(result.cost)}`;
 }
 
 /** Why the model didn't answer, in plain words, with any key blanked (spec §9.9). @param {any} ctx @param {unknown} err @param {string} name */

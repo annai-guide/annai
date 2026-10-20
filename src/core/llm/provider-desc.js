@@ -6,15 +6,16 @@ import { validate } from '../schema.js';
  * (a live session, K4), each through a protocol plugin's endpoint type, with the models annai knows and the roles it suggests.
  * @typedef {import('./config.js').ModelValues} ModelValues
  * @typedef {{ kind: 'chat' | 'transcription' | 'voice' | 'realtime', type: string, name?: string, on?: boolean, baseUrl?: string,
- *   tunables?: Record<string, any>, extraBody?: Record<string, any>, note?: string, modelDefaults?: ModelValues,
+ *   tunables?: Record<string, any>, extraBody?: Record<string, any>, note?: string, noWindowNote?: string, modelDefaults?: ModelValues,
  *   models?: (ModelValues & { providerId: string })[] }} AbilityDesc
  *   on: whether it starts switched on (default true); baseUrl: its own address, else the provider's;
+ *   noWindowNote: shown only while one of its models has no context window (one from before its list gave them);
  *   modelDefaults: what a model added by id or from a list starts with
  * @typedef {{ baseUrl: string, key: 'required' | 'optional' | 'none', keyHeader?: string, keyUrl?: string, note?: string,
- *   headers?: Record<string, string>, local?: boolean, freeTier?: boolean, abilities: Record<string, AbilityDesc>,
+ *   headers?: Record<string, string>, local?: boolean, freeTier?: boolean | string, abilities: Record<string, AbilityDesc>,
  *   roles?: Record<string, Record<string, string[]>> }} ProviderDesc
  *   key none: no key field; keyHeader: the key goes in this header, not the protocol's way; roles: "recommended" | "free" → role → provider model ids;
- *   freeTier: its keys may be on a free tier, which the user marks (its calls then cost nothing)
+ *   freeTier: its keys may be on a free tier, which the user marks (its calls then cost nothing); a string names who doesn't charge (else the plugin's name)
  */
 
 export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice', 'realtime']);
@@ -37,7 +38,7 @@ const ABILITY = {
   required: ['kind', 'type'],
   properties: {
     kind: { enum: ABILITY_KINDS }, type: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,40}$' }, name: { type: 'string', maxLength: 80 }, on: { type: 'boolean' },
-    baseUrl: { type: 'string', maxLength: 2000 }, tunables: OBJECT, extraBody: OBJECT, note: { type: 'string', maxLength: 1000 }, modelDefaults: OBJECT,
+    baseUrl: { type: 'string', maxLength: 2000 }, tunables: OBJECT, extraBody: OBJECT, note: { type: 'string', maxLength: 1000 }, noWindowNote: { type: 'string', maxLength: 1000 }, modelDefaults: OBJECT,
     models: { type: 'array', maxItems: 200, items: MODEL },
   },
 };
@@ -47,7 +48,7 @@ const DESC = {
   properties: {
     baseUrl: { type: 'string', maxLength: 2000 }, key: { enum: ['required', 'optional', 'none'] }, keyHeader: { type: 'string', pattern: '^[A-Za-z0-9-]{1,80}$' },
     keyUrl: { type: 'string', pattern: '^https://', maxLength: 500 }, note: { type: 'string', maxLength: 1000 },
-    headers: { type: 'object', additionalProperties: { type: 'string' } }, local: { type: 'boolean' }, freeTier: { type: 'boolean' },
+    headers: { type: 'object', additionalProperties: { type: 'string' } }, local: { type: 'boolean' }, freeTier: { type: ['boolean', 'string'], minLength: 1, maxLength: 80 },
     abilities: { type: 'object', additionalProperties: ABILITY },
     roles: { type: 'object', additionalProperties: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } } },
   },
