@@ -93,6 +93,9 @@ export async function renderProvider(ctx, id) {
       desc?.note || desc?.keyUrl
         ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
+      // Named by the company, the first word of its name (Google Gemini: Google).
+      desc?.freeTier ? savedCheck(`This key is on the free tier (${pluginName.split(' ')[0]} doesn't charge)`, p.free, (on) => ctx.llm.setFree(id, on)).el : null,
+      desc?.freeTier ? h('p', { class: 'sub', text: "On, this provider's calls cost $0 in the Trace and in Spend per day." }) : null,
       headers.el,
       h('div', { class: 'acts' }, save,
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),

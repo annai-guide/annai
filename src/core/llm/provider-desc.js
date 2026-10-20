@@ -11,9 +11,10 @@ import { validate } from '../schema.js';
  *   on: whether it starts switched on (default true); baseUrl: its own address, else the provider's;
  *   modelDefaults: what a model added by id or from a list starts with
  * @typedef {{ baseUrl: string, key: 'required' | 'optional' | 'none', keyHeader?: string, keyUrl?: string, note?: string,
- *   headers?: Record<string, string>, local?: boolean, abilities: Record<string, AbilityDesc>,
+ *   headers?: Record<string, string>, local?: boolean, freeTier?: boolean, abilities: Record<string, AbilityDesc>,
  *   roles?: Record<string, Record<string, string[]>> }} ProviderDesc
- *   key none: no key field; keyHeader: the key goes in this header, not the protocol's way; roles: "recommended" | "free" → role → provider model ids
+ *   key none: no key field; keyHeader: the key goes in this header, not the protocol's way; roles: "recommended" | "free" → role → provider model ids;
+ *   freeTier: its keys may be on a free tier, which the user marks (its calls then cost nothing)
  */
 
 export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice', 'realtime']);
@@ -46,7 +47,7 @@ const DESC = {
   properties: {
     baseUrl: { type: 'string', maxLength: 2000 }, key: { enum: ['required', 'optional', 'none'] }, keyHeader: { type: 'string', pattern: '^[A-Za-z0-9-]{1,80}$' },
     keyUrl: { type: 'string', pattern: '^https://', maxLength: 500 }, note: { type: 'string', maxLength: 1000 },
-    headers: { type: 'object', additionalProperties: { type: 'string' } }, local: { type: 'boolean' },
+    headers: { type: 'object', additionalProperties: { type: 'string' } }, local: { type: 'boolean' }, freeTier: { type: 'boolean' },
     abilities: { type: 'object', additionalProperties: ABILITY },
     roles: { type: 'object', additionalProperties: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } } },
   },
