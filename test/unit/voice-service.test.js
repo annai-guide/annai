@@ -91,6 +91,19 @@ test('a voice that streams (G3) is asked for its stream once a tap has unlocked 
   assert.equal(k.platform.streams.length, 2);
 });
 
+test("a stream the page can't play (an iPhone's audio suspended): shown instead, and the next tap unlocks sound again (fix pass)", async () => {
+  const k = await voiceKit({ streams: true });
+  await k.voice.unlock();
+  assert.equal(k.voice.unlocked, true);
+  const stream = k.platform.player.stream;
+  k.platform.player.stream = /** @type {any} */ ((/** @type {any} */ o) => ({ ...stream(o), running: Promise.resolve(false) }));
+  const spoken = await k.voice.say('Hello.');
+  assert.equal(spoken.failed, 'blocked');
+  assert.equal(k.voice.unlocked, false, 'a tap tries again');
+  await k.voice.say('Again.');
+  assert.equal(k.calls.at(-1), 'say v1 Again.', 'meanwhile whole clips, whose refusal is said at once');
+});
+
 test("a voice that refuses the format it offers is asked for MP3, then WAV, and gets that until annai restarts (Speaches refuses opus and aac)", async () => {
   const k = await voiceKit({ format: 'auto', refuses: ['opus', 'aac'], plays: ['ogg', 'aac', 'mp3', 'wav'] });
   await k.voice.say('Hello.');

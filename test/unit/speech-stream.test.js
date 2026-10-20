@@ -182,15 +182,19 @@ test('a stream arriving at half real time starts late, and then plays without a 
   // 4 s of speech (60 characters at 15 a second), its pieces of 0.1 s arriving every 0.2 s: at half real time.
   const text = 'This sentence has sixty characters in it, as Shiori says it.';
   assert.equal(text.length, 60);
+  let from = 0;
   const speaker = new Speaker({ entries: async () => [{ id: 'v1', name: 'v1', kind: 'api' }], bench: () => {}, platform: () => /** @type {any} */ (p), locale: 'en', now,
-    synthesize: async (_e, _t, signal) => fakeStream({ n: 40, at: (i) => 200 * i, now, signal }) });
+    synthesize: async (_e, _t, signal) => {
+      from = now(); // arrivals timed from the stream's start, not the test's (fix pass: a loaded machine started it late)
+      return fakeStream({ n: 40, at: (i) => from + 200 * i, now, signal });
+    } });
   const u = speaker.begin();
   u.end(text);
   const done = await u.done;
   assert.equal(done.said, 1);
   const [pieces] = streams;
   assert.equal(pieces.length, 40);
-  assert.ok(pieces[0].start >= 4000, `it waited for enough to be in: started at ${pieces[0].start} ms`);
+  assert.ok(pieces[0].start - from >= 4000, `it waited for enough to be in: started ${pieces[0].start - from} ms after the stream did`);
   for (let i = 1; i < pieces.length; i++) assert.ok(pieces[i].pushed <= pieces[i - 1].end, `piece ${i} came at ${pieces[i].pushed} ms, before the one before it ended at ${pieces[i - 1].end} ms`);
 });
 
@@ -229,7 +233,8 @@ test('a stream that fails after some of its audio: its player stream stops, the 
     synthesize: async (entry, text, signal) => {
       said.push(`${entry.id}: ${text}`);
       const from = now();
-      return fakeStream({ n: 10, at: (i) => from + 2 * i, now, signal, ...(entry.id === 'v1' ? { failAfter: 5 } : {}) });
+      // v1's pieces come every 30 ms, so it has started playing (after a quarter second of measuring) when it fails at 0.45 s.
+      return entry.id === 'v1' ? fakeStream({ n: 20, at: (i) => from + 30 * i, now, signal, failAfter: 15 }) : fakeStream({ n: 10, at: (i) => from + 2 * i, now, signal });
     },
   });
   const u = speaker.begin();
@@ -259,4 +264,92 @@ test('cut off mid-stream: the player stream stops at once, and what was heard is
   assert.ok(p.log.includes('stream stop'));
   assert.equal(done.said, 0);
   assert.ok(done.cut && done.cut.at > 0 && done.cut.at < text.length, `cut at ${done.cut?.at}, by the fraction heard`);
+});
+
+test("cut off before the stream has all come: what was heard is a fraction of the whole sentence, not of what had arrived (fix pass)", async () => {
+  const t0 = Date.now();
+  const now = () => (Date.now() - t0) * 10; // the test's clock runs ten times faster than real time
+  const { p, streams } = recordingPlayer(now);
+  // 97 characters, about 6.5 s aloud, arriving at 1.25 times real time: a piece of 0.1 s every 80 ms.
+  const text = 'Bixby Bridge is two miles ahead, and the view from the pullout on the north side is the best one.';
+  assert.equal(text.length, 97);
+  const speaker = new Speaker({ entries: async () => [{ id: 'v1', name: 'v1', kind: 'api' }], bench: () => {}, platform: () => /** @type {any} */ (p), locale: 'en', now,
+    synthesize: async (_e, _t, signal) => { const from = now(); return fakeStream({ n: 65, at: (i) => from + 80 * i, now, signal }); } });
+  const u = speaker.begin();
+  u.end(text);
+  while (!streams[0]?.length) await tick(1);
+  const started = streams[0][0].start;
+  while (now() < started + 2000) await tick(1);
+  u.stop();
+  const done = await u.done;
+  // 2 s of about 6.5: some 30 characters, back to a word; heard out of what had arrived (about 2.8 s), it would be some 65.
+  assert.ok(done.cut && done.cut.at >= 20 && done.cut.at <= 36, `cut at ${done.cut?.at}: ${text.slice(0, done.cut?.at)}`);
+});
+
+test("a voice whose stream fails drops what it read ahead, unpaid: the next voice says both sentences, and the trace has each sentence paid for once (fix pass)", async () => {
+  const store = createMemoryStore();
+  const trace = modelTrace(store, SYS);
+  const { p } = recordingPlayer(Date.now);
+  /** @type {string[]} */
+  const benched = [];
+  const fast = [{ at: 0 }, { at: 5 }, { at: 10 }, { at: 15 }, { at: 20 }];
+  const speaker = new Speaker({
+    entries: async () => [{ id: 'v1', name: 'v1', kind: /** @type {const} */ ('api') }, { id: 'v2', name: 'v2', kind: /** @type {const} */ ('api') }].filter((e) => !benched.includes(e.id)),
+    bench: (id) => { benched.push(id); }, platform: () => /** @type {any} */ (p), locale: 'en',
+    synthesize: async (entry, text, signal) => {
+      // v1: the first sentence drops after half a second; the second, read ahead meanwhile, would take 0.8 s to come.
+      const pieces = entry.id === 'v2' ? fast : text.startsWith('First')
+        ? [...Array.from({ length: 10 }, (_, i) => ({ at: 50 * i })), { at: 500, fail: true }]
+        : Array.from({ length: 20 }, (_, i) => ({ at: 40 * i }));
+      const r = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model: { ...model, name: entry.id }, key: null, text, stream: true, trace, signal, fetch: slowFetch(pieces) });
+      return /** @type {any} */ (r.stream ?? r.clip);
+    },
+  });
+  const u = speaker.begin();
+  u.end('First thing. Second thing.');
+  const done = await u.done;
+  assert.equal(done.said, 2);
+  assert.deepEqual(benched, ['v1']);
+  await tick(900); // anything v1 still read would be in by now
+  const reqs = await traced(store);
+  assert.deepEqual(reqs.filter((d) => d.cost !== undefined).map((d) => `${d.model} ${d.chars}`).sort(), ['v2 12', 'v2 13'], 'each sentence paid for once, by the voice that said it');
+  assert.deepEqual(reqs.filter((d) => d.model === 'v1').map((d) => d.outcome).sort(), ['cancelled', 'network'], "v1's read-ahead stopped, traced cancelled");
+});
+
+/** A player whose clock never moves, as an iPhone's suspended audio: nothing it is given plays, or ends. @param {{ running?: boolean }} [o] */
+function stuckPlayer({ running } = {}) {
+  const p = fakePlatform();
+  p.player.stream = /** @type {any} */ (() => ({
+    push() {}, end() {}, queued: () => 1, done: new Promise(() => {}),
+    stop() { p.log.push('stream stop'); return { playedMs: 0 }; },
+    ...(running === undefined ? {} : { running: Promise.resolve(running) }),
+  }));
+  return p;
+}
+
+test('a stream the player never plays (its audio suspended) gives up a moment after it should have ended, as a page that may not play sound: no utterance waits for ever (fix pass)', { timeout: 5000 }, async () => {
+  const p = stuckPlayer();
+  /** @type {string[]} */
+  const blocked = [];
+  const speaker = new Speaker({ entries: async () => [{ id: 'v1', name: 'v1', kind: 'api' }], bench: () => {}, platform: () => /** @type {any} */ (p), locale: 'en', stallMs: 100,
+    onBlocked: () => { blocked.push('blocked'); },
+    synthesize: async (_e, _t, signal) => fakeStream({ n: 3, at: () => 0, now: Date.now, signal }) }); // 0.3 s of sound, all at once
+  const u = speaker.begin();
+  u.end('One sentence. And another.');
+  const t0 = Date.now();
+  const done = await u.done;
+  assert.ok(Date.now() - t0 < 1500, `it gave up in ${Date.now() - t0} ms`);
+  assert.equal(done.failed, 'blocked', 'shown on screen instead, as a whole clip the page may not play');
+  assert.equal(done.said, 0);
+  assert.ok(p.log.includes('stream stop'));
+  assert.deepEqual(blocked, ['blocked'], 'the Voice is told, so the next tap unlocks sound again');
+  // A player that says its audio isn't running gives up at once.
+  const q = stuckPlayer({ running: false });
+  const s2 = new Speaker({ entries: async () => [{ id: 'v1', name: 'v1', kind: 'api' }], bench: () => {}, platform: () => /** @type {any} */ (q), locale: 'en',
+    synthesize: async (_e, _t, signal) => fakeStream({ n: 3, at: () => 0, now: Date.now, signal }) });
+  const u2 = s2.begin();
+  u2.end('Hello.');
+  const t1 = Date.now();
+  assert.equal((await u2.done).failed, 'blocked');
+  assert.ok(Date.now() - t1 < 500, 'without waiting for the watchdog');
 });
