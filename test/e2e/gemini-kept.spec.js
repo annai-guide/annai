@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, pickProvider, startTrip, pastWelcome } from './helpers.js';
+import { openApp, waitForServiceWorker, pickProvider, startTrip, pastWelcome, savedBy } from './helpers.js';
 import { startGeminiServer } from '../fakes/gemini-server.js';
 
 // Google keeps the conversation (G2), against the stand-in Gemini server: the switch and its note, Shiori's next turn sent
@@ -103,3 +103,31 @@ test("Erase names what Google keeps before the tap, and asks Google to delete it
     await s.close();
   }
 });
+
+test('turning the switch off deletes what Google keeps, and later turns are sent whole, kept nowhere', async ({ page }) => {
+  const s = await startGeminiServer({ key: KEY, replies: [SAY] });
+  try {
+    await geminiTrip(page, s.url);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await say(page, 'Where is the station?', 1);
+    expect(s.stored().length).toBe(1);
+    await page.evaluate(() => { location.hash = '#/models'; });
+    await page.locator('a.card', { hasText: 'Google Gemini' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
+    const keep = page.getByRole('region', { name: 'Chat', exact: true }).getByLabel('Let Google keep the conversation between turns: sends less each time.');
+    await keep.uncheck();
+    await expect(savedBy(keep)).toHaveText('Saved');
+    await expect.poll(() => s.deleted().length, { timeout: 15_000 }).toBe(1);
+    expect(s.stored()).toEqual([]);
+    await page.getByRole('link', { name: 'Conversation' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible();
+    await page.getByRole('button', { name: 'Type' }).click();
+    await say(page, 'And the bus stop?', 2);
+    const last = s.bodies().at(-1);
+    expect([last.store, last.previous_interaction_id]).toEqual([false, undefined]);
+    expect(JSON.stringify(last.input)).toContain('Where is the station?');
+  } finally {
+    await s.close();
+  }
+});
+
