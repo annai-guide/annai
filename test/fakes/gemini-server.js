@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs';
  * from Google on 2026-10-19 (test/fixtures/gemini): the model list, interactions streamed as `event:`/`data:`
  * steps or whole as JSON (as the request's `stream` says), an interaction deleted, and a photo uploaded to the
  * Files API. It records each request's address, headers and body, so a test can check where the key went.
+ * A voice request (response_format audio) is answered with half a second of a tone, as Google sends speech (G3):
+ * 24 kHz 16-bit PCM, or μ-law at 8 kHz, streamed in four pieces or whole; a request with audio in it is "heard".
  * Tests and the end-to-end suite run it on 127.0.0.1, on a port of its own (port 0), with CORS for any page.
  * @typedef {{ text?: string, thought?: { summary?: string, signature: string }, calls?: { name: string, input: any, signature?: string }[],
  *   usage?: Record<string, any>, status?: string, error?: { status: number, body: any } }} Reply
@@ -55,6 +57,7 @@ export async function startGeminiServer({ key, replies = [], models } = {}) {
         return void json(200, { file: { name: `files/${id}`, uri: `http://${req.headers.host}/v1beta/files/${id}`, mimeType: 'image/png', expirationTime: new Date(Date.now() + 48 * 3600_000).toISOString(), state: 'ACTIVE' } });
       }
       if (req.method !== 'POST' || path !== '/v1beta/interactions') return void json(404, { error: { message: 'Requested entity was not found.', code: 'not_found' } });
+      if (body?.response_format?.type === 'audio') return void speak(res, cors, body);
       const pick = replies.length ? replies[Math.min(seen.filter((s) => s.url === req.url && s.method === 'POST').length - 1, replies.length - 1)] : answer;
       const reply = typeof pick === 'function' ? pick(body) : pick;
       if (reply.error) return void json(reply.error.status, reply.error.body);
@@ -80,10 +83,53 @@ export async function startGeminiServer({ key, replies = [], models } = {}) {
   };
 }
 
-/** The default answer: the test tool called with red, else OK. @param {any} body @returns {Reply} */
+/** The default answer: the test tool called with red; what a voice message said, for one with audio in it; else OK. @param {any} body @returns {Reply} */
 function answer(body) {
   const tool = (body?.tools ?? []).find((/** @type {any} */ t) => t.name === 'report_color');
-  return tool ? { calls: [{ name: 'report_color', input: { color: 'red' }, signature: 'CALLSIG' }] } : { text: 'OK' };
+  if (tool) return { calls: [{ name: 'report_color', input: { color: 'red' }, signature: 'CALLSIG' }] };
+  const heard = (body?.input ?? []).some((/** @type {any} */ s) => s?.content?.some?.((/** @type {any} */ c) => c?.type === 'audio'));
+  return { text: heard ? 'Where should we eat?' : 'OK' };
+}
+
+/** μ-law of one 16-bit sample, as G.711 codes it. @param {number} x */
+function ulaw(x) {
+  const v = x >> 2;
+  const s = Math.min(Math.abs(v), 8159) + 33;
+  let seg = 0;
+  while (seg < 8 && s >= 0x40 << seg) seg++;
+  return (seg >= 8 ? 0x7f : (seg << 4) | ((s >> (seg + 1)) & 0x0f)) ^ (v < 0 ? 0x7f : 0xff);
+}
+
+/**
+ * A voice's answer (G3): half a second of a 440 Hz tone in the asked format, as Google sends it: PCM at 24 kHz, or μ-law at
+ * 8 kHz whatever rate was asked (measured 2026-10-20); streamed in four pieces, or whole.
+ * @param {import('node:http').ServerResponse} res @param {Record<string, string>} cors @param {any} body
+ */
+function speak(res, cors, body) {
+  const mu = body.response_format.mime_type === 'audio/mulaw';
+  const rate = mu ? 8000 : 24000;
+  const n = rate / 2;
+  const bytes = Buffer.alloc(mu ? n : n * 2);
+  for (let i = 0; i < n; i++) {
+    const x = Math.round(8000 * Math.sin((2 * Math.PI * 440 * i) / rate));
+    if (mu) bytes[i] = ulaw(x);
+    else bytes.writeInt16LE(x, i * 2);
+  }
+  const mime = mu ? 'audio/mulaw' : 'audio/l16';
+  const usage = { total_tokens: 22, total_input_tokens: 10, input_tokens_by_modality: [{ modality: 'text', tokens: 10 }], total_cached_tokens: 0, total_output_tokens: 12, output_tokens_by_modality: [{ modality: 'audio', tokens: 12 }] };
+  if (!body.stream) {
+    const audio = { data: bytes.toString('base64'), channels: 1, sample_rate: rate, mime_type: `${mime}; rate=${rate}; channels=1`, type: 'audio' };
+    return void res.writeHead(200, { ...cors, 'content-type': 'application/json; charset=UTF-8' }).end(JSON.stringify({ status: 'completed', usage, steps: [{ content: [audio], type: 'model_output' }], object: 'interaction', model: body.model }));
+  }
+  res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' });
+  const send = (/** @type {any} */ e) => res.write(`event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`);
+  send({ interaction: { object: 'interaction', model: body.model }, event_type: 'interaction.created' });
+  send({ index: 0, step: { type: 'model_output' }, event_type: 'step.start' });
+  const piece = bytes.length / 4;
+  for (let i = 0; i < 4; i++) send({ index: 0, delta: { mime_type: mime, data: bytes.subarray(i * piece, (i + 1) * piece).toString('base64'), channels: 1, sample_rate: rate, type: 'audio' }, event_type: 'step.delta' });
+  send({ index: 0, event_type: 'step.stop' });
+  send({ interaction: { status: 'completed', usage, object: 'interaction', model: body.model }, event_type: 'interaction.completed' });
+  res.end('event: done\ndata: [DONE]\n\n');
 }
 
 /** @param {Reply} r */

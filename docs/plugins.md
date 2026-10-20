@@ -417,6 +417,16 @@ Speech travels in the smallest format both the phone and the provider handle (sp
 - **When a provider refuses** a format it was said to take, annai asks again in WAV (a transcription after any bad request; a chat model when the 400 names the audio or its format), and keeps sending that model WAV until it restarts if WAV works. A voice that refuses its format is asked for MP3, then WAV. So keep `classify` from turning such a refusal into another kind.
 - **A failed upload** (network or server) is sent again with the very same bytes: don't change the audio between attempts.
 
+### Streamed voices
+
+A voice type can stream (G3): give `readSpeechStream(res, c)`, an async iterable of `{ pcm, rate }` (16-bit PCM in an `Int16Array`, as the reply arrives), beside `readSpeech`, which stays for a whole clip. Gemini API's voice does, and its `readSpeech` reads the same stream whole into one WAV clip.
+
+- **annai asks for a stream** only once a tap has unlocked sound and the phone's player streams, and only while the ability's `stream` tunable isn't `false`. Otherwise it calls `readSpeech`, as for any voice: build one request that works for both.
+- **Time limits:** the first piece must come within the voice's wait (Settings → Models, "Wait for the voice"), and then no gap may be longer. A stream that fails partway is a failed clip: the sentence goes to the next voice, and the trace counts it once, with its cost, for the voice that said it.
+- **It never stutters:** annai holds the pieces until the rest, at the rate they arrive, will be in before playback reaches them, then plays them through the stream player (the one live sessions use). On a good connection that's about half a second; on a weak one it waits.
+- **G.711 and WAV:** a provider that sends μ-law or A-law is decoded with `annai.helpers.g711`; `annai.helpers.wav` writes (and reads) a WAV clip.
+- **`choices`** (any type): tunables the provider's page offers in words, `{ tunable: { label, options? } }`. With `options` (value → its words), one of them; without, a switch for a tunable that is on unless `false`. Gemini API's voice offers its sound (`format`: full quality or phone quality) and `stream`.
+
 ### Realtime voice protocols
 
 A realtime protocol speaks to a model that hears and talks in one stream over a WebSocket, such as Gemini Live (`plugins-official/gemini-live`) or OpenAI Realtime (`plugins-official/openai-realtime`). annai opens the socket; your type builds its address and drives it. A provider's ability of kind `realtime` uses it, and Koe talks through it.

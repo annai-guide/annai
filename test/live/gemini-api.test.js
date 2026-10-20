@@ -10,7 +10,9 @@ import { toBase64 } from '../../src/core/bytes.js';
 import { levelsFor } from '../../plugins-official/gemini-api/levels.js';
 import { STAND_IN_SIGNATURE } from '../../plugins-official/gemini-api/steps.js';
 import { TEST_IMAGE } from '../../src/core/llm/check.js';
-import { loadGemini, endpointOf, modelOf } from '../unit/gemini-kit.js';
+import { loadGemini, loadTypes, endpointOf, modelOf } from '../unit/gemini-kit.js';
+import { speechCall } from '../../src/core/llm/speech.js';
+import { pcm16 } from '../../src/core/voice/pcm.js';
 
 const KEY = process.env.GEMINI_KEY ?? '';
 const skip = KEY ? false : 'GEMINI_KEY is not set';
@@ -100,4 +102,63 @@ test('Fetch model list gives a context window for gemini-3.5-flash-lite', { skip
   const lite = type.readList(await res.json()).find((/** @type {any} */ m) => m.providerId === 'gemini-3.5-flash-lite');
   assert.deepEqual([lite?.contextWindow, lite?.maxOutput], [1048576, 65536]);
   assert.deepEqual(lite?.reasoning, levelsFor('gemini-3.5-flash-lite'));
+});
+
+// G3: transcription and voices. Each sentence is one request; the free tier allows a TTS model 3 a minute and 10 a day
+// (measured 2026-10-20), so GEMINI_TTS names another when one's day is used up.
+const types = loadTypes();
+const TTS = process.env.GEMINI_TTS ?? 'gemini-3.8-flash-lite-tts';
+/** @param {string} t @param {string} providerId @param {string} name */
+const speechSpec = (t, providerId, name) => {
+  const type = types.get(t);
+  return { type, endpoint: endpointOf(type, { type: t, baseUrl: 'https://generativelanguage.googleapis.com' }), model: modelOf({ providerId, name, prices: null }), key: KEY, timeoutMs: 30_000 };
+};
+/** One speech call, or a polite skip when the free day is used up. @param {any} t @param {any} c */
+async function speak(t, c) {
+  try {
+    return await speechCall(c);
+  } catch (e) {
+    if (/** @type {any} */ (e)?.kind === 'rate' && /** @type {any} */ (e).retryAfter > 10 * 60_000) t.skip(`the free day is used up for ${c.model.providerId}: ${/** @type {any} */ (e).message}`);
+    throw e;
+  }
+}
+const clip = async () => new Uint8Array(await readFile(new URL('../fixtures/voice/where-eat.ogg', import.meta.url)));
+
+test("an Opus clip transcribed by Google's transcription model, and by Flash Lite told to write it down (G3)", { skip }, async (t) => {
+  for (const id of ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite']) {
+    const r = await speak(t, { ...speechSpec('gemini-transcription', id, id), audio: { data: await clip(), mediaType: 'audio/ogg', seconds: 1 } });
+    if (!r) return;
+    assert.match(String(r.text), /where should we eat/i, id);
+  }
+});
+
+// First audio, measured from the free key with the connection's setup: Flash Lite TTS 0.6 s, Flash TTS 1.6 s (2026-10-20).
+const FIRST_MS = TTS.includes('lite') ? 1500 : 2500;
+
+test('a 2-sentence voice reply, streamed at full quality: its first audio in under 1.5 s (Flash Lite TTS), each sentence 24 kHz PCM (G3)', { skip }, async (t) => {
+  await pause();
+  for (const text of ['Your train to Kyoto leaves at nine fifteen.', 'It goes from platform four, so we have time for coffee.']) {
+    const started = Date.now();
+    const r = await speak(t, { ...speechSpec('gemini-speech', TTS, TTS), text, stream: true });
+    if (!r) return;
+    const firstMs = Date.now() - started;
+    assert.ok(r.stream, 'a stream');
+    assert.equal(r.stream.rate, 24000);
+    let samples = 0;
+    for await (const pcm of r.stream.chunks) samples += pcm.length;
+    t.diagnostic(`"${text}": first audio in ${firstMs} ms, ${(samples / 24000).toFixed(1)} s of speech`);
+    assert.ok(firstMs < FIRST_MS, `first audio in ${firstMs} ms`);
+    assert.ok(samples / 24000 > 1.5, 'a sentence of speech');
+  }
+});
+
+test('phone quality, read whole: μ-law at 8 kHz, decoded into one WAV clip (G3)', { skip }, async (t) => {
+  await pause();
+  const c = speechSpec('gemini-speech', 'gemini-3.8-flash-tts', 'Flash TTS');
+  const r = await speak(t, { ...c, endpoint: { ...c.endpoint, tunables: { ...c.endpoint.tunables, format: 'mulaw8' } }, text: 'Turn left at the next light.' });
+  if (!r) return;
+  assert.equal(r.clip?.mediaType, 'audio/wav');
+  const { rate, pcm } = pcm16(/** @type {any} */ (r.clip).data);
+  assert.equal(rate, 8000);
+  assert.ok(pcm.length / rate > 1, 'a sentence of speech');
 });
