@@ -61,7 +61,8 @@ test("a safety block (Google's 400, streamed or not) ends the turn as a refusal 
   assert.equal(reply.text, 'Google blocked this reply for safety (harmful content).');
   const [ev] = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS));
   assert.deepEqual([ev.data.outcome, ev.data.status], ['ok', 400]);
-  // Any other 400 is still an error.
+  // Any other 400 is still an error, one about the safety settings too.
+  assert.equal(type.refusal(400, JSON.stringify({ error: { message: 'safety_settings[0].threshold: invalid value', code: 'invalid_request' } })), null);
   await assert.rejects(callOnce({
     type, endpoint: endpointOf(type), model: modelOf(), key: KEY, request: { messages: [] },
     fetch: async () => new Response(await fixture('unsigned-call-400.json'), { status: 400 }),
