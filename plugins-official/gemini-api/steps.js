@@ -27,7 +27,10 @@ export function toContent(part) {
   if (part.type === 'text') return { type: 'text', text: part.text };
   if (part.missing) return null;
   if (part.type === 'image') return part.fileId ? { type: 'image', uri: part.fileId, mime_type: part.mediaType } : { type: 'image', data: part.data, mime_type: part.mediaType };
-  if (part.type === 'audio') return { type: 'audio', data: part.data, mime_type: AUDIO[part.mediaType] ?? part.mediaType };
+  if (part.type === 'audio') {
+    const t = String(part.mediaType).split(';')[0].trim().toLowerCase(); // a recorder's "audio/webm;codecs=opus" is audio/webm
+    return { type: 'audio', data: part.data, mime_type: AUDIO[t] ?? t };
+  }
   if (part.type === 'document') return { type: 'document', data: part.data, mime_type: part.mediaType };
   return null;
 }
