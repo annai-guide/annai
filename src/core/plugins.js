@@ -869,6 +869,13 @@ export class PluginHost {
           if (type.realtime && !(typeof type.open === 'function' && typeof type.attach === 'function' && formats(type.audio?.in) && formats(type.audio?.out))) {
             throw new PluginError(id, `the realtime type "${type.type}" needs open() and attach(), and the audio it takes and gives`);
           }
+          // Choices the provider page offers in words (G3): each a label, and a switch or options of words.
+          const words = (/** @type {any} */ x) => typeof x === 'string' && x.trim() !== '';
+          const choice = (/** @type {any} */ c) => c && typeof c === 'object' && words(c.label) && (c.options === undefined
+            || (c.options && typeof c.options === 'object' && !Array.isArray(c.options) && Object.keys(c.options).length > 0 && Object.values(c.options).every(words)));
+          if (type.choices !== undefined && !(type.choices && typeof type.choices === 'object' && !Array.isArray(type.choices) && Object.values(type.choices).every(choice))) {
+            throw new PluginError(id, `the endpoint type "${type.type}" offers choices on its provider page that aren't each a label with a switch or options in words`);
+          }
           if (!chat && !hears && !speaks && !type.realtime) {
             throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech(); a realtime type open() and attach()`);
           }
