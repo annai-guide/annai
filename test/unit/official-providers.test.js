@@ -383,11 +383,56 @@ test('"Use the recommended models" switches on every ability whose models it nam
   assert.deepEqual(cfg.roles.main.models, ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'].map(byId));
   assert.equal(providerOf(cfg.providers[id]).abilities.live.on, false);
   assert.equal((await k.host.installed())['gemini-live'], undefined);
-  await llm.useSuggestion(id, 'recommended');
+  assert.deepEqual(await llm.useSuggestion(id, 'recommended'), { on: ['Live voice'], failed: [] }, 'what it switched on, for the words after the tap');
   const after = await readConfig(k.ws);
   assert.equal(providerOf(after.providers[id]).abilities.live.on, true);
   assert.ok((await k.host.installed())['gemini-live'], 'switched on through setAbility, which installs its protocol');
   assert.deepEqual(after.roles.koe.models, [byId('gemini-3.8-live'), byId('gemini-3.5-flash-lite')]);
+});
+
+/** A model service on a fresh host that installs annai's own plugins from this repository. */
+async function geminiKit() {
+  const k = await hostKit();
+  const fetch = async (/** @type {any} */ url) => {
+    try {
+      return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+  return { ...k, llm: createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch }) };
+}
+
+test('"Use the recommended models" never switches on an ability the user switched off; one new in an update, which arrived off, it does', async () => {
+  const k = await geminiKit();
+  const id = await k.llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  await k.llm.setAbility(id, 'chat', false); // on by the description, off by the user
+  assert.deepEqual(await k.llm.useSuggestion(id, 'recommended'), { on: ['Live voice'], failed: [] });
+  const cfg = await readConfig(k.ws);
+  assert.equal(providerOf(cfg.providers[id]).abilities.chat.on, false, 'the user\'s choice stands');
+  assert.deepEqual(cfg.roles.koe.models.map((m) => modelOf(cfg.models[m]).providerId), ['gemini-3.8-live'], 'only what is on');
+  // An ability an update brought arrives switched off in the user's layer: that isn't the user's choice.
+  const rec = cfg.providers[id];
+  const { saveProvider } = await import('../../src/core/llm/config.js');
+  await saveProvider(k.ws, { ...rec, template: { ...rec.template, added: ['chat'] } });
+  assert.deepEqual((await k.llm.useSuggestion(id, 'recommended')).on, ['Chat']);
+  assert.equal(providerOf((await readConfig(k.ws)).providers[id]).abilities.chat.on, true);
+});
+
+test('"Use the recommended models" with Gemini Live turned off in Settings → Plugins: Live stays off, says why, and every role it can fill is filled', async () => {
+  const k = await geminiKit();
+  const id = await k.llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  await k.llm.ensureType('gemini-live');
+  await k.host.setEnabled('gemini-live', false);
+  await saveRoles(k.ws, { ...(await readConfig(k.ws)).roles, main: { models: [], level: 'medium' } });
+  const r = await k.llm.useSuggestion(id, 'recommended');
+  assert.deepEqual([r.on, r.failed.map((f) => f.name)], [[], ['Live voice']]);
+  assert.match(String(/** @type {any} */ (r.failed[0].error)?.message), /turned off|Turn it on/);
+  const cfg = await readConfig(k.ws);
+  assert.equal(providerOf(cfg.providers[id]).abilities.live.on, false);
+  assert.equal((await k.host.installed())['gemini-live'].enabled, false, 'the plugin stays as the user left it');
+  assert.deepEqual(cfg.roles.main.models.map((m) => modelOf(cfg.models[m]).providerId), ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'], 'Main is filled all the same');
+  assert.deepEqual(cfg.roles.koe.models.map((m) => modelOf(cfg.models[m]).providerId), ['gemini-3.5-flash-lite']);
 });
 
 test("OpenAI's Realtime voice: off until switched on, which installs openai-realtime; Test opens a session through the key as a subprotocol that answers OK aloud, in 24 kHz PCM; a refused key is said as one (K6)", async () => {

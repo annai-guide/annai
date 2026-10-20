@@ -59,6 +59,10 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
     await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
     await free.check();
     await expect(savedBy(free)).toHaveText('Saved');
+    // "Use the recommended models" switches Live on for Koe, and says so.
+    await page.getByRole('button', { name: 'Use the recommended models' }).click();
+    await expect(page.locator('.toast', { hasText: 'Roles updated. Live voice switched on.' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice')).toBeChecked();
     await page.getByRole('region', { name: 'Chat', exact: true }).getByRole('link', { name: /^Gemini 3\.8 Flash/ }).click();
     await tryIt.getByLabel('Message', { exact: true }).fill('Hello again');
     await tryIt.getByRole('button', { name: 'Send', exact: true }).click();

@@ -345,8 +345,10 @@ function suggestionsPanel(ctx, id, src) {
       class: 'btn', type: 'button',
       onclick: async () => {
         try {
-          await ctx.llm.useSuggestion(id, which); // switches on what it names first
-          ctx.notices.toast('Roles updated');
+          // What it switched on, or couldn't, said after the roles.
+          const r = await ctx.llm.useSuggestion(id, which);
+          ctx.notices.toast(['Roles updated.', ...r.on.map((/** @type {string} */ n) => `${n} switched on.`),
+            ...r.failed.map((/** @type {any} */ f) => `${f.name} couldn't be switched on: ${messageOf(f.error)}`)].join(' '));
         } catch (e) {
           ctx.notices.toast(messageOf(e));
         }
