@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, pickProvider, savedBy, fakeMicrophone, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, pickProvider, savedBy, leaveSaved, fakeMicrophone, filterTrace } from './helpers.js';
 import { startGeminiServer } from '../fakes/gemini-server.js';
 
 // Gemini through its own API (G1), against the stand-in Gemini server on a port of its own: the catalog's Google Gemini
@@ -141,6 +141,13 @@ test("Gemini's voice and transcription (G3): a sample streams Google's PCM throu
     await expect.poll(() => voiceBodies().length).toBe(3);
     await expect(voice.getByText('It works: that was this voice.')).toBeVisible({ timeout: 20_000 });
     expect(await streamed()).toBe(before);
+    // Changed in the tunables' JSON, the choices above it show it (fix pass).
+    const json = voice.getByLabel('Tunables (JSON)');
+    await json.fill(JSON.stringify({ ...JSON.parse(await json.inputValue()), format: 'pcm24', stream: true }));
+    await leaveSaved(json);
+    await expect(full).toBeChecked();
+    await expect(phone).not.toBeChecked();
+    await expect(streaming).toBeChecked();
     // The transcription Test: the phone's Opus, in Ogg, to Google's transcription model with its transcription_config, or to Flash Lite told to write it down.
     const ears = page.getByRole('region', { name: 'Transcription', exact: true });
     await expect(ears.getByText('Gemini API transcription', { exact: true })).toBeVisible();
