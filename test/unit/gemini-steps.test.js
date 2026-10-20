@@ -27,6 +27,7 @@ test('a user message becomes one user_input step, text, image, audio and documen
 test("audio goes by the names Gemini's API takes: the phone's AAC in MP4 is audio/m4a", () => {
   assert.deepEqual(toContent({ type: 'audio', mediaType: 'audio/mp4', data: 'AAAA' }), { type: 'audio', data: 'AAAA', mime_type: 'audio/m4a' });
   for (const t of ['audio/webm', 'audio/aac', 'audio/mpeg', 'audio/flac', 'audio/wav']) assert.equal(toContent({ type: 'audio', mediaType: t, data: 'x' })?.mime_type, t);
+  assert.equal(toContent({ type: 'audio', mediaType: 'audio/webm;codecs=opus', data: 'x' })?.mime_type, 'audio/webm');
   assert.equal(toContent({ type: 'speech', id: 's1', text: 'hi' }), null);
 });
 
