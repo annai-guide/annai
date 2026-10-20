@@ -401,3 +401,20 @@ test("a session that closes on its own lets its protocol go too: the driver's cl
   await asked.closed;
   assert.equal(closes, 2, 'once each');
 });
+
+test('a live session of a provider marked free tier costs nothing, turn by turn and in all', async () => {
+  FakeSocket.made = [];
+  const store = createMemoryStore();
+  await ensureBaseScopes(new Workspace(store, { schemaFor: () => null }));
+  const { session, ws } = open({ store, model: model({ input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }), endpoint: { ...endpoint('https://live.test'), free: true } });
+  await tick();
+  ws().receive({ ready: true });
+  await session.ready;
+  ws().receive({ type: 'usage', usage: { input: 1000, audioIn: 2000, output: 100, audioOut: 500 } });
+  await tick();
+  session.close();
+  await session.closed;
+  const all = await events(store);
+  assert.deepEqual(all.filter((/** @type {any} */ e) => e.type === 'net.request').map((/** @type {any} */ e) => e.data.cost), [0]);
+  assert.equal(all.filter((/** @type {any} */ e) => e.type === 'live.session').at(-1).data.cost, 0);
+});

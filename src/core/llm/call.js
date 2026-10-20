@@ -167,7 +167,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     throw err;
   }
   clearTimeout(t);
-  const cost = costOf(usage, model.prices, model.providerTools);
+  const cost = endpoint.free ? 0 : costOf(usage, model.prices, model.providerTools); // a free-tier key costs nothing
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
   return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}) };
 }

@@ -82,3 +82,28 @@ test("reasoning levels: the model's own, else the nearest, the cheaper on a tie 
   assert.deepEqual(levelPatch(map, 'max'), { e: 'high' });
   assert.equal(levelPatch({}, 'high'), null);
 });
+
+test("a provider marked free tier costs nothing: a call's reply and trace, and a speech call's (the free-tier switch)", async () => {
+  const { callOnce } = await import('../../src/core/llm/call.js');
+  const { speechCall } = await import('../../src/core/llm/speech.js');
+  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { modelTrace } = await import('../../src/core/llm/trace.js');
+  const { SYS } = await import('../../src/core/scopes.js');
+  const { providerOf, endpointOf, newProvider } = await import('../../src/core/llm/config.js');
+  const rec = newProvider('provider-gemini', { template: { version: '2.0.0', values: { name: 'Google Gemini', baseUrl: 'https://llm.test', abilities: { chat: { kind: 'chat', type: 'run' }, voice: { kind: 'voice', type: 'say' } } } }, user: { free: true } });
+  assert.equal(providerOf(rec).free, true);
+  assert.equal(providerOf({ ...rec, user: {} }).free, false);
+  const endpoint = endpointOf(rec, 'chat');
+  assert.equal(endpoint.free, true, "every ability's calls");
+  const model = { id: 'm-1', provider: rec.id, ability: 'chat', name: 'Flash', providerId: 'flash', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: { input: 1, output: 2 }, cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {} };
+  const store = createMemoryStore();
+  const type = /** @type {any} */ ({ type: 'run', name: 'Run', pluginId: 'p', run: async function* () { yield { type: 'text', text: 'Hi' }; yield { type: 'usage', usage: { input: 1000, output: 1000 } }; yield { type: 'stop', reason: 'end' }; } });
+  const reply = await callOnce({ type, endpoint, model, key: null, request: { messages: [] }, trace: modelTrace(store, SYS) });
+  assert.equal(reply.cost, 0);
+  assert.equal((await callOnce({ type, endpoint: { ...endpoint, free: false }, model, key: null, request: { messages: [] } })).cost, 3000 / 1e6, 'the same call on a paid key');
+  const say = /** @type {any} */ ({ type: 'say', name: 'Say', pluginId: 'p', speech: 'out', speechRequest: () => ({ url: 'https://llm.test/say', headers: {}, body: '{}' }), readSpeech: async () => ({ data: new Uint8Array(1), mediaType: 'audio/wav' }) });
+  const spoken = await speechCall({ type: say, endpoint: endpointOf(rec, 'voice'), model: { ...model, prices: { perMillionChars: 10 } }, key: null, text: 'Hello there.', fetch: async () => new Response(new Uint8Array(1)), trace: modelTrace(store, SYS) });
+  assert.equal(spoken.cost, 0);
+  const costs = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS))).map((/** @type {any} */ e) => e.data.cost);
+  assert.deepEqual(costs, [0, 0], 'the trace says free, and Spend per day adds nothing');
+});

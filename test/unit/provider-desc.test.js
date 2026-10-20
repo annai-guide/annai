@@ -63,3 +63,9 @@ test('a server you run, at a plain http:// address on another computer, is told 
   assert.doesNotMatch(String(addressProblem('ftp://example.com')), /another computer/);
   assert.doesNotMatch(String(addressProblem('https://')), /another computer/);
 });
+
+test('freeTier in a description is a boolean or absent: a provider whose keys may be on a free tier', () => {
+  assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, freeTier: true }), []);
+  assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, freeTier: false }), []);
+  assert.match(checkProviderDesc({ ...OPENAI_LIKE, freeTier: 'yes' }).join(), /\$\.freeTier/);
+});

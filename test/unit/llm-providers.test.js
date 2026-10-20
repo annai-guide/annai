@@ -229,6 +229,18 @@ test('the service adds a provider from a catalog plugin with what it requires, a
   assert.ok(k.reached.some((x) => x.startsWith('https://voice.x.example/v1/audio/speech')), "the voice goes to its ability's own address");
 });
 
+test("the free-tier switch is the provider's, kept in the user's layer: on, every one of its calls costs nothing; off, the switch is gone from the file", async () => {
+  const k = await serviceKit();
+  const id = await k.llm.addProvider('provider-x', { key: 'sk-x-1234567890' });
+  await k.llm.setFree(id, true);
+  const rec = (await k.llm.config()).providers[id];
+  assert.equal(rec.user.free, true);
+  const r = await k.llm.call({ request: HI });
+  assert.equal(r.cost, 0);
+  await k.llm.setFree(id, false);
+  assert.equal('free' in (await k.llm.config()).providers[id].user, false);
+});
+
 test('a call never installs a protocol plugin: a model whose type is missing is skipped as type-missing, and the next one answers (anti-goal 1)', async () => {
   const k = await serviceKit();
   await k.llm.addProvider('provider-x', { key: 'sk-x' });

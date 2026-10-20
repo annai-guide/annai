@@ -276,6 +276,16 @@ export function createLlm({
       await service.unbench(providerId);
     },
     /**
+     * Marks a provider's key as on its free tier, or not, saved at once: on, its calls cost nothing.
+     * @param {string} providerId @param {boolean} on
+     */
+    async setFree(providerId, on) {
+      const rec = (await readConfig(ws)).providers[providerId];
+      if (!rec) throw new ProviderError('not-found', 'That provider no longer exists.');
+      const { free: _, ...user } = rec.user ?? {};
+      await saveProvider(ws, { ...rec, user: on ? { ...user, free: true } : user });
+    },
+    /**
      * A role call with fallback, traced in scope (spec §9.6).
      * @param {{ role?: string, request: import('./contract.js').Request, level?: string, onEvent?: (e: import('./contract.js').StreamEvent) => void,
      *   signal?: AbortSignal, scope?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },

@@ -121,7 +121,7 @@ export function openLive(c) {
     if (done) return; // a late timer's
     if (e?.type === 'usage') {
       const usage = { ...NO_USAGE, ...e.usage };
-      const turnCost = costOf(usage, model.prices);
+      const turnCost = endpoint.free ? 0 : costOf(usage, model.prices);
       cost = addCost(cost, turnCost);
       trace?.request({ kind: 'realtime', endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url: first.url, status: 101, ms: now() - last, firstMs: null, outcome: 'ok', usage, cost: turnCost, wake });
       last = now();
