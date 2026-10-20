@@ -1,0 +1,15 @@
+{
+  "file": {
+    "name": "files/rg15gsb4uz8n",
+    "displayName": "annai-test.png",
+    "mimeType": "image/png",
+    "sizeBytes": "79",
+    "createTime": "2026-10-19T23:51:27.841207Z",
+    "updateTime": "2026-10-19T23:51:27.841207Z",
+    "expirationTime": "2026-10-21T23:51:27.665098323Z",
+    "sha256Hash": "ZDRlZGM1YzQzZWRlMTU1MGM2YjQ2MTBjOGNlNjgxNjM1YzBhMjkzYmVmM2ViOWVmNmUzZDJjNDY5ZGJiNDQyZQ==",
+    "uri": "https://generativelanguage.googleapis.com/v1beta/files/rg15gsb4uz8n",
+    "state": "ACTIVE",
+    "source": "UPLOADED"
+  }
+}

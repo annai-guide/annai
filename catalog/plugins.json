@@ -48,6 +48,31 @@
       }
     },
     {
+      "id": "gemini-api",
+      "name": "Gemini API",
+      "version": "0.1.0",
+      "description": "Talks to Gemini's own API (Interactions) for chat: every audio format, Gemini 3's thought signatures carried exactly, and its usage with cached and thinking tokens.",
+      "category": "developer",
+      "keywords": [],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 19105,
+      "requires": [],
+      "provides": {
+        "endpoint-type": [
+          "gemini"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "0ed67bc7dd5107d677af69186ed82f02b66925b4046e3f70c54d0c0d1ed7e855",
+        "chat.js": "cef0c95d944c8764149039793a71970a62e90d7ce2ba033f84101a0bc8be27e5",
+        "index.js": "5c2f000f15ffc7b9564921b3566810f7dec6dbbf583c3d443ed55a2384d88f07",
+        "steps.js": "858169c2d8755bdb73c591b9b6ccc88e7b3d94dcc0b92489b00d417c1051fd89"
+      }
+    },
+    {
       "id": "gemini-live",
       "name": "Gemini Live",
       "version": "0.1.0",
