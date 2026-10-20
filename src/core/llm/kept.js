@@ -94,6 +94,8 @@ export class Kept {
   #draining = Promise.resolve();
   /** @type {Promise<{ done: number, left: number }> | null} the one waiting to run after it */
   #nextDrain = null;
+  /** @type {Set<string>} providers dropped since annai started: a turn of theirs is no longer remembered */
+  #gone = new Set();
 
   /** @param {{ ws: import('../workspace.js').Workspace, now?: () => number }} c */
   constructor({ ws, now = Date.now }) {
@@ -159,13 +161,17 @@ export class Kept {
    */
   record({ id, endpoint, model, scope, messages, reply, days, after }) {
     return this.#change((f, now) => {
+      if (this.#gone.has(endpoint.split('/')[0])) return false;
       const prev = after ? f.turns.find((t) => t.id === after) : undefined;
       f.turns = f.turns.filter((t) => t.id !== id);
-      if (after && !prev) return void f.forget.push({ id, endpoint, until: now + days * DAY });
-      f.turns.push({
-        id, endpoint, model, scope, chain: prev?.chain ?? id, since: prev?.since ?? now, ends: prev?.ends ?? now + days * DAY,
-        n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), at: now, days,
-      });
+      if (after && !prev) f.forget.push({ id, endpoint, until: now + days * DAY });
+      else {
+        f.turns.push({
+          id, endpoint, model, scope, chain: prev?.chain ?? id, since: prev?.since ?? now, ends: prev?.ends ?? now + days * DAY,
+          n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), at: now, days,
+        });
+      }
+      return true;
     });
   }
 
@@ -179,10 +185,15 @@ export class Kept {
     });
   }
 
-  /** A turn the provider kept for a call that then failed: deleted. @param {string} id @param {string} endpoint @param {number} days */
+  /**
+   * A turn the provider kept for a call that then failed (or was refused): deleted. false: its provider is gone, so the
+   * caller deletes it now, with the key it still holds. @param {string} id @param {string} endpoint @param {number} days
+   */
   discard(id, endpoint, days) {
     return this.#change((f, now) => {
+      if (this.#gone.has(endpoint.split('/')[0])) return false;
       if (!f.forget.some((d) => d.id === id)) f.forget.push({ id, endpoint, until: now + days * DAY });
+      return true;
     });
   }
 
@@ -193,6 +204,7 @@ export class Kept {
 
   /** Forgets a provider's turns and deletions without a call: its key is going. @param {string} provider */
   drop(provider) {
+    this.#gone.add(provider);
     return this.#change((f) => {
       f.turns = f.turns.filter((t) => !ofProvider(t.endpoint, provider));
       f.forget = f.forget.filter((d) => !ofProvider(d.endpoint, provider));
@@ -250,26 +262,8 @@ export class Kept {
         done.add(d.id);
         continue;
       }
-      if (!to?.type.forgetRequest) {
-        later.add(d.endpoint);
-        continue;
-      }
-      if (to.key) trace?.secret(to.key);
-      const r = to.type.forgetRequest({ endpoint: to.endpoint, key: to.key, id: d.id });
-      const started = this.now();
-      let status = 0;
-      try {
-        sameOrigin(to.endpoint, r.url);
-        const res = await fetch(r.url, { method: r.method, headers: r.headers, redirect: 'manual', signal: AbortSignal.any([signal ?? new AbortController().signal, AbortSignal.timeout(15_000)]) });
-        status = res.status;
-        noRedirect(res, to.endpoint);
-        if (res.ok || res.status === 404) done.add(d.id);
-        else later.add(d.endpoint);
-      } catch {
-        later.add(d.endpoint);
-      }
-      // In the trace as every request is (spec §9.8), named without the turn's id.
-      await trace?.request({ kind: 'forget', endpoint: to.endpoint.name, model: '', providerModel: '', url: r.url.replace(encodeURIComponent(d.id), '…'), status, ms: this.now() - started, firstMs: null, outcome: done.has(d.id) ? 'ok' : 'waiting', usage: null });
+      if (to && (await deleteTurn({ ...to, id: d.id, fetch, signal, trace, now: this.now }))) done.add(d.id);
+      else later.add(d.endpoint);
     }
     return this.#change((f) => {
       f.forget = f.forget.filter((d) => !done.has(d.id));
@@ -278,3 +272,26 @@ export class Kept {
   }
 }
 
+/**
+ * One kept turn's deletion, traced as every request is (spec §9.8), without the turn's id; true when done (200 or 404).
+ * @param {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, key: string | null, id: string,
+ *   fetch: (url: string, init: RequestInit) => Promise<Response>, signal?: AbortSignal, trace?: ReturnType<typeof import('./trace.js').modelTrace>, now: () => number }} c
+ */
+export async function deleteTurn({ type, endpoint, key, id, fetch, signal, trace, now }) {
+  if (!type.forgetRequest) return false;
+  if (key) trace?.secret(key);
+  const r = type.forgetRequest({ endpoint, key, id });
+  const started = now();
+  let status = 0;
+  try {
+    sameOrigin(endpoint, r.url);
+    const res = await fetch(r.url, { method: r.method, headers: r.headers, redirect: 'manual', signal: AbortSignal.any([signal ?? new AbortController().signal, AbortSignal.timeout(15_000)]) });
+    status = res.status;
+    noRedirect(res, endpoint);
+  } catch {
+    // no answer: it waits
+  }
+  const done = (status >= 200 && status < 300) || status === 404;
+  await trace?.request({ kind: 'forget', endpoint: endpoint.name, model: '', providerModel: '', url: r.url.replace(encodeURIComponent(id), '…'), status, ms: now() - started, firstMs: null, outcome: done ? 'ok' : 'waiting', usage: null });
+  return done;
+}

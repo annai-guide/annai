@@ -513,3 +513,18 @@ test("a turn Google refused isn't continued: what it blocked would be in every l
   assert.deepEqual((await k.file()).turns, []);
   assert.deepEqual((await k.file()).forget.map((/** @type {any} */ f) => f.id), ['v1_refused']);
 });
+
+test('a turn still being answered when its provider is removed is deleted at once, with the key the call still holds: nothing of it is left with Google', async () => {
+  const c = await callKit([{ text: 'Ichiran.', delayMs: 300 }]);
+  try {
+    const answering = c.call([m1]);
+    for (let i = 0; i < 100 && !c.s.bodies().length; i++) await new Promise((r) => setTimeout(r, 5));
+    await c.kept.drop('pv-g'); // removeProvider's last step, its key going with it
+    assert.equal((await answering).reply.text, 'Ichiran.');
+    assert.deepEqual(c.s.deleted(), ['v1_stand-in-1']);
+    assert.deepEqual(c.s.stored(), []);
+    assert.deepEqual(await c.kept.count(), { turns: 0, waiting: 0, until: 0, endpoints: [] });
+  } finally {
+    await c.s.close();
+  }
+});
