@@ -4,7 +4,8 @@ import { SYS } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
 import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates } from '../llm/fallback.js';
 import { speechKind, modelOf, abilityOf, STAND_INS } from '../llm/config.js';
-import { Speaker, speechOutEntries } from './speaker.js';
+import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
+import { estimateSeconds } from './stream-start.js';
 import { voicePlatform } from './platform.js';
 import { voiceSettings } from './settings.js';
 import { record } from './recorder.js';
@@ -91,6 +92,7 @@ export class Voice {
       entries: () => this.outEntries(),
       synthesize: (entry, text, signal) => this.#clip(entry.id, text, signal),
       platform: () => this.platform,
+      now: () => this.now(),
       bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
       browserOptions: async () => {
         const s = voiceSettings(await readAppSettings(this.ws));
@@ -260,26 +262,32 @@ export class Voice {
     return u.done;
   }
 
-  /** One voice's clip of a text, played: that voice's Test. @param {string} modelId @param {string} text */
+  /** One voice's clip of a text, or its stream, played: that voice's Test. @param {string} modelId @param {string} text */
   async sample(modelId, text) {
     const platform = this.platform;
     if (!platform) throw new Error("This browser can't play sound here.");
     platform.session('playback');
-    const clip = await this.#clip(modelId, text);
-    return platform.player.play(clip, { signal: new AbortController().signal, onLevel: (x) => this.#level(x, 'her') });
+    const got = await this.#clip(modelId, text);
+    const o = { signal: new AbortController().signal, onLevel: (/** @type {number} */ x) => this.#level(x, 'her') };
+    return 'chunks' in got ? playStream(platform.player, new Arrivals(got, this.now), { ...o, estimatedS: estimateSeconds(text), now: this.now }) : platform.player.play(got, o);
   }
 
   /**
    * One voice's clip, in the smallest format it offers that the phone plays (spec §10.6). A voice
    * that refuses it (Speaches refuses opus and aac) is asked for MP3, then WAV, until annai restarts.
+   * A voice that streams gives its stream once a tap has unlocked sound (G3): before then, the stream
+   * player might never sound (an iPhone), where a whole clip's refusal says so.
    * @param {string} id @param {string} text @param {AbortSignal} [signal]
+   * @returns {Promise<import('./platform.js').Clip | import('../llm/contract.js').SpeechStream>}
    */
   async #clip(id, text, signal) {
     const t = tunablesOf(await this.llm.config(), this.llm.types(), id);
     const asked = (/** @type {string[]} */ plays) => (t.format === 'auto' ? pickOut([].concat(t.audioOut ?? []), plays) : t.format);
+    const stream = Boolean(this.#unlocked && this.platform?.player.stream);
     for (let plays = this.voicePlays.get(id) ?? this.plays(); ;) {
       try {
-        return (await this.llm.synthesize({ modelId: id, text, signal, scope: this.scope, plays })).clip;
+        const r = await this.llm.synthesize({ modelId: id, text, signal, scope: this.scope, plays, ...(stream ? { stream } : {}) });
+        return r.stream ?? r.clip;
       } catch (e) {
         const order = ['mp3', 'wav'];
         const next = order.slice(order.indexOf(asked(plays) ?? '') + 1).find((f) => asked([f]) === f);
