@@ -276,9 +276,10 @@ export function createLlm({
       await service.unbench(providerId);
     },
     /**
-     * "Use the recommended models" (or the free ones): every ability whose models the suggestion names is switched
-     * on first, installing its protocol (a setup action), then the roles are filled, Koe's too.
-     * @param {string} providerId @param {string} which
+     * "Use the recommended models" (or the free ones): each ability the suggestion names that is off by its description's
+     * default (or new in an update) is switched on first, installing its protocol (a setup action); one the user switched
+     * off stays off. Then every role it can fill is filled, Koe's too, whatever a switch did.
+     * @param {string} providerId @param {string} which @returns {Promise<{ on: string[], failed: { name: string, error: unknown }[] }>} the abilities by name
      */
     async useSuggestion(providerId, which) {
       const cfg = await readConfig(ws);
@@ -286,10 +287,20 @@ export function createLlm({
       const src = providers().find((s) => s.plugin === rec?.plugin);
       if (!rec || !src) throw new ProviderError('not-found', "That provider no longer exists, or its plugin isn't running.");
       const named = new Set(Object.values(src.provider.roles?.[which] ?? {}).flat());
+      /** @type {{ on: string[], failed: { name: string, error: unknown }[] }} */
+      const out = { on: [], failed: [] };
       for (const a of Object.values(providerOf(rec).abilities)) {
-        if (!a.on && Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === a.id && named.has(modelOf(m).providerId))) await service.setAbility(providerId, a.id, true);
+        if (a.on || (rec.user?.abilities?.[a.id]?.on === false && !rec.template?.added?.includes(a.id))) continue;
+        if (!Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === a.id && named.has(modelOf(m).providerId))) continue;
+        try {
+          await service.setAbility(providerId, a.id, true);
+          out.on.push(a.name);
+        } catch (error) {
+          out.failed.push({ name: a.name, error });
+        }
       }
       await useSuggestion({ ws }, providerId, src, which);
+      return out;
     },
     /**
      * Marks a provider's key as on its free tier, or not, saved at once: on, its calls cost nothing.
