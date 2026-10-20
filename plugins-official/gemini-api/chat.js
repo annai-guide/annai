@@ -72,7 +72,8 @@ function build({ endpoint, model, key, request }) {
   config.thinking_summaries = 'auto';
   if (request.toolChoice) config.tool_choice = { allowed_tools: { mode: 'any', tools: [request.toolChoice] } };
   /** @type {Record<string, any>} */
-  const body = { model: model.providerId, store: false, stream: true };
+  // An id from the OpenAI-compatible endpoint's list, before provider-gemini 2.0, is "models/<id>".
+  const body = { model: String(model.providerId).replace(/^models\//, ''), store: false, stream: true };
   if (request.system) body.system_instruction = request.system;
   if (request.tools?.length) body.tools = request.tools.map(toolSchema);
   body.generation_config = config;

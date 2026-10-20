@@ -1,36 +1,160 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "1.5.0",
+  "version": "2.0.0",
   "api": 1,
-  "description": "Gemini models through Google's OpenAI-compatible endpoint, and Gemini Live for a voice conversation.",
+  "description": "Gemini models through Google's own API, and Gemini Live for a voice conversation.",
   "category": "providers",
   "requires": [
     {
-      "id": "chat-completions",
+      "id": "gemini-api",
+      "version": "^0"
+    },
+    {
+      "id": "gemini-live",
       "version": "^0"
     }
   ],
   "provider": {
-    "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "baseUrl": "https://generativelanguage.googleapis.com",
     "key": "required",
     "keyUrl": "https://aistudio.google.com/apikey",
-    "note": "Uses Gemini's OpenAI-compatible endpoint. Add models with Fetch model list.",
+    "freeTier": true,
+    "note": "Uses Gemini's own API. AI Studio shows each key's tier: a free key's requests are limited per minute and per day. Add more models with Fetch model list.",
     "abilities": {
       "chat": {
         "kind": "chat",
-        "type": "chat-completions",
-        "tunables": {
-          "standInCallExtra": {
-            "google": {
-              "thought_signature": "skip_thought_signature_validator"
+        "type": "gemini",
+        "note": "Since version 2.0 this goes through Gemini's own API, not its OpenAI-compatible endpoint. A model added before then is kept; if one of them doesn't answer, or shows no context window, remove it and add it again with Fetch model list.",
+        "models": [
+          {
+            "providerId": "gemini-3.8-flash",
+            "name": "Gemini 3.8 Flash",
+            "input": [
+              "text",
+              "image",
+              "pdf",
+              "audio"
+            ],
+            "contextWindow": 1048576,
+            "maxOutput": 65536,
+            "reasoning": {
+              "low": {
+                "generation_config": {
+                  "thinking_level": "low"
+                }
+              },
+              "medium": {
+                "generation_config": {
+                  "thinking_level": "medium"
+                }
+              },
+              "high": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              },
+              "max": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              }
+            },
+            "prices": {
+              "input": 0.75,
+              "output": 3.75,
+              "cacheRead": 0.075
             }
           },
-          "audioIn": [
-            "wav",
-            "mp3"
-          ]
-        }
+          {
+            "providerId": "gemini-3.6-flash",
+            "name": "Gemini 3.6 Flash",
+            "input": [
+              "text",
+              "image",
+              "pdf",
+              "audio"
+            ],
+            "contextWindow": 1048576,
+            "maxOutput": 65536,
+            "reasoning": {
+              "off": {
+                "generation_config": {
+                  "thinking_level": "minimal"
+                }
+              },
+              "low": {
+                "generation_config": {
+                  "thinking_level": "low"
+                }
+              },
+              "medium": {
+                "generation_config": {
+                  "thinking_level": "medium"
+                }
+              },
+              "high": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              },
+              "max": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              }
+            },
+            "prices": {
+              "input": 0.75,
+              "output": 3.75,
+              "cacheRead": 0.075
+            }
+          },
+          {
+            "providerId": "gemini-3.5-flash-lite",
+            "name": "Gemini 3.5 Flash Lite",
+            "input": [
+              "text",
+              "image",
+              "pdf",
+              "audio"
+            ],
+            "contextWindow": 1048576,
+            "maxOutput": 65536,
+            "reasoning": {
+              "off": {
+                "generation_config": {
+                  "thinking_level": "minimal"
+                }
+              },
+              "low": {
+                "generation_config": {
+                  "thinking_level": "low"
+                }
+              },
+              "medium": {
+                "generation_config": {
+                  "thinking_level": "medium"
+                }
+              },
+              "high": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              },
+              "max": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              }
+            },
+            "prices": {
+              "input": 0.3,
+              "output": 2.5,
+              "cacheRead": 0.03
+            }
+          }
+        ]
       },
       "live": {
         "kind": "realtime",
@@ -77,8 +201,20 @@
     },
     "roles": {
       "recommended": {
+        "main": [
+          "gemini-3.8-flash",
+          "gemini-3.6-flash",
+          "gemini-3.5-flash-lite"
+        ],
+        "utility": [
+          "gemini-3.5-flash-lite"
+        ],
+        "decide": [
+          "gemini-3.5-flash-lite"
+        ],
         "koe": [
-          "gemini-3.8-live"
+          "gemini-3.8-live",
+          "gemini-3.5-flash-lite"
         ]
       }
     }

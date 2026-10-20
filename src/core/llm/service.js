@@ -5,7 +5,7 @@ import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
 import { endpointTypes, ProviderError, typeError, sameOrigin, noRedirect, explain } from './contract.js';
 import { ensureType } from './official.js';
-import { addProvider as addProviderRecords, syncProviders } from './providers.js';
+import { addProvider as addProviderRecords, syncProviders, useSuggestion } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins } from './official.js';
 import { PluginError, NOT_OWN, TURN_ON, isPluginBug } from '../registry.js';
@@ -274,6 +274,22 @@ export function createLlm({
       const layer = providerBase(rec).abilities[abilityId]?.on === on ? mine : { ...mine, on };
       await saveProvider(ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user?.abilities, [abilityId]: layer } } });
       await service.unbench(providerId);
+    },
+    /**
+     * "Use the recommended models" (or the free ones): every ability whose models the suggestion names is switched
+     * on first, installing its protocol (a setup action), then the roles are filled, Koe's too.
+     * @param {string} providerId @param {string} which
+     */
+    async useSuggestion(providerId, which) {
+      const cfg = await readConfig(ws);
+      const rec = cfg.providers[providerId];
+      const src = providers().find((s) => s.plugin === rec?.plugin);
+      if (!rec || !src) throw new ProviderError('not-found', "That provider no longer exists, or its plugin isn't running.");
+      const named = new Set(Object.values(src.provider.roles?.[which] ?? {}).flat());
+      for (const a of Object.values(providerOf(rec).abilities)) {
+        if (!a.on && Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === a.id && named.has(modelOf(m).providerId))) await service.setAbility(providerId, a.id, true);
+      }
+      await useSuggestion({ ws }, providerId, src, which);
     },
     /**
      * Marks a provider's key as on its free tier, or not, saved at once: on, its calls cost nothing.

@@ -4,12 +4,11 @@ import { readFile } from 'node:fs/promises';
 import { checkProviderDesc } from '../../src/core/llm/provider-desc.js';
 import { catalogFacts } from '../../src/core/catalog-facts.js';
 import { satisfies } from '../../src/core/requires.js';
-import { readConfig, modelOf } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, providerOf, saveRoles } from '../../src/core/llm/config.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 import { hostKit } from './package-kit.js';
 import { officialManifests, official } from './provider-kit.js';
-import { useSuggestion } from '../../src/core/llm/providers.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 const root = new URL('../../', import.meta.url);
@@ -43,7 +42,7 @@ const WENT = {
   anthropic: ['provider-anthropic', 'chat', 'anthropic-messages', ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5']],
   'openai-responses': ['provider-openai', 'chat', 'openai-responses', ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna']],
   openai: ['provider-openai', 'chat-completions', 'chat-completions', []],
-  gemini: ['provider-gemini', 'chat', 'chat-completions', []],
+  gemini: ['provider-gemini', 'chat', 'gemini', ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']],
   groq: ['provider-groq', 'chat', 'chat-completions', []],
   deepseek: ['provider-deepseek', 'chat', 'chat-completions', []],
   mistral: ['provider-mistral', 'chat', 'chat-completions', []],
@@ -83,7 +82,7 @@ test("today's 22 templates are all somewhere: models, prices, notes and roles ke
   assert.match(or.provider.note ?? '', /Free models allow 50 requests a day/);
   assert.match(or.provider.abilities.voice.note ?? '', /put one in the model's Voice/);
   assert.match((await official('provider-openai')).provider.abilities.chat.note ?? '', /call tools only through Responses/);
-  assert.match((await official('provider-gemini')).provider.note ?? '', /OpenAI-compatible endpoint/);
+  assert.match((await official('provider-gemini')).provider.note ?? '', /Gemini's own API/);
   assert.match((await official('provider-local-speech')).provider.note ?? '', /needs an HTTPS address/);
   assert.match((await official('provider-another-address')).provider.abilities.responses.note ?? '', /"phase": false/);
   // The roles each suggested, OpenRouter's speech in its recommended set.
@@ -217,6 +216,7 @@ test('every official transcription and Chat Completions ability declares the aud
   const helpers = { ProviderError: Error, errorFromResponse: () => new Error(), mergePatch: (/** @type {any} */ a, /** @type {any} */ b) => ({ ...a, ...b }), sse: () => {} };
   (await import('../../plugins-official/speech-openai/index.js')).activate({ providers: { register }, helpers });
   (await import('../../plugins-official/chat-completions/index.js')).activate({ providers: { register }, helpers });
+  (await import('../../plugins-official/gemini-api/index.js')).activate({ providers: { register }, helpers });
   assert.deepEqual(defaults['chat-completions'].audioIn, ['wav', 'mp3'], "Chat Completions' input_audio: OpenAI's takes WAV and MP3 only");
   const known = ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'];
   /** @type {Record<string, any>} */
@@ -224,7 +224,7 @@ test('every official transcription and Chat Completions ability declares the aud
   for (const m of (await officialManifests()).filter((x) => x.provider)) {
     for (const [id, a] of Object.entries(/** @type {Record<string, any>} */ (m.provider.abilities))) {
       const t = { ...defaults[a.type], ...a.tunables };
-      if (a.kind === 'transcription' || a.type === 'chat-completions') {
+      if (a.kind === 'transcription' || a.type === 'chat-completions' || a.type === 'gemini') {
         assert.ok(t.audioIn.includes('wav') && t.audioIn.every((/** @type {string} */ f) => known.includes(f)), `${m.id}/${id}: ${t.audioIn}`);
         declared[`${m.id}/${id}`] = t.audioIn;
       }
@@ -240,21 +240,19 @@ test('every official transcription and Chat Completions ability declares the aud
   assert.deepEqual(declared['provider-vllm/transcription'], opus);
   assert.deepEqual(declared['provider-openai/transcription'], ['webm', 'mp4', 'mp3', 'wav']);
   assert.deepEqual(declared['provider-openrouter/chat'], ['ogg', 'aac', 'mp4', 'mp3', 'flac', 'wav']);
-  assert.deepEqual(declared['provider-gemini/chat'], ['wav', 'mp3'], 'measured: Gemini through Chat Completions refuses the rest');
+  assert.deepEqual(declared['provider-gemini/chat'], ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'], "Gemini's own API takes every format annai makes");
   assert.deepEqual(declared['provider-openrouter/voice'], ['mp3'], "OpenRouter's voices send MP3 (or raw PCM) only");
   assert.deepEqual(declared['provider-openai/voice'], ['opus', 'aac', 'mp3', 'flac', 'wav']);
   assert.deepEqual(declared['provider-local-speech/voice'], ['mp3', 'wav'], 'Speaches refuses opus and aac; Kokoro-FastAPI takes MP3 too');
 });
 
-test("Gemini's Live voice: off until switched on, which installs gemini-live; Test opens a session that answers OK aloud, recorded on the model; the recommended models put it in Koe (K4)", async () => {
+test("Gemini's Live voice: off until switched on; Test opens a session that answers OK aloud, recorded on the model; the recommended models put it in Koe (K4)", async () => {
   const desc = (await official('provider-gemini')).provider;
   const live = /** @type {any} */ (desc.abilities.live);
   assert.deepEqual([live.kind, live.type, live.name, live.on, live.baseUrl], ['realtime', 'gemini-live', 'Live voice', false, 'https://generativelanguage.googleapis.com']);
   assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking']);
   assert.deepEqual(live.models[0].prices, { input: 0.75, audioIn: 3, image: 1, output: 4.5, audioOut: 12 });
   assert.ok(live.models.every((/** @type {any} */ m) => m.input.join() === 'text,image'), 'it takes photos (and prices their tokens)');
-  assert.deepEqual(desc.roles?.recommended, { koe: ['gemini-3.8-live'] }, 'one Koe list (the user, 2026-10-19)');
-  assert.ok(!(await official('provider-gemini')).provider.roles?.recommended?.main, 'Main stays as the user sets it');
   const GKEY = 'AIza-stand-in-gemini-key-0123456789';
   const s = await startRealtimeServer({ flavour: 'gemini', key: GKEY, pace: 0.05, turns: [{ said: 'OK.', audio: new Uint8Array(9600), usage: { promptTokenCount: 500, responseTokenCount: 20, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 500 }], responseTokensDetails: [{ modality: 'AUDIO', tokenCount: 20 }] } }] });
   try {
@@ -268,12 +266,11 @@ test("Gemini's Live voice: off until switched on, which installs gemini-live; Te
     };
     const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
     const id = await llm.addProvider('provider-gemini', { key: GKEY, abilities: { live: { on: false, baseUrl: s.origin } } });
-    assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['chat-completions', 'provider-gemini'], 'nothing for live sessions until they are switched on');
+    assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['gemini-api', 'gemini-live', 'provider-gemini'], 'what it requires, all or nothing');
     const cfg = await readConfig(k.ws);
     assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
     const liveId = /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'gemini-3.8-live')?.id);
     await llm.setAbility(id, 'live', true);
-    assert.ok((await k.host.installed())['gemini-live'], 'switching it on installs its protocol');
     /** @type {number[]} */
     const heard = [];
     const r = await llm.test(liveId, { onAudio: (/** @type {Uint8Array} */ d, /** @type {any} */ f) => heard.push(d.length, f.rate) });
@@ -293,11 +290,86 @@ test("Gemini's Live voice: off until switched on, which installs gemini-live; Te
     const bad = await llm.test(liveId);
     assert.deepEqual(bad.steps.map((/** @type {any} */ x) => [x.step, x.ok]), [['key', false]]);
     assert.match(bad.steps[0].detail, /key was rejected/);
-    await useSuggestion(k, id, await official('provider-gemini'), 'recommended');
-    assert.deepEqual((await readConfig(k.ws)).roles.koe.models, [liveId], '"Use the recommended models" puts Live in Koe');
+    await llm.useSuggestion(id, 'recommended');
+    const lite = Object.values((await readConfig(k.ws)).models).find((m) => modelOf(m).providerId === 'gemini-3.5-flash-lite')?.id;
+    assert.deepEqual((await readConfig(k.ws)).roles.koe.models, [liveId, lite], '"Use the recommended models" puts Live in Koe, then flash-lite');
   } finally {
     await s.stop();
   }
+});
+
+test('provider-gemini 2.0.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
+  const m = await official('provider-gemini');
+  const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
+  assert.equal(m.version, '2.0.0');
+  assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }, { id: 'gemini-live', version: '^0' }], 'not chat-completions');
+  const d = m.provider;
+  assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', true, 'https://aistudio.google.com/apikey']);
+  const chat = /** @type {any} */ (d.abilities.chat);
+  assert.deepEqual([chat.kind, chat.type, chat.baseUrl, chat.tunables], ['chat', 'gemini', undefined, undefined], 'no standInCallExtra, no audio limit');
+  assert.ok(!JSON.stringify(m).includes('standInCallExtra'));
+  // Paid prices from Google's pricing page, 2026-10-19 (Standard tier, through 2026-12-31). 3.7-flash is left out: Google answers it as 3.8-flash.
+  assert.deepEqual(chat.models.map((/** @type {any} */ x) => [x.providerId, x.prices]), [
+    ['gemini-3.8-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
+    ['gemini-3.6-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
+    ['gemini-3.5-flash-lite', { input: 0.3, output: 2.5, cacheRead: 0.03 }],
+  ]);
+  for (const x of chat.models) {
+    assert.deepEqual(x.reasoning, levelsFor(x.providerId), x.providerId);
+    assert.deepEqual([x.contextWindow, x.maxOutput, x.input], [1048576, 65536, ['text', 'image', 'pdf', 'audio']], x.providerId);
+  }
+  assert.ok(d.abilities.live.models?.every((/** @type {any} */ x) => x.input.join() === 'text,image'), 'the live models take photos');
+  assert.deepEqual(d.roles, { recommended: {
+    main: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'], utility: ['gemini-3.5-flash-lite'], decide: ['gemini-3.5-flash-lite'],
+    koe: ['gemini-3.8-live', 'gemini-3.5-flash-lite'],
+  } }, 'different quotas: a used-up day falls to the next flash');
+  assert.match(chat.note ?? '', /Fetch model list/, 'what to do when a model from before 2.0 can\'t be kept, in words');
+});
+
+test("the move-over from provider-gemini 1.x: the chat ability's type becomes gemini, the user's models and key stay, and 2.0's models join no role", async () => {
+  const { syncProviders, addListedModel } = await import('../../src/core/llm/providers.js');
+  const { setKey, getKey } = await import('../../src/core/llm/config.js');
+  const k = await hostKit();
+  const v2 = await official('provider-gemini');
+  const v1 = /** @type {any} */ ({ ...v2, version: '1.5.0', provider: { ...v2.provider, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', freeTier: undefined, roles: { recommended: { koe: ['gemini-3.8-live'] } },
+    abilities: { chat: { kind: 'chat', type: 'chat-completions', tunables: { standInCallExtra: { google: { thought_signature: 'skip_thought_signature_validator' } }, audioIn: ['wav', 'mp3'] } }, live: v2.provider.abilities.live } } });
+  const { addProvider } = await import('../../src/core/llm/providers.js');
+  const id = await addProvider({ ws: k.ws, store: k.store }, v1, { key: 'AIza-kept' });
+  const old = await addListedModel({ ws: k.ws }, id, 'chat', { providerId: 'models/gemini-3.6-flash' });
+  await saveRoles(k.ws, { ...(await readConfig(k.ws)).roles, main: { models: [old], level: 'medium' } });
+  assert.equal(await syncProviders({ ws: k.ws }, [v2]), 1);
+  const cfg = await readConfig(k.ws);
+  const p = providerOf(cfg.providers[id]);
+  assert.deepEqual([p.baseUrl, p.abilities.chat.type, p.abilities.chat.tunables], ['https://generativelanguage.googleapis.com', 'gemini', {}], 'the stand-in and the audio limit are gone with 1.x');
+  assert.equal(modelOf(cfg.models[old]).providerId, 'models/gemini-3.6-flash', "kept: build asks for it by its id");
+  assert.deepEqual(cfg.roles.main.models, [old]);
+  assert.ok(Object.values(cfg.models).some((m) => modelOf(m).providerId === 'gemini-3.8-flash'), "2.0's models arrive, in no role");
+  assert.equal(await getKey(k.store, id), 'AIza-kept');
+  await setKey(k.store, id, null);
+});
+
+test('"Use the recommended models" switches on every ability whose models it names: Live, installing its protocol, then fills the roles; adding the provider alone leaves Koe empty', async () => {
+  const k = await hostKit();
+  const fetch = async (/** @type {any} */ url) => {
+    try {
+      return new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)));
+    } catch {
+      return new Response('not found', { status: 404 });
+    }
+  };
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+  const id = await llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  const cfg = await readConfig(k.ws);
+  const byId = (/** @type {string} */ pid) => Object.values(cfg.models).find((x) => modelOf(x).providerId === pid)?.id;
+  assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
+  assert.deepEqual(cfg.roles.main.models, ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'].map(byId));
+  assert.equal(providerOf(cfg.providers[id]).abilities.live.on, false);
+  await k.host.uninstall('gemini-live'); // as on a phone where it was never installed
+  await llm.useSuggestion(id, 'recommended');
+  const after = await readConfig(k.ws);
+  assert.equal(providerOf(after.providers[id]).abilities.live.on, true);
+  assert.ok((await k.host.installed())['gemini-live'], 'switched on through setAbility, which installs its protocol');
+  assert.deepEqual(after.roles.koe.models, [byId('gemini-3.8-live'), byId('gemini-3.5-flash-lite')]);
 });
 
 test("OpenAI's Realtime voice: off until switched on, which installs openai-realtime; Test opens a session through the key as a subprotocol that answers OK aloud, in 24 kHz PCM; a refused key is said as one (K6)", async () => {

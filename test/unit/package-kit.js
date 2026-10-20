@@ -39,11 +39,16 @@ export async function hostKit() {
   const store = watchAppends(createMemoryStore(), (evs) => deliverHooks(registry, evs));
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
+  /** A stored module as a data: address, its own imports ('./steps.js') made data: addresses too, as a data: module can't resolve them. @param {string} id @param {string} file @returns {Promise<string>} */
+  const dataUrl = async (id, file) => {
+    let code = (await ws.readText(SYS_PLUGINS, `/${id}/${file}`)) ?? '';
+    for (const [whole, rel] of [...code.matchAll(/from\s+'\.\/([^']+)'/g)]) code = code.replace(whole, `from '${await dataUrl(id, rel)}'`);
+    return `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
+  };
   const importModule = async (/** @type {string} */ url) => {
     const m = /^\/plugins\/([^/]+)\/(.+)$/.exec(url);
     if (!m) return import(url);
-    const code = await ws.readText(SYS_PLUGINS, `/${decodeURIComponent(m[1])}/${m[2]}`);
-    return import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
+    return import(await dataUrl(decodeURIComponent(m[1]), m[2]));
   };
   const host = new PluginHost({ registry, workspace: ws, importModule });
   const log = () => store.tx(['events'], 'readonly', (t) => t.listEvents(SYS));
