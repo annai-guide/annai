@@ -25,6 +25,8 @@ import { checkSetup } from './llm/setup.js';
 import { catalogFacts } from './catalog-facts.js';
 import { toBase64, fromBase64 } from './bytes.js';
 import { OFFICIAL_NAMES } from './official-names.js';
+import { g711 } from './voice/g711.js';
+import { encodeWav } from './voice/pcm.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -49,7 +51,7 @@ function defaultsOf(schema) {
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
   backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer, addressProblem,
-  base64: Object.freeze({ encode: toBase64, decode: fromBase64 }) });
+  base64: Object.freeze({ encode: toBase64, decode: fromBase64 }), g711, wav: Object.freeze({ encode: encodeWav }) });
 
 /** The kinds annai.register refuses, with the call each goes through. @type {Record<string, string>} */
 const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',

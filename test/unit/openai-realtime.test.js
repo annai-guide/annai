@@ -7,7 +7,8 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { openLive } from '../../src/core/realtime/open.js';
-import { activate, usageOf, muLaw, fromMuLaw } from '../../plugins-official/openai-realtime/index.js';
+import { activate, usageOf } from '../../plugins-official/openai-realtime/index.js';
+import { g711, pcmToUlaw as muLaw, ulawToPcm as fromMuLaw } from '../../src/core/voice/g711.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 // OpenAI Realtime (K6), against the stand-in's openai flavour: no OpenAI key was at hand, so these hold the plugin
@@ -23,7 +24,7 @@ function openaiRealtime(more = {}) {
   const notes = [];
   activate({
     providers: { register: (/** @type {any} */ x) => { t = { ...x, pluginId: 'openai-realtime' }; return () => {}; } },
-    helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } },
+    helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 }, g711 },
     events: { append: async (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data) => { notes.push([scope, type, data]); } },
     ...more,
   });
