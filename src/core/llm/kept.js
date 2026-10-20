@@ -41,11 +41,12 @@ function hash(s) {
 }
 
 /**
- * A message's fingerprint as sent: words, photos (by hash), audio, documents, calls and results. What only its model
- * reads (signed thoughts, its blocks, a call's extra) is left out, so another model's turns still match. @param {Message} m
+ * A message's fingerprint as sent: words, photos (by hash), audio, documents, calls and results; heard speech by its
+ * segment. What only its model reads (signed thoughts, its blocks, a call's extra) is left out. @param {Message} m
  */
 export function fingerprint(m) {
   const part = (/** @type {any} */ p) => {
+    if (p.heard) return `h${p.heard}`; // heard speech, as sound or its words
     if (p.type === 'text') return `t${p.text}`;
     if (p.type === 'image') return `i${p.hash ?? hash(String(p.data ?? ''))}`;
     if (p.type === 'audio' || p.type === 'document') return `${p.type[0]}${p.mediaType}${hash(String(p.data ?? ''))}`;

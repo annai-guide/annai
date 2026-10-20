@@ -3,10 +3,10 @@
  * streamed reply is made of, normalized usage and normalized errors. Endpoint-type plugins
  * translate between this and one wire protocol; the core contains no protocol.
  *
- * @typedef {{ type: 'text', text: string }
+ * @typedef {{ type: 'text', text: string, heard?: string }
  *   | { type: 'image', mediaType: string, data: string, hash?: string, path?: string, region?: number[], fileId?: string, missing?: boolean }
  *   | { type: 'document', mediaType: string, data: string, name?: string, missing?: boolean }
- *   | { type: 'audio', mediaType: string, data: string }
+ *   | { type: 'audio', mediaType: string, data: string, heard?: string }
  *   | { type: 'speech', id: string, text?: string, clip?: string }
  *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any, extra?: any, model?: string }
@@ -18,6 +18,7 @@
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model. audio.data is base64, sent only to a model that takes audio. speech is a heard
  *   segment (spec §10.3): annai resolves it for each model attempt into audio or words; text is its words once written down, clip a kept voice clip's hash.
+ *   heard: the segment a text or audio part was resolved from, in a conversation's turn (G2); a protocol sends it as any text or audio.
  *   A tool_call's extra is what its provider wrote on it to have back (Gemini 3's thought signature), and model the provider model id
  *   that wrote it: it goes back only to that model.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message

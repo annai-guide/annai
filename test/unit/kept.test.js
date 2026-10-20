@@ -475,3 +475,41 @@ test('annai starting again sends the deletions that waited, by itself', async ()
     await c.s.close();
   }
 });
+
+test('a voice message sent as sound, then as its words once written down, is the same message: the next turn still goes after the kept one', async () => {
+  const c = await callKit([{ text: 'Ichiran.' }, { text: 'Until 23:00.' }]);
+  try {
+    const CLIP = Buffer.from('a voice message standing in for its sound').toString('base64');
+    let written = false;
+    // As annai's speech-in list resolves heard speech: sound while it is in memory, its words once written down (spec §10.3).
+    const speech = async (/** @type {any} */ _model, /** @type {any} */ request) => ({ ...request, messages: request.messages.map((/** @type {any} */ m) => ({ ...m,
+      parts: m.parts.map((/** @type {any} */ p) => (p.type !== 'speech' ? p : written ? { type: 'text', text: 'Where can we eat?' } : { type: 'audio', mediaType: 'audio/ogg', data: CLIP })) })) });
+    const heard = msg('user', { type: 'speech', id: 'heard-1' });
+    const r = await c.call([heard], { speech });
+    written = true;
+    await c.call([heard, msg('assistant', ...r.reply.parts), m3], { speech });
+    const [b1, b2] = c.s.bodies();
+    assert.equal(b1.input[0].content[0].type, 'audio');
+    assert.equal(b2.previous_interaction_id, 'v1_stand-in-1');
+    assert.ok(!JSON.stringify(b2).includes('Where can we eat?') && !JSON.stringify(b2).includes(CLIP), 'neither its sound nor its words again');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test("a turn Google refused isn't continued: what it blocked would be in every later turn's history, so it is deleted, and the next goes after the turn before it", async () => {
+  const k = await keptKit();
+  const blocked = JSON.parse(await readFile(new URL('../fixtures/gemini/safety-block-400.json', import.meta.url), 'utf8')).error;
+  const sse = [
+    { event_type: 'interaction.created', interaction: { id: 'v1_refused', object: 'interaction' } },
+    { event_type: 'error', error: blocked },
+  ].map((e) => `event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
+  const r = await callRole({
+    role: 'main', config: gemConfig('https://generativelanguage.googleapis.com'), types: new Map([['gemini', loadGemini()]]), bench: new Bench(), keyFor: async () => KEY,
+    kept: k.kept, scope: 'trip-a', record: { keepParts: true }, request: { messages: [m1] },
+    fetch: async () => new Response(sse, { headers: { 'content-type': 'text/event-stream' } }),
+  });
+  assert.equal(r.reply.stop, 'refusal');
+  assert.deepEqual((await k.file()).turns, []);
+  assert.deepEqual((await k.file()).forget.map((/** @type {any} */ f) => f.id), ['v1_refused']);
+});

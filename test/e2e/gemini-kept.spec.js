@@ -131,3 +131,25 @@ test('turning the switch off deletes what Google keeps, and later turns are sent
   }
 });
 
+test("Erase while Shiori is answering: her turn stops first, so it leaves nothing on Google's side", async ({ page }) => {
+  const long = (/** @type {any} */ b) => JSON.stringify(b.input).includes('a long answer');
+  const s = await startGeminiServer({ key: KEY, replies: [(/** @type {any} */ b) => ({ ...SAY(b), ...(long(b) ? { delayMs: 4000 } : {}) })] });
+  try {
+    await geminiTrip(page, s.url);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await say(page, 'Hello!', 1);
+    await page.getByLabel('Message to Shiori').fill('And now a long answer, please.');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect.poll(() => s.bodies().some(long)).toBe(true); // Google has named her turn, and is still answering
+    await page.getByRole('link', { name: 'Settings' }).click();
+    const erase = page.getByRole('region', { name: 'Erase' });
+    await erase.getByLabel('Type ERASE to confirm').fill('ERASE');
+    await erase.getByRole('button', { name: 'Erase now' }).click();
+    await pastWelcome(page);
+    await page.waitForTimeout(4500); // past the answer's end, had it gone on
+    expect(s.stored()).toEqual([]);
+  } finally {
+    await s.close();
+  }
+});
+
