@@ -400,6 +400,18 @@ export function activate(annai) {
   - `refusal(status, body, c)` gives words for an error response that is the model declining, such as Gemini's safety block (a 400): the turn ends with them, stopping with `refusal`, and no other model is tried. Null for any other error. `c` is the call, so your type can keep what was blocked out of its later requests: Gemini API leaves the blocked message out of what it sends Gemini from then on, kept by a fingerprint in its own settings.
   - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the provider's page, per ability (the `uploads` tunable).
 
+### Kept turns
+
+A protocol whose server can keep a conversation's turns, so the next sends only what is new, says so with `keeps: true`, or the name of who keeps them, for the switch's words (Gemini API's is `"Google"`: "Let Google keep the conversation between turns: sends less each time."). annai does the rest, because only it sees trips, removals, Erase and the key:
+
+- **Which calls:** only a conversation's own turns, Main's and Koe's, while the ability's `keep` tunable is on (the switch on the provider's page). Those calls carry `keep: true`; every other call, a one-off (utility, a quick decision, Test, Try this model), doesn't, and must keep nothing (Gemini: `store: false`).
+- **Your side:**
+  - With `keep`, have the server keep the turn, and yield `{ type: 'kept', id }` as soon as it names it, before any output.
+  - With `kept: { id, from }`, continue that turn (Gemini: `previous_interaction_id`) and send only `request.messages.slice(from)`, with the system prompt, tools and the now block as always. Work out names and turns from the whole conversation all the same.
+  - Classify the error for a turn the server no longer has as `forgotten`. annai then sends the conversation whole to the same model, once. On a call that continued nothing, annai reads `forgotten` as `not-found`.
+  - `forgetRequest({ endpoint, key, id })` gives the server's delete call for one turn: `{ url, headers, method: 'DELETE' }`, to the ability's address. annai counts a 200 or a 404 as done.
+- **annai's side:** it remembers each kept turn by its id, its trip and fingerprints of the messages sent (never their content), on this device alone, and matches the longest one the new request begins with, then its reply. It continues a turn only while its chain's first turn is kept, as Google silently drops a deleted or expired turn's content from the turns after it. It keeps turns for a day on a free-tier key, else for `keepDays` (your tunable's default: the server's longest). It deletes them when the user removes their trip, the provider or everything, or turns the switch off. Deletions wait for a connection, and each is in the trace.
+
 ### Audio formats
 
 Speech travels in the smallest format both the phone and the provider handle (spec §10.6). Your protocol and your provider description say what that is, as tunables. annai reads them; your code only names files and formats.

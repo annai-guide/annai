@@ -41,6 +41,44 @@ export function createLlm({
   const uploads = new Uploads(ws);
   /** Conversation turns providers keep on their side, and the deletions waiting (G2). */
   const kept = new Kept({ ws });
+  /**
+   * The deletions of kept turns that wait, sent (spec §4.9): at start, on coming online, after a conversation's turn, on
+   * a removal. Each endpoint as calls see it, with its key; one whose provider is gone takes its deletions with it.
+   * @param {AbortSignal} [signal]
+   */
+  const drainKept = async (signal) => {
+    await ready;
+    return kept.drain({
+      fetch: get, signal, trace: modelTrace(store, SYS),
+      scopes: async () => new Set((await store.tx(['scopes'], 'readonly', (t) => t.listScopes())).map((x) => x.id)),
+      resolve: async (endpointId) => {
+        const cfg = await readConfig(ws);
+        const pRec = cfg.providers[endpointId.split('/')[0]];
+        const provider = pRec ? providerOf(pRec) : null;
+        const ability = provider?.abilities[endpointId.slice(endpointId.indexOf('/') + 1)];
+        if (!pRec || !provider || !ability) return 'gone';
+        const type = types().get(ability.type);
+        if (!type) return null;
+        const set = adjusted(plugins.registry, pRec.plugin, type, endpointOf(pRec, ability.id, type.tunables), provider.keyHeader);
+        return { type: set.type, ...sendKey(set.endpoint, await getKey(store, pRec.id), provider.keyHeader) };
+      },
+    });
+  };
+  /** The deletions waiting, sent for up to ms: a removal waits no longer. @param {number} ms */
+  const drainFor = async (ms) => {
+    if (!(await kept.count()).waiting) return;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let timer;
+    await Promise.race([drainKept(AbortSignal.timeout(ms)).catch(() => {}), new Promise((r) => { timer = setTimeout(r, ms); })]);
+    clearTimeout(timer);
+  };
+  ready.then(() => drainKept()).catch((e) => console.warn("kept turns' deletions couldn't be sent", e));
+  /** @param {{ scope?: string, endpoint?: string }} which @returns {Promise<{ queued: number }>} */
+  const forgetSoon = async (which) => {
+    const queued = await kept.queue(which);
+    if (queued) drainKept().catch(() => {});
+    return { queued };
+  };
   const types = () => endpointTypes(plugins.registry);
   /**
    * Makes a protocol's type available, installing its official plugin: setup actions only (adding,
@@ -232,6 +270,11 @@ export function createLlm({
     async removeProvider(id) {
       const rec = (await readConfig(ws)).providers[id];
       if (!rec) return { plugin: null, protocols: [] };
+      // What it keeps of the conversations is deleted first, while its key is here, for up to 10 seconds (spec §4.9). What
+      // is left was named before the tap; it goes from this phone with the key, which can't be kept after (G2).
+      await kept.queue({ provider: id });
+      await drainFor(10_000);
+      await kept.drop(id);
       for (const m of await removeProviderRecords(ws, store, id)) bench.clear(m);
       uploads.reload(); // removeProviderRecords took its uploads out of the file
       const last = !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === rec.plugin) && Boolean((await plugins.installed())[rec.plugin]);
@@ -325,10 +368,49 @@ export function createLlm({
      */
     async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, repairImages, speech, firstOutputMs }) {
       await ready;
-      return callRole({
-        role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope,
-      });
+      try {
+        return await callRole({
+          role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
+          fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope,
+        });
+      } finally {
+        // A conversation's turn may have left a deletion (a failed call's kept turn, a chain gone): sent now, in the background.
+        if (record?.keepParts) kept.count().then((n) => { if (n.waiting) drainKept().catch(() => {}); }, () => {});
+      }
+    },
+    /** Sends the deletions of kept turns that wait (G2): on coming online, and whenever a test needs them done. */
+    drainKept: () => drainKept(),
+    /** A removed trip's kept turns (spec §4.9), queued for deletion and sent in the background. @param {string} scope */
+    forgetScope: (scope) => forgetSoon({ scope }),
+    /** An ability's kept turns, its keep switch turned off: as forgetScope. @param {string} endpoint "<provider>/<ability>" */
+    forgetEndpoint: (endpoint) => forgetSoon({ endpoint }),
+    /**
+     * Before Erase: every kept turn's deletion, sent for up to timeoutMs; how many are left with their providers.
+     * @param {{ timeoutMs?: number }} [o] @returns {Promise<{ left: number }>}
+     */
+    async forgetAll({ timeoutMs = 10_000 } = {}) {
+      await kept.queue();
+      await drainFor(timeoutMs);
+      const n = await kept.count();
+      return { left: n.turns + n.waiting };
+    },
+    /**
+     * What providers keep of the conversations (G2), for words before a removal: turns kept, deletions waiting, the most
+     * days until the last expires, and who keeps them (the type's name for it, else the provider's).
+     * @param {{ scope?: string, provider?: string, endpoint?: string }} [o] @returns {Promise<{ turns: number, waiting: number, days: number, who: string[] }>}
+     */
+    async keptCount(o = {}) {
+      const n = await kept.count(o);
+      const cfg = await readConfig(ws);
+      const who = new Set();
+      for (const e of n.endpoints) {
+        const pRec = cfg.providers[e.split('/')[0]];
+        if (!pRec) continue;
+        const p = providerOf(pRec);
+        const keeps = types().get(p.abilities[e.slice(e.indexOf('/') + 1)]?.type ?? '')?.keeps;
+        who.add(typeof keeps === 'string' ? keeps : p.name);
+      }
+      return { turns: n.turns, waiting: n.waiting, days: n.until ? Math.ceil((n.until - Date.now()) / 86_400_000) : 0, who: [...who] };
     },
     /**
      * One chat model, no fallback ("Try this model"), at main's reasoning level, traced as a "try"

@@ -140,11 +140,15 @@ test('opening another trip stops the simulation; that trip stays open, and nothi
 });
 
 test('a broken itinerary is a plain error, and no trip is made; one already running refuses a second', async () => {
-  const { k, run } = await anApp();
+  /** @type {string[]} */
+  const forgot = [];
+  const { k, run } = await anApp({ llm: { forgetScope: async (/** @type {string} */ id) => { forgot.push(id); return { queued: 0 }; } } });
   const before = (await listTrips(k.store)).active.length;
   await assert.rejects(run.start({ kind: 'itinerary', itinerary: { name: 'x', start: 'soon', route: [] } }, { speed: 'fast' }), /^Error: An itinerary needs a start/);
   await assert.rejects(run.start({ kind: 'itinerary', itinerary: { ...DRIVE, plan: { bad: { title: 'No id' } } } }, { speed: 'fast' }), /The itinerary's plan item "bad" doesn't fit annai's plan format/);
   assert.equal((await listTrips(k.store)).active.length, before);
+  assert.equal(forgot.length, 1, 'the trip it made and removed: what a provider kept of it is deleted too (G2)');
+  assert.match(forgot[0], /^trip-/);
   assert.equal(run.running, false);
   await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
   await assert.rejects(run.start({ kind: 'itinerary', itinerary: DRIVE }), /^Error: A simulation is already running\. Stop it first\.$/);

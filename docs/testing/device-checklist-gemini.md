@@ -16,3 +16,14 @@ You need a Gemini key from AI Studio. Before you start, open Settings → Update
 - [ ] **A voice message answered.** Ask "where can we eat near here?" aloud: Shiori answers what you asked, so Gemini heard the clip.
 - [ ] **A used-up day.** On a free key, once a flash model has used its day (20 requests on 2026-10-19), Trace says `rate (429)`, never "credit"; the model's line says "its daily limit is used up; it rests until" a time on your clock, and Main's next flash answers.
 - [ ] **Use the recommended models.** Google Gemini's page → Use the recommended models: Live voice switches on (it may install Gemini Live), and Koe holds Gemini 3.8 Live, then Gemini 3.5 Flash Lite. With voice off, typing to Shiori uses Flash Lite as Koe; with voice on, a tap opens a live session.
+
+## G2: Google keeps the conversation
+
+- [ ] **The switch.** Google Gemini's page → Chat: "Let Google keep the conversation between turns: sends less each time." is on, with a note on what Google keeps, for how long, and that annai deletes it when you remove it.
+- [ ] **Less sent.** Talk with Shiori for three turns, one with a photo. Trace → Type contains `net.request`: from the second turn on, Gemini's requests say "sent, after a kept turn", and each is about the size of what you just said, not the whole conversation: the photo's turn is large once, never again.
+- [ ] **Switched off.** Turn the switch off, talk again: each request is whole (no "after a kept turn"), and Trace shows `kept turn deleted` for each kept turn. Turn it back on.
+- [ ] **Removing a trip.** Talk in a trip you don't need, then remove it: Trace (System log) shows `kept turn deleted` once per turn of that trip.
+- [ ] **Offline.** Talk in another trip, turn on airplane mode, remove the trip. Google Gemini's page says "N deletions waiting". Turn airplane mode off: the line goes (reopen the page), and Trace shows the deletions.
+- [ ] **Removing the provider, offline.** With turns kept and airplane mode on, the words above Remove provider say "Google keeps N turns until they expire, up to 55 days." (1 day on the free tier). Online, they say annai asks Google to delete them first.
+- [ ] **Erase.** With turns kept, Settings → Erase names them before the tap; after Erase, nothing of annai is left on the phone.
+
