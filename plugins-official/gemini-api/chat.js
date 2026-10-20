@@ -127,14 +127,20 @@ export function classify(status, body) {
   return kind;
 }
 
+/** A Go duration's units, in ms; ms before m, so the m of "500ms" isn't minutes. */
+const UNITS = /** @type {Record<string, number>} */ ({ h: 3600_000, m: 60_000, s: 1000, ms: 1, us: 0.001, 'µs': 0.001, ns: 0.000001 });
+
 /**
- * The wait a 429 asks for in its words, in ms ("Please retry in 44s", "retry in 7h40m31s"), or undefined.
+ * The wait a 429 asks for in its words, in ms, or undefined. Google writes a Go duration: "Please retry in 44s",
+ * "retry in 7h40m31s", "500ms", "1.5s".
  * @param {string} body
  */
 export function retryAfter(body) {
-  const m = /retry in ((\d+)h)?((\d+)m)?((\d+(\.\d+)?)s)?/i.exec(String(body));
-  if (!m || !(m[1] || m[3] || m[5])) return undefined;
-  return Math.round(((Number(m[2] ?? 0) * 60 + Number(m[4] ?? 0)) * 60 + Number(m[6] ?? 0)) * 1000);
+  const d = /retry in ((?:\d+(?:\.\d+)?(?:ms|us|µs|ns|h|m|s))+)/i.exec(String(body))?.[1];
+  if (!d) return undefined;
+  let ms = 0;
+  for (const [, n, unit] of d.matchAll(/(\d+(?:\.\d+)?)(ms|us|µs|ns|h|m|s)/gi)) ms += Number(n) * UNITS[unit.toLowerCase()];
+  return Math.round(ms);
 }
 
 /** Models that generate content but aren't for chat: speech, live, images, music, embeddings, agents and the like. */
