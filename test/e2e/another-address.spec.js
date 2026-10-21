@@ -133,3 +133,43 @@ test("leaving Another address's Add flow without adding takes its plugin away ag
   await page.goto('/#/models');
   await expect(page.locator('a.card', { hasText: 'OpenAI' })).toHaveCount(2);
 });
+
+test('a fetched list marks a model another provider already has, as adding it by id refuses it, rather than adding it again as "utils (2)" (the emulator pass)', async ({ page }) => {
+  const s = await startFakeServer({ flavour: 'whole', key: KEY, models: [{ id: 'utils', object: 'model', owned_by: 'router' }, { id: 'qwen-free', object: 'model', owned_by: 'router' }] });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    const host = new URL(s.origin).host;
+    for (const n of [1, 2]) {
+      await tapAdd(page, 'Another address');
+      await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
+      await page.getByLabel('API key (optional)').fill(KEY);
+      await page.getByRole('button', { name: 'Look for what it offers' }).click();
+      await page.getByRole('button', { name: 'Add with these' }).click({ timeout: 30_000 });
+      await expect(page.getByRole('heading', { level: 1, name: host })).toBeVisible({ timeout: 30_000 });
+      await page.getByLabel('Name', { exact: true }).fill(`Router ${n}`);
+      await page.getByLabel('Name', { exact: true }).blur();
+      await expect(page.getByRole('heading', { level: 1, name: `Router ${n}` })).toBeVisible();
+      const chat = page.getByRole('region', { name: 'Chat Completions', exact: true });
+      await chat.getByRole('button', { name: 'Fetch model list' }).click();
+      await expect(chat.getByText('2 models.')).toBeVisible();
+      if (n === 1) {
+        await chat.getByRole('button', { name: 'Add utils' }).click();
+        await expect(page.getByRole('link', { name: /^utils/ })).toBeVisible();
+      } else {
+        const listed = chat.locator('ul.listed');
+        await expect(listed.getByRole('button', { name: 'Add utils' })).toHaveCount(0);
+        await expect(listed.locator('li', { hasText: 'utils' })).toContainText('Already added, on Router 1');
+        await expect(listed.getByRole('button', { name: 'Add qwen-free' })).toBeVisible();
+        await chat.getByLabel('Add a model by id').fill('utils');
+        await chat.getByRole('button', { name: 'Add model' }).click();
+        await expect(chat.getByText('"utils" is already used by another model')).toBeVisible();
+        await expect(page.getByRole('link', { name: /utils \(2\)/ })).toHaveCount(0);
+      }
+      await page.getByRole('link', { name: '← Models' }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+    }
+  } finally {
+    await s.stop();
+  }
+});
