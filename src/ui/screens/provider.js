@@ -263,6 +263,9 @@ async function abilityBody(view, abilityId) {
   // Its own address, not the provider's it falls back to.
   const own = String(mergePatch(rec.template?.values?.abilities?.[abilityId] ?? {}, rec.user?.abilities?.[abilityId] ?? {}).baseUrl ?? '');
   const address = h('input', { id: `ability-${abilityId}-url`, autocomplete: 'off', autocapitalize: 'off', inputmode: 'url', value: own, placeholder: `the provider's: ${providerOf(rec).baseUrl || 'none yet'}` });
+  // A new address lets go of what the provider keeps at the old one, so it warns as the provider's own address does (verification).
+  const addressWarn = h('p', { class: 'sub' });
+  if (type.keeps) address.addEventListener('input', () => warnKept(ctx, addressWarn, { provider: id }, true));
   const tunables = jsonField('Tunables (JSON)', `ability-${abilityId}-tunables`, a.tunables);
   const extra = jsonField('Extra request fields (JSON)', `ability-${abilityId}-extra`, a.extraBody);
   // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable.
@@ -296,6 +299,7 @@ async function abilityBody(view, abilityId) {
       return v;
     }, (v) => (keep ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps there goes first
     h('p', { class: 'sub', text: "Empty: the provider's address. Each setting here is saved as you change it." }),
+    addressWarn,
     uploads?.el ?? null,
     keep?.el ?? null,
     keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to ${type.keeps.days} days on a paid one. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.` }) : null,

@@ -946,3 +946,104 @@ test('VERIFY E: a Save that fails changes no key, and lets go of nothing', async
   }
 });
 
+test('a provider removal that fails leaves the provider as it was: its next turn is kept, not deleted at once (verification)', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 1);
+    const many = c.ws.writeMany.bind(c.ws);
+    c.ws.writeMany = async (/** @type {any} */ scope, /** @type {any} */ files, /** @type {any} */ o) => { if (JSON.stringify(files).includes('/llm/providers/')) throw new Error('disk full'); return many(scope, files, o); };
+    await assert.rejects(c.llm.removeProvider(c.id));
+    c.ws.writeMany = many;
+    const before = c.s.stored().length;
+    await c.talk(c.tripA, 1);
+    assert.equal(c.s.stored().length, before + 1, 'the new turn is kept at Google');
+    const f = await c.keptFile();
+    assert.ok(f.turns.length >= 1, 'and annai tracks it');
+  } finally {
+    await c.s.close();
+  }
+});
+
+// The verification's tests (2026-10-21): through the real service and config, so a check removed from alive() or the drain fails one.
+async function realKit(/** @type {{ slowModel?: string, deleteDelay?: number }} */ o = {}) {
+  const { hostKit } = await import('./package-kit.js');
+  const { createLlm } = await import('../../src/core/llm/service.js');
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const s = await startGeminiServer({ replies: [(/** @type {any} */ b) => (b.model === o.slowModel ? { error: { status: 401, body: { error: { message: 'API key not valid.', code: 'unauthenticated' } } } } : { text: 'OK', delayMs: 300 })] });
+  const s2 = await startGeminiServer({ replies: [() => ({ text: 'Q' })], ids: 'v1_q-' });
+  const k = await hostKit();
+  const root = new URL('../../', import.meta.url);
+  const fetching = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    const u = String(url);
+    if (u.startsWith(s.url) || u.startsWith(s2.url)) {
+      if (init?.method === 'POST' && o.slowModel && String(init.body ?? '').includes(`"model":"${o.slowModel}"`)) await new Promise((r) => setTimeout(r, 200));
+      if (init?.method === 'DELETE' && u.startsWith(s2.url) && o.deleteDelay) await new Promise((r) => setTimeout(r, o.deleteDelay));
+      return globalThis.fetch(url, init);
+    }
+    try { return new Response(await readFile(new URL(`.${new URL(u, 'http://annai.test').pathname}`, root))); } catch { return new Response('not found', { status: 404 }); }
+  };
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: fetching });
+  const P = await llm.addProvider('provider-gemini', { key: 'AIza-old-key-P-0123456789', baseUrl: s.url, official: true });
+  const trip = await createTrip(k.ws, { title: 'Kyoto' });
+  return { s, s2, k, llm, P, trip };
+}
+
+test('through the service: a role\'s second model, on the config read before the switch went off, keeps nothing', async () => {
+  const { readConfig, saveRoles, saveProvider, modelOf } = await import('../../src/core/llm/config.js');
+  const probe = await realKit();
+  const cfg0 = await readConfig(probe.k.ws);
+  const chat = Object.values(cfg0.models).filter((m) => m.provider === probe.P && m.ability === 'chat');
+  await probe.s.close(); await probe.s2.close();
+  const slow = modelOf(chat[0]).providerId.replace(/^models\//, '');
+  const { s, s2, k, llm, P, trip } = await realKit({ slowModel: slow });
+  try {
+    const cfg = await readConfig(k.ws);
+    const all = Object.values(cfg.models).filter((m) => m.provider === P && m.ability === 'chat');
+    const ms = [all.find((m) => modelOf(m).providerId.replace(/^models\//, '') === slow), all.find((m) => modelOf(m).providerId.replace(/^models\//, '') !== slow)].map((m) => /** @type {any} */ (m).id);
+    await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ms.slice(0, 2) } });
+    const p = llm.call({ role: 'main', scope: trip, request: { messages: [msg('user', text('q'))] }, record: { keepParts: true } });
+    p.catch(() => {});
+    await new Promise((r) => setTimeout(r, 50));
+    const rec = (await readConfig(k.ws)).providers[P];
+    await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user.abilities, chat: { ...rec.user.abilities?.chat, tunables: { keep: false } } } } });
+    await llm.forgetEndpoint(`${P}/chat`);
+    const r = await p;
+    assert.deepEqual(s.stored(), [], 'switched off, yet Google keeps it');
+  } finally { await s.close(); await s2.close(); }
+});
+
+test('through the service: a new key saved while a turn is answered: that turn is deleted with the key that made it', async () => {
+  const { setKey } = await import('../../src/core/llm/config.js');
+  const { s, s2, llm, P, trip, k } = await realKit();
+  try {
+    const p = llm.call({ role: 'main', scope: trip, request: { messages: [msg('user', text('q'))] }, record: { keepParts: true } });
+    for (let i = 0; i < 100 && !s.bodies().length; i++) await new Promise((r) => setTimeout(r, 5));
+    await llm.reconnect(P, () => setKey(k.store, P, 'AIza-the-new-key-0123456789'));
+    await p;
+    await llm.drainKept();
+    const f = (await k.ws.readJSON(SYS_DEVICE, '/llm/kept.json').catch(() => null)) ?? { turns: [], forget: [] };
+    assert.deepEqual(s.stored(), [], 'kept at Google, never to be deleted');
+  } finally { await s.close(); await s2.close(); }
+});
+
+test('through the service: a drain already running across the whole key change sends nothing with the new key (its slow DELETE outlasts the 10 s)', async () => {
+  const { setKey, readConfig, saveRoles } = await import('../../src/core/llm/config.js');
+  const { s, s2, k, llm, P, trip } = await realKit({ deleteDelay: 11_500 });
+  const Q = await llm.addProvider('provider-gemini', { key: 'AIza-key-Q-0123456789', baseUrl: s2.url, official: true });
+  const cfg = await readConfig(k.ws);
+  const mOf = (/** @type {string} */ pid) => /** @type {any} */ (Object.values(cfg.models).find((m) => m.provider === pid && m.ability === 'chat')).id;
+  const ask = async (/** @type {string} */ pid, /** @type {string} */ q) => {
+    await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: [mOf(pid)] } });
+    return llm.call({ role: 'main', scope: trip, request: { messages: [msg('user', text(q))] }, record: { keepParts: true } });
+  };
+  try {
+    await ask(Q, 'on Q');
+    await ask(P, 'on P');
+    llm.forgetScope(trip);
+    await new Promise((r) => setTimeout(r, 50));
+    await llm.reconnect(P, () => setKey(k.store, P, 'AIza-the-new-key-0123456789'));
+    await new Promise((r) => setTimeout(r, 2500));
+    const deletes = s.requests().filter((r) => r.method === 'DELETE').map((r) => r.headers['x-goog-api-key']);
+    assert.ok(!deletes.includes('AIza-the-new-key-0123456789'));
+  } finally { await s.close(); await s2.close(); }
+});
