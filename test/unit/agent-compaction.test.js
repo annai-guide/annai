@@ -176,6 +176,18 @@ test("warm housekeeping, whose request still offers the model's own search (so t
   assert.match(instruction('event 12', 'English'), /Don't search the web now\./);
 });
 
+test("a few words in another script don't decide the language: the script must make up most of the letters; and the last few messages are read, not one (review A6)", async () => {
+  const { languageOf } = await import('../../src/core/agent/compaction.js');
+  assert.equal(languageOf('Is 一蘭 near 渋谷駅 still open tonight?'), 'English');
+  assert.equal(languageOf('Can we try the ラーメン place by the station?'), 'English');
+  assert.equal(languageOf('Is the Café Пушкин open on Sundays?'), 'English');
+  assert.equal(languageOf('今日の夕食はどこにしますか'), 'Japanese');
+  assert.equal(languageOf('我们今晚去哪里吃饭'), 'Chinese');
+  assert.equal(languageOf('Где можно поужинать сегодня вечером?'), 'Russian');
+  assert.equal(summaryLanguage(['We are vegetarian.', 'Also no nuts, please.', 'OK']), 'English, the language the user wrote in last');
+  assert.equal(summaryLanguage(['OK']), 'the language the user wrote in last: "OK"');
+});
+
 test('the summary is asked for in a language named: the one the user wrote in last, else the app\'s (emulator pass: a Spanish summary of an English talk)', async () => {
   assert.equal(summaryLanguage('Also, we are vegetarian.'), 'English, the language the user wrote in last');
   assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?'), 'Spanish, the language the user wrote in last');
