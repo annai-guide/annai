@@ -525,7 +525,7 @@ test('the conversation follows what comes, clear of the dock: your new question 
     await send("What's the weather at Bixby Bridge today?");
     const mine = page.locator('.convo .you', { hasText: 'Bixby Bridge' });
     await expect(mine).toBeVisible();
-    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await expect(page.locator('.talk-label')).toHaveText('Thinking · tap to stop');
     await expect.poll(() => clear(mine)).toBe(true);
     const hers = page.locator('.convo .shiori').last();
     await expect(hers).toHaveText(/Light rain around 1 PM\./);
@@ -584,7 +584,7 @@ test('review S3: a scroll of the user\'s own stops the following: what comes the
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Weather?');
     await page.getByRole('button', { name: 'Send' }).click();
-    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await expect(page.locator('.talk-label')).toHaveText('Thinking · tap to stop');
     await page.evaluate(() => { // the user reads back, a wheel's turn (mobile WebKit takes no mouse wheel from Playwright)
       dispatchEvent(new WheelEvent('wheel', { deltaY: -600 }));
       scrollBy(0, -600);
