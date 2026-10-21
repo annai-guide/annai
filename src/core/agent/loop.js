@@ -69,7 +69,8 @@ import { validate } from '../schema.js';
  * @property {(call: { id: string, name: string, input: any, wake: string }) => Promise<import('./tools.js').ToolOutput | null>} [gate] a call not run, and its result
  * @property {(why: string, e: unknown) => boolean | string} [failed] true: the other half tells the user (or nobody waited), so no card; words: the
  *   card says these instead (both halves down)
- * @property {() => void} [calling] @property {() => Promise<unknown>} [ready] waited for before each turn
+ * @property {(context?: { from: number, to: number }) => void} [calling] a model call starts, with what its request holds
+ * @property {() => Promise<unknown>} [ready] waited for before each turn
  * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended] @property {() => boolean} [hushed]  another voice plays (a live session): annai's reminders are shown, not said
@@ -1214,7 +1215,7 @@ export class Agent {
       let result;
       const cut = new AbortController();
       try {
-        this.#half.calling?.();
+        this.#half.calling?.(context);
         this.#calling = true;
         this.#callCut = cut;
         result = await this.llm.call({

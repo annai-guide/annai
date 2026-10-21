@@ -25,7 +25,7 @@ import { modelOf, KOE_ROLE } from '../llm/config.js';
  * @typedef {'koe-up' | 'koe-down'} Told
  * @typedef {Told | 'live-open' | 'live-closed' | 'live-dropped'} Block
  * @typedef {'koe' | 'kokoro'} Side
- * @typedef {'tool' | 'gated:speak' | 'gated:show' | 'gated:ask' | 'final-text' | 'kokoro-failed' | 'nothing-to-add'} NoteWhy
+ * @typedef {'tool' | 'gated:speak' | 'gated:show' | 'gated:ask' | 'final-text' | 'kokoro-failed' | 'nothing-to-add' | 'stopped'} NoteWhy
  */
 
 /** The events a half marks as its own while Shiori is two halves. */
@@ -128,6 +128,11 @@ export class Halves {
   #lost = { koe: '', kokoro: '' };
   /** The card for both halves down was shown: once, until the user writes again or a half works again. */
   #bothTold = false;
+  /**
+   * The user stopped Kokoro (the sign's Stop), and Koe hasn't heard of it: Koe's notes start no Kokoro turn until the user writes
+   * or speaks again, or Koe's model has seen "Kokoro was stopped" (the seq of that note; Infinity: not written yet).
+   */
+  #stopped = { on: false, seq: Infinity };
   #lastHalves = '';
   #lastView = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
@@ -155,7 +160,7 @@ export class Halves {
           else this.koe.enqueue(w);
         },
         kokoro: (w) => {
-          if (w.from === 'koe' && this.#answered) return;
+          if (w.from === 'koe' && (this.#answered || this.#stopped.on)) return;
           this.#asked ||= w.from === 'koe';
           this.#wakeKokoro(w);
         },
@@ -176,7 +181,10 @@ export class Halves {
         hidden: async () => (this.#split ? [] : ['tell_koe']),
         // Its errors while Koe talks are set aside: Koe tells the user, and a card says what needs saying.
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.#works() ? { aside: true } : {}) } : {}),
-        logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
+        logged: async (e, r) => {
+          if (e.type === 'note' && e.data?.why === 'stopped') this.#stopped.seq = e.seq;
+          if (this.#split) await this.koe.observe(e, r);
+        },
         gate: (call) => this.#gate(call),
         failed: (why, e) => this.#down('kokoro', why, e) ?? this.#kokoroFailed(why, e),
         calling: () => {
@@ -203,6 +211,8 @@ export class Halves {
         },
         logged: (e, r) => this.#koeLogged(e, r),
         replied: (names) => { this.#asking = names.includes('tell_kokoro'); },
+        // A call that saw "Kokoro was stopped": what Koe asks from now on, it asks knowing.
+        calling: (context) => { if (context && context.to >= this.#stopped.seq) this.#stopped.on = false; },
         failed: (why, e) => {
           const both = this.#down('koe', why, e);
           return this.#koeFailed() && (both ?? true);
@@ -473,6 +483,7 @@ export class Halves {
    */
   send(text, o = {}) {
     this.#bothTold = false;
+    this.#stopped.on = false;
     this.#route(async () => {
       await this.#refresh();
       if (!this.#works() || this.kokoro.pendingId) return this.kokoro.send(text, o);
@@ -535,8 +546,15 @@ export class Halves {
   shown() {
     if (this.koeState === 'live') this.#route(() => this.live.shown());
   }
-  /** The sign's Stop: Kokoro's turn alone. */
-  stopKokoro() { this.kokoro.interrupt(); }
+  /**
+   * The sign's Stop: Kokoro's turn alone (spec §16.2), and what Koe asked of it meanwhile; Koe's notes start no new turn until Koe
+   * has heard of the Stop or the user asks again (emulator pass K1 #8: a live Koe's late question started the plan over).
+   */
+  stopKokoro() {
+    this.#stopped = { on: true, seq: Infinity };
+    this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe');
+    this.kokoro.interrupt();
+  }
 
   async idle() {
     do {
@@ -611,6 +629,7 @@ export class Halves {
       this.#answered = false;
       this.#failTold = false;
       this.#bothTold = false;
+      this.#stopped.on = false;
     }
     if (e.type.startsWith('out.')) this.#up('koe'); // a live Koe that spoke works
     // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails.
@@ -707,7 +726,7 @@ export class Halves {
     if (t.ok && t.finalText && !t.told && !t.slept) {
       told = true;
       this.channel.send('kokoro', t.finalText, 'append', 'final-text', t.wakeId).catch(() => {});
-    } else if (!told && this.koe.waiting) this.#nothingToAdd(t.ok ? 'Kokoro has nothing to add.' : 'Kokoro was stopped.');
+    } else if (!told && this.koe.waiting) this.#nothingToAdd(...(t.ok && !this.#stopped.on ? [] : /** @type {const} */ (['Kokoro was stopped.', 'stopped'])));
     if (told) {
       this.#answered = true;
       this.#asked = false;
@@ -715,9 +734,10 @@ export class Halves {
     }
   }
 
-  #nothingToAdd(text = 'Kokoro has nothing to add.') {
+  /** @param {string} [text] @param {NoteWhy} [why] */
+  #nothingToAdd(text = 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add')) {
     if (this.#nothingTold) return;
     this.#nothingTold = true;
-    this.channel.send('kokoro', text, 'append', 'nothing-to-add').catch(() => {});
+    this.channel.send('kokoro', text, 'append', why).catch(() => {});
   }
 }
