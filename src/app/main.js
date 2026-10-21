@@ -195,7 +195,15 @@ async function boot() {
   // Deletions of what providers keep of the conversations, waiting for a connection (G2).
   addEventListener('online', () => { llm.drainKept().catch(() => {}); });
   plugins.connect({ llm, agent, notices: shell.notices });
-  agent.on('notice', (n) => shell.notices.card(n));
+  // A card the agent names (key) is taken down when a later turn works, and replaced by a newer one of its name.
+  /** @type {Map<string, () => void>} */
+  const named = new Map();
+  agent.on('clear', (/** @type {string} */ key) => named.get(key)?.());
+  agent.on('notice', (n) => {
+    if (n.key) named.get(n.key)?.();
+    const dismiss = shell.notices.card(n);
+    if (n.key) named.set(n.key, dismiss);
+  });
   tellGps({ live, notices: shell.notices });
   // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.
   // A beforeunload that leads nowhere (the page stays) is forgotten after a few seconds.

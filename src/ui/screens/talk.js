@@ -102,6 +102,8 @@ export async function renderTalk(ctx) {
   };
   /** @type {Map<string, HTMLElement>} asks still open, by call id */
   const asks = new Map();
+  /** The newest error note with a Try again: it goes when anything newer joins the conversation. @type {{ li: HTMLElement, again: HTMLElement } | null} */
+  let retry = null;
   /** @type {Map<string, HTMLElement>} heard speech whose words are still being written down */
   const unheard = new Map();
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
@@ -188,7 +190,14 @@ export async function renderTalk(ctx) {
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
     // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it).
     if (e.type === 'error' && (d.quiet || d.aside)) return null;
-    if (e.type === 'error') return h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? "Shiori couldn't reach her model" : d.kind === 'budget' ? 'A budget ended her turn' : 'Her turn ended' }), h('p', { text: String(d.message ?? '') }));
+    if (e.type === 'error') {
+      // Out of sight of the card at the page's top: the note itself offers Try again, until something newer is in the conversation.
+      const again = d.kind === 'model' || d.kind === 'silent' ? h('button', { class: 'btn', type: 'button', onclick: (/** @type {Event} */ ev) => { /** @type {HTMLButtonElement} */ (ev.currentTarget).remove(); agent.tryAgain(); } }, 'Try again') : null;
+      const li = h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? "Shiori can't reach her model" : d.kind === 'budget' ? 'A budget ended her turn' : 'Her turn ended' }), h('p', { text: String(d.message ?? '') }), again);
+      retry?.again.remove();
+      retry = again ? { li, again } : null;
+      return li;
+    }
     return null;
   };
   // A suggestions frame says how tall it is (G4): only a number, only from one of this screen's frames.
@@ -225,6 +234,10 @@ export async function renderTalk(ctx) {
       const follow = built && (following || atEnd() || e.type === 'msg.user' || e.type === 'heard');
       const node = await item(e);
       if (node) {
+        if (retry && node !== retry.li) {
+          retry.again.remove();
+          retry = null;
+        }
         empty.remove();
         list.append(node);
         if (follow) toEnd();
