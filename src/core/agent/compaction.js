@@ -66,7 +66,7 @@ export function instruction(marker) {
   return `[annai: housekeeping] The conversation is getting long. Write a summary of it up to (not including) ${marker}, to replace that part. `
     + 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
     + 'For every photo, write one line with its path and what was said about it, like "/trip/files/2026-11-26-1904.webp: the Nepenthe menu, prices circled". '
-    + 'Before you write it, you may move lasting facts into /me/memory.md or /trip/memory.md with your file tools; no other tool works now. '
+    + 'Before you write it, you may move lasting facts into /me/memory.md or /trip/memory.md with your file tools; no other tool works now. Don\'t search the web now. '
     + 'Then reply with the summary only, as plain text, in the user\'s language.';
 }
 

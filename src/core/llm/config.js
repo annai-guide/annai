@@ -24,10 +24,11 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  * @typedef {{ formats?: string[], maxEdge?: number, maxBytes?: number, maxCount?: number }} ImageLimits
  *   what photos the model accepts (spec §9.2): from the template, then corrected by refusals (§4.8)
  * @typedef {{ id: string, name: string, kind: 'search' | 'fetch' | 'other', patch: Record<string, any>, pricePerCall?: number, usageKey?: string,
- *   paidOnly?: boolean, freePerMonth?: number, label?: string, note?: string }} ProviderTool
+ *   paidOnly?: boolean, freePerMonth?: number, label?: string, note?: string, shows?: string }} ProviderTool
  *   a tool the provider runs itself (spec §9.5): the patch enables it; pricePerCall (USD) × the usage count named by usageKey is its cost.
  *   paidOnly: never on a key marked free tier; freePerMonth: calls a month that cost nothing (this device's count, G4);
- *   label and note: its switch's words on its provider's page, and a line under it (else its switch is only in Settings → Tools)
+ *   label and note: its switch's words on its provider's page, and a line under it (else its switch is only in Settings → Tools);
+ *   shows: a reply that used it is shown to the user as written, under these words (Google Search's terms), and Shiori is told so
  * @typedef {{ id: string, plugin: string, template: { version: string, values: ProviderValues, models?: string[], added?: string[] } | null, user: ProviderValues,
  *   verified?: Record<string, any>, created: number }} ProviderRecord
  *   template.version: its plugin's; template.models: the description's, "<ability>/<id>", so a model the user removed
@@ -96,7 +97,7 @@ const VALUES = {
     providerTools: { type: 'array', items: { type: 'object', required: ['id', 'name', 'kind', 'patch'],
       properties: { id: { type: 'string', minLength: 1 }, name: { type: 'string' }, kind: { enum: ['search', 'fetch', 'other'] }, patch: OBJECT,
         pricePerCall: { type: 'number', minimum: 0 }, usageKey: { type: 'string' }, paidOnly: { type: 'boolean' }, freePerMonth: { type: 'integer', minimum: 0 },
-        label: { type: 'string', maxLength: 120 }, note: { type: 'string', maxLength: 1000 } } } },
+        label: { type: 'string', maxLength: 120 }, note: { type: 'string', maxLength: 1000 }, shows: { type: 'string', maxLength: 120 } } } },
     logprobs: { type: 'boolean' },
     images: { type: 'object', properties: { formats: { type: 'array', items: { type: 'string' } }, maxEdge: { type: 'integer', minimum: 16 }, maxBytes: { type: 'integer', minimum: 1 }, maxCount: { type: 'integer', minimum: 1 } } },
     cacheTtls: { type: 'array', items: { enum: ['5m', '1h'] } },

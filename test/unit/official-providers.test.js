@@ -344,6 +344,7 @@ test("provider-gemini 2.2.0's Google Search (G4): a provider tool on each Gemini
       id: 'gemini-google-search', name: 'Google Search', kind: 'search', patch: { 'tools+': [{ type: 'google_search' }] }, pricePerCall: 0.014, usageKey: 'google_search', paidOnly: true, freePerMonth: 5000,
       label: 'Let Gemini search Google',
       note: "Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.",
+      shows: 'From Google Search',
     }], x.providerId);
   }
   assert.equal(chat.modelDefaults, undefined, 'not on a model added from the list: Gemma has no Google Search');
