@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
+import { createTrip } from '../../src/core/scopes.js';
 import { GATHER } from '../../src/core/agent/loop.js';
 
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
@@ -121,4 +122,46 @@ test("the sign's Stop while Kokoro is still gathering: its turn never starts", a
   k.agent.typing(false);
   await k.agent.idle();
   assert.equal(k.sent['model-0'], undefined);
+});
+
+test('opening another conversation while a turn gathers does not wait for the gather (review A2)', async () => {
+  const k = await agentKit([[say('Hi.')]], { agent: { secondMs: 100 } });
+  const other = await createTrip(k.ws, { title: 'Other' });
+  k.agent.typing(true);
+  k.agent.send('Hello');
+  await pause(50);
+  const t0 = Date.now();
+  await k.agent.open(other);
+  assert.ok(Date.now() - t0 < 500, `open waited ${Date.now() - t0} ms for the gather`);
+  k.agent.typing(false);
+  await k.agent.idle();
+});
+
+test('the cap counts from the first wake: a wake that waited out a long turn starts at once after it, typing or not (review a5)', async () => {
+  const k = await agentKit([[{ delayMs: 2500, ...say('First.') }, say('Second.')]], { agent: { secondMs: 100 } });
+  k.agent.send('One');
+  await until(() => k.requests.length === 1);
+  const sent = Date.now();
+  k.agent.typing(true);
+  k.agent.send('Two'); // waits for the first turn, which has slept by then
+  await until(() => k.requests.length === 2, 6000);
+  assert.ok(Date.now() - sent < 3500, `${Date.now() - sent} ms: the 2 s cap had passed while the first turn ran`);
+  k.agent.typing(false);
+  await k.agent.idle();
+});
+
+test('one Shiori: a tap while a turn of the user\'s is gathering stops it, as Stop does for Kokoro; what they sent is kept, not taken up later (review a3)', async () => {
+  const k = await agentKit([[say('Hi.')]], { agent: { secondMs: 100 } });
+  k.agent.typing(true);
+  k.agent.send('Hello');
+  await pause(50);
+  assert.equal(k.agent.tap(), 'stopped');
+  k.agent.typing(false);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 0);
+  assert.deepEqual((await k.events(['msg.user'])).map((e) => e.data.text), ['Hello']);
+  assert.equal((await k.events(['error'])).at(-1).data.kind, 'stopped');
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 0, 'not taken up when the conversation opens again');
 });
