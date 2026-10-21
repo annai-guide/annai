@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '10ca48b849a3';
+const BUILD = 'eedf69860eb5';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -280,10 +280,11 @@ sw.addEventListener('activate', (event) => {
 });
 
 // A new version waits until annai restarts; it only takes over early when the user taps "Restart now" (spec §17 rule 5).
-// Settings → About asks which build is running, on a port of its own.
+// Settings → About asks which build is running, on a port of its own. A page loaded past this worker asks to be taken.
 sw.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') sw.skipWaiting();
   else if (event.data === 'build') event.ports?.[0]?.postMessage({ version: VERSION, build: BUILD });
+  else if (event.data === 'claim') event.waitUntil(sw.clients.claim().catch(() => {}));
 });
 
 sw.addEventListener('fetch', (event) => {

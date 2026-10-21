@@ -218,7 +218,7 @@ async function boot() {
   registerServiceWorker(store, shell, updates);
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
   // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
-  startPlugins(plugins, shell).finally(() => {
+  pluginsMayLoad().then(() => startPlugins(plugins, shell)).finally(() => {
     pluginsStarted();
     controllerReady().then(() => updates.start()).catch(() => {});
     // The link catalog is kept for offline use: fetched now, so it is there before the first offline moment (spec §7.2).
@@ -282,18 +282,27 @@ async function startPlugins(plugins, shell) {
 
 /**
  * Settles once a service worker controls this page (or after 15 s), because installed plugin
- * files load through it (spec §5.3). On a first visit that takes a moment.
+ * files load through it (spec §5.3). On a first visit that takes a moment. A page loaded past an
+ * active worker (a hard reload, or Android Chrome's for dark mode) asks it to take the page.
  */
 function controllerReady(timeoutMs = 15_000) {
   if (!('serviceWorker' in navigator) || navigator.serviceWorker.controller) return Promise.resolve();
+  const sw = navigator.serviceWorker;
   return new Promise((resolve) => {
     const done = () => {
       clearTimeout(t);
       resolve(undefined);
     };
     const t = setTimeout(done, timeoutMs);
-    navigator.serviceWorker.addEventListener('controllerchange', done, { once: true });
+    sw.addEventListener('controllerchange', done, { once: true });
+    sw.getRegistration().then((reg) => reg?.active?.postMessage('claim')).catch(() => {});
   });
+}
+
+/** Installed plugins start once an active worker controls the page: a failed import stays failed (spec §5.3). */
+async function pluginsMayLoad() {
+  if (!('serviceWorker' in navigator) || navigator.serviceWorker.controller) return;
+  if ((await navigator.serviceWorker.getRegistration().catch(() => undefined))?.active) await controllerReady();
 }
 
 /** @param {any} store @param {ReturnType<typeof startShell>} shell @param {Updates} updates */
