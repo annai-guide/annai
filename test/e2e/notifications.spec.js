@@ -34,7 +34,7 @@ test('Settings → Notifications: what the relay learns, the address, on, a test
     await kit.at(Date.now() + 16_000);
     expect(kit.pushed().at(-1)?.body).toMatch(/^A test/);
     await page.getByRole('button', { name: 'Turn off' }).click();
-    await expect(page.getByRole('status').filter({ hasText: /^Off\.$/ })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: /^Off: reminders show only while annai is open, and none reaches you while it is closed\.$/ })).toBeVisible();
     expect(await kit.waiting()).toEqual([]);
   } finally {
     await kit.stop();

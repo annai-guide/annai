@@ -96,7 +96,8 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     // What the phone makes and plays, read at run time: Opus in both browsers' builds, WAV always (Koe and Kokoro design, "Audio formats").
     await expect(page.getByText(/^Speech leaves this phone in the smallest format each service takes\. Made here: ogg, webm, (.+, )?wav( \(recorded: [a-z0-9, ]+\))?\. Played here: .*\bogg\b.*\.$/)).toBeVisible();
     await page.getByRole('button', { name: 'Test the voice' }).click();
-    await expect(page.getByText('Spoken by voice-b.')).toBeVisible({ timeout: 20_000 });
+    // Says the first voice failed, then who spoke (the second emulator re-check: it said only "Spoken by Browser voice.").
+    await expect(page.getByText(/^voice-a couldn't speak: .+ Spoken by voice-b\.$/)).toBeVisible({ timeout: 20_000 });
     expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
     expect(server.bodies('/good/audio/speech')).toHaveLength(2);
     await page.getByLabel('Pause that ends a sentence (ms)').fill('900');

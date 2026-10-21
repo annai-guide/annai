@@ -26,7 +26,7 @@ export function buttonsFor(st) {
 }
 
 /** @param {{ on: boolean, waiting: number }} st */
-const statusText = (st) => (st.on ? `On · ${st.waiting === 1 ? '1 reminder' : `${st.waiting} reminders`} waiting at the relay.` : 'Off.');
+const statusText = (st) => (st.on ? `On · ${st.waiting === 1 ? '1 reminder' : `${st.waiting} reminders`} waiting at the relay.` : 'Off: reminders show only while annai is open, and none reaches you while it is closed.');
 
 /**
  * Settings → Notifications (spec §11.6, §11.7): reminders for a closed annai through the push relay,
