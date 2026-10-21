@@ -75,12 +75,15 @@ export const coldSystem = (language) => 'You summarize a conversation between a 
   + 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
   + `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
 
-/** Writing systems that name their language, the first match winning (kana before the characters Chinese shares). */
-const SCRIPTS = /** @type {const} */ ([[/[\u3040-\u30ff]/, 'Japanese'], [/[\uac00-\ud7af]/, 'Korean'], [/[\u4e00-\u9fff]/, 'Chinese'], [/[\u0e00-\u0e7f]/, 'Thai'],
-  [/[\u0600-\u06ff]/, 'Arabic'], [/[\u0590-\u05ff]/, 'Hebrew'], [/[\u0370-\u03ff]/, 'Greek'], [/[\u0900-\u097f]/, 'Hindi'], [/[іїєґ]/i, 'Ukrainian'], [/[\u0400-\u04ff]/, 'Russian']]);
+/**
+ * Writing systems that name their language when they make up most of a text's letters (review A6: a place name in kanji in an
+ * English line is no Chinese): Chinese characters with kana are Japanese, without, Chinese; Cyrillic with і, ї, є or ґ is Ukrainian.
+ */
+const SCRIPTS = /** @type {const} */ ([[/[\u3040-\u30ff\u4e00-\u9fff]/g, 'Chinese'], [/[\uac00-\ud7af]/g, 'Korean'], [/[\u0e00-\u0e7f]/g, 'Thai'],
+  [/[\u0600-\u06ff]/g, 'Arabic'], [/[\u0590-\u05ff]/g, 'Hebrew'], [/[\u0370-\u03ff]/g, 'Greek'], [/[\u0900-\u097f]/g, 'Hindi'], [/[\u0400-\u04ff]/g, 'Russian']]);
 /** The commonest small words of languages written in Latin letters: the one with the most of them, alone at the top, is it. */
 const WORDS = Object.entries({
-  English: 'the and is are was you we our to of it what where when how for this that please with be can do my me i us',
+  English: 'the and is are was you we our to of it what where when how for this that please with be can do my me i us in on at near still open not have there any tonight today',
   Spanish: 'el los las y es son que de en un una por para con no qué dónde cómo gracias somos estamos hay del al muy',
   French: 'le les et est sont que de des du un une pour avec nous vous je pas où merci au aux sur',
   German: 'der die das und ist sind nicht ich wir sie ein eine mit für auf wo was bitte danke zu dem den',
@@ -91,7 +94,12 @@ const WORDS = Object.entries({
 
 /** The language a text is written in, by name, or '' when it can't be told (a word or two). @param {string} text */
 export function languageOf(text) {
-  for (const [re, name] of SCRIPTS) if (re.test(text)) return name;
+  const letters = (text.match(/\p{L}/gu) ?? []).length;
+  for (const [re, name] of SCRIPTS) {
+    if ((text.match(re) ?? []).length * 2 <= letters) continue;
+    if (name === 'Chinese') return /[\u3040-\u30ff]/.test(text) ? 'Japanese' : name;
+    return name === 'Russian' && /[іїєґ]/i.test(text) ? 'Ukrainian' : name;
+  }
   const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
   const scores = WORDS.map(([name, set]) => /** @type {const} */ ([name, words.filter((w) => set.has(w)).length])).sort((a, b) => b[1] - a[1]);
   return scores[0][1] > 0 && scores[0][1] > scores[1][1] ? scores[0][0] : '';
@@ -99,13 +107,15 @@ export function languageOf(text) {
 
 /**
  * The language a summary is written in, named (emulator pass: "the user's language" got a Spanish summary of an English
- * conversation): the one the user wrote in last, else the app's (spec §14.3: it ships in English). @param {string} said
+ * conversation): the one the user wrote in last, told from their last message, else their last few together (review A6); else
+ * the app's (spec §14.3: it ships in English). @param {string | string[]} said their last messages, the newest last
  */
 export function summaryLanguage(said) {
-  const words = said.trim();
-  if (!words) return "English, the app's language (the user hasn't written anything yet)";
-  const name = languageOf(words);
-  return name ? `${name}, the language the user wrote in last` : `the language the user wrote in last: ${JSON.stringify(words.slice(0, 80))}`;
+  const lines = (Array.isArray(said) ? said : [said]).map((x) => x.trim()).filter(Boolean);
+  const last = lines.at(-1);
+  if (!last) return "English, the app's language (the user hasn't written anything yet)";
+  const name = languageOf(last) || languageOf(lines.join('\n'));
+  return name ? `${name}, the language the user wrote in last` : `the language the user wrote in last: ${JSON.stringify(last.slice(0, 80))}`;
 }
 
 /** The most text a cold summary is written from when the utility model's window isn't known, in characters (about 100,000 tokens). */

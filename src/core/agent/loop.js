@@ -960,12 +960,12 @@ export class Agent {
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
       .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
-    /** What the user wrote last, for the summary's language. */
-    let said = '';
+    /** What the user wrote last, their last few messages, for the summary's language. @type {string[]} */
+    const said = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
       const text = texts.text ?? e.data?.text; // a short text is kept in data
-      if (e.type === 'msg.user' && typeof text === 'string' && text !== '(a photo)') said = text;
+      if (e.type === 'msg.user' && typeof text === 'string' && text !== '(a photo)' && said.push(text) > 3) said.shift();
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
