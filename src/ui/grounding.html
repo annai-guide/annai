@@ -2,10 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <base target="_blank">
 <title>Google Search suggestions</title>
+<!--
+  The frame Google's search suggestions are drawn in (the Gemini design, "Google Search, built in"): Google's terms ask them
+  shown as Google gave them, and they are Google's HTML. annai frames this page sandboxed without allow-same-origin, so nothing
+  in it can reach annai; its policy (here, and in _headers, which also says only annai may frame it) runs only grounding.js and
+  inline styles. grounding.js takes the HTML only while sandboxed, and only from annai as its parent, and says how tall it is.
+  A suggestion opens Google in a new tab (the base target).
+-->
 <style>html, body { margin: 0; padding: 0; background: transparent; }</style>
 <script src="grounding.js"></script>
 </head>

@@ -1,5 +1,5 @@
 import { h, whenGone, checkbox } from '../dom.js';
-import { renderCard, cardWho, httpUrl } from '../cards.js';
+import { renderCard, cardWho } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
 import { storedTexts, blobBytes } from '../../core/agent/log.js';
 import { openPhotoViewer } from '../photo-viewer.js';
@@ -32,22 +32,21 @@ export function latestCopy(hash, replaced) {
 }
 
 /**
- * A reply grounded in Google Search, as Google gave it (G4; Google's terms ask it shown so): its words untouched, its
- * links as they came, and Google's suggestions in a frame sandboxed without allow-same-origin, which can't reach annai
- * and gets them by message. Shown whatever the halves' toggle says. @param {any} d @param {Record<string, any>} texts
+ * A reply grounded in Google Search, as Google gave it (G4; Google's terms): its words untouched, its links (web addresses
+ * only, the loop's), and Google's suggestions in a frame sandboxed without allow-same-origin, which gets them by message.
+ * Shown whatever the halves' toggle says. @param {any} d @param {Record<string, any>} texts
  */
 function groundedCard(d, texts) {
-  const links = (Array.isArray(d.links) ? d.links : []).flatMap((/** @type {any} */ l) => {
-    const url = httpUrl(String(l?.url ?? ''));
-    return url ? [{ url, title: String(l.title || url) }] : [];
-  });
+  const links = /** @type {{ url: string, title?: string }[]} */ (Array.isArray(d.links) ? d.links : []);
   const html = String(texts.html ?? '');
   const frame = html ? h('iframe', { class: 'suggestions', src: '/src/ui/grounding.html', title: 'Search suggestions from Google', sandbox: 'allow-scripts allow-popups allow-popups-to-escape-sandbox', referrerpolicy: 'no-referrer' }) : null;
-  frame?.addEventListener('load', () => frame.contentWindow?.postMessage({ html }, '*'));
+  // Its one page, once: a frame that loads again (Google's HTML refreshing it, say) goes.
+  let loads = 0;
+  frame?.addEventListener('load', () => (loads++ ? frame.remove() : frame.contentWindow?.postMessage({ html }, '*')));
   return h('li', { class: 'shiori grounded' },
     h('strong', { class: 'card-title', text: `From ${String(d.source || 'Google Search')}` }),
     texts.text ? h('p', { text: String(texts.text) }) : null,
-    links.length ? h('ul', { class: 'sources' }, ...links.map((l) => h('li', {}, h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.title })))) : null,
+    links.length ? h('ul', { class: 'sources' }, ...links.map((l) => h('li', {}, h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.title || l.url })))) : null,
     frame);
 }
 

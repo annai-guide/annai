@@ -24,7 +24,7 @@ export function tripPath(path) {
 }
 
 /** An http(s) URL or null. @param {string} url */
-export const httpUrl = (url) => {
+const httpUrl = (url) => {
   try {
     const u = new URL(url);
     return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null;
