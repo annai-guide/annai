@@ -11,7 +11,8 @@
  *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any, extra?: any, model?: string }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
- *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
+ *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }
+ *   | { type: 'attribution', source: string, text: string, links: { url: string, title?: string }[], html?: string, model?: string }} Part
  *   image.data and document.data are base64 (a document is a PDF). An image's hash is its bytes' fingerprint, path and
  *   region where it came from (for stubs), fileId a provider upload (spec §4.8); endpoint types use mediaType and data,
  *   or fileId when they upload. missing marks one whose bytes are gone: annai never sends it. provider is a provider's own block (a server
@@ -20,7 +21,8 @@
  *   segment (spec §10.3): annai resolves it for each model attempt into audio or words; text is its words once written down, clip a kept voice clip's hash.
  *   heard: the segment a text or audio part was resolved from (G2); sent as any text or audio.
  *   A tool_call's extra is what its provider wrote on it to have back (Gemini 3's thought signature), and model the provider model id
- *   that wrote it: it goes back only to that model.
+ *   that wrote it: it goes back only to that model. attribution is for the user alone (G4): a reply grounded by the provider's own
+ *   search, shown as it came under "From <source>", its words, links and the provider's suggestions (html); no model is ever sent it.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
@@ -48,10 +50,12 @@
  *   | { type: 'citation', url: string, title?: string }
  *   | { type: 'stop', reason: StopReason }
  *   | { type: 'restart' }
- *   | { type: 'kept', id: string }} StreamEvent
+ *   | { type: 'kept', id: string }
+ *   | { type: 'attribution', source: string, text: string, links: { url: string, title?: string }[], html?: string }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
  *   model or the same one; what streamed before is void (only callRole sends it). kept: the provider keeps this turn under id (G2), for annai alone.
+ *   attribution: the reply was grounded by the provider's own search, as the provider asks it shown (G4), once, at its end.
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
  *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect' | 'forgotten'} ErrorKind
  *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one; redirect: see noRedirect;
@@ -224,6 +228,7 @@ export function portable(messages, modelKey) {
     if (p.type === 'speech') return [{ type: 'text', text: p.text || '[audio, not transcribed]' }]; // resolved before sending; never sent as it is
     if (p.type === 'reasoning') return (p.signature || p.redacted) && p.model !== modelKey ? [] : [p];
     if (p.type === 'provider') return p.model === modelKey ? [p] : [];
+    if (p.type === 'attribution') return []; // for the user's eyes only
     if (p.type === 'tool_call') {
       const { extra, model, ...call } = p;
       return [{ ...call, id: safeId(p.id), ...(extra !== undefined && model === modelKey ? { extra, model } : {}) }];

@@ -281,6 +281,23 @@ test('a provider block is kept for the model that wrote it, citations are collec
   assert.equal(Number(reply.cost?.toFixed(6)), 0.0212);
 });
 
+test('an attribution is kept in the reply as a part of its own, named by the model that wrote it, and is no output of its own (G4)', async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const t = runType(async function* () {
+    yield { type: 'text', text: 'Open till 10.' };
+    yield { type: 'attribution', source: 'Google Search', text: 'Open till 10.', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], html: '<div>chips</div>' };
+    yield { type: 'stop', reason: 'end' };
+  });
+  const reply = await callOnce({ type: t, endpoint: endpoint(), model: model(), key: null, request, onEvent: (e) => seen.push(e.type) });
+  assert.deepEqual(reply.parts, [
+    { type: 'text', text: 'Open till 10.' },
+    { type: 'attribution', source: 'Google Search', text: 'Open till 10.', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], html: '<div>chips</div>', model: 'test-1' },
+  ]);
+  assert.equal(reply.text, 'Open till 10.', 'its words are the reply\'s once');
+  assert.deepEqual(seen, ['text', 'attribution', 'stop']);
+});
+
 test('uploads: each photo is uploaded once and sent by id; a failed upload sends the bytes and stops uploading', async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');
