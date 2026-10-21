@@ -364,7 +364,7 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
     - The model that holds the cache writes the summary, normally the main model. The request is the cached conversation plus a closing instruction, so it costs a cache read rather than the whole transcript at full price. Each provider caches per model, so only that model gets this price.
     - The next turn starts a new, shorter prefix, which would have been cold by then anyway.
   - **Cold: the utility model compacts.** The cache has already expired, for example because the app was closed or the conversation resumes after a long gap. Nothing is cheap to reuse, so the cheaper utility model writes the summary.
-- **The older part becomes a `compaction` event.** The most recent part stays word for word, photos included: by default the last third of the threshold, and never fewer than the last three exchanges.
+- **The older part becomes a `compaction` event.** The most recent part stays word for word, photos included: by default the last third of the threshold, and never fewer than the last three exchanges. The summary is asked for in a language named in the request: the one the user wrote in last, else the app's.
 - **It compacts to well below the threshold,** so it happens rarely: each compaction rewrites the start of the request, which costs one cold cache.
 - **It leaves pointers:**
   - **Each photo becomes a one-line stub** with its path, and its crop if it was one, plus what was said about it. For example: "/trip/files/2026-11-26-1904.webp: the Nepenthe menu, prices circled; read it to see it again." The stub is written from the conversation around the photo and its metadata, so the photo isn't sent again.

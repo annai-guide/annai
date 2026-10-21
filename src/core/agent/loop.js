@@ -6,7 +6,7 @@ import { modelOf, providerOf, saveModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
-import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
+import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
@@ -819,8 +819,12 @@ export class Agent {
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
       .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
+    /** What the user wrote last, for the summary's language. */
+    let said = '';
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
+      const text = texts.text ?? e.data?.text; // a short text is kept in data
+      if (e.type === 'msg.user' && typeof text === 'string' && text !== '(a photo)') said = text;
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
@@ -834,7 +838,8 @@ export class Agent {
     const first = after.find((e) => e.type === 'msg.user')?.data?.text ?? after.find((e) => e.type === 'wake')?.data?.reasons?.[0]?.text ?? '';
     const marker = first ? `the exchange that begins "${first.slice(0, 80)}"` : `event ${cut}`;
     this.#setState('away', 'tidying up the conversation');
-    const summary = mode === 'warm' ? await this.#warmSummary(marker, settings) : await this.#coldSummary(cut);
+    const language = summaryLanguage(said);
+    const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language) : await this.#coldSummary(cut, language);
     if (!summary) return false;
     const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
     await this.#serially(async () => {
@@ -846,14 +851,14 @@ export class Agent {
     return true;
   }
 
-  /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings */
-  async #warmSummary(marker, settings) {
+  /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings @param {string} language */
+  async #warmSummary(marker, settings, language) {
     const { tools, providerTools, shows } = await this.#toolsNow();
     if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = await this.#sendable();
     for (let step = 0; step < 4; step++) {
-      const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker), cacheTtl: settings.cacheTtl }), ...providerTools };
+      const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
       const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
       const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       if (!calls.length) return r.reply.text.trim() || null;
@@ -873,15 +878,15 @@ export class Agent {
     return null;
   }
 
-  /** Cold: the utility model, from the older part as text. @param {number} cut */
-  async #coldSummary(cut) {
+  /** Cold: the utility model, from the older part as text. @param {number} cut @param {string} language */
+  async #coldSummary(cut, language) {
     const old = await this.#load(this.scope, { before: cut });
     // Words written down since (by housekeeping, just now) count for the part summarized.
     for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['heard.text'], after: cut - 1 }))) old.apply(e, { texts: {}, images: [] });
     // Half the utility model's window, in characters, leaves room for the instructions and the summary.
     const window = (await this.#roleModel('utility'))?.contextWindow;
     const text = renderForSummary(old.messages, window ? Math.floor(window * 3.5 * 0.5) : SUMMARY_MAX_CHARS);
-    const r = await this.llm.call({ role: 'utility', request: { system: COLD_SYSTEM, messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, record: { tag: 'compaction' } });
+    const r = await this.llm.call({ role: 'utility', request: { system: coldSystem(language), messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, record: { tag: 'compaction' } });
     return r.reply.text.trim() || null;
   }
 
