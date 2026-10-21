@@ -93,14 +93,17 @@ export function createLlm({
    */
   const releasing = async (id, work, gone = false) => {
     removing.add(id);
+    let done = false;
     try {
       await kept.queue({ provider: id });
       await drainFor(10_000);
       const out = await work();
+      done = true;
       await kept.drop(id).catch(() => {});
       return out;
     } finally {
-      if (!gone) removing.delete(id);
+      // A removal that failed leaves the provider as it was, its turns kept again (verification, 2026-10-21).
+      if (!gone || !done) removing.delete(id);
     }
   };
   const types = () => endpointTypes(plugins.registry);
