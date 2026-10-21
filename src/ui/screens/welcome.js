@@ -54,8 +54,9 @@ const inSafari = () => platform() === 'ios' && !isStandalone();
 
 /**
  * The last step: install where annai isn't installed, then connect a model, with the featured provider's
- * sentence from annai's catalog. Its plugin installs now, in the background, so its sign-in on Models is
- * ready before the tap; not in Safari on an iPhone, where the model is set up in the Home Screen app. @param {any} ctx
+ * sentence from annai's catalog (none while a provider exists). Its plugin installs now, in the background,
+ * so its sign-in on Models is ready before the tap; the sentence doesn't wait for that. Not in Safari on an
+ * iPhone, where the model is set up in the Home Screen app. @param {any} ctx
  */
 function start(ctx) {
   const p = platform();
@@ -64,7 +65,11 @@ function start(ctx) {
     lead.textContent = [inSafari() ? 'Connect a model there, so Shiori can think.' : 'Connect a model, so Shiori can think.', featured, inSafari() ? 'A model set up here, in Safari, stays in Safari.' : ''].filter(Boolean).join(' ');
   };
   say('');
-  (inSafari() ? officialPlugins().then((list) => list.find((x) => x.featured)) : readyFeatured(ctx)).then((f) => { if (f?.featured) say(String(f.featured)); }, () => {});
+  Promise.all([officialPlugins(), ctx.llm.config()]).then(([list, cfg]) => {
+    const f = list.find((x) => typeof x.featured === 'string' && x.featured);
+    if (f && !Object.keys(cfg.providers).length) say(String(f.featured));
+  }, () => {});
+  if (!inSafari()) readyFeatured(ctx).catch(() => {});
   const model = [lead];
   if (isStandalone() || p === 'desktop') {
     return [...model, ...(p === 'desktop' && !isStandalone() ? [h('p', { class: 'sub', text: 'You can also install annai as an app from your browser\'s menu.' })] : [])];
