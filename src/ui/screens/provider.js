@@ -238,7 +238,8 @@ async function abilityPanel(view, abilityId, added) {
   const a = providerOf(rec, tunablesFor).abilities[abilityId];
   const type = ctx.llm.types().get(a.type);
   const body = h('div', {});
-  const draw = async () => body.replaceChildren(...await abilityBody(view, abilityId));
+  // replaceChildren, unlike h, would show a null as the word.
+  const draw = async () => body.replaceChildren(...(await abilityBody(view, abilityId)).filter((n) => n !== null));
   const use = savedCheck(`Use ${a.name}`, a.on, async (on) => {
     await ctx.llm.setAbility(id, abilityId, on);
     await draw();

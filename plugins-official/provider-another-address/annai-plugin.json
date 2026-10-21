@@ -1,7 +1,7 @@
 {
   "id": "provider-another-address",
   "name": "Another address",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "catchAll": true,
   "api": 1,
   "entry": "index.js",

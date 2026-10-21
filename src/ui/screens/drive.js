@@ -44,7 +44,7 @@ export async function renderDrive(ctx) {
       ...stops.map((s) => h('li', {},
         h('span', { class: 'name', text: s.name }),
         h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', s.km !== null ? `${distanceText(s.km, locale)} · about ${s.minutes} min` : ''].filter(Boolean).join(' · ') }))),
-      stops.length ? null : h('li', { class: 'empty', text: 'Nothing more is planned with a place.' }));
+      ...(stops.length ? [] : [h('li', { class: 'empty', text: 'Nothing more is planned with a place.' })]));
     const next = stops[0];
     maps.replaceChildren(...(!next ? [] : links ? [
       h('strong', { class: 'card-title', text: `Directions to ${next.name}` }),
