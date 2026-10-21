@@ -155,7 +155,8 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
           const sum = Number(args.a) + Number(args.b);
           return answer({ content: [{ type: 'text', text: String(sum) }], structuredContent: { sum } });
         }
-        if (name === 'map') return answer({ content: [{ type: 'image', data: PNG, mimeType: 'image/png' }] });
+        // A variant is another image: the same PNG with bytes after its end.
+        if (name === 'map') return answer({ content: [{ type: 'image', data: args.variant ? Buffer.concat([Buffer.from(PNG, 'base64'), Buffer.from(String(args.variant))]).toString('base64') : PNG, mimeType: 'image/png' }] });
         if (name === 'whoami') return answer({ content: [{ type: 'text', text: `You sent: ${req.headers.authorization ?? 'nothing'}` }] });
         if (name === 'fail') return answer({ content: [{ type: 'text', text: 'This tool failed on purpose.' }], isError: true });
         await new Promise((done) => setTimeout(done, Number(args.ms ?? 1000)));

@@ -389,12 +389,36 @@ test("an MCP tool's image is kept as a named file in the trip, and the result te
     assert.match(img.content, /show/);
     // What the model sees is the stored file: the tool's result names it, with no second copy of its bytes.
     assert.deepEqual(img.images, [{ mediaType: 'image/png', hash: f.hash, path: `/trip${f.path}` }]);
-    // A second map is a file of its own; a model that can't see photos is told its path alone.
+    // The same map again is the file there already (review R9); a model that can't see photos is told its path alone.
     const tool = k.registry.list('tool').find((t) => t.name === 'mcp_trail_map');
     const blind = await tool.run({}, { trip: k.trip, scope: k.trip, signal: new AbortController().signal, model: { input: ['text'] }, fetch: tracedFetch(k.store, k.trip, { tool: 'mcp_trail_map' }) });
     assert.equal(typeof blind, 'string');
-    assert.match(blind, /kept as \/trip\/files\/trail_map-2\.png/);
-    assert.equal((await k.ws.list(k.trip, '/files/')).length, 2);
+    assert.match(blind, /kept as \/trip\/files\/trail_map\.png/);
+    assert.equal((await k.ws.list(k.trip, '/files/')).length, 1);
+    // Two other maps at once each get a name of their own.
+    const [a, b] = await Promise.all([k.call('mcp_trail_map', { variant: 'a' }), k.call('mcp_trail_map', { variant: 'b' })]);
+    assert.notEqual(a.images[0].path, b.images[0].path);
+    assert.deepEqual((await k.ws.list(k.trip, '/files/')).map((x) => x.path).sort(), ['/files/trail_map-2.png', '/files/trail_map-3.png', '/files/trail_map.png']);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("an MCP tool's image that can't be kept (storage full) leaves its words, and says so", async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url, token: TOKEN });
+    const { StorageFullError } = await import('../../src/core/errors.js');
+    const write = k.ws.write.bind(k.ws);
+    k.ws.write = async (/** @type {string} */ scope, /** @type {string} */ path, /** @type {any} */ c, /** @type {any} */ o) => {
+      if (path.startsWith('/files/')) throw new StorageFullError();
+      return write(scope, path, c, o);
+    };
+    const out = await k.call('mcp_trail_map', {});
+    assert.equal(typeof out, 'string');
+    assert.match(out, /^An image \(image\/png\), which annai couldn't keep: annai's storage on this device is full\./);
+    assert.deepEqual(await k.ws.list(k.trip, '/files/'), []);
   } finally {
     await s.stop();
   }
