@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'c003d0c6d724';
+const BUILD = '6a9264c44a4f';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -362,7 +362,7 @@ async function servePlugin(req, pathname) {
   let db;
   try {
     db = await openExisting();
-    const found = await readPluginFiles(db, ['/installed.json', path]);
+    const found = await readFiles(db, 'sys:plugins', ['/installed.json', path]);
     let enabled = false;
     const state = found.get('/installed.json');
     if (state) {
@@ -386,17 +386,17 @@ async function servePlugin(req, pathname) {
 }
 
 /**
- * Reads several sys:plugins files in one transaction.
- * @param {IDBDatabase} db @param {string[]} paths
+ * Reads several files of a scope in one transaction.
+ * @param {IDBDatabase} db @param {string} scope @param {string[]} paths
  * @returns {Promise<Map<string, { data: ArrayBuffer, type: string }>>}
  */
-function readPluginFiles(db, paths) {
+function readFiles(db, scope, paths) {
   return new Promise((resolve, reject) => {
     /** @type {Map<string, { data: ArrayBuffer, type: string }>} */
     const out = new Map();
     const t = db.transaction(['files', 'blobs'], 'readonly');
     for (const path of paths) {
-      const f = t.objectStore('files').get(['sys:plugins', path]);
+      const f = t.objectStore('files').get([scope, path]);
       f.onsuccess = () => {
         const entry = f.result;
         if (!entry) return;
@@ -460,8 +460,27 @@ async function showReminder(data) {
     : m.body.slice(0, 500).replace(/^In \d+ min: /, (was) => (left === null ? was : left > 0 ? `In ${left} min: ` : left === 0 ? 'Now: ' : `Started ${-left} min ago: `));
   /** @type {Record<string, unknown>} */
   const info = ok ? { key: m.key.slice(0, 300), scope: String(m.scope ?? ''), watch: String(m.watch ?? ''), at: Number(m.at) || 0, ...(m.test ? { test: true } : {}) } : {};
-  await sw.registration.showNotification(title, { body, tag: typeof info.key === 'string' ? info.key : 'annai-reminder', data: info, icon: '/assets/icons/icon-192.png' });
-  await keepNews({ kind: 'shown', ...info, t: Date.now() });
+  // One annai gave already, or called off, that the phone held back comes quietly, and annai on screen closes it: a push
+  // must show a notification (Safari drops the subscription after a few that don't; Chrome holds up the ones after it).
+  const stale = ok && !m.test && (await handled(m.key));
+  await sw.registration.showNotification(title, { body, tag: typeof info.key === 'string' ? info.key : 'annai-reminder', data: info, icon: '/assets/icons/icon-192.png', ...(stale ? { silent: true } : {}) });
+  await keepNews({ kind: 'shown', ...info, ...(stale ? { stale: true } : {}), t: Date.now() });
+}
+
+/** Whether a reminder no longer waits at the relay as annai last wrote it down (/push.json): it fired, was caught up or called off. @param {string} key */
+async function handled(key) {
+  /** @type {IDBDatabase | undefined} */
+  let db;
+  try {
+    db = await openExisting();
+    const file = (await readFiles(db, 'sys:device', ['/push.json'])).get('/push.json');
+    const items = file ? JSON.parse(new TextDecoder().decode(file.data))?.items : null;
+    return Boolean(items && typeof items === 'object' && !Object.hasOwn(items, key));
+  } catch {
+    return false;
+  } finally {
+    db?.close();
+  }
 }
 
 // Tapping one opens annai, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is

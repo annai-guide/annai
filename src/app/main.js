@@ -117,7 +117,7 @@ async function boot() {
   /** @type {unknown[]} live mode's problems from before the shell is up */
   const liveEarly = [];
   let liveProblem = (/** @type {unknown} */ e) => { liveEarly.push(e); };
-  const live = new Live({ store, ws, registry, agent, news, problem: (e) => liveProblem(e) });
+  const live = new Live({ store, ws, registry, agent, news, problem: (e) => liveProblem(e), close: (keys) => { closeNotifications(keys).catch(() => {}); } });
   /** @type {any[]} cards from before the shell is up */
   const early = [];
   let pushCard = (/** @type {any} */ n) => { early.push(n); };

@@ -36,7 +36,7 @@ import { SIMULATION } from './simulate.js';
  * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, start?: number }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
  *   start: a "coming up" item's, for the minutes left
- * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, t?: number }} PushNews
+ * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, stale?: boolean, t?: number }} PushNews
  *   what the service worker saw: a notification shown or opened, or the subscription renewed; t, when
  */
 
@@ -146,11 +146,13 @@ export class Live {
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
-   *   agent: AgentLike, clock?: import('./clock.js').Clock, timeZone?: () => string, news?: () => Promise<PushNews[]>, problem?: (e: unknown) => void }} c
+   *   agent: AgentLike, clock?: import('./clock.js').Clock, timeZone?: () => string, news?: () => Promise<PushNews[]>, problem?: (e: unknown) => void,
+   *   close?: (keys: string[]) => void }} c
    *   news: what the service worker saw while annai was away, read at each catch-up (spec §11.6);
-   *   problem: live mode's own work failed (a log that can't be written), for a card: each kind is told once
+   *   problem: live mode's own work failed (a log that can't be written), for a card: each kind is told once;
+   *   close: closes the phone's notifications for these reminders, doubles a catch-up read
    */
-  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone, news = async () => [], problem = () => {} }) {
+  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone, news = async () => [], problem = () => {}, close = () => {} }) {
     this.store = store;
     this.ws = ws;
     this.registry = registry;
@@ -159,6 +161,7 @@ export class Live {
     this.timeZone = timeZone;
     this.news = news;
     this.problem = problem;
+    this.close = close;
   }
 
   /** Follows the sensors, the watches and the plan, from the switch as it was left (choice 11). */
@@ -702,7 +705,8 @@ export class Live {
       const t = typeof n.t === 'number' && Number.isFinite(n.t) ? n.t : now;
       if (n.kind === 'shown') {
         this.#notified.set(n.key, t);
-        if (this.#said.has(n.key)) doubles.push(n.key);
+        // stale: the service worker found it no longer waiting at the relay (given, caught up or called off): it came quietly.
+        if (this.#said.has(n.key) || n.stale) doubles.push(n.key);
       } else {
         const words = String(n.body ?? '').trim().slice(0, 300);
         this.#openedNews.push({ scope: n.scope, text: `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? 'a watch')}`} from its notification at ${timeIn(t, zone())}.` });
@@ -920,7 +924,8 @@ export class Live {
     this.#catch = c;
     this.#back = true;
     // What the phone's notifications did meanwhile, before the firings that may be theirs (spec §11.6).
-    await this.#hear(await this.#readNews());
+    const doubles = await this.#hear(await this.#readNews());
+    if (doubles.length) this.close(doubles);
     await this.#check({ past: true });
     if (this.on && this.shown && this.#gpsOn.size && this.gps !== 'denied') {
       c.timer = this.clock.set(() => {

@@ -5,8 +5,57 @@ import vm from 'node:vm';
 
 const root = new URL('../../', import.meta.url);
 
+/**
+ * annai's database as the service worker reads it, holding these files of sys:device, or none at all.
+ * @param {Record<string, string> | null} files
+ */
+function fakeIndexedDB(files) {
+  const later = (/** @type {() => void} */ f) => setTimeout(f, 0);
+  return {
+    open: () => {
+      /** @type {any} */
+      const r = {};
+      later(() => {
+        if (!files) {
+          r.transaction = { abort: () => {} };
+          r.onupgradeneeded?.();
+          r.error = new DOMException('no database', 'AbortError');
+          r.onerror?.();
+          return;
+        }
+        r.result = {
+          close: () => {},
+          transaction: () => {
+            /** @type {any} */
+            const t = {};
+            let open = 0;
+            const done = () => { if (--open === 0) later(() => t.oncomplete?.()); };
+            t.objectStore = (/** @type {string} */ store) => ({
+              get: (/** @type {any} */ key) => {
+                /** @type {any} */
+                const q = {};
+                open++;
+                later(() => {
+                  if (store === 'files') q.result = key[0] === 'sys:device' && key[1] in files ? { hash: key[1], type: 'application/json' } : undefined;
+                  else q.result = key in files ? { data: new TextEncoder().encode(files[key]).buffer } : undefined;
+                  q.onsuccess?.();
+                  done();
+                });
+                return q;
+              },
+            });
+            return t;
+          },
+        };
+        r.onsuccess?.();
+      });
+      return r;
+    },
+  };
+}
+
 /** The service worker in a context of its own, with a fake registration, clients and caches. */
-async function swKit({ windows = 0, focusFails = false } = {}) {
+async function swKit({ windows = 0, focusFails = false, device = /** @type {Record<string, string> | null} */ (null) } = {}) {
   const source = await readFile(new URL('sw.js', root), 'utf8');
   /** @type {Record<string, (e: any) => void>} */
   const handlers = {};
@@ -43,7 +92,7 @@ async function swKit({ windows = 0, focusFails = false } = {}) {
       put: async (/** @type {string} */ key, /** @type {Response} */ res) => { inbox.set(`${name} ${key}`, await res.text()); },
     }),
   };
-  vm.runInNewContext(source, { self, caches, Request, Response, URL, console });
+  vm.runInNewContext(source, { self, caches, Request, Response, URL, console, indexedDB: fakeIndexedDB(device), TextDecoder, DOMException });
   /** @param {string} type @param {any} ev */
   const fire = async (type, ev) => {
     /** @type {Promise<unknown> | undefined} */
@@ -136,4 +185,25 @@ test('a "coming up" reminder says the minutes left when it shows, counted from t
   assert.equal(k.shown[3].body, 'In 15 min: Call home at 05:35.');
   await k.fire('push', { data: { json: () => ({ ...REMINDER, start }) } });
   assert.equal(k.shown[4].body, 'Tea time.');
+});
+
+// The emulator pass: a reminder annai had already given in its catch-up, held back by the phone, popped up 6 minutes later.
+test('a reminder annai already gave, or called off, comes quietly, and annai hears it is stale: it is no longer waiting at the relay', async () => {
+  const state = (/** @type {string[]} */ keys) => ({ '/push.json': JSON.stringify({ on: true, items: Object.fromEntries(keys.map((k) => [k, { id: 'x', due: 1, sendAt: 2 }])) }) });
+  const stale = await swKit({ windows: 1, device: state(['trip-1|w-2']) });
+  await stale.fire('push', { data: { json: () => REMINDER } });
+  assert.equal(stale.shown.length, 1, 'shown, as every push must be (Safari takes the subscription away otherwise)');
+  assert.equal(stale.shown[0].silent, true, 'without a sound, so it never pops up');
+  assert.deepEqual(stale.news().map((n) => [n.kind, n.key, n.stale]), [['shown', 'trip-1|w-1', true]]);
+  // One still waiting shows as it came; so does one when annai keeps nothing yet, or its database can't be read.
+  for (const device of [state(['trip-1|w-1']), {}, null]) {
+    const k = await swKit({ device });
+    await k.fire('push', { data: { json: () => REMINDER } });
+    assert.equal(k.shown[0].silent, undefined, JSON.stringify(device));
+    assert.equal(k.news()[0]?.stale, undefined);
+  }
+  // annai's own test and "notifications are on" are never stale.
+  const test = await swKit({ device: state([]) });
+  await test.fire('push', { data: { json: () => ({ ...REMINDER, key: 'hello|abc', test: true }) } });
+  assert.equal(test.shown[0].silent, undefined);
 });
