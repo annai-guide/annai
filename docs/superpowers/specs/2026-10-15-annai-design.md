@@ -391,7 +391,7 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
 |---|---|
 | A tool errors | The error is returned as the tool result; the model adapts. |
 | The model errors | §9.6 fallback. When every model is exhausted, a card says "Shiori can't reach her model". |
-| The user interrupts | Tapping the avatar cancels the stream. Partial output is logged. The turn is over: opening the conversation again doesn't take it up. |
+| The user interrupts | Tapping the avatar while she thinks (the dock says "Thinking · tap to stop") cancels the stream. Partial output is logged. The turn is over: opening the conversation again doesn't take it up. What the user sent meanwhile starts a new turn at once, with all of it. |
 | Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. So does a turn cut off after its tool calls had all come back, before her next reply (when the reply that made them didn't call `sleep`). |
 | Voice is off | `speak` becomes an on-screen bubble and doesn't listen. The now block tells Shiori the mode. |
 
@@ -1107,7 +1107,7 @@ Reference: mockups draft 6.
 | Asleep | eyes closed, ears folded flat, her head dipped and resting on her tail, which is wrapped round her; slow breathing lifts her, and her tail with it (a loop) | Tap to talk |
 | Listening | facing you, ears up | Listening |
 | Hearing you | ears leaning in, eyes wide; the seat glow (grey) follows your voice level | Hearing you |
-| Thinking | head turned to the side (mid-blink), looking up and away | Thinking |
+| Thinking | head turned to the side (mid-blink), looking up and away | Thinking · tap to stop |
 | Talking | facing you, open eyes; her head, the seat glow (vermilion) and the streamer, which waves and swings out, follow her voice level | Tap to interrupt |
 | Your turn | facing you, leaning, head tilted, her left ear angled out | Waiting for your OK |
 | Working | stepped out of her seat, leaving her trail marker in its grass, its streamer waving, paw prints, and her tail's tip, wagging gently (loops); tap it to see what she's doing | Working on … |

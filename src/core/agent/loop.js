@@ -88,7 +88,7 @@ const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
 
 /** The dock's words for each state (spec §16.3). */
 export const LABELS = Object.freeze({
-  sleeping: 'Tap to talk', thinking: 'Thinking', speaking: 'Tap to interrupt', listening: 'Listening', hearing: 'Hearing you', waiting: 'Waiting for your OK',
+  sleeping: 'Tap to talk', thinking: 'Thinking · tap to stop', speaking: 'Tap to interrupt', listening: 'Listening', hearing: 'Hearing you', waiting: 'Waiting for your OK',
   away: 'Working on …', offline: 'Offline · reminders still work',
 });
 export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen; the user may type.";
