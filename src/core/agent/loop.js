@@ -223,6 +223,8 @@ export class Agent {
   #userStop = false;
   /** Counts what reached the user (speak, show, ask, a reply shown as written): what was owed before it is settled. */
   #reached = 0;
+  /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
+  #order = null;
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
@@ -1110,6 +1112,10 @@ export class Agent {
     // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
     if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
     const reasons = wakes.map((w) => this.#reason(w));
+    // The user reordered the list (or changed it) since: their order applies from this turn, warm cache or not (emulator pass).
+    const order = chatCandidates(await this.llm.config(), this.#half.role).join('\n');
+    const reordered = this.#order !== null && order !== this.#order;
+    this.#order = order;
     /**
      * The fallbacks of this turn's wakes that annai shows itself if no model answers (spec §11.3); a reminder's stays owed until
      * she reaches the user after it came, with speak, show or ask (emulator pass: a turn that only slept dropped them).
@@ -1197,7 +1203,7 @@ export class Agent {
           continue;
         }
       }
-      const prefer = this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
+      const prefer = !reordered && this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
       this.#cut = false;
       this.#noteCut = false;
       this.#wentToSleep = false;

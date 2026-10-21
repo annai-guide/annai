@@ -584,7 +584,7 @@ Each role is an **ordered list** of models, tried front to back:
 
 - **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size. A model that takes no photos gets the conversation's photos as words ("[a photo: /trip/files/….webp]"), so a conversation that once held one can still go on; it is skipped only when the user's newest message holds a photo.
 - **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model. A failure to connect while the device is offline benches nothing and isn't retried: the model did nothing wrong, and it is asked again as soon as the connection is back.
-- **Switching back.** Each provider caches separately, so the switch back to a preferred model happens when the backup's cache is cold.
+- **Switching back.** Each provider caches separately, so the switch back to a preferred model happens when the backup's cache is cold. An order the user changes in Settings → Models applies from the next turn, warm cache or not.
 - **The transcript stays portable.** It's stored in our own format. When the model changes:
   - tool-call ids are rewritten for the new provider
   - reasoning blocks signed for another model are dropped
