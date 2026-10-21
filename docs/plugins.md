@@ -2,7 +2,7 @@
 
 This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8 (extensions). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
 
-A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1).
+A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1): for yours, as for any that isn't annai's own, that it can read every key saved in annai and send it anywhere, naming whose keys are saved now ("now your keys for Google Gemini and Jina"), with **Install anyway**. An update that brings code to a package that had none asks the same way, with **Update anyway**.
 
 ## The package
 

@@ -8,9 +8,37 @@ import { descOrigins } from '../../core/llm/provider-desc.js';
 import { officialPlugins } from '../../core/llm/official.js';
 import { checkRequires, installWith, checkPackageId } from '../../core/requires.js';
 import { NAMED } from '../../core/registry.js';
+import { readConfig, providerOf } from '../../core/llm/config.js';
+import { listTargets } from '../../core/backup-targets.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = 'This plugin gets full access to your trips and API keys.';
+/**
+ * Whose keys annai keeps now, by name only, never a value (fixes-ui 15): providers', backup places', MCP servers',
+ * Jina's and plugins' own. @param {any} plugins the plugin host @returns {Promise<string[]>}
+ */
+export async function keyNames(plugins) {
+  const ws = plugins.ws;
+  const ids = /** @type {string[]} */ (await ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.listSecretIds()).catch(() => []));
+  const providers = (await readConfig(ws).catch(() => null))?.providers ?? {};
+  const places = await listTargets(ws).catch(() => []);
+  const rows = await plugins.describe().catch(() => []);
+  /** @type {Set<string>} */
+  const names = new Set();
+  for (const id of ids) {
+    const [kind, of, ...rest] = id.split(':');
+    const rec = kind === 'llm' ? providers[id.slice(4)] : null;
+    const name = rec ? providerOf(rec).name
+      : kind === 'backup' ? places.find((/** @type {any} */ t) => t.id === id.slice(7))?.name
+        : kind !== 'plugin' ? null : of === 'mcp' ? rest.join(':') : id === 'plugin:web:jina' ? 'Jina' : rows.find((/** @type {any} */ r) => r.id === of)?.name;
+    if (name) names.add(String(name));
+  }
+  return [...names];
+}
+
+/** What a code plugin that isn't annai's own can do with them, in plain words. @param {string[]} names keyNames() */
+export const keysRisk = (names) => `It can read every key saved in annai and send it anywhere${names.length ? `: now your keys for ${andList(names)}` : ''}.`;
+
 /** A plugin's code loads through the service worker (spec §5.3). */
 export const NO_SERVICE = "Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.";
 
@@ -163,9 +191,11 @@ export async function renderPluginInstall(ctx) {
   const owners = [...new Set(mine.map((s) => s.owner))];
   // Over one from another place: keep what it keeps, or start fresh.
   const elsewhere = Boolean(pkg.previous && !samePlace(pkg.previous.from, from));
+  // Code that isn't annai's own (here, from a file or an address): what it can do with the keys saved now, by name (fixes-ui 15).
+  const risk = pkg.code ? keysRisk(await keyNames(ctx.plugins)) : null;
   /** @type {[string, { use?: typeof mine, fresh?: boolean }][]} */
   const picks = elsewhere ? [['Install, keep its settings and keys', {}], ['Install fresh', { fresh: true }]]
-    : mine.length ? [['Install and use it', { use: mine }], [owners.join() === 'annai' ? "Install, keep annai's" : "Install, keep what's used now", {}]] : [['Install', {}]];
+    : mine.length ? [['Install and use it', { use: mine }], [owners.join() === 'annai' ? "Install, keep annai's" : "Install, keep what's used now", {}]] : [[risk ? 'Install anyway' : 'Install', {}]];
   /** @type {HTMLButtonElement[]} */
   const buttons = picks.map(([label, o], i) => h('button', { class: i ? 'btn' : 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, buttons, o) }, label));
   return h('div', { class: 'screen plugin-install' }, back,
@@ -183,7 +213,7 @@ export async function renderPluginInstall(ctx) {
       h('h2', { class: 'section', text: 'What it replaces' }),
       h('ul', { class: 'brings' }, ...mine.map((s) => h('li', { text: `It replaces ${thingWords(s.kind, s.name)} from ${ownerName(rows, s.owner)}.` })))) : null,
     pkg.code
-      ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), h('p', { text: 'Only install it if you trust where it came from.' }), keysNote(pkg) ? h('p', { text: keysNote(pkg) }) : null)
+      ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), risk ? h('p', { text: risk }) : null, h('p', { text: 'Only install it if you trust where it came from.' }), keysNote(pkg) ? h('p', { text: keysNote(pkg) }) : null)
       : pkg.provider
         // A provider's own note, in place of the skill note (security review): what it can't do, and where keys go.
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: "It can't run anything: it is data that tells annai how to reach a model provider." }), h('p', { text: keysNote(pkg) }))

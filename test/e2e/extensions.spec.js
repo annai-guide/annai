@@ -125,7 +125,7 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
     await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
     // From a zip, installed: its status chip appears (spec §16.4); then removed.
     await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
-    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await page.getByRole('button', { name: 'Install anyway' }).click();
     await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
     await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Remove' }).click();
     await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Tap again to remove' }).click();
@@ -134,7 +134,7 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
     // From an address: the same files as the code that ran this session, so it starts at once (other files would wait for a restart).
     await pickAddress(page, `${site.origin}/kits/tides/annai-plugin.json`);
     await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
-    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await page.getByRole('button', { name: 'Install anyway' }).click();
     await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
     await expect(page.getByText('Restart annai to run the new version of Tides.')).toHaveCount(0);
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toBeVisible();
@@ -164,7 +164,7 @@ test('an update from an address is offered after a reload and changes nothing un
   try {
     await modelSetUp(page, llm.origin);
     await pickAddress(page, `${site.origin}/kits/tides/annai-plugin.json`);
-    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await page.getByRole('button', { name: 'Install anyway' }).click();
     await expect(page.getByText('Tides 1.0.0', { exact: true })).toBeVisible();
     routes['/kits/tides/annai-plugin.json'] = file(Buffer.from(tides['annai-plugin.json'].toString().replace('"1.0.0"', '"1.1.0"')), 'application/json');
     routes['/kits/tides/lib.js'] = file(Buffer.from(tides['lib.js'].toString().replace("'1.0.0'", "'1.1.0'")), 'text/javascript');
@@ -220,7 +220,7 @@ test("8a-5: a new version of a code plugin that is off stays off, and its code d
     await page.goto('/#/plugins');
     const chips = page.getByRole('navigation', { name: 'Shiori' });
     await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(tides) });
-    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await page.getByRole('button', { name: 'Install anyway' }).click();
     await expect(chips.getByText('Tide 1.0.0')).toBeVisible();
     await page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Turn off' }).click();
     await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
@@ -228,7 +228,7 @@ test("8a-5: a new version of a code plugin that is off stays off, and its code d
     await expect(page.locator('.card', { hasText: 'Tides 1.0.0' }).getByRole('button', { name: 'Turn on' })).toBeVisible();
     const next = { ...tides, 'annai-plugin.json': Buffer.from(JSON.stringify({ ...JSON.parse(tides['annai-plugin.json'].toString()), version: '1.0.1' })) };
     await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf(next) });
-    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await page.getByRole('button', { name: 'Install anyway' }).click();
     await expect(page.locator('.card', { hasText: 'Tides 1.0.1' }).getByRole('button', { name: 'Turn on' })).toBeVisible();
     await expect(chips.getByText('Tide 1.0.0')).toHaveCount(0);
   } finally {
