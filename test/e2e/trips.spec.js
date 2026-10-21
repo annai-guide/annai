@@ -338,6 +338,42 @@ test('Back closes a question as No, where the browser has no CloseWatcher (Chrom
   await expect(page.getByRole('link', { name: /Big Sur/ })).toHaveCount(0);
 });
 
+// Chrome 113 on Android swallowed the first Back for a modal <dialog> (the second emulator re-check), so where it can't use
+// CloseWatcher the question is not modal: annai's own backdrop, the page behind inert, the focus kept in the question.
+test('where there is no CloseWatcher, the question is not a modal dialog: the page behind is inert, Tab stays in the question, Escape and Back close it as No', async ({ page }) => {
+  await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const trip = page.url();
+  const question = page.getByRole('dialog', { name: 'Big Sur' });
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(question).toBeVisible();
+  expect(await question.evaluate((d) => d.matches(':modal'))).toBe(false);
+  expect(await page.evaluate(() => [...document.body.children].filter((el) => !el.matches('dialog.ask, .ask-backdrop')).every((el) => /** @type {HTMLElement} */ (el).inert))).toBe(true);
+  await expect(page.locator('.ask-backdrop')).toBeVisible();
+  const focused = () => page.evaluate(() => document.activeElement?.textContent);
+  expect(await focused()).toBe('Cancel'); // a stray Enter never confirms
+  await page.keyboard.press('Tab');
+  expect(await focused()).toBe('Remove');
+  await page.keyboard.press('Tab');
+  expect(await focused()).toBe('Cancel');
+  await page.keyboard.press('Shift+Tab');
+  expect(await focused()).toBe('Remove');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.ask-backdrop')).toHaveCount(0);
+  expect(await page.evaluate(() => [...document.querySelectorAll('[inert]')].length)).toBe(0);
+  expect(page.url()).toBe(trip);
+  // The first Back closes it, and the page works again.
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(question).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(page.url()).toBe(trip);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(question).toBeVisible();
+});
+
 test('where the browser closes a question on Back itself (CloseWatcher), annai adds no history entry of its own', async ({ page }) => {
   await openApp(page);
   test.skip(!(await page.evaluate(() => 'CloseWatcher' in window)), 'this browser has no CloseWatcher');
