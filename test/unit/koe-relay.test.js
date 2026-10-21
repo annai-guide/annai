@@ -103,3 +103,74 @@ test("after the user's Stop, Koe's tell_kokoro is refused in words until the use
   assert.equal((await k.events(['tool.result'])).filter((e) => e.data.name === 'tell_kokoro').at(-1).data.ok, true);
   assert.equal(turns(), 2);
 });
+
+// The fix pass (M1): annai shows only what Kokoro meant the user to have, and a card or a question as itself.
+/** Kokoro calls one tool while Koe talks (gated), then sleeps. @param {string} name @param {any} input */
+const gated = (name, input) => [{ toolCalls: [{ name, input }, { name: 'sleep', input: {} }] }];
+/** What annai showed by itself: reminders, and the cards it put up. @param {any} k */
+const backstop = async (k) => (await k.events(['reminder'])).map((e) => [e.data.title, e.data.text]);
+
+test("Kokoro's list fails and Koe never tells the user so, asked once more: still no card (plan decision 21)", async () => {
+  const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].length, 3, 'asked once more');
+  assert.match(JSON.stringify(k.sent['model-koe'][2].messages.at(-1)), /Kokoro's note/);
+  assert.deepEqual(await backstop(k), []);
+  assert.deepEqual(k.notices, []);
+});
+
+test("Kokoro's plain final text that Koe never says: Koe is asked once more, and annai shows nothing", async () => {
+  const k = await agentKit([[{ text: 'Koe already answered this; nothing for me to do here.' }]], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['note'])).filter((e) => e.data.from === 'kokoro').map((e) => e.data.why), ['final-text']);
+  assert.equal(k.sent['model-koe'].length, 3, 'asked once more');
+  assert.deepEqual(await backstop(k), []);
+  assert.deepEqual(k.notices, []);
+});
+
+test("Kokoro's card, gated while Koe talks, that Koe never passes on: annai shows the card itself, whole, with no wrapper", async () => {
+  const card = { title: 'Nepenthe', text: 'Open 11:30–22:00 today.', links: [{ label: 'Site', url: 'https://nepenthe.com' }] };
+  const k = await agentKit([gated('show', { card })], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].length, 3, 'asked once more');
+  const shows = await k.events(['out.show']);
+  assert.equal(shows.length, 1);
+  assert.deepEqual(shows[0].data.card, card);
+  assert.deepEqual(await backstop(k), []);
+  assert.deepEqual(k.notices, []);
+  assert.ok(!JSON.stringify(await k.events(['reminder', 'out.show', 'out.ask', 'out.speak'])).includes('Kokoro wants to'));
+});
+
+test("Kokoro's question, gated, that Koe never asks: annai asks it with its buttons, and a tap reaches Koe", async () => {
+  const k = await agentKit([gated('ask', { question: 'Which table time?', options: ['18:00', '19:30'] }), [sleep]], { koe: { type: [CHECK, sleep, sleep, calls(['speak', { text: 'Booked for 19:30.' }], ['sleep', {}])] } });
+  k.agent.send('Book us at Nepenthe');
+  await k.agent.idle();
+  const asks = await k.events(['out.ask']);
+  assert.deepEqual(asks.map((e) => [e.data.question, e.data.options]), [['Which table time?', ['18:00', '19:30']]]);
+  assert.deepEqual(await backstop(k), []);
+  assert.deepEqual(k.notices, []);
+  k.agent.answer(asks[0].data.id, '19:30');
+  await k.agent.idle();
+  assert.equal((await k.events(['msg.user'])).at(-1).data.text, '19:30');
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Booked for 19:30.');
+});
+
+test("Kokoro's speak, gated, that Koe never passes on: annai shows it as Shiori's answer", async () => {
+  const k = await agentKit([gated('speak', { text: 'It opens at 11:30 today.' })], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual(await backstop(k), [["Shiori's answer", 'It opens at 11:30 today.']]);
+});
+
+test('Koe owes a note and a message the user wrote in its wait, and says nothing: annai shows the note, and the "didn\'t answer" card still comes', async () => {
+  const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'tell_koe', input: { text: SAY } }, { name: 'sleep', input: {} }] }, sleep]], { koe: { type: [CHECK, { delayMs: 600, ...sleep }, sleep] } });
+  k.agent.send('A sunset drink in Carmel');
+  await until(() => k.agent.koe.waiting);
+  k.agent.send('Which day is it?');
+  await k.agent.idle();
+  assert.deepEqual(await backstop(k), [["Shiori's answer", 'Sunset tonight is at 6:23 PM, but it is overcast.']]);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title).filter((t) => /didn't answer/.test(t)), ["Shiori didn't answer"]);
+});

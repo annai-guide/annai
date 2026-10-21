@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs } from './loop.js';
+import { Agent, GATHER, isTheirs, isForUser } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -49,6 +49,8 @@ export const REVIEW_MS = 180_000;
 const REVIEW = "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
 /** The conversation's lines, for the review. */
 const LINES = ['msg.user', 'heard', 'out.speak', 'out.show', 'out.ask'];
+/** Kokoro's words to Koe as annai shows them: "Say: …" is an instruction to Koe, and the user reads what follows. @param {unknown} note */
+const forUserText = (note) => String(note ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 
 /** The notes between the halves: written into the conversation, then handed over; the sender never waits. */
 export class Channel {
@@ -61,13 +63,14 @@ export class Channel {
 
   /**
    * append reaches the other half before its next model call, or starts its turn; immediate also cuts its call.
-   * @param {Side} from @param {string} text @param {'append' | 'immediate'} mode @param {NoteWhy} why @param {string} [wake] @returns {Promise<'sent'>}
+   * @param {Side} from @param {string} text @param {'append' | 'immediate'} mode @param {NoteWhy} why @param {string} [wake]
+   * @param {{ name: string, input: any }} [call] the gated call of Kokoro's it stands for @returns {Promise<'sent'>}
    */
-  async send(from, text, mode, why, wake) {
+  async send(from, text, mode, why, wake, call) {
     const to = from === 'koe' ? 'kokoro' : 'koe';
     await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text]] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, ...(call ? { call } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }
@@ -124,7 +127,7 @@ export class Halves {
   #why = '';
   /** When the first line Kokoro hasn't read came; 0: none. */
   #unseen = 0;
-  /** @type {string[]} what Kokoro told Koe that Koe hasn't said since */
+  /** @type {string[]} what Kokoro told Koe for the user that Koe hasn't passed on since */
   #unsaid = [];
   #failTold = false;
   #nothingTold = false;
@@ -161,7 +164,7 @@ export class Halves {
       log: { koe: (ev) => this.koe.log(ev), kokoro: (ev) => this.kokoro.log(ev) },
       deliver: {
         koe: (w) => {
-          if (w.from === 'kokoro') this.#unsaid.push(w.text);
+          if (isForUser(w)) this.#unsaid.push(w.text);
           this.#koeOpen();
           if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append'), w);
           else this.koe.enqueue(w);
@@ -231,6 +234,7 @@ export class Halves {
           this.#unsaid = [];
           this.#up('koe');
         },
+        unsaid: (notes) => this.#backstop(notes),
       },
     });
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
@@ -684,7 +688,7 @@ export class Halves {
   async #koeLogged(e, r) {
     await this.kokoro.observe(e, r);
     const typed = e.type === 'msg.user' && e.data?.split;
-    if (e.type === 'out.speak' && e.data?.live) this.#unsaid = []; // a live Koe said what it was told
+    if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
     if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
@@ -715,8 +719,26 @@ export class Halves {
       : name === 'show' ? `Kokoro wants to show: ${cardText(input?.card)}`
         : name === 'ask' ? `Kokoro wants to ask: ${String(input?.question ?? '')} (${(Array.isArray(input?.options) ? input.options : []).join(', ')})` : null;
     if (text === null) return null;
-    await this.channel.send('kokoro', text, 'append', /** @type {any} */ (`gated:${name}`), wake);
+    await this.channel.send('kokoro', text, 'append', /** @type {any} */ (`gated:${name}`), wake, { name, input });
     return { content: 'Koe is speaking for you; use tell_koe.', told: true };
+  }
+
+  /**
+   * Kokoro's notes for the user that Koe never passed on, asked once more (spec §6.8): annai shows what Kokoro meant the user to
+   * have, a note it told Koe or a gated speak as "Shiori's answer", a gated card or question as itself (a tap on its buttons
+   * comes to Koe as the user's choice). "Kokoro couldn't check" and a final text were words for Koe: it was asked once more,
+   * and that is all (plan decision 21: no card). @param {Wake[]} notes
+   */
+  async #backstop(notes) {
+    this.#unsaid = [];
+    for (const w of notes) {
+      const i = w.call?.input ?? {};
+      if (w.why === 'tool' || w.why === 'gated:speak') await this.kokoro.remind([{ watch: '', text: forUserText(w.note), title: "Shiori's answer" }], undefined, { unsaid: true });
+      else if (w.why === 'gated:show' && i.card && typeof i.card === 'object') await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: i.card } });
+      else if (w.why === 'gated:ask' && Array.isArray(i.options) && i.options.length) {
+        await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: String(i.question ?? ''), options: i.options.map(String) } });
+      }
+    }
   }
 
   /**

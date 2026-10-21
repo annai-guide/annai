@@ -37,12 +37,14 @@ import { anySignal } from '../signals.js';
  *   her (a place, the road), not a reminder: owed only until a model answers; title: what the card calls it, in place of "Reminder"
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
- *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string }} Wake
+ *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
+ *   call?: { name: string, input: any } }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
  *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
- *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it; why: a note's reason (NoteWhy)
+ *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it; why: a note's reason (NoteWhy);
+ *   call: the call of Kokoro's a gated note stands for (its show or ask)
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -77,6 +79,7 @@ import { anySignal } from '../signals.js';
  * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended] @property {() => boolean} [hushed]  another voice plays (a live session): annai's reminders are shown, not said
+ * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -95,15 +98,13 @@ export const LABELS = Object.freeze({
   away: 'Working on …', offline: 'Offline · reminders still work',
 });
 export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen; the user may type.";
-/** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
 /** Kokoro's notes that aren't for the user: Koe hears them, and may end quietly. */
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
-/** Kokoro's words to Koe as annai shows them: "Say: …" is an instruction to Koe, and the user reads what follows. @param {string} note */
-const forUserText = (note) => String(note ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid. */
 export const NOTE_UNSAID = "Kokoro's note is for the user, and it hasn't reached them. Only speak, show and ask reach them; anything else you write is your private notes, which they never see. Say what the note says, in your own words.";
+/** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
 export const UNANSWERED = "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = 'the user tapped Try again: answer their last message';
@@ -114,6 +115,7 @@ const AGAIN = 'the user tapped Try again: answer their last message';
 export const DESCRIBE_S = 30;
 /** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
 const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
+/** And for one that can't read PDFs (the second emulator pass): the PDF's own words, as annai has no PDF library (spec §7.2). */
 const DESCRIBE_PDF = "Give the content of this PDF for someone who can't open it: its text word for word as far as it goes (dates, times, names, addresses, prices and numbers exactly), tables as plain lines, and what any picture in it shows. Reply with the content only.";
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
@@ -1291,42 +1293,44 @@ export class Agent {
       if (this.#reached !== reached) {
         owed = [];
         theirs = false;
-        owes = false;
         notes = [];
+        wrote = false;
       }
       reached = this.#reached;
     };
-    /** Koe owes the user (spec §6.8): a note from Kokoro for them, or a message of theirs inside its wait. Only reaching them settles it. */
-    let owes = false;
-    /** @type {string[]} Kokoro's words owed, for annai to show if Koe never passes them on */
+    /**
+     * What Koe owes the user, told or not (spec §6.8), which only reaching them settles: Kokoro's notes meant for them, and a
+     * message of theirs that reached it inside its wait. @type {Wake[]}
+     */
     let notes = [];
+    let wrote = false;
+    const owes = () => notes.length > 0 || wrote;
+    /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
+    const unanswered = () => wrote || (theirs && !this.#facts.told);
     /** Wakes joining the turn: what they owe. @param {Wake[]} more */
     const join = (more) => {
       theirs ||= more.some(isTheirs);
-      for (const w of more.filter(isForUser)) {
-        owes = true;
-        notes.push(String(w.note ?? w.text));
-      }
+      notes.push(...more.filter(isForUser));
     };
     join(wakes);
     let nudged = false;
     let silent = false;
     /**
-     * A turn of the user's that ends with nothing said to them (spec §7.1): she is asked once more, in the same turn; true when
-     * she is. A second silent end is a card. Not for the half behind Koe, nor a turn of theirs that told the other half, unless Koe owes (below).
+     * A turn that ends owing the user (spec §7.1): she is asked once more, in the same turn; true when she is. A second silent
+     * end is a card for their own words, and annai's backstop for Kokoro's notes. Not for the half behind Koe.
      */
     const nudge = async () => {
       settle();
-      if (abort.signal.aborted || !this.#half.voice() || !(owes || (theirs && !this.#facts.told))) return false;
+      if (abort.signal.aborted || !this.#half.voice() || !(owes() || unanswered())) return false;
       if (nudged) {
         silent = true;
         return false;
       }
       nudged = true;
       this.#facts.finalText = '';
-      const cue = notes.length ? NOTE_UNSAID : UNANSWERED;
-      await this.#logWakes([{ kind: 'cue', text: cue }], wakeId, true);
-      reasons.push(cue);
+      const cues = [...(notes.length ? [NOTE_UNSAID] : []), ...(unanswered() ? [UNANSWERED] : [])];
+      await this.#logWakes(cues.map((text) => ({ kind: /** @type {const} */ ('cue'), text })), wakeId, true);
+      reasons.push(...cues);
       return true;
     };
     const stuck = new Stuck();
@@ -1366,7 +1370,7 @@ export class Agent {
         // the backstop). Not with the model's own search on: it answers in words, shown as written (G4).
         // Only until she has reached the user (or told the other half): after that, she may end in words.
         // Koe owing the user (Kokoro's note, their message in its wait) is forced until it reaches them, told or not.
-        ...(providerTools.providerTools || (!(owes && this.#half.voice()) && (this.#reached !== begun || this.#facts.told)) ? {} : { toolRequired: true }),
+        ...(providerTools.providerTools || (!(owes() && this.#half.voice()) && (this.#reached !== begun || this.#facts.told)) ? {} : { toolRequired: true }),
       };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
@@ -1484,7 +1488,7 @@ export class Agent {
       if (this.#facts.wrote) {
         this.#facts.wrote = false;
         settle();
-        owes = true;
+        wrote = true;
       }
       if (stop) {
         await this.#notice({ tone: 'warn', title: 'Shiori stopped repeating herself', body: 'She called the same tool three times with the same result, so this turn ended. Ask again in other words.' });
@@ -1504,13 +1508,9 @@ export class Agent {
       }
     }
     settle();
-    // Kokoro's note for the user, and Koe never passed it on: annai shows it itself (spec §6.8), so what Kokoro found isn't lost.
-    if (notes.length && !abort.signal.aborted && !this.#leaving && !failed) {
-      await this.remind(notes.map((n) => ({ watch: '', text: forUserText(n), title: "Shiori's answer" })), this.scope, { unsaid: true });
-      notes = [];
-      silent = false;
-    }
-    if (silent) {
+    // Kokoro's notes for the user, and Koe never passed them on: annai shows what it can of them itself (spec §6.8).
+    if (notes.length && !abort.signal.aborted && !this.#leaving && !failed) await this.#half.unsaid?.(notes);
+    if (silent && unanswered()) {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = 'Her model finished without saying anything to you.';
       const scope = this.scope;
