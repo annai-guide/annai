@@ -115,6 +115,19 @@ test('Koe\'s whole list fails: a "Koe can\'t speak" block, and Kokoro\'s speak r
   assert.ok((await shown(k)).some(([type, half, text]) => type === 'out.speak' && half === 'koe' && text === 'Hello again.'));
 });
 
+test("both halves' lists fail: the user gets one card, \"Shiori can't reach her model\", with each half's reason in words (emulator pass)", async () => {
+  const busy = 'This model is currently experiencing high demand. Please try again later.';
+  for (const koeFirst of [true, false]) {
+    const k = await agentKit([[{ ...(koeFirst ? { delayMs: 40 } : {}), error: 'overloaded', message: busy }]], { koe: { type: [{ ...(koeFirst ? {} : { delayMs: 40 }), error: 'timeout', message: 'No output started in time.' }] } });
+    k.agent.send('What is Bixby Bridge? One sentence.');
+    await k.agent.idle();
+    const cards = k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title));
+    assert.equal(cards.length, 1, `once (Koe failing ${koeFirst ? 'first' : 'second'})`);
+    assert.deepEqual(cards[0].body.split('\n'), ['Koe: model-koe: No output started in time.', `Kokoro: model-0: ${busy}`]);
+    assert.ok((await k.events(['error'])).some((e) => !e.data.quiet), 'the conversation says so too');
+  }
+});
+
 test("Kokoro's list fails: Koe gets a note and tells the user it couldn't check; no card", async () => {
   const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: { rules: [
     { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: 'Open now?' }]) },
