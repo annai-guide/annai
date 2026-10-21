@@ -301,6 +301,7 @@ All wakes go into one queue:
 - Simultaneous triggers merge into one wake.
 - User input goes ahead of triggers.
 - If the queue isn't empty when a turn ends, the next turn starts immediately.
+- **The user's messages are gathered before a turn starts** (the user, 2026-10-21: a half-finished message shouldn't cost a turn). A turn the user starts waits while they are typing (the typing box holds text, and a key was pressed in the last 5 seconds; Escape, Close, sending a photo or the page going away end it) or speaking (the microphone hears speech), up to 20 seconds from its first wake; there is no fixed wait. Once a turn has started it never restarts: what comes later joins at its next call, as above. A tap on Shiori while a turn is still gathering stops it: what the user sent is written into the conversation, and opening it again takes nothing up. Opening another conversation doesn't wait for a gathering turn. Behind Koe, Kokoro waits longer (§6.8).
 
 When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types or says goes to Koe, which writes it into the conversation. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. A wake that asks for her voice (the recap told aloud, §13) goes to Koe alone.
 
@@ -366,7 +367,7 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
     - The model that holds the cache writes the summary, normally the main model. The request is the cached conversation plus a closing instruction, so it costs a cache read rather than the whole transcript at full price. Each provider caches per model, so only that model gets this price.
     - The next turn starts a new, shorter prefix, which would have been cold by then anyway.
   - **Cold: the utility model compacts.** The cache has already expired, for example because the app was closed or the conversation resumes after a long gap. Nothing is cheap to reuse, so the cheaper utility model writes the summary.
-- **The older part becomes a `compaction` event.** The most recent part stays word for word, photos included: by default the last third of the threshold, and never fewer than the last three exchanges.
+- **The older part becomes a `compaction` event.** The most recent part stays word for word, photos included: by default the last third of the threshold, and never fewer than the last three exchanges. The summary is asked for in a language named in the request: the one the user wrote in last (their last message, else their last few together; a writing system decides it only when it makes up most of the letters, so a place name in kanji doesn't make an English line Chinese), else the app's.
 - **It compacts to well below the threshold,** so it happens rarely: each compaction rewrites the start of the request, which costs one cold cache.
 - **It leaves pointers:**
   - **Each photo becomes a one-line stub** with its path, and its crop if it was one, plus what was said about it. For example: "/trip/files/2026-11-26-1904.webp: the Nepenthe menu, prices circled; read it to see it again." The stub is written from the conversation around the photo and its metadata, so the photo isn't sent again.
@@ -382,7 +383,7 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
   - trigger wakes per hour
   - quiet hours
 
-  Hitting a budget ends the turn with a card. Spend per day is set in Settings → Models, with the requests it limits; the other three in Settings → Shiori, under "How often she acts on her own".
+  Hitting a budget ends the turn with a card. With no steps per wake set, a wake still stops after 25 model calls, with the same card: a backstop, like stuck-loop detection, for a model that never stops calling tools. Spend per day is set in Settings → Models, with the requests it limits; the other three in Settings → Shiori, under "How often she acts on her own".
 - **Cost is always visible** in the trace.
 - **Stuck-loop detection is always on.** Three identical tool calls in a row with identical results end the turn with a card.
 
@@ -393,8 +394,8 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
 | A tool errors | The error is returned as the tool result; the model adapts. |
 | A tool hangs | Each call has a time limit of 150 seconds, above the 2 minutes an MCP call allows itself; past it, its requests are called off, the model is told in words that it didn't finish, and the turn goes on. The tools that wait for the user (`speak`, `show`, `ask`, `wait`, `sleep`) and `task`'s helper have none. The places and web tools give each request 25 seconds, so a server that never answers is left for the next (another mirror; Jina Reader, then a model's own fetch). |
 | The model errors | §9.6 fallback. When every model is exhausted, a card says "Shiori can't reach her model". |
-| The user interrupts | Tapping the avatar cancels the stream. Partial output is logged. |
-| Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. |
+| The user interrupts | Tapping the avatar while she thinks (the dock says "Thinking · tap to stop") cancels the stream. Partial output is logged. The turn is over: opening the conversation again doesn't take it up. What the user sent meanwhile starts a new turn at once, with all of it. |
+| Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. So does a turn cut off after its tool calls had all come back, before her next reply (when the reply that made them didn't call `sleep`). |
 | Voice is off | `speak` becomes an on-screen bubble and doesn't listen. The now block tells Shiori the mode. |
 
 ### 6.8 Two halves: Koe and Kokoro
@@ -405,14 +406,17 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 
 **The split is opt-in:** Shiori is two halves only while Koe's list holds a model (§9.6). Otherwise she is one, exactly as before, at one call per message. One personality is in both.
 
-**Notes.** `tell_kokoro` (Koe's) and `tell_koe` (Kokoro's) return at once, after the note is written into the conversation. append reaches the other half before its next model call, or starts its turn; immediate also cuts its model call (or its speech). Both are always on. When Kokoro's turn ends in plain text, having told Koe nothing and never slept, that text goes to Koe as a note. A Koe waiting on Kokoro (`wait`) hears "Kokoro has nothing to add" when Kokoro is done with nothing to tell, or "Kokoro was stopped" after the sign's Stop.
+**Notes.** `tell_kokoro` (Koe's) and `tell_koe` (Kokoro's) return at once, after the note is written into the conversation. Koe says a note in its own words, only what it adds to what Koe has said already; Kokoro tells Koe only what Koe's answer gets wrong or leaves out (the emulator pass: two answers to a one-sentence question). append reaches the other half before its next model call, or starts its turn; immediate also cuts its model call (or its speech). Both are always on. When Kokoro's turn ends in plain text, having told Koe nothing and never slept, that text goes to Koe as a note. A Koe waiting on Kokoro (`wait`) hears "Kokoro has nothing to add" when Kokoro is done with nothing to tell; after the sign's Stop, Koe hears "Kokoro was stopped", waiting or not. The Stop sticks: a note Koe wrote before it heard of the Stop (its model hadn't seen "Kokoro was stopped" yet, or, live, the user hasn't spoken or typed since) starts no Kokoro turn; one after it, such as when the user asks again, does. Opening another conversation ends it.
 
 **Two transcripts from one log.** Each half writes its own model turns, tool calls and results, marked as its own; each reads only its own, and the other's lines as above.
 
 **Failures.**
 - Kokoro's `speak`, `show` and `ask` while Koe talks aren't run: each becomes a note to Koe, and its result says to use `tell_koe`. Its `wait` is answered too: the microphone is Koe's. This is in code, not instructions alone.
-- When Koe's whole list fails, it rests at least a minute; Kokoro gets "Koe can't speak right now; talk to the user directly" (and whether its last notes reached the user), its output tools run again, and what the user types goes to Kokoro alone until Koe answers again ("Koe is speaking again; use tell_koe"). No card: Kokoro answers.
+- When Koe's whole list fails, it rests at least a minute; Kokoro gets "Koe can't speak right now; talk to the user directly" (and whether its last notes reached the user), its output tools run again, and what the user types goes to Kokoro alone until Koe answers again ("Koe is speaking again; use tell_koe"). No card: Kokoro answers. Kokoro is woken for it once, however many failures come, and not again once it has talked to the user itself.
 - When Kokoro's whole list fails while Koe talks, and Koe waits for it (its question is out, or it is in `wait`), Koe is told once, and tells the user it couldn't check and offers to try again. No card. A check nobody waited for (Koe's own answer, a review, a typed question Koe answered itself) tells Koe nothing: the Trace has it.
+- When both lists have failed (Koe's, for what the user said, and Kokoro's), nobody can tell the user: a card says "Shiori can't reach her model", once, with each half's reason in words, and the conversation says so too. It shows again only after the user writes again or a half works again.
+
+**Kokoro waits for the user to finish** (§6.1). While Koe talks, a Kokoro wake that comes from the user's input (what they typed, sent or said, and Koe's questions and answers about it; not a reminder, a trigger or a review) starts only once that input has been quiet: no new typed message, photo or heard segment for 1.5 seconds (3 after a photo sent on its own, which words often follow), and they aren't typing or speaking (the microphone or a live session hears speech); at most 20 seconds from the first wake. Koe still answers at once. Kokoro's quiet counts from the user's input, so Koe's question asked after they finished starts it at once. A turn that has started never restarts. The sign's Stop while Kokoro is still waiting means its turn never starts.
 
 **Voice** is Koe's while it works (§10.7).
 
@@ -421,6 +425,10 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 ### 7.1 Talking to the user
 
 Shiori addresses the user **only** through output tools. Any plain text the model writes is her internal transcript: hidden from the user, visible in the trace. (This follows the precedent of MemGPT/Letta's `send_message`.)
+
+**A tool call is asked for.** Shiori's turns (one Shiori, Kokoro, and Koe's text models) ask the model to call one of its tools until she has reached the user in that turn (or told the other half); after that nothing is forced, so she can end in words. Where it is sent (§9.1): Chat Completions as `tool_choice: "required"`, unless the model's `requireTool` tunable is off (OpenRouter's Claude models: OpenRouter passes it on as Anthropic's `any`); OpenAI Responses as `"required"`; Gemini's own API as `"any"`. Never to Anthropic Messages: Claude's 5.5 and 5.1 models refuse forced tool use, and the others think by default, which refuses it too. A model that refuses it once is asked again without it, and isn't asked with it again until annai restarts. Housekeeping, the utility model's jobs and the quick decision don't ask, nor a turn with the model's own search on, whose reply is shown as written (§9.5). The rule below stays as the backstop.
+
+**A turn of the user's that says nothing to them.** When a turn the user started (their message, what they said that wasn't judged chatter, a choice they tapped, or their Try again) ends without `speak`, `show` or `ask`, annai asks the model once more in the same turn: "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see." If that ends without one too, a card says "Shiori didn't answer", with Try again, and the conversation notes that her turn ended. Wakes the user didn't start (housekeeping, plugins, reminders, which §11.3 covers) are left as they are, as is Kokoro behind Koe, whose plain text goes to Koe as a note (§6.8), and a turn that told the other half.
 
 | Tool | Behaviour | Result |
 |---|---|---|
@@ -458,6 +466,7 @@ Every tool can be switched off, except `show`, `ask`, `wait`, `sleep`, `tell_koe
   - Values above 1 are read as pixels of the source.
   - A region too small to show anything is grown around its centre.
   - The result states the region that was actually used, so a mistake shows instead of failing.
+- **A model that can't see photos still gets what one shows.** When a tool returns a photo (a `read`, a crop) to a model without Takes photos, a model that sees photos describes it, the crop when a part was asked for, and the result carries that description in place of the photo, saying who described it ("described by …, as you can't see photos"). The describer comes from the utility role's photo-capable models, then Main's: it is a side job, like a summary, for the cheaper model. When no model can see photos, the result says so. A description stops with her turn and takes at most 30 seconds (what a role waits for a model's first words, §9.6); either way the result says so in words, and her turn goes on. The tools stay the same, so the cached prefix holds.
 - **Link formats.** `search_link` and `maps_link` build URLs from formats kept in the catalog (`annai.guide/catalog/links.json`). When a site changes its URL format, the catalog is updated without an app release.
 - **Places data** comes from free services that accept direct browser calls (verified 2026-10-14). The tools read the offline pack first (§11.5). Nominatim's rate limit (1 request per second) is enforced on our side.
 - **The fetch chain:**
@@ -489,12 +498,12 @@ There's no special machinery:
 
 ### 9.1 Protocols and providers are plugins
 
-**Protocol plugins** are the endpoint types: they know how to talk (request and reply formats, streaming, error kinds). **Provider plugins** describe one provider each, as data: its address, how its key is sent (`keyHeader` when not the protocol's way), its abilities, each with its kind (chat, transcription, voice, realtime), its protocol's type, its own address if it has one, tunables, extra fields, `modelDefaults` (what a model added by id or from a list starts with) and models; the roles it suggests (`recommended`, `free`); its key page and notes. annai's catalog has OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, a local speech server, the scripted model and "Another address" (any other server: it looks for what the address offers, at no cost, §9.8), each requiring the protocol plugins its abilities need.
+**Protocol plugins** are the endpoint types: they know how to talk (request and reply formats, streaming, error kinds). A request can force one named tool (`toolChoice`, a quick decision's) or ask for a call to any of the tools offered (`toolRequired`, Shiori's turns, §7.1); each protocol says it its own way: Chat Completions and OpenAI Responses `tool_choice: "required"` (Chat Completions not where a model's `requireTool` tunable is off), Gemini's own API `tool_choice: "any"` (taken by Google, 2026-10-21); Anthropic Messages never sends it (§7.1). **Provider plugins** describe one provider each, as data: its address, how its key is sent (`keyHeader` when not the protocol's way), its abilities, each with its kind (chat, transcription, voice, realtime), its protocol's type, its own address if it has one, tunables, extra fields, `modelDefaults` (what a model added by id or from a list starts with) and models; the roles it suggests (`recommended`, `free`); its key page and notes. annai's catalog has OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, a local speech server, the scripted model and "Another address" (any other server: it looks for what the address offers, at no cost, §9.8), each requiring the protocol plugins its abilities need.
 
 **Servers you run** have provider plugins of their own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama and LM Studio. Each is marked `local`, and its quirks are data where they can be:
 - its default address and port, and whether it takes a key (Ollama takes none);
 - how its thinking is switched, as `modelDefaults.reasoning`: llama.cpp's `reasoning_effort` with `chat_template_kwargs.enable_thinking`, vLLM's and SGLang's `reasoning_effort` with `chat_template_kwargs` (`enable_thinking` and `thinking`), Ollama's `reasoning_effort: "none"` for off alone, its other levels empty (Ollama refuses a named level for a model that can't think), while a model whose capabilities list thinking gets low, medium and high from its list (below). Level off sends the switch, so a quick decision doesn't think. LM Studio doesn't document its switch, so it has none;
-- forced tool calls: llama-server accepts a `tool_choice` naming a tool but doesn't force it, so llama.cpp's plugin turns on Chat Completions' `enforceToolCall` tunable, which sends `"required"` where the forced tool is the only one offered (the user, 2026-10-19). The user's Unsloth Studio server forced neither (2026-10-19); there the quick decision reads the letter the model writes. Ollama doesn't support `tool_choice`, so a quick decision may go to the main model;
+- forced tool calls: llama-server accepts a `tool_choice` naming a tool but doesn't force it, so llama.cpp's plugin turns on Chat Completions' `enforceToolCall` tunable, which sends `"required"` where the forced tool is the only one offered (the user, 2026-10-19). The user's Unsloth Studio server forced neither (2026-10-19); there the quick decision reads the letter the model writes. Ollama doesn't support `tool_choice`, so a quick decision may go to the main model. Shiori's turns ask for a call to any tool (below), which llama-server forces with `"required"` (measured 2026-10-21, streamed and not); a server that refuses `"required"` takes the tunable `requireTool: false`;
 - the reasoning field: the protocol's `auto` reads `reasoning_content` and `reasoning`, which covers them all;
 - usage in the stream: the protocol asks for it (`stream_options`), which llama.cpp, vLLM, SGLang and Ollama answer (LM Studio doesn't say);
 - the context window: vLLM's and SGLang's lists give it as `max_model_len`. llama.cpp's list gives only the training context, and Ollama's and LM Studio's give none, so their plugins have a little code (the user, 2026-10-18), their provider setup's `list` (§5.4): llama.cpp reads `/props` (the loaded model's context per conversation, and whether it reads images); Ollama a loaded model's context (`/api/ps`), else its Modelfile's `num_ctx`, never its training context, with its photos, tools and thinking from `/api/show`; LM Studio a loaded instance's context, with its vision and tool flags, from `/api/v1/models`. A model not loaded when the list was fetched has its context set on its page;
@@ -583,9 +592,9 @@ Each role is an **ordered list** of models, tried front to back:
 | the model answers, including declining | that's an answer: no fallback |
 | its ability is switched off, or its protocol plugin isn't running | skipped ("off", "type-missing"); a call never installs one |
 
-- **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size.
-- **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model.
-- **Switching back.** Each provider caches separately, so the switch back to a preferred model happens when the backup's cache is cold.
+- **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size. A model that takes no photos gets the conversation's photos as words ("[a photo: /trip/files/….webp]"), so a conversation that once held one can still go on; it is skipped only when the user's newest message holds a photo.
+- **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model. A failure to connect while the device is offline benches nothing and isn't retried: the model did nothing wrong, and it is asked again as soon as the connection is back.
+- **Switching back.** Each provider caches separately, so the switch back to a preferred model happens when the backup's cache is cold. An order the user changes in Settings → Models applies from the next turn, warm cache or not.
 - **The transcript stays portable.** It's stored in our own format. When the model changes:
   - tool-call ids are rewritten for the new provider
   - reasoning blocks signed for another model are dropped
@@ -819,7 +828,7 @@ When the phone locks, the app freezes, and catch-up (§11.4) covers the gap.
 
 Plugins can add types.
 
-**Every watch has a fallback message.** When the watch fires and the model can't be reached, the fallback is shown or spoken directly. While Shiori is two halves, a firing wakes both (§6.1): Koe says what is simple at once and waits for Kokoro's note for anything that needs judgement, and the fallback goes with Koe's wake only, so it is said once.
+**Every watch has a fallback message.** When the watch fires and the model can't be reached, the fallback is shown or spoken directly. A reminder (a `time` or `every` watch's, or the plan's leave, running late and coming up) stays owed until she reaches the user after it fires, with `speak`, `show` or `ask`, or the phone showed its notification for that firing (§11.6; one shown before it came due was an earlier firing's): a turn that ends without one shows the fallback too, and tells her so. Other watches (places, the road, an arrival, a stop off the plan) are cues for her, which she may let pass in silence. While Shiori is two halves, a firing wakes both (§6.1): Koe says what is simple at once and waits for Kokoro's note for anything that needs judgement, and the fallback goes with Koe's wake only, so it is said once.
 
 **Plan items create their own watches.** The system sets these, so they don't depend on Shiori remembering:
 - leave in X minutes
@@ -1105,7 +1114,7 @@ Reference: mockups draft 6.
 | Asleep | eyes closed, ears folded flat, her head dipped and resting on her tail, which is wrapped round her; slow breathing lifts her, and her tail with it (a loop) | Tap to talk |
 | Listening | facing you, ears up | Listening |
 | Hearing you | ears leaning in, eyes wide; the seat glow (grey) follows your voice level | Hearing you |
-| Thinking | head turned to the side (mid-blink), looking up and away | Thinking |
+| Thinking | head turned to the side (mid-blink), looking up and away | Thinking · tap to stop |
 | Talking | facing you, open eyes; her head, the seat glow (vermilion) and the streamer, which waves and swings out, follow her voice level | Tap to interrupt |
 | Your turn | facing you, leaning, head tilted, her left ear angled out | Waiting for your OK |
 | Working | stepped out of her seat, leaving her trail marker in its grass, its streamer waving, paw prints, and her tail's tip, wagging gently (loops); tap it to see what she's doing | Working on … |

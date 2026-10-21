@@ -7,7 +7,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter } from '../../src/core/llm/fallback.js';
+import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
@@ -90,6 +90,46 @@ test('rate-limited: a short wait is waited out; a long one benches the model for
   assert.equal(t.bench.until('m-0'), 1_000_000 + 60_000);
 });
 
+test("a connection failure while the device is offline benches nobody and isn't retried; online, it still benches (emulator pass)", async () => {
+  const s = setup([[{ error: 'unreachable', message: 'Failed to fetch' }], [{ error: 'network', message: 'The connection dropped.' }]]);
+  await assert.rejects(call(s, { online: () => false }), (e) => e instanceof AllFailedError && e.attempts.map((a) => a.outcome).join() === 'unreachable,network');
+  assert.deepEqual(s.waits, []);
+  assert.equal(s.bench.until('m-0'), 0);
+  assert.equal(s.bench.until('m-1'), 0);
+  // Back online, the same failure is the model's (a server that is down): it rests, so turns don't wait on it.
+  await assert.rejects(call(s, { online: () => true }));
+  assert.ok(s.bench.until('m-0') > 1_000_000);
+  assert.ok(s.bench.until('m-1') > 1_000_000);
+});
+
+test('why every model failed, for a card: one line per model, each reason once, in words, never a code (emulator pass)', () => {
+  const busy = 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.';
+  const attempts = [
+    { model: 'm-0', name: 'Gemini 3.8 Flash', outcome: 'overloaded', ms: 1, error: busy },
+    { model: 'm-0', name: 'Gemini 3.8 Flash', outcome: 'overloaded', ms: 1, error: busy },
+    { model: 'm-0', name: 'Gemini 3.8 Flash', outcome: 'overloaded', ms: 1, error: busy },
+    { model: 'm-1', name: 'Gemini 3.6 Flash', outcome: 'benched', ms: 0 },
+    { model: 'm-2', name: 'Gemini 3.5 Flash Lite', outcome: 'benched', ms: 0, error: 'its daily limit is used up; it rests until 17:00' },
+    { model: 'm-3', name: 'step-5-preview', outcome: 'no-images', ms: 0 },
+    { model: 'm-4', name: 'Gemini 3.8 Live', outcome: 'not-chat', ms: 0 },
+    { model: 'm-5', name: 'Far away', outcome: 'unreachable', ms: 3, error: 'Failed to fetch' },
+  ];
+  const text = failedText(attempts);
+  assert.deepEqual(text.split('\n'), [
+    `Gemini 3.8 Flash: ${busy}`,
+    'Gemini 3.6 Flash: It is resting for a few minutes after an error.',
+    'Gemini 3.5 Flash Lite: Its daily limit is used up; it rests until 17:00.',
+    "step-5-preview: It doesn't take photos.",
+    "Gemini 3.8 Live: It isn't a chat model.",
+    "Far away: annai couldn't reach this address. It may be down, or it may not allow web apps.",
+  ]);
+  assert.equal(text.split(busy).length - 1, 1, 'said once');
+  for (const code of ['benched', 'no-images', 'not-chat', 'Failed to fetch']) assert.doesNotMatch(text, new RegExp(code));
+  // With no connection, that is the reason; models that couldn't have answered anyway still say why.
+  assert.deepEqual(failedText([attempts[5], attempts[7], { model: 'm-0', name: 'E0', outcome: 'network', ms: 1, error: 'The connection dropped.' }], { offline: true }).split('\n'),
+    ['This device is offline.', "step-5-preview: It doesn't take photos."]);
+});
+
 test('a model that declines has still answered', async () => {
   const s = setup([[{ text: "I can't help with that." }], [{ text: 'B.' }]]);
   const r = await call(s);
@@ -108,6 +148,61 @@ test("models that can't take the request are skipped: photos, tools, a window to
   const r = await call(s, { request });
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-images', 'no-tools', 'too-long', 'ok']);
   assert.equal(r.reply.text, 'D.');
+});
+
+test('a model that takes no photos gets older ones as words, and is passed over only for a photo in the newest message (emulator pass)', async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const spy = /** @type {any} */ ({
+    type: 'spy', name: 'Spy', pluginId: 'spy',
+    run: async function* (/** @type {any} */ c) {
+      seen.push(c.request);
+      yield { type: 'text', text: 'From the text model.' };
+      yield { type: 'stop', reason: 'end' };
+    },
+  });
+  const s = setup([[{ error: 'credit', status: 402 }], []], { types: [['spy', spy]], endpointTypes: ['scripted', 'spy'], models: [{ input: ['text', 'image'] }, { input: ['text'] }] });
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/2026-10-18-1530.webp' };
+  const older = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Look at this' }, photo] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 't1', name: 'sleep', input: {} }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'asleep' }, { type: 'text', text: "What's around here?" }] },
+  ] };
+  const r = await call(s, { request: older });
+  assert.equal(r.reply.text, 'From the text model.');
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'ok']);
+  assert.deepEqual(seen[0].messages[0].parts, [{ type: 'text', text: 'Look at this' }, { type: 'text', text: '[a photo: /trip/files/2026-10-18-1530.webp]' }]);
+  assert.equal(older.messages[0].parts[1], photo, "the request itself isn't changed: the next model may see photos");
+  // The newest message is a photo: a model that can't see it can't answer it. The loop says so (newestPhoto); else the last line is read.
+  const t = setup([[{ text: 'never' }]], { models: [{ input: ['text'] }] });
+  await assert.rejects(call(t, { request: { ...older, newestPhoto: true } }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
+  const asked = { messages: [{ role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'asleep' }, { type: 'text', text: 'And this?' }, photo] }] };
+  await assert.rejects(call(t, { request: asked }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
+});
+
+test('a model that refuses a required tool call is asked again without it, and not asked with it again this session (review A1)', async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const strict = /** @type {any} */ ({
+    type: 'strict', name: 'Strict', pluginId: 'strict',
+    run: async function* (/** @type {any} */ c) {
+      seen.push(c.request.toolRequired === true);
+      if (c.request.toolRequired) throw new ProviderError('bad-request', "Invalid 'tool_choice': 'required' is not supported with this model.", { status: 400 });
+      yield { type: 'tool_call', id: 't1', name: 'speak', input: { text: 'Hi.' } };
+      yield { type: 'stop', reason: 'tool' };
+    },
+  });
+  const s = setup([[]], { types: [['strict', strict]], endpointTypes: ['strict'] });
+  const request = { ...hello, tools: [{ name: 'speak', description: 'Say.', input: { type: 'object' } }], toolRequired: true };
+  const r = await call(s, { request });
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['bad-request', 'ok']);
+  assert.deepEqual(seen, [true, false]);
+  assert.equal(s.bench.until('m-0'), 0, 'not benched: it answered');
+  await call(s, { request });
+  assert.deepEqual(seen, [true, false, false], 'remembered for the session');
+  // Any other bad request is the model's answer as before: no second try.
+  const t = setup([[{ error: 'bad-request', status: 400, message: 'messages: Field required' }], [{ text: 'B.' }]]);
+  assert.deepEqual((await call(t, { request: { ...hello, toolRequired: true } })).attempts.map((a) => a.outcome), ['bad-request', 'ok']);
 });
 
 test('a reply cut off partway is continued by the next model, without repeating it (spec §9.6)', async () => {

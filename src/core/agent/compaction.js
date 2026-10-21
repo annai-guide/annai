@@ -61,18 +61,62 @@ export function cutAt(items, { keepTokens, minExchanges = KEEP_EXCHANGES }) {
   return cut;
 }
 
-/** What Shiori is asked to do, as the request's tail. @param {string} marker */
-export function instruction(marker) {
+/** What Shiori is asked to do, as the request's tail. @param {string} marker @param {string} language summaryLanguage's */
+export function instruction(marker, language) {
   return `[annai: housekeeping] The conversation is getting long. Write a summary of it up to (not including) ${marker}, to replace that part. `
     + 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
     + 'For every photo, write one line with its path and what was said about it, like "/trip/files/2026-11-26-1904.webp: the Nepenthe menu, prices circled". '
     + 'Before you write it, you may move lasting facts into /me/memory.md or /trip/memory.md with your file tools; no other tool works now. Don\'t search the web now. '
-    + 'Then reply with the summary only, as plain text, in the user\'s language.';
+    + `Then reply with the summary only, as plain text, in ${language}.`;
 }
 
-export const COLD_SYSTEM = 'You summarize a conversation between a traveler and Shiori, their guide in the annai app. '
+/** What the utility model is told. @param {string} language summaryLanguage's */
+export const coldSystem = (language) => 'You summarize a conversation between a traveler and Shiori, their guide in the annai app. '
   + 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
-  + 'For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in the user\'s language.';
+  + `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
+
+/**
+ * Writing systems that name their language when they make up most of a text's letters (review A6: a place name in kanji in an
+ * English line is no Chinese): Chinese characters with kana are Japanese, without, Chinese; Cyrillic with і, ї, є or ґ is Ukrainian.
+ */
+const SCRIPTS = /** @type {const} */ ([[/[\u3040-\u30ff\u4e00-\u9fff]/g, 'Chinese'], [/[\uac00-\ud7af]/g, 'Korean'], [/[\u0e00-\u0e7f]/g, 'Thai'],
+  [/[\u0600-\u06ff]/g, 'Arabic'], [/[\u0590-\u05ff]/g, 'Hebrew'], [/[\u0370-\u03ff]/g, 'Greek'], [/[\u0900-\u097f]/g, 'Hindi'], [/[\u0400-\u04ff]/g, 'Russian']]);
+/** The commonest small words of languages written in Latin letters: the one with the most of them, alone at the top, is it. */
+const WORDS = Object.entries({
+  English: 'the and is are was you we our to of it what where when how for this that please with be can do my me i us in on at near still open not have there any tonight today',
+  Spanish: 'el los las y es son que de en un una por para con no qué dónde cómo gracias somos estamos hay del al muy',
+  French: 'le les et est sont que de des du un une pour avec nous vous je pas où merci au aux sur',
+  German: 'der die das und ist sind nicht ich wir sie ein eine mit für auf wo was bitte danke zu dem den',
+  Italian: 'il lo gli e è sono che di un una per con non siamo dove cosa grazie del della ci',
+  Portuguese: 'o os as e é são que de um uma para com não onde obrigado obrigada somos estamos você do da',
+  Dutch: 'de het een en is zijn niet ik wij we met voor waar wat bedankt van op',
+}).map(([name, list]) => /** @type {const} */ ([name, new Set(list.split(' '))]));
+
+/** The language a text is written in, by name, or '' when it can't be told (a word or two). @param {string} text */
+export function languageOf(text) {
+  const letters = (text.match(/\p{L}/gu) ?? []).length;
+  for (const [re, name] of SCRIPTS) {
+    if ((text.match(re) ?? []).length * 2 <= letters) continue;
+    if (name === 'Chinese') return /[\u3040-\u30ff]/.test(text) ? 'Japanese' : name;
+    return name === 'Russian' && /[іїєґ]/i.test(text) ? 'Ukrainian' : name;
+  }
+  const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
+  const scores = WORDS.map(([name, set]) => /** @type {const} */ ([name, words.filter((w) => set.has(w)).length])).sort((a, b) => b[1] - a[1]);
+  return scores[0][1] > 0 && scores[0][1] > scores[1][1] ? scores[0][0] : '';
+}
+
+/**
+ * The language a summary is written in, named (emulator pass: "the user's language" got a Spanish summary of an English
+ * conversation): the one the user wrote in last, told from their last message, else their last few together (review A6); else
+ * the app's (spec §14.3: it ships in English). @param {string | string[]} said their last messages, the newest last
+ */
+export function summaryLanguage(said) {
+  const lines = (Array.isArray(said) ? said : [said]).map((x) => x.trim()).filter(Boolean);
+  const last = lines.at(-1);
+  if (!last) return "English, the app's language (the user hasn't written anything yet)";
+  const name = languageOf(last) || languageOf(lines.join('\n'));
+  return name ? `${name}, the language the user wrote in last` : `the language the user wrote in last: ${JSON.stringify(last.slice(0, 80))}`;
+}
 
 /** The most text a cold summary is written from when the utility model's window isn't known, in characters (about 100,000 tokens). */
 export const SUMMARY_MAX_CHARS = 350_000;

@@ -34,7 +34,7 @@ test(`task: a helper that never finishes stops after ${TASK_STEPS} steps`, async
 });
 
 test('skill: a registered skill by name, or the ones there are', async () => {
-  const k = await agentKit([[{ toolCalls: [{ name: 'skill', input: { name: 'driving' } }, { name: 'skill', input: { name: 'hiking' } }, { name: 'sleep', input: {} }] }]]);
+  const k = await agentKit([[{ toolCalls: [{ name: 'skill', input: { name: 'driving' } }, { name: 'skill', input: { name: 'hiking' } }, { name: 'speak', input: { text: 'Ready.' } }, { name: 'sleep', input: {} }] }]]);
   k.registry.add('drive', 'skill', { name: 'driving', description: 'Guiding while driving.', text: 'Keep it short while driving.' });
   k.agent.send('Go');
   await k.agent.idle();

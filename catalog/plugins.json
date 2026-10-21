@@ -27,7 +27,7 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19603,
+      "size": 19840,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -43,14 +43,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "5e78158293a9a2ec7f5d496b6ba7631043af3007e49d0dddfde36ad348498864",
-        "index.js": "73f1c1fd887c5353bc08d5a1ea553fb83c294522a116bd10b4a3da69d98d3157"
+        "annai-plugin.json": "6c328ccc345c991172b465f82e066fd8bb7462a138269f5c2ca2ab7318ca27d8",
+        "index.js": "a70554796f8a3f4e5ca39c7eaefaa2b9a067200c6560b07a7819f550412a798c"
       }
     },
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.",
       "category": "developer",
       "keywords": [],
@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 50055,
+      "size": 50189,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -68,9 +68,9 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "54801b0585a437a4fb6a0ff437e94481fa674fdfe41b079f23513cd53eb77ef5",
+        "annai-plugin.json": "fb6968807b75262cf89e23255dbd3defb799cecb2d82af36d094402118e71109",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
-        "chat.js": "46495aa3dceb3811d31c8652ecde961fab4bd63c39ca3cf9ad6c91bb702a2558",
+        "chat.js": "0ae2bc4eca84b4ece7152c7605137db92fa6929f2f7a617cb8a73a90974e4502",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "speech.js": "bbf5485f6dd7f3ac8b80ec39918b2a0fb495189c68156113cc14d328ce0e8454",
@@ -126,7 +126,7 @@
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Talks to OpenAI's Responses API and to servers that speak it, keeping nothing on the server.",
       "category": "developer",
       "keywords": [],
@@ -134,7 +134,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 21394,
+      "size": 21472,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -142,8 +142,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "8fa049bbbeb525c27a24bd9034d7f8909822fbf07b2016a72dcff0b19a91d714",
-        "index.js": "a5ddada591b8fa0883e96f083311a2c83e36ee86e7fc7e17608b17a55e6beb4a"
+        "annai-plugin.json": "11ff7a11d6ddca123015aed7d8b7a8df351597979dd1b946813f6aecd6c5ec0a",
+        "index.js": "a147f107b84b1676ea19973689486715ad6e5fa9736ba81d95dc2b863de068af"
       }
     },
     {
@@ -457,7 +457,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -469,7 +469,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 27051,
+      "size": 27201,
       "requires": [
         {
           "id": "chat-completions",
@@ -483,7 +483,7 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "11303dd69457849f5e6a015b0858bc7c972fd966f33912695f182f1e312a9b63",
+        "annai-plugin.json": "77b11ede18a0e8726c10b5b0e19dde13164c11991002ee1b1a03b11d9234a38e",
         "index.js": "31a1cc2a0a534ec00151891c495fc1663ca35b70107c42914bab8909548fe25f"
       }
     },

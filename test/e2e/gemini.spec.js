@@ -224,7 +224,7 @@ test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "F
   // Shiori searches, writes her answer for the user (shown as written), and says a shorter one.
   const s = await startGeminiServer({ key: KEY, replies: [(b) => (offered(b).includes('google_search') && !searched++
     ? { text: GROUNDED, search: SEARCH, calls: [{ name: 'speak', input: { text: 'It closes at ten tonight.' } }, { name: 'sleep', input: {} }] }
-    : { calls: [{ name: 'sleep', input: {} }] })] });
+    : { calls: [{ name: 'speak', input: { text: 'Any time.' } }, { name: 'sleep', input: {} }] })] });
   try {
     await geminiTrip(page, s.url);
     // The switch: on by default, with what it costs and what Google keeps.

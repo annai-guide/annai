@@ -184,6 +184,25 @@ test('a line the other half wrote while a reply was being made follows that repl
   assert.deepEqual((await Transcript.load(store, SCOPE, { half: 'kokoro' })).messages, kokoro.messages);
 });
 
+test('heard words written down while a reply was being made follow it with their words, nothing left behind (a race the gathering exposed, item 16)', async () => {
+  const store = createMemoryStore();
+  const { kokoro, log } = both(store);
+  const w = await log({ type: 'wake', actor: 'system', data: { id: 'w1', half: 'kokoro', reasons: [{ kind: 'trigger', text: 'Arrived at Nepenthe' }] } });
+  // While Kokoro's call runs: Koe hears chatter, and the words of it are written down.
+  await log({ type: 'heard', actor: 'user', data: { id: 's-1', ms: 900, source: 'm-hear', half: 'koe', dismissed: true, gate: 'chatter' } });
+  await log({ type: 'heard.text', actor: 'system', data: { of: 's-1', text: 'did you lock the car', by: 'm-hear' } });
+  await modelTrace(store, SCOPE).turn({ ...turnInfo(TALK_TAG, 'w1'), context: { from: w.seq, to: w.seq } }, '', '', [{ type: 'tool_call', id: 'c', name: 'sleep', input: {} }]);
+  const [t] = await store.tx(['events'], 'readonly', (x) => x.listEvents(SCOPE, { types: ['model.turn'] }));
+  kokoro.apply(t, await resolveEvent(store, t));
+  await log({ type: 'tool.result', actor: 'system', data: { id: 'c', name: 'sleep', ok: true, ms: 0, half: 'kokoro' }, texts: [['content', 'asleep']] });
+  const parts = kokoro.messages.map((m) => [m.role, ...m.parts.map((p) => (p.type === 'speech' ? `speech:${p.text ?? p.id}` : p.type === 'text' ? p.text : p.type))]);
+  assert.deepEqual(parts, [
+    ['user', '[annai] "Arrived at Nepenthe"'],
+    ['assistant', 'tool_call'],
+    ['user', 'tool_result', '[heard, not meant for you]', 'speech:did you lock the car'],
+  ]);
+});
+
 test("a conversation from before the split reads exactly as it did; Kokoro's rules differ only in quoting annai's lines; Koe knows what was said", async () => {
   const store = createMemoryStore();
   const one = new Transcript();

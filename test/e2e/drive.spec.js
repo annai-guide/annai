@@ -4,7 +4,8 @@ import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropic
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
 test('Driving: Now hands over when moving fast; the road ahead, directions, big quick-ask buttons, the big dock, and voice Auto on (spec §16.2, §10.5)', async ({ page, context }) => {
-  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  // Live mode coming on: she sleeps. A quick-ask is the user's: she answers it (a turn of theirs that says nothing is asked again, spec §7.1).
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }])), sse(anthropicToolReply([{ name: 'show', input: { card: { title: 'Fuel', text: 'A station in Big Sur village, 25 miles on.' } } }, { name: 'sleep', input: {} }]))] });
   try {
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation({ latitude: 36.60, longitude: -121.89, accuracy: 10 });

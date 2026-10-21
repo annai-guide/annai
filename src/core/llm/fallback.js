@@ -1,5 +1,5 @@
 import { callOnce, enabledProviderTools } from './call.js';
-import { ProviderError, portable } from './contract.js';
+import { ProviderError, portable, explain } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_ROLE } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
@@ -50,7 +50,12 @@ export class Bench {
     this.#until.delete(id);
     this.#why.delete(id);
   }
+  /** Models that refused a required tool call (Request.toolRequired): they aren't asked for one again this run. */
+  unforced = new Set();
 }
+
+/** A refusal of a required tool call, by its words: "tool_choice", or "required" about a tool. @param {string} message */
+const refusesRequired = (message) => /tool_?choice/i.test(message) || (/\brequired\b/i.test(message) && /\btool/i.test(message));
 
 /** A rest longer than this is a provider's day limit, said plainly (not in its billing words). */
 export const LONG_REST_MS = 10 * 60_000;
@@ -71,6 +76,33 @@ export class AllFailedError extends Error {
     this.attempts = attempts;
     this.said = said;
   }
+}
+
+/** Why a model was passed over without being asked, in words (the codes stay in the Trace). */
+const PASSED = Object.freeze({
+  benched: 'It is resting for a few minutes after an error.', 'no-images': "It doesn't take photos.", 'no-audio': "It doesn't take audio.",
+  'no-tools': "It can't use tools.", 'too-long': 'The conversation is too long for it.', 'no-provider-tool': "It doesn't have the provider tool this needs.",
+  'not-chat': "It isn't a chat model.", off: 'It is switched off.', removed: 'It was removed.', 'no-speech': "The speech couldn't be sent to it.",
+});
+
+/**
+ * Why every model failed, for a card (emulator pass): one line per model, each reason once and in words; a failure to
+ * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
+ * @param {Attempt[]} attempts @param {{ offline?: boolean }} [o]
+ */
+export function failedText(attempts, { offline = false } = {}) {
+  /** @type {Map<string, Set<string>>} */
+  const lines = new Map();
+  for (const a of attempts) {
+    if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
+    const said = a.outcome === 'unreachable' ? '' : a.error ?? '';
+    let why = said || /** @type {Record<string, string>} */ (PASSED)[a.outcome] || explain(new ProviderError(/** @type {any} */ (a.outcome), a.outcome));
+    if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1); // a sentence, though annai's name stays lower case
+    if (!/[.!?]$/.test(why)) why += '.';
+    if (!lines.has(a.name)) lines.set(a.name, new Set());
+    lines.get(a.name)?.add(why);
+  }
+  return [...(offline ? ['This device is offline.'] : []), ...[...lines].map(([name, why]) => `${name}: ${[...why].join(' ')}`)].join('\n');
 }
 
 /**
@@ -128,6 +160,31 @@ export function estimateTokens(request, modelKey) {
 }
 
 /**
+ * Whether the user's newest message holds a photo: the loop says (newestPhoto); else whether the last user message has a
+ * photo of the user's (a tool result's own photos follow it). @param {Request} request
+ */
+function newestPhoto(request) {
+  if (request.newestPhoto !== undefined) return request.newestPhoto;
+  let ofResult = false;
+  for (const p of request.messages.findLast((m) => m.role === 'user')?.parts ?? []) {
+    if (p.type === 'tool_result') ofResult = true;
+    else if (p.type !== 'image') ofResult = false;
+    else if (!ofResult) return true;
+  }
+  return false;
+}
+
+/**
+ * The request for a model that takes no photos (emulator pass): each photo as words, "[a photo: /trip/files/….webp]", so a
+ * conversation that once held one can still go on with it. @param {Request} request @returns {Request}
+ */
+export function photosAsWords(request) {
+  /** @param {import('./contract.js').Part} p @returns {import('./contract.js').Part} */
+  const word = (p) => (p.type === 'image' ? { type: 'text', text: `[a photo${p.path ? `: ${p.path}` : ''}]` } : p);
+  return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.map(word) })) };
+}
+
+/**
  * Why a model can't take this request, or null (spec §9.6: the list also handles capability gaps). @param {Model} model @param {Request} request
  * @param {{ free?: boolean }} [provider] its provider: a key on the free tier has no paid-only provider tools
  */
@@ -176,6 +233,8 @@ function prefixed(reply, said) {
 }
 
 const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+/** The browser's word on the connection: false is reliable, true can be wrong (a network with no internet). */
+const deviceOnline = () => globalThis.navigator?.onLine !== false;
 
 /** Parts made from heard speech keep its id (G2): as sound or words, the same to a kept turn; not words nothing wrote down. @param {Request} was @param {Request} now @returns {Request} */
 const heardIds = (was, now) => (was === now ? now : {
@@ -188,7 +247,7 @@ const heardIds = (was, now) => (was === now ? now : {
  * @param {{ role: string, request: Request, level?: string, config: ModelConfig, types: Map<string, EndpointType>,
  *   keyFor: (providerId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
- *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
+ *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
@@ -201,10 +260,11 @@ const heardIds = (was, now) => (was === now ? now : {
  *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
  *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
  *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
+ *   online: whether the device has a connection: a failure to connect while it has none says nothing about the model
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
-  const { role, config, types, bench, now = Date.now, sleep = defaultSleep } = c;
+  const { role, config, types, bench, now = Date.now, sleep = defaultSleep, online = deviceOnline } = c;
   const level = c.level ?? config.roles[role]?.level ?? /** @type {Record<string, string>} */ (ROLE_LEVELS)[role] ?? 'off';
   /** @type {Attempt[]} */
   const attempts = [];
@@ -238,8 +298,16 @@ export async function callRole(c) {
     const ability = rec && provider ? provider.abilities[rec.ability] : undefined;
     const type = ability ? types.get(ability.type) : undefined;
     const model = rec ? modelOf(rec) : null;
+    // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
+    const words = Boolean(model && !model.input.includes('image') && !newestPhoto(request) && request.messages.some((m) => m.parts.some((p) => p.type === 'image')));
+    const forModel = (/** @type {Request} */ r) => {
+      const sent = words ? photosAsWords(r) : r;
+      if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
+      const { toolRequired, ...rest } = sent;
+      return rest;
+    };
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
-    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request, provider ?? undefined);
+    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : undefined;
       attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}) });
@@ -258,11 +326,12 @@ export async function callRole(c) {
     let whole = false;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
-      let sendable = request;
+      const asked = forModel(request);
+      let sendable = asked;
       if (c.speech) {
         try {
-          sendable = await c.speech(model, request, plain, c.signal);
-          if (keeps) sendable = heardIds(request, sendable);
+          sendable = await c.speech(model, asked, plain, c.signal);
+          if (keeps) sendable = heardIds(asked, sendable);
         } catch (e) {
           attempts.push({ model: id, name: model.name, outcome: 'no-speech', ms: 0, error: String(/** @type {any} */ (e)?.message ?? e) });
           break;
@@ -312,6 +381,11 @@ export async function callRole(c) {
           plain = true;
           continue;
         }
+        if (err.kind === 'bad-request' && request.toolRequired && !bench.unforced.has(id) && refusesRequired(err.message)) {
+          // A model or server that refuses a required tool call (review A1): the same model again without it, and never again with it.
+          bench.unforced.add(id);
+          continue;
+        }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
           const fixed = await c.repairImages(err, id, request).catch((/** @type {unknown} */ x) => { console.warn('the photo repair failed', x); return null; });
           if (fixed) {
@@ -320,6 +394,9 @@ export async function callRole(c) {
             continue; // the same model again (spec §9.9)
           }
         }
+        // No connection on this device (airplane mode, say): the model did nothing wrong, so it doesn't rest, and
+        // waiting won't help. It is asked again as soon as the connection is back (emulator pass).
+        if ((err.kind === 'unreachable' || err.kind === 'network') && !online()) break;
         const step = nextStep(err, retry);
         if (step.wait !== undefined) {
           await sleep(step.wait);

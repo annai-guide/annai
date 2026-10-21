@@ -50,6 +50,18 @@ test('errors are plain and say what to do', async () => {
   await assert.rejects(run('write', { path: '/trip/plan/bad.json', content: { title: 3 } }), /doesn't match its format/);
 });
 
+test("a failed write, edit or patch says plainly that the file wasn't changed (emulator pass: she said she had moved plan items whose edits had failed)", async () => {
+  const { ws, trip, run } = await setup();
+  await run('write', { path: '/trip/plan/drive.json', content: { id: 'drive', title: 'Drive south', fixed: false } });
+  const before = await ws.readText(trip, '/plan/drive.json');
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"title": "Drive north"', new: '"title": "Drive later"' }), /^Error: That text isn't in \/trip\/plan\/drive\.json, so it wasn't changed\./);
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"', new: "'" }), /appears \d+ times in \/trip\/plan\/drive\.json, so it wasn't changed\./);
+  await assert.rejects(run('edit', { path: '/trip/plan/none.json', old: 'a', new: 'b' }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
+  await assert.rejects(run('patch', { path: '/trip/plan/none.json', changes: { title: 'x' } }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
+  await assert.rejects(run('write', { path: '/trip/plan/drive.json', content: { title: 3 } }), /doesn't match its format, so it wasn't written:/);
+  assert.equal(await ws.readText(trip, '/plan/drive.json'), before);
+});
+
 test('list and search answer in TSV with the paths Shiori uses', async () => {
   const { run } = await setup();
   await run('write', { path: '/trip/notes/a.md', content: 'Bixby Bridge at sunset\nthen dinner' });
@@ -70,7 +82,8 @@ test('read: long text in pieces; a photo as an image when the model takes images
   const seen = await run('read', { path: '/trip/files/a.webp' });
   assert.deepEqual(seen.images, [{ mediaType: 'image/webp', hash: photo.hash, path: '/trip/files/a.webp' }]);
   assert.match(seen.content, /2048×1536, taken 2026-11-26T16:12:00-08:00/);
-  assert.match(await run('read', { path: '/trip/files/a.webp' }, { input: ['text'] }), /can't see photos/);
+  // A model that can't see photos gets the photo too: the loop has a model that can describe it (5b).
+  assert.deepEqual((await run('read', { path: '/trip/files/a.webp' }, { input: ['text'] })).images, seen.images);
   await ws.write(trip, '/files/menu.pdf', utf8('%PDF-1.4'), { author: 'user', type: 'application/pdf' });
   assert.match(await run('read', { path: '/trip/files/menu.pdf' }), /Ask the user for a screenshot/);
   const doc = await run('read', { path: '/trip/files/menu.pdf' }, { input: ['text', 'pdf'] });

@@ -27,7 +27,7 @@ import { SIMULATION } from './simulate.js';
  * @typedef {import('./watches.js').Watch} Watch
  * @typedef {{ scope: string, watch: Watch, type: TriggerType, firing: Firing, late: number, away?: 'start' | 'shown', fallback: string }} Fired
  *   late: minutes after it came due, in a catch-up; away: how annai was away then
- * @typedef {{ watch: string, text: string }} Reminder
+ * @typedef {{ watch: string, text: string, cue?: boolean }} Reminder
  * @typedef {{ target: string | null, wake: (w: any) => Promise<void>, remind: (list: Reminder[], scope?: string) => Promise<void>,
  *   on: (kind: 'event' | 'open', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
@@ -60,6 +60,11 @@ const NEAR_M = 2000;
 const MIN = 60_000;
 /** @param {number} x */
 const round6 = (x) => Math.round(x * 1e6) / 1e6;
+
+/** How long before its firing came due a notification may have been shown and still be for it (review A8). */
+const SHOWN_SLACK_MS = 60_000;
+/** A watch that is a reminder, not a cue for Shiori: a time watch's, or the plan's leave, running late and coming up (spec §11.3). @param {Watch} w */
+const reminds = (w) => w.when.type === 'time' || w.when.type === 'every' || (w.when.type === 'plan' && ['leave', 'late', 'coming-up'].includes(String(w.when.event)));
 
 export class Live {
   /** Live mode is on (spec §11.1). */
@@ -133,7 +138,7 @@ export class Live {
   #loaded = false;
   /** start() is starting the sensors: what they say at once is so before its catch-up (fix pass L3). */
   #starting = false;
-  /** @type {Map<string, number>} reminders whose notification the phone showed, by key: when (spec §11.6) */
+  /** @type {Map<string, { t: number, at?: number }>} reminders whose notification the phone showed, by key: when, and the time it was for (spec §11.6) */
   #notified = new Map();
   /** @type {{ scope: string, text: string }[]} notifications the user opened, for the next catch-up wake */
   #openedNews = [];
@@ -701,7 +706,7 @@ export class Live {
     // The phone's own notifications keep real time, whatever clock a simulation runs on.
     const now = (this.#sim?.clock ?? this.clock).now();
     const zone = this.#sim?.timeZone ?? this.timeZone;
-    for (const [k, t] of this.#notified) if (now - t > 86_400_000) this.#notified.delete(k);
+    for (const [k, n] of this.#notified) if (now - n.t > 86_400_000) this.#notified.delete(k);
     /** @type {string[]} */
     const doubles = [];
     for (const n of Array.isArray(list) ? list : []) {
@@ -710,8 +715,9 @@ export class Live {
       if (!(await this.#exists(n.scope))) continue;
       const t = typeof n.t === 'number' && Number.isFinite(n.t) ? n.t : now;
       if (n.kind === 'shown') {
-        this.#notified.set(n.key, t);
-        // stale: the service worker found it no longer waiting at the relay (given, caught up or called off): it came quietly.
+        // stale: the service worker found it no longer waiting at the relay (given, caught up or called off): it came
+        // quietly as a double, and doesn't count as this firing's reaching the user (the fixes' merge).
+        if (!n.stale) this.#notified.set(n.key, { t, ...(typeof n.at === 'number' ? { at: n.at } : {}) });
         if (this.#said.has(n.key) || n.stale) doubles.push(n.key);
       } else {
         const words = String(n.body ?? '').trim().slice(0, 300);
@@ -1253,8 +1259,12 @@ export class Live {
     for (const o of opened) notes.set(o.scope, [...(notes.get(o.scope) ?? []), o.text]);
     for (const scope of notes.keys()) if (!by.has(scope)) by.set(scope, []);
     for (const [scope, xs] of by) {
+      // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A reminder's (a time
+      // watch's, or the plan's leave, late and coming up) stays owed until she tells the user; a cue's (a place, the road,
+      // an arrival, a stop off the plan) only until a model answers (emulator pass).
+      const fallbacks = xs.filter((x) => this.#shownFor(x) === undefined)
+        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
-      const fallbacks = xs.map((x) => ({ watch: x.watch.id, text: x.fallback }));
       const lines = notes.get(scope) ?? [];
       if (scope !== open) {
         if (fallbacks.length) await this.agent.remind(fallbacks, scope);
@@ -1272,10 +1282,21 @@ export class Live {
     }
   }
 
+  /**
+   * When the phone showed this firing's notification, if it did (review A8): one shown before the firing came due was for an
+   * earlier one, and doesn't count. @param {Fired} x @returns {number | undefined}
+   */
+  #shownFor(x) {
+    const n = this.#notified.get(this.#keyOf(x.scope, x.watch));
+    const due = x.firing.at;
+    // For the time this firing came due, or shown no earlier than a minute before it (the relay sends 30 s after; clocks differ).
+    return n && due !== undefined && (n.at === due || n.t >= due - SHOWN_SLACK_MS) ? n.t : undefined;
+  }
+
   /** What fired, in words for Shiori's wake; with when its notification was shown, if it was (spec §11.6). @param {Fired} x */
   #reason(x) {
     const key = this.#keyOf(x.scope, x.watch);
-    const shown = this.#notified.get(key);
+    const shown = this.#shownFor(x);
     this.#notified.delete(key);
     const notes = [
       x.late ? `late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : 'off screen'}` : '',

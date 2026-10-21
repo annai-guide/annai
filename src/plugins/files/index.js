@@ -39,8 +39,9 @@ export function activate(annai) {
   };
   /** @param {unknown} e @param {string} path */
   const plain = (e, path) => {
-    if (e instanceof ValidationError) return new Error(`${path} doesn't match its format: ${e.errors.join('; ')}`);
-    if (e instanceof NotFoundError) return new Error(`No file at ${path}.`);
+    // Said plainly, so she never tells the user it was done (emulator pass).
+    if (e instanceof ValidationError) return new Error(`${path} doesn't match its format, so it wasn't written: ${e.errors.join('; ')}`);
+    if (e instanceof NotFoundError) return new Error(`No file at ${path}, so nothing was changed.`);
     return e;
   };
   /**
@@ -102,7 +103,7 @@ export function activate(annai) {
         const { entry, bytes } = got;
         const input = call.model?.input ?? ['text'];
         if (entry.type.startsWith('image/')) {
-          if (!input.includes('image')) return `${i.path} is a photo, and this model can't see photos.`;
+          // For a model that can't see photos, the loop has one that can describe it (emulator pass).
           const m = entry.meta ?? {};
           const source = { hash: entry.hash, type: entry.type, width: m.width ?? null, height: m.height ?? null, size: entry.size };
           if (i.region) {
@@ -166,10 +167,10 @@ export function activate(annai) {
         writable(scope, path);
         recordPlace(scope, path);
         const now = await ws.readText(scope, path);
-        if (now === undefined) throw new Error(`No file at ${i.path}.`);
+        if (now === undefined) throw new Error(`No file at ${i.path}, so nothing was changed.`);
         const n = i.old ? now.split(i.old).length - 1 : 0;
-        if (n === 0) throw new Error(`That text isn't in ${i.path}. read it to see what is.`);
-        if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}. Give more of it, so it appears once.`);
+        if (n === 0) throw new Error(`That text isn't in ${i.path}, so it wasn't changed. read it to see what is.`);
+        if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}, so it wasn't changed. Give more of it, so it appears once.`);
         const r = rule(scope, path);
         await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.${r.note}`;

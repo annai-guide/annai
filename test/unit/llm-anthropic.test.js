@@ -103,6 +103,13 @@ test('build: the tail goes last, after the cache marker; documents and a forced 
   assert.equal(type.tail, true);
 });
 
+test("Anthropic Messages never forces a tool for Shiori's turns: Claude 5.5 and 5.1 models refuse forced tool use, and the others think by default, which refuses it too (review A1)", () => {
+  const tools = [{ name: 'speak', description: 'Say.', input: { type: 'object' } }, { name: 'sleep', description: 'End.', input: { type: 'object' } }];
+  const { body } = type.build(spec({ request: { tools, toolRequired: true, messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } }));
+  assert.equal('tool_choice' in body, false);
+  assert.equal(type.finish, undefined);
+});
+
 test('read: a paused turn stops with "pause", to be sent back and continued', async () => {
   const events = await read(await fixture('pause.sse'));
   assert.deepEqual(events.at(-1), { type: 'stop', reason: 'pause' });
