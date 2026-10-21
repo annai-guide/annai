@@ -14,6 +14,8 @@ import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './bl
  */
 
 export const RESTARTED = 'interrupted by app restart';
+/** A tool's result when the user stopped her turn (spec §6.7). */
+export const STOPPED = 'Stopped by the user.';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
 /**
@@ -41,9 +43,12 @@ export class Transcript {
   compaction = 0;
   /** The last entry load() read: anything written later wasn't in the log it read. */
   through = 0;
-  /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet: after a reload mid-call. */
+  /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet, or results she hasn't seen: after a reload mid-turn. */
   unanswered = false;
-  /** What is waiting when unanswered: 'user' (a message) or 'wake' (something else, such as files added while it was closed). @type {'' | 'user' | 'wake'} */
+  /**
+   * What is waiting when unanswered: 'user' (a message), 'wake' (something else, such as files added while it was closed), or 'turn' (her
+   * tool calls' results, her turn cut off before her next reply: emulator pass m2b #21). @type {'' | 'user' | 'wake' | 'turn'}
+   */
   waiting = '';
   /** The user's newest message holds a photo: a model that takes none can't answer it (emulator pass). */
   newestPhoto = false;
@@ -57,6 +62,8 @@ export class Transcript {
   #aside = new Set();
   /** @type {string[]} the last reply's calls: only their results follow until all have one */
   #last = [];
+  /** The last reply ended the turn: it called sleep, or a result says the turn is over (stopped, or back to sleep). */
+  #ends = false;
   /** @type {{ seq: number, parts: Part[] }[]} lines held until those results (plan decision 3) */
   #held = [];
   /** @type {{ seq: number, parts: Part[] }[]} lines since the last reply */
@@ -129,6 +136,7 @@ export class Transcript {
       this.#since = [];
       if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
+      this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
       this.#held.push(...late);
       this.#flushHeld();
       this.unanswered = false;
@@ -205,6 +213,12 @@ export class Transcript {
       });
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();
+      // Every result of a reply that didn't end her turn, and no reply after: her turn was cut off, and she owes the rest.
+      if (d.end || texts.content === STOPPED) this.#ends = true;
+      if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
+        this.unanswered = true;
+        this.waiting = 'turn';
+      }
     } else {
       return;
     }

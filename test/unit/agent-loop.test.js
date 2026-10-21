@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, until } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
@@ -168,6 +168,41 @@ test('a reload mid-turn: open tool calls get "interrupted by app restart", then 
   const wakes = await k.events(['wake']);
   assert.equal(wakes[0].data.reasons[0].kind, 'restart');
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Back again.');
+});
+
+test('killed after her tool calls came back, before her next reply: opening the conversation takes the turn up (emulator pass m2b #21)', async () => {
+  const k = await agentKit([[say('Vegetarian: Nepenthe has options.')]], { open: false });
+  await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'Also, we are vegetarian.', wake: 'w-0' } });
+  await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
+    [{ type: 'tool_call', id: 'l1', name: 'list', input: { path: '/trip/' } }]);
+  await record(k.store, k.trip, { type: 'tool.result', actor: 'system', data: { id: 'l1', name: 'list', ok: true, ms: 1, wake: 'w-0', content: 'path\ttype' } });
+  assert.equal((await Transcript.load(k.store, k.trip)).unanswered, true, 'a result she has not seen is an unfinished turn');
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  const wake = (await k.events(['wake'])).at(-1);
+  assert.equal(wake.data.reasons[0].kind, 'restart');
+  assert.match(wake.data.reasons[0].text, /in the middle of your turn/);
+  assert.equal((await k.events(['out.speak']))[0].data.text, 'Vegetarian: Nepenthe has options.');
+  // Her turn ended with sleep: nothing is owed now.
+  assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+});
+
+test("a turn the user stopped isn't taken up when the conversation opens again, even if her tool calls had come back (spec §6.7)", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, { delayMs: 5000, ...say('Never said.') }]]);
+  k.agent.send('What is in the trip?');
+  await until(() => k.requests.length === 2);
+  k.agent.interrupt();
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).length, 0);
+  assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
+  assert.equal(k.notices.length, 0, 'a stop is no error to show');
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'nothing ran again');
 });
 
 test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async () => {

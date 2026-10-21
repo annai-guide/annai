@@ -7,7 +7,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, NOT_SAID, SAID } from './transcript.js';
+import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
@@ -87,7 +87,6 @@ export const LABELS = Object.freeze({
   away: 'Working on …', offline: 'Offline · reminders still work',
 });
 export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen; the user may type.";
-export const STOPPED = 'Stopped by the user.';
 /** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
 export const WRITE_TRIES = 3;
 
@@ -211,6 +210,8 @@ export class Agent {
   #mayVoice = true;
   /** What the running turn did (Half.ended). */
   #facts = { finalText: '', told: false, slept: false, spoke: false, kinds: /** @type {string[]} */ ([]) };
+  /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
+  #userStop = false;
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
@@ -352,7 +353,7 @@ export class Agent {
     this.#target = trip;
     this.#opens++;
     const generation = ++this.#generation;
-    if (this.#busy) this.interrupt();
+    if (this.#busy) this.#halt();
     this.#clearTimer();
     this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).finally(() => {
       this.#opens--;
@@ -391,7 +392,8 @@ export class Agent {
     if (owed) {
       const text = repaired ? 'annai restarted while you were working, so your unfinished tool calls were stopped.'
         : transcript.waiting === 'wake' ? "You haven't answered this yet: it came while this conversation was closed, or before annai restarted."
-          : 'The conversation closed before you answered (annai restarted, or another one was opened).';
+          : transcript.waiting === 'turn' ? 'The conversation closed in the middle of your turn (annai restarted, or another one was opened): your tool calls had come back, and you had not gone on yet.'
+            : 'The conversation closed before you answered (annai restarted, or another one was opened).';
       this.#queue.push({ kind: 'restart', text, scope }); // it runs once the open is done
     }
     this.#emit('open', { trip, scope });
@@ -654,6 +656,12 @@ export class Agent {
 
   /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7), and her voice if it is this half's. */
   interrupt() {
+    this.#userStop = true;
+    this.#halt();
+  }
+
+  /** Stops the turn: the user's stop, or another conversation opening. */
+  #halt() {
     this.#abort?.abort();
     if (this.#half.voice()) this.voice?.speaker.stop();
     const p = this.#pending;
@@ -1049,6 +1057,7 @@ export class Agent {
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
     this.#facts = { finalText: '', told: false, slept: false, spoke: false, kinds: wakes.map((w) => w.kind) };
+    this.#userStop = false;
     // Shiori became two halves, or one again.
     if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
     let ok = false;
@@ -1240,6 +1249,8 @@ export class Agent {
       }
     }
     if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope);
+    // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
+    if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
     return answered && !failed;
   }
 
@@ -1505,7 +1516,7 @@ export class Agent {
     }
     await this.#log({
       type: 'tool.result', actor: 'system',
-      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}) },
+      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}) },
       texts: [['content', output.content]], blobs,
     });
     return output;
