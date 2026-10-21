@@ -1,6 +1,6 @@
 # Gemini, natively: design
 
-Date: 2026-10-19. Status: approved by the user on 2026-10-19 ("specs looks good"); their decisions are under "Decided with the user".
+Date: 2026-10-19. Status: approved by the user on 2026-10-19 ("specs looks good"); their decisions are under "Decided with the user". Built in milestones G1–G4 (docs/superpowers/plans/2026-10-19-gemini-native.md); the main spec's §9.1, §9.5 and §15 say what was built.
 
 ## Why
 
@@ -171,6 +171,7 @@ An official protocol plugin, like chat-completions or openai-responses, register
   - Under it: Google gives 5,000 searches a month free on paid projects, then $14 per 1,000. Google keeps searched prompts for 30 days, which annai can't delete.
 - **Cost:** each search query counts. annai counts this phone's searches per calendar month: the first 5,000 cost $0, then $0.014 each, in Spend per day and the Trace. That's an estimate, since other devices on the same project share Google's 5,000.
 - **What the stream shows:** `google_search_call` → a progress line ("Searching Google: …") as `reasoning_delta`, so the turn never looks stalled; `google_search_result` → kept with the reply (below).
+  - Measured with a paid key (2026-10-21, gemini-3.5-flash-lite): each search step streams as a `step.start` with an empty signature, then one `step.delta` holding the whole step (the call's `arguments.queries`, the result's `search_suggestions` and a signature of about 35 KB); the words' sources come as a `text_annotation_delta` of `url_citation`s (Google's grounding redirect addresses, titled by site). A whole send carrying the steps back, signatures and all, is taken.
 - **Display: Google's terms** (Gemini API terms, Grounding with Google Search):
   - Grounded results are shown to the user who asked, with their Search Suggestions (up to 5).
   - They aren't modified or interspersed with other content.
