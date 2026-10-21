@@ -48,6 +48,20 @@ test('a voice that fails partway is benched; the same sentence plays on the next
   assert.deepEqual(done.voices, ['v1', 'v2']);
 });
 
+test('done names the voices that failed and why, for the Voice test to say before who spoke (the second emulator re-check, N39)', async () => {
+  const p = fakePlatform();
+  const v = fakeVoices(['v1', 'v2'], { failing: { v1: true } });
+  const u = speaker(v, p).begin();
+  u.end('One thing.');
+  const done = await u.done;
+  assert.deepEqual(done.voices, ['v2']);
+  assert.deepEqual(done.failedVoices, [{ name: 'v1', why: 'v1 failed' }]);
+  const ok = fakeVoices(['v1']);
+  const u2 = speaker(ok, fakePlatform()).begin();
+  u2.end('Fine.');
+  assert.deepEqual((await u2.done).failedVoices, []);
+});
+
 test('the browser voice speaks when it comes first, or when every API voice failed; a cut is kept by word', async () => {
   const p = fakePlatform({ playMs: 40 });
   const v = fakeVoices(['v1'], { failing: { v1: true }, browser: true });

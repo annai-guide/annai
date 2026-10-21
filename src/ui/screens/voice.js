@@ -58,7 +58,7 @@ export async function renderVoice(ctx) {
         const r = await voice.say(SAMPLE);
         sayStatus.textContent = r.failed === 'blocked' ? "This browser didn't let annai play sound yet. Tap anywhere on the page, then try again."
           : r.failed ? 'No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.'
-            : `Spoken by ${r.voices.join(', then ')}.`;
+            : [...r.failedVoices.map((/** @type {any} */ f) => `${f.name} couldn't speak: ${f.why}`), `Spoken by ${r.voices.join(', then ')}.`].join(' ');
       } catch (e) {
         sayStatus.textContent = speechProblem(e);
       } finally {
