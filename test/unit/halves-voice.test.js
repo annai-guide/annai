@@ -159,7 +159,10 @@ test("listening is judged against Koe's model: audio goes to it, and it writes t
   const [first, writeDown] = k.sent['model-koet'];
   assert.ok(first.messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.type === 'audio')), 'Koe heard it as sound');
   assert.match(String(writeDown?.system), /^Write down exactly what is said/);
-  assert.equal(k.sent['model-0'], undefined, 'Kokoro was never asked');
+  // Koe's answer wakes Kokoro too (on cue); its call, which may come before or after the words are written down, is no part of
+  // the hearing. (It flaked under load when this said Kokoro was never asked at all: with no audio and no words yet, Kokoro's
+  // call fails quietly; once Koe has written the words down, it is sent them.)
+  assert.ok((k.sent['model-0'] ?? []).every((/** @type {any} */ r) => !/^Write down/.test(String(r.system)) && !JSON.stringify(r.messages).includes('"type":"audio"')), 'Kokoro never heard the sound, nor wrote it down');
   const [text] = await k.events(['heard.text']);
   assert.equal(text.data.by, 'model-koet');
 });
