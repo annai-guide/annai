@@ -324,8 +324,8 @@ class Steps {
     if (b.type === 'google_search_call') {
       const q = Array.isArray(b.arguments?.queries) ? b.arguments.queries.filter((x) => typeof x === 'string' && x) : [];
       out.push({ type: 'reasoning_delta', text: `Searching Google${q.length ? `: ${q.join(', ')}` : ''}` });
-    } else if (b.type === 'google_search_result') {
-      this.searched = true;
+    } else if (b.type === 'google_search_result' && b.is_error !== true) {
+      this.searched = true; // a search that failed grounds nothing
       for (const r of Array.isArray(b.result) ? b.result : []) if (typeof r?.search_suggestions === 'string' && r.search_suggestions) this.suggestions.push(r.search_suggestions);
     }
     out.push({ type: 'provider', block: b });

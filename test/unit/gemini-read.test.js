@@ -201,6 +201,18 @@ test('read: a grounded reply sent whole gives the same events as its stream; a r
     { type: 'attribution', source: 'Google Search', text: '', links: [] },
     { type: 'stop', reason: 'end' },
   ]);
+  // A search that failed grounds nothing: its steps go back, and no card says the words came from it.
+  const failed = await read(stream([
+    { event_type: 'step.start', index: 0, step: { id: 's1', type: 'google_search_call', arguments: { queries: ['kyoto'] } } },
+    { event_type: 'step.stop', index: 0 },
+    { event_type: 'step.start', index: 1, step: { call_id: 's1', type: 'google_search_result', result: [], is_error: true } },
+    { event_type: 'step.stop', index: 1 },
+    { event_type: 'step.start', index: 2, step: { type: 'model_output' } },
+    { event_type: 'step.delta', index: 2, delta: { type: 'text', text: 'I could not check.' } },
+    { event_type: 'step.stop', index: 2 },
+    completed(),
+  ]));
+  assert.deepEqual(failed.map((e) => e.type), ['reasoning_delta', 'provider', 'provider', 'text', 'usage', 'stop']);
 });
 
 test('a safety block in the stream ends the turn as a refusal with Google\'s reason in words', async () => {
