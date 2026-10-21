@@ -153,8 +153,20 @@ test("with the model's own search, Shiori's request has no web_search of annai's
   assert.deepEqual(k.requests[0].providerTools, { kinds: ['search'], off: [] });
 });
 
+test("on a key marked free tier, a paid-only search isn't the model's own (G4): Shiori keeps annai's web_search, and asks for none", async () => {
+  const { readConfig, saveProvider } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { models: [{ providerTools: [{ id: 'g-search', name: 'Google Search', kind: 'search', patch: {}, paidOnly: true }] }] });
+  const rec = (await readConfig(k.ws)).providers['pv-0'];
+  await saveProvider(k.ws, { ...rec, user: { ...rec.user, free: true } });
+  await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.equal(k.requests[0].tools.some((/** @type {any} */ t) => t.name === 'web_search'), true);
+  assert.equal(k.requests[0].providerTools, undefined);
+});
+
 /** @param {any} k @param {string} scope @param {string[]} types */
-const eventsIn = (k, scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types }));
+const eventsIn =(k, scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types }));
 /** The user texts a request sends. @param {any} request */
 const userTexts = (request) => JSON.stringify(request.messages);
 
