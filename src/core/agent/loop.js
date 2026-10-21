@@ -1189,6 +1189,9 @@ export class Agent {
       const request = {
         ...buildRequest({ snapshot, ...(this.#half.system || shows ? { system: (this.#half.system?.(snapshot) ?? systemText(snapshot)) + shows } : {}), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }),
         ...providerTools, newestPhoto: this.transcript.newestPhoto, // a model that takes no photos gets older ones as words
+        // She reaches the user only through tools: the model must call one, where its endpoint can say so (item 15; the nudge stays
+        // the backstop). Not with the model's own search on: it answers in words, shown as written (G4).
+        ...(providerTools.providerTools ? {} : { toolRequired: true }),
       };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;

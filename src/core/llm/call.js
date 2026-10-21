@@ -228,7 +228,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       sameOrigin(endpoint, built.url); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
-      const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request, endpoint).map((t) => t.patch)));
+      const patched = applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request, endpoint).map((t) => t.patch));
+      const body = JSON.stringify(type.finish ? type.finish(patched) : patched);
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });

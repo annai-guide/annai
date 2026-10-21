@@ -13,6 +13,7 @@ const TUNABLES = Object.freeze({
   reasoningField: 'auto', // where reasoning text comes back: "reasoning" (OpenRouter), "reasoning_content" (DeepSeek), or either
   imageDetail: null, // e.g. "high"
   enforceToolCall: false, // a tool the model must call, when it is the one offered, goes as tool_choice "required": llama.cpp ignores one named
+  requireTool: true, // a turn that must call some tool (Shiori's) goes as tool_choice "required"; false for a server that refuses it
   // What a call in the current turn without its own extra_content carries (another model wrote it, before a fallback): Gemini 3
   // refuses such a call, and its docs give a stand-in thought signature for it. Gemini's description sets it.
   standInCallExtra: null,
@@ -71,7 +72,7 @@ function build({ endpoint, model, key, tunables: t, request }) {
     // "required" forces a call to some tool: the one named, when it is the only one offered (the user, 2026-10-19).
     const only = request.tools?.length === 1 && request.tools[0].name === request.toolChoice;
     body.tool_choice = t.enforceToolCall && only ? 'required' : { type: 'function', function: { name: request.toolChoice } };
-  }
+  } else if (request.toolRequired && body.tools && t.requireTool !== false) body.tool_choice = 'required';
   if (request.logprobs) {
     body.logprobs = true;
     body.top_logprobs = request.logprobs;

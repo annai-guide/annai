@@ -276,6 +276,24 @@ test("a turn the user stopped isn't taken up when the conversation opens again, 
   assert.equal(k.requests.length, 2, 'nothing ran again');
 });
 
+test("Shiori's turns ask the model to call a tool (she reaches the user only through tools); housekeeping and the utility model's jobs don't, nor a turn with the model's own search on (item 15)", async () => {
+  const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
+  for (const m of ['first', 'second', 'third', 'fourth']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.ok(k.requests.slice(0, 4).every((/** @type {any} */ r) => r.toolRequired === true));
+  assert.equal(await k.agent.compact('warm'), true);
+  assert.equal(k.requests.at(-1).toolRequired, undefined, 'warm housekeeping');
+  assert.equal(await k.agent.compact('cold', { forced: true }), true);
+  assert.equal(k.sent['model-u'].at(-1).toolRequired, undefined, 'cold, on the utility model');
+  const search = await agentKit([[say('Open till 10.')]], { models: [{ providerTools: [{ id: 'p-search', name: 'S', kind: 'search', patch: {} }] }] });
+  await search.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
+  search.agent.send('Is it open?');
+  await search.agent.idle();
+  assert.equal(search.requests[0].toolRequired, undefined, "its search answers in words, shown as written (G4): nothing is forced");
+});
+
 test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { models: [{ providerTools: [{ id: 'p-search', name: 'S', kind: 'search', patch: {} }] }] });
   k.host && await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);

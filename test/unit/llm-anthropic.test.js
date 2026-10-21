@@ -103,6 +103,20 @@ test('build: the tail goes last, after the cache marker; documents and a forced 
   assert.equal(type.tail, true);
 });
 
+test('a turn of Shiori\'s must call a tool: tool_choice any, which the API refuses while the model thinks, so it goes when the level\'s patch turns thinking on (item 15)', () => {
+  const tools = [{ name: 'speak', description: 'Say.', input: { type: 'object' } }, { name: 'sleep', description: 'End.', input: { type: 'object' } }];
+  const { body } = type.build(spec({ request: { tools, toolRequired: true, messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } }));
+  assert.deepEqual(body.tool_choice, { type: 'any' });
+  const finished = (/** @type {any} */ patch) => type.finish({ ...structuredClone(body), ...patch });
+  assert.deepEqual(finished({}).tool_choice, { type: 'any' }, 'a model that never thinks');
+  assert.deepEqual(finished({ thinking: { type: 'disabled' } }).tool_choice, { type: 'any' });
+  for (const thinks of [{ thinking: { type: 'enabled', budget_tokens: 2048 } }, { thinking: { type: 'adaptive' } }, { thinking: { type: 'between_tools' } }, { output_config: { effort: 'medium' } }]) {
+    assert.equal('tool_choice' in finished(thinks), false, JSON.stringify(thinks));
+  }
+  // A named tool (a quick decision) is left as it was: its callers ask again without forcing it.
+  assert.deepEqual(type.finish({ tool_choice: { type: 'tool', name: 'decide' }, thinking: { type: 'adaptive' } }).tool_choice, { type: 'tool', name: 'decide' });
+});
+
 test('read: a paused turn stops with "pause", to be sent back and continued', async () => {
   const events = await read(await fixture('pause.sse'));
   assert.deepEqual(events.at(-1), { type: 'stop', reason: 'pause' });
