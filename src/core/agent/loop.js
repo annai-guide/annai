@@ -113,7 +113,6 @@ const AGAIN = 'the user tapped Try again: answer their last message';
 export const DESCRIBE_S = 30;
 /** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
 const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
-/** What a model that reads PDFs is asked, for one that can't (the second emulator pass). */
 const DESCRIBE_PDF = "Give the content of this PDF for someone who can't open it: its text word for word as far as it goes (dates, times, names, addresses, prices and numbers exactly), tables as plain lines, and what any picture in it shows. Reply with the content only.";
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
@@ -1269,10 +1268,7 @@ export class Agent {
       }
       reached = this.#reached;
     };
-    /**
-     * Koe owes the user (spec §6.8, §7.1): a note from Kokoro meant for them, or a message of theirs that reached it inside its wait.
-     * Unlike a turn of theirs, telling Kokoro doesn't excuse it: only reaching the user settles it.
-     */
+    /** Koe owes the user (spec §6.8): a note from Kokoro for them, or a message of theirs inside its wait. Only reaching them settles it. */
     let owes = false;
     /** @type {string[]} Kokoro's words owed, for annai to show if Koe never passes them on */
     let notes = [];
@@ -1289,8 +1285,7 @@ export class Agent {
     let silent = false;
     /**
      * A turn of the user's that ends with nothing said to them (spec §7.1): she is asked once more, in the same turn; true when
-     * she is. A second silent end is a card. Not for the half working behind Koe, nor a turn of the user's that told the other half
-     * (Koe asking Kokoro): but Koe still owes the user what Kokoro told it, whatever it asked since.
+     * she is. A second silent end is a card. Not for the half behind Koe, nor a turn of theirs that told the other half, unless Koe owes (below).
      */
     const nudge = async () => {
       settle();

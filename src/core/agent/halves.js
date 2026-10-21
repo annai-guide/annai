@@ -37,6 +37,8 @@ const BLOCKS = Object.freeze({
   'live-closed': 'The live voice session closed.',
   'live-dropped': "The live voice session dropped and couldn't resume: Koe goes on through its next model.",
 });
+/** What Koe is told when it asks Kokoro after the user's Stop. */
+export const STOP_HELD = "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; tell them what you know yourself.";
 /** How long Koe rests after its whole list failed, at least. */
 export const KOE_REST_MS = 60_000;
 const KOKORO_ONLY = ['personality', 'restart'];
@@ -135,6 +137,8 @@ export class Halves {
    * or speaks again, or Koe's model has seen "Kokoro was stopped" (the seq of that note; Infinity: not written yet).
    */
   #stopped = { on: false, seq: Infinity };
+  /** The user stopped Kokoro and hasn't written or spoken since: Koe's tell_kokoro is refused. */
+  #stopHeld = false;
   #lastHalves = '';
   #lastView = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
@@ -232,7 +236,7 @@ export class Halves {
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
     // Koe's quick tools are Shiori's own, by name: Kokoro's (timers, recall), else the plugins'.
     const find = (/** @type {string} */ name) => this.kokoro.loopTools().find((t) => t.name === name) ?? c.registry.entries('tool').find((e) => e.item?.name === name)?.item;
-    this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel)]);
+    this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel, () => (this.#stopHeld ? STOP_HELD : null))]);
     for (const a of [this.kokoro, this.koe]) {
       a.on('event', (x) => this.#emit('event', x));
       a.on('notice', (n) => this.#notice(n));
@@ -471,6 +475,7 @@ export class Halves {
   /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip */
   open(trip) {
     this.#stopped = { on: false, seq: Infinity }; // a Stop belongs to the conversation it was in
+    this.#stopHeld = false;
     if (trip !== this.kokoro.target) this.live.close('switch', { forget: true });
     const opening = this.kokoro.open(trip);
     if (this.#koeTrip !== undefined) {
@@ -491,7 +496,7 @@ export class Halves {
    */
   send(text, o = {}) {
     this.#bothTold = false;
-    this.#stopped.on = false;
+    this.#stopped.on = this.#stopHeld = false;
     this.#heardNow(Boolean(o.photos?.length) && !String(text ?? '').trim());
     this.#route(async () => {
       await this.#refresh();
@@ -587,6 +592,7 @@ export class Halves {
    */
   stopKokoro() {
     this.#stopped = { on: true, seq: Infinity };
+    this.#stopHeld = true;
     // Still gathering the user's messages (GATHER): its turn never starts, and a waiting Koe hears so.
     const started = this.kokoro.turning;
     const scope = this.kokoro.target ?? ME;
@@ -673,7 +679,7 @@ export class Halves {
       this.#answered = false;
       this.#failTold = false;
       this.#bothTold = false;
-      this.#stopped.on = false;
+      this.#stopped.on = this.#stopHeld = false;
     }
     if (e.type.startsWith('out.')) this.#up('koe'); // a live Koe that spoke works
     // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails.
