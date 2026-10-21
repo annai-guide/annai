@@ -8,3 +8,5 @@ test-results/
 playwright-report/
 .superpowers/
 .claude/worktrees/
+# browser crash dumps from the Docker e2e land in the repo root
+core.[0-9]*
