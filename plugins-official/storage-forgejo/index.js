@@ -346,7 +346,9 @@ async function check(g) {
   const w = filled ? { ...g, owner: filled.owner, repo: filled.repo } : g;
   const r = await repoInfo(w);
   const branch = branchOf(w, r);
-  if (!r.empty && !(await headOf(w, branch))) throw noBranch(w, r, branch);
+  const head = r.empty ? null : await headOf(w, branch);
+  if (!r.empty && !head) throw noBranch(w, r, branch);
+  if (head) refuseForeign(w, r.full_name, (await snapshot(w, head.sha)) ?? new Map());
   const note = `Works: annai can reach ${r.full_name} on ${g.host}, a private repository.`;
   if (!filled) return { note };
   const how = g.repo ? ` annai filled in its owner, ${filled.owner}.` : ` It is the only private repository${filled.of ? ` of ${filled.of}` : ''} this token can change, so annai filled it in.`;
@@ -461,6 +463,14 @@ function pack(first, changes, manifest, part) {
   return out;
 }
 
+/** A repository holding anything but annai's own files (and a README and the like) is refused, as Back up now and Save and test both do. @param {F} g @param {string} name @param {Map<string, RemoteFile>} files */
+function refuseForeign(g, name, files) {
+  const foreign = [...new Set([...files.keys()].map(top))].filter((t) => !OURS.has(t) && !EXTRAS.test(t));
+  if (foreign.length) {
+    throw new g.TargetError('refused', `${name} holds other files (${foreign.slice(0, 3).join(', ')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
+  }
+}
+
 /**
  * Backs up the archive: its files on the branch, plus the README and the like the repository
  * holds, as one commit, or as parts and then the commit that is the backup.
@@ -482,10 +492,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     old = snap;
     const remote = await newest(g, branch, head);
     if (remote && old.has(MANIFEST) && remote.id !== base && remote.device !== g.device.id) throw new E('newer', `There is a newer backup in ${repo.full_name}.`, { remote });
-    const foreign = [...new Set([...old.keys()].map(top))].filter((t) => !OURS.has(t) && !EXTRAS.test(t));
-    if (foreign.length) {
-      throw new E('refused', `${repo.full_name} holds other files (${foreign.slice(0, 3).join(', ')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
-    }
+    refuseForeign(g, repo.full_name, old);
   }
   // The backup's files, by the repository's own ids.
   const idOf = repo.object_format_name === 'sha256' ? sha256Id : blobId;

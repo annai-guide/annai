@@ -186,6 +186,9 @@ test('the wrong repository is refused in plain words, before anything is written
     await assert.rejects(type.check(ctx(gh, { repo: 'me/public' })), refused('refused', /me\/public is public/));
     await assert.rejects(type.put(ctx(gh, { repo: 'me/public' }), a, opts()), refused('refused', /public/));
     await assert.rejects(type.put(ctx(gh, { repo: 'me/code' }), a, opts()), refused('refused', /holds other files \(package\.json, src\)/));
+    // Save and test says what Back up now will (the second emulator re-check).
+    await assert.rejects(type.check(ctx(gh, { repo: 'me/code' })), refused('refused', /holds other files \(package\.json, src\)/));
+    assert.match((await type.check(ctx(gh, { repo: 'me/readme' }))).note, /^Works/);
     await assert.rejects(type.check(ctx(gh, { token: 'ghp_wrong' })), refused('auth', /didn't accept the access token/));
     await assert.rejects(type.check(ctx(gh, { repo: 'me/nothing' })), refused('missing', /can't find me\/nothing/));
     await assert.rejects(type.check(ctx(gh, { repo: 'not a repo' })), refused('setup', /owner\/name/));
