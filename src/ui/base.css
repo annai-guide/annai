@@ -64,6 +64,9 @@ a { color: var(--ai); }
 dialog.ask { width: min(100% - 32px, 420px); padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); color: var(--ink); }
 dialog.ask::backdrop { background: rgb(0 0 0 / 0.45); }
 dialog.ask .acts { justify-content: flex-end; }
+/* Where a question can't be modal (Chrome before 120: its first Back is swallowed): drawn above the page by hand. */
+.ask-backdrop { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.45); }
+dialog.ask.plain { position: fixed; inset: 0; margin: auto; height: fit-content; max-height: calc(100% - 32px); overflow-y: auto; z-index: 61; }
 details.archived summary { cursor: pointer; color: var(--ink-2); padding: 6px 0; }
 
 /* forms */
