@@ -6,7 +6,7 @@ import { toolSwitchList } from './tools.js';
 /** What each kind of entry is, for the Kind filter. */
 const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Everything: null,
-  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'],
+  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded'],
   // What Shiori's two halves tell each other, and the blocks annai gives Kokoro (the Koe and Kokoro design).
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result'],
@@ -112,6 +112,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'heard.text') return `"${cut(d.text)}"${d.by ? ` · written down by ${d.by}` : ''}`;
   if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
   if (e.type === 'out.ask') return cut(d.question);
+  if (e.type === 'grounded') return `from ${d.source} · ${cut(d.text)} · ${(d.links ?? []).length} link${(d.links ?? []).length === 1 ? '' : 's'}`;
   if (e.type === 'tool.call') return `${d.name} ${cut(JSON.stringify(d.input ?? {}), 120)}`;
   if (e.type === 'tool.result') return `${d.name} · ${d.ok ? 'ok' : 'error'} · ${d.ms ?? 0} ms${d.content ? ` · ${cut(d.content)}` : ''}`;
   if (e.type === 'net.request' && d.kind === 'web') return `${d.tool} · ${d.method ?? 'GET'} ${d.url}${d.status ? ` · ${d.status}` : ''}${d.error ? ` · ${d.error}` : ''} · ${d.ms ?? '?'} ms`;

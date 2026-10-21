@@ -149,6 +149,10 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
 .card-title { font-family: var(--f-display); }
 .card-image { max-width: 100%; border-radius: 10px; }
 .card-place { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.convo .grounded { max-width: 100%; }
+.convo .grounded .sources { margin: 0; padding-left: 18px; }
+.convo .grounded .sources a { overflow-wrap: anywhere; }
+.convo .grounded .suggestions { display: block; width: 100%; height: 52px; border: 0; }
 .md p { margin: 0 0 6px; white-space: pre-line; overflow-wrap: anywhere; }
 .md .md-h { font-weight: 700; }
 .md ul, .md ol { margin: 0 0 6px; padding-left: 20px; }

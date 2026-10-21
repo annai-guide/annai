@@ -80,3 +80,23 @@ test('the service worker tells a page its build, on the port the page sends, for
   handlers.message({ data: 'something else', ports: [{ postMessage: (/** @type {any} */ m) => said.push(m) }] });
   assert.equal(said.length, 1);
 });
+
+test("a page opens as the app, except the frame Google's search suggestions are drawn in, which is a page of its own (G4)", async () => {
+  const source = await readFile(new URL('sw.js', root), 'utf8');
+  /** @type {Record<string, (e: any) => void>} */
+  const handlers = {};
+  const self = { location: new URL('https://annai.guide/sw.js'), addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; } };
+  // The cache holds each shipped file under its path.
+  const caches = { open: async () => ({ match: async (/** @type {any} */ r) => new Response(new URL(typeof r === 'string' ? r : r.url, 'https://annai.guide').pathname) }) };
+  vm.runInNewContext(source, { self, caches, Request, Response, URL, console, fetch: async () => new Response('network') });
+  /** @param {string} path @param {string} mode */
+  const open = async (path, mode) => {
+    /** @type {Promise<Response> | undefined} */
+    let answer;
+    handlers.fetch({ request: { url: `https://annai.guide${path}`, method: 'GET', mode }, respondWith: (/** @type {Promise<Response>} */ p) => { answer = p; } });
+    return (await /** @type {Promise<Response>} */ (answer)).text();
+  };
+  assert.equal(await open('/trips', 'navigate'), '/index.html');
+  assert.equal(await open('/src/ui/grounding.html', 'navigate'), '/src/ui/grounding.html');
+  assert.equal(await open('/src/ui/grounding.js', 'no-cors'), '/src/ui/grounding.js');
+});
