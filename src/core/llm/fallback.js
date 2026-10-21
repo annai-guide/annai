@@ -1,5 +1,5 @@
 import { callOnce, enabledProviderTools } from './call.js';
-import { ProviderError, portable } from './contract.js';
+import { ProviderError, portable, explain } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_ROLE } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
@@ -71,6 +71,33 @@ export class AllFailedError extends Error {
     this.attempts = attempts;
     this.said = said;
   }
+}
+
+/** Why a model was passed over without being asked, in words (the codes stay in the Trace). */
+const PASSED = Object.freeze({
+  benched: 'It is resting for a few minutes after an error.', 'no-images': "It doesn't take photos.", 'no-audio': "It doesn't take audio.",
+  'no-tools': "It can't use tools.", 'too-long': 'The conversation is too long for it.', 'no-provider-tool': "It doesn't have the provider tool this needs.",
+  'not-chat': "It isn't a chat model.", off: 'It is switched off.', removed: 'It was removed.', 'no-speech': "The speech couldn't be sent to it.",
+});
+
+/**
+ * Why every model failed, for a card (emulator pass): one line per model, each reason once and in words; a failure to
+ * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
+ * @param {Attempt[]} attempts @param {{ offline?: boolean }} [o]
+ */
+export function failedText(attempts, { offline = false } = {}) {
+  /** @type {Map<string, Set<string>>} */
+  const lines = new Map();
+  for (const a of attempts) {
+    if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
+    const said = a.outcome === 'unreachable' ? '' : a.error ?? '';
+    let why = said || /** @type {Record<string, string>} */ (PASSED)[a.outcome] || explain(new ProviderError(/** @type {any} */ (a.outcome), a.outcome));
+    if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1); // a sentence, though annai's name stays lower case
+    if (!/[.!?]$/.test(why)) why += '.';
+    if (!lines.has(a.name)) lines.set(a.name, new Set());
+    lines.get(a.name)?.add(why);
+  }
+  return [...(offline ? ['This device is offline.'] : []), ...[...lines].map(([name, why]) => `${name}: ${[...why].join(' ')}`)].join('\n');
 }
 
 /**

@@ -145,6 +145,7 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
 .who { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--ai); }
 .system-line { align-self: center; font-size: 12px; color: var(--ink-2); }
 .convo .system { align-self: stretch; border: 1px solid var(--amber); background: var(--amber-wash); border-radius: 12px; padding: 8px 12px; }
+.convo .system p { white-space: pre-line; }
 .card { display: flex; flex-direction: column; gap: 6px; }
 .card-title { font-family: var(--f-display); }
 .card-image { max-width: 100%; border-radius: 10px; }

@@ -126,6 +126,7 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .notice-warn { border-color: var(--amber); }
 .notice-risk { border-color: var(--risk); }
 .notice-ok { border-color: var(--ok); }
+.notice p { white-space: pre-line; }
 .toast { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .blocking { max-width: 560px; margin: 15vh auto 0; padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
 
