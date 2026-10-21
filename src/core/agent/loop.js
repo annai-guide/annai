@@ -1108,7 +1108,7 @@ export class Agent {
       const context = { from: this.transcript.from, to: this.transcript.to };
       const request = {
         ...buildRequest({ snapshot, ...(this.#half.system || shows ? { system: (this.#half.system?.(snapshot) ?? systemText(snapshot)) + shows } : {}), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }),
-        ...providerTools,
+        ...providerTools, newestPhoto: this.transcript.newestPhoto, // a model that takes no photos gets older ones as words
       };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;

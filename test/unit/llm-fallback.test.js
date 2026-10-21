@@ -150,6 +150,36 @@ test("models that can't take the request are skipped: photos, tools, a window to
   assert.equal(r.reply.text, 'D.');
 });
 
+test('a model that takes no photos gets older ones as words, and is passed over only for a photo in the newest message (emulator pass)', async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const spy = /** @type {any} */ ({
+    type: 'spy', name: 'Spy', pluginId: 'spy',
+    run: async function* (/** @type {any} */ c) {
+      seen.push(c.request);
+      yield { type: 'text', text: 'From the text model.' };
+      yield { type: 'stop', reason: 'end' };
+    },
+  });
+  const s = setup([[{ error: 'credit', status: 402 }], []], { types: [['spy', spy]], endpointTypes: ['scripted', 'spy'], models: [{ input: ['text', 'image'] }, { input: ['text'] }] });
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/2026-10-18-1530.webp' };
+  const older = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Look at this' }, photo] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 't1', name: 'sleep', input: {} }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'asleep' }, { type: 'text', text: "What's around here?" }] },
+  ] };
+  const r = await call(s, { request: older });
+  assert.equal(r.reply.text, 'From the text model.');
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'ok']);
+  assert.deepEqual(seen[0].messages[0].parts, [{ type: 'text', text: 'Look at this' }, { type: 'text', text: '[a photo: /trip/files/2026-10-18-1530.webp]' }]);
+  assert.equal(older.messages[0].parts[1], photo, "the request itself isn't changed: the next model may see photos");
+  // The newest message is a photo: a model that can't see it can't answer it. The loop says so (newestPhoto); else the last line is read.
+  const t = setup([[{ text: 'never' }]], { models: [{ input: ['text'] }] });
+  await assert.rejects(call(t, { request: { ...older, newestPhoto: true } }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
+  const asked = { messages: [{ role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'asleep' }, { type: 'text', text: 'And this?' }, photo] }] };
+  await assert.rejects(call(t, { request: asked }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
+});
+
 test('a reply cut off partway is continued by the next model, without repeating it (spec §9.6)', async () => {
   /** @type {any} */
   let seen = null;
