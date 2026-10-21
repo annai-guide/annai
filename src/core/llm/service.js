@@ -14,6 +14,7 @@ import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
 import { Kept, keyPrint } from './kept.js';
+import { ToolMonth } from './tool-month.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
 import { openLive, testLive } from '../realtime/open.js';
@@ -39,6 +40,8 @@ export function createLlm({
   const liveTunables = new Map();
   /** Photos uploaded to providers, by provider and ability (spec §4.8). */
   const uploads = new Uploads(ws);
+  /** This device's monthly count of provider tools with a free allowance (G4: Google Search). */
+  const toolMonth = new ToolMonth({ ws });
   /** Providers going, or their key or address changing (G2). @type {Set<string>} */
   const removing = new Set();
   let erasing = false;
@@ -402,7 +405,7 @@ export function createLlm({
       await ready;
       const run = callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope, toolMonth,
       });
       if (!record?.keepParts) return run;
       inflight.add(run);
@@ -460,7 +463,7 @@ export function createLlm({
       const config = await readConfig(ws);
       const r = await callRole({
         role: 'try', models: [modelId], level: config.roles.main?.level, request, config, types: types(), keyFor: (id) => getKey(store, id), bench: new Bench(),
-        fetch: get, signal, onEvent, trace: modelTrace(store, SYS), registry: plugins.registry, uploads,
+        fetch: get, signal, onEvent, trace: modelTrace(store, SYS), registry: plugins.registry, uploads, toolMonth,
       });
       bench.clear(modelId);
       return r;

@@ -1,7 +1,7 @@
 import { h, field, autosave, savedRadios } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
-import { modelOf } from '../../core/llm/config.js';
+import { modelOf, providerOf } from '../../core/llm/config.js';
 
 const GROUPS = ['Talk', 'Files', 'Web', 'Places', 'Go', 'Time', 'Self'];
 /** Jina's page for its API keys ("Manage API Key"), where a free key is made. */
@@ -24,7 +24,9 @@ export async function toolSwitchList(ctx) {
   const provider = new Map();
   for (const rec of Object.values(cfg.models)) {
     const m = modelOf(/** @type {any} */ (rec));
+    const free = cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).free : false;
     for (const t of m.providerTools ?? []) {
+      if (t.paidOnly && free) continue; // not on a key on the free tier (G4)
       const p = provider.get(t.id) ?? { id: t.id, name: t.name, models: [] };
       p.models.push(m.name);
       provider.set(t.id, p);

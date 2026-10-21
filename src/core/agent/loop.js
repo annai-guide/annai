@@ -2,7 +2,7 @@ import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
-import { modelOf, saveModel } from '../llm/config.js';
+import { modelOf, providerOf, saveModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
@@ -792,7 +792,10 @@ export class Agent {
   async #roleModel(role) {
     const cfg = await this.llm.config();
     const id = chatCandidates(cfg, role)[0];
-    return id && cfg.models[id] ? modelOf(cfg.models[id]) : null;
+    const m = id && cfg.models[id] ? modelOf(cfg.models[id]) : null;
+    // A key on the free tier has no paid-only provider tools (G4): there, annai's own search stays.
+    const p = m && cfg.providers[m.provider];
+    return m && p && providerOf(p).free ? { ...m, providerTools: m.providerTools.filter((t) => !t.paidOnly) } : m;
   }
 
   /**

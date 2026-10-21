@@ -124,12 +124,15 @@ export function estimateTokens(request) {
   return Math.ceil(chars / 3.5) + images * 1600 + (request.maxOutput ?? 0);
 }
 
-/** Why a model can't take this request, or null (spec §9.6: the list also handles capability gaps). @param {Model} model @param {Request} request */
-export function gap(model, request) {
+/**
+ * Why a model can't take this request, or null (spec §9.6: the list also handles capability gaps). @param {Model} model @param {Request} request
+ * @param {{ free?: boolean }} [provider] its provider: a key on the free tier has no paid-only provider tools
+ */
+export function gap(model, request, provider) {
   if (request.messages.some((m) => m.parts.some((p) => p.type === 'image')) && !model.input.includes('image')) return 'no-images';
   if (request.messages.some((m) => m.parts.some((p) => p.type === 'audio')) && !model.input.includes('audio')) return 'no-audio';
   if (request.tools?.length && model.tools === false) return 'no-tools';
-  if (request.needsProviderTool && !enabledProviderTools(model, request).some((t) => t.kind === request.needsProviderTool)) return 'no-provider-tool';
+  if (request.needsProviderTool && !enabledProviderTools(model, request, provider).some((t) => t.kind === request.needsProviderTool)) return 'no-provider-tool';
   if (model.contextWindow && estimateTokens(request) > model.contextWindow) return 'too-long';
   return null;
 }
@@ -186,7 +189,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
- *   kept?: import('./kept.js').Kept, scope?: string }} c
+ *   kept?: import('./kept.js').Kept, scope?: string, toolMonth?: import('./tool-month.js').ToolMonth }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
@@ -194,6 +197,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
  *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
  *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
+ *   toolMonth: this device's monthly count of provider tools with a free allowance (G4)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -232,7 +236,7 @@ export async function callRole(c) {
     const type = ability ? types.get(ability.type) : undefined;
     const model = rec ? modelOf(rec) : null;
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
-    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request);
+    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, request, provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : undefined;
       attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}) });
@@ -267,7 +271,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, toolMonth: c.toolMonth, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);

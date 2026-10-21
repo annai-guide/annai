@@ -58,11 +58,30 @@ export function applyPatches(body, endpoint, model, level, extra = []) {
   return out;
 }
 
-/** The model's provider tools this request turns on (spec §9.5). @param {Model} model @param {Request} request */
-export function enabledProviderTools(model, request) {
+/**
+ * The model's provider tools this request turns on (spec §9.5): never one that is paid only on a key on the free tier
+ * (Google refuses a request with its search at once there). @param {Model} model @param {Request} request @param {{ free?: boolean }} [endpoint]
+ */
+export function enabledProviderTools(model, request, endpoint) {
   const want = request.providerTools;
   if (!want) return [];
-  return (model.providerTools ?? []).filter((t) => want.kinds.includes(t.kind) && !(want.off ?? []).includes(t.id));
+  return (model.providerTools ?? []).filter((t) => want.kinds.includes(t.kind) && !(want.off ?? []).includes(t.id) && !(t.paidOnly && endpoint?.free));
+}
+
+/**
+ * Usage as it is billed: a provider tool with a monthly allowance counts only its calls past it, by this device's count
+ * (tool-month.js); without the count, every call. @param {Usage} usage @param {import('./config.js').ProviderTool[]} tools
+ * @param {import('./tool-month.js').ToolMonth} [month]
+ */
+async function billed(usage, tools, month) {
+  let out = usage;
+  for (const t of tools) {
+    const n = t.freePerMonth !== undefined && t.usageKey ? usage.serverTools?.[t.usageKey] ?? 0 : 0;
+    if (!n || !month || !t.usageKey) continue;
+    const over = await month.bill(t.id, n, t.freePerMonth ?? 0).catch(() => n);
+    out = { ...out, serverTools: { ...out.serverTools, [t.usageKey]: over } };
+  }
+  return out;
 }
 
 /** A conversation's turn kept (G2, kept.js): chain false sends it whole; secret: the provider's key the call has. @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, secret: string | null }} Keep */
@@ -70,13 +89,15 @@ export function enabledProviderTools(model, request) {
 /**
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
- *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep }} c
+ *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
+ *   toolMonth?: import('./tool-month.js').ToolMonth }} c
  *   firstOutputMs: how long to wait for the first output, and then between pieces of output
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
  *   keep: kept on the provider's side where its type can and its switch is on
+ *   toolMonth: this device's monthly count of provider tools with a free allowance (G4)
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep }) {
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, toolMonth }) {
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -173,7 +194,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       sameOrigin(endpoint, built.url); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
-      const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request).map((t) => t.patch)));
+      const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request, endpoint).map((t) => t.patch)));
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });
@@ -211,7 +232,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   // The turn kept, to continue next time; one refused is deleted, or it would be in every later turn's history.
   await settle((c) => /** @type {any} */ (keeping).kept.record(/** @type {StopReason} */ (stop) === 'refusal' ? c
     : { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(spec.kept ? { after: spec.kept.id } : {}) }));
-  const cost = endpoint.free ? 0 : costOf(usage, model.prices, model.providerTools); // a free-tier key costs nothing
+  // A free-tier key costs nothing; a tool's calls within its monthly allowance neither.
+  const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], toolMonth), model.prices, model.providerTools);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
   return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}) };
 }
