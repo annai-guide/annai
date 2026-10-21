@@ -90,6 +90,18 @@ test('rate-limited: a short wait is waited out; a long one benches the model for
   assert.equal(t.bench.until('m-0'), 1_000_000 + 60_000);
 });
 
+test("a connection failure while the device is offline benches nobody and isn't retried; online, it still benches (emulator pass)", async () => {
+  const s = setup([[{ error: 'unreachable', message: 'Failed to fetch' }], [{ error: 'network', message: 'The connection dropped.' }]]);
+  await assert.rejects(call(s, { online: () => false }), (e) => e instanceof AllFailedError && e.attempts.map((a) => a.outcome).join() === 'unreachable,network');
+  assert.deepEqual(s.waits, []);
+  assert.equal(s.bench.until('m-0'), 0);
+  assert.equal(s.bench.until('m-1'), 0);
+  // Back online, the same failure is the model's (a server that is down): it rests, so turns don't wait on it.
+  await assert.rejects(call(s, { online: () => true }));
+  assert.ok(s.bench.until('m-0') > 1_000_000);
+  assert.ok(s.bench.until('m-1') > 1_000_000);
+});
+
 test('a model that declines has still answered', async () => {
   const s = setup([[{ text: "I can't help with that." }], [{ text: 'B.' }]]);
   const r = await call(s);

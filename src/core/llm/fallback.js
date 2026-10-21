@@ -176,6 +176,8 @@ function prefixed(reply, said) {
 }
 
 const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+/** The browser's word on the connection: false is reliable, true can be wrong (a network with no internet). */
+const deviceOnline = () => globalThis.navigator?.onLine !== false;
 
 /** Parts made from heard speech keep its id (G2): as sound or words, the same to a kept turn; not words nothing wrote down. @param {Request} was @param {Request} now @returns {Request} */
 const heardIds = (was, now) => (was === now ? now : {
@@ -188,7 +190,7 @@ const heardIds = (was, now) => (was === now ? now : {
  * @param {{ role: string, request: Request, level?: string, config: ModelConfig, types: Map<string, EndpointType>,
  *   keyFor: (providerId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
- *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number,
+ *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
@@ -201,10 +203,11 @@ const heardIds = (was, now) => (was === now ? now : {
  *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
  *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
  *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
+ *   online: whether the device has a connection: a failure to connect while it has none says nothing about the model
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
-  const { role, config, types, bench, now = Date.now, sleep = defaultSleep } = c;
+  const { role, config, types, bench, now = Date.now, sleep = defaultSleep, online = deviceOnline } = c;
   const level = c.level ?? config.roles[role]?.level ?? /** @type {Record<string, string>} */ (ROLE_LEVELS)[role] ?? 'off';
   /** @type {Attempt[]} */
   const attempts = [];
@@ -320,6 +323,9 @@ export async function callRole(c) {
             continue; // the same model again (spec §9.9)
           }
         }
+        // No connection on this device (airplane mode, say): the model did nothing wrong, so it doesn't rest, and
+        // waiting won't help. It is asked again as soon as the connection is back (emulator pass).
+        if ((err.kind === 'unreachable' || err.kind === 'network') && !online()) break;
         const step = nextStep(err, retry);
         if (step.wait !== undefined) {
           await sleep(step.wait);

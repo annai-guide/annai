@@ -581,7 +581,7 @@ Each role is an **ordered list** of models, tried front to back:
 | its ability is switched off, or its protocol plugin isn't running | skipped ("off", "type-missing"); a call never installs one |
 
 - **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size.
-- **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model.
+- **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model. A failure to connect while the device is offline benches nothing and isn't retried: the model did nothing wrong, and it is asked again as soon as the connection is back.
 - **Switching back.** Each provider caches separately, so the switch back to a preferred model happens when the backup's cache is cold.
 - **The transcript stays portable.** It's stored in our own format. When the model changes:
   - tool-call ids are rewritten for the new provider
