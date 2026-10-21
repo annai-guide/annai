@@ -19,6 +19,10 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
     await page.getByLabel('API key').fill(KEY);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    // Adding fills no chat role with a model that costs money (spec §9.8): "Use the recommended models" is the user's tap,
+    // and it switches Live on for Koe, and says so.
+    await page.getByRole('button', { name: 'Use the recommended models' }).click();
+    await expect(page.locator('.toast', { hasText: 'Roles updated. Live voice switched on.' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/Uses Gemini's own API/)).toBeVisible();
     const free = page.getByLabel("This key is on the free tier (Google doesn't charge)");
     await expect(free).not.toBeChecked();
@@ -66,9 +70,7 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
     await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
     await free.check();
     await expect(savedBy(free)).toHaveText('Saved');
-    // "Use the recommended models" switches Live on for Koe, and says so.
-    await page.getByRole('button', { name: 'Use the recommended models' }).click();
-    await expect(page.locator('.toast', { hasText: 'Roles updated. Live voice switched on.' })).toBeVisible({ timeout: 30_000 });
+    // Live is on for Koe, from the tap above.
     await expect(page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice')).toBeChecked();
     await page.getByRole('region', { name: 'Chat', exact: true }).getByRole('link', { name: /^Gemini 3\.8 Flash/ }).click();
     await tryIt.getByLabel('Message', { exact: true }).fill('Hello again');
@@ -186,6 +188,12 @@ async function geminiTrip(page, url) {
   await page.getByLabel('API key').fill(KEY);
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  // Adding fills no chat role with a model that costs money (spec §9.8): Main is the user's own choice, here by Models.
+  await page.getByRole('link', { name: '← Models' }).click();
+  await page.getByLabel('Add a model to Main').selectOption({ label: 'Gemini 3.8 Flash' });
+  await page.getByRole('button', { name: 'Add to Main' }).click();
+  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').first().getByText('1. Gemini 3.8 Flash')).toBeVisible();  await page.locator('a.card', { hasText: 'Google Gemini' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
 }
 
 /** @param {import('@playwright/test').Page} page @param {string} text */

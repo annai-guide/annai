@@ -12,8 +12,9 @@ import { ROLE_KINDS } from './provider-desc.js';
  * @typedef {import('./config.js').ModelRecord} ModelRecord
  * @typedef {import('./config.js').ProviderValues} ProviderValues
  * @typedef {{ key?: string | null, roles?: 'recommended' | 'free' | null, name?: string, baseUrl?: string,
- *   abilities?: Record<string, { on: boolean, baseUrl?: string }> }} AddOptions
- *   roles: the suggestion for chat roles still empty; abilities: on or off, and an address of their own
+ *   abilities?: Record<string, { on: boolean, baseUrl?: string }>, filled?: string[] }} AddOptions
+ *   roles: the suggestion for chat roles still empty (by default "free": nothing that costs money goes in a role by itself, §9.8);
+ *   abilities: on or off, and an address of their own; filled: gets the roles the add changed
  */
 
 /** A provider's template layer: notes, keyUrl and models stay in the description. @param {ProviderSource} src @returns {ProviderValues} */
@@ -111,11 +112,12 @@ function picker(cfg, providerId) {
 
 /**
  * Adds a provider from its description (spec §9.8): it, every ability's models, its one key, and the
- * suggestion for chat roles still empty; speech models go behind (decision 6), the recommended
+ * suggestion for chat roles still empty (by default only its free models: an empty chat role falls back to Main, so
+ * a model that costs money there would go ahead of something free); speech models go behind (decision 6), the recommended
  * suggestion's when the chosen one has none, so "free" still brings a voice. @param {{ ws: Workspace, store: Store }} c @param {ProviderSource} src @param {AddOptions} [o]
  * @returns {Promise<string>} the provider's id
  */
-export async function addProvider({ ws, store }, src, { key = null, roles = 'recommended', name, baseUrl, abilities = {} } = {}) {
+export async function addProvider({ ws, store }, src, { key = null, roles = 'free', name, baseUrl, abilities = {}, filled } = {}) {
   const cfg = await readConfig(ws);
   const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
   const values = providerValues(src);
@@ -141,6 +143,7 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'rec
     let next = suggested(cfg.roles, pick, all[roles], { onlyEmpty: true, behind: true, speech: true, chat: true });
     if (!speechIn(all[roles]) && roles !== 'recommended') next = suggested(next, pick, all.recommended, { onlyEmpty: true, behind: true, speech: true, chat: false });
     await saveRoles(ws, next);
+    filled?.push(...Object.keys(next).filter((r) => JSON.stringify(next[r]?.models) !== JSON.stringify(cfg.roles[r]?.models)));
   }
   return rec.id;
 }

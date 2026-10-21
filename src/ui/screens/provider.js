@@ -8,7 +8,7 @@ import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem } from '../../core/llm/provider-desc.js';
 import { andList } from '../format.js';
-import { drawPanel, isProviderEntry, installMissing } from '../provider-setup.js';
+import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
 import { setupOf } from '../../core/llm/setup.js';
 import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
@@ -183,7 +183,11 @@ export async function renderNewProvider(ctx, pluginId) {
     onclick: async () => {
       byHand.disabled = true;
       try {
-        open(await ctx.llm.addProvider(pluginId, { roles: 'recommended', official: (await ctx.plugins.installed())[pluginId]?.source === 'official' }));
+        /** @type {string[]} */
+        const filled = [];
+        const added = await ctx.llm.addProvider(pluginId, { official: (await ctx.plugins.installed())[pluginId]?.source === 'official', filled });
+        open(added);
+        sayFilled(ctx, pluginId, filled);
       } catch (e) {
         status.textContent = messageOf(e);
         byHand.disabled = false;

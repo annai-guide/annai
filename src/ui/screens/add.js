@@ -3,6 +3,7 @@ import { bytes } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
 import { NO_SERVICE } from './plugin-install.js';
+import { sayFilled } from '../provider-setup.js';
 import { officialPlugins } from '../../core/llm/official.js';
 import { addFromCatalog } from '../../core/requires.js';
 import { searchCatalog, squash } from '../../core/search.js';
@@ -203,9 +204,13 @@ function actions(ctx, r, update) {
       // have its own Add flow (decision 15), such as a look at what an address offers.
       : async () => {
         b.textContent = 'Adding…';
-        const o = { roles: /** @type {const} */ ('recommended'), official: r.official };
+        // Chat roles still empty get free models only; the speech lists get the rest behind the free entries (spec §9.8).
+        /** @type {string[]} */
+        const filled = [];
+        const o = { official: r.official, filled };
         const added = r.facts.code ? await ctx.llm.startAdd(id, o) : await ctx.llm.addProvider(id, o);
         ctx.go(added === null ? `#/models/provider?new=${encodeURIComponent(id)}` : `#/models/provider?id=${encodeURIComponent(added)}`);
+        if (added !== null) sayFilled(ctx, id, filled);
       }),
   }, label);
   return [r.added ? h('span', { class: 'sub', text: 'Added' }) : null, b];

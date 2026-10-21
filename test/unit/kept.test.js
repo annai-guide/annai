@@ -324,7 +324,7 @@ async function serviceKit({ replyDelay = 0, deleteDelay = 0, anyKey = false } = 
     }
   };
   const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
-  const id = await llm.addProvider('provider-gemini', { key: KEY, baseUrl: s.url, official: true });
+  const id = await llm.addProvider('provider-gemini', { roles: 'recommended', key: KEY, baseUrl: s.url, official: true });
   const tripA = await createTrip(k.ws, { title: 'Kyoto' });
   const tripB = await createTrip(k.ws, { title: 'Osaka' });
   /** A conversation of n turns in a trip, each continuing the one before. @param {string} scope @param {number} n */
@@ -905,8 +905,8 @@ test('VERIFY D: a drain already running when a key changes never sends the old k
     try { return new Response(await readFile(new URL(`.${new URL(u, 'http://annai.test').pathname}`, root))); } catch { return new Response('not found', { status: 404 }); }
   };
   const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: fetching });
-  const P = await llm.addProvider('provider-gemini', { key: 'AIza-old-key-P-0123456789', baseUrl: s.url, official: true });
-  const Q = await llm.addProvider('provider-gemini', { key: 'AIza-key-Q-0123456789', baseUrl: s2.url, official: true });
+  const P = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-old-key-P-0123456789', baseUrl: s.url, official: true });
+  const Q = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-key-Q-0123456789', baseUrl: s2.url, official: true });
   const trip = await createTrip(k.ws, { title: 'Kyoto' });
   const cfg = await readConfig(k.ws);
   const mOf = (/** @type {string} */ pid) => /** @type {any} */ (Object.values(cfg.models).find((m) => m.provider === pid && m.ability === 'chat')).id;
@@ -983,7 +983,7 @@ async function realKit(/** @type {{ slowModel?: string, deleteDelay?: number }} 
     try { return new Response(await readFile(new URL(`.${new URL(u, 'http://annai.test').pathname}`, root))); } catch { return new Response('not found', { status: 404 }); }
   };
   const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: fetching });
-  const P = await llm.addProvider('provider-gemini', { key: 'AIza-old-key-P-0123456789', baseUrl: s.url, official: true });
+  const P = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-old-key-P-0123456789', baseUrl: s.url, official: true });
   const trip = await createTrip(k.ws, { title: 'Kyoto' });
   return { s, s2, k, llm, P, trip };
 }
@@ -1029,7 +1029,7 @@ test('through the service: a new key saved while a turn is answered: that turn i
 test('through the service: a drain already running across the whole key change sends nothing with the new key (its slow DELETE outlasts the 10 s)', async () => {
   const { setKey, readConfig, saveRoles } = await import('../../src/core/llm/config.js');
   const { s, s2, k, llm, P, trip } = await realKit({ deleteDelay: 11_500 });
-  const Q = await llm.addProvider('provider-gemini', { key: 'AIza-key-Q-0123456789', baseUrl: s2.url, official: true });
+  const Q = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-key-Q-0123456789', baseUrl: s2.url, official: true });
   const cfg = await readConfig(k.ws);
   const mOf = (/** @type {string} */ pid) => /** @type {any} */ (Object.values(cfg.models).find((m) => m.provider === pid && m.ability === 'chat')).id;
   const ask = async (/** @type {string} */ pid, /** @type {string} */ q) => {
