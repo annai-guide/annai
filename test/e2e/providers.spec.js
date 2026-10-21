@@ -244,6 +244,8 @@ test("a provider whose plugin is missing: annai's own is offered to install righ
       if (what === 'plugin') {
         const state = await ws.readJSON('sys:plugins', '/installed.json');
         delete state['provider-llamacpp'];
+        delete state['chat-completions']; // its protocols too, as a restore leaves them
+        delete state['speech-openai'];
         await ws.write('sys:plugins', '/installed.json', state, { author: 'system' });
       } else {
         for (const f of await ws.list('sys:settings', '/llm/providers/')) {
@@ -261,7 +263,11 @@ test("a provider whose plugin is missing: annai's own is offered to install righ
   const note = page.locator('.risk-note');
   await expect(note).toContainText("Its plugin, llama.cpp, isn't installed, so annai can't say what it offers.");
   await expect(note).not.toContainText('provider-llamacpp');
-  await page.getByRole('button', { name: 'Install it' }).click();
+  // Nowhere on the page, either: the subtitle and each ability's protocol are named, never by plugin id (the second emulator re-check).
+  const words = await page.locator('main').innerText();
+  for (const id of ['provider-llamacpp', 'chat-completions', 'speech-openai', 'openai-transcription', 'openai-speech']) expect(words, id).not.toContain(id);
+  await expect(page.getByText("This needs the Chat Completions plugin, which isn't running.")).toBeVisible();
+  await page.getByRole('button', { name: 'Install it' }).first().click();
   await expect(page.locator('.risk-note')).toHaveCount(0, { timeout: 30_000 });
   await change('provider');
   await expect(note).toContainText("The plugin it was made from isn't on this device, and it isn't one of annai's own");
