@@ -98,7 +98,8 @@ export function startShell(root, core) {
   let dock = core.agent ? makeDock() : null;
   let dockMadeFor = dockKey(ctx);
   /** @type {any} */ (ctx).dock = dock;
-  root.replaceChildren(header, installBanner(), main, notices.el, ...(dock ? [dock.el] : []));
+  // The top bar and the cards under it stay at the top as the screen scrolls (base.css).
+  root.replaceChildren(h('div', { class: 'top' }, header, notices.el), installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []));
   // The page and the cards make room for the dock as tall as it is now: voice on, typing open, or a plugin's.
   const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => {
     document.documentElement.style.setProperty('--dock-h', `${Math.ceil(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`);

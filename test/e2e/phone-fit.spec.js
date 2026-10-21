@@ -273,3 +273,44 @@ test('swiping back into a tab brings back the screen you last had open in it, wh
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 });
+
+/**
+ * The controls of the screen (main) whose middle is on screen, above the dock, but under something else: a card, say.
+ * @param {import('@playwright/test').Page} page
+ */
+const coveredControls = (page) => page.evaluate(() => {
+  const dockTop = document.querySelector('nav.dock')?.getBoundingClientRect().top ?? innerHeight;
+  const barBottom = document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0;
+  return [...document.querySelectorAll('main.view :is(a[href], button, input, select, textarea, summary)')].flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    if (!r.width || !r.height || y <= barBottom || y >= dockTop || x < 0 || x > innerWidth) return [];
+    const hit = document.elementFromPoint(x, y);
+    return hit && (el === hit || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.getAttribute('aria-label') || el.tagName} under ${hit?.closest('.notice, .toast') ? 'a card' : hit?.tagName}`];
+  });
+});
+
+test("a system card never covers the screen's controls: it comes in at the top and moves the screen down, and the screen scrolls clear of it (the emulator pass)", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 });
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  expect(await coveredControls(page)).toEqual([]);
+  // The dock's camera with no trip open: a card says to open one.
+  await page.locator('#dock-camera').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') });
+  const card = page.locator('.notice', { hasText: 'Open a trip first' });
+  await expect(card).toBeVisible();
+  expect(await coveredControls(page)).toEqual([]);
+  // Each control can be scrolled clear of the card and the dock, the last ones too.
+  expect(await page.evaluate(() => [...document.querySelectorAll('main.view :is(a[href], button:not([disabled]), input, select, textarea, summary)')].flatMap((el) => {
+    if (!el.getClientRects().length) return [];
+    el.scrollIntoView({ block: 'center' });
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return hit && (hit === el || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.tagName} under ${hit?.closest('.notice, nav.dock')?.className ?? hit?.tagName}`];
+  }))).toEqual([]);
+  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  await expect(card).toBeInViewport();
+  await card.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(card).toHaveCount(0);
+});

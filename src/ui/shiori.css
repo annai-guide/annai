@@ -159,7 +159,7 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
 /* A code block wraps, so it never widens the page (and the page takes sideways swipes itself). */
 .md pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 6px; font-size: 13px; }
 
-/* System cards sit above the dock, so their buttons can be reached. */
-body:has(.dock:not(.seat)) .notices { bottom: calc(var(--dock-h, 140px) + 8px); z-index: 25; }
-/* A menu opened from the dock comes above those cards. */
+/* Toasts float above the dock. */
+body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
+/* A menu opened from the dock comes above the top bar and the cards. */
 .dock:not(.seat):has(.voice-menu:not([hidden])) { z-index: 30; }
