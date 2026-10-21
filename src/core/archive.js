@@ -8,6 +8,7 @@ import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId, isDevice
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf } from './events.js';
+import { dayIn, deviceZone } from './time.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -609,11 +610,11 @@ async function removeUnused(store, hashes) {
 }
 
 /**
- * "annai-<slug>-<yyyy-mm-dd>.annai.zip", or ".annai" when encrypted.
- * @param {{ kind: 'trip'|'everything', title?: string, encrypted: boolean, now: number }} o
+ * "annai-<slug>-<yyyy-mm-dd>.annai.zip", or ".annai" when encrypted: the day where the phone is (tz).
+ * @param {{ kind: 'trip'|'everything', title?: string, encrypted: boolean, now: number, tz?: string }} o
  */
-export function archiveName({ kind, title, encrypted, now }) {
-  const day = new Date(now).toISOString().slice(0, 10);
+export function archiveName({ kind, title, encrypted, now, tz = deviceZone() }) {
+  const day = dayIn(now, tz);
   const base = kind === 'everything' ? 'backup' : slug(title ?? '');
   return `annai-${base}-${day}${encrypted ? '.annai' : '.annai.zip'}`;
 }
