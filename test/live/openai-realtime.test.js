@@ -14,6 +14,7 @@ import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { pcm16, resample } from '../../src/core/voice/pcm.js';
 import { openLive, testLive } from '../../src/core/realtime/open.js';
 import { activate } from '../../plugins-official/openai-realtime/index.js';
+import { g711 } from '../../src/core/voice/g711.js';
 
 const KEY = process.env.OPENAI_KEY ?? '';
 const skip = KEY ? false : 'OPENAI_KEY is not set';
@@ -25,7 +26,7 @@ let TYPE = null;
 const notes = [];
 activate({
   providers: { register: (/** @type {any} */ x) => { TYPE = { ...x, pluginId: 'openai-realtime' }; return () => {}; } },
-  helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } },
+  helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 }, g711 },
   events: { append: async (/** @type {string} */ _s, /** @type {string} */ type, /** @type {any} */ data) => { notes.push([type, data]); } },
 });
 const endpoint = { id: 'live/realtime', provider: 'live', ability: 'realtime', type: 'openai-realtime', name: 'OpenAI', baseUrl: process.env.OPENAI_REALTIME_URL ?? 'https://api.openai.com/v1', headers: {}, tunables: TYPE.tunables, extraBody: {} };
