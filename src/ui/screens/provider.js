@@ -9,6 +9,7 @@ import { sourceLine } from './plugin-install.js';
 import { addressProblem } from '../../core/llm/provider-desc.js';
 import { andList } from '../format.js';
 import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
+import { OFFICIAL_NAMES } from '../../core/official-names.js';
 import { setupOf } from '../../core/llm/setup.js';
 import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
@@ -61,7 +62,12 @@ export async function renderProvider(ctx, id) {
   const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === rec.plugin);
   const desc = src?.provider;
   const installed = (await ctx.plugins.installed())[rec.plugin];
-  const pluginName = src?.name ?? installed?.name ?? rec.plugin;
+  // What a plugin that isn't running is called comes from annai's catalog, never as its id (the second emulator re-check).
+  const catalog = (!src && !installed) || Object.values(p.abilities).some((a) => !types.has(a.type)) ? await officialPlugins().catch(() => null) : null;
+  const catalogName = (/** @type {string | undefined} */ id) => catalog?.find((/** @type {any} */ e) => e.id === id)?.name ?? null;
+  /** A protocol by name: running, else annai's own from the catalog, else nothing to name. @param {string} type @returns {string | null} */
+  const protocolName = (type) => types.get(type)?.name ?? catalogName(/** @type {Record<string, string>} */ (OFFICIAL_NAMES['endpoint-type'])[type]);
+  const pluginName = src?.name ?? installed?.name ?? catalogName(rec.plugin);
   const hasKey = Boolean(await ctx.llm.keyFor(id));
   const status = h('p', { class: 'sub', role: 'status' });
   const title = h('h1', { class: 'title', text: p.name });
@@ -103,10 +109,10 @@ export async function renderProvider(ctx, id) {
   const going = await ctx.llm.removalOf(id);
   const state = await ctx.plugins.installed();
   const protocols = going.protocols.map((x) => String(state[x]?.name ?? x)).sort();
-  const removes = [`Removes its key, its models and their places in roles${going.plugin ? `, and the ${pluginName} plugin` : ''}${protocols.length ? `, with ${andList(protocols)}, which nothing else needs` : ''}.`];
+  const removes = [`Removes its key, its models and their places in roles${going.plugin ? `, and the ${pluginName ?? 'provider'} plugin` : ''}${protocols.length ? `, with ${andList(protocols)}, which nothing else needs` : ''}.`];
   if (!others && installed?.source === 'url') removes.push(`To add it back, you'll need its address again: ${sourceLine(installed).replace(/^From /, '')}.`);
   if (!others && installed?.source === 'file') removes.push(`To add it back, you'll need its file again${installed.file ? ` (${installed.file})` : ''}.`);
-  const view = { ctx, id, tunablesFor, desc };
+  const view = { ctx, id, tunablesFor, desc, protocolName };
   const removing = h('p', { class: 'sub', role: 'status' });
   // What a provider keeps, named as its warning shows: typing a new key or address, or arming a removal (G2).
   const keyWarn = h('p', { class: 'sub' });
@@ -126,8 +132,8 @@ export async function renderProvider(ctx, id) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/models' }, '← Models')),
     title,
-    h('p', { class: 'sub', text: [pluginName !== p.name ? pluginName : null, installed?.source === 'official' ? null : installed ? sourceLine(installed) : null].filter(Boolean).join(' · ') }),
-    src ? null : await missingPlugin(ctx, rec.plugin, installed),
+    h('p', { class: 'sub', text: [pluginName && pluginName !== p.name ? pluginName : null, installed?.source === 'official' ? null : installed ? sourceLine(installed) : null].filter(Boolean).join(' · ') }),
+    src ? null : await missingPlugin(ctx, rec.plugin, installed, catalog),
     h('section', { class: 'panel', 'aria-label': 'Provider' },
       savedField('Name', name, () => name.value.trim() || providerBase(rec).name, async (v) => { title.textContent = (await saveFields({ name: v })).name; }),
       h('h3', { text: 'Connection' }),
@@ -137,7 +143,7 @@ export async function renderProvider(ctx, id) {
       desc?.note || desc?.keyUrl
         ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
-      desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName), p.free, async (on) => {
+      desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName ?? p.name), p.free, async (on) => {
         await ctx.llm.setFree(id, on);
         for (const s of document.querySelectorAll('section.panel')) s.dispatchEvent(new Event('redraw')); // its tools' switches follow (G4)
       }).el : null,
@@ -212,14 +218,13 @@ export async function renderNewProvider(ctx, pluginId) {
 /**
  * What a provider's page says when its plugin isn't running, in words with no plugin id (fixes-ui 16): installed, a link to it;
  * annai's own and missing (a restore brings providers back without theirs), Install it, here; another's, that annai can't fetch it.
- * @param {any} ctx @param {string} plugin @param {any} installed its install state, if any
+ * @param {any} ctx @param {string} plugin @param {any} installed its install state, if any @param {any[] | null} catalog annai's catalog, when it could be loaded
  */
-async function missingPlugin(ctx, plugin, installed) {
+async function missingPlugin(ctx, plugin, installed, catalog) {
   if (installed) {
     return h('p', { class: 'risk-note' }, `Its plugin, ${installed.name}, isn't running, so annai can't say what it offers. `,
       h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, 'Look at it in Settings → Plugins'), '.');
   }
-  const catalog = await officialPlugins().catch(() => null);
   const entry = catalog?.find((/** @type {any} */ p) => p.id === plugin && isProviderEntry(p));
   if (!entry) {
     return h('p', { class: 'risk-note', text: catalog ? "The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider."
@@ -243,7 +248,7 @@ async function missingPlugin(ctx, plugin, installed) {
   return h('div', { class: 'risk-note' }, h('p', { text: `Its plugin, ${entry.name}, isn't installed, so annai can't say what it offers.` }), h('div', { class: 'acts' }, install), status);
 }
 
-/** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
+/** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any, protocolName: (type: string) => string | null }} View */
 
 /**
  * Saves fields into the user's layer of the provider, or of one ability, as it is now (a function works
@@ -275,7 +280,6 @@ async function abilityPanel(view, abilityId, added) {
   const { ctx, id, tunablesFor } = view;
   const rec = (await ctx.llm.config()).providers[id];
   const a = providerOf(rec, tunablesFor).abilities[abilityId];
-  const type = ctx.llm.types().get(a.type);
   const body = h('div', {});
   // replaceChildren, unlike h, would show a null as the word.
   const draw = async () => body.replaceChildren(...(await abilityBody(view, abilityId)).filter((n) => n !== null));
@@ -286,7 +290,7 @@ async function abilityPanel(view, abilityId, added) {
   await draw();
   return h('section', { class: 'panel', 'aria-label': a.name, onredraw: draw },
     h('h2', { class: 'section', text: a.name }),
-    h('p', { class: 'sub', text: [type?.name ?? a.type, added && !a.on ? 'New in the last update' : null].filter(Boolean).join(' · ') }),
+    h('p', { class: 'sub', text: [view.protocolName(a.type), added && !a.on ? 'New in the last update' : null].filter(Boolean).join(' · ') }),
     use.el,
     body);
 }
@@ -302,7 +306,7 @@ async function abilityBody(view, abilityId) {
   const note = desc?.abilities?.[abilityId]?.note ? h('p', { class: 'sub', text: desc.abilities[abilityId].note }) : null;
   if (!a?.on) return [note];
   const type = ctx.llm.types().get(a.type);
-  if (!type) return [installPanel(ctx, a.type, () => ctx.render()), note];
+  if (!type) return [installPanel(ctx, a.type, view.protocolName(a.type), () => ctx.render()), note];
   const saveAbility = saver(ctx, id, tunablesFor, abilityId);
   // Its own address, not the provider's it falls back to.
   const own = String(mergePatch(rec.template?.values?.abilities?.[abilityId] ?? {}, rec.user?.abilities?.[abilityId] ?? {}).baseUrl ?? '');
@@ -380,9 +384,9 @@ async function providerToolSwitches(ctx, models, free, who) {
   });
 }
 
-/** "Install it" for a protocol that isn't running (a setup action, decision 9). @param {any} ctx @param {string} typeId @param {() => unknown} done */
-function installPanel(ctx, typeId, done) {
-  const status = h('p', { class: 'sub', role: 'status', text: `This needs the plugin for "${typeId}", which isn't running.` });
+/** "Install it" for a protocol that isn't running (a setup action, decision 9). @param {any} ctx @param {string} typeId @param {string | null} name its plugin's name, when annai knows it @param {() => unknown} done */
+function installPanel(ctx, typeId, name, done) {
+  const status = h('p', { class: 'sub', role: 'status', text: name ? `This needs the ${name} plugin, which isn't running.` : "This needs a plugin that isn't running." });
   const btn = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
