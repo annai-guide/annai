@@ -74,6 +74,9 @@ test('classify: what Gemini says, as annai\'s kinds', async () => {
   const err = (/** @type {string} */ message, code = 'invalid_request') => JSON.stringify({ error: { message, code } });
   const cases = /** @type {[number, string, string | null][]} */ ([
     [400, JSON.stringify([{ error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT' } }]), 'auth'],
+    // The emulator pass (m2a #7): a wrong key in other words, or said only in its details.
+    [400, JSON.stringify({ error: { code: 400, message: 'Invalid Auth key.', status: 'INVALID_ARGUMENT' } }), 'auth'],
+    [400, JSON.stringify({ error: { code: 400, message: 'Request had invalid credentials.', status: 'INVALID_ARGUMENT', details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_INVALID' }] } }), 'auth'],
     [401, err('Unauthenticated.', 'unauthenticated'), 'auth'],
     [403, err('The caller does not have permission.', 'permission_denied'), 'auth'],
     [429, await fixture('rate-per-minute-429.txt'), 'rate'],
