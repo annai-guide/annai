@@ -1,6 +1,7 @@
 import { VERSION } from '../../app/version.js';
 import { htmlToText } from '../../core/html-text.js';
 import { toBase64 } from '../../core/bytes.js';
+import { anySignal } from '../../core/signals.js';
 
 export const manifest = {
   id: 'web',
@@ -14,6 +15,18 @@ const READER = 'https://r.jina.ai/';
 const SEARCH = 'https://s.jina.ai/';
 const TEXT_MAX = 30_000;
 const FILE_MAX = 10 * 2 ** 20;
+/** Each step's time limit, as the places tools' requests: a site that never answers is left for the next way to read it. */
+export const STEP_MS = { ms: 25_000 };
+
+/** fn with a signal the user's stop and STEP_MS both end; past the limit, an error marked late. @template T @param {any} call @param {(signal: AbortSignal) => Promise<T>} fn */
+async function step(call, fn) {
+  const late = AbortSignal.timeout(STEP_MS.ms);
+  try {
+    return await fn(anySignal([call.signal, late]));
+  } catch (e) {
+    throw late.aborted && !call.signal.aborted ? Object.assign(new Error('late'), { late: true }) : e;
+  }
+}
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -75,14 +88,17 @@ export function activate(annai) {
       // 1. Directly, which works when the site allows browsers (spec §7.2).
       if (url.protocol === 'https:') {
         try {
-          const res = await call.fetch(href, { signal: call.signal, redirect: 'follow' });
-          if (res.ok) return readResponse(res, href, call, from, 'read directly');
-          if (res.status === 404 || res.status === 410) throw Object.assign(new Error(`The site answered ${res.status}: there's no page at ${href}.`), { final: true });
-          why.push(`the site answered ${res.status}`);
+          const got = await step(call, async (signal) => {
+            const res = await call.fetch(href, { signal, redirect: 'follow' });
+            return res.ok ? { read: await readResponse(res, href, call, from, 'read directly') } : { status: res.status };
+          });
+          if ('read' in got) return got.read;
+          if (got.status === 404 || got.status === 410) throw Object.assign(new Error(`The site answered ${got.status}: there's no page at ${href}.`), { final: true });
+          why.push(`the site answered ${got.status}`);
         } catch (e) {
           if (/** @type {any} */ (e)?.final) throw e;
           if (call.signal.aborted) throw e;
-          why.push("the site doesn't let web apps read it directly");
+          why.push(/** @type {any} */ (e)?.late ? "the site didn't answer in time" : "the site doesn't let web apps read it directly");
         }
       } else {
         why.push('an http address can only be read through a reader');
@@ -90,14 +106,17 @@ export function activate(annai) {
       // 2. Through the reader service.
       const k = await key();
       try {
-        const res = await call.fetch(`${READER}${href}`, { signal: call.signal, headers: { accept: 'text/plain', ...(k ? { authorization: `Bearer ${k}` } : {}) } });
-        if (res.ok) return piece(await res.text(), from, `Source: ${href} (read through Jina Reader)`);
-        why.push(res.status === 401 || res.status === 403
+        const got = await step(call, async (signal) => {
+          const res = await call.fetch(`${READER}${href}`, { signal, headers: { accept: 'text/plain', ...(k ? { authorization: `Bearer ${k}` } : {}) } });
+          return { status: res.status, text: res.ok ? await res.text() : '' };
+        });
+        if (got.status >= 200 && got.status < 300) return piece(got.text, from, `Source: ${href} (read through Jina Reader)`);
+        why.push(got.status === 401 || got.status === 403
           ? `Jina Reader asked for a key${k ? ' and refused the one set' : ''} (add a Jina key in Settings → Tools)`
-          : `Jina Reader answered ${res.status}`);
+          : `Jina Reader answered ${got.status}`);
       } catch (e) {
         if (call.signal.aborted) throw e;
-        why.push("Jina Reader couldn't be reached");
+        why.push(/** @type {any} */ (e)?.late ? "Jina Reader didn't answer in time" : "Jina Reader couldn't be reached");
       }
       // 3. The model provider's own fetch tool, if one is on (spec §9.5).
       try {
@@ -144,11 +163,11 @@ export function activate(annai) {
           continue;
         }
         try {
-          const rows = await p.search(i.query, { key: k, fetch: call.fetch, signal: call.signal });
+          const rows = await step(call, (signal) => p.search(i.query, { key: k, fetch: call.fetch, signal }));
           return rows.length ? tsv(['title', 'url', 'snippet'], rows.map((/** @type {any} */ r) => [r.title, r.url, r.snippet])) : `Nothing found for "${i.query}".`;
         } catch (e) {
           if (call.signal.aborted) throw e;
-          why.push(String(/** @type {any} */ (e)?.message ?? e));
+          why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
         }
       }
       throw new Error(`Web search didn't work: ${why.join('; ')}. Or turn on your model's own search in Settings → Tools.`);
