@@ -89,6 +89,24 @@ test('Simulate a trip: the Big Sur sample, as fast as it can go, in a new trip o
   assert.ok(Math.abs(k.agent.now() - Date.now()) < 5000);
 });
 
+test('each simulation makes a trip with a title of its own, so Trips and the Trace can tell them apart (the second emulator re-check)', async () => {
+  const { k, run } = await anApp();
+  const titles = /** @type {string[]} */ ([]);
+  for (let i = 0; i < 3; i++) {
+    await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
+    await run.finished;
+    titles.push(String(run.state?.title));
+  }
+  assert.deepEqual(titles, [
+    'Big Sur on Highway 1: Monterey to Cambria (simulation)',
+    'Big Sur on Highway 1: Monterey to Cambria (simulation 2)',
+    'Big Sur on Highway 1: Monterey to Cambria (simulation 3)',
+  ]);
+  const { listTrips } = await import('../../src/core/scopes.js');
+  const shown = (await listTrips(k.store)).active.map((t) => t.title);
+  for (const t of titles) assert.equal(shown.filter((x) => x === t).length, 1, t);
+});
+
 test("a recorded track: a trip's own points, played again in a new trip, earn the same stamps (choice 12)", async () => {
   const { k, run } = await anApp();
   const { trip: first } = await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
