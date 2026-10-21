@@ -104,7 +104,7 @@ export function anotherAddress(io) {
               return h('li', { class: line.startsWith('✓') ? 'ok' : 'bad', text: line });
             })),
           h('p', { class: 'sub', text: FREE }),
-          found.length ? h('div', { class: 'acts' }, add) : null);
+          ...(found.length ? [h('div', { class: 'acts' }, add)] : []));
       };
       const look = h('button', {
         class: 'btn pri', type: 'button',
