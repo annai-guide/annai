@@ -5,11 +5,26 @@ import { openApp, waitForServiceWorker, pickProvider, tapAdd, startTrip, writeRe
 /** What a screen says that is a literal "null": a missing value written out, or a null child put on the page. @param {import('@playwright/test').Page} page */
 const nulls = (page) => page.evaluate(() => (document.body.innerText.match(/.{0,40}null.{0,40}/gi) ?? []).map((s) => s.replace(/\s+/g, ' ')));
 
+/**
+ * Waits until a screen has drawn what it draws after its first lines (lists, panels): nothing in it is busy, and its
+ * words and parts have stopped changing for a moment (review m6: not a fixed wait). @param {import('@playwright/test').Page} page
+ */
+const drawn = (page) => page.evaluate(() => new Promise((resolve) => {
+  const main = /** @type {Element} */ (document.querySelector('main.view'));
+  /** @type {any} */
+  let t;
+  const quiet = () => { clearTimeout(t); t = setTimeout(() => { if (main.querySelector('[aria-busy="true"]')) quiet(); else { seen.disconnect(); resolve(undefined); } }, 250); };
+  const seen = new MutationObserver(quiet);
+  // Its words and parts, not attributes: Shiori's looks animate theirs for as long as they show.
+  seen.observe(main, { childList: true, subtree: true, characterData: true });
+  quiet();
+}));
+
 /** A screen, opened by its address, once it has drawn. @param {import('@playwright/test').Page} page @param {string} hash */
 async function sweep(page, hash) {
   await page.evaluate((x) => { location.hash = x; }, hash);
   await expect(page.locator('main.view h1').first()).toBeVisible();
-  await page.waitForTimeout(400); // what a screen draws after its first lines (lists, panels)
+  await drawn(page);
   expect(await nulls(page), `${hash} shows "null"`).toEqual([]);
 }
 
@@ -32,7 +47,7 @@ test('no screen says "null": providers, their abilities, Live voice, a look at a
     const live = page.getByLabel('Use Live voice');
     await live.check();
     await expect(savedBy(live)).toHaveText('Saved', { timeout: 30_000 });
-    await page.waitForTimeout(400);
+    await drawn(page);
     expect(await nulls(page)).toEqual([]);
     await page.getByRole('link', { name: '← Models' }).click();
 
@@ -55,11 +70,8 @@ test('no screen says "null": providers, their abilities, Live voice, a look at a
     const t = encodeURIComponent(trip);
     for (const hash of ['#/trips', `#/trip/${t}`, '#/now', '#/plan', `#/trip/${t}/recap`, `#/trip/${t}/replay`, '#/talk', '#/settings', '#/models', '#/voice', '#/shiori',
       '#/tools', '#/mcp', '#/plugins', '#/add', '#/backups', '#/notifications', '#/simulate', '#/trace', '#/updates', '#/experimental', '#/about', '#/welcome']) await sweep(page, hash);
-    const model = await page.evaluate(async () => {
-      location.hash = '#/models';
-      await new Promise((r) => setTimeout(r, 300));
-      return /** @type {HTMLAnchorElement | null} */ (document.querySelector('a[href^="#/models/model?id="]'))?.hash ?? null;
-    });
+    await sweep(page, '#/models');
+    const model = await page.evaluate(() => /** @type {HTMLAnchorElement | null} */ (document.querySelector('a[href^="#/models/model?id="]'))?.hash ?? null);
     if (model) await sweep(page, model);
   } finally {
     await new Promise((resolve) => { site.closeAllConnections?.(); site.close(() => resolve(undefined)); });
