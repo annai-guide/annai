@@ -264,8 +264,6 @@ export function safeId(id) {
  * @property {Record<string, any>} [tunables]  defaults for the type's tunables (spec §9.2)
  * @property {boolean} [tail]  true when build() places request.tail; else annai adds it as the last text
  * @property {(c: CallSpec) => { url: string, headers: Record<string, string>, body: any }} [build]  the HTTP request for annai's request
- * @property {(body: any) => any} [finish]  its body's last look, after the reasoning level's and provider tools' patches (Anthropic drops a
- *   required tool call while the model thinks, which its API refuses)
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
  * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null

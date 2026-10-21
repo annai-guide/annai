@@ -4,7 +4,7 @@
     {
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
-      "version": "0.4.0",
+      "version": "0.3.0",
       "description": "Talks to Anthropic's Messages API and to endpoints that speak it.",
       "category": "developer",
       "keywords": [],
@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 13253,
+      "size": 12672,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -20,8 +20,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "126644eb8e51ba4fc4c6a39133da308f4862cf24de33459d97f1cc614b4ebd02",
-        "index.js": "c42d3578812a52ca0da0d798b9f490236a81aca438797c1d32c5753aa5756f88"
+        "annai-plugin.json": "60b6e645b769967c7b97dfd7102f2c1bb4e4f2f2b0d48fae895dd7bafb29994f",
+        "index.js": "5f04053758ea694cab858bd4bc9ea40f0c40a246ffcb30c264de5c29afe9549f"
       }
     },
     {
@@ -457,7 +457,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -469,7 +469,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 27051,
+      "size": 27201,
       "requires": [
         {
           "id": "chat-completions",
@@ -483,7 +483,7 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "11303dd69457849f5e6a015b0858bc7c972fd966f33912695f182f1e312a9b63",
+        "annai-plugin.json": "77b11ede18a0e8726c10b5b0e19dde13164c11991002ee1b1a03b11d9234a38e",
         "index.js": "31a1cc2a0a534ec00151891c495fc1663ca35b70107c42914bab8909548fe25f"
       }
     },
