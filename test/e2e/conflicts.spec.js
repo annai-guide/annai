@@ -54,14 +54,15 @@ test('a plugin that replaces the avatar asks "It replaces how Shiori looks" at i
     await pickFile(page, { name: 'mountain.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('avatar-replaces')) });
     await expect(page.getByText('It replaces how Shiori looks from annai.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Install', exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: "Install, keep annai's" }).click();
+    await expect(page.getByRole('button', { name: /^Install(, keep annai's| and use it)$/ })).toHaveCount(0); // code from a file: "anyway" (review S4)
+    await page.getByRole('button', { name: "Install anyway, keep annai's" }).click();
     await expect(page.locator('.card', { hasText: 'Mountain look' }).getByText('On', { exact: true })).toBeVisible();
     await expect(dock.locator('.mountain-avatar')).toHaveCount(0);
     await page.goto('/#/plugins/avatar-replaces');
     await expect(page.getByRole('region', { name: 'Names' }).getByText('Not used: how Shiori looks is already provided by annai.')).toBeVisible();
     // Installed again, and used.
     await pickFile(page, { name: 'mountain.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('avatar-replaces')) });
-    await page.getByRole('button', { name: 'Install and use it' }).click();
+    await page.getByRole('button', { name: 'Install anyway and use it' }).click();
     await expect(dock.locator('.mountain-avatar')).toBeVisible();
     await page.goto('/#/plugins/avatar-replaces');
     const names = page.getByRole('region', { name: 'Names' });
@@ -90,8 +91,9 @@ test('a package from another place over an installed one says what it would get;
     // The same package, from a file.
     await pickFile(page, { name: 'clash-tool.zip', mimeType: 'application/zip', buffer: await zipOf(kit) });
     await expect(page.getByText(/not where this one comes from\. Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed\./)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Install, keep its settings and keys' })).toBeVisible();
-    await page.getByRole('button', { name: 'Install fresh' }).click();
+    await expect(page.getByRole('button', { name: 'Install anyway, keep its settings and keys' })).toBeVisible(); // code from elsewhere: "anyway" (review S4)
+    await expect(page.getByRole('button', { name: 'Install fresh', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Install fresh anyway' }).click();
     await expect(page.locator('.card', { hasText: 'Clash tool' }).getByText('On', { exact: true })).toBeVisible();
     await page.goto('/#/plugins/clash-tool');
     await expect(names.getByText('Not used: the tool weather is already provided by Places tools.')).toBeVisible();
