@@ -1,11 +1,14 @@
 import { VERSION } from '../../app/version.js';
 import { McpClient, McpError, mcpToolName, toolOutput } from './client.js';
 import { addressParts, fullAddress, refuseUserinfo } from '../../core/address.js';
-import { SYS_SETTINGS } from '../../core/scopes.js';
+import { SYS_SETTINGS, ME } from '../../core/scopes.js';
 import { forget } from '../../core/forget.js';
 import { withoutSecrets } from '../../core/agent/net.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { anySignal } from '../../core/signals.js';
+import { freePath } from '../../core/photos.js';
+import { readPhotoMeta } from '../../core/photo-meta.js';
+import { fromBase64 } from '../../core/bytes.js';
 
 /**
  * The built-in MCP client plugin (spec §5.1): each MCP server the user adds gives Shiori its tools,
@@ -28,6 +31,8 @@ const NAME = /^[a-z0-9][a-z0-9-]{0,19}$/;
 export const MAX_TOOLS = 100;
 const LIST_MS = 30_000;
 const CALL_MS = 120_000;
+/** The file name ending for each kind of image a server may send. @type {Record<string, string>} */
+const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
 /** How long Remove waits for a server to end its session (fix pass 8c-3). */
 const END_MS = 5_000;
 const HEADER = /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):\s*(.*\S)\s*$/;
@@ -193,9 +198,26 @@ export async function activate(annai) {
       throw new Error(await words(e));
     }
     const out = toolOutput(result);
-    const content = await withoutSecrets(store, out.content);
+    let content = await withoutSecrets(store, out.content);
     if (out.isError) throw new Error(content);
-    return out.images ? { content, images: out.images } : content;
+    if (!out.images) return content;
+    // Each image is kept as a file in the trip, named (spec §4.9), and the model is told its path, so show can show it;
+    // a model that can't see photos gets the path alone, as read gives it.
+    const scope = call?.trip ?? ME;
+    const sees = !call?.model || call.model.input?.includes('image');
+    const images = [];
+    for (const im of out.images) {
+      const bytes = fromBase64(im.data);
+      const meta = readPhotoMeta(bytes);
+      const path = await freePath(annai.files, scope, `${`${server}_${tool}`.replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 60)}.${EXT[im.mediaType] ?? 'png'}`);
+      const entry = await annai.files.write(scope, path, bytes, {
+        author: 'shiori', type: im.mediaType, source: `${server}: ${tool}`, meta: meta.width && meta.height ? { width: meta.width, height: meta.height } : {},
+      });
+      const shown = `/${scope === ME ? 'me' : 'trip'}${path}`;
+      content = content.replace(`An image (${im.mediaType}).`, `An image (${im.mediaType}), kept as ${shown}: show can show it.`);
+      if (sees) images.push({ mediaType: im.mediaType, hash: entry.hash, path: shown });
+    }
+    return images.length ? { content, images } : content;
   };
 
   /** Asks a server for its tools, within the time limit, in words when it fails. @param {McpClient} client @param {string[]} [own] */

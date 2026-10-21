@@ -199,6 +199,7 @@ Removing a trip deletes it from the device and frees its space at once. There is
 - **MCP servers.** Remote servers over HTTP. A built-in MCP client plugin registers each server's tools as `mcp_<server>_<tool>` (model providers refuse dots in tool names).
   - The server must allow browser access (CORS).
   - Auth is a URL plus headers or a bearer token. OAuth for MCP comes later.
+  - An image a tool returns is kept as a file in the trip's `/files/` (`<server>_<tool>.png`), named like any other (§4.9), and the result tells the model its path, so `show` can show it. A model that can't see photos gets the path alone.
 - **Code plugins.** Full-trust ES modules with the same powers as built-ins. The install screen says so plainly: "This plugin gets full access to your trips and API keys."
 - **Model providers** (provider plugins). One provider: its address, how its key is sent, its abilities (chat, transcription, voice, each through a protocol plugin's endpoint type), its models with prices and capabilities, the roles it suggests, its key page and notes. Most are data only, a `provider` description in the manifest and no `entry` (§9.1).
 - **Data-only plugins** (a manifest with no `entry`: a provider, skills, personalities) can't run anything, so their install screen has no full-access warning. A provider's says where a key given to it is sent, by origin: "Keys you give this provider are sent to https://api.openai.com."

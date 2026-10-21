@@ -111,3 +111,35 @@ test('minors 9: a tool call answered as an SSE stream, by a server that checks A
     await mcp.stop();
   }
 });
+
+// The emulator pass (m8 #11, shot 216): the trail map had no path, so show used another photo of the trip.
+test("an MCP tool's image is kept in the trip's files, and Shiori shows it by the path the result gave her", async ({ page }) => {
+  const mcp = await startMcpServer({ token: TOKEN });
+  const llm = await startModelServer({ '/b/v1/messages': [
+    sse(anthropicToolReply([{ name: 'mcp_trail_map', input: {} }])),
+    sse(anthropicToolReply([{ name: 'show', input: { card: { title: 'Trail map', image: '/trip/files/trail_map.png' } } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin);
+    const trip = page.url();
+    await page.goto('/#/mcp');
+    await page.getByLabel('Name', { exact: true }).fill('trail');
+    await page.getByLabel('Address').fill(mcp.url);
+    await page.getByLabel('Key').selectOption('token');
+    await page.getByLabel('Token', { exact: true }).fill(TOKEN);
+    await page.getByRole('button', { name: 'Add server' }).click();
+    await expect(page.getByText('mcp_trail_map')).toBeVisible();
+    await page.goto(trip);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Show me the trail map.');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.convo .card-title')).toHaveText('Trail map');
+    await expect(page.locator('.convo .card img')).toBeVisible();
+    expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('kept as /trip/files/trail_map.png');
+    await page.goto(trip);
+    await expect(page.getByRole('link', { name: /\/files\/trail_map\.png/ })).toBeVisible();
+  } finally {
+    await llm.stop();
+    await mcp.stop();
+  }
+});
