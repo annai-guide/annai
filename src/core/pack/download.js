@@ -3,6 +3,7 @@ import { planFor, guideTitles, hashId, MAX_GUIDES, WIKI_RADIUS_M } from './plan.
 import { answerJSON } from '../answer.js';
 import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
+import { anySignal } from '../signals.js';
 
 /**
  * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them:
@@ -121,7 +122,7 @@ export async function downloadPack(o) {
     const late = new AbortController();
     const t = setTimeout(() => late.abort(new DOMException('No answer in time.', 'TimeoutError')), o.answerMs ?? ANSWER_MS);
     try {
-      return await answerJSON(await o.fetch(url, { ...init, signal: AbortSignal.any([signal, late.signal]) }), where);
+      return await answerJSON(await o.fetch(url, { ...init, signal: anySignal([signal, late.signal]) }), where);
     } catch (e) {
       if (late.signal.aborted && !signal.aborted) throw new Error(`${where} didn't answer in time.`);
       throw e;

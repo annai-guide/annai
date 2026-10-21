@@ -2,6 +2,7 @@ import { typeError, sameOrigin, noRedirect, ProviderError } from './contract.js'
 import { cannotConnect, asProviderError } from './call.js';
 import { speechCost } from './cost.js';
 import { pickOut, formatOf } from '../voice/formats.js';
+import { anySignal } from '../signals.js';
 
 /** A piece of a voice's stream that a player can take: 16-bit PCM at a finite rate (fix pass). @param {any} p */
 const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
@@ -56,7 +57,7 @@ export async function speechCall(c) {
     t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), timeoutMs);
   };
   limit('No answer in time.');
-  const signal = c.signal ? AbortSignal.any([c.signal, timer.signal]) : timer.signal;
+  const signal = c.signal ? anySignal([c.signal, timer.signal]) : timer.signal;
   /** A stream's format and size so far. @type {{ format: string, bytes: number } | null} */
   let sound = null;
   /** @param {string} outcome @param {string} [error] */
