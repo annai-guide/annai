@@ -195,9 +195,11 @@ export async function renderPluginInstall(ctx) {
   const risk = pkg.code ? keysRisk(await keyNames(ctx.plugins)) : null;
   /** @type {[string, { use?: typeof mine, fresh?: boolean }][]} */
   const picks = elsewhere ? [['Install, keep its settings and keys', {}], ['Install fresh', { fresh: true }]]
-    : mine.length ? [['Install and use it', { use: mine }], [owners.join() === 'annai' ? "Install, keep annai's" : "Install, keep what's used now", {}]] : [[risk ? 'Install anyway' : 'Install', {}]];
+    : mine.length ? [['Install and use it', { use: mine }], [owners.join() === 'annai' ? "Install, keep annai's" : "Install, keep what's used now", {}]] : [['Install', {}]];
+  // With the risk said, every way to install says "anyway" (review S4): "Install anyway, keep its settings and keys", "Install fresh anyway".
+  const say = (/** @type {string} */ label) => (risk ? label.replace(/^Install( fresh)?/, '$& anyway') : label);
   /** @type {HTMLButtonElement[]} */
-  const buttons = picks.map(([label, o], i) => h('button', { class: i ? 'btn' : 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, buttons, o) }, label));
+  const buttons = picks.map(([label, o], i) => h('button', { class: i ? 'btn' : 'btn pri', type: 'button', disabled: !needs.ok || Boolean(taken), onclick: () => installPending(ctx, buttons, o) }, say(label)));
   return h('div', { class: 'screen plugin-install' }, back,
     h('h1', { class: 'title', text: `Install ${pkg.name}?` }),
     h('p', { class: 'sub', text: line }),
