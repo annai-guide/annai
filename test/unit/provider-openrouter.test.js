@@ -98,6 +98,12 @@ function made(cfg, ability) {
   return { id: p.id, models: Object.fromEntries(Object.values(cfg.models).filter((m) => m.provider === p.id && m.ability === ability).map((m) => [modelOf(m).providerId, m.id])) };
 }
 
+test("OpenRouter's Claude models don't ask for a required tool call: OpenRouter passes \"required\" on as Anthropic's any, which Claude refuses (review A1)", async () => {
+  const desc = JSON.parse(await readFile(new URL('plugins-official/provider-openrouter/annai-plugin.json', root), 'utf8'));
+  const chat = desc.provider.abilities.chat.models;
+  for (const m of chat) assert.equal(m.tunables?.requireTool === false, m.providerId.startsWith('anthropic/'), m.providerId);
+});
+
 test('the sign-in address carries a PKCE challenge of the stored verifier, and a state (spec §9.8)', async () => {
   const storage = memoryStorage();
   const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage, now: 1000 }));

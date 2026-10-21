@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "api": 1,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -61,6 +61,7 @@
         "models": [
           {
             "providerId": "anthropic/claude-sonnet-5.5",
+            "tunables": { "requireTool": false },
             "name": "Anthropic: Claude Sonnet 5.5",
             "contextWindow": 1000000,
             "maxOutput": 128000,
@@ -122,6 +123,7 @@
           },
           {
             "providerId": "anthropic/claude-haiku-5.5",
+            "tunables": { "requireTool": false },
             "name": "Anthropic: Claude Haiku 5.5",
             "contextWindow": 1000000,
             "maxOutput": 128000,
@@ -198,6 +200,7 @@
           },
           {
             "providerId": "anthropic/claude-opus-5.5",
+            "tunables": { "requireTool": false },
             "name": "Anthropic: Claude Opus 5.5",
             "contextWindow": 1000000,
             "maxOutput": 128000,

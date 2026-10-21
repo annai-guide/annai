@@ -20,7 +20,6 @@ export function activate(annai) {
     tail: true,
     /** @param {any} c */
     build: (c) => build(c),
-    finish,
     /** @param {Response} res */
     read: (res) => read(res, sse, ProviderError),
     classify,
@@ -67,7 +66,6 @@ function build({ endpoint, model, key, tunables: t, request }) {
   if (request.system) body.system = [{ type: 'text', text: request.system, ...(request.cacheTtl ? { cache_control: cacheControl(request.cacheTtl) } : {}) }];
   if (request.tools?.length) body.tools = request.tools.map((/** @type {any} */ x) => ({ name: x.name, description: x.description, input_schema: x.input }));
   if (request.toolChoice) body.tool_choice = { type: 'tool', name: request.toolChoice };
-  else if (request.toolRequired && body.tools) body.tool_choice = { type: 'any' };
   const last = body.messages.at(-1);
   if (request.cacheTtl && last) {
     const blocks = last.content;
@@ -80,16 +78,6 @@ function build({ endpoint, model, key, tunables: t, request }) {
     else if (!last) body.messages.push({ role: 'user', content: [{ type: 'text', text: request.tail }] });
   }
   return { url: join(endpoint.baseUrl, t.path), headers: headersFor(endpoint, key, t), body };
-}
-
-/**
- * The body once the level's patch is in: a required tool call goes while the model thinks (the API refuses forced tool use with
- * thinking on: enabled, adaptive, or an effort that turns it on); the nudge is the backstop then. @param {any} body
- */
-function finish(body) {
-  const thinks = (body.thinking && body.thinking.type !== 'disabled') || body.output_config?.effort !== undefined;
-  if (thinks && body.tool_choice?.type === 'any') delete body.tool_choice;
-  return body;
 }
 
 /**

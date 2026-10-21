@@ -180,6 +180,31 @@ test('a model that takes no photos gets older ones as words, and is passed over 
   await assert.rejects(call(t, { request: asked }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
 });
 
+test('a model that refuses a required tool call is asked again without it, and not asked with it again this session (review A1)', async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const strict = /** @type {any} */ ({
+    type: 'strict', name: 'Strict', pluginId: 'strict',
+    run: async function* (/** @type {any} */ c) {
+      seen.push(c.request.toolRequired === true);
+      if (c.request.toolRequired) throw new ProviderError('bad-request', "Invalid 'tool_choice': 'required' is not supported with this model.", { status: 400 });
+      yield { type: 'tool_call', id: 't1', name: 'speak', input: { text: 'Hi.' } };
+      yield { type: 'stop', reason: 'tool' };
+    },
+  });
+  const s = setup([[]], { types: [['strict', strict]], endpointTypes: ['strict'] });
+  const request = { ...hello, tools: [{ name: 'speak', description: 'Say.', input: { type: 'object' } }], toolRequired: true };
+  const r = await call(s, { request });
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['bad-request', 'ok']);
+  assert.deepEqual(seen, [true, false]);
+  assert.equal(s.bench.until('m-0'), 0, 'not benched: it answered');
+  await call(s, { request });
+  assert.deepEqual(seen, [true, false, false], 'remembered for the session');
+  // Any other bad request is the model's answer as before: no second try.
+  const t = setup([[{ error: 'bad-request', status: 400, message: 'messages: Field required' }], [{ text: 'B.' }]]);
+  assert.deepEqual((await call(t, { request: { ...hello, toolRequired: true } })).attempts.map((a) => a.outcome), ['bad-request', 'ok']);
+});
+
 test('a reply cut off partway is continued by the next model, without repeating it (spec §9.6)', async () => {
   /** @type {any} */
   let seen = null;

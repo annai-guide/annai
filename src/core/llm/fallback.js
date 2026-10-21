@@ -50,7 +50,12 @@ export class Bench {
     this.#until.delete(id);
     this.#why.delete(id);
   }
+  /** Models that refused a required tool call (Request.toolRequired): they aren't asked for one again this run. */
+  unforced = new Set();
 }
+
+/** A refusal of a required tool call, by its words: "tool_choice", or "required" about a tool. @param {string} message */
+const refusesRequired = (message) => /tool_?choice/i.test(message) || (/\brequired\b/i.test(message) && /\btool/i.test(message));
 
 /** A rest longer than this is a provider's day limit, said plainly (not in its billing words). */
 export const LONG_REST_MS = 10 * 60_000;
@@ -295,7 +300,12 @@ export async function callRole(c) {
     const model = rec ? modelOf(rec) : null;
     // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
     const words = Boolean(model && !model.input.includes('image') && !newestPhoto(request) && request.messages.some((m) => m.parts.some((p) => p.type === 'image')));
-    const forModel = (/** @type {Request} */ r) => (words ? photosAsWords(r) : r);
+    const forModel = (/** @type {Request} */ r) => {
+      const sent = words ? photosAsWords(r) : r;
+      if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
+      const { toolRequired, ...rest } = sent;
+      return rest;
+    };
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
     const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
@@ -369,6 +379,11 @@ export async function callRole(c) {
         if (err.kind === 'bad-request' && !plain && formatRefused(err.message) && sendable.messages.some((m) => m.parts.some((p) => p.type === 'audio' && p.mediaType !== 'audio/wav'))) {
           // An audio format the model refused (spec §10.6): the same model again, with WAV, once.
           plain = true;
+          continue;
+        }
+        if (err.kind === 'bad-request' && request.toolRequired && !bench.unforced.has(id) && refusesRequired(err.message)) {
+          // A model or server that refuses a required tool call (review A1): the same model again without it, and never again with it.
+          bench.unforced.add(id);
           continue;
         }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
