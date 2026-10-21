@@ -14,7 +14,6 @@ export const TUNABLES = Object.freeze({
   uploads: true, // photos go to Gemini's Files API once, then by their address (spec §4.8); Gemini deletes them after 48 hours
   audioIn: Object.freeze(['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav']), // Gemini takes every format annai makes (spec §10.6)
   keep: true, // Google keeps the conversation between turns, so each sends only what is new
-  keepDays: 55, // how long Google keeps a turn on a paid key (a free one's: a day); lower it to match AI Studio's setting
 });
 /** An interaction's status at its end, as a stop reason. @type {Record<string, string>} */
 const STOP = { completed: 'end', requires_action: 'tool', incomplete: 'length', budget_exceeded: 'length' };
@@ -42,7 +41,8 @@ export function chatType(annai) {
     name: 'Gemini API',
     tunables: TUNABLES,
     tail: true,
-    keeps: 'Google',
+    // Google keeps a turn up to 55 days on a paid key, a day on a free one: annai tracks each 55 days, and continues a chain 23 hours.
+    keeps: { name: 'Google', days: 55, hours: 23 },
     /** @param {any} c */
     build: (c) => build(c, (m) => blocked.has(m)),
     /** @param {Response} res @param {any} c */

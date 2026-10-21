@@ -146,7 +146,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'net.request') {
     // Each clip's format and size (spec §10.6).
     const clips = d.format ? ` · ${d.format}, ${bytes(d.bytes ?? 0)}` : d.audio?.length ? ` · audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${bytes(a.bytes)}`).join('; ')}` : '';
-    // How much a model request sent, and whether it went after a turn the provider kept, so sent only what was new (G2).
+    // How much it sent, and whether after a kept turn (G2).
     const sent = !d.format && d.bytes ? ` · ${bytes(d.bytes)} sent${d.kept ? ', after a kept turn' : ''}` : '';
     return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms${clips}${sent}`;
   }

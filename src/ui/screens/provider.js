@@ -24,30 +24,22 @@ export function priceLine(prices) {
 /** The free-tier switch's words: who doesn't charge, as the description names it, else the plugin's name. @param {true | string} freeTier @param {string} pluginName */
 export const freeTierLabel = (freeTier, pluginName) => `This key is on the free tier (${typeof freeTier === 'string' ? freeTier : pluginName} doesn't charge)`;
 
-/**
- * What a provider keeps of the conversations (G2), named before a removal or Erase: annai asks for its deletion first,
- * and what it can't delete (offline) stays until it expires. '' when nothing is kept.
- * @param {{ turns: number, waiting: number, days: number, who: string[] }} k @param {boolean} online
- */
-export function keptWords({ turns, waiting, days, who }, online) {
+/** What a provider keeps (G2), named before a removal, or a key change (key). @param {{ turns: number, waiting: number, days: number, who: string[] }} k @param {boolean} online @param {boolean} [key] */
+export function keptWords({ turns, waiting, days, who }, online, key = false) {
   const n = turns + waiting;
   if (!n) return '';
   const name = who.join(' and ') || 'The provider';
+  const what = `${n} turn${n === 1 ? '' : 's'}`;
   const until = `until ${n === 1 ? 'it expires' : 'they expire'}, up to ${days} day${days === 1 ? '' : 's'}`;
-  return online ? `First, annai asks ${name} to delete the ${n} turn${n === 1 ? '' : 's'} of your conversations it keeps; any it can't in 10 seconds, ${name} keeps ${until}.`
-    : `${name} keeps ${n} turn${n === 1 ? '' : 's'} ${until}.`;
+  const how = key ? 'With a new key or address, or Remove key, annai first' : 'First, annai';
+  if (online) return `${how} asks ${name} to delete the ${what} of your conversations it keeps; any it can't in 10 seconds, ${name} keeps ${until}.`;
+  return key ? `Offline, a new key or address, or Remove key, leaves ${name} the ${what} it keeps ${until}.` : `${name} keeps ${what} ${until}.`;
 }
 
-/** keptWords as a line that follows the connection while it is shown. @param {any} ctx @param {{ provider?: string }} [o] */
-export function keptLine(ctx, o = {}) {
+/** keptWords as a line, filled when known. @param {any} ctx @param {{ provider?: string }} [o] @param {boolean} [key] */
+export function keptLine(ctx, o = {}, key = false) {
   const el = h('p', { class: 'sub' });
-  /** @type {any} */
-  let k = null;
-  const show = () => { if (k) el.textContent = keptWords(k, navigator.onLine !== false); };
-  ctx.llm?.keptCount?.(o).then((/** @type {any} */ x) => { k = x; show(); }, () => {});
-  addEventListener('online', show);
-  addEventListener('offline', show);
-  whenGone(el, () => { removeEventListener('online', show); removeEventListener('offline', show); });
+  ctx.llm?.keptCount?.(o).then((/** @type {any} */ k) => { el.textContent = keptWords(k, navigator.onLine !== false, key); }, () => {});
   return el;
 }
 
@@ -90,8 +82,14 @@ export async function renderProvider(ctx, id) {
           // Checked as a description's is: a typed address without its scheme would send the key to annai's own site (fix pass).
           const wrong = url.value.trim() ? addressProblem(url.value.trim()) : null;
           if (wrong) throw new Error(wrong);
-          await saveFields({ baseUrl: url.value.trim(), headers: headers.read() });
-          if (key?.value.trim()) await setKey(ctx.store, id, key.value.trim());
+          const typed = key?.value.trim() ?? '';
+          const write = async () => {
+            await saveFields({ baseUrl: url.value.trim(), headers: headers.read() });
+            if (typed) await setKey(ctx.store, id, typed);
+          };
+          // A new key or address: what the provider keeps is deleted first, with the old one (G2).
+          if (url.value.trim() !== p.baseUrl || (typed && typed !== await ctx.llm.keyFor(id))) await asking(status, () => ctx.llm.reconnect(id, write));
+          else await write();
           ctx.notices.toast('Saved');
           if (location.hash === here) ctx.render(); // not on a screen opened meanwhile
         } catch (err) {
@@ -109,6 +107,17 @@ export async function renderProvider(ctx, id) {
   if (!others && installed?.source === 'url') removes.push(`To add it back, you'll need its address again: ${sourceLine(installed).replace(/^From /, '')}.`);
   if (!others && installed?.source === 'file') removes.push(`To add it back, you'll need its file again${installed.file ? ` (${installed.file})` : ''}.`);
   const view = { ctx, id, tunablesFor, desc };
+  const removing = h('p', { class: 'sub', role: 'status' });
+  /** work, saying meanwhile that the provider is asked to delete what it keeps. @template T @param {HTMLElement} el @param {() => Promise<T>} work @returns {Promise<T>} */
+  const asking = async (el, work) => {
+    const k = await ctx.llm.keptCount({ provider: id });
+    if (k.turns + k.waiting) el.textContent = `Asking ${k.who.join(' and ')} to delete what it keeps…`;
+    try {
+      return await work();
+    } finally {
+      el.textContent = '';
+    }
+  };
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/models' }, '← Models')),
     title,
@@ -127,7 +136,8 @@ export async function renderProvider(ctx, id) {
       desc?.freeTier ? h('p', { class: 'sub', text: 'On, its calls show as free in the Trace, and count nothing toward Spend per day.' }) : null,
       headers.el,
       h('div', { class: 'acts' }, save,
-        hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setKey(ctx.store, id, null); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
+        hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await asking(status, () => ctx.llm.reconnect(id, () => setKey(ctx.store, id, null))); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
+      keptLine(ctx, { provider: id }, true),
       status),
     desc?.roles ? suggestionsPanel(ctx, id, /** @type {any} */ (src)) : null,
     ...await Promise.all(Object.values(p.abilities).map((a) => abilityPanel(view, a.id, (rec.template?.added ?? []).includes(a.id)))),
@@ -136,12 +146,13 @@ export async function renderProvider(ctx, id) {
       keptLine(ctx, { provider: id }),
       h('div', { class: 'acts' }, twoStep('Remove provider', 'Tap again to remove it', async () => {
         try {
-          await ctx.llm.removeProvider(id);
+          await asking(removing, () => ctx.llm.removeProvider(id));
           ctx.go('#/models');
         } catch (e) {
           status.textContent = messageOf(e);
         }
-      }))));
+      })),
+      removing));
 }
 
 /**
@@ -250,12 +261,13 @@ async function abilityBody(view, abilityId) {
   const uploads = type.uploadRequest ? savedCheck('Upload photos to this provider (each expires after 48 hours)', a.tunables?.uploads !== false,
     async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
   // Where the protocol can, the provider keeps the conversation between turns (G2): a tunable too. Off, what it keeps is deleted.
-  const who = typeof type.keeps === 'string' ? type.keeps : providerOf(rec).name;
+  const who = type.keeps?.name ?? providerOf(rec).name;
   const keep = type.keeps ? savedCheck(`Let ${who} keep the conversation between turns: sends less each time.`, a.tunables?.keep !== false, async (on) => {
     tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, keep: on }) })).tunables);
     if (!on) await ctx.llm.forgetEndpoint(`${id}/${abilityId}`);
   }) : null;
   const waiting = keep ? (await ctx.llm.keptCount({ endpoint: `${id}/${abilityId}` })).waiting : 0;
+  const keyless = waiting > 0 && !(await ctx.llm.keyFor(id));
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
   // What to do with a model from before the provider's list gave windows, while there is one.
   const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
@@ -267,12 +279,12 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressProblem(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, (v) => saveAbility({ baseUrl: v }))),
+    }, (v) => (keep ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps there goes first
     h('p', { class: 'sub', text: "Empty: the provider's address. Each setting here is saved as you change it." }),
     uploads?.el ?? null,
     keep?.el ?? null,
-    keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, else up to ${Number(a.tunables?.keepDays) || 1} days, or less if you set it so with ${who} (then lower keepDays here to match). annai deletes them when you remove their trip, this provider or everything (Erase), or turn this off. Off, each turn sends the whole conversation.` }) : null,
-    waiting ? h('p', { class: 'sub', text: `${waiting} deletion${waiting === 1 ? '' : 's'} waiting: annai sends ${waiting === 1 ? 'it' : 'them'} when it can reach ${who}.` }) : null,
+    keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to ${type.keeps.days} days on a paid one. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.` }) : null,
+    waiting ? h('p', { class: 'sub', text: `${waiting} deletion${waiting === 1 ? '' : 's'} waiting: ${keyless ? `annai can't send ${waiting === 1 ? 'it' : 'them'} without this provider's key` : `annai sends ${waiting === 1 ? 'it' : 'them'} when it can reach ${who}`}.` }) : null,
     h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => {
       tunables.show((await saveAbility({ tunables: { ...t, ...(uploads ? { uploads: uploads.input.checked } : {}), ...(keep ? { keep: keep.input.checked } : {}) } })).tunables);
     })),
