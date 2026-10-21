@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply } from './helpers.js';
+import { startModelServer, anthropicToolReply, openApp, waitForServiceWorker } from './helpers.js';
 import { pushKit, fakeSubscription, notificationsOn, setUp, say, away, plus, sse, sleep, APP } from './push-helpers.js';
 
 // The phone's side of a push, which only Chromium's DevTools protocol can drive: it runs in the
@@ -56,4 +56,40 @@ test('a push for a reminder reaches the service worker while annai is away: a no
     await kit.stop();
     await llm.stop();
   }
+});
+
+// The emulator pass: a reminder annai had already given in its catch-up, held back by the phone, popped up 6 minutes later.
+test('a push for a reminder annai no longer has waiting at the relay comes quietly, and annai on screen closes it; one still waiting stays', async ({ page, context }) => {
+  await context.grantPermissions(['notifications'], { origin: APP });
+  await openApp(page);
+  await waitForServiceWorker(page);
+  const trip = await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const id = await createTrip(ws, { title: 'Big Sur' });
+    // /push.json as annai keeps it: only "still" waits at the relay.
+    await ws.write('sys:device', '/push.json', { on: true, items: { [`${id}|still`]: { id: 'x', due: 1, sendAt: 2, hash: 'h', scope: id } } }, { author: 'system' });
+    store.close();
+    return id;
+  });
+  const cdp = await context.newCDPSession(page);
+  const reg = new Promise((resolve) => cdp.on('ServiceWorker.workerRegistrationUpdated', (e) => {
+    const r = e.registrations.find((x) => x.scopeURL === `${APP}/` && !x.isDeleted);
+    if (r) resolve(r.registrationId);
+  }));
+  await cdp.send('ServiceWorker.enable');
+  const push = async (/** @type {string} */ watch) => cdp.send('ServiceWorker.deliverPushMessage', {
+    origin: APP, registrationId: /** @type {string} */ (await reg), data: JSON.stringify({ v: 1, key: `${trip}|${watch}`, title: 'Big Sur', body: `Reminder ${watch}.`, at: 1, scope: trip, watch }),
+  });
+  const showing = () => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => `${n.body}${n.silent ? ' (quiet)' : ''}`).sort());
+  await away(page, true);
+  await push('given');
+  await push('still');
+  await expect.poll(showing, { timeout: 30_000 }).toEqual(['Reminder given. (quiet)', 'Reminder still.']);
+  await away(page, false); // the catch-up reads what came, and closes the stale one
+  await expect.poll(showing, { timeout: 30_000 }).toEqual(['Reminder still.']);
 });

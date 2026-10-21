@@ -237,3 +237,17 @@ test('a "coming up" reminder carries its item\'s start, so the phone can count t
   assert.equal(list.find((r) => r.watch === 'plan:nepenthe:leave')?.start, undefined, '"leave soon" counts no minutes to the start');
   k.live.dispose();
 });
+
+// The emulator pass: a reminder annai had given in its catch-up, held back by the phone, popped up 6 minutes later.
+test('a notification the service worker found stale is a double, whoever said it; a catch-up closes the doubles it reads', async () => {
+  /** @type {string[][]} */
+  const closed = [];
+  const k = await liveKit({ live: false });
+  const fresh = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA, close: (keys) => { closed.push(keys); },
+    news: async () => [{ kind: 'shown', key: `${k.trip}|w-gone`, scope: k.trip, watch: 'w-gone', stale: true, t: at('10:00') }] });
+  await fresh.start();
+  assert.deepEqual(closed, [[`${k.trip}|w-gone`]], 'the catch-up at start read it, and closed it');
+  const doubles = await fresh.pushNews([{ kind: 'shown', key: `${k.trip}|w-old`, scope: k.trip, watch: 'w-old', stale: true, t: at('10:01') }]);
+  assert.deepEqual(doubles, [`${k.trip}|w-old`]);
+  fresh.dispose();
+});
