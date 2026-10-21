@@ -99,6 +99,17 @@ test('a spoken question answered only in plain text is asked again too, as a typ
   assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Nepenthe, on the cliffs.']);
 });
 
+test('a heard segment, once it has come, is not still "speaking": the turn it wakes starts at once (GATHER; the full e2e run)', async () => {
+  const k = await agentKit([[say('Nepenthe.')]], { voice: { playMs: 5, speechIn: ['m-hear'], hears: ['where should we eat'] }, agent: { secondMs: 1000 } });
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-lunch');
+  await until(() => k.requests.length === 1, 10_000);
+  const heard = (await k.events(['heard']))[0];
+  assert.ok(Date.now() - heard.ts < 3000, `${Date.now() - heard.ts} ms after the words came (the cap is 20 s)`);
+  await k.agent.idle();
+});
+
 test('two speaks in one streamed reply: the second plays after the first has listened, never over the open microphone (spec §10.4)', async () => {
   const k = await agentKit([[
     { stream: true, toolCalls: [{ name: 'speak', input: { text: 'First thing.' } }, { name: 'speak', input: { text: 'Second thing.' } }] },

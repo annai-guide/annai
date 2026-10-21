@@ -217,6 +217,7 @@ export class Halves {
         replied: (names) => { this.#asking = names.includes('tell_kokoro'); },
         // A call that saw "Kokoro was stopped": what Koe asks from now on, it asks knowing.
         calling: (context) => { if (context && context.to >= this.#stopped.seq) this.#stopped.on = false; },
+        hold: () => 0, // Koe answers at once (GATHER)
         failed: (why, e) => {
           const both = this.#down('koe', why, e);
           return this.#koeFailed() && (both ?? true);
@@ -571,7 +572,7 @@ export class Halves {
    * with Koe down or off, as one Shiori. @param {Wake[]} wakes @returns {number} ms; Infinity: until something changes
    */
   #hold(wakes) {
-    const speaking = [this.kokoro.state.name, this.koe.state.name, this.live.view.name].includes('hearing');
+    const speaking = this.kokoro.speakingNow || this.koe.speakingNow || this.live.view.name === 'hearing';
     const typing = this.kokoro.typingNow;
     if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
     // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them (review A3).
@@ -655,6 +656,7 @@ export class Halves {
     this.#cue = this.#owed = false;
     this.#unseen = 0;
     this.kokoro.enqueue(w);
+    this.#emitHalves(); // the sign, while it still gathers the user's messages too
   }
 
   /**
