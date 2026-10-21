@@ -632,7 +632,7 @@
     {
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -640,7 +640,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 43666,
+      "size": 44086,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -648,15 +648,15 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "1a09585970fc0bc7231d91b03674cba47ed63768731a1667e87485de3f17ff97",
+        "annai-plugin.json": "389bb3286103bc1b4f37c9e19435702e7678f01a1158b4c113d782e83d25994d",
         "git.js": "b5eede413ecbf8fe9ce8faddc7963d737307db7e398f890fa5acabc25e444b17",
-        "index.js": "83a78439b8567550288a494f9be49b4844d7c993cb22033ad0b03a38239d5ddc"
+        "index.js": "a85fc54e0ee0e89726c385aa63a78161168c683c149c3bf7450f26ad4a17f668"
       }
     },
     {
       "id": "storage-github",
       "name": "GitHub",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -664,7 +664,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 27761,
+      "size": 28158,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -672,9 +672,9 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "546fe667907a10e97e7dce410a933fb3cf76f872f12bca3a84d552959d2ceb9b",
+        "annai-plugin.json": "b127624ac190ba854e3c69d03890d32503828945a56911e6f07046ec72665d76",
         "git.js": "b5eede413ecbf8fe9ce8faddc7963d737307db7e398f890fa5acabc25e444b17",
-        "index.js": "abdd59aac2eddb50365467bbe12a62274951479f2d592d4b0281882934be83b9"
+        "index.js": "0c8d588592423879c625cc8fc961708303b655d74664506d9bbf4fe994b59aab"
       }
     },
     {

@@ -212,6 +212,8 @@ async function repoInfo(g) {
 /** @param {G} g */
 async function check(g) {
   const r = await repoInfo(g);
+  const head = await headOf(g, r.default_branch);
+  if (head && head !== 'empty') refuseForeign(g, (await snapshot(g, head)).files);
   return { note: `Works: annai can reach ${r.full_name}, a private repository.` };
 }
 
@@ -222,6 +224,14 @@ async function headOf(g, branch) {
   if (res.status === 409) return 'empty';
   if (!res.ok) throw await failure(g, res);
   return shaOf(g, (await g.read(res, 'json', 'GitHub'))?.object?.sha);
+}
+
+/** A repository holding anything but annai's own files (and a README and the like) is refused, as Back up now and Save and test both do. @param {G} g @param {Map<string, RemoteFile>} files */
+function refuseForeign(g, files) {
+  const foreign = [...new Set([...files.keys()].map(top))].filter((t) => !OURS.has(t) && !EXTRAS.test(t));
+  if (foreign.length) {
+    throw new g.TargetError('refused', `${g.repo} holds other files (${foreign.slice(0, 3).join(', ')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
+  }
 }
 
 /** A commit and its files, by path. @param {G} g @param {string} sha */
@@ -278,10 +288,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     // A commit made by hand (a README edited on github.com) is no device's backup: the newest backup before it counts (minors 24).
     const remote = BACKUP.test(String(snap.commit?.message ?? '')) ? describe(snap.commit) : (await list(g))[0] ?? describe(snap.commit);
     if (old.has(MANIFEST) && remote.id !== base && remote.device !== g.device.id) throw new E('newer', `There is a newer backup in ${g.repo}.`, { remote });
-    const foreign = [...new Set([...old.keys()].map(top))].filter((t) => !OURS.has(t) && !EXTRAS.test(t));
-    if (foreign.length) {
-      throw new E('refused', `${g.repo} holds other files (${foreign.slice(0, 3).join(', ')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
-    }
+    refuseForeign(g, old);
   }
   // The backup's files, by git's ids.
   const zipped = await g.zip.ZipReader.open(archive.blob);

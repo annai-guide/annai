@@ -303,6 +303,9 @@ test('the wrong repository, token or address is refused in plain words, before a
     await assert.rejects(type.put(ctx(fj, { repo: 'public' }), a, opts()), refused('refused', /public/));
     await assert.rejects(type.check(ctx(fj, { repo: 'old' })), refused('refused', /archived/));
     await assert.rejects(type.put(ctx(fj, { repo: 'code' }), a, opts()), refused('refused', /holds other files \(package\.json, src\)/));
+    // Save and test says what Back up now will (the second emulator re-check: it said "Works" for a repository holding code).
+    await assert.rejects(type.check(ctx(fj, { repo: 'code' })), refused('refused', /holds other files \(package\.json, src\)/));
+    assert.match((await type.check(ctx(fj, { repo: 'readme' }))).note, /^Works/); // a README, a licence and a .gitignore are fine
     await assert.rejects(type.check(ctx(fj, { token: 'f'.repeat(40) })), refused('auth', new RegExp(`${host} didn't accept the access token`)));
     await assert.rejects(type.check(ctx(fj, { repo: 'nothing' })), refused('missing', /Create a private repository named nothing/));
     await assert.rejects(type.put(ctx(fj, { token: READ_TOKEN }), a, opts()), refused('refused', /isn't allowed to change me\/annai-backup.*Read and write/));
