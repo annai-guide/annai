@@ -322,3 +322,28 @@ test("M6 fix: a backup place's bug counts against the plugin that registered its
   await assert.rejects(d.backups.check(id));
   assert.deepEqual([...new Set(d.logged.filter((e) => e.type === 'plugin.error').map((e) => e.actor))], ['plugin:evil']);
 });
+
+// The emulator pass (m9 #35): Back up now in airplane mode blamed the server's browser access (CORS), and waited 15 minutes.
+test("a backup that fails while this phone is offline says it is offline, not that the place may block web apps, and tries again once it's back", async () => {
+  let online = true;
+  const place = memoryPlace();
+  const d = await device(place, 'iPhone', undefined, () => online);
+  const id = await placeOn(d);
+  await d.backups.check(id);
+  online = false;
+  place.failNext(new TypeError('Failed to fetch'));
+  await assert.rejects(d.backups.backUp(id), /offline/);
+  // Save and test says it too.
+  await assert.rejects(d.backups.check(id), { message: "This phone is offline, so annai couldn't reach this place." });
+  const rec = (await d.backups.list()).find((t) => t.id === id);
+  assert.equal(rec?.hold?.kind, 'error');
+  const hold = /** @type {any} */ (rec?.hold);
+  assert.equal(hold.message, "This phone is offline, so annai couldn't reach this place. annai tries again once it's back online.");
+  assert.equal(hold.needsYou, false);
+  assert.equal(hold.retryAt, d.now(), 'no 15-minute wait: due again as soon as the connection is');
+  // Online, an error is the place's own words, and waits as before.
+  online = true;
+  place.failNext(new TypeError('Failed to fetch'));
+  await assert.rejects(d.backups.backUp(id), /Failed to fetch/);
+  assert.ok(/** @type {any} */ ((await d.backups.list()).find((t) => t.id === id)?.hold).retryAt > d.now());
+});

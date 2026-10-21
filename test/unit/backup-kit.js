@@ -78,8 +78,8 @@ export function memoryPlace() {
   };
 }
 
-/** A device whose registry has the place's type. @param {{ type: any }} place @param {string} [label] @param {(type: string, o?: { keepOff?: boolean }) => Promise<void>} [ensure] */
-export async function device(place, label = 'iPhone', ensure) {
+/** A device whose registry has the place's type. @param {{ type: any }} place @param {string} [label] @param {(type: string, o?: { keepOff?: boolean }) => Promise<void>} [ensure] @param {() => boolean} [online] */
+export async function device(place, label = 'iPhone', ensure, online = () => true) {
   /** @type {any[]} */
   const logged = [];
   const registry = new Registry({ log: (ev) => { logged.push(ev); } });
@@ -88,7 +88,7 @@ export async function device(place, label = 'iPhone', ensure) {
   await ensureBaseScopes(ws);
   registry.add('memory-place', 'storage-type', place.type);
   let clock = 2_000_000;
-  const backups = createBackups({ store, ws, registry, app: 'test', label, noun: 'phone', now: () => clock, ...(ensure ? { ensure } : {}) });
+  const backups = createBackups({ store, ws, registry, app: 'test', label, noun: 'phone', now: () => clock, online, ...(ensure ? { ensure } : {}) });
   const trip = await createTrip(ws, { title: 'Big Sur' });
   return { store, ws, registry, backups, trip, logged, now: () => clock, later: (/** @type {number} */ ms) => { clock += ms; } };
 }

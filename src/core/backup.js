@@ -56,11 +56,12 @@ export function retryDelay(count) {
 
 /**
  * @param {{ store: Store, ws: Workspace, registry: Registry, app: string, label: string, noun?: string,
- *   ensure?: (type: string, o?: { keepOff?: boolean }) => Promise<void>, now?: () => number }} deps
+ *   ensure?: (type: string, o?: { keepOff?: boolean }) => Promise<void>, now?: () => number, online?: () => boolean }} deps
  *   label: what this device is called in its backups ("iPhone"); noun: what the user calls it ("phone");
- *   ensure: makes a kind of place available, installing its plugin (spec §5.3); keepOff: one the user turned off stays off
+ *   ensure: makes a kind of place available, installing its plugin (spec §5.3); keepOff: one the user turned off stays off;
+ *   online: whether the browser says this device has a connection
  */
-export function createBackups({ store, ws, registry, app, label, noun = 'device', ensure = async () => {}, now = () => Date.now() }) {
+export function createBackups({ store, ws, registry, app, label, noun = 'device', ensure = async () => {}, now = () => Date.now(), online = () => true }) {
   /** @type {Set<() => void>} */
   const listeners = new Set();
   /** @type {Map<string, Progress & { stop: AbortController, reason: 'auto' | 'user' | 'download' }>} */
@@ -145,11 +146,15 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   async function call(rec, what, fn) {
     const type = typeOf(rec.type);
     if (!type) throw new TargetError('setup', `The plugin for ${rec.name} isn't running. Open this backup place in Settings → Backups to turn it on.`);
+    // Offline, no place answers, whatever it would guess why (browser access, its address): said so, and tried again once back.
+    const offline = () => new TargetError('other', `This ${noun} is offline, so annai couldn't reach this place.`, { retryAt: now() });
+    if (!online()) throw offline();
     try {
       return await fn(type, { config: { ...rec.config }, secret: await targetSecret(store, rec.id), device: { id: await deviceId(ws), label }, app });
     } catch (e) {
       // A stop is a stop, in annai's own words: whatever the plugin's error said may hold a secret.
       if (stopped(e)) throw new DOMException('The backup was stopped.', 'AbortError');
+      if (!online()) throw offline();
       const cleaned = await clean(e, rec);
       // A bug counts against the plugin (spec §5.5), told without any secret its message echoed.
       const by = registry.owner('storage-type', type.type)?.pluginId; // the plugin that registered it, never a field it carries
@@ -170,7 +175,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     else if (e.kind === 'large') h = { kind: 'large', bytes: e.bytes ?? 0, at };
     else {
       const count = rec.hold?.kind === 'error' ? rec.hold.count + 1 : 1;
-      h = { kind: 'error', message: e.message, at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
+      h = { kind: 'error', message: online() ? e.message : `${e.message} annai tries again once it's back online.`, at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
     }
     await setTarget(ws, rec.id, { hold: h }).catch(() => {});
     if (h.kind === 'newer') await log('backup.newer', { target: rec.id, type: rec.type, remote: h.remote });
