@@ -195,7 +195,7 @@ export class Voice {
   unlock() {
     if (this.#unlocked) return Promise.resolve(true);
     // One at a time: a tap is pointerup, touchend and click, and a tap on Shiori unlocks too; loading the silent clip
-    // again over itself wedges WebKit on Linux (the welcome's keyboard test). One that never starts holds taps for 3 s at most.
+    // again over itself wedges WebKit on Linux (the welcome's keyboard test). Taps wait on one still starting, however long (review m5).
     if (this.#trying) return this.#trying;
     /** @type {Promise<boolean> | boolean | undefined} */
     let tried;
@@ -211,11 +211,7 @@ export class Voice {
       return Boolean(ok);
     }, () => false));
     this.#trying = trying;
-    const t = setTimeout(() => { if (this.#trying === trying) this.#trying = null; }, 3000);
-    trying.then(() => {
-      clearTimeout(t);
-      if (this.#trying === trying) this.#trying = null;
-    });
+    trying.then(() => { if (this.#trying === trying) this.#trying = null; });
     return trying;
   }
 
