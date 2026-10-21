@@ -1033,7 +1033,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 
 Reference: mockups draft 6.
 
-- **The dock** sits at the bottom of every screen: camera · Shiori · type. Voice layouts, such as driving, enlarge the dock; they never move it. While Kokoro works behind Koe (§6.8), a sign says "Kokoro is working", with Stop, which ends Kokoro's turn alone. While a live session's microphone is open (§10.8), the voice chip says "Listening live"; while one is open for typing, "· live".
+- **The dock** sits at the bottom of every screen: camera · Shiori · type. Voice layouts, such as driving, enlarge the dock; they never move it. On a short screen (an iPhone SE, a phone on its side) it is compact, and voice enlarges it from there. Every screen scrolls clear of it. While Kokoro works behind Koe (§6.8), a sign says "Kokoro is working", with Stop, which ends Kokoro's turn alone. While a live session's microphone is open (§10.8), the voice chip says "Listening live"; while one is open for typing, "· live".
 - **One Shiori per screen.** Speech bubbles carry a "SHIORI" label instead of a second avatar.
 - **The top bar** shows the trip name (tap to switch trips) and a menu: Plan, Conversation, Files, Trace, Settings.
 - **Screens:**
