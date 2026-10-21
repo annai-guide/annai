@@ -1,6 +1,7 @@
 import { normPath } from '../paths.js';
 import { ME } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
+import { anySignal } from '../signals.js';
 
 /**
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then each name's owner among running
@@ -24,6 +25,13 @@ export const ALWAYS_ON = Object.freeze(['show', 'ask', 'wait', 'sleep', 'tell_ko
 export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 /** The most of a tool's result the model sees at once; the rest is cut, with a note. */
 export const RESULT_MAX = 40_000;
+/**
+ * How long one tool call may take before the model is told it didn't finish and the turn goes on (a mirror that
+ * never answered held a turn 7 minutes). Above the longest a tool of annai's own allows itself, an MCP call's 2
+ * minutes, so a tool's own words come first. What waits for the user, and task's helper, has none.
+ */
+export const TOOL_MS = { ms: 150_000 };
+const UNTIMED = [...TALK, 'task'];
 
 /** What is wrong with a tool, or null. @param {any} t @returns {string | null} */
 export function checkTool(t) {
@@ -76,24 +84,30 @@ function cut(s) {
 
 /**
  * Runs a tool. Errors become results the model sees (spec §6.7); a stop by the user ends a tool
- * that hangs; a huge result is cut.
+ * that hangs, and so does its time limit, which also stops its requests; a huge result is cut.
  * @param {Tool} tool @param {any} input @param {ToolCall} call @returns {Promise<{ output: ToolOutput, ms: number }>}
  */
 export async function runTool(tool, input, call) {
   const started = Date.now();
+  const limit = UNTIMED.includes(tool.name) ? 0 : TOOL_MS.ms;
+  const late = new AbortController();
   /** @type {Promise<never>} */
   const stopped = new Promise((_, reject) => {
     const why = () => reject(Object.assign(new Error('Stopped by the user.'), { stopped: true }));
     if (call.signal.aborted) why();
     else call.signal.addEventListener('abort', why, { once: true });
+    late.signal.addEventListener('abort', () => reject(new Error(`${tool.name} didn't finish in time, so annai stopped waiting for it. Try again later, or answer without it.`)));
   });
+  const timer = limit ? setTimeout(() => late.abort(), limit) : undefined;
   /** @type {ToolOutput} */
   let output;
   try {
-    output = normalize(await Promise.race([Promise.resolve().then(() => tool.run(input, call)), stopped]));
+    output = normalize(await Promise.race([Promise.resolve().then(() => tool.run(input, limit ? { ...call, signal: anySignal([call.signal, late.signal]) } : call)), stopped]));
   } catch (e) {
     const err = /** @type {any} */ (e);
     output = { content: err?.stopped ? 'Stopped by the user.' : `Error: ${err?.message ?? err}`, isError: true };
+  } finally {
+    clearTimeout(timer);
   }
   return { output: { ...output, content: cut(output.content) }, ms: Date.now() - started };
 }
