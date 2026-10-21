@@ -50,6 +50,18 @@ test('errors are plain and say what to do', async () => {
   await assert.rejects(run('write', { path: '/trip/plan/bad.json', content: { title: 3 } }), /doesn't match its format/);
 });
 
+test("a failed write, edit or patch says plainly that the file wasn't changed (emulator pass: she said she had moved plan items whose edits had failed)", async () => {
+  const { ws, trip, run } = await setup();
+  await run('write', { path: '/trip/plan/drive.json', content: { id: 'drive', title: 'Drive south', fixed: false } });
+  const before = await ws.readText(trip, '/plan/drive.json');
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"title": "Drive north"', new: '"title": "Drive later"' }), /^Error: That text isn't in \/trip\/plan\/drive\.json, so it wasn't changed\./);
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"', new: "'" }), /appears \d+ times in \/trip\/plan\/drive\.json, so it wasn't changed\./);
+  await assert.rejects(run('edit', { path: '/trip/plan/none.json', old: 'a', new: 'b' }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
+  await assert.rejects(run('patch', { path: '/trip/plan/none.json', changes: { title: 'x' } }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
+  await assert.rejects(run('write', { path: '/trip/plan/drive.json', content: { title: 3 } }), /doesn't match its format, so it wasn't written:/);
+  assert.equal(await ws.readText(trip, '/plan/drive.json'), before);
+});
+
 test('list and search answer in TSV with the paths Shiori uses', async () => {
   const { run } = await setup();
   await run('write', { path: '/trip/notes/a.md', content: 'Bixby Bridge at sunset\nthen dinner' });
