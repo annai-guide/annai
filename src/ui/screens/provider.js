@@ -105,9 +105,7 @@ export async function renderProvider(ctx, id) {
   const removes = [`Removes its key, its models and their places in roles${going.plugin ? `, and the ${pluginName} plugin` : ''}${protocols.length ? `, with ${andList(protocols)}, which nothing else needs` : ''}.`];
   if (!others && installed?.source === 'url') removes.push(`To add it back, you'll need its address again: ${sourceLine(installed).replace(/^From /, '')}.`);
   if (!others && installed?.source === 'file') removes.push(`To add it back, you'll need its file again${installed.file ? ` (${installed.file})` : ''}.`);
-  /** What follows the free-tier switch as it changes: each paid-only tool's switch (G4). @type {Map<string, (free: boolean) => void>} */
-  const onFree = new Map();
-  const view = { ctx, id, tunablesFor, desc, onFree, freeName: typeof desc?.freeTier === 'string' ? desc.freeTier : pluginName };
+  const view = { ctx, id, tunablesFor, desc };
   const removing = h('p', { class: 'sub', role: 'status' });
   // What a provider keeps, named as its warning shows: typing a new key or address, or arming a removal (G2).
   const keyWarn = h('p', { class: 'sub' });
@@ -140,7 +138,7 @@ export async function renderProvider(ctx, id) {
         : null,
       desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName), p.free, async (on) => {
         await ctx.llm.setFree(id, on);
-        for (const f of onFree.values()) f(on);
+        for (const s of document.querySelectorAll('section.panel')) s.dispatchEvent(new Event('redraw')); // its tools' switches follow (G4)
       }).el : null,
       desc?.freeTier ? h('p', { class: 'sub', text: 'On, its calls show as free in the Trace, and count nothing toward Spend per day.' }) : null,
       headers.el,
@@ -206,10 +204,7 @@ export async function renderNewProvider(ctx, pluginId) {
   return screen;
 }
 
-/**
- * @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any, onFree: Map<string, (free: boolean) => void>, freeName: string }} View
- *   onFree: what follows the free-tier switch; freeName: who doesn't charge on it
- */
+/** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
 
 /**
  * Saves fields into the user's layer of the provider, or of one ability, as it is now (a function works
@@ -249,7 +244,7 @@ async function abilityPanel(view, abilityId, added) {
     await draw();
   });
   await draw();
-  return h('section', { class: 'panel', 'aria-label': a.name },
+  return h('section', { class: 'panel', 'aria-label': a.name, onredraw: draw },
     h('h2', { class: 'section', text: a.name }),
     h('p', { class: 'sub', text: [type?.name ?? a.type, added && !a.on ? 'New in the last update' : null].filter(Boolean).join(' · ') }),
     use.el,
@@ -296,7 +291,7 @@ async function abilityBody(view, abilityId) {
     for (const { k, el } of choices) for (const input of el.querySelectorAll('input')) input.checked = input.type === 'radio' ? input.value === String(t[k]) : t[k] !== false;
   };
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
-  const tools = await providerToolSwitches(view, abilityId, models, providerOf(rec).free);
+  const tools = await providerToolSwitches(ctx, models, providerOf(rec).free, typeof desc?.freeTier === 'string' ? desc.freeTier : providerOf(rec).name);
   // What to do with a model from before the provider's list gave windows, while there is one.
   const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
   const speech = a.kind === 'transcription' ? 'in' : a.kind === 'voice' ? 'out' : null;
@@ -331,31 +326,17 @@ async function abilityBody(view, abilityId) {
 }
 
 /**
- * The switches of the provider's own tools its models offer with words for this page (G4: "Let Gemini search Google"): the
- * same switch as Settings → Tools, under it its note. One that is paid only is off while the key is on the free tier, saying why.
- * @param {View} view @param {string} abilityId @param {import('../../core/llm/config.js').Model[]} models @param {boolean} free
+ * Switches for the provider's own tools its models offer with words for this page (G4: "Let Gemini search Google"), the same
+ * as Settings → Tools'. One that is paid only is off while the key is on the free tier, saying why. @param {any} ctx
+ * @param {import('../../core/llm/config.js').Model[]} models @param {boolean} free @param {string} who doesn't charge on it
  */
-async function providerToolSwitches({ ctx, onFree, freeName }, abilityId, models, free) {
-  const offered = [...new Map(models.flatMap((m) => m.providerTools ?? []).filter((t) => t.label).map((t) => [t.id, t])).values()];
-  if (!offered.length) return [];
+async function providerToolSwitches(ctx, models, free, who) {
   const switches = await toolSwitches(ctx.ws);
-  return offered.flatMap((t) => {
-    const key = `provider:${t.id}`;
-    let on = switches[key] !== false;
-    const sw = savedCheck(/** @type {string} */ (t.label), on, async (/** @type {boolean} */ v) => {
-      await setToolSwitch(ctx.ws, key, v);
-      on = v;
-    });
-    const line = h('p', { class: 'sub' });
-    const show = (/** @type {boolean} */ isFree) => {
-      const out = Boolean(t.paidOnly && isFree);
-      sw.input.disabled = out;
-      sw.input.checked = on && !out;
-      line.textContent = out ? `${freeName} doesn't offer ${t.kind === 'other' ? t.name : t.kind} on the free tier.` : t.note ?? '';
-    };
-    show(free);
-    onFree.set(`${abilityId}/${t.id}`, show);
-    return [sw.el, line];
+  return [...new Map(models.flatMap((m) => m.providerTools ?? []).filter((t) => t.label).map((t) => [t.id, t])).values()].flatMap((t) => {
+    const out = Boolean(t.paidOnly && free);
+    const sw = savedCheck(String(t.label), !out && switches[`provider:${t.id}`] !== false, (/** @type {boolean} */ v) => setToolSwitch(ctx.ws, `provider:${t.id}`, v));
+    sw.input.disabled = out;
+    return [sw.el, h('p', { class: 'sub', text: out ? `${who} doesn't offer ${t.kind === 'other' ? t.name : t.kind} on the free tier.` : t.note ?? '' })];
   });
 }
 

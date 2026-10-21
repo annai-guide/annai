@@ -168,3 +168,8 @@ test('housekeeping reads the conversation by type: location points and the like 
   const untyped = queries.filter((q) => !(Array.isArray(q.types) && q.types.length));
   assert.deepEqual(untyped, []);
 });
+
+test("warm housekeeping, whose request still offers the model's own search (so the cached prefix holds), asks for no search (G4)", async () => {
+  const { instruction } = await import('../../src/core/agent/compaction.js');
+  assert.match(instruction('event 12'), /Don't search the web now\./);
+});

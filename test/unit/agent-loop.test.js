@@ -197,6 +197,32 @@ test("a reply grounded in the provider's own search is logged for the conversati
   assert.ok(JSON.stringify(k.requests.at(-1).messages).includes('Open till 10.'));
 });
 
+test('a search whose replies are shown as written (Google Search): one Shiori is told so while it is on, in the same words every turn, so she writes that reply for the user; Kokoro, behind Koe, is not (G4)', async () => {
+  const search = { id: 'g-search', name: 'Google Search', kind: 'search', patch: {}, paidOnly: true, shows: 'From Google Search' };
+  const words = 'A reply in which you search with Google Search is shown to the user as you write it, under "From Google Search", with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.';
+  const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+  const k = await agentKit([[sleep, sleep]], { models: [{ providerTools: [search] }] });
+  await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  k.agent.send('And tomorrow?');
+  await k.agent.idle();
+  assert.ok(k.requests[0].system.endsWith(`# Google Search\n${words}`));
+  assert.equal(k.requests[1].system, k.requests[0].system, 'stable, so the cached prefix holds');
+  // Switched off in Settings → Tools: no search, no words about it.
+  const { setToolSwitch } = await import('../../src/core/agent/tools.js');
+  await setToolSwitch(k.ws, 'provider:g-search', false);
+  k.agent.send('Thanks.');
+  await k.agent.idle();
+  assert.ok(!k.requests[2].system.includes(words));
+  const kokoro = await agentKit([[sleep]], { models: [{ providerTools: [search] }], agent: { half: { name: 'kokoro', tag: TALK_TAG, role: 'main', registryTools: true, voice: () => false, logVoice: true, housekeeping: true, rules: () => 'kokoro' } } });
+  await kokoro.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
+  kokoro.agent.send('Is Nepenthe open?');
+  await kokoro.agent.idle();
+  assert.deepEqual(kokoro.requests[0].providerTools, { kinds: ['search'], off: [] });
+  assert.ok(!kokoro.requests[0].system.includes(words), 'Koe mode is as it was');
+});
+
 /** @param {any} k @param {string} scope @param {string[]} types */
 const eventsIn = (k, scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types }));
 /** The user texts a request sends. @param {any} request */

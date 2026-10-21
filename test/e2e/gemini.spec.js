@@ -221,7 +221,10 @@ async function cardShown(page) {
 
 test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "From Google Search" with the words as Google gave them, the links plain and the suggestions in a sandboxed frame; the provider page\'s switch, off with the free tier', async ({ page }) => {
   let searched = 0;
-  const s = await startGeminiServer({ key: KEY, replies: [(b) => (offered(b).includes('google_search') && !searched++ ? { text: GROUNDED, search: SEARCH } : { calls: [{ name: 'sleep', input: {} }] })] });
+  // Shiori searches, writes her answer for the user (shown as written), and says a shorter one.
+  const s = await startGeminiServer({ key: KEY, replies: [(b) => (offered(b).includes('google_search') && !searched++
+    ? { text: GROUNDED, search: SEARCH, calls: [{ name: 'speak', input: { text: 'It closes at ten tonight.' } }, { name: 'sleep', input: {} }] }
+    : { calls: [{ name: 'sleep', input: {} }] })] });
   try {
     await geminiTrip(page, s.url);
     // The switch: on by default, with what it costs and what Google keeps.
@@ -234,16 +237,30 @@ test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "F
     await startTrip(page, 'Big Sur');
     await type(page, 'Is Nepenthe open tonight?');
     await cardShown(page);
+    await expect(page.locator('.convo .shiori p').filter({ hasText: 'It closes at ten tonight.' })).toBeVisible();
     const asked = s.bodies().find((b) => offered(b).includes('google_search'));
     expect(asked, "Shiori's turn offers Google's search").toBeTruthy();
     expect(offered(asked)).not.toContain('web_search');
+    expect(asked.system_instruction, 'she is told the reply that searched is shown as written').toContain('A reply in which you search with Google Search is shown to the user as you write it, under "From Google Search", with its sources. Write that reply for the user, with no private notes in it.');
+    // A height from anything but its frame changes nothing; a frame that loads a second time goes, and the card stays.
+    const frame = page.locator('.convo .grounded iframe');
+    const tall = (await frame.boundingBox())?.height;
+    await page.evaluate(() => new Promise((done) => {
+      addEventListener('message', function after(e) { if (e.data === 'after') { removeEventListener('message', after); done(undefined); } });
+      postMessage({ height: 300 }, '*');
+      postMessage('after', '*');
+    }));
+    expect((await frame.boundingBox())?.height).toBe(tall);
+    await page.evaluate(() => document.querySelector('.convo .grounded iframe')?.setAttribute('src', '/src/ui/grounding.html'));
+    await expect(frame).toHaveCount(0);
+    await expect(page.locator('.convo .grounded p')).toHaveText(GROUNDED);
     // The next turn continues the one Google kept, its search and all; the card goes to no model.
     await type(page, 'Thanks!');
     await expect.poll(() => s.bodies().length, { timeout: 30_000 }).toBeGreaterThan(s.bodies().indexOf(asked) + 1);
     const next = s.bodies().at(-1);
     expect(next.previous_interaction_id).toBeTruthy();
-    expect(JSON.stringify(next)).not.toContain('From Google Search');
-    expect(JSON.stringify(next)).not.toContain('attribution');
+    expect(JSON.stringify(next.input)).not.toContain('From Google Search');
+    expect(JSON.stringify(next.input)).not.toContain('attribution');
     await expect(page.locator('.convo .grounded')).toHaveCount(1);
 
     // The free tier: the switch is off, and says why; Shiori's turns no longer offer it.
@@ -267,6 +284,7 @@ test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "F
     await expect.poll(() => s.bodies().length, { timeout: 30_000 }).toBeGreaterThan(before);
     expect(s.bodies().slice(before).some((b) => offered(b).includes('google_search')), 'a free key never offers it').toBe(false);
     expect(offered(s.bodies().at(-1))).toContain('web_search');
+    expect(s.bodies().at(-1).system_instruction).not.toContain('is shown to the user as you write it');
     // Off the free tier again, the switch is as it was.
     await page.evaluate(() => { location.hash = '#/models'; });
     await page.locator('a.card', { hasText: 'Google Gemini' }).click();
@@ -308,6 +326,7 @@ test('Google Search with Koe on and the halves\' notes hidden: Kokoro\'s grounde
     await expect(page.getByLabel('Show what the halves tell each other')).not.toBeChecked();
     await expect(page.locator('.convo .system-line')).toHaveCount(0);
     expect(s.bodies().filter((b) => offered(b).includes('tell_kokoro')).every((b) => !offered(b).includes('google_search')), "Koe's quick turns never search").toBe(true);
+    expect(s.bodies().find((b) => offered(b).includes('google_search')).system_instruction, 'Kokoro writes for Koe, as before').not.toContain('is shown to the user as you write it');
   } finally {
     await s.close();
   }

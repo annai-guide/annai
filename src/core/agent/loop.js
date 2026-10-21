@@ -9,7 +9,7 @@ import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, COLD_SYSTEM, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
-import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint } from './context.js';
+import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
 import { tracedFetch, withoutSecrets } from './net.js';
 import { webVia } from './via.js';
@@ -760,11 +760,15 @@ export class Agent {
   async #toolsNow() {
     const switches = await toolSwitches(this.ws);
     const web = (await readAppSettings(this.ws)).web ?? {};
-    const via = this.#half.registryTools ? webVia({ web, model: await this.#mainModel(), switches }) : { hide: [], kinds: [], off: [] };
+    const model = this.#half.registryTools ? await this.#mainModel() : null;
+    const via = this.#half.registryTools ? webVia({ web, model, switches }) : { hide: [], kinds: [], off: [] };
     const hidden = [...via.hide, ...((await this.#half.hidden?.()) ?? [])];
     const tools = toolList({ registry: this.#half.registryTools ? this.registry : NO_TOOLS, switches, loop: this.#loopTools }).filter((t) => !hidden.includes(t.name));
     const providerTools = via.kinds.length ? { providerTools: { kinds: via.kinds, off: via.off } } : {};
-    return { tools, via, providerTools };
+    // A search whose replies are shown as written (Google Search, G4): one Shiori writes them for the user, while it is on.
+    const t = this.#rules() === 'one' ? model?.providerTools.find((x) => x.shows && via.kinds.includes(x.kind) && !via.off.includes(x.id)) : undefined;
+    const shows = t ? `\n\n# ${t.name}\nA reply in which you search with ${t.name} is shown to the user as you write it, under "${t.shows}", with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.` : '';
+    return { tools, via, providerTools, shows };
   }
 
   /**
@@ -844,12 +848,12 @@ export class Agent {
 
   /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings */
   async #warmSummary(marker, settings) {
-    const { tools, providerTools } = await this.#toolsNow();
+    const { tools, providerTools, shows } = await this.#toolsNow();
     if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = await this.#sendable();
     for (let step = 0; step < 4; step++) {
-      const request = { ...buildRequest({ snapshot: this.#snapshot, tools: definitions(tools), transcript: { messages }, tail: instruction(marker), cacheTtl: settings.cacheTtl }), ...providerTools };
+      const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker), cacheTtl: settings.cacheTtl }), ...providerTools };
       const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
       const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       if (!calls.length) return r.reply.text.trim() || null;
@@ -1092,7 +1096,7 @@ export class Agent {
       if (this.#half.voice() !== this.#mayVoice) await this.#workOutVoice(wakes);
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
-      const { tools, via, providerTools } = await this.#toolsNow();
+      const { tools, via, providerTools, shows } = await this.#toolsNow();
       const { role } = this.#half;
       const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
       const here = this.sense?.() ?? {};
@@ -1103,7 +1107,7 @@ export class Agent {
       // What the request holds: the other half's later lines follow this reply.
       const context = { from: this.transcript.from, to: this.transcript.to };
       const request = {
-        ...buildRequest({ snapshot, ...(this.#half.system ? { system: this.#half.system(snapshot) } : {}), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }),
+        ...buildRequest({ snapshot, ...(this.#half.system || shows ? { system: (this.#half.system?.(snapshot) ?? systemText(snapshot)) + shows } : {}), tools: definitions(tools), transcript: { messages: await this.#sendable() }, tail, cacheTtl: settings.cacheTtl }),
         ...providerTools,
       };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);

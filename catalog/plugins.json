@@ -243,7 +243,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 10650,
+      "size": 10791,
       "requires": [
         {
           "id": "gemini-api",
@@ -252,7 +252,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "37cc227bc8db307666d0243fdceec6e5faec8c8e184965fd1767c02af1e6c6c6"
+        "annai-plugin.json": "ce2a53ff30b78259d4e389fc0a80187094a6fb56ee643e217430777224d9d9af"
       }
     },
     {
