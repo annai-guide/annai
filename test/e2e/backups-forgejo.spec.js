@@ -145,3 +145,32 @@ test('an owner and a repository left empty: Save and test lists the private repo
     await fj.stop();
   }
 });
+
+// The emulator pass (m9 #33): with three Forgejo places, "Backups to Forgejo / Gitea stopped" didn't say which one.
+test('a place whose backups stopped is named on its card, by where it is', async ({ page, baseURL }) => {
+  const fj = await startForgejo({ repos: { [REPO]: {} }, cors: new URL(String(baseURL)).origin });
+  const host = new URL(fj.origin).host;
+  try {
+    await fastBackups(page);
+    await openApp(page);
+    await addForgejo(page, fj);
+    await expect(page.getByText(`Works: annai can reach ${REPO} on ${host}, a private repository.`)).toBeVisible();
+    // The server stops taking its token, as it does once the token is deleted: what the next backup would meet.
+    await page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      const v = await ws.readJSON('sys:device', '/backups.json');
+      for (const t of Object.values(v.targets)) {
+        /** @type {any} */ (t).hold = { kind: 'error', message: "The server didn't accept the access token. Make a new one, paste it here, and save.", at: Date.now(), count: 1, retryAt: Date.now() + 3_600_000, needsYou: true };
+      }
+      await ws.write('sys:device', '/backups.json', v, { author: 'system' });
+      store.close();
+    });
+    await expect(page.getByRole('status').getByText(`Backups to Forgejo / Gitea (${host}/${REPO}) stopped`)).toBeVisible({ timeout: 30_000 });
+  } finally {
+    await fj.stop();
+  }
+});

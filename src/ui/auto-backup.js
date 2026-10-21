@@ -78,7 +78,8 @@ function holdCard(ctx, t) {
       actions: [{ label: 'Back up now', primary: true, run: () => { backUpFromCard(ctx, t.id, {}); } }, open],
     });
   } else if (h?.kind === 'error') {
-    ctx.notices.card({ tone: 'warn', title: `Backups to ${t.name} stopped`, body: `${h.message} Open Backups to fix it.`, actions: [open] });
+    const where = whereOf(ctx, t);
+    ctx.notices.card({ tone: 'warn', title: `Backups to ${t.name}${where === t.name ? '' : ` (${where})`} stopped`, body: `${h.message} Open Backups to fix it.`, actions: [open] });
   }
 }
 
