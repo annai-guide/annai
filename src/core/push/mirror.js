@@ -19,7 +19,7 @@ import { realClock } from '../live/clock.js';
  * @typedef {{ supported: () => 'yes' | 'install' | 'no', permission: () => string, ask: () => Promise<string>,
  *   get: () => Promise<Sub | null>, subscribe: (key: string) => Promise<Sub>, unsubscribe: () => Promise<void> }} Source
  *   the phone's push subscription and notification permission (src/ui/push.js; a fake in tests)
- * @typedef {{ reminders: () => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void }} LiveLike
+ * @typedef {{ reminders: (o?: { held?: (scopes: Set<string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void }} LiveLike
  * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, sending?: boolean }} Item
  *   a reminder at the relay; sending: written down before it was sent, not yet known to have arrived
  * @typedef {{ m: Mirrored, sendAt: number, title: string, body: string, hash: string, reuse?: boolean }} Want
@@ -76,14 +76,17 @@ export function moves(was, due, now) {
 /**
  * What to change at the relay: reminders no longer wanted, whose words changed, or whose time moved,
  * are called off; new and moved ones are sent; one written down but not known to have arrived is
- * sent again as it was. @param {Record<string, Item>} items @param {Map<string, Want>} wanted @param {number} now
+ * sent again as it was. A plan reminder of a trip in held (one not open now) stays as it is: every
+ * trip's wait, and only a removed or archived trip's go (the user, 2026-10-21).
+ * @param {Record<string, Item>} items @param {Map<string, Want>} wanted @param {number} now @param {Set<string>} [held]
  * @returns {{ off: string[], send: Want[] }}
  */
-export function plan(items, wanted, now) {
+export function plan(items, wanted, now, held = new Set()) {
   /** @type {string[]} */
   const off = [];
   for (const [key, item] of Object.entries(items)) {
     const w = wanted.get(key);
+    if (!w && held.has(item.scope) && key.startsWith(`${item.scope}|plan:`)) continue;
     if (!w || w.hash !== item.hash || moves(item.due, w.m.due, now)) off.push(key);
   }
   /** @type {Want[]} */
@@ -374,9 +377,11 @@ export class PushMirror {
       let sub = null;
       if (st.on) {
         sub = await this.#subscription(st);
-        const wanted = sub ? await this.#wanted() : null;
+        /** @type {Set<string>} */
+        const held = new Set();
+        const wanted = sub ? await this.#wanted(held) : null;
         if (sub && wanted) {
-          const p = plan(st.items, wanted, this.clock.now());
+          const p = plan(st.items, wanted, this.clock.now(), held);
           for (const key of p.off) this.#offLater(st, tokens, key);
           send = p.send;
         }
@@ -441,9 +446,9 @@ export class PushMirror {
     st.hello = null;
   }
 
-  /** What should wait at the relay now: the nearest reminders within reach (choice 7). null: live mode hasn't loaded. */
-  async #wanted() {
-    const list = await this.live.reminders();
+  /** What should wait at the relay now: the nearest reminders within reach (choice 7). null: live mode hasn't loaded. @param {Set<string>} held */
+  async #wanted(held) {
+    const list = await this.live.reminders({ held: (s) => { for (const x of s) held.add(x); } });
     if (!list) return null;
     const now = this.clock.now();
     /** @type {Map<string, Want>} */

@@ -852,6 +852,7 @@ When the app becomes visible:
 ### 11.6 Push relay (closed app)
 
 - **Scope.** Only time watches are mirrored, and only when notifications are enabled. Location triggers never leave the phone.
+- **Every trip's reminders wait.** Opening another trip, or none, calls nothing off: a trip's plan reminders stay at the relay as they were while live mode follows another trip's plan. Only a cancelled reminder, or a removed or archived trip's, is deleted at the relay.
 - **Encryption.** The page encrypts each notification itself with the push subscription's keys (RFC 8291, `aes128gcm`, using WebCrypto's ECDH, HKDF and AES-GCM). The relay never sees the content.
 - **The relay** holds the VAPID keypair and does three things:
   - stores `{push endpoint, ciphertext, sendAt, id, cancel token}`
