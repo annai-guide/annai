@@ -140,6 +140,24 @@ test("Koe goes down while Kokoro works: Kokoro tells the user directly once, not
   assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak'), [['out.speak', 'kokoro', answer]]);
 });
 
+test("Koe failing twice while Kokoro works asks Kokoro to talk directly once, not twice (review a4: the drop in #talkDirectly)", async () => {
+  let clock = Date.parse('2026-11-26T12:00:00Z');
+  const k = await agentKit([{ rules: [
+    { match: "Koe can't speak", reply: calls(['speak', { text: 'Here I am.' }]) },
+    { match: 'the user wrote', reply: { delayMs: 500, ...sleep } },
+  ] }], { koe: { type: [{ delayMs: 100, error: 'auth', message: 'bad key' }] }, agent: { now: () => clock } });
+  k.agent.send('Is Nepenthe open?');
+  await until(() => k.agent.koeState === 'down', 3000);
+  clock += 10 * 60_000; // Koe's rest is over
+  k.llm.bench.clear('m-koe');
+  k.agent.send('Hello?'); // to Koe again, which fails again while Kokoro's first turn still runs
+  await k.agent.idle();
+  // What woke Kokoro, as its requests' now block says: taken mid-turn or not, "Koe can't speak" once.
+  const woke = k.sent['model-0'].map((/** @type {any} */ r) => String(r.tail).split('\n').find((l) => l.startsWith('woke for')) ?? '');
+  assert.equal(woke.join('\n').split("Koe can't speak right now").length - 1, 1, woke.join('\n'));
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ['Here I am.']);
+});
+
 test("Kokoro's list fails: Koe gets a note and tells the user it couldn't check; no card", async () => {
   const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: { rules: [
     { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: 'Open now?' }]) },
