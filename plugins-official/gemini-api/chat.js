@@ -9,6 +9,8 @@ import { blockedMessages } from './blocked.js';
  * both go back unchanged, and only to the model that wrote them (steps.js). A conversation's own turn
  * is kept on Google's side when annai asks (`store`), and the next one then sends only what is new after
  * it (`previous_interaction_id`): annai keeps the record of which (the Gemini design, "Kept on Google's side").
+ * Google Search is a provider tool (provider-gemini's, paid keys only): its steps go back as they came, and a reply it
+ * grounded ends with what Google's terms ask shown, its words as they came, their links and Google's suggestions (G4).
  */
 export const TUNABLES = Object.freeze({
   uploads: true, // photos go to Gemini's Files API once, then by their address (spec §4.8); Gemini deletes them after 48 hours
@@ -17,6 +19,8 @@ export const TUNABLES = Object.freeze({
 });
 /** An interaction's status at its end, as a stop reason. @type {Record<string, string>} */
 const STOP = { completed: 'end', requires_action: 'tool', incomplete: 'length', budget_exceeded: 'length' };
+/** A step of a tool Google runs itself (its search, the search's result), as Google names them; a function call is annai's. */
+const SERVER_STEP = /^(?!function_)[a-z_]+_(call|result)$/;
 
 /** @param {string} base @param {string} path */
 export const join = (base, path) => String(base).replace(/\/+$/, '') + path;
@@ -209,6 +213,8 @@ export function usageOf(u) {
   const audio = Math.max(0, by(u.input_tokens_by_modality, ['audio']) - cachedAudio);
   const image = Math.max(0, by(u.input_tokens_by_modality, ['image', 'video']) - cachedImage);
   const thought = Number(u.total_thought_tokens) || 0;
+  // Google's own tools' calls, by type: its searches (G4), priced per query.
+  const tools = Object.fromEntries((Array.isArray(u.grounding_tool_count) ? u.grounding_tool_count : []).filter((t) => t?.type && Number(t.count) > 0).map((t) => [String(t.type), Number(t.count)]));
   return {
     // A tool's tokens Google counts apart (total_tool_use_tokens) are input too.
     input: Math.max(0, (Number(u.total_input_tokens) || 0) - cached - audio - image) + (Number(u.total_tool_use_tokens) || 0),
@@ -219,6 +225,7 @@ export function usageOf(u) {
     ...(image ? { image } : {}),
     output: (Number(u.total_output_tokens) || 0) + thought,
     reasoning: thought,
+    ...(Object.keys(tools).length ? { serverTools: tools } : {}),
   };
 }
 
@@ -234,17 +241,32 @@ function parseArgs(args, started) {
 
 /**
  * Each step as it streams: a thought gathers its summary and signature, a call its arguments, and
- * each is given whole at its step.stop; the words as they come.
+ * each is given whole at its step.stop; the words as they come. A step of Google's own tools (a search,
+ * its result) is kept whole, its start and its deltas, and given at its stop as a provider part, which goes
+ * back as it came to the model that made it; a reply that searched ends with what Google asks shown (G4).
  */
 class Steps {
   /** @type {Map<number, any>} */
   #open = new Map();
+  /** Google's own tools' steps, by index. @type {Map<number, Record<string, any>>} */
+  #server = new Map();
   called = false;
   /** Whether any words were given: a block's then start a new paragraph. */
   said = false;
+  /** Whether Google searched, and what it asks shown: the words as they came, their links, its suggestions. */
+  searched = false;
+  text = '';
+  /** @type {{ url: string, title?: string }[]} */
+  links = [];
+  /** @type {string[]} */
+  suggestions = [];
 
   /** @param {number} index @param {any} step @returns {any[]} */
   start(index, step) {
+    if (SERVER_STEP.test(String(step?.type))) {
+      this.#server.set(index, { ...step });
+      return [];
+    }
     const s = { ...step, summary: [], args: '' };
     this.#open.set(index, s);
     if (s.type === 'function_call') return [{ type: 'tool_input', id: String(s.id ?? ''), name: String(s.name ?? ''), partial: '' }];
@@ -254,8 +276,14 @@ class Steps {
 
   /** @param {number} index @param {any} d @returns {any[]} */
   delta(index, d) {
+    const server = this.#server.get(index);
+    if (server) {
+      if (d?.type === server.type) Object.assign(server, d); // its delta is the step's content, whole
+      return [];
+    }
     const s = this.#open.get(index) ?? this.#open.set(index, { type: d?.type === 'text' ? 'model_output' : '', summary: [], args: '' }).get(index);
     if (d?.type === 'text') return d.text ? [this.#words(d.text)] : [];
+    if (d?.type === 'text_annotation_delta') return this.#cite(d.annotations);
     if (d?.type === 'thought_signature') s.signature = String(d.signature ?? '');
     if (d?.type === 'thought_summary' && d.content?.text) {
       s.summary.push(String(d.content.text));
@@ -271,11 +299,46 @@ class Steps {
   /** @param {unknown} text */
   #words(text) {
     this.said = true;
+    this.text += String(text);
     return { type: 'text', text: String(text) };
+  }
+
+  /** A search's sources, each once, as citations. @param {unknown} annotations @returns {any[]} */
+  #cite(annotations) {
+    /** @type {any[]} */
+    const out = [];
+    for (const a of Array.isArray(annotations) ? annotations : []) {
+      if (a?.type !== 'url_citation' || typeof a.url !== 'string' || !a.url || this.links.some((l) => l.url === a.url)) continue;
+      const link = { url: a.url, ...(a.title ? { title: String(a.title) } : {}) };
+      this.links.push(link);
+      out.push({ type: 'citation', ...link });
+    }
+    return out;
+  }
+
+  /** A step of Google's own tools, whole: a search says what it looks for, so the turn never looks stalled. @param {Record<string, any>} b @returns {any[]} */
+  #serverStop(b) {
+    if (!b.signature) delete b.signature; // its start's "", until its delta's
+    /** @type {any[]} */
+    const out = [];
+    if (b.type === 'google_search_call') {
+      const q = Array.isArray(b.arguments?.queries) ? b.arguments.queries.filter((x) => typeof x === 'string' && x) : [];
+      out.push({ type: 'reasoning_delta', text: `Searching Google${q.length ? `: ${q.join(', ')}` : ''}` });
+    } else if (b.type === 'google_search_result') {
+      this.searched = true;
+      for (const r of Array.isArray(b.result) ? b.result : []) if (typeof r?.search_suggestions === 'string' && r.search_suggestions) this.suggestions.push(r.search_suggestions);
+    }
+    out.push({ type: 'provider', block: b });
+    return out;
   }
 
   /** @param {number} index @returns {any[]} */
   stop(index) {
+    const server = this.#server.get(index);
+    if (server) {
+      this.#server.delete(index);
+      return this.#serverStop(server);
+    }
     const s = this.#open.get(index);
     this.#open.delete(index);
     if (s?.type === 'thought') {
@@ -357,6 +420,8 @@ function* end(it, steps, h) {
     yield* failed((Array.isArray(it.errors) ? it.errors[0] : it.error) ?? {}, h, steps.said);
     return;
   }
+  // A reply grounded in Google Search ends with what Google's terms ask shown, as it came (the Gemini design).
+  if (steps.searched) yield { type: 'attribution', source: 'Google Search', text: steps.text, links: steps.links, ...(steps.suggestions.length ? { html: steps.suggestions.join('\n') } : {}) };
   if (isObject(it.usage)) yield { type: 'usage', usage: usageOf(it.usage) };
   const reason = it.status === 'completed' && steps.called ? 'tool' : STOP[it.status] ?? 'other';
   yield { type: 'stop', reason };
@@ -390,7 +455,13 @@ function* readWhole(text, h) {
       for (const s of Array.isArray(summary) ? summary : []) yield* steps.delta(i, { type: 'thought_summary', content: s });
       if (signature) yield* steps.delta(i, { type: 'thought_signature', signature });
     }
-    if (step.type === 'model_output') for (const c of Array.isArray(content) ? content : []) if (c?.type === 'text') yield* steps.delta(i, c);
+    if (step.type === 'model_output') {
+      for (const c of Array.isArray(content) ? content : []) {
+        if (c?.type !== 'text') continue;
+        yield* steps.delta(i, c);
+        if (c.annotations) yield* steps.delta(i, { type: 'text_annotation_delta', annotations: c.annotations });
+      }
+    }
     yield* steps.stop(i);
   }
   yield* end(r, steps, h);

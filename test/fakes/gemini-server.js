@@ -12,8 +12,10 @@ import { readFileSync } from 'node:fs';
  * 24 kHz 16-bit PCM, or μ-law at 8 kHz, streamed in four pieces or whole; a request with audio in it is "heard".
  * Tests and the end-to-end suite run it on 127.0.0.1, on a port of its own (port 0), with CORS for any page.
  * @typedef {{ text?: string, thought?: { summary?: string, signature: string }, calls?: { name: string, input: any, signature?: string }[],
- *   usage?: Record<string, any>, status?: string, error?: { status: number, body: any }, delayMs?: number }} Reply
- *   one answer to an interaction: a thought, words, calls (stop "requires_action"), or an error response; delayMs: a pause after the interaction is named
+ *   usage?: Record<string, any>, status?: string, error?: { status: number, body: any }, delayMs?: number,
+ *   search?: { queries: string[], suggestions?: string, links?: { url: string, title?: string }[] } }} Reply
+ *   one answer to an interaction: a thought, words, calls (stop "requires_action"), or an error response; delayMs: a pause after the interaction is named;
+ *   search: Google searched first (G4), as recorded on 2026-10-21: its call and result (the suggestions' HTML), then the words with their links
  * @typedef {{ method: string, url: string, headers: Record<string, any>, body: any }} Seen  body: parsed JSON, else the bytes' length
  * @param {{ key?: string, replies?: (Reply | ((body: any) => Reply))[], models?: any, ids?: string }} [o]
  *   key: the only key it takes (else any); replies: given in turn, the last repeats; none: the default answers
@@ -66,7 +68,9 @@ export async function startGeminiServer({ key, replies = [], models, ids = 'v1_s
       if (body?.previous_interaction_id && !stored.has(body.previous_interaction_id)) return void json(404, { error: { message: 'Requested entity was not found.', code: 'not_found' } });
       if (body?.response_format?.type === 'audio') return void speak(res, cors, body);
       const pick = replies.length ? replies[Math.min(seen.filter((s) => s.url === req.url && s.method === 'POST').length - 1, replies.length - 1)] : answer;
-      const reply = typeof pick === 'function' ? pick(body) : pick;
+      const picked = typeof pick === 'function' ? pick(body) : pick;
+      // Google searches only when the request offers its search.
+      const reply = picked.search && !(body?.tools ?? []).some((/** @type {any} */ t) => t?.type === 'google_search') ? { ...picked, search: undefined } : picked;
       if (reply.error) return void json(reply.error.status, reply.error.body);
       const id = `${ids}${++n}`;
       if (body?.store) stored.add(id);
@@ -148,15 +152,22 @@ function speak(res, cors, body) {
 }
 
 /** @param {Reply} r */
-const usageOf = (r) => r.usage ?? { total_tokens: 110, total_input_tokens: 100, input_tokens_by_modality: [{ modality: 'text', tokens: 100 }], total_cached_tokens: 0, total_output_tokens: 10, total_tool_use_tokens: 0, total_thought_tokens: 0 };
+const usageOf = (r) => r.usage ?? { total_tokens: 110, total_input_tokens: 100, input_tokens_by_modality: [{ modality: 'text', tokens: 100 }], total_cached_tokens: 0, total_output_tokens: 10, total_tool_use_tokens: 0, total_thought_tokens: 0,
+  ...(r.search ? { grounding_tool_count: [{ type: 'google_search', count: r.search.queries.length }] } : {}) };
+/** A search's sources, as Google marks the words they back. @param {Reply} r @returns {any[]} */
+const linksOf = (r) => (r.search?.links ?? []).map((l) => ({ start_index: 0, end_index: (r.text ?? '').length, url: l.url, ...(l.title ? { title: l.title } : {}), type: 'url_citation' }));
 /** @param {Reply} r */
 const statusOf = (r) => r.status ?? (r.calls?.length ? 'requires_action' : 'completed');
 
 /** The steps of a reply, whole. @param {Reply} r @returns {any[]} */
 function steps(r) {
   return [
+    ...(r.search ? [
+      { type: 'google_search_call', id: 'search_1', search_type: 'web_search', arguments: { queries: r.search.queries }, signature: 'SEARCHSIG' },
+      { type: 'google_search_result', call_id: 'search_1', result: r.search.suggestions ? [{ search_suggestions: r.search.suggestions }] : [], is_error: false, signature: 'RESULTSIG' },
+    ] : []),
     ...(r.thought ? [{ type: 'thought', signature: r.thought.signature, ...(r.thought.summary ? { summary: [{ type: 'text', text: r.thought.summary }] } : {}) }] : []),
-    ...(r.text ? [{ type: 'model_output', content: [{ type: 'text', text: r.text }] }] : []),
+    ...(r.text ? [{ type: 'model_output', content: [{ type: 'text', text: r.text, ...(r.search?.links ? { annotations: linksOf(r) } : {}) }] }] : []),
     ...(r.calls ?? []).map((c, i) => ({ type: 'function_call', id: `call_${i + 1}`, name: c.name, arguments: c.input, ...(c.signature ? { signature: c.signature } : {}) })),
   ];
 }
@@ -175,10 +186,16 @@ function events(id, model, r) {
       out.push({ event_type: 'step.delta', index, delta: { type: 'thought_signature', signature: s.signature } });
     } else if (s.type === 'model_output') {
       out.push({ event_type: 'step.start', index, step: { type: 'model_output' } });
-      // In two pieces, as Google sends words.
+      // In two pieces, as Google sends words; a search's links after them.
       const t = s.content[0].text;
       const half = Math.ceil(t.length / 2);
       for (const text of [t.slice(0, half), t.slice(half)].filter(Boolean)) out.push({ event_type: 'step.delta', index, delta: { type: 'text', text } });
+      if (s.content[0].annotations) out.push({ event_type: 'step.delta', index, delta: { type: 'text_annotation_delta', annotations: s.content[0].annotations } });
+    } else if (s.type !== 'function_call') {
+      // Google's own tool: its start with an empty signature, then the whole step as one delta, as recorded.
+      const { arguments: args, result, is_error: isError, signature, ...start } = s;
+      out.push({ event_type: 'step.start', index, step: { ...start, signature: '' } });
+      out.push({ event_type: 'step.delta', index, delta: { signature, type: s.type, ...(args ? { arguments: args } : {}), ...(result ? { result, is_error: isError } : {}) } });
     } else {
       out.push({ event_type: 'step.start', index, step: { id: s.id, ...(s.signature ? { signature: s.signature } : {}), type: 'function_call', name: s.name, arguments: {} } });
       out.push({ event_type: 'step.delta', index, delta: { type: 'arguments_delta', arguments: JSON.stringify(s.arguments) } });

@@ -1,5 +1,7 @@
-// Opt-in: Gemini's own API (the gemini-api plugin, G1 and G2) with your own key. Never in CI.
+// Opt-in: Gemini's own API (the gemini-api plugin, G1 to G4) with your own key. Never in CI.
 //   GEMINI_KEY="$(sed -n 1p /root/annai-test-keys/gemini)" node --test test/live/gemini-api.test.js
+// Google Search (G4) needs a key on a paid project, as GEMINI_PAID_KEY: a free key's request with it is refused at once.
+//   GEMINI_PAID_KEY="$(sed -n 2p /root/annai-test-keys/gemini)" node --test --test-name-pattern="Google Search" test/live/gemini-api.test.js
 // It pauses 13 s between calls to one model (a free key's flash allows 5 a minute; flash-lite more), and skips, saying
 // so, when the free day is used up. What Google changes in the Interactions API shows up here first.
 import { test } from 'node:test';
@@ -235,4 +237,29 @@ test('phone quality, read whole: μ-law at 8 kHz, decoded into one WAV clip (G3)
   const { rate, pcm } = pcm16(/** @type {any} */ (r.clip).data);
   assert.equal(rate, 8000);
   assert.ok(pcm.length / rate > 1, 'a sentence of speech');
+});
+
+const PAID = process.env.GEMINI_PAID_KEY ?? '';
+const SEARCH = { id: 'gemini-google-search', name: 'Google Search', kind: /** @type {const} */ ('search'), patch: { 'tools+': [{ type: 'google_search' }] }, pricePerCall: 0.014, usageKey: 'google_search', paidOnly: true, freePerMonth: 5000 };
+
+test("Google Search (G4, a paid key): a whole send carries a grounded turn's search steps back to the model that made them, and Google takes them", { skip: PAID ? false : 'GEMINI_PAID_KEY is not set (a free key is refused any request with Google Search)' }, async (t) => {
+  // Turn 1 as annai keeps it: the recorded grounded reply (gemini-3.5-flash-lite, 2026-10-21), read by the plugin.
+  const lite = modelOf({ providerId: 'gemini-3.5-flash-lite', name: 'Flash Lite', reasoning: levelsFor('gemini-3.5-flash-lite'), providerTools: [SEARCH] });
+  const recorded = await readFile(new URL('../fixtures/gemini/search-grounded-lite.sse', import.meta.url), 'utf8');
+  const map = { name: 'show_on_map', description: 'Shows a place on the trip map.', input: { type: 'object', properties: { place: { type: 'string' } }, required: ['place'] } };
+  const ask = { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'What time does Nepenthe restaurant in Big Sur close today? Answer in one sentence.' }] };
+  const first = await callOnce({ type, endpoint, model: lite, key: 'recorded', request: { messages: [ask] }, fetch: async () => new Response(recorded, { headers: { 'content-type': 'text/event-stream' } }) });
+  assert.deepEqual(first.parts.map((p) => p.type), ['provider', 'provider', 'reasoning', 'text', 'attribution']);
+  const r = await callOnce({
+    type, endpoint, model: lite, key: PAID, level: 'off', fetch: fetching, firstOutputMs: 60_000,
+    request: { system: 'You are a travel guide. Answer briefly.', tools: [map], providerTools: { kinds: ['search'] }, messages: [ask, { role: 'assistant', parts: first.parts }, { role: 'user', parts: [{ type: 'text', text: 'And when does it open tomorrow? One sentence.' }] }] },
+  });
+  const body = sent.at(-1);
+  assert.deepEqual(body.tools.map((/** @type {any} */ x) => x.type), ['function', 'google_search']);
+  assert.deepEqual(body.input.map((/** @type {any} */ s) => s.type), ['user_input', 'google_search_call', 'google_search_result', 'thought', 'model_output', 'user_input']);
+  assert.ok(!JSON.stringify(body).includes('From Google Search') && !JSON.stringify(body).includes('"attribution"'), 'the card is for the user alone');
+  const card = /** @type {any} */ (r.parts.find((p) => p.type === 'attribution'));
+  t.diagnostic(`answer: ${JSON.stringify(r.text)}; searches ${r.usage.serverTools?.google_search ?? 0}; card ${card ? `${card.links.length} links, suggestions ${card.html ? 'yes' : 'no'}` : 'none'}`);
+  assert.equal(r.stop, 'end');
+  assert.ok(r.text.trim());
 });
