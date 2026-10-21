@@ -113,25 +113,32 @@ test("minors 26: a field in a column keeps its own height: no empty gap between 
   expect(Math.abs((start?.width ?? 0) - (end?.width ?? 1))).toBeLessThan(2);
 });
 
-// The second emulator re-check: after typing a key, the first tap on Save only focused it (the keyboard going down
-// laid the screen out again under the finger) and the second saved. A tap's first half now leaves the field focused.
-test('a tap on a screen\'s button while typing leaves the field focused until the click is done, then lets go of it', async ({ page }) => {
+// The second emulator re-check: after typing a key, the first tap on Save only focused it (the keyboard going down laid the screen
+// out again under the finger) and the second saved. A finger's tap leaves the field focused until the click, and the click lets go
+// of it first of all: change, then click, as with a mouse (the review: the field's own saving must not run after the button).
+test('a finger tap on a screen\'s button while typing: the field changes, then the button is clicked, at the first tap, even when the screen shifts as the field lets go', async ({ page }) => {
   await openApp(page, '#/notifications');
   await expect(page.getByRole('heading', { level: 1, name: 'Notifications' })).toBeVisible();
   const field = page.getByLabel('Relay address');
   const save = page.getByRole('button', { name: 'Save address' });
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.__order = [];
+    const input = /** @type {HTMLInputElement} */ (document.getElementById('push-relay'));
+    const button = [...document.querySelectorAll('main button')].find((b) => b.textContent === 'Save address');
+    input.addEventListener('change', () => w.__order.push('change'));
+    // The keyboard going down: the screen is laid out again as the field lets go.
+    input.addEventListener('blur', () => { if (w.__shifted) return; w.__shifted = true; const gap = document.createElement('div'); gap.style.height = '120px'; input.closest('section')?.prepend(gap); });
+    button?.addEventListener('click', (e) => { w.__order.push('click'); e.stopImmediatePropagation(); }, true);
+  });
   await field.click();
-  await field.press('End');
-  const was = await field.inputValue();
+  await field.pressSequentially('x');
   const at = /** @type {{ x: number, y: number, width: number, height: number }} */ (await save.boundingBox());
-  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
-  await page.mouse.down();
-  expect(await page.evaluate(() => document.activeElement?.id), 'the field keeps the focus while the button is pressed').toBe('push-relay');
-  await page.mouse.up();
-  await expect.poll(() => page.evaluate(() => document.activeElement?.id ?? '')).not.toBe('push-relay'); // the keyboard goes down after the tap
-  await expect(page.getByRole('heading', { level: 1, name: 'Notifications' })).toBeVisible();
-  expect(await field.inputValue()).toBe(was);
-  // With nothing being typed in, a button takes the focus as before.
-  await save.focus();
-  expect(await page.evaluate(() => document.activeElement?.textContent)).toBe('Save address');
+  await page.touchscreen.tap(at.x + at.width / 2, at.y + at.height / 2);
+  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).__order)).toEqual(['change', 'click']);
+  // A mouse is left as it is: it takes the focus and the field changes at the press.
+  await field.click();
+  await field.pressSequentially('y');
+  await save.click();
+  expect(await page.evaluate(() => /** @type {any} */ (window).__order)).toEqual(['change', 'click', 'change', 'click']);
 });
