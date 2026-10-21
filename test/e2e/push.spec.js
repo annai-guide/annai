@@ -7,7 +7,7 @@ test('a reminder Shiori sets waits at the relay, encrypted, reaches the push ser
   const due = Date.parse(plus(start, 4 * 60_000));
   const llm = await startModelServer({
     '/b/v1/messages': [
-      sse(anthropicToolReply([{ name: 'watch_set', input: { when: { type: 'time', at: plus(start, 4 * 60_000) }, fallback: 'Call Grandma.' } }, sleep])),
+      sse(anthropicToolReply([{ name: 'watch_set', input: { when: { type: 'time', at: plus(start, 4 * 60_000) }, fallback: 'Call Grandma.' } }, { name: 'speak', input: { text: 'I will remind you.' } }, sleep])),
       sse(anthropicToolReply([sleep])),
     ],
   });
@@ -64,7 +64,7 @@ test('with annai open, a reminder that comes due is said on the phone and called
   const start = Date.now();
   const llm = await startModelServer({
     '/b/v1/messages': [
-      sse(anthropicToolReply([{ name: 'watch_set', input: { when: { type: 'time', at: plus(start, 45_000) }, fallback: 'Stretch.' } }, sleep])),
+      sse(anthropicToolReply([{ name: 'watch_set', input: { when: { type: 'time', at: plus(start, 45_000) }, fallback: 'Stretch.' } }, { name: 'speak', input: { text: 'I will remind you.' } }, sleep])),
       sse(anthropicToolReply([{ name: 'speak', input: { text: 'Time to stretch.' } }, sleep])),
     ],
   });

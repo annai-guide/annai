@@ -60,6 +60,9 @@ const MIN = 60_000;
 /** @param {number} x */
 const round6 = (x) => Math.round(x * 1e6) / 1e6;
 
+/** A watch that is a reminder, not a cue for Shiori: a time watch's, or the plan's leave, running late and coming up (spec §11.3). @param {Watch} w */
+const reminds = (w) => w.when.type === 'time' || w.when.type === 'every' || (w.when.type === 'plan' && ['leave', 'late', 'coming-up'].includes(String(w.when.event)));
+
 export class Live {
   /** Live mode is on (spec §11.1). */
   on = false;
@@ -1239,10 +1242,11 @@ export class Live {
     for (const o of opened) notes.set(o.scope, [...(notes.get(o.scope) ?? []), o.text]);
     for (const scope of notes.keys()) if (!by.has(scope)) by.set(scope, []);
     for (const [scope, xs] of by) {
-      // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A time or plan
-      // watch's stays owed until she tells the user; a cue's (a place, the road) only until a model answers (emulator pass).
+      // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A reminder's (a time
+      // watch's, or the plan's leave, late and coming up) stays owed until she tells the user; a cue's (a place, the road,
+      // an arrival, a stop off the plan) only until a model answers (emulator pass).
       const fallbacks = xs.filter((x) => !this.#notified.has(this.#keyOf(x.scope, x.watch)))
-        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(['time', 'every', 'plan'].includes(x.watch.when.type) ? {} : { cue: true }) }));
+        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
       const lines = notes.get(scope) ?? [];
       if (scope !== open) {

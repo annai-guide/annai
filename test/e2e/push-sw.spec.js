@@ -11,7 +11,7 @@ test('a push for a reminder reaches the service worker while annai is away: a no
   const due = plus(start, 20_000);
   const llm = await startModelServer({
     '/b/v1/messages': [
-      sse(anthropicToolReply([{ name: 'watch_set', input: { when: { type: 'time', at: due }, fallback: 'Call Grandma.' } }, sleep])),
+      sse(anthropicToolReply([{ name: 'watch_set', input: { when: { type: 'time', at: due }, fallback: 'Call Grandma.' } }, { name: 'speak', input: { text: 'I will remind you.' } }, sleep])),
       sse(anthropicToolReply([sleep])),
     ],
   });

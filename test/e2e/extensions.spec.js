@@ -111,7 +111,7 @@ test('a code plugin from a zip and from an address, behind the full-trust screen
   const site = await startModelServer(Object.fromEntries(Object.entries(tides).map(([n, b]) => [`/kits/tides/${n}`, file(b, n.endsWith('.js') ? 'text/javascript' : 'application/json')])));
   const llm = await startModelServer({ '/b/v1/messages': [
     sse(anthropicToolReply([{ name: 'tide_times', input: {} }])),
-    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+    sse(anthropicToolReply([{ name: 'show', input: { card: { title: 'Tides', text: 'Low 05:40, high 11:52.' } } }, { name: 'sleep', input: {} }])),
   ] });
   try {
     await modelSetUp(page, llm.origin);
@@ -160,7 +160,7 @@ test('an update from an address is offered after a reload and changes nothing un
   /** @type {Record<string, any>} */
   const routes = Object.fromEntries(Object.entries(tides).map(([n, b]) => [`/kits/tides/${n}`, file(b, n.endsWith('.js') ? 'text/javascript' : 'application/json')]));
   const site = await startModelServer(routes);
-  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'tide_times', input: {} }])), sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'tide_times', input: {} }])), sse(anthropicToolReply([{ name: 'show', input: { card: { title: 'Tides', text: 'Low 05:40.' } } }, { name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
     await pickAddress(page, `${site.origin}/kits/tides/annai-plugin.json`);
