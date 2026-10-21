@@ -267,7 +267,7 @@ test('a trip card shows the stamps its arrivals earned, and the trip page all of
   const card = page.getByRole('link', { name: /Kyoto in spring/ });
   await expect(card).toContainText('3 stamps');
   await expect(card.getByRole('img', { name: '3 stamps: 伏見稲荷大社, Arashiyama, Kiyomizu-dera' })).toBeVisible();
-  await expect(card.locator('.stamp')).toHaveText(['伏見', 'Arashiyama', 'Kiyomizu']);
+  await expect(card.locator('.stamp')).toHaveText(['伏見', 'Arashiya', 'Kiyomizu']); // a card's ring takes 8 characters at 7 px: a longer word shows its start
   await card.click();
   await expect(page.getByRole('img', { name: /^3 stamps:/ })).toBeVisible();
 });
@@ -291,12 +291,13 @@ test("each stamp shows its whole word inside its own ring, on a card on a phone 
     const inside = el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight);
     const next = /** @type {HTMLElement | undefined} */ (all[i + 1]);
     const covered = next && next.offsetTop === el.offsetTop && next.offsetLeft < el.offsetLeft + el.offsetWidth;
-    return `${el.textContent}${word > inside + 0.5 ? ' cut' : ''}${covered ? ' covered' : ''}`;
+    const small = parseFloat(getComputedStyle(el).fontSize) < 7 ? ` ${getComputedStyle(el).fontSize}` : ''; // review m1: never below 7 px
+    return `${el.textContent}${word > inside + 0.5 ? ' cut' : ''}${covered ? ' covered' : ''}${small}`;
   })));
   await page.goto('/#/trips');
   const card = page.getByRole('link', { name: /Big Sur on Highway 1/ }).getByRole('img', { name: /^8 stamps:/ });
   await expect(card).toBeVisible();
-  expect(await fits(card)).toEqual(['Nepenthe', 'Westminster', '+6']);
+  expect(await fits(card)).toEqual(['Nepenthe', 'Westmins', '+6']); // a long word: its start, at a type that still reads
   await page.getByRole('link', { name: /Big Sur on Highway 1/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Big Sur on Highway 1: Monterey to Cambria' })).toBeVisible();
   const all = page.getByRole('img', { name: /^8 stamps:/ });
