@@ -282,6 +282,10 @@ export function safeId(id) {
  * @property {(res: Response, c: SpeechSpec) => Promise<{ text: string }>} [readTranscript]
  * @property {(c: SpeechSpec & { text: string }) => { url: string, headers: Record<string, string>, body: any }} [speechRequest]
  * @property {(res: Response, c: SpeechSpec) => Promise<{ data: Uint8Array, mediaType: string }>} [readSpeech]
+ * @property {(res: Response, c: SpeechSpec) => AsyncIterable<{ pcm: Int16Array, rate: number }>} [readSpeechStream]  a voice that streams (G3): its
+ *   16-bit PCM as it comes, at its rate; annai plays it once it won't stutter, unless the ability's tunable stream is false (then readSpeech)
+ * @property {Record<string, { label: string, options?: Record<string, string> }>} [choices]  tunables the provider page offers in words (G3):
+ *   with options, one of them (value → its words); without, a switch for a tunable that is on unless false
  * @property {true} [realtime]  a realtime voice type (K4), with audio, open and attach: annai opens the socket, the type drives it
  * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what it sends and takes, preferred first (tunables input, output pick, K6)
  * @property {(c: SpeechSpec) => { url: string, protocols?: string[] }} [open]  a session's address and subprotocols
@@ -289,6 +293,7 @@ export function safeId(id) {
  *   setup: LiveSetup, emit: (e: LiveEvent) => void }) => LiveDriver} [attach]  its ready may fail with a ProviderError saying why (K6); audio both ways is 16-bit PCM at the formats' rates
  * @property {(code: number, reason: string) => ErrorKind | null} [classifyClose]
  * @property {(code: number, reason: string, tunables: Record<string, any>) => Record<string, any> | null} [reopen]  tunables to open with once more, before ready
+ * @typedef {{ rate: number, chunks: AsyncIterable<Int16Array> }} SpeechStream  a voice's 16-bit PCM as it arrives, at rate (G3)
  * @typedef {{ format: 'pcm16' | 'pcmu' | 'pcma', rate: number }} AudioFormat
  * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat }} LiveSetup  resume: a handle
  * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket  on: set as it attaches

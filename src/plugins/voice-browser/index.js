@@ -141,7 +141,8 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
       // Its ticker runs until end() has played out or stop(): a caller always ends a stream one way or the other.
       stream({ rate, onLevel = () => {} }) {
         const c = context();
-        if (c.state !== 'running') c.resume().catch(() => {});
+        // Whether it will sound: a context an interruption or a locked screen suspended may not resume without a tap (fix pass).
+        const running = c.state === 'running' ? Promise.resolve(true) : c.resume().then(() => c.state === 'running', () => false);
         /** The pieces still to play: when on the context's clock, their source, and their loudness. @type {{ at: number, end: number, src: AudioBufferSourceNode, level: number }[]} */
         const pieces = [];
         let heard = 0; // seconds of the pieces already played and let go
@@ -187,6 +188,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           },
           end() { ended = true; },
           queued: () => pieces.length,
+          running,
           stop() {
             const r = finish();
             for (const p of pieces) p.src.stop();

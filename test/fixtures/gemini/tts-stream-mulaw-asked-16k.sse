@@ -1,0 +1,24 @@
+event: interaction.created
+data: {"interaction":{"object":"interaction","model":"gemini-3.8-flash-lite-tts"},"event_type":"interaction.created"}
+
+event: interaction.status_update
+data: {"status":"in_progress","event_type":"interaction.status_update"}
+
+event: step.start
+data: {"index":0,"step":{"type":"model_output"},"event_type":"step.start"}
+
+event: step.delta
+data: {"index":0,"delta":{"mime_type":"audio/mulaw","data":"/////////////////////////////////////////////////////////////////////////////////////////////////////////////39/f35+fn5+fn5+fn5+fn1+fn5+fn5+f/9//v7+/v///v7+/v7+/v7+/v//f35+f///f39+f/7+/v7/f/7+/v7////+f39+fn7//v7///9+//7+/f7/f39/f//+/v7//3//////f35+fn5+fn59fv///v7+/v7+/v7///7+/v7+/v9/fn///////////v//////f39+fn5+/////39+fn5+f35///7/////////f35/f35///7+///+/v7+/v7+/v////7+//7+/v//f39+fn1+f////v/+/v/+/v7////+/v7///7/f39/f39+f////////w==","channels":1,"sample_rate":8000,"type":"audio"},"event_type":"step.delta"}
+
+event: step.delta
+data: {"index":0,"delta":{"mime_type":"audio/mulaw","data":"/39/fn59fX19fX1+fn5+fn5/f39/fn19fn5+fn5+fv/+/v7///9/fn9+f//+/v////5///9//39+fn5/f/7+/v7+/v3+/v79/f39/f39/f3+/v7+/v7+/3////7+/v7+/v7/f39+fn5+f39/f3//f39+f39/f39/fn5+fn5+f39/f39+fn5+fn1+fX1+fn7/////f//+/v7+/f39/f39/v9/fn///v7+/v79/f39/f7//v7+/v7+/v7+/v7+/////39/f39/f35+fn5+f3//f39/fn9+fn5+f39+fn5+fn59fX19fn5+f3//f39/f39+fn5+f3/////+/v7+/v7+/v///v7+/v7+/v7/////f35+fn9/f35+f39/f/////9///7+/v7+/v//////f39/f39/f////v7+/v7///7///7//////w==","channels":1,"sample_rate":8000,"type":"audio"},"event_type":"step.delta"}
+
+event: step.stop
+data: {"index":0,"event_type":"step.stop"}
+
+event: interaction.completed
+data: {"interaction":{"status":"completed","usage":{"total_tokens":88,"total_input_tokens":10,"input_tokens_by_modality":[{"modality":"text","tokens":10}],"total_cached_tokens":0,"total_output_tokens":78,"output_tokens_by_modality":[{"modality":"audio","tokens":78}],"total_tool_use_tokens":0,"total_thought_tokens":0},"created":"2026-10-20T01:29:31Z","updated":"2026-10-20T01:29:31Z","service_tier":"standard","object":"interaction","model":"gemini-3.8-flash-lite-tts"},"event_type":"interaction.completed"}
+
+event: done
+data: [DONE]
+

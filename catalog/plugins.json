@@ -50,27 +50,30 @@
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.2.0",
-      "description": "Talks to Gemini's own API (Interactions) for chat: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, and Google keeping the conversation between turns, so each sends only what is new.",
+      "version": "0.3.0",
+      "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, and Google keeping the conversation between turns, so each sends only what is new.",
       "category": "developer",
       "keywords": [],
       "abilities": [],
       "free": false,
       "local": false,
       "code": true,
-      "size": 33086,
+      "size": 45879,
       "requires": [],
       "provides": {
         "endpoint-type": [
-          "gemini"
+          "gemini",
+          "gemini-transcription",
+          "gemini-speech"
         ]
       },
       "files": {
-        "annai-plugin.json": "8fe937e94e97a6060becf1aa8eaa8b4d802b177d427a9fd4d8a0c4572789a478",
+        "annai-plugin.json": "90436a12e9370b8025009562cb85a1774f41cc79a8f8731d064d4bf17fc66a52",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "b358fc9d7a93cf79416aa83321ac8140d7bb11381af7f9913d5d279ecc3ca159",
-        "index.js": "5c2f000f15ffc7b9564921b3566810f7dec6dbbf583c3d443ed55a2384d88f07",
+        "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
+        "speech.js": "bbf5485f6dd7f3ac8b80ec39918b2a0fb495189c68156113cc14d328ce0e8454",
         "steps.js": "338b923af14d3b8517b4552e5bbc9edce3e9e8d7fc6a583ff989170fbaa2dfe0"
       }
     },
@@ -100,7 +103,7 @@
     {
       "id": "openai-realtime",
       "name": "OpenAI Realtime",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -108,7 +111,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 20720,
+      "size": 19167,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -116,8 +119,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "d84c361b02d1fb84a2a8d70575d61e0af1f8aa81985785a8ebe10022f0bb6896",
-        "index.js": "8c0712527bf5336ad26e06851bc4954de91b481e02280c717b0c404458140fc1"
+        "annai-plugin.json": "ddd111bd2638828fdf869cb3fe53499f7c62668d88275fdb5cd17e46631c719d",
+        "index.js": "444d9fff9ae4b43356f93ab09452426a62d0e5b089fbf2d0a3496de457950728"
       }
     },
     {
@@ -227,18 +230,20 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "2.0.0",
-      "description": "Gemini models through Google's own API, and Gemini Live for a voice conversation.",
+      "version": "2.1.0",
+      "description": "Gemini models through Google's own API, its transcription and voices, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
       "abilities": [
         "chat",
+        "transcription",
+        "voice",
         "realtime"
       ],
       "free": false,
       "local": false,
       "code": false,
-      "size": 6119,
+      "size": 8231,
       "requires": [
         {
           "id": "gemini-api",
@@ -247,7 +252,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "fbff9217e4baf6fde697a7d5ee489eec1d392aad7befd5c753db5cb7c8527d82"
+        "annai-plugin.json": "a9d5ba278aca54002543b21bee5f092a13e7e17d469db6935da22bb1e92eafab"
       }
     },
     {

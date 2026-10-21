@@ -29,3 +29,16 @@ You need a Gemini key from AI Studio. Before you start, open Settings → Update
 - [ ] **Removing the provider, offline.** With turns kept and airplane mode on, the words above Remove provider say "Google keeps N turns until they expire, up to 55 days." (1 day on the free tier). Online, they say annai asks Google to delete them first.
 - [ ] **Erase.** With turns kept, Settings → Erase names them before the tap; after Erase, nothing of annai is left on the phone.
 
+## G3: Gemini's transcription and voices, streamed
+
+Before you start, open Settings → Updates: if it offers Google Gemini 2.1.0, update it. Its Transcription and Voice arrive switched off ("New in the last update"); Use the recommended models switches them on and puts them in Speech in and Speech out. On a free key, Google allows each voice 10 sentences a day and 3 a minute (2026-10-20), so check the voice items early in the day, a minute apart, or with a paid key.
+
+- [ ] **Transcription.** Google Gemini's page → Transcription → Test → Say something, "Where should we eat?": it writes your words down. Trace → Type contains `net.request`: the request's audio is `mp4` (or `aac`) on the iPhone, `ogg` on Android, never `wav`.
+- [ ] **A voice, streamed.** Voice → Test → Play a sample: you hear Kore within about a second. Trace: the line says `streamed PCM at 24 kHz` and its size. Voice on, Speech out with the Gemini voice first: ask Shiori something with a reply of two or three sentences. She starts within about a second of the first sentence, with no gap mid-word, and the sentences follow each other closely.
+- [ ] **The silent switch.** iPhone silent switch on: you still hear her (playback, as with whole clips).
+- [ ] **Bluetooth and the car.** With earbuds, then in the car over Bluetooth (or CarPlay audio): her streamed voice plays there, from its first word, and music pauses while she speaks and comes back after.
+- [ ] **The screen locking mid-sentence.** Ask something with a long reply, then lock the screen while she speaks: she finishes the sentence (or stops cleanly), and annai shows what she said when you unlock. Nothing plays twice.
+- [ ] **A weak connection.** In a place with one bar (or the phone's Settings → Developer → Network Link Conditioner, "3G" or "Edge" on the iPhone): she waits longer before speaking, then speaks each sentence without a gap. Phone quality (below) waits less.
+- [ ] **Phone quality.** Voice → Sound → Phone quality, 8 kHz: Play a sample sounds like a phone call, and Trace says `streamed PCM at 8 kHz` at a third of the size (the Trace counts the sound as decoded 16-bit PCM; on the wire it's about a fifth).
+- [ ] **The way back to whole clips.** Untick "Stream her voice, so she starts sooner": Play a sample still works, the Trace line says `wav`, and Shiori's replies start a little later. If anything above failed with streaming on (the silent switch, Bluetooth, the car, the lock screen), check it again with streaming off and say which.
+- [ ] **A used-up day.** On a free key, after ten sentences in a day, the Gemini voice rests (Trace: `rate (429)`, "10 requests per day"), and the next voice in Speech out speaks the rest without a pause.

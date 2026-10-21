@@ -18,10 +18,11 @@ const enc = new TextEncoder();
 
 /**
  * A Voice over a fake llm: one API voice (v1), one transcription model (t1), and the stand-ins.
- * @param {{ failing?: boolean, retryAfter?: number, micFails?: string, format?: string, refuses?: string[], plays?: string[] }} [o]
- *   format: v1's format tunable (it offers OpenAI's list); refuses: the formats v1 answers 400 to, as Speaches does opus and aac; plays: what the phone plays
+ * @param {{ failing?: boolean, retryAfter?: number, micFails?: string, format?: string, refuses?: string[], plays?: string[], streams?: boolean }} [o]
+ *   format: v1's format tunable (it offers OpenAI's list); refuses: the formats v1 answers 400 to, as Speaches does opus and aac; plays: what the phone plays;
+ *   streams: v1 streams when asked to (G3), 0.2 s of 24 kHz PCM
  */
-async function voiceKit({ failing = false, retryAfter, micFails, format = 'mp3', refuses = [], plays } = {}) {
+async function voiceKit({ failing = false, retryAfter, micFails, format = 'mp3', refuses = [], plays, streams = false } = {}) {
   const registry = new Registry();
   const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
@@ -44,9 +45,10 @@ async function voiceKit({ failing = false, retryAfter, micFails, format = 'mp3',
       models: { v1: { id: 'v1', provider: 'po', ability: 'voice', template: null, user: { providerId: 'tts' } }, t1: { id: 't1', provider: 'pi', ability: 'transcription', template: null, user: { providerId: 'asr' } } },
       roles: { 'speech-out': { models: ['v1', 'browser-voice'], level: 'off' }, 'speech-in': { models: ['send-audio', 't1', 'dictation'], level: 'off' } },
     }),
-    /** @param {{ modelId: string, text: string, plays?: string[] }} c */
-    async synthesize({ modelId, text, plays: p }) {
-      calls.push(`say ${modelId} ${text}`);
+    /** @param {{ modelId: string, text: string, plays?: string[], stream?: boolean }} c */
+    async synthesize({ modelId, text, plays: p, stream }) {
+      calls.push(`say ${modelId} ${text}${stream ? ' (stream)' : ''}`);
+      if (streams && stream) return { stream: { rate: 24_000, chunks: (async function* () { yield new Int16Array(2400); yield new Int16Array(2400); })() } };
       if (failing) throw new ProviderError('rate', 'Slow down.', { retryAfter });
       const f = format === 'auto' ? pickOut(offers, p ?? ['mp3', 'wav']) ?? 'mp3' : format;
       asked.push(f);
@@ -72,6 +74,34 @@ test('say(): through the speech-out list, the browser voice taking over from a v
   await f.voice.say('Hello.');
   assert.deepEqual(f.platform.log.filter((l) => l.startsWith('browser')), ['browser Hello.']);
   assert.ok(f.bench.until('v1') > Date.now() + 40_000, 'it rests as long as the provider asked');
+});
+
+test('a voice that streams (G3) is asked for its stream once a tap has unlocked sound, and plays through the stream player; before the tap, a whole clip', async () => {
+  const k = await voiceKit({ streams: true });
+  await k.voice.say('Hello.');
+  assert.deepEqual(k.calls, ['say v1 Hello.'], 'before a tap, the stream player might not sound (an iPhone): a whole clip, which says so');
+  assert.deepEqual(k.platform.log.filter((l) => l.startsWith('play')), ['play v1:Hello.']);
+  await k.voice.unlock();
+  const spoken = await k.voice.say('Again.');
+  assert.equal(spoken.said, 1);
+  assert.equal(k.calls.at(-1), 'say v1 Again. (stream)');
+  assert.deepEqual(k.platform.streams.map((s) => [s.rate, s.ms, s.ended]), [[24_000, 200, true]]);
+  const sample = await k.voice.sample('v1', 'A sample.');
+  assert.equal(sample.ended, true, "a voice's Test plays its stream too");
+  assert.equal(k.platform.streams.length, 2);
+});
+
+test("a stream the page can't play (an iPhone's audio suspended): shown instead, and the next tap unlocks sound again (fix pass)", async () => {
+  const k = await voiceKit({ streams: true });
+  await k.voice.unlock();
+  assert.equal(k.voice.unlocked, true);
+  const stream = k.platform.player.stream;
+  k.platform.player.stream = /** @type {any} */ ((/** @type {any} */ o) => ({ ...stream(o), running: Promise.resolve(false) }));
+  const spoken = await k.voice.say('Hello.');
+  assert.equal(spoken.failed, 'blocked');
+  assert.equal(k.voice.unlocked, false, 'a tap tries again');
+  await k.voice.say('Again.');
+  assert.equal(k.calls.at(-1), 'say v1 Again.', 'meanwhile whole clips, whose refusal is said at once');
 });
 
 test("a voice that refuses the format it offers is asked for MP3, then WAV, and gets that until annai restarts (Speaches refuses opus and aac)", async () => {
