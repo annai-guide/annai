@@ -1,6 +1,8 @@
 import { h } from './dom.js';
 
 let n = 0;
+/** This page's own part of each question's id: an entry another page load left in the history is never taken for one of its (review m2). */
+const page = Math.random().toString(36).slice(2, 8);
 
 /**
  * A modal question with two answers (spec §4.9). Resolves true only for `yes`; Cancel, Escape and
@@ -12,7 +14,7 @@ let n = 0;
  * @returns {Promise<boolean>}
  */
 export function ask({ title, body, yes, no = 'Cancel' }) {
-  const id = `ask-${n++}`;
+  const id = `ask-${page}-${n++}`;
   return new Promise((resolve) => {
     /** @type {HTMLDialogElement} */
     const dialog = h('dialog', { class: 'ask', 'aria-labelledby': id },
