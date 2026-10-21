@@ -1,5 +1,6 @@
 import { crc32 } from './crc32.js';
 import { utf8, text, concat } from './bytes.js';
+import { inflateSmall } from './inflate.js';
 
 const LOCAL = 0x04034b50;
 const CENTRAL = 0x02014b50;
@@ -153,6 +154,11 @@ export const MAX_ARCHIVE = 8 * 1024 * 1024 * 1024;
 export const MAX_RATIO = 100;
 export const RATIO_ALLOWANCE = 64 * 1024 * 1024;
 
+/** Entries that deflate to at most this much are inflated in plain code: a stream per note costs more than the work. */
+const SMALL = 64 * 1024;
+/** A read of the file takes this much at once, so a run of small entries costs one read, not two each. */
+const WINDOW = 256 * 1024;
+
 /** @param {Blob} b */
 const bytesOf = async (b) => new Uint8Array(await b.arrayBuffer());
 /** @param {Uint8Array} b */
@@ -174,6 +180,8 @@ const view = (b) => new DataView(b.buffer, b.byteOffset, b.byteLength);
 export class ZipReader {
   /** @type {Blob} */ #file;
   /** @type {Map<string, Entry>} */ #entries;
+  /** @type {{ start: number, bytes: Uint8Array }} the piece of the file read last */
+  #window = { start: 0, bytes: new Uint8Array(0) };
 
   /** @param {Blob} file @param {Map<string, Entry>} entries */
   constructor(file, entries) {
@@ -251,25 +259,39 @@ export class ZipReader {
     return this.#entries.get(name)?.usize ?? 0;
   }
 
+  /** Bytes start to end of the file, from the piece read last when they lie in it. @param {number} start @param {number} end */
+  async #range(start, end) {
+    const w = this.#window;
+    if (start >= w.start && end <= w.start + w.bytes.length) return w.bytes.subarray(start - w.start, end - w.start);
+    if (end - start > WINDOW) return bytesOf(this.#file.slice(start, end));
+    const bytes = await bytesOf(this.#file.slice(start, Math.min(this.#file.size, start + WINDOW)));
+    this.#window = { start, bytes };
+    return bytes.subarray(0, end - start);
+  }
+
   /** Reads, inflates and checks one entry. @param {string} name @returns {Promise<Uint8Array>} */
   async read(name) {
     const e = this.#entries.get(name);
     if (!e) throw new ZipError(`the archive has no entry called ${name}`);
     if (e.flags & 1) throw new ZipError(`${name} is encrypted with zip encryption, which annai does not read`);
-    const head = await bytesOf(this.#file.slice(e.local, e.local + 30));
+    const head = await this.#range(e.local, e.local + 30);
     const hv = view(head);
     if (head.length < 30 || hv.getUint32(0, true) !== LOCAL) throw new ZipError(`the entry ${name} is damaged`);
     const start = e.local + 30 + hv.getUint16(26, true) + hv.getUint16(28, true);
     if (start + e.csize > this.#file.size) throw new ZipError(`the entry ${name} is damaged`);
-    const raw = this.#file.slice(start, start + e.csize);
     /** @type {Uint8Array} */
     let bytes;
-    if (e.method === 0) bytes = await bytesOf(raw);
-    else if (e.method === 8) {
+    if (e.method === 0) {
+      const raw = await this.#range(start, start + e.csize);
+      bytes = e.csize > WINDOW ? raw : raw.slice(); // a piece of the window must not outlive it
+    } else if (e.method === 8) {
       try {
-        bytes = await inflateRaw(raw, e.usize);
+        bytes = e.csize <= SMALL && e.usize <= SMALL * 16
+          ? inflateSmall(await this.#range(start, start + e.csize), e.usize)
+          : await inflateRaw(this.#file.slice(start, start + e.csize), e.usize);
       } catch (err) {
         if (err instanceof ZipError) throw new ZipError(`${name} ${err.message}`);
+        if (err instanceof RangeError) throw new ZipError(`${name} is larger than it says (it may be a zip bomb), so annai stopped reading it`);
         throw new ZipError(`${name} is corrupted (it cannot be decompressed)`);
       }
     } else throw new ZipError(`${name} uses compression method ${e.method}, which annai does not read`);

@@ -1,5 +1,5 @@
 import { h, field, checkbox, radios } from '../dom.js';
-import { openArchive, describeArchive, importArchive, NeedsPassphraseError } from '../../core/archive.js';
+import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } from '../../core/archive.js';
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
@@ -9,6 +9,7 @@ import { isPhotoType } from '../../core/photos.js';
 import { typeForPath } from '../../core/paths.js';
 import { bringIn } from '../bring-in.js';
 import { explainStorageFull } from '../storage-full.js';
+import { restartAnnai } from './plugins.js';
 
 /** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob, from?: import('../import-state.js').From | null }} Source
  *   from: the backup place it came from (spec §12.4) */
@@ -44,7 +45,8 @@ export async function renderImport(ctx, route) {
     body.append(h('p', { class: 'empty', text: 'Choose an annai file (.annai.zip or .annai) to open it.' }), openFileButton(ctx, 'Choose a file'));
     return screen;
   }
-  await step(ctx, body, source);
+  // The screen draws at once, saying what it is reading; the preview replaces that when the file's manifest is read.
+  step(ctx, body, source).catch((e) => body.replaceChildren(h('p', { class: 'error', role: 'alert', text: String(e?.message ?? e) }), openFileButton(ctx, 'Choose another file')));
   return screen;
 }
 
@@ -79,7 +81,7 @@ async function step(ctx, body, source, passphrase) {
   /** @type {any} */
   let opened;
   try {
-    opened = await openArchive(source.blob, passphrase);
+    opened = await peekArchive(source.blob, passphrase);
   } catch (e) {
     if (e instanceof NeedsPassphraseError || e instanceof PassphraseError) {
       body.replaceChildren(passphraseForm(ctx, body, source, e instanceof PassphraseError ? e.message : null));
@@ -128,11 +130,12 @@ function preview(ctx, body, opened, desc, from, fresh) {
     class: 'btn pri', type: 'button',
     onclick: async () => {
       go.disabled = true;
-      status.textContent = 'Importing…';
+      status.textContent = 'Reading…';
       try {
         const result = await importArchive(ctx.store, opened, {
           trips, me: me?.input.checked ? 'replace' : 'keep', settings: settings?.input.checked ? 'replace' : 'keep',
           plugins: plugins?.input.checked ? 'replace' : 'keep', secrets: keys?.input.checked ?? false,
+          onProgress: (done, total) => { status.textContent = `Reading ${Math.min(done + 1, total)} of ${total}…`; },
         });
         // This device has taken in that backup: its next backup there builds on it (spec §12.4).
         if (from) await ctx.backups?.accept(from.target, from.remote).catch(() => {});
@@ -147,7 +150,7 @@ function preview(ctx, body, opened, desc, from, fresh) {
           h('div', { class: 'acts' }, ...result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, `Open ${titles[i] ?? 'trip'}`))),
           result.archived.length ? h('p', { class: 'sub', text: `${result.archived.length} older ${result.archived.length === 1 ? 'copy' : 'copies'} moved to archived trips.` }) : null,
           plugged,
-          result.settings || result.plugins ? h('p', { class: 'sub', text: 'Restart annai to use the imported settings and plugins.' }) : null,
+          result.settings || result.plugins ? restartPanel(ctx) : null,
           result.plugins ? h('p', { class: 'sub', text: 'Imported plugins arrive switched off. Turn on the ones you trust in Plugins.' }) : null,
           result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null,
           from ? h('p', { class: 'sub', text: "annai's next backup to that place builds on this one." }) : null));
@@ -164,6 +167,12 @@ function preview(ctx, body, opened, desc, from, fresh) {
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
     h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from) }, 'Cancel')),
     status);
+}
+
+/** The imported settings and plugins are used from the next start: the sentence, and the button that does it. @param {any} ctx */
+function restartPanel(ctx) {
+  const b = h('button', { class: 'btn pri', type: 'button', onclick: () => { b.disabled = true; b.textContent = 'Restarting…'; restartAnnai(ctx); } }, 'Restart annai');
+  return h('div', {}, h('p', { class: 'sub', text: 'Restart annai to use the imported settings and plugins.' }), h('div', { class: 'acts' }, b));
 }
 
 /** imported: the plugins came with it, switched off. @param {any} ctx @param {boolean} imported @returns {Promise<{ installed: string[], failed: string[] }>} */
