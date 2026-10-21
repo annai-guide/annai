@@ -45,6 +45,8 @@ export class Transcript {
   unanswered = false;
   /** What is waiting when unanswered: 'user' (a message) or 'wake' (something else, such as files added while it was closed). @type {'' | 'user' | 'wake'} */
   waiting = '';
+  /** The user's newest message holds a photo: a model that takes none can't answer it (emulator pass). */
+  newestPhoto = false;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -80,6 +82,7 @@ export class Transcript {
     const texts = { ...d, ...r.texts };
     const koe = this.half === 'koe';
     this.#at = e.seq;
+    if (e.type === 'msg.user') this.newestPhoto = r.images.length > 0;
     if (e.type === 'compaction') {
       this.messages = [];
       this.#calls.clear();

@@ -132,6 +132,21 @@ test("the card says why each model failed on one line, each reason once, in word
   assert.equal(off.notices[0].body, 'This device is offline.');
 });
 
+test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async () => {
+  const k = await agentKit([[{ error: 'credit', status: 402 }], [say('Pfeiffer Beach is close.')]], { models: [{}, { input: ['text'] }] });
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+  k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.sent['model-1'], undefined, "passed over: it couldn't see the photo it was asked about");
+  assert.match(k.notices[0].body, /model-1: It doesn't take photos\./);
+  k.agent.send("What's around here?");
+  await k.agent.idle();
+  const [asked] = k.sent['model-1'];
+  assert.match(JSON.stringify(asked.messages), /\[a photo: \/trip\/files\/p\.webp\]/);
+  assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"image"/);
+  assert.equal((await k.events(['out.speak']))[0].data.text, 'Pfeiffer Beach is close.');
+});
+
 test('a reload before Shiori answered: the message still gets its answer', async () => {
   const k = await agentKit([[say('Yes, here.')]], { open: false });
   await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
