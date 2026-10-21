@@ -100,3 +100,33 @@ test("a voice platform whose unlock gives a plain boolean, not a promise, is tak
   k.platform.player.unlock = () => { throw new Error('not called again'); };
   assert.equal(await k.voice.unlock(), true, 'once it worked, it does nothing');
 });
+
+test("one unlock at a time: while one is still starting, a tap's other events, or a tap on Shiori, start no other, so the silent clip is never loaded again over itself (that wedges WebKit on Linux: the welcome's keyboard test); once it fails, the next tap tries", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
+  /** @type {((ok: boolean) => void)[]} */
+  const pending = [];
+  k.platform.player.unlock = () => new Promise((resolve) => pending.push(resolve));
+  const target = new EventTarget();
+  armUnlock(target, () => k.voice.unlock());
+  for (const type of ['pointerup', 'touchend', 'click', 'keydown']) target.dispatchEvent(new Event(type));
+  k.agent.tap();
+  assert.equal(pending.length, 1, 'a tap is pointerup, touchend and click; Enter on a button is keydown and click');
+  pending[0](false);
+  await tick();
+  target.dispatchEvent(new Event('click'));
+  assert.equal(pending.length, 2, 'a failed unlock leaves the next tap to try');
+  pending[1](true);
+  await tick();
+  target.dispatchEvent(new Event('click'));
+  assert.equal(pending.length, 2);
+
+  const stuck = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
+  let tries = 0;
+  stuck.platform.player.unlock = () => { tries++; return new Promise(() => {}); }; // a clip that never starts
+  stuck.voice.unlock();
+  stuck.voice.unlock();
+  assert.equal(tries, 1);
+  await new Promise((r) => setTimeout(r, 3100));
+  stuck.voice.unlock();
+  assert.equal(tries, 2, 'one that never starts holds the taps after it back for 3 seconds at most');
+});

@@ -74,6 +74,8 @@ export class Voice {
   #unlocked = false;
   /** @type {Promise<unknown>} */
   #unlocking = Promise.resolve();
+  /** @type {Promise<boolean> | null} the unlock still starting, which no other starts over (unlock) */
+  #trying = null;
 
   /**
    * @param {{ llm: any, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, store?: import('../types.js').Store,
@@ -192,6 +194,9 @@ export class Voice {
    */
   unlock() {
     if (this.#unlocked) return Promise.resolve(true);
+    // One at a time: a tap is pointerup, touchend and click, and a tap on Shiori unlocks too; loading the silent clip
+    // again over itself wedges WebKit on Linux (the welcome's keyboard test). One that never starts holds taps for 3 s at most.
+    if (this.#trying) return this.#trying;
     /** @type {Promise<boolean> | boolean | undefined} */
     let tried;
     try {
@@ -201,10 +206,17 @@ export class Voice {
     }
     if (!tried) return Promise.resolve(false);
     // A platform's unlock may give a plain boolean rather than a promise of one.
-    return (this.#unlocking = Promise.resolve(tried).then((ok) => {
+    const trying = (this.#unlocking = Promise.resolve(tried).then((ok) => {
       if (ok) this.#unlocked = true;
       return Boolean(ok);
     }, () => false));
+    this.#trying = trying;
+    const t = setTimeout(() => { if (this.#trying === trying) this.#trying = null; }, 3000);
+    trying.then(() => {
+      clearTimeout(t);
+      if (this.#trying === trying) this.#trying = null;
+    });
+    return trying;
   }
 
   /**
