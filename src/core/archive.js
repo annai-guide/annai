@@ -28,6 +28,7 @@ import { dayIn, deviceZone } from './time.js';
  *   extras: { name: string, hash: string }[], secrets?: string }} Manifest
  * @typedef {{ manifest: Manifest, zip: ZipReader, events: Map<string, EventRecord[]> }} OpenedArchive
  *   zip: the archive's entries, read on demand; events: each scope's history log, parsed and checked, by entry name
+ *   (empty after peekArchive: importArchive reads the logs it needs)
  */
 
 export const ARCHIVE_FORMAT = 1;
@@ -326,14 +327,15 @@ async function readBlob(store, hash, path) {
 }
 
 /**
- * Decrypts (if needed), opens and verifies an archive, reading the file one entry
- * at a time (spec §12.1). Throws ArchiveError (or NeedsPassphraseError /
+ * Decrypts (if needed) and opens an archive, and reads only its manifest: enough for the preview,
+ * however large the file. The content is checked when it is imported, one entry at a time
+ * (importArchive), or all at once by verifyArchive. Throws ArchiveError (or NeedsPassphraseError /
  * PassphraseError) without touching storage.
  * @param {Blob | Uint8Array} file
  * @param {string} [passphrase]
  * @returns {Promise<OpenedArchive>}
  */
-export async function openArchive(file, passphrase) {
+export async function peekArchive(file, passphrase) {
   let blob = file instanceof Blob ? file : new Blob([/** @type {BlobPart} */ (file)]);
   if (isEncrypted(new Uint8Array(await blob.slice(0, 64).arrayBuffer()))) {
     if (!passphrase) throw new NeedsPassphraseError();
@@ -366,21 +368,44 @@ export async function openArchive(file, passphrase) {
     if (!isSafePath(f.path)) throw new ArchiveError(`This file contains an unsafe file path (${JSON.stringify(f.path)}), so annai won't open it.`);
   }
   /** @type {string[]} */
+  const missing = [];
+  for (const f of [...manifest.files, ...manifest.blobs, ...manifest.extras]) if (!zip.has(f.name)) missing.push(`${f.name} is missing`);
+  if (missing.length) throw new ArchiveError(`This file is damaged: ${missing.join('; ')}.`);
+  return { manifest, zip, events: new Map() };
+}
+
+/**
+ * Reads and checks every entry of an opened archive, one at a time, and parses its history logs
+ * (spec §12.1). Throws ArchiveError.
+ * @param {OpenedArchive} opened
+ * @param {(done: number, total: number) => void} [onProgress]
+ * @returns {Promise<OpenedArchive>}
+ */
+export async function verifyArchive(opened, onProgress) {
+  const { manifest, zip } = opened;
+  /** @type {string[]} */
   const problems = [];
-  const check = async (/** @type {string} */ name, /** @type {string} */ hash) => {
-    if (!zip.has(name)) problems.push(`${name} is missing`);
-    else if ((await sha256Hex(await readEntry(zip, name))) !== hash) problems.push(`${name} was changed`);
-  };
-  for (const f of manifest.files) await check(f.name, f.hash);
-  for (const b of manifest.blobs) await check(b.name, b.hash);
-  for (const x of manifest.extras) await check(x.name, x.hash);
-  if (problems.length) throw new ArchiveError(`This file is damaged: ${problems.join('; ')}.`);
-  /** @type {Map<string, EventRecord[]>} */
-  const events = new Map();
-  for (const s of manifest.scopes) {
-    if (s.events) events.set(s.events, readLog(s.events, await readEntry(zip, s.events)));
+  const all = [...manifest.files, ...manifest.blobs, ...manifest.extras];
+  let done = 0;
+  for (const f of all) {
+    if ((await sha256Hex(await readEntry(zip, f.name))) !== f.hash) problems.push(`${f.name} was changed`);
+    onProgress?.(++done, all.length);
   }
-  return { manifest, zip, events };
+  if (problems.length) throw new ArchiveError(`This file is damaged: ${problems.join('; ')}.`);
+  for (const s of manifest.scopes) if (s.events) await logOf(opened, s.events);
+  return opened;
+}
+
+/** Decrypts, opens and fully verifies an archive. @param {Blob | Uint8Array} file @param {string} [passphrase] @param {(done: number, total: number) => void} [onProgress] */
+export async function openArchive(file, passphrase, onProgress) {
+  return verifyArchive(await peekArchive(file, passphrase), onProgress);
+}
+
+/** A scope's history log: parsed and checked once, then kept. @param {OpenedArchive} opened @param {string} name */
+async function logOf(opened, name) {
+  let log = opened.events.get(name);
+  if (!log) opened.events.set(name, log = readLog(name, await readEntry(opened.zip, name)));
+  return log;
 }
 
 /** One entry of an archive; a damaged entry is an ArchiveError. @param {ZipReader} zip @param {string} name */
@@ -460,9 +485,11 @@ export async function describeArchive(store, { manifest }) {
  * @param {Store} store
  * @param {OpenedArchive} opened
  * @param {{ trips?: Record<string, 'new'|'replace'|'skip'>, me?: 'keep'|'replace', settings?: 'keep'|'replace',
- *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number }} [choices]
+ *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number, onProgress?: (done: number, total: number) => void }} [choices]
+ *   onProgress: how many of the entries to store have been read, for "Importing 12 of 340"
  */
-export async function importArchive(store, { manifest, zip, events: logs }, choices = {}) {
+export async function importArchive(store, opened, choices = {}) {
+  const { manifest, zip } = opened;
   const now = choices.now ?? Date.now();
   /** @type {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[]} */
   const plan = [];
@@ -487,7 +514,7 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
       continue; // kept, or the system log or this device's own scope, which belong to the device they came from
     }
     const files = manifest.files.filter((f) => f.scope === rec.id);
-    const events = (s.events && logs.get(s.events)) || [];
+    const events = s.events ? await logOf(opened, s.events) : [];
     plan.push({ rec, target, mode, files, events });
     // Imported plugins arrive switched off: running their code must be an explicit choice
     // on the plugins screen, with its "full access" warning (spec §5.1).
@@ -529,12 +556,22 @@ export async function importArchive(store, { manifest, zip, events: logs }, choi
   /** @type {string[]} */
   const added = [];
   try {
+    // Which of them this device holds already is asked once, not once per entry.
+    const held = await store.tx(['blobs'], 'readonly', async (t) => {
+      /** @type {Set<string>} */
+      const have = new Set();
+      for (const hash of content.keys()) if (await t.hasBlob(hash)) have.add(hash);
+      return have;
+    });
+    let done = 0;
     for (const [hash, c] of content) {
-      if (await store.tx(['blobs'], 'readonly', (t) => t.hasBlob(hash))) continue;
+      choices.onProgress?.(done++, content.size);
+      if (held.has(hash)) continue;
       const bytes = c.bytes ?? (await readChecked(zip, c.name, hash));
       await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
       added.push(hash);
     }
+    choices.onProgress?.(content.size, content.size);
     await commitImport(store, { manifest, plan, overrides, secrets, now, result, hashes: [...content.keys()] });
   } catch (e) {
     await removeUnused(store, added).catch(() => {});

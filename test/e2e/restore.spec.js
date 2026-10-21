@@ -23,6 +23,10 @@ test('a restore brings the providers back with the plugins they use, in one step
     await expect(page.getByText(/^Installed what your providers use: .*Another address/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/^Installed what your providers use: .*Anthropic Messages/)).toBeVisible();
 
+    // The sentence asking to restart comes with the button that does it (the second emulator re-check).
+    await expect(page.getByText('Restart annai to use the imported settings and plugins.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Restart annai' })).toBeVisible();
+
     await page.goto('/#/plugins');
     await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
     await expect(page.locator('.card', { hasText: 'Another address' }).getByText('On', { exact: true })).toBeVisible();

@@ -101,6 +101,25 @@ test('an opened file can be left without importing: Cancel, or the link back to 
   }
 });
 
+// The second emulator re-check: a 2.4 MB backup showed nothing for five minutes, not even "Reading…".
+test('opening a file draws the screen at once, saying what it reads, and the preview needs only the manifest', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  const file = await buildAndSave(page);
+  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  // Every read of the file takes a while, as on a slow phone.
+  await page.evaluate(() => {
+    const read = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = async function () { await new Promise((r) => setTimeout(r, 1500)); return read.call(this); };
+  });
+  await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
+  await expect(page.getByRole('heading', { level: 1, name: 'Open a trip' })).toBeVisible();
+  await expect(page.getByText(/^Reading .+…$/)).toBeVisible({ timeout: 1000 });
+  await expect(page.getByRole('button', { name: 'Import' })).toBeVisible({ timeout: 30_000 });
+});
+
 test.describe('opening a hosted archive', () => {
   test.use({ serviceWorkers: 'block' });
   test('"#import=<url>" downloads and previews the archive', async ({ page }) => {

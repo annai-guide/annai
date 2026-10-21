@@ -7,7 +7,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, ME, SYS_SETTINGS, recordBackup, backupState, removeTrip } from '../../src/core/scopes.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
+import { exportArchive, openArchive, peekArchive, verifyArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
 import { PassphraseError } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
@@ -695,4 +695,45 @@ test("an export's file name has the day where the phone is, not UTC's", () => {
   const at = Date.parse('2026-10-20T00:10:00Z'); // 17:10 on Oct 19 in California, 09:10 on Oct 20 in Tokyo
   assert.equal(archiveName({ kind: 'everything', encrypted: false, now: at, tz: 'America/Los_Angeles' }), 'annai-backup-2026-10-19.annai.zip');
   assert.equal(archiveName({ kind: 'trip', title: 'Big Sur', encrypted: true, now: at, tz: 'Asia/Tokyo' }), 'annai-big-sur-2026-10-20.annai');
+});
+
+test('peeking at an archive reads only its manifest, and the content is checked as it is imported', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const note = manifest.files.find((f) => f.path === '/notes/案内.md');
+  assert.ok(note);
+  // A changed note: the preview still draws, and the import refuses it without leaving anything behind.
+  const entries = await readZip(await bytesOf(blob));
+  const z = new ZipWriter();
+  for (const [name, bytes] of entries) await z.add(name, name === note.name ? utf8('changed') : bytes);
+  const tampered = await bytesOf(z.finish());
+  await assert.rejects(openArchive(tampered), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  const peeked = await peekArchive(tampered);
+  assert.equal((await describeArchive((await device()).store, peeked)).trips.length, 1);
+  assert.equal(peeked.events.size, 0);
+  const b = await device();
+  await assert.rejects(importArchive(b.store, peeked), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  assert.equal((await listTrips(b.store)).active.length, 0);
+  assert.equal((await b.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(note.hash))), false);
+  // verifyArchive says the same up front, with progress.
+  const steps = /** @type {number[]} */ ([]);
+  await assert.rejects(verifyArchive(peeked, (done) => steps.push(done)), /damaged/);
+  assert.ok(steps.length > 0);
+});
+
+test('an import of a peeked archive brings the history in and reports how far it has read', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const b = await device();
+  /** @type {[number, number][]} */
+  const seen = [];
+  const r = await importArchive(b.store, await peekArchive(await bytesOf(blob)), { onProgress: (done, total) => seen.push([done, total]) });
+  assert.equal(r.trips.length, 1);
+  assert.ok(seen.length >= 2 && seen.at(-1)?.[0] === seen.at(-1)?.[1], JSON.stringify(seen));
+  const same = await importArchive((await device()).store, await openArchive(await bytesOf(blob)));
+  assert.equal(same.trips.length, 1);
+  const events = await b.store.tx(['events'], 'readonly', (t) => t.listEvents(r.trips[0]));
+  assert.ok(events.some((e) => e.type === 'import') && events.length > 2);
 });
