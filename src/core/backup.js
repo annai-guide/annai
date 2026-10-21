@@ -174,7 +174,9 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     }
     else if (e.kind === 'large') h = { kind: 'large', bytes: e.bytes ?? 0, at };
     else {
-      const count = rec.hold?.kind === 'error' ? rec.hold.count + 1 : 1;
+      // Offline is no failure of the place's: its count, which the wait after a failure grows with, stays.
+      const was = rec.hold?.kind === 'error' ? rec.hold.count : 0;
+      const count = online() ? was + 1 : was;
       h = { kind: 'error', message: online() ? e.message : `${e.message} annai tries again once it's back online.`, at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
     }
     await setTarget(ws, rec.id, { hold: h }).catch(() => {});
