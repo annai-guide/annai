@@ -136,6 +136,52 @@ export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.ki
 
 /** The card types running plugins add (spec §16.4). @param {import('../registry.js').Registry} registry @returns {any[]} */
 const cardTypes = (registry) => registry.list('ui:card-type').filter((t) => typeof t?.type === 'string');
+/** A link the screen may open: http(s) only. @param {any} l */
+const webLink = (l) => {
+  try {
+    return typeof l?.url === 'string' && ['http:', 'https:'].includes(new URL(l.url).protocol);
+  } catch {
+    return false;
+  }
+};
+/** A path under one of the roots, with no step out of it. @param {unknown} p @param {RegExp} root */
+const inside = (p, root) => typeof p === 'string' && root.test(p) && !p.split('/').some((x) => x === '..' || x === '.');
+
+/**
+ * A card as show takes it (spec §7.1, §16.4), Shiori's own or Kokoro's that annai shows itself: a plugin's kind of card must be
+ * running and its data valid, or the card is refused; links that aren't http(s), a photo outside the trip or /me, a booking outside
+ * the trip, and choices that aren't words are left out. @param {any} card @param {import('../registry.js').Registry} registry
+ * @returns {{ card: any } | { error: string }}
+ */
+export function checkCard(card, registry) {
+  if (!card || typeof card !== 'object' || Array.isArray(card)) return { error: 'Error: show needs a card.' };
+  if (card.type !== undefined) {
+    const types = cardTypes(registry);
+    const type = types.find((t) => t.type === card.type);
+    if (!type) return { error: `Error: there is no card type ${card.type}. Types: ${types.map((t) => t.type).join(', ') || 'none'}.` };
+    const wrong = type.schema ? validate(type.schema, card.data ?? {}) : [];
+    if (wrong.length) return { error: `Error: the ${type.type} card's data isn't valid: ${wrong.join('; ')}` };
+  }
+  const { links, image, booking, choice, ...rest } = card;
+  const kept = {
+    links: Array.isArray(links) ? links.filter(webLink) : [],
+    choice: Array.isArray(choice) ? choice.filter((c) => typeof c === 'string' && c.trim()) : [],
+  };
+  return {
+    card: {
+      ...rest, ...(kept.links.length ? { links: kept.links } : {}), ...(inside(image, /^\/(trip|me)\//) ? { image } : {}),
+      ...(inside(booking, /^\/trip\//) ? { booking } : {}), ...(kept.choice.length ? { choice: kept.choice } : {}),
+    },
+  };
+}
+
+/** An ask as the ask tool takes it: a question, and 1 to 6 options that are words, else why not. @param {any} i @returns {{ question: string, options: string[] } | { error: string }} */
+export function checkAsk(i) {
+  const options = Array.isArray(i?.options) ? i.options : [];
+  if (!options.length || options.length > 6 || options.some((/** @type {unknown} */ o) => typeof o !== 'string' || !o.trim())) return { error: 'Error: ask needs options: a list of 1 to 6 short texts, one per button.' };
+  if (typeof i.question !== 'string' || !i.question.trim()) return { error: 'Error: ask needs a question.' };
+  return { question: i.question, options };
+}
 
 export class Agent {
   scope = ME;
@@ -1882,14 +1928,9 @@ export class Agent {
         },
         run: async (/** @type {{ card: any }} */ i, /** @type {any} */ call) => {
           if (!i.card || typeof i.card !== 'object') throw new Error('show needs a card.');
-          if (i.card.type !== undefined) {
-            const types = cardTypes(registry);
-            const type = types.find((t) => t.type === i.card.type);
-            if (!type) return { content: `Error: there is no card type ${i.card.type}. Types: ${types.map((t) => t.type).join(', ') || 'none'}.`, isError: true };
-            const wrong = type.schema ? validate(type.schema, i.card.data ?? {}) : [];
-            if (wrong.length) return { content: `Error: the ${type.type} card's data isn't valid: ${wrong.join('; ')}`, isError: true };
-          }
-          await this.#log({ type: 'out.show', actor: 'shiori', data: { id: call.id, wake: call.wake, card: i.card } });
+          const ok = checkCard(i.card, registry);
+          if ('error' in ok) return { content: ok.error, isError: true };
+          await this.#log({ type: 'out.show', actor: 'shiori', data: { id: call.id, wake: call.wake, card: ok.card } });
           return 'shown';
         },
       },
@@ -1899,12 +1940,9 @@ export class Agent {
         input: { type: 'object', properties: { question: { type: 'string', minLength: 1 }, options: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 6 } }, required: ['question', 'options'] },
         run: async (/** @type {{ question: string, options: string[] }} */ i, /** @type {any} */ call) => {
           // Checked here, since a model may send anything: the screen shows these as buttons.
-          const options = Array.isArray(i.options) ? i.options : [];
-          if (!options.length || options.length > 6 || options.some((o) => typeof o !== 'string' || !o.trim())) {
-            return { content: 'Error: ask needs options: a list of 1 to 6 short texts, one per button.', isError: true };
-          }
-          if (typeof i.question !== 'string' || !i.question.trim()) return { content: 'Error: ask needs a question.', isError: true };
-          await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: i.question, options: i.options } });
+          const ok = checkAsk(i);
+          if ('error' in ok) return { content: ok.error, isError: true };
+          await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: ok.question, options: ok.options } });
           if (call.live) return 'Shown; their tap comes as their next turn.';
           if (call.voice && this.voice && !this.#aloudOnly && this.#half.voice()) return this.#askAloud(i.question, call);
           const got = await this.#waitFor(call.id, 'ask', 0);

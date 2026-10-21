@@ -174,3 +174,33 @@ test('Koe owes a note and a message the user wrote in its wait, and says nothing
   assert.deepEqual(await backstop(k), [["Shiori's answer", 'Sunset tonight is at 6:23 PM, but it is overcast.']]);
   assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title).filter((t) => /didn't answer/.test(t)), ["Shiori didn't answer"]);
 });
+
+// The fix pass's security review: what annai shows for Kokoro is checked as Shiori's own show and ask check it.
+test("a gated card of a kind no plugin draws isn't shown as a card: annai gives its words instead, as show refuses it", async () => {
+  const k = await agentKit([gated('show', { card: { type: 'ferries', title: 'Nepenthe', text: 'Open till 10.', data: {} } })], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual(await k.events(['out.show']), []);
+  assert.deepEqual(await backstop(k), [["Shiori's answer", 'Nepenthe: Open till 10.']]);
+});
+
+test('a gated card annai shows keeps only http(s) links, a photo and a booking inside the trip, and choices that are words, as show does', async () => {
+  const card = {
+    title: 'Nepenthe', text: 'Open till 10.',
+    links: [{ label: 'Site', url: 'https://nepenthe.com' }, { label: 'Run', url: 'javascript:alert(1)' }, { label: 'Data', url: 'data:text/html,<script>1</script>' }],
+    image: '/trip/../../me/secret.webp', booking: '/etc/passwd', choice: ['Book', 7],
+  };
+  const k = await agentKit([gated('show', { card })], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const [shown] = await k.events(['out.show']);
+  assert.deepEqual(shown.data.card, { title: 'Nepenthe', text: 'Open till 10.', links: [{ label: 'Site', url: 'https://nepenthe.com' }], choice: ['Book'] });
+});
+
+test("a gated question with an option that isn't words isn't asked: annai gives its words instead, as ask refuses it", async () => {
+  const k = await agentKit([gated('ask', { question: 'Which table time?', options: ['18:00', 7] })], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Book us at Nepenthe');
+  await k.agent.idle();
+  assert.deepEqual(await k.events(['out.ask']), []);
+  assert.deepEqual(await backstop(k), [["Shiori's answer", 'Which table time? (18:00, 7)']]);
+});

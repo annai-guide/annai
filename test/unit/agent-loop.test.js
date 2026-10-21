@@ -805,6 +805,20 @@ test("show: a plugin's card type joins the tool's card, its data is checked, and
   assert.equal((await k.events(['out.show'])).length, 1);
 });
 
+test("show keeps only http(s) links, a photo and a booking inside the trip (or /me), and choices that are words (the fix pass's security review)", async () => {
+  const k = await agentKit([[{ toolCalls: [
+    { name: 'show', input: { card: { title: 'Bixby', links: [{ label: 'Map', url: 'https://maps.example' }, { label: 'Run', url: 'javascript:alert(1)' }], image: '/etc/hosts', booking: '/me/../trip/x.json', choice: ['Go', { no: 1 }] } } },
+    { name: 'show', input: { card: { title: 'Kept', image: '/trip/files/bixby.webp', booking: '/trip/bookings/hotel.json' } } },
+    { name: 'sleep', input: {} },
+  ] }]]);
+  k.agent.send('Bixby?');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['out.show'])).map((e) => e.data.card), [
+    { title: 'Bixby', links: [{ label: 'Map', url: 'https://maps.example' }], choice: ['Go'] },
+    { title: 'Kept', image: '/trip/files/bixby.webp', booking: '/trip/bookings/hotel.json' },
+  ]);
+});
+
 test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shiori's turn goes on", async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'snap', input: {} }] }, say('That picture was broken.')]]);
   k.registry.add('test', 'tool', { name: 'snap', description: 'A picture.', input: { type: 'object' }, run: async () => ({ content: 'A picture.', images: [{ mediaType: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=' }] }) });
