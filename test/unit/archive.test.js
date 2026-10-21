@@ -193,7 +193,7 @@ test('Japanese names round-trip and file names stay readable', async () => {
   const b = await device();
   const r = await importArchive(b.store, await openArchive(await bytesOf(blob)));
   assert.equal(await b.ws.readText(r.trips[0], '/notes/伏見稲荷.md'), '千本鳥居');
-  assert.equal(archiveName({ kind: 'trip', title: 'Big Sur · Thanksgiving', encrypted: false, now: Date.UTC(2026, 10, 30) }), 'annai-big-sur-thanksgiving-2026-11-30.annai.zip');
+  assert.equal(archiveName({ kind: 'trip', title: 'Big Sur · Thanksgiving', encrypted: false, now: Date.UTC(2026, 10, 30), tz: 'UTC' }), 'annai-big-sur-thanksgiving-2026-11-30.annai.zip');
 });
 
 test('settings are kept unless the user chooses to replace them', async () => {
@@ -336,7 +336,7 @@ test('an archive that describes its contents wrongly is refused', async () => {
 
 test('export file names keep titles in any script', () => {
   const now = Date.UTC(2026, 10, 30);
-  const name = (/** @type {string} */ title) => archiveName({ kind: 'trip', title, encrypted: false, now });
+  const name = (/** @type {string} */ title) => archiveName({ kind: 'trip', title, encrypted: false, now, tz: 'UTC' });
   assert.equal(name('京都'), 'annai-京都-2026-11-30.annai.zip');
   assert.equal(name('北海道・冬'), 'annai-北海道-冬-2026-11-30.annai.zip');
   assert.equal(name('ながの'), 'annai-ながの-2026-11-30.annai.zip');
@@ -688,4 +688,11 @@ test('a Backup of everything records every trip it holds, archived ones too', as
   await recordBackup(a.store, seqs, 5000);
   assert.deepEqual(await backupState(a.store, kept), { at: 5000, changed: false });
   assert.deepEqual(await backupState(a.store, old), { at: 5000, changed: false });
+});
+
+// The emulator pass (m1c #5): an export at 17:10 on Oct 19 in California was named for Oct 20, the date in UTC.
+test("an export's file name has the day where the phone is, not UTC's", () => {
+  const at = Date.parse('2026-10-20T00:10:00Z'); // 17:10 on Oct 19 in California, 09:10 on Oct 20 in Tokyo
+  assert.equal(archiveName({ kind: 'everything', encrypted: false, now: at, tz: 'America/Los_Angeles' }), 'annai-backup-2026-10-19.annai.zip');
+  assert.equal(archiveName({ kind: 'trip', title: 'Big Sur', encrypted: true, now: at, tz: 'Asia/Tokyo' }), 'annai-big-sur-2026-10-20.annai');
 });
