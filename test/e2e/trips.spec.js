@@ -271,3 +271,48 @@ test('a trip card shows the stamps its arrivals earned, and the trip page all of
   await card.click();
   await expect(page.getByRole('img', { name: /^3 stamps:/ })).toBeVisible();
 });
+
+test('Back closes a question as No, where the browser has no CloseWatcher (Chrome before 120, Safari), and its entry never undoes what an answer does', async ({ page }) => {
+  await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const trip = page.url();
+  const question = page.getByRole('dialog', { name: 'Big Sur' });
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(question).toBeVisible();
+  await page.goBack(); // Android's Back
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(page.url()).toBe(trip);
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+
+  // Cancel takes its entry back too: the next Back leaves the trip, as it would have.
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await question.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => history.state?.annaiAsk ?? null)).toBe(null); // a few ms: no finger is that quick
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+
+  // Two questions in a row, then the answer moves to Trips and stays there.
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await question.getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Big Sur/ })).toHaveCount(0);
+});
+
+test('where the browser closes a question on Back itself (CloseWatcher), annai adds no history entry of its own', async ({ page }) => {
+  await openApp(page);
+  test.skip(!(await page.evaluate(() => 'CloseWatcher' in window)), 'this browser has no CloseWatcher');
+  await startTrip(page, 'Big Sur');
+  const before = await page.evaluate(() => history.length);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(page.getByRole('dialog', { name: 'Big Sur' })).toBeVisible();
+  expect(await page.evaluate(() => history.length)).toBe(before);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
