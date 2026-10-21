@@ -1,4 +1,4 @@
-import { blobId, treeId, GitPathError } from './git.js';
+import { blobId, treeId, GitPathError, readInOrder } from './git.js';
 
 /**
  * GitHub as a place for annai's backups (spec §12.4), through its Git Data API, which accepts
@@ -394,13 +394,12 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
   const lists = [manifest?.files, manifest?.blobs, manifest?.extras].map((l) => (Array.isArray(l) ? l : []));
   const named = lists.flat().map((x) => x?.name);
   const names = [...new Set(named.filter((n) => typeof n === 'string' && n !== MANIFEST))];
+  for (const name of names) if (!files.has(name)) throw new E('missing', `This backup is damaged: ${shown(name)} is missing from GitHub.`);
   const out = new g.zip.ZipWriter();
-  for (const [i, name] of names.entries()) {
-    const f = files.get(name);
-    if (!f) throw new E('missing', `This backup is damaged: ${shown(name)} is missing from GitHub.`);
-    await out.add(name, await blob(g, f.sha, signal), { compress: false });
+  await readInOrder(names, (name) => blob(g, /** @type {{ sha: string }} */ (files.get(name)).sha, signal), async (name, bytes, i) => {
+    await out.add(name, bytes, { compress: false });
     onProgress({ phase: 'downloading', done: i + 1, total: names.length });
-  }
+  });
   await out.add(MANIFEST, manifestBytes, { compress: false });
   return out.finish();
 }

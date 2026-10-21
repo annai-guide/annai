@@ -102,3 +102,26 @@ async function hashDir(d) {
 export async function treeId(files) {
   return hashDir(nest(files));
 }
+
+/**
+ * Each name's bytes, read up to width at a time, handed to take in the order given: a backup's files are
+ * many and small, and one at a time each waits a round trip (review R14). The first failure is thrown.
+ * @param {string[]} names @param {(name: string) => Promise<Uint8Array>} read
+ * @param {(name: string, bytes: Uint8Array, i: number) => Promise<void>} take @param {number} [width]
+ */
+export async function readInOrder(names, read, take, width = 6) {
+  /** @type {Promise<Uint8Array>[]} */
+  const reads = [];
+  const more = () => {
+    if (reads.length >= names.length) return;
+    const p = read(names[reads.length]);
+    p.catch(() => {}); // thrown when its turn comes
+    reads.push(p);
+  };
+  for (let k = 0; k < width; k++) more();
+  for (let i = 0; i < names.length; i++) {
+    const bytes = await reads[i];
+    more();
+    await take(names[i], bytes, i);
+  }
+}
