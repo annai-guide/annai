@@ -387,7 +387,7 @@ function modelsPart(ctx, id, abilityId, models) {
       try {
         const listed = await ctx.llm.listModels(id, abilityId);
         status.textContent = `${listed.length} model${listed.length === 1 ? '' : 's'}.`;
-        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models));
+        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config()));
       } catch (e) {
         status.textContent = messageOf(e);
       } finally {
@@ -407,25 +407,31 @@ function modelsPart(ctx, id, abilityId, models) {
 }
 
 /**
- * The models an ability listed, minus those already added, with a filter.
+ * The models an ability listed, minus those already added, with a filter. One whose name another model has says where
+ * that is, as adding it by id refuses it, rather than adding it again as "name (2)" (the emulator pass).
  * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed @param {import('../../core/llm/config.js').Model[]} have
+ * @param {import('../../core/llm/config.js').ModelConfig} cfg
  */
-function listedModels(ctx, id, abilityId, listed, have) {
+function listedModels(ctx, id, abilityId, listed, have, cfg) {
   const owned = new Set(have.map((m) => m.providerId));
+  const taken = new Map(Object.values(cfg.models).map(modelOf).map((m) => [m.name.toLowerCase(), cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).name : '']));
   const filter = h('input', { id: `model-filter-${abilityId}`, autocomplete: 'off', placeholder: 'for example: haiku' });
   const list = h('ul', { class: 'listed' });
   const show = () => {
     const q = filter.value.trim().toLowerCase();
     const rows = listed.filter((m) => !owned.has(m.providerId) && (!q || `${m.providerId} ${m.name ?? ''}`.toLowerCase().includes(q))).slice(0, 50);
-    list.replaceChildren(...rows.map((m) => h('li', { class: 'acts' },
-      h('span', { text: m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId }),
-      h('button', {
-        class: 'btn', type: 'button', 'aria-label': `Add ${m.providerId}`,
-        onclick: async () => {
-          await addListedModel(ctx, id, abilityId, m);
-          ctx.render();
-        },
-      }, 'Add'))));
+    list.replaceChildren(...rows.map((m) => {
+      const on = taken.get((m.name || m.providerId).toLowerCase());
+      return h('li', { class: 'acts' },
+        h('span', { text: m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId }),
+        on !== undefined ? h('span', { class: 'sub', text: `Already added, on ${on || 'another provider'}` }) : h('button', {
+          class: 'btn', type: 'button', 'aria-label': `Add ${m.providerId}`,
+          onclick: async () => {
+            await addListedModel(ctx, id, abilityId, m);
+            ctx.render();
+          },
+        }, 'Add'));
+    }));
   };
   filter.addEventListener('input', show);
   show();
