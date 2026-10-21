@@ -1,7 +1,7 @@
 import { officialUpdates, updateOfficial } from '../core/llm/official.js';
 import { addressUpdates, updateFromAddress } from '../core/package-updates.js';
 import { addsAnything } from '../core/packages.js';
-import { whatItBrings, FULL_ACCESS } from './screens/plugin-install.js';
+import { whatItBrings, FULL_ACCESS, keyNames, keysRisk } from './screens/plugin-install.js';
 
 /**
  * Plugin updates (spec §5.3): annai's own, from its catalog, and packages installed from an address,
@@ -86,7 +86,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
   for (const u of updates) {
     // Official plugins are annai's own, checked against its catalog's hashes: they update as they are (ruling).
     if (u.url && addsAnything(u.added) && !u.agreed) {
-      askFirst(ctx, u, env);
+      await askFirst(ctx, u, env);
       continue;
     }
     try {
@@ -119,14 +119,16 @@ export async function applyUpdates(ctx, updates, env = {}) {
  * finding); new code asks with the install screen's full-trust words. Nothing changes until Update.
  * @param {{ plugins: any, notices: any }} ctx @param {Update} u @param {Env} env
  */
-function askFirst(ctx, u, env) {
+async function askFirst(ctx, u, env) {
   const added = /** @type {import('../core/packages.js').Added} */ (u.added);
+  // New code from an address, not annai's: what it can do with the keys saved now, by name (fixes-ui 15).
+  const risk = added.code ? ` ${keysRisk(await keyNames(ctx.plugins).catch(() => []))}` : '';
   ctx.notices.card({
     tone: added.code ? 'risk' : 'warn',
     title: `${u.name} ${u.available} brings something new`,
-    body: `New in this version: ${whatItBrings(added).join('; ')}.${added.code ? ` ${FULL_ACCESS} Only update if you trust where it came from.` : ''} Nothing changes until you tap Update.`,
+    body: `New in this version: ${whatItBrings(added).join('; ')}.${added.code ? ` ${FULL_ACCESS}${risk} Only update if you trust where it came from.` : ''} Nothing changes until you tap Update.`,
     actions: [
-      { label: 'Update', primary: true, run: () => applyUpdates(ctx, [{ ...u, agreed: true }], env) },
+      { label: added.code ? 'Update anyway' : 'Update', primary: true, run: () => applyUpdates(ctx, [{ ...u, agreed: true }], env) },
       { label: 'Not now', run: () => {} },
     ],
   });

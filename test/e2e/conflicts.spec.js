@@ -15,7 +15,7 @@ test('a plugin whose tool name is taken: its page says Not used, naming who prov
     await modelSetUp(page, llm.origin);
     await pickAddress(page, `${site.origin}/kits/clash-tool/annai-plugin.json`);
     await expect(page.getByRole('heading', { name: 'Install Clash tool?' })).toBeVisible();
-    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await page.getByRole('button', { name: 'Install anyway' }).click();
     await expect(page.locator('.card', { hasText: 'Clash tool' }).getByText('On', { exact: true })).toBeVisible();
     await page.goto('/#/plugins/clash-tool');
     const names = page.getByRole('region', { name: 'Names' });
@@ -81,7 +81,7 @@ test('a package from another place over an installed one says what it would get;
   try {
     await modelSetUp(page, llm.origin);
     await pickAddress(page, `${site.origin}/kits/clash-tool/annai-plugin.json`);
-    await page.getByRole('button', { name: 'Install', exact: true }).click();
+    await page.getByRole('button', { name: 'Install anyway' }).click();
     await expect(page.locator('.card', { hasText: 'Clash tool' }).getByText('On', { exact: true })).toBeVisible();
     await page.goto('/#/plugins/clash-tool');
     const names = page.getByRole('region', { name: 'Names' });

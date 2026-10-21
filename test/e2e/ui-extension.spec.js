@@ -7,7 +7,7 @@ const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-st
  * Installs a package from a zip through the Add screen and its install screen; one that replaces annai's
  * own parts is installed and used (milestone 6). @param {any} page @param {Buffer} zip @param {string} name @param {string} [button]
  */
-export async function install(page, zip, name, button = 'Install') {
+export async function install(page, zip, name, button = 'Install anyway') {
   await pickFile(page, { name: `${name}.zip`, mimeType: 'application/zip', buffer: zip });
   await page.getByRole('button', { name: button, exact: true }).click();
   await expect(page.locator('.card', { hasText: name }).getByText('On', { exact: true })).toBeVisible();
