@@ -134,6 +134,16 @@ test("the welcome's last step names the featured provider's sign-in from annai's
   }
 });
 
+test("the welcome's sentence on the featured sign-in comes with annai's catalog, not seconds later once its plugin has installed (the emulator pass)", async ({ page, context }) => {
+  // Its plugin's files come slowly, as on a phone's connection after Erase.
+  await context.route('**/plugins-official/provider-openrouter/**', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 8000));
+    await route.continue().catch(() => {});
+  });
+  await openApp(page, '#/welcome/5');
+  await expect(page.locator('.welcome p', { hasText: 'so Shiori can think' })).toContainText('Sign in with OpenRouter is the quickest way', { timeout: 4000 });
+});
+
 test.describe('a link that opens a screen is never interrupted', () => {
   test.use({ serviceWorkers: 'block' });
 
