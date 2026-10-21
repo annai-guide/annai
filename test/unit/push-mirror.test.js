@@ -613,3 +613,17 @@ test("opening another trip keeps the open one's plan reminders at the relay; onl
     await k.stop();
   }
 });
+
+test('a "coming up" reminder at the relay carries its item\'s start, for the phone to count the minutes left (m6 #11)', async () => {
+  const k = await pushKit({ plan: { tea: TEA }, live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.flush();
+    await k.deliver(at('15:45') + GRACE_MS);
+    const tea = k.pushed().find((p) => p.watch === 'plan:tea:coming-up');
+    assert.equal(tea?.body, 'In 15 min: Tea at the inn at 16:00.');
+    assert.equal(tea?.start, at('16:00'));
+  } finally {
+    await k.stop();
+  }
+});

@@ -119,3 +119,21 @@ test("an open annai that can't be brought forward (focus refused): annai is open
   await k.fire('notificationclick', { notification: { title: 'Big Sur', body: 'Tea time.', data: { key: 'trip-1|w-1', scope: 'trip-1', watch: 'w-1', at: 1 }, close: () => {} } });
   assert.deepEqual(k.opened, ['/']);
 });
+
+// The emulator pass (m6 #11): a "coming up" push held by the phone came 4 minutes late, still saying "In 15 min".
+test('a "coming up" reminder says the minutes left when it shows, counted from the start it carries', async () => {
+  const k = await swKit();
+  const start = Date.now() + 11 * 60_000 + 20_000;
+  const coming = { ...REMINDER, key: 'trip-1|plan:call:coming-up|1', watch: 'plan:call:coming-up', body: 'In 15 min: Call home at 05:35.', start };
+  await k.fire('push', { data: { json: () => coming } });
+  assert.equal(k.shown[0].body, 'In 11 min: Call home at 05:35.');
+  await k.fire('push', { data: { json: () => ({ ...coming, start: Date.now() + 20_000 }) } });
+  assert.equal(k.shown[1].body, 'Now: Call home at 05:35.');
+  await k.fire('push', { data: { json: () => ({ ...coming, start: Date.now() - 9 * 60_000 }) } });
+  assert.equal(k.shown[2].body, 'Started 9 min ago: Call home at 05:35.');
+  // Without a start, or with other words, the words stay as they came.
+  await k.fire('push', { data: { json: () => ({ ...coming, start: undefined }) } });
+  assert.equal(k.shown[3].body, 'In 15 min: Call home at 05:35.');
+  await k.fire('push', { data: { json: () => ({ ...REMINDER, start }) } });
+  assert.equal(k.shown[4].body, 'Tea time.');
+});

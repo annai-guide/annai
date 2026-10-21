@@ -866,6 +866,7 @@ When the app becomes visible:
   - `DELETE /v1/schedule/:id` (requires the cancel token)
 - **Abuse limits** live on the relay: payloads up to 4 KB, at most 200 pending per subscription, at most 30 days ahead, and rate limits per IP.
 - **Cancelling a watch** deletes it at the relay. **Opening a notification** starts a catch-up wake with "opened the reminder for X".
+- **Sent to come at once:** each reminder asks the push service for urgency high and keeps for an hour (TTL), past which catch-up covers it. A "coming up" carries its item's start, and the phone says the minutes left as it shows it, so one the phone held back isn't stale.
 - **Deployment:** the relay is written as a Cloudflare Worker. Each push subscription gets its own Durable Object, which holds that subscription's pending messages and uses its alarm to fire at the next `sendAt`. The same code runs in Node (`relay/serve.mjs`, its storage in a file), and that is how `push.annai.guide` runs while annai is being tested: on the author's own machine behind a reverse proxy. It moves to a Cloudflare Worker once things settle. The source is published under `relay/` for self-hosting either way.
 
 ### 11.7 Privacy
