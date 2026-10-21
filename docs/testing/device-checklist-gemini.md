@@ -42,3 +42,15 @@ Before you start, open Settings → Updates: if it offers Google Gemini 2.1.0, u
 - [ ] **Phone quality.** Voice → Sound → Phone quality, 8 kHz: Play a sample sounds like a phone call, and Trace says `streamed PCM at 8 kHz` at a third of the size (the Trace counts the sound as decoded 16-bit PCM; on the wire it's about a fifth).
 - [ ] **The way back to whole clips.** Untick "Stream her voice, so she starts sooner": Play a sample still works, the Trace line says `wav`, and Shiori's replies start a little later. If anything above failed with streaming on (the silent switch, Bluetooth, the car, the lock screen), check it again with streaming off and say which.
 - [ ] **A used-up day.** On a free key, after ten sentences in a day, the Gemini voice rests (Trace: `rate (429)`, "10 requests per day"), and the next voice in Speech out speaks the rest without a pause.
+
+## G4: Google Search
+
+Before you start, open Settings → Updates: if it offers Google Gemini 2.2.0, update it (it brings Gemini API 0.4.0). Search needs a key on a paid project: Google refuses any request with it from a free key. Within a month's first 5,000 searches it costs nothing.
+
+- [ ] **The switch.** Google Gemini's page → Chat: "Let Gemini search Google" is on, with a note on what it costs (5,000 a month free, then $14 per 1,000) and that Google keeps searched prompts for 30 days. Settings → Tools → "Your models' own tools" has Google Search, and its switch is the same one.
+- [ ] **A grounded answer.** Ask Shiori something that changes ("what time does Nepenthe close today?"). The conversation shows a card, "From Google Search": Google's words as they came, its sources as links, and Google's suggestion chips under them. Tap a source: it opens in a new tab. Tap a chip: Google Search opens in a new tab (Safari), annai stays as it was.
+- [ ] **Its cost.** Trace → Type contains `model.turn`: the turn's cost is what its tokens cost, the searches free (Google's 5,000 a month). Trace → Conversation lists the card.
+- [ ] **With Koe.** Koe on (Use the recommended models), voice off, the halves' notes hidden: ask the same. The card still shows, and Koe says the answer in her own words.
+- [ ] **The free tier.** Tick "This key is on the free tier": the search switch goes off and greyed, saying "Google doesn't offer search on the free tier.", and Settings → Tools no longer lists Google Search. Ask something that needs the web: Shiori answers with annai's own search (Jina), no error from Google. Untick it: the switch is back on.
+- [ ] **Offline.** Open an earlier conversation with a card in airplane mode: its words and links show; the chips' frame may be empty (it needs the network), and nothing else on the page breaks.
+- [ ] **Light and dark.** In the phone's dark mode, the chips are drawn dark, as Google's own HTML says; in light mode, light.
