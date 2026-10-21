@@ -536,9 +536,11 @@ export class Agent {
     return Promise.resolve();
   }
 
-  /** @param {(w: Wake) => boolean} which queued wakes to take out */
+  /** @param {(w: Wake) => boolean} which queued wakes to take out @returns {Wake[]} those taken out */
   drop(which) {
+    const out = this.#queue.filter(which);
     this.#queue = this.#queue.filter((w) => !which(w));
+    return out;
   }
 
   /** Queues a wake and starts a turn, past the budgets (admit). @param {Wake} w */

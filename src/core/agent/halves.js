@@ -409,7 +409,7 @@ export class Halves {
     if (this.koeState === 'text') return this.koe.enqueue(w);
     if (this.koeState !== 'down') return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
     this.#notice({ tone: 'warn', title: "Koe's live voice couldn't start", body: 'Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.' });
-    this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true, ...(w.fallbacks?.length ? { fallbacks: w.fallbacks } : {}) });
+    this.#talkDirectly(w.fallbacks);
   }
 
   /**
@@ -424,7 +424,7 @@ export class Halves {
       await this.#refresh();
       if (!cut) return;
       if (this.koeState === 'text') this.koe.enqueue({ kind: 'cue', text: 'the live session dropped while you were answering; finish briefly' });
-      else if (this.koeState === 'down') this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true });
+      else if (this.koeState === 'down') this.#talkDirectly();
     });
   }
 
@@ -705,9 +705,20 @@ export class Halves {
     this.#downUntil = this.clock() + KOE_REST_MS;
     this.#route(async () => {
       await this.#refresh();
-      this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true });
+      // Down, Kokoro talks. Gone on to a live model in its list (voice off, its text model resting), Kokoro's answer, gated,
+      // reaches the live session as a note: what it told the failed Koe isn't lost.
+      this.#talkDirectly();
     });
     return true;
+  }
+
+  /**
+   * Kokoro wakes to talk to the user directly: once, however many failures ask it to (emulator pass: two near-identical
+   * bubbles, one from the turn that saw Koe go down and one from the wake that came meanwhile). @param {import('./loop.js').Reminder[]} [fallbacks]
+   */
+  #talkDirectly(fallbacks = []) {
+    const was = this.kokoro.drop((w) => w.kind === 'halves' && w.text === BLOCKS['koe-down']);
+    this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true, ...(fallbacks.length || was.length ? { fallbacks: [...was.flatMap((w) => w.fallbacks ?? []), ...fallbacks] } : {}) });
   }
 
   /**
@@ -721,6 +732,8 @@ export class Halves {
       this.#why = '';
       this.#up('kokoro');
     }
+    // It talked to the user itself (Koe down): a "Koe can't speak" wake that came meanwhile is answered already.
+    if (t.spoke) this.kokoro.drop((w) => w.kind === 'halves' && w.text === BLOCKS['koe-down'] && !w.fallbacks?.length);
     if (!this.#works()) return;
     let told = t.told;
     if (t.ok && t.finalText && !t.told && !t.slept) {

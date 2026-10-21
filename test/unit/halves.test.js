@@ -128,6 +128,18 @@ test("both halves' lists fail: the user gets one card, \"Shiori can't reach her 
   }
 });
 
+test("Koe goes down while Kokoro works: Kokoro tells the user directly once, not again for the \"Koe can't speak\" wake that came meanwhile (emulator pass: two near-identical bubbles)", async () => {
+  const answer = 'Bixby Creek Bridge is a 714-foot concrete arch, opened in 1932.';
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'tell_koe', input: { text: answer } }] }, then: { delayMs: 150, ...calls(['speak', { text: answer }]) } },
+    { match: "Koe can't speak", reply: calls(['speak', { text: `${answer} You're near Monterey right now.` }]) },
+  ] }], { koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
+  k.agent.send('What is Bixby Bridge? One sentence.');
+  await k.agent.idle();
+  assert.equal(k.agent.koeState, 'down');
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak'), [['out.speak', 'kokoro', answer]]);
+});
+
 test("Kokoro's list fails: Koe gets a note and tells the user it couldn't check; no card", async () => {
   const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: { rules: [
     { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: 'Open now?' }]) },
