@@ -291,34 +291,47 @@ export function createLlm({
       if (brought.delete(plugin) && !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === plugin)) await drop(plugin);
     }),
     /**
-     * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
-     * tap, so one switched off stays off. @param {string} plugin @returns {Promise<import('./providers.js').ProviderSource | null>} null: a provider exists
-     */
-    /**
      * After a restore brought providers back with the settings (spec §12.3), in the same step: the plugins they and their
-     * abilities that are on use, annai's own from its catalog, hash-checked, as Add installs them. One that isn't annai's
-     * own, or can't be had now, is named with what to do. @returns {Promise<{ installed: string[], failed: string[] }>}
+     * abilities that are on use, annai's own from its catalog, hash-checked, as Add installs them. A record may name any
+     * plugin (an archive can be crafted), so only a model provider's is installed, checked before any download, and one
+     * this installed that then brings no provider goes again, with what only it required (review R1). One that isn't
+     * annai's own, or can't be had now, is named with what to do. @returns {Promise<{ installed: string[], failed: string[] }>}
      *   installed: the plugins' names; failed: a line for each provider, in words
      */
     restorePlugins: () => queued(async () => {
       await ready;
       await pluginsCanLoad();
       const had = await plugins.installed();
+      /** @type {import('./official.js').CatalogPlugin[] | Error} */
+      const catalog = await officialPlugins({ fetch: get, base }).catch((e) => e);
+      /** Whether a plugin describes a model provider: by annai's catalog, or by its own manifest when installed from elsewhere. @param {string} id */
+      const isProvider = async (id) => {
+        const entry = Array.isArray(catalog) ? catalog.find((x) => x.id === id) : undefined;
+        if (entry) return entry.abilities.length > 0;
+        if (had[id]) return Boolean((await plugins.manifestOf(id).catch(() => null))?.provider);
+        if (!Array.isArray(catalog)) throw catalog;
+        throw new Error("its plugin isn't annai's own. Install it again from where it came from.");
+      };
       /** @type {string[]} */
       const failed = [];
       for (const rec of Object.values((await readConfig(ws)).providers)) {
         const p = providerOf(rec);
         try {
+          if (!(await isProvider(rec.plugin))) throw new Error("the plugin it names doesn't provide models, so it wasn't installed.");
           await service.installProvider(rec.plugin);
           for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
         } catch (e) {
-          const why = String(/** @type {any} */ (e)?.message ?? e);
-          failed.push(`${p.name}: ${/isn't in annai's catalog/.test(why) ? "its plugin isn't annai's own. Install it again from where it came from." : why.replace(/^[\w.-]+: /, '')}`);
+          failed.push(`${p.name}: ${String(/** @type {any} */ (e)?.message ?? e).replace(/^[\w.-]+: /, '')}`);
         }
+        if (!had[rec.plugin] && (await plugins.installed())[rec.plugin] && !providers().some((x) => x.plugin === rec.plugin)) await drop(rec.plugin).catch(() => {});
       }
       const now = await plugins.installed();
       return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed };
     }),
+    /**
+     * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
+     * tap, so one switched off stays off. @param {string} plugin @returns {Promise<import('./providers.js').ProviderSource | null>} null: a provider exists
+     */
     prepareStart: (plugin) => queued(async () => {
       if (Object.keys((await readConfig(ws)).providers).length) return null;
       return service.installProvider(plugin, { official: true, tap: false });

@@ -69,3 +69,30 @@ test('a restore offline says the providers whose plugins are missing, and a seco
   assert.deepEqual(second.failed, []);
   assert.ok(second.installed.length >= 4);
 });
+
+// Review R1: a restored record names the plugin it comes from, and a crafted archive may name any catalog plugin.
+test("a restored record naming a plugin that isn't a model provider (remote-trace) installs nothing, and says so", async () => {
+  const { b, llm } = await restored();
+  await addProvider({ ws: b.ws, store: b.store }, { ...structuredClone(ROUTER_SRC), plugin: 'remote-trace', name: 'Trace' }, { key: 'sk-r', roles: null });
+  const got = await llm.restorePlugins();
+  assert.equal((await b.host.installed())['remote-trace'], undefined, 'remote-trace is never installed by a restore');
+  assert.equal(got.failed.length, 1);
+  assert.match(got.failed[0], /^Trace: /);
+  assert.doesNotMatch(got.failed[0], /remote-trace/);
+  assert.ok(Object.keys(await b.host.installed()).includes('provider-openrouter'), 'the real providers still come');
+});
+
+test('a plugin the restore installed that then provides no provider is removed again', async () => {
+  const { b, llm } = await restored();
+  // A record that names a real provider plugin, whose provider then doesn't come up (as a crafted record could arrange).
+  const before = new Set(Object.keys(await b.host.installed()));
+  const orig = b.host.start.bind(b.host);
+  b.host.start = async (/** @type {string} */ id) => { if (id !== 'provider-gemini') await orig(id); };
+  const got = await llm.restorePlugins();
+  b.host.start = orig;
+  const now = Object.keys(await b.host.installed());
+  assert.ok(!now.includes('provider-gemini'), 'the plugin that brought no provider went');
+  assert.ok(!got.installed.includes('Google Gemini'));
+  assert.equal(got.failed.length, 1);
+  assert.ok(before.size === 0 && now.includes('provider-openrouter'));
+});
