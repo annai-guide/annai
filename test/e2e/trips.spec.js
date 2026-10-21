@@ -369,3 +369,17 @@ test('"Tap again" comes where the first tap was, on a phone 320 wide, and waits 
   await expect(archive).toBeVisible();
   await expect(again).toHaveCount(0);
 });
+
+test("review m2: a question's history entry left from before a reload is never taken for a new question's: answering stays on the screen", async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const trip = page.url();
+  // What a reload with a question open leaves: an entry of an earlier page's first question.
+  await page.evaluate(() => history.replaceState({ ...history.state, annaiAsk: 'ask-0' }, ''));
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.waitForTimeout(300);
+  expect(page.url()).toBe(trip);
+  await expect(page.getByRole('heading', { level: 1, name: 'Big Sur' })).toBeVisible();
+});
