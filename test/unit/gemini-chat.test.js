@@ -347,3 +347,20 @@ test("forgetRequest: Google's delete call for one interaction, the key in its he
   const r = type.forgetRequest({ endpoint: endpointOf(type), key: KEY, id: 'v1_a/b' });
   assert.deepEqual(r, { url: 'https://generativelanguage.googleapis.com/v1beta/interactions/v1_a%2Fb', headers: { 'x-goog-api-key': KEY }, method: 'DELETE' });
 });
+
+test("a grounded turn's search steps go back to the model that made them even when search isn't offered now (a key marked free, or search off): Google takes them so, on a paid key and a free one (checked 2026-10-21), and counts them as no input", async () => {
+  const SEARCH = { id: 'gemini-google-search', name: 'Google Search', kind: /** @type {const} */ ('search'), patch: { 'tools+': [{ type: 'google_search' }] }, paidOnly: true, freePerMonth: 5000, usageKey: 'google_search', pricePerCall: 0.014 };
+  const lite = modelOf({ providerTools: [SEARCH] });
+  const recorded = await readFile(new URL('../fixtures/gemini/search-grounded-lite.sse', import.meta.url), 'utf8');
+  const ask = { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'What time does Nepenthe restaurant in Big Sur close today?' }] };
+  const first = await callOnce({ type, endpoint: endpointOf(type), model: lite, key: KEY, request: { messages: [ask] }, fetch: async () => new Response(recorded, { headers: { 'content-type': 'text/event-stream' } }) });
+  /** @type {any} */
+  let body;
+  const answer = async (/** @type {string} */ _u, /** @type {any} */ init) => { body = JSON.parse(init.body); return new Response(await readFile(new URL('../fixtures/gemini/lite-result-chained.sse', import.meta.url), 'utf8'), { headers: { 'content-type': 'text/event-stream' } }); };
+  const messages = [ask, { role: /** @type {const} */ ('assistant'), parts: first.parts }, { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'And tomorrow?' }] }];
+  await callOnce({ type, endpoint: endpointOf(type, { free: true }), model: lite, key: KEY, request: { messages, providerTools: { kinds: ['search'] } }, fetch: answer });
+  assert.equal(body.tools, undefined, 'a key marked free never offers Google Search');
+  assert.deepEqual(body.input.map((/** @type {any} */ s) => s.type), ['user_input', 'google_search_call', 'google_search_result', 'thought', 'model_output', 'user_input']);
+  await callOnce({ type, endpoint: endpointOf(type), model: modelOf({ providerId: 'gemini-3.6-flash', providerTools: [SEARCH] }), key: KEY, request: { messages }, fetch: answer });
+  assert.deepEqual(body.input.map((/** @type {any} */ s) => s.type), ['user_input', 'model_output', 'user_input'], 'another model gets the words alone');
+});
