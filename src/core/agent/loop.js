@@ -1185,6 +1185,8 @@ export class Agent {
     /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
     let theirs = wakes.some(isTheirs);
     let reached = this.#reached;
+    /** What had reached the user when the turn began: a tool call is asked for only until something more has (review A4). */
+    const begun = this.#reached;
     /** She reached the user: what was owed before is settled. Checked before more wakes join, and at the end. */
     const settle = () => {
       if (this.#reached !== reached) {
@@ -1246,7 +1248,8 @@ export class Agent {
         ...providerTools, newestPhoto: this.transcript.newestPhoto, // a model that takes no photos gets older ones as words
         // She reaches the user only through tools: the model must call one, where its endpoint can say so (item 15; the nudge stays
         // the backstop). Not with the model's own search on: it answers in words, shown as written (G4).
-        ...(providerTools.providerTools ? {} : { toolRequired: true }),
+        // Only until she has reached the user (or told the other half): after that, she may end in words.
+        ...(providerTools.providerTools || this.#reached !== begun || this.#facts.told ? {} : { toolRequired: true }),
       };
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;

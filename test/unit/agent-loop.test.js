@@ -6,6 +6,7 @@ import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { Agent, UNANSWERED } from '../../src/core/agent/loop.js';
+import { STEP_BACKSTOP } from '../../src/core/agent/budgets.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 
@@ -307,6 +308,26 @@ test("Shiori's turns ask the model to call a tool (she reaches the user only thr
   search.agent.send('Is it open?');
   await search.agent.idle();
   assert.equal(search.requests[0].toolRequired, undefined, "its search answers in words, shown as written (G4): nothing is forced");
+});
+
+test('a tool call is asked for only until she has reached the user in the turn: after that she may end in words (review A4)', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Big Sur: the coast.' } }] }, { text: 'Done.' }]]);
+  k.agent.send('What is Big Sur known for?');
+  await k.agent.idle();
+  assert.deepEqual(k.requests.map((/** @type {any} */ r) => r.toolRequired), [true, undefined]);
+  assert.deepEqual(k.notices, [], 'it reached the user: no nudge');
+});
+
+test('with no steps-per-wake limit set, a turn still stops at 25 steps, with a card (review A4: a backstop)', async () => {
+  const a = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+  const b = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
+  const k = await agentKit([Array.from({ length: 30 }, (_, i) => (i % 2 ? b : a))]);
+  k.agent.send('Go');
+  await k.agent.idle();
+  assert.equal(k.requests.length, STEP_BACKSTOP);
+  assert.equal(STEP_BACKSTOP, 25);
+  assert.equal(k.notices[0].title, 'Shiori stopped: step limit');
+  assert.match(k.notices[0].body, /25 steps/);
 });
 
 test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async () => {
