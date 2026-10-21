@@ -229,3 +229,11 @@ test('annai starting off screen says nothing on screen: its catch-up firings are
   assert.deepEqual(doubles, []);
   live.dispose();
 });
+
+test('a "coming up" reminder carries its item\'s start, so the phone can count the minutes left when it shows (the emulator pass, m6 #11)', async () => {
+  const k = await liveKit({ plan: { tea: TEA, nepenthe: NEP } });
+  const list = /** @type {any[]} */ (await k.live.reminders());
+  assert.equal(list.find((r) => r.watch === 'plan:tea:coming-up')?.start, at('16:00'));
+  assert.equal(list.find((r) => r.watch === 'plan:nepenthe:leave')?.start, undefined, '"leave soon" counts no minutes to the start');
+  k.live.dispose();
+});

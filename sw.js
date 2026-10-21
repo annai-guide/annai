@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '4dad5e6430c9';
+const BUILD = 'c003d0c6d724';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -454,7 +454,10 @@ async function showReminder(data) {
   }
   const ok = m !== null && typeof m === 'object' && typeof m.body === 'string' && m.body.trim() !== '' && typeof m.key === 'string';
   const title = ok && typeof m.title === 'string' && m.title.trim() ? m.title.slice(0, 120) : 'annai';
-  const body = ok ? m.body.slice(0, 500) : 'annai has a reminder for you. Open annai to see it.';
+  // A held-back "coming up" says the minutes left now.
+  const left = ok && Number.isFinite(m.start) ? Math.round((m.start - Date.now()) / 60_000) : null;
+  const body = !ok ? 'annai has a reminder for you. Open annai to see it.'
+    : m.body.slice(0, 500).replace(/^In \d+ min: /, (was) => (left === null ? was : left > 0 ? `In ${left} min: ` : left === 0 ? 'Now: ' : `Started ${-left} min ago: `));
   /** @type {Record<string, unknown>} */
   const info = ok ? { key: m.key.slice(0, 300), scope: String(m.scope ?? ''), watch: String(m.watch ?? ''), at: Number(m.at) || 0, ...(m.test ? { test: true } : {}) } : {};
   await sw.registration.showNotification(title, { body, tag: typeof info.key === 'string' ? info.key : 'annai-reminder', data: info, icon: '/assets/icons/icon-192.png' });

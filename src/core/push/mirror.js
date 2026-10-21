@@ -597,7 +597,7 @@ export class PushMirror {
   async #seal(sub, w) {
     let body = w.body;
     for (;;) {
-      const bytes = utf8(JSON.stringify({ v: 1, key: w.m.key, title: w.title, body, at: w.m.due, scope: w.m.scope, watch: w.m.watch }));
+      const bytes = utf8(JSON.stringify({ v: 1, key: w.m.key, title: w.title, body, at: w.m.due, scope: w.m.scope, watch: w.m.watch, start: w.m.start }));
       if (bytes.length < PAD || !body) return encryptPush(sub, bytes, { pad: PAD });
       body = body.slice(0, -20);
     }
