@@ -16,13 +16,16 @@ export async function tripStamps(ctx, id) {
   return stampsOf(fired, tz);
 }
 
-/** @param {Stamp[]} stamps @param {{ max?: number, big?: boolean }} [o] max: how many show before "+N"; big: the trip page's and the replay's */
+/**
+ * @param {Stamp[]} stamps @param {{ max?: number, big?: boolean }} [o] max: how many show before "+N"; big: the trip page's and the replay's
+ * A word too long for its ring at 7 px, the smallest that still reads, shows its start (review m1): 8 characters on a card, 11 big.
+ */
 export function stampMarks(stamps, { max = 2, big = false } = {}) {
   if (!stamps.length) return null;
   const shown = stamps.length > max + 1 ? stamps.slice(0, max) : stamps;
   return h('span', { class: ['stamps', big ? 'big' : ''], role: 'img', 'aria-label': `${stampCount(stamps.length)}: ${stamps.map((s) => s.name).join(', ')}` },
     ...shown.map((s) => {
-      const label = stampLabel(s.name);
+      const label = [...stampLabel(s.name)].slice(0, big ? 11 : 8).join('');
       // A longer word gets smaller type (base.css), so it is never cut or broken across lines.
       return h('span', { class: 'stamp', style: { '--n': [...label].length }, title: s.name, text: label });
     }),
