@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent, startTrip } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/#/trips');
@@ -597,4 +597,36 @@ test('review S3: a scroll of the user\'s own stops the following: what comes the
   } finally {
     await llm.stop();
   }
+});
+
+// The second emulator re-check: after Undo, the personality card still offered Undo, with nothing saying it was undone.
+test('after Undo, the personality card says "Undone" and offers no second Undo; one for a change already back as it was starts that way', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Big Sur');
+  /** The personality file written twice, as Shiori tuned it, and the card that says so, through annai's own modules. */
+  const tuned = await page.evaluate(async (trip) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { logEvent } = await load('/src/core/events.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    await ws.write('me', '/personalities/shiori.md', 'Be warm.', { author: 'user' });
+    const old = (await ws.read('me', '/personalities/shiori.md')).entry.hash;
+    await ws.write('me', '/personalities/shiori.md', 'Be warm and brief.', { author: 'shiori' });
+    await logEvent(store, trip, { type: 'out.show', actor: 'shiori', data: { id: 'tune-1', card: { title: 'I adjusted my personality', text: 'You asked for brevity.' }, tune: { name: 'shiori', old } } });
+    store.close();
+    return old;
+  }, trip);
+  expect(tuned).toBeTruthy();
+  await page.goto('/#/talk');
+  const card = page.locator('.convo .shiori', { hasText: 'I adjusted my personality' });
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: 'Undo' }).click();
+  await expect(card.getByText('Undone', { exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+  // Drawn again, the card knows: the file is back as it was.
+  await page.goto('/#/trips');
+  await page.goto('/#/talk');
+  await expect(page.locator('.convo .shiori', { hasText: 'I adjusted my personality' }).getByText('Undone', { exact: true })).toBeVisible();
 });

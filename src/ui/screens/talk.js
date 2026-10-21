@@ -5,6 +5,7 @@ import { storedTexts, blobBytes } from '../../core/agent/log.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
+import { ME } from '../../core/scopes.js';
 
 const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'reminder', 'note', 'halves'];
 /** Wakes that are lines of their own: the user's, and what the halves tell each other. */
@@ -156,7 +157,7 @@ export async function renderTalk(ctx) {
     }
     if (e.type === 'out.show') {
       const card = renderCard(d.card ?? {}, { ctx, onChoice: (o) => agent.send(o) });
-      const undo = d.tune ? h('button', { class: 'btn ghost', type: 'button', onclick: async () => { await undoTuning(ctx.ws, d.tune.name, d.tune.old); ctx.notices.toast('Undone. Her old personality applies at her next wake.'); } }, 'Undo') : null;
+      const undo = d.tune ? tuneUndo(ctx, d.tune) : null;
       return h('li', { class: 'shiori' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo);
     }
     if (e.type === 'grounded') return groundedCard(d, texts);
@@ -271,4 +272,31 @@ export async function renderTalk(ctx) {
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;
+}
+
+/**
+ * The Undo under a "I adjusted my personality" card. Once done it says so and offers no second Undo; a card for a change that is
+ * already back as it was (undone before, or put back by hand) says so from the start (the second emulator re-check).
+ * @param {any} ctx @param {{ name: string, old: string | null }} tune
+ */
+function tuneUndo(ctx, tune) {
+  const el = h('span', {});
+  const done = () => el.replaceChildren(h('span', { class: 'sub', role: 'status', text: 'Undone' }));
+  const button = h('button', {
+    class: 'btn ghost', type: 'button',
+    onclick: async () => {
+      button.disabled = true;
+      try {
+        await undoTuning(ctx.ws, tune.name, /** @type {string} */ (tune.old));
+        ctx.notices.toast('Undone. Her old personality applies at her next wake.');
+        done();
+      } catch (e) {
+        button.disabled = false;
+        ctx.notices.toast(String(/** @type {any} */ (e)?.message ?? e));
+      }
+    },
+  }, 'Undo');
+  el.append(button);
+  if (tune.old) ctx.ws.read(ME, `/personalities/${tune.name}.md`).then((/** @type {any} */ now) => { if (now?.entry.hash === tune.old) done(); }, () => {});
+  return el;
 }
