@@ -340,6 +340,27 @@ test("llama.cpp: the model /props names is marked loaded, under its own name and
   }
 });
 
+test("review m3: llama.cpp marks only what /props names: the alias, and a tag of it only when it is the alias's one tag listed; with two tags, neither", async () => {
+  const k = await kit();
+  const listed = JSON.parse(await readFile(new URL('test/fixtures/llm/local/unsloth-studio-models.json', root), 'utf8')).data;
+  const props = JSON.parse(await readFile(new URL('test/fixtures/llm/local/unsloth-studio-props.json', root), 'utf8'));
+  const tag = (/** @type {string} */ t) => ({ ...listed[0], id: `${listed[0].id}:${t}` });
+  const s = await startFakeServer({ flavour: 'llamacpp', key: 'sk-unsloth-stand-in', models: [listed[0], tag('Q5_K_M'), tag('Q8_0'), listed[1]], props });
+  try {
+    const id = await k.llm.addProvider('provider-llamacpp', { official: true, baseUrl: `${s.origin}/v1`, key: 'sk-unsloth-stand-in', roles: null });
+    assert.deepEqual((await k.llm.listModels(id, 'chat')).filter((m) => m.loaded).map((m) => m.providerId), ['unsloth/Qwen3.8-Flash-Next-GGUF']);
+  } finally {
+    await s.stop();
+  }
+  const named = await startFakeServer({ flavour: 'llamacpp', key: 'sk-unsloth-stand-in', models: [listed[0], tag('Q5_K_M'), tag('Q8_0')], props: { ...props, model_alias: `${listed[0].id}:Q8_0` } });
+  try {
+    const id = await k.llm.addProvider('provider-llamacpp', { official: true, baseUrl: `${named.origin}/v1`, key: 'sk-unsloth-stand-in', roles: null });
+    assert.deepEqual((await k.llm.listModels(id, 'chat')).filter((m) => m.loaded).map((m) => m.providerId), ['unsloth/Qwen3.8-Flash-Next-GGUF:Q8_0'], 'a tag /props names: that one alone');
+  } finally {
+    await named.stop();
+  }
+});
+
 test("llama.cpp: a server without /props, or one that won't say, still lists its models as the protocol does", async () => {
   const k = await kit();
   const s = await startFakeServer({ flavour: 'vllm' }); // no /props: 404

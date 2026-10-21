@@ -349,7 +349,8 @@ export async function list({ endpoint, key, fetch, protocolList }) {
   const n = props?.default_generation_settings?.n_ctx;
   const kinds = props?.modalities;
   const alias = props?.model_alias;
-  const named = listed.filter((m) => typeof alias === 'string' && (m.providerId === alias || m.providerId.startsWith(`${alias}:`)));
+  const tags = listed.filter((m) => typeof alias === 'string' && m.providerId.startsWith(`${alias}:`));
+  const named = listed.filter((m) => m.providerId === alias || (tags.length === 1 && m === tags[0]));
   const loaded = !props ? [] : named.length ? named : listed.length === 1 ? listed : [];
   return listed.map((m) => (!loaded.includes(m) ? m : {
     ...m,
