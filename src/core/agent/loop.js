@@ -1,6 +1,6 @@
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
-import { AllFailedError, estimateTokens, candidates, chatCandidates } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, candidates, chatCandidates, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf, providerOf, saveModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
@@ -1264,7 +1264,7 @@ export class Agent {
   /** What went wrong with a model call, in words for a card. @param {unknown} e @param {string} [role] */
   #explain(e, role = 'main') {
     return e instanceof AllFailedError
-      ? (e.attempts.length ? e.attempts.map((a) => `${a.name}: ${a.error ?? a.outcome}`).join('; ') : `No model is set for the ${role} role. Add one in Settings → Models.`)
+      ? (e.attempts.length ? failedText(e.attempts, { offline: !this.online() }) : `No model is set for the ${role} role. Add one in Settings → Models.`)
       : e instanceof ProviderError ? explain(e) : String(/** @type {any} */ (e)?.message ?? e);
   }
 

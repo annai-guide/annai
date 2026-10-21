@@ -119,6 +119,19 @@ test("no model answers: a system card, never in Shiori's voice", async () => {
   assert.equal((await k.events(['error']))[0].data.kind, 'model');
 });
 
+test("the card says why each model failed on one line, each reason once, in words; offline, that the device is (emulator pass)", async () => {
+  const busy = 'This model is currently experiencing high demand. Please try again later.';
+  const k = await agentKit([[{ error: 'overloaded', message: busy }], [{ error: 'unreachable', message: 'Failed to fetch' }]], { models: [{}, { input: ['text'] }] });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body), [`model-0: ${busy}\nmodel-1: annai couldn't reach this address. It may be down, or it may not allow web apps.`]);
+  assert.equal((await k.events(['error']))[0].data.message, k.notices[0].body);
+  const off = await agentKit([[{ error: 'unreachable', message: 'Failed to fetch' }]], { agent: { online: () => false } });
+  off.agent.send('Hi');
+  await off.agent.idle();
+  assert.equal(off.notices[0].body, 'This device is offline.');
+});
+
 test('a reload before Shiori answered: the message still gets its answer', async () => {
   const k = await agentKit([[say('Yes, here.')]], { open: false });
   await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
@@ -325,7 +338,7 @@ test("housekeeping that fails inside a turn ends it with a card and an error eve
   assert.deepEqual((await k.events(['error'])).map((e) => e.data.kind), ['compaction']);
   const card = k.notices.at(-1);
   assert.equal(card.title, "Shiori couldn't tidy up the conversation");
-  assert.match(card.body, /bad utility key/);
+  assert.match(card.body, /bad utility key/i);
   assert.equal(k.agent.transcript.unanswered, false);
 });
 

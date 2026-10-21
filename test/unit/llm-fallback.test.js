@@ -7,7 +7,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter } from '../../src/core/llm/fallback.js';
+import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
@@ -100,6 +100,34 @@ test("a connection failure while the device is offline benches nobody and isn't 
   await assert.rejects(call(s, { online: () => true }));
   assert.ok(s.bench.until('m-0') > 1_000_000);
   assert.ok(s.bench.until('m-1') > 1_000_000);
+});
+
+test('why every model failed, for a card: one line per model, each reason once, in words, never a code (emulator pass)', () => {
+  const busy = 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.';
+  const attempts = [
+    { model: 'm-0', name: 'Gemini 3.8 Flash', outcome: 'overloaded', ms: 1, error: busy },
+    { model: 'm-0', name: 'Gemini 3.8 Flash', outcome: 'overloaded', ms: 1, error: busy },
+    { model: 'm-0', name: 'Gemini 3.8 Flash', outcome: 'overloaded', ms: 1, error: busy },
+    { model: 'm-1', name: 'Gemini 3.6 Flash', outcome: 'benched', ms: 0 },
+    { model: 'm-2', name: 'Gemini 3.5 Flash Lite', outcome: 'benched', ms: 0, error: 'its daily limit is used up; it rests until 17:00' },
+    { model: 'm-3', name: 'step-5-preview', outcome: 'no-images', ms: 0 },
+    { model: 'm-4', name: 'Gemini 3.8 Live', outcome: 'not-chat', ms: 0 },
+    { model: 'm-5', name: 'Far away', outcome: 'unreachable', ms: 3, error: 'Failed to fetch' },
+  ];
+  const text = failedText(attempts);
+  assert.deepEqual(text.split('\n'), [
+    `Gemini 3.8 Flash: ${busy}`,
+    'Gemini 3.6 Flash: It is resting for a few minutes after an error.',
+    'Gemini 3.5 Flash Lite: Its daily limit is used up; it rests until 17:00.',
+    "step-5-preview: It doesn't take photos.",
+    "Gemini 3.8 Live: It isn't a chat model.",
+    "Far away: annai couldn't reach this address. It may be down, or it may not allow web apps.",
+  ]);
+  assert.equal(text.split(busy).length - 1, 1, 'said once');
+  for (const code of ['benched', 'no-images', 'not-chat', 'Failed to fetch']) assert.doesNotMatch(text, new RegExp(code));
+  // With no connection, that is the reason; models that couldn't have answered anyway still say why.
+  assert.deepEqual(failedText([attempts[5], attempts[7], { model: 'm-0', name: 'E0', outcome: 'network', ms: 1, error: 'The connection dropped.' }], { offline: true }).split('\n'),
+    ['This device is offline.', "step-5-preview: It doesn't take photos."]);
 });
 
 test('a model that declines has still answered', async () => {
