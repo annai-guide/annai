@@ -71,6 +71,7 @@ export function createDock(ctx) {
       ctx.notices.card({ tone: 'warn', title: 'Open a trip first', body: 'Photos are kept in a trip. Open one from Trips, then take the photo again.' });
       return;
     }
+    ctx.agent.photoComing?.(true); // words said while the photo is made wait for it (spec §6.8)
     try {
       const { paths } = await addFiles(ctx, ctx.agent.target, files);
       // Snap and ask: the photo goes to Shiori, who guesses why it was taken (spec §16.2).
@@ -79,6 +80,8 @@ export function createDock(ctx) {
       ctx.go('#/talk');
     } catch (e) {
       ctx.notices.card({ tone: 'warn', title: "The photo wasn't added", body: String(/** @type {any} */ (e)?.message ?? e) });
+    } finally {
+      ctx.agent.photoComing?.(false);
     }
   });
   const talk = h('button', {

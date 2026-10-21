@@ -258,6 +258,9 @@ export class Agent {
   #typing = false;
   /** Ends #typing GATHER.typing after the last keystroke. @type {any} */
   #typingTimer = null;
+  /** The camera's photo is being made, and its timer. @type {any} */
+  #photoTimer = null;
+  #coming = false;
   /** Wakes a turn waiting for the user to look again. @type {(() => void) | null} */
   #poke = null;
   /** A turn is gathering the user's messages (GATHER): it hasn't started. */
@@ -528,6 +531,20 @@ export class Agent {
     return this.#typing;
   }
 
+  /** The camera came back, and its photo is still being made: a turn of the user's waits for it (at most the GATHER cap). @param {boolean} on */
+  photoComing(on) {
+    clearTimeout(this.#photoTimer);
+    this.#coming = on;
+    if (on) this.#photoTimer = setTimeout(() => this.photoComing(false), GATHER.most * this.secondMs);
+    this.#photoTimer?.unref?.();
+    this.poke();
+  }
+
+  /** The camera's photo is on its way. */
+  get photoNow() {
+    return this.#coming;
+  }
+
   /** The microphone hears the user now. */
   get speakingNow() {
     return this.#speaking;
@@ -553,7 +570,7 @@ export class Agent {
       const wakes = this.#queue.filter((w) => w.scope === this.scope);
       // From the first wake (review a5): a wake that waited out a long turn doesn't wait again.
       const left = Math.min(...wakes.map((w) => w.at ?? Date.now())) + GATHER.most * this.secondMs - Date.now();
-      const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.#speaking) ? Infinity : 0;
+      const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.#speaking || this.#coming) ? Infinity : 0;
       const wait = wakes.length && !this.#opens && left > 0 ? Math.min(hold, left) : 0;
       if (wait <= 0) return;
       await new Promise((resolve) => {
