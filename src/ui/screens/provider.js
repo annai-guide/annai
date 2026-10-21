@@ -8,7 +8,7 @@ import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem } from '../../core/llm/provider-desc.js';
 import { andList } from '../format.js';
-import { drawPanel } from '../provider-setup.js';
+import { drawPanel, isProviderEntry, installMissing } from '../provider-setup.js';
 import { setupOf } from '../../core/llm/setup.js';
 import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
@@ -216,9 +216,9 @@ async function missingPlugin(ctx, plugin, installed) {
       h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, 'Look at it in Settings → Plugins'), '.');
   }
   const catalog = await officialPlugins().catch(() => null);
-  const entry = catalog?.find((/** @type {any} */ p) => p.id === plugin);
+  const entry = catalog?.find((/** @type {any} */ p) => p.id === plugin && isProviderEntry(p));
   if (!entry) {
-    return h('p', { class: 'risk-note', text: catalog ? "The plugin it was made from isn't on this device, and it isn't one of annai's own, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider."
+    return h('p', { class: 'risk-note', text: catalog ? "The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider."
       : "Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again." });
   }
   const status = h('p', { class: 'sub', role: 'status' });
@@ -228,7 +228,7 @@ async function missingPlugin(ctx, plugin, installed) {
       install.disabled = true;
       status.textContent = 'Installing…';
       try {
-        await ctx.llm.installProvider(plugin, { official: true });
+        await installMissing(ctx, entry);
         ctx.render();
       } catch (e) {
         status.textContent = messageOf(e);

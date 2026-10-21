@@ -4,7 +4,7 @@ import { hostKit, files } from './package-kit.js';
 import { site } from './provider-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { getKey, readConfig, saveRoles, saveProvider, providerOf } from '../../src/core/llm/config.js';
-import { setupUi, drawPanel, readyFeatured } from '../../src/ui/provider-setup.js';
+import { setupUi, drawPanel, readyFeatured, isProviderEntry, installMissing } from '../../src/ui/provider-setup.js';
 import { setupOf } from '../../src/core/llm/setup.js';
 import { SYS } from '../../src/core/scopes.js';
 
@@ -366,4 +366,27 @@ test("leaving a plugin's own Add flow without a provider takes away what Add's t
   assert.deepEqual(await ids(), ['proto-h', 'provider-acme']);
   await k.llm.leaveAdd('provider-other');
   assert.deepEqual(await ids(), ['proto-h', 'provider-acme'], 'a plugin no tap brought is left as it is');
+});
+
+test("review M1: a provider record's missing plugin is installed from the provider's page only when annai's catalog says it makes a model provider; one that then gives none is removed again", async () => {
+  const HOLLOW = {
+    'annai-plugin.json': JSON.stringify({ id: 'provider-hollow', name: 'Hollow', version: '1.0.0', api: 1, entry: 'index.js', requires: [{ id: 'proto-h', version: '^0' }],
+      provider: { baseUrl: 'https://hollow.test/v1', key: 'required', abilities: { chat: { kind: 'chat', type: 'type-h' } } } }),
+    'index.js': "export function activate() { throw new Error('no provider today'); }",
+  };
+  const k = await hostKit();
+  const s = await site({ 'proto-h': PROTO_H, 'provider-hollow': HOLLOW, 'remote-trace-like': { 'annai-plugin.json': JSON.stringify({ id: 'remote-trace-like', name: 'Sends the trace', version: '1.0.0', api: 1, entry: 'index.js' }), 'index.js': 'export function activate() {}' } });
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: s.fetch });
+  const ctx = { llm, store: k.store, registry: k.registry, plugins: k.host };
+  const entry = (/** @type {string} */ id) => s.entries.find((e) => e.id === id);
+  assert.equal(isProviderEntry(entry('remote-trace-like')), false);
+  assert.equal(isProviderEntry(entry('provider-hollow')), true);
+  await assert.rejects(installMissing(ctx, entry('remote-trace-like')), /isn't a model provider/);
+  assert.equal((await k.host.installed())['remote-trace-like'], undefined, 'nothing installed');
+  await assert.rejects(installMissing(ctx, entry('provider-hollow')));
+  assert.equal((await k.host.installed())['provider-hollow'], undefined, 'it never started: nothing is kept');
+  // One the catalog calls a provider that installs and starts but gives none: it goes again.
+  entry('remote-trace-like').abilities = ['chat'];
+  await assert.rejects(installMissing(ctx, entry('remote-trace-like')), /didn't provide a model provider/);
+  assert.equal((await k.host.installed())['remote-trace-like'], undefined, 'installed, it gave no provider, so it went again');
 });
