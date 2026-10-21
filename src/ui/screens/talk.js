@@ -1,12 +1,12 @@
 import { h, whenGone, checkbox } from '../dom.js';
-import { renderCard, cardWho } from '../cards.js';
+import { renderCard, cardWho, httpUrl } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
 import { storedTexts, blobBytes } from '../../core/agent/log.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
 
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'tool.result', 'wake', 'compaction', 'error', 'reminder', 'note', 'halves'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'reminder', 'note', 'halves'];
 /** Wakes that are lines of their own: the user's, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'note', 'cue', 'halves'];
 const HALVES_KEY = 'annai.showHalves';
@@ -29,6 +29,26 @@ export function latestCopy(hash, replaced) {
   let h = hash;
   for (let i = 0; i < 10 && replaced.has(h); i++) h = /** @type {{ new: string }} */ (replaced.get(h)).new;
   return h;
+}
+
+/**
+ * A reply grounded in Google Search, as Google gave it (G4; Google's terms ask it shown so): its words untouched, its
+ * links as they came, and Google's suggestions in a frame sandboxed without allow-same-origin, which can't reach annai
+ * and gets them by message. Shown whatever the halves' toggle says. @param {any} d @param {Record<string, any>} texts
+ */
+function groundedCard(d, texts) {
+  const links = (Array.isArray(d.links) ? d.links : []).flatMap((/** @type {any} */ l) => {
+    const url = httpUrl(String(l?.url ?? ''));
+    return url ? [{ url, title: String(l.title || url) }] : [];
+  });
+  const html = String(texts.html ?? '');
+  const frame = html ? h('iframe', { class: 'suggestions', src: '/src/ui/grounding.html', title: 'Search suggestions from Google', sandbox: 'allow-scripts allow-popups allow-popups-to-escape-sandbox', referrerpolicy: 'no-referrer' }) : null;
+  frame?.addEventListener('load', () => frame.contentWindow?.postMessage({ html }, '*'));
+  return h('li', { class: 'shiori grounded' },
+    h('strong', { class: 'card-title', text: `From ${String(d.source || 'Google Search')}` }),
+    texts.text ? h('p', { text: String(texts.text) }) : null,
+    links.length ? h('ul', { class: 'sources' }, ...links.map((l) => h('li', {}, h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.title })))) : null,
+    frame);
 }
 
 /**
@@ -140,6 +160,7 @@ export async function renderTalk(ctx) {
       const undo = d.tune ? h('button', { class: 'btn ghost', type: 'button', onclick: async () => { await undoTuning(ctx.ws, d.tune.name, d.tune.old); ctx.notices.toast('Undone. Her old personality applies at her next wake.'); } }, 'Undo') : null;
       return h('li', { class: 'shiori' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo);
     }
+    if (e.type === 'grounded') return groundedCard(d, texts);
     if (e.type === 'out.ask') {
       const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { class: 'btn', type: 'button', onclick: () => agent.answer(d.id, o) }, String(o)));
       const node = h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons));
@@ -171,6 +192,13 @@ export async function renderTalk(ctx) {
     if (e.type === 'error') return h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? "Shiori couldn't reach her model" : d.kind === 'budget' ? 'A budget ended her turn' : 'Her turn ended' }), h('p', { text: String(d.message ?? '') }));
     return null;
   };
+  // A suggestions frame says how tall it is (G4): only a number, only from one of this screen's frames.
+  const fit = (/** @type {MessageEvent} */ e) => {
+    const frame = /** @type {HTMLIFrameElement[]} */ ([...list.querySelectorAll('iframe.suggestions')]).find((f) => f.contentWindow === e.source);
+    const px = Number(e.data?.height);
+    if (frame && Number.isFinite(px)) frame.style.setProperty('height', `${Math.min(Math.max(Math.ceil(px), 0), 320)}px`);
+  };
+  addEventListener('message', fit);
   let built = false;
   let wasShown = false;
   const stop = await follow(agent, scope, {
@@ -219,6 +247,7 @@ export async function renderTalk(ctx) {
   // Gone, it stops listening at once, and the photos it showed let their memory go.
   whenGone(screen, () => {
     stop();
+    removeEventListener('message', fit);
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;

@@ -165,8 +165,38 @@ test("on a key marked free tier, a paid-only search isn't the model's own (G4): 
   assert.equal(k.requests[0].providerTools, undefined);
 });
 
+test("a reply grounded in the provider's own search is logged for the conversation as it came (G4: \"From Google Search\"), its suggestions kept as a blob the entry names", async () => {
+  const k = await agentKit([[{ text: 'Open till 10.', toolCalls: [{ name: 'sleep', input: {} }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  const html = `<div class="container">${'<a class="chip" href="https://www.google.com/search?q=nepenthe">nepenthe</a>'.repeat(40)}</div>`;
+  const scripted = k.llm.types().get('scripted');
+  const run = scripted.run;
+  let once = true;
+  scripted.run = async function* (/** @type {any} */ c) {
+    for await (const e of run(c)) {
+      if (e.type === 'stop' && once) yield { type: 'attribution', source: 'Google Search', text: 'Open till 10.', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], html };
+      if (e.type === 'stop') once = false;
+      yield e;
+    }
+  };
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const [g, more] = await k.events(['grounded']);
+  assert.equal(more, undefined, 'one card');
+  assert.equal(g.actor, 'shiori');
+  assert.deepEqual({ source: g.data.source, links: g.data.links, text: g.data.text }, { source: 'Google Search', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], text: 'Open till 10.' });
+  assert.ok(g.data.wake, 'the wake it answered');
+  assert.deepEqual(g.data.stored, ['html'], 'the suggestions, a blob the entry names (spec §4.9)');
+  const { storedTexts } = await import('../../src/core/agent/log.js');
+  assert.equal((await storedTexts(k.store, g)).html, html);
+  // The model sees its own words once, never the card.
+  k.agent.send('Thanks.');
+  await k.agent.idle();
+  assert.ok(!JSON.stringify(k.requests.at(-1).messages).includes('attribution'));
+  assert.ok(JSON.stringify(k.requests.at(-1).messages).includes('Open till 10.'));
+});
+
 /** @param {any} k @param {string} scope @param {string[]} types */
-const eventsIn =(k, scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types }));
+const eventsIn = (k, scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types }));
 /** The user texts a request sends. @param {any} request */
 const userTexts = (request) => JSON.stringify(request.messages);
 

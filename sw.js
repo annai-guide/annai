@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '4fc21e887807';
+const BUILD = '288b304f0c6e';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -195,6 +195,8 @@ const SHELL = [
   '/src/ui/bring-in.js',
   '/src/ui/export-panel.js',
   '/src/ui/format.js',
+  '/src/ui/grounding.html',
+  '/src/ui/grounding.js',
   '/src/ui/import-state.js',
   '/src/ui/install.js',
   '/src/ui/live-chip.js',
@@ -298,7 +300,8 @@ sw.addEventListener('fetch', (event) => {
     return;
   }
   if (req.method !== 'GET' || url.pathname.startsWith('/test/')) return;
-  event.respondWith(respond(req, req.mode === 'navigate' ? '/index.html' : null));
+  // Every page is the app, but the frame Google's search suggestions are drawn in: a page of its own, with its own policy (G4).
+  event.respondWith(respond(req, req.mode === 'navigate' && url.pathname !== '/src/ui/grounding.html' ? '/index.html' : null));
 });
 
 /** Production: cache first. Development (localhost): network first, so edits show up. @param {Request} req @param {string | null} fallback */

@@ -1,9 +1,9 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "api": 1,
-  "description": "Gemini models through Google's own API, its transcription and voices, and Gemini Live for a voice conversation.",
+  "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
   "requires": [
     {
@@ -60,7 +60,27 @@
               "input": 0.75,
               "output": 3.75,
               "cacheRead": 0.075
-            }
+            },
+            "providerTools": [
+              {
+                "id": "gemini-google-search",
+                "name": "Google Search",
+                "kind": "search",
+                "patch": {
+                  "tools+": [
+                    {
+                      "type": "google_search"
+                    }
+                  ]
+                },
+                "pricePerCall": 0.014,
+                "usageKey": "google_search",
+                "paidOnly": true,
+                "freePerMonth": 5000,
+                "label": "Let Gemini search Google",
+                "note": "Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete."
+              }
+            ]
           },
           {
             "providerId": "gemini-3.6-flash",
@@ -104,7 +124,27 @@
               "input": 0.75,
               "output": 3.75,
               "cacheRead": 0.075
-            }
+            },
+            "providerTools": [
+              {
+                "id": "gemini-google-search",
+                "name": "Google Search",
+                "kind": "search",
+                "patch": {
+                  "tools+": [
+                    {
+                      "type": "google_search"
+                    }
+                  ]
+                },
+                "pricePerCall": 0.014,
+                "usageKey": "google_search",
+                "paidOnly": true,
+                "freePerMonth": 5000,
+                "label": "Let Gemini search Google",
+                "note": "Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete."
+              }
+            ]
           },
           {
             "providerId": "gemini-3.5-flash-lite",
@@ -148,7 +188,27 @@
               "input": 0.3,
               "output": 2.5,
               "cacheRead": 0.03
-            }
+            },
+            "providerTools": [
+              {
+                "id": "gemini-google-search",
+                "name": "Google Search",
+                "kind": "search",
+                "patch": {
+                  "tools+": [
+                    {
+                      "type": "google_search"
+                    }
+                  ]
+                },
+                "pricePerCall": 0.014,
+                "usageKey": "google_search",
+                "paidOnly": true,
+                "freePerMonth": 5000,
+                "label": "Let Gemini search Google",
+                "note": "Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete."
+              }
+            ]
           }
         ]
       },

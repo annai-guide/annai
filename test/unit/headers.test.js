@@ -24,3 +24,12 @@ test('the security policy allows wss: and ws: to localhost and 127.0.0.1, nothin
   assert.deepEqual(connect, ["'self'", 'https:', 'http://localhost:*', 'http://127.0.0.1:*', 'wss:', 'ws://localhost:*', 'ws://127.0.0.1:*']);
   assert.ok(!/(^|\s)ws:(\s|;|$)/.test(csp), 'no plain ws: to any host');
 });
+
+test("the frame Google's search suggestions are drawn in has a policy of its own (G4): only its script and inline styles, framed only by annai; annai's own is unchanged", async () => {
+  const rules = parseHeaders(await readFile(new URL('../../_headers', import.meta.url), 'utf8'));
+  const frame = headersFor(rules, '/src/ui/grounding.html');
+  assert.equal(frame.get('Content-Security-Policy'), "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; script-src 'self'; frame-ancestors 'self'");
+  assert.equal(frame.get('Referrer-Policy'), 'no-referrer');
+  assert.equal(headersFor(rules, '/src/ui/grounding.js').get('Content-Security-Policy'), CSP);
+  assert.equal(headersFor(rules, '/').get('Content-Security-Policy'), CSP);
+});

@@ -305,10 +305,10 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
   }
 });
 
-test('provider-gemini 2.1.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
+test('provider-gemini 2.2.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.1.0');
+  assert.equal(m.version, '2.2.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");
@@ -337,7 +337,43 @@ test('provider-gemini 2.1.0: Gemini through its own API (gemini-api), its chat m
   assert.equal(chat.note, undefined);
 });
 
-test("provider-gemini 2.1.0's transcription and voices (G3): Google's transcription model and Flash Lite, priced per minute, and its two TTS models, priced per character, from Google's token rates", async () => {
+test("provider-gemini 2.2.0's Google Search (G4): a provider tool on each Gemini 3 chat model, paid only, 5,000 a month free then $0.014 each, with its switch's words for the provider's page", async () => {
+  const chat = /** @type {any} */ ((await official('provider-gemini')).provider.abilities.chat);
+  for (const x of chat.models) {
+    assert.deepEqual(x.providerTools, [{
+      id: 'gemini-google-search', name: 'Google Search', kind: 'search', patch: { 'tools+': [{ type: 'google_search' }] }, pricePerCall: 0.014, usageKey: 'google_search', paidOnly: true, freePerMonth: 5000,
+      label: 'Let Gemini search Google',
+      note: "Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.",
+    }], x.providerId);
+  }
+  assert.equal(chat.modelDefaults, undefined, 'not on a model added from the list: Gemma has no Google Search');
+  // Through annai: Main's request that asks for the model's own search sends Google's, and the grounded reply is priced
+  // within this phone's monthly allowance; on a key marked free tier, it isn't sent.
+  const { startGeminiServer } = await import('../fakes/gemini-server.js');
+  const { SYS_DEVICE } = await import('../../src/core/scopes.js');
+  const s = await startGeminiServer({ replies: [{ text: 'Open till 10.', search: { queries: ['nepenthe hours', 'nepenthe big sur'], suggestions: '<div>chips</div>', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }] } }] });
+  try {
+    const k = await hostKit();
+    const fetch = async (/** @type {any} */ url, /** @type {any} */ init) => (String(url).startsWith(s.url) ? globalThis.fetch(url, init) : new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)).catch(() => 'not found'), { status: 200 }));
+    const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+    const id = await llm.addProvider('provider-gemini', { key: 'AIza-paid', baseUrl: s.url });
+    const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Is Nepenthe open?' }] }], providerTools: { kinds: ['search'] } };
+    const paid = await llm.call({ role: 'main', request });
+    assert.deepEqual(s.bodies()[0].tools, [{ type: 'google_search' }]);
+    assert.deepEqual(paid.reply.parts.map((/** @type {any} */ p) => p.type), ['provider', 'provider', 'text', 'attribution']);
+    assert.equal(paid.reply.usage.serverTools?.google_search, 2);
+    assert.equal(Number(paid.cost?.toFixed(6)), Number(((100 * 0.75 + 10 * 3.75) / 1e6).toFixed(6)), "two searches of this phone's first 5,000 this month: free");
+    assert.deepEqual(Object.values((await k.ws.readJSON(SYS_DEVICE, '/llm/tool-calls.json')).counts), [2]);
+    await llm.setFree(id, true);
+    const free = await llm.call({ role: 'main', request });
+    assert.equal(s.bodies()[1].tools, undefined, "a free key's request never offers it");
+    assert.deepEqual([free.cost, free.reply.parts.map((/** @type {any} */ p) => p.type)], [0, ['text']]);
+  } finally {
+    await s.close();
+  }
+});
+
+test("provider-gemini's transcription and voices (G3): Google's transcription model and Flash Lite, priced per minute, and its two TTS models, priced per character, from Google's token rates", async () => {
   const d = (await official('provider-gemini')).provider;
   const hear = /** @type {any} */ (d.abilities.transcription);
   const say = /** @type {any} */ (d.abilities.voice);

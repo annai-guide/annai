@@ -9,6 +9,7 @@ import { addressProblem } from '../../core/llm/provider-desc.js';
 import { andList } from '../format.js';
 import { drawPanel } from '../provider-setup.js';
 import { setupOf } from '../../core/llm/setup.js';
+import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
 export { messageOf };
 
@@ -104,7 +105,9 @@ export async function renderProvider(ctx, id) {
   const removes = [`Removes its key, its models and their places in roles${going.plugin ? `, and the ${pluginName} plugin` : ''}${protocols.length ? `, with ${andList(protocols)}, which nothing else needs` : ''}.`];
   if (!others && installed?.source === 'url') removes.push(`To add it back, you'll need its address again: ${sourceLine(installed).replace(/^From /, '')}.`);
   if (!others && installed?.source === 'file') removes.push(`To add it back, you'll need its file again${installed.file ? ` (${installed.file})` : ''}.`);
-  const view = { ctx, id, tunablesFor, desc };
+  /** What follows the free-tier switch as it changes: each paid-only tool's switch (G4). @type {Map<string, (free: boolean) => void>} */
+  const onFree = new Map();
+  const view = { ctx, id, tunablesFor, desc, onFree, freeName: typeof desc?.freeTier === 'string' ? desc.freeTier : pluginName };
   const removing = h('p', { class: 'sub', role: 'status' });
   // What a provider keeps, named as its warning shows: typing a new key or address, or arming a removal (G2).
   const keyWarn = h('p', { class: 'sub' });
@@ -135,7 +138,10 @@ export async function renderProvider(ctx, id) {
       desc?.note || desc?.keyUrl
         ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
-      desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName), p.free, (on) => ctx.llm.setFree(id, on)).el : null,
+      desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName), p.free, async (on) => {
+        await ctx.llm.setFree(id, on);
+        for (const f of onFree.values()) f(on);
+      }).el : null,
       desc?.freeTier ? h('p', { class: 'sub', text: 'On, its calls show as free in the Trace, and count nothing toward Spend per day.' }) : null,
       headers.el,
       h('div', { class: 'acts' }, save,
@@ -200,7 +206,10 @@ export async function renderNewProvider(ctx, pluginId) {
   return screen;
 }
 
-/** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
+/**
+ * @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any, onFree: Map<string, (free: boolean) => void>, freeName: string }} View
+ *   onFree: what follows the free-tier switch; freeName: who doesn't charge on it
+ */
 
 /**
  * Saves fields into the user's layer of the provider, or of one ability, as it is now (a function works
@@ -287,6 +296,7 @@ async function abilityBody(view, abilityId) {
     for (const { k, el } of choices) for (const input of el.querySelectorAll('input')) input.checked = input.type === 'radio' ? input.value === String(t[k]) : t[k] !== false;
   };
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
+  const tools = await providerToolSwitches(view, abilityId, models, providerOf(rec).free);
   // What to do with a model from before the provider's list gave windows, while there is one.
   const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
   const speech = a.kind === 'transcription' ? 'in' : a.kind === 'voice' ? 'out' : null;
@@ -305,6 +315,7 @@ async function abilityBody(view, abilityId) {
     keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to ${type.keeps.days} days on a paid one. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.` }) : null,
     waiting ? h('p', { class: 'sub', text: `${waiting} deletion${waiting === 1 ? '' : 's'} waiting: ${keyless ? `annai can't send ${waiting === 1 ? 'it' : 'them'} without this provider's key` : `annai sends ${waiting === 1 ? 'it' : 'them'} when it can reach ${who}`}.` }) : null,
     ...choices.map((c) => c.el),
+    ...tools,
     h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => {
       const saved = (await saveAbility({ tunables: { ...t, ...(uploads ? { uploads: uploads.input.checked } : {}), ...(keep ? { keep: keep.input.checked } : {}) } })).tunables;
       tunables.show(saved);
@@ -317,6 +328,35 @@ async function abilityBody(view, abilityId) {
     first && !speech ? testPanel(ctx, first.id, cfg.models[first.id].verified, `Test ${first.name}`, a.kind === 'realtime') : null,
     note,
   ];
+}
+
+/**
+ * The switches of the provider's own tools its models offer with words for this page (G4: "Let Gemini search Google"): the
+ * same switch as Settings → Tools, under it its note. One that is paid only is off while the key is on the free tier, saying why.
+ * @param {View} view @param {string} abilityId @param {import('../../core/llm/config.js').Model[]} models @param {boolean} free
+ */
+async function providerToolSwitches({ ctx, onFree, freeName }, abilityId, models, free) {
+  const offered = [...new Map(models.flatMap((m) => m.providerTools ?? []).filter((t) => t.label).map((t) => [t.id, t])).values()];
+  if (!offered.length) return [];
+  const switches = await toolSwitches(ctx.ws);
+  return offered.flatMap((t) => {
+    const key = `provider:${t.id}`;
+    let on = switches[key] !== false;
+    const sw = savedCheck(/** @type {string} */ (t.label), on, async (/** @type {boolean} */ v) => {
+      await setToolSwitch(ctx.ws, key, v);
+      on = v;
+    });
+    const line = h('p', { class: 'sub' });
+    const show = (/** @type {boolean} */ isFree) => {
+      const out = Boolean(t.paidOnly && isFree);
+      sw.input.disabled = out;
+      sw.input.checked = on && !out;
+      line.textContent = out ? `${freeName} doesn't offer ${t.kind === 'other' ? t.name : t.kind} on the free tier.` : t.note ?? '';
+    };
+    show(free);
+    onFree.set(`${abilityId}/${t.id}`, show);
+    return [sw.el, line];
+  });
 }
 
 /** "Install it" for a protocol that isn't running (a setup action, decision 9). @param {any} ctx @param {string} typeId @param {() => unknown} done */

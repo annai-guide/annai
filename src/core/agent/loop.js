@@ -1196,6 +1196,7 @@ export class Agent {
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
       if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
+      await this.#grounded(result.reply.parts, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       this.#half.replied?.(calls.map((/** @type {any} */ c) => c.name));
       if (!calls.length) {
@@ -1425,6 +1426,18 @@ export class Agent {
         await this.reread();
       }
     });
+  }
+
+  /**
+   * A reply grounded in the provider's own search, for the conversation as it came (G4): Google's terms ask it shown to the
+   * user who asked, with its suggestions, so it is, even while Koe talks; the suggestions are a blob the entry names.
+   * @param {any[]} parts @param {string} wakeId
+   */
+  async #grounded(parts, wakeId) {
+    for (const p of parts) {
+      if (p.type !== 'attribution') continue;
+      await this.#log({ type: 'grounded', actor: 'shiori', data: { wake: wakeId, source: String(p.source ?? ''), links: Array.isArray(p.links) ? p.links : [] }, texts: [['text', String(p.text ?? '')], ['html', String(p.html ?? '')]] });
+    }
   }
 
   /**
