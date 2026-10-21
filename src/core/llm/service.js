@@ -295,10 +295,12 @@ export function createLlm({
      * abilities that are on use, annai's own from its catalog, hash-checked, as Add installs them. A record may name any
      * plugin (an archive can be crafted), so only a model provider's is installed, checked before any download, and one
      * this installed that then brings no provider goes again, with what only it required (review R1). One that isn't
-     * annai's own, or can't be had now, is named with what to do. @returns {Promise<{ installed: string[], failed: string[] }>}
-     *   installed: the plugins' names; failed: a line for each provider, in words
+     * annai's own, or can't be had now, is named with what to do, each reason once. imported: the same import brought the
+     * plugins, all switched off, and says so: those stay as they came, with no line (review R3).
+     * @param {{ imported?: boolean }} [o] @returns {Promise<{ installed: string[], failed: string[] }>}
+     *   installed: the plugins' names; failed: a line for each reason, naming its providers
      */
-    restorePlugins: () => queued(async () => {
+    restorePlugins: ({ imported = false } = {}) => queued(async () => {
       await ready;
       await pluginsCanLoad();
       const had = await plugins.installed();
@@ -312,21 +314,23 @@ export function createLlm({
         if (!Array.isArray(catalog)) throw catalog;
         throw new Error("its plugin isn't annai's own. Install it again from where it came from.");
       };
-      /** @type {string[]} */
-      const failed = [];
+      /** @type {Map<string, string[]>} each reason, and the providers it holds back */
+      const failed = new Map();
       for (const rec of Object.values((await readConfig(ws)).providers)) {
         const p = providerOf(rec);
+        if (imported && had[rec.plugin]?.enabled === false) continue;
         try {
           if (!(await isProvider(rec.plugin))) throw new Error("the plugin it names doesn't provide models, so it wasn't installed.");
           await service.installProvider(rec.plugin);
           for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
         } catch (e) {
-          failed.push(`${p.name}: ${String(/** @type {any} */ (e)?.message ?? e).replace(/^[\w.-]+: /, '')}`);
+          const why = String(/** @type {any} */ (e)?.message ?? e).replace(/^[\w.-]+: /, '');
+          failed.set(why, [...(failed.get(why) ?? []), p.name]);
         }
         if (!had[rec.plugin] && (await plugins.installed())[rec.plugin] && !providers().some((x) => x.plugin === rec.plugin)) await drop(rec.plugin).catch(() => {});
       }
       const now = await plugins.installed();
-      return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed };
+      return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed: [...failed].map(([why, names]) => `${names.join(', ')}: ${why}`) };
     }),
     /**
      * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
