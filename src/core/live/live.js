@@ -1245,7 +1245,7 @@ export class Live {
       // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A reminder's (a time
       // watch's, or the plan's leave, late and coming up) stays owed until she tells the user; a cue's (a place, the road,
       // an arrival, a stop off the plan) only until a model answers (emulator pass).
-      const fallbacks = xs.filter((x) => !this.#notified.has(this.#keyOf(x.scope, x.watch)))
+      const fallbacks = xs.filter((x) => this.#shownFor(x) === undefined)
         .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
       const lines = notes.get(scope) ?? [];
@@ -1265,10 +1265,19 @@ export class Live {
     }
   }
 
+  /**
+   * When the phone showed this firing's notification, if it did (review A8): one shown before the firing came due was for an
+   * earlier one, and doesn't count. @param {Fired} x @returns {number | undefined}
+   */
+  #shownFor(x) {
+    const shown = this.#notified.get(this.#keyOf(x.scope, x.watch));
+    return shown !== undefined && x.firing.at !== undefined && shown >= x.firing.at ? shown : undefined;
+  }
+
   /** What fired, in words for Shiori's wake; with when its notification was shown, if it was (spec §11.6). @param {Fired} x */
   #reason(x) {
     const key = this.#keyOf(x.scope, x.watch);
-    const shown = this.#notified.get(key);
+    const shown = this.#shownFor(x);
     this.#notified.delete(key);
     const notes = [
       x.late ? `late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : 'off screen'}` : '',
