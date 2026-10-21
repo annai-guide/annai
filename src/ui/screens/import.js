@@ -130,11 +130,15 @@ function preview(ctx, body, opened, desc, from, fresh) {
         if (from) await ctx.backups?.accept(from.target, from.remote).catch(() => {});
         // Live mode takes in the trips that came and lets go of those archived (their reminders leave the relay).
         if (result.trips.length || result.archived.length) await ctx.live?.tripsChanged().catch(() => {});
+        // The plugins the providers that came use, in the same step (spec §12.3).
+        if (result.settings) status.textContent = 'Installing the plugins your providers use…';
+        const plugged = result.settings && ctx.llm ? pluginsBrought(ctx, await restorePlugins(ctx)) : null;
         const titles = desc.trips.map((/** @type {any} */ t) => t.title);
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: 'Imported.' }),
           h('div', { class: 'acts' }, ...result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, `Open ${titles[i] ?? 'trip'}`))),
           result.archived.length ? h('p', { class: 'sub', text: `${result.archived.length} older ${result.archived.length === 1 ? 'copy' : 'copies'} moved to archived trips.` }) : null,
+          plugged,
           result.settings || result.plugins ? h('p', { class: 'sub', text: 'Restart annai to use the imported settings and plugins.' }) : null,
           result.plugins ? h('p', { class: 'sub', text: 'Imported plugins arrive switched off. Turn on the ones you trust in Plugins.' }) : null,
           result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null,
@@ -152,6 +156,20 @@ function preview(ctx, body, opened, desc, from, fresh) {
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
     h('div', { class: 'acts' }, go),
     status);
+}
+
+/** @param {any} ctx @returns {Promise<{ installed: string[], failed: string[] }>} */
+const restorePlugins = (ctx) => ctx.llm.restorePlugins().catch((/** @type {any} */ e) => ({ installed: [], failed: [String(e?.message ?? e)] }));
+
+/** What the restore installed for its providers, and Try again for what it couldn't. @param {any} ctx @param {{ installed: string[], failed: string[] }} got */
+function pluginsBrought(ctx, got) {
+  const el = h('div', {});
+  const draw = (/** @type {{ installed: string[], failed: string[] }} */ g) => el.replaceChildren(
+    ...(g.installed.length ? [h('p', { class: 'sub', text: `Installed what your providers use: ${g.installed.join(', ')}.` })] : []),
+    ...(g.failed.length ? [h('p', { class: 'error', role: 'alert', text: g.failed.join(' ') }),
+      h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: async () => draw(await restorePlugins(ctx)) }, 'Try again'))] : []));
+  draw(got);
+  return el;
 }
 
 /** @param {string[]} ids */

@@ -294,6 +294,31 @@ export function createLlm({
      * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
      * tap, so one switched off stays off. @param {string} plugin @returns {Promise<import('./providers.js').ProviderSource | null>} null: a provider exists
      */
+    /**
+     * After a restore brought providers back with the settings (spec §12.3), in the same step: the plugins they and their
+     * abilities that are on use, annai's own from its catalog, hash-checked, as Add installs them. One that isn't annai's
+     * own, or can't be had now, is named with what to do. @returns {Promise<{ installed: string[], failed: string[] }>}
+     *   installed: the plugins' names; failed: a line for each provider, in words
+     */
+    restorePlugins: () => queued(async () => {
+      await ready;
+      await pluginsCanLoad();
+      const had = await plugins.installed();
+      /** @type {string[]} */
+      const failed = [];
+      for (const rec of Object.values((await readConfig(ws)).providers)) {
+        const p = providerOf(rec);
+        try {
+          await service.installProvider(rec.plugin);
+          for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
+        } catch (e) {
+          const why = String(/** @type {any} */ (e)?.message ?? e);
+          failed.push(`${p.name}: ${/isn't in annai's catalog/.test(why) ? "its plugin isn't annai's own. Install it again from where it came from." : why.replace(/^[\w.-]+: /, '')}`);
+        }
+      }
+      const now = await plugins.installed();
+      return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed };
+    }),
     prepareStart: (plugin) => queued(async () => {
       if (Object.keys((await readConfig(ws)).providers).length) return null;
       return service.installProvider(plugin, { official: true, tap: false });
