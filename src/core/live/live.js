@@ -453,13 +453,15 @@ export class Live {
    * watches in every conversation, and the open trip's "coming up" and "leave soon", each at the time
    * the phone itself would say it. Null until live mode has loaded, and while a simulation runs: its
    * reminders are its own, on its clock, and the user's stay at the relay as they are (M6×M7). Read in
-   * its own queue, so never half of a list being reloaded, with the plan of the trip open now.
-   * @returns {Promise<Mirrored[] | null>}
+   * its own queue, so never half of a list being reloaded, with the plan of the trip open now. held hears
+   * the other trips whose plan's reminders live mode doesn't follow now, so what waits for them stays as it is.
+   * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
-  reminders() {
+  reminders(o = {}) {
     return this.#run(async () => {
       if (!this.#loaded || this.#sim) return null;
       await this.#follow(); // a trip being opened: its own plan, never the last one's under its name
+      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => id !== this.#scope() && this.#inPlay(id))));
       const m = this.#moment();
       const time = this.types().get('time');
       /** @type {Mirrored[]} */

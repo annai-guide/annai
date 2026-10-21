@@ -580,3 +580,36 @@ test('a new relay address with the same subscription gets its own "on" notificat
     await k.stop();
   }
 });
+
+// The emulator pass: opening Yosemite sent a DELETE for one of Big Sur's waiting reminders, and reopening Big Sur
+// sent it again. Spec §11.6 doesn't say which trips' reminders wait; the user's call: every trip's stay.
+test("opening another trip keeps the open one's plan reminders at the relay; only a removed or archived trip's go", async () => {
+  const { createTrip, setTripStatus } = await import('../../src/core/scopes.js');
+  const k = await pushKit({ plan: { tea: TEA }, live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+    await k.flush();
+    assert.deepEqual((await k.waiting()).map((x) => x.sendAt).sort(), [at('10:00') + GRACE_MS, at('15:45') + GRACE_MS]);
+    const other = await createTrip(k.ws, { title: 'Yosemite' });
+    k.agent.opened(other);
+    await k.flush();
+    k.agent.opened(null);
+    await k.flush();
+    assert.deepEqual((await k.waiting()).map((x) => x.sendAt).sort(), [at('10:00') + GRACE_MS, at('15:45') + GRACE_MS], 'both still wait');
+    assert.equal(k.net.calls.filter((c) => c.method === 'DELETE').length, 0, 'nothing was called off');
+    k.agent.opened(k.trip);
+    await k.flush();
+    assert.equal(k.net.calls.filter((c) => c.method === 'DELETE').length, 0, 'nor sent again on coming back');
+    assert.equal((await k.waiting()).length, 2);
+    // An archived trip's reminders go, as a removed trip's do.
+    k.agent.opened(other);
+    await k.flush();
+    await setTripStatus(k.store, k.trip, 'archived');
+    await k.live.tripsChanged();
+    await k.flush();
+    assert.deepEqual(await k.waiting(), []);
+  } finally {
+    await k.stop();
+  }
+});
