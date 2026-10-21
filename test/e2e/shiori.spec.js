@@ -362,7 +362,7 @@ test('done: a conversation with tool use, with fallback across two providers, su
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Are you there?');
     await page.getByRole('button', { name: 'Send' }).click();
-    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await expect(page.locator('.talk-label')).toHaveText('Thinking · tap to stop');
     // The dock says Thinking before the request is sent: reload once the stand-in has it.
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(3);
     await page.reload();
@@ -400,7 +400,7 @@ test('removing the trip Shiori is working in: she stops first, and nothing of it
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Where should we eat?');
     await page.getByRole('button', { name: 'Send' }).click();
-    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await expect(page.locator('.talk-label')).toHaveText('Thinking · tap to stop');
     await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}`; }, id);
     await page.getByRole('button', { name: 'Remove trip' }).click();
     await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();

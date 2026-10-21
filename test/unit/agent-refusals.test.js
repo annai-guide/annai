@@ -25,10 +25,11 @@ test('limitImages: the oldest photos over the count become stubs', () => {
 });
 
 const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
-const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+/** A reply that reaches the user, then sleeps: a turn of the user's that says nothing is asked again (spec §7.1). */
+const done = { toolCalls: [{ name: 'speak', input: { text: 'Got it.' } }, { name: 'sleep', input: {} }] };
 
 test('a refused photo is fixed and retried; the lesson is saved on the model; a reload sends the same', async () => {
-  const k = await agentKit([[{ error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, sleep]]);
+  const k = await agentKit([[{ error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, done]]);
   await photo(k);
   k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
   await k.agent.idle();
@@ -46,7 +47,7 @@ test('a refused photo is fixed and retried; the lesson is saved on the model; a 
 });
 
 test("an unfamiliar refusal is read by the utility model; one it can't read ends the turn with a card", async () => {
-  const k = await agentKit([[{ error: 'image', status: 400, message: 'Picture too chonky for this model' }, sleep]], {
+  const k = await agentKit([[{ error: 'image', status: 400, message: 'Picture too chonky for this model' }, done]], {
     utility: [{ toolCalls: [{ name: 'limits', input: { maxEdge: 512 } }] }],
   });
   await photo(k);
@@ -62,7 +63,7 @@ test("an unfamiliar refusal is read by the utility model; one it can't read ends
 });
 
 test('a utility model that refuses the forced tool (it thinks) is asked again without forcing it', async () => {
-  const k = await agentKit([[{ error: 'image', status: 400, message: 'Picture too chonky for this model' }, sleep]], {
+  const k = await agentKit([[{ error: 'image', status: 400, message: 'Picture too chonky for this model' }, done]], {
     utility: [{ error: 'bad-request', status: 400, message: 'tool_choice that forces tool use is not supported with thinking.' }, { toolCalls: [{ name: 'limits', input: { maxEdge: 512 } }] }],
   });
   await photo(k);
@@ -90,7 +91,7 @@ test('a format no encoder here can make: a card names it', async () => {
 });
 
 test("photos over a model's count go as stubs, the oldest first", async () => {
-  const k = await agentKit([[sleep]], { models: [{ images: { maxCount: 1 } }] });
+  const k = await agentKit([[done]], { models: [{ images: { maxCount: 1 } }] });
   await photo(k);
   k.agent.send('Two', { photos: [{ path: '/trip/files/p.webp' }, { path: '/trip/files/p.webp', region: [0, 0, 0.5, 0.5] }] });
   await k.agent.idle();
@@ -100,7 +101,7 @@ test("photos over a model's count go as stubs, the oldest first", async () => {
 });
 
 test('a refused copy another conversation still names is kept (spec §4.9)', async () => {
-  const k = await agentKit([[sleep, { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, sleep]]);
+  const k = await agentKit([[done, { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, done]]);
   await photo(k);
   const { createTrip } = await import('../../src/core/scopes.js');
   const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
@@ -118,7 +119,7 @@ test('a refused copy another conversation still names is kept (spec §4.9)', asy
 
 test("a refusal read by the utility model never shows it a key annai keeps", async () => {
   const KEY = 'sk-ant-SECRETKEY1234567890';
-  const k = await agentKit([[{ error: 'image', status: 400, message: `Picture too chonky for key ${KEY}` }, sleep]], {
+  const k = await agentKit([[{ error: 'image', status: 400, message: `Picture too chonky for key ${KEY}` }, done]], {
     utility: [{ toolCalls: [{ name: 'limits', input: { maxEdge: 512 } }] }],
   });
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
@@ -136,7 +137,7 @@ test('a photo repaired twice is the same after a reload: the chain of replacemen
   const k = await agentKit([[
     { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' },
     { error: 'image', status: 400, message: 'At least one of the image dimensions exceed max allowed size: 512 pixels' },
-    sleep,
+    done,
   ]]);
   await photo(k);
   k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
@@ -151,7 +152,7 @@ test('a photo repaired twice is the same after a reload: the chain of replacemen
 
 test('a copy whose bytes are gone is made again, never sent as nothing (review C2)', async () => {
   const { createTrip, removeTrip } = await import('../../src/core/scopes.js');
-  const k = await agentKit([[sleep]]);
+  const k = await agentKit([[done]]);
   const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
   for (const t of [k.trip, kyoto]) await k.ws.write(t, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
   k.agent.send('Here', { photos: [{ path: '/trip/files/p.webp' }] });
@@ -167,14 +168,14 @@ test('a copy whose bytes are gone is made again, never sent as nothing (review C
 
 test('record refuses a log entry that names content that is not stored (review C2)', async () => {
   const { record } = await import('../../src/core/agent/log.js');
-  const k = await agentKit([[sleep]]);
+  const k = await agentKit([[done]]);
   await assert.rejects(record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'x']], blobs: [{ hash: 'f'.repeat(64), type: 'image/webp' }] }), /not stored/);
 });
 
 test('photos are made within every main model that takes them, so a fallback model that learned a limit takes them (review I1)', async () => {
   const k = await agentKit([
     [{ error: 'credit', status: 402 }],
-    [{ error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, sleep, sleep],
+    [{ error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, done, done],
   ]);
   await photo(k);
   await k.ws.write(k.trip, '/files/q.webp', new TextEncoder().encode('3000x2000'), { author: 'user', type: 'image/webp', meta: { width: 3000, height: 2000 } });
@@ -187,7 +188,7 @@ test('photos are made within every main model that takes them, so a fallback mod
 });
 
 test('a refusal of too many photos sends the oldest as stubs, and no photo is made again (review I2)', async () => {
-  const k = await agentKit([[{ error: 'image', status: 400, message: 'Too many images in request. Max is 1.' }, sleep]]);
+  const k = await agentKit([[{ error: 'image', status: 400, message: 'Too many images in request. Max is 1.' }, done]]);
   await photo(k);
   k.agent.send('Two', { photos: [{ path: '/trip/files/p.webp' }, { path: '/trip/files/p.webp', region: [0, 0, 0.5, 0.5] }] });
   await k.agent.idle();
@@ -220,7 +221,7 @@ test("a limit the utility model gives that can't be right is not saved (review I
 });
 
 test("a photo this browser can't read is not dropped quietly: a card says so (review I6)", async () => {
-  const k = await agentKit([[sleep]]);
+  const k = await agentKit([[done]]);
   await k.ws.write(k.trip, '/files/bad.webp', new TextEncoder().encode('unreadable'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
   k.agent.send('Look', { photos: [{ path: '/trip/files/bad.webp' }] });
   await k.agent.idle();

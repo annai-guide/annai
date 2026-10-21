@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
-import { compactionNeed, cutAt, renderForSummary, COLD_SYSTEM } from '../../src/core/agent/compaction.js';
+import { compactionNeed, cutAt, renderForSummary, coldSystem, summaryLanguage } from '../../src/core/agent/compaction.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
 import { saveModel } from '../../src/core/llm/config.js';
@@ -66,6 +66,8 @@ test('warm: the model holding the cache summarizes from the cached conversation,
   assert.match(await k.ws.readText(ME, '/memory.md'), /Vegetarian/);
   assert.equal(await k.ws.read(k.trip, '/notes/x.md'), undefined);
   assert.equal((await k.events(['compaction']))[0].data.mode, 'warm');
+  assert.equal(k.requests.length, 6, "its summary is plain text, as asked: housekeeping isn't the user's turn, so nobody asks again (spec §7.1)");
+  assert.deepEqual(k.notices, []);
 });
 
 test('due at a pause: housekeeping waits until shortly before the cache expires', async () => {
@@ -126,7 +128,7 @@ test("cold: what the utility model is sent fits its window, so a huge exchange c
   }
   assert.equal(await k.agent.compact('cold'), true);
   const sent = k.requests.at(-1);
-  assert.equal(sent.system, COLD_SYSTEM);
+  assert.equal(sent.system, coldSystem(summaryLanguage(`Message 4 ${'y'.repeat(6000)}`)));
   assert.ok(sent.messages[0].parts[0].text.length <= 2000 * 3.5 * 0.5, `${sent.messages[0].parts[0].text.length}`);
 });
 
@@ -171,5 +173,35 @@ test('housekeeping reads the conversation by type: location points and the like 
 
 test("warm housekeeping, whose request still offers the model's own search (so the cached prefix holds), asks for no search (G4)", async () => {
   const { instruction } = await import('../../src/core/agent/compaction.js');
-  assert.match(instruction('event 12'), /Don't search the web now\./);
+  assert.match(instruction('event 12', 'English'), /Don't search the web now\./);
+});
+
+test("a few words in another script don't decide the language: the script must make up most of the letters; and the last few messages are read, not one (review A6)", async () => {
+  const { languageOf } = await import('../../src/core/agent/compaction.js');
+  assert.equal(languageOf('Is 一蘭 near 渋谷駅 still open tonight?'), 'English');
+  assert.equal(languageOf('Can we try the ラーメン place by the station?'), 'English');
+  assert.equal(languageOf('Is the Café Пушкин open on Sundays?'), 'English');
+  assert.equal(languageOf('今日の夕食はどこにしますか'), 'Japanese');
+  assert.equal(languageOf('我们今晚去哪里吃饭'), 'Chinese');
+  assert.equal(languageOf('Где можно поужинать сегодня вечером?'), 'Russian');
+  assert.equal(summaryLanguage(['We are vegetarian.', 'Also no nuts, please.', 'OK']), 'English, the language the user wrote in last');
+  assert.equal(summaryLanguage(['OK']), 'the language the user wrote in last: "OK"');
+});
+
+test('the summary is asked for in a language named: the one the user wrote in last, else the app\'s (emulator pass: a Spanish summary of an English talk)', async () => {
+  assert.equal(summaryLanguage('Also, we are vegetarian.'), 'English, the language the user wrote in last');
+  assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?'), 'Spanish, the language the user wrote in last');
+  assert.equal(summaryLanguage('Où est le restaurant ?'), 'French, the language the user wrote in last');
+  assert.equal(summaryLanguage('今日の夕食はどこにしますか'), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage(''), "English, the app's language (the user hasn't written anything yet)");
+  assert.equal(summaryLanguage('OK'), 'the language the user wrote in last: "OK"');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  for (const m of ['Where should we eat tonight?', 'And tomorrow?', 'We are vegetarian, by the way.', 'Is it far?', 'Thanks, that is all for today.']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in English, the language the user wrote in last\.$/);
+  const { instruction } = await import('../../src/core/agent/compaction.js');
+  assert.match(instruction('event 12', 'Spanish, the language the user wrote in last'), /as plain text, in Spanish, the language the user wrote in last\.$/);
 });

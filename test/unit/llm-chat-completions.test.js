@@ -116,6 +116,16 @@ test('build: enforceToolCall (off unless a provider turns it on) sends a forced 
   assert.deepEqual(body(on, { tools: two }).tools, body(type.tunables, { tools: two }).tools);
 });
 
+test('build: a turn of Shiori\'s must call a tool: tool_choice "required" (llama.cpp forces a call with it, measured 2026-10-21); a server that refuses it can be told not to (requireTool false); a named tool still wins (item 15)', () => {
+  assert.equal(type.tunables.requireTool, true);
+  const tools = [{ name: 'speak', description: 'Say.', input: { type: 'object' } }, { name: 'sleep', description: 'End.', input: { type: 'object' } }];
+  const body = (/** @type {any} */ tunables, /** @type {any} */ request) => type.build(spec({ tunables, request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }], ...request } })).body;
+  assert.equal(body(type.tunables, { tools, toolRequired: true }).tool_choice, 'required');
+  assert.equal('tool_choice' in body({ ...type.tunables, requireTool: false }, { tools, toolRequired: true }), false);
+  assert.equal('tool_choice' in body(type.tunables, { toolRequired: true }), false, 'no tools, nothing to require');
+  assert.deepEqual(body(type.tunables, { tools, toolRequired: true, toolChoice: 'speak' }).tool_choice, { type: 'function', function: { name: 'speak' } });
+});
+
 test('read: the first token’s alternatives, once', async () => {
   const events = await read(await fixture('logprobs.sse'));
   assert.deepEqual(events.filter((e) => e.type === 'logprobs'), [{ type: 'logprobs', top: [{ token: 'B', logprob: -0.05 }, { token: 'A', logprob: -3.2 }] }]);

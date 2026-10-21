@@ -11,6 +11,8 @@ import { logEvent } from '../../src/core/events.js';
 
 const at = (/** @type {string} */ iso) => Date.parse(iso);
 const loop = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+/** A reply that reaches the user, then sleeps: a turn of the user's that says nothing is asked again (spec §7.1). */
+const done = { toolCalls: [{ name: 'speak', input: { text: 'OK.' } }, { name: 'sleep', input: {} }] };
 
 test('quiet hours in local time, across midnight', () => {
   const q = { from: '22:00', to: '07:00' };
@@ -24,7 +26,7 @@ test('quiet hours in local time, across midnight', () => {
 test('no budget is set by default: a long turn runs on', async () => {
   // Different calls each step: three identical ones in a row would be stopped as stuck (spec §6.6).
   const other = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
-  const k = await agentKit([[loop, other, loop, other, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  const k = await agentKit([[loop, other, loop, other, done]]);
   k.agent.send('Go');
   await k.agent.idle();
   assert.equal(k.requests.length, 5);
@@ -53,7 +55,7 @@ test("spend per day: once today's calls cost the budget, no more calls", async (
 });
 
 test("wakes per hour count only wakes that aren't the user's", async () => {
-  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  const k = await agentKit([[done]]);
   await updateAppSettings(k.ws, { shiori: { budgets: { wakesPerHour: 1 } } });
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
   await k.agent.idle();
@@ -65,7 +67,7 @@ test("wakes per hour count only wakes that aren't the user's", async () => {
 });
 
 test('quiet hours hold wakes that are not the user’s, but the user is always heard', async () => {
-  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { agent: { now: () => at('2026-11-26T23:00:00Z') } });
+  const k = await agentKit([[done]], { agent: { now: () => at('2026-11-26T23:00:00Z') } });
   await updateAppSettings(k.ws, { shiori: { budgets: { quietHours: { from: '22:00', to: '07:00' } } } });
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide.' });
   await k.agent.idle();
@@ -76,7 +78,7 @@ test('quiet hours hold wakes that are not the user’s, but the user is always h
 });
 
 test('costs: per wake and for the whole trip', async () => {
-  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }], usage: { input: 1000, output: 0 } }]]);
+  const k = await agentKit([[{ ...done, usage: { input: 1000, output: 0 } }]]);
   k.agent.send('One');
   await k.agent.idle();
   k.agent.send('Two');
@@ -101,7 +103,7 @@ test("today's spending is all counted, however many web requests the day made (s
 test("Spend per day counts both halves' turns, and stops either at the budget, with one card (K1)", async () => {
   const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
   const dear = { prices: { input: 10_000, output: 10_000 } }; // 12 and 6 tokens: $0.18 a call
-  const k = await agentKit([[sleep]], { models: [dear], koe: { type: [sleep], model: dear } });
+  const k = await agentKit([[sleep]], { models: [dear], koe: { type: [done], model: dear } });
   await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.3 } } });
   k.agent.send('First');
   await k.agent.idle();

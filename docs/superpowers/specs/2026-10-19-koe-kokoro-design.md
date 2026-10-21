@@ -110,7 +110,7 @@ In code and the spec they're Koe and Kokoro.
   - **append:** sent once Koe's current spoken turn ends;
   - **immediate:** sent at once, ending the turn, which interrupts Koe mid-sentence (the Live API supports this) so it can correct itself.
 - **Marker hygiene:** annai strips these markers from anything the user types, so they can't be faked.
-- **Kokoro's plain text stays its private work log,** as §7.1 has it today. One addition: **when Kokoro ends a turn with plain text and called neither `tell_koe` nor `sleep`,** annai passes that final text to Koe as an append, since models sometimes answer in text out of habit. Text written alongside tool calls is never passed.
+- **Kokoro's plain text stays its private work log,** as §7.1 has it today. One addition: **when Kokoro ends a turn with plain text and called neither `tell_koe` nor `sleep`,** annai passes that final text to Koe as an append, since models sometimes answer in text out of habit. Text written alongside tool calls is never passed. (2026-10-21: this is now mostly moot. Shiori's turns ask for a tool call where the protocol can say so (main spec §7.1), so a plain-text ending is left to Anthropic's models, a model that refused the forced call, and a turn after Kokoro has told Koe.)
 - **Two transcripts.** The conversation is what the user sees: what they said, and what Koe said, showed and asked. Kokoro's work log holds its reasoning text, tool calls and results, and the notes between the halves. Both are kept, and both are in the Trace. The halves' exchanges stay out of the conversation view by default.
 
 ### What Koe may say from its own knowledge (the user's choice: "stable facts yes, live facts no")

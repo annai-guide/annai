@@ -9,6 +9,16 @@ test('starts without errors and shows Trips', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('the dock says "Offline · reminders still work" as the connection goes, and "Tap to talk" as it comes back (emulator pass m2b #10)', async ({ page, context }) => {
+  await openApp(page);
+  const label = page.locator('.talk-label');
+  await expect(label).toHaveText('Tap to talk');
+  await context.setOffline(true);
+  await expect(label).toHaveText('Offline · reminders still work');
+  await context.setOffline(false);
+  await expect(label).toHaveText('Tap to talk');
+});
+
 test('the install warning shows in a browser tab and explains how', async ({ page }) => {
   await openApp(page);
   const banner = page.getByRole('region', { name: 'Install annai' });

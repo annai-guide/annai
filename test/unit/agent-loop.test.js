@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, until } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
-import { Agent } from '../../src/core/agent/loop.js';
+import { Agent, UNANSWERED } from '../../src/core/agent/loop.js';
+import { STEP_BACKSTOP } from '../../src/core/agent/budgets.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 
@@ -110,6 +111,92 @@ test('tapping Shiori stops a hanging tool and the turn; every call still has a r
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
+test("the user's message, answered only in plain text: she is asked once more; still nothing for the user, a card with Try again (spec §7.1, emulator pass)", async () => {
+  const k = await agentKit([[{ text: 'Big Sur is known for its coast.' }, { toolCalls: [{ name: 'sleep', input: {} }] }, say('Its wild coast, mostly.')]]);
+  k.agent.send('What is Big Sur known for?');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'asked once more, in the same turn');
+  assert.match(JSON.stringify(k.requests[1].messages.at(-1)), new RegExp(UNANSWERED.slice(0, 40)));
+  assert.match(k.requests[1].tail, /The user hasn't been answered/);
+  assert.equal((await k.events(['wake'])).filter((e) => !e.data.meanwhile).length, 1, 'one turn');
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body, n.actions.map((/** @type {any} */ a) => a.label)]), [["Shiori didn't answer", 'Her model finished without saying anything to you.', ['Try again']]]);
+  assert.equal((await k.events(['error']))[0].data.kind, 'silent');
+  assert.equal(k.agent.transcript.unanswered, false, 'the card said so: a later start owes nothing');
+  // Try again: her turn again, the user's, answered this time.
+  k.notices[0].actions[0].run();
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak']))[0].data.text, 'Its wild coast, mostly.');
+  assert.match(k.requests[2].tail, /woke for: the user tapped Try again/);
+  assert.equal(k.notices.length, 1);
+});
+
+test('a turn that spoke to the user, or one the user didn\'t start, ends as it is: no second ask, no card', async () => {
+  const k = await agentKit([[say('Big Sur: the coast.')]]);
+  k.agent.send('What is Big Sur known for?');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+  const quiet = await agentKit([[{ text: 'Low tide noted; nothing to say.' }]]);
+  quiet.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
+  await quiet.agent.idle();
+  assert.equal(quiet.requests.length, 1);
+  assert.deepEqual(quiet.notices, []);
+});
+
+test("the connection going and coming back sets a resting Shiori's state at once, not only at a turn's end (emulator pass m2b #10)", async () => {
+  /** @type {Record<string, (() => void)[]>} */
+  const on = { online: [], offline: [] };
+  const g = /** @type {any} */ (globalThis);
+  const had = g.addEventListener;
+  g.addEventListener = (/** @type {string} */ type, /** @type {() => void} */ fn) => { on[type]?.push(fn); };
+  let online = false;
+  try {
+    const k = await agentKit([[say('Hi.')]], { agent: { online: () => online } });
+    assert.equal(k.agent.state.label, 'Offline · reminders still work', 'opened offline');
+    online = true;
+    for (const fn of on.online) fn();
+    assert.equal(k.agent.state.label, 'Tap to talk');
+    online = false;
+    for (const fn of on.offline) fn();
+    assert.equal(k.agent.state.name, 'offline');
+  } finally {
+    g.addEventListener = had;
+  }
+});
+
+test('the warm model goes first only in the order it answered in: an order the user changed applies from the next turn (emulator pass)', async () => {
+  const { readConfig, saveRoles } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[say('From the first.')], [say('From the second.')]]);
+  const roles = (await readConfig(k.ws)).roles;
+  await saveRoles(k.ws, { ...roles, main: { ...roles.main, models: ['m-1', 'm-0'] } });
+  k.agent.send('One');
+  await k.agent.idle();
+  k.agent.send('Two');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['model.turn'])).map((e) => e.data.answeredBy), ['model-1', 'model-1'], 'its cache is warm: it stays first');
+  // The user moves the other model to the top while the cache is warm.
+  await saveRoles(k.ws, { ...roles, main: { ...roles.main, models: ['m-0', 'm-1'] } });
+  k.agent.send('Three');
+  await k.agent.idle();
+  k.agent.send('Four');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['model.turn'])).map((e) => e.data.answeredBy), ['model-1', 'model-1', 'model-0', 'model-0']);
+});
+
+test("a tap while she's thinking stops her turn, and a new one starts at once with what was sent meanwhile; the dock says a tap stops her (item 17)", async () => {
+  const k = await agentKit([[{ delayMs: 5000, ...say('Never said.') }, say('Somewhere vegetarian, then: Big Sur Bakery.')]]);
+  k.agent.send('Where should we eat?');
+  await until(() => k.requests.length === 1);
+  k.agent.send('Actually, somewhere vegetarian.');
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Thinking · tap to stop' });
+  assert.equal(k.agent.tap(), 'stopped');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2);
+  assert.match(JSON.stringify(k.requests[1].messages), /Where should we eat\?.*Actually, somewhere vegetarian\./);
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Somewhere vegetarian, then: Big Sur Bakery.']);
+  assert.equal((await k.events(['wake'])).filter((e) => !e.data.meanwhile).length, 2, 'the stopped turn, and a new one');
+  assert.deepEqual(k.notices, []);
+});
+
 test("no model answers: a system card, never in Shiori's voice", async () => {
   const k = await agentKit([[{ error: 'auth', status: 401 }]]);
   k.agent.send('Hi');
@@ -117,6 +204,34 @@ test("no model answers: a system card, never in Shiori's voice", async () => {
   assert.equal(k.notices[0].title, "Shiori can't reach her model");
   assert.equal((await k.events(['out.speak'])).length, 0);
   assert.equal((await k.events(['error']))[0].data.kind, 'model');
+});
+
+test("the card says why each model failed on one line, each reason once, in words; offline, that the device is (emulator pass)", async () => {
+  const busy = 'This model is currently experiencing high demand. Please try again later.';
+  const k = await agentKit([[{ error: 'overloaded', message: busy }], [{ error: 'unreachable', message: 'Failed to fetch' }]], { models: [{}, { input: ['text'] }] });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body), [`model-0: ${busy}\nmodel-1: annai couldn't reach this address. It may be down, or it may not allow web apps.`]);
+  assert.equal((await k.events(['error']))[0].data.message, k.notices[0].body);
+  const off = await agentKit([[{ error: 'unreachable', message: 'Failed to fetch' }]], { agent: { online: () => false } });
+  off.agent.send('Hi');
+  await off.agent.idle();
+  assert.equal(off.notices[0].body, 'This device is offline.');
+});
+
+test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async () => {
+  const k = await agentKit([[{ error: 'credit', status: 402 }], [say('Pfeiffer Beach is close.')]], { models: [{}, { input: ['text'] }] });
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
+  k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.sent['model-1'], undefined, "passed over: it couldn't see the photo it was asked about");
+  assert.match(k.notices[0].body, /model-1: It doesn't take photos\./);
+  k.agent.send("What's around here?");
+  await k.agent.idle();
+  const [asked] = k.sent['model-1'];
+  assert.match(JSON.stringify(asked.messages), /\[a photo: \/trip\/files\/p\.webp\]/);
+  assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"image"/);
+  assert.equal((await k.events(['out.speak']))[0].data.text, 'Pfeiffer Beach is close.');
 });
 
 test('a reload before Shiori answered: the message still gets its answer', async () => {
@@ -140,6 +255,79 @@ test('a reload mid-turn: open tool calls get "interrupted by app restart", then 
   const wakes = await k.events(['wake']);
   assert.equal(wakes[0].data.reasons[0].kind, 'restart');
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Back again.');
+});
+
+test('killed after her tool calls came back, before her next reply: opening the conversation takes the turn up (emulator pass m2b #21)', async () => {
+  const k = await agentKit([[say('Vegetarian: Nepenthe has options.')]], { open: false });
+  await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'Also, we are vegetarian.', wake: 'w-0' } });
+  await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
+    [{ type: 'tool_call', id: 'l1', name: 'list', input: { path: '/trip/' } }]);
+  await record(k.store, k.trip, { type: 'tool.result', actor: 'system', data: { id: 'l1', name: 'list', ok: true, ms: 1, wake: 'w-0', content: 'path\ttype' } });
+  assert.equal((await Transcript.load(k.store, k.trip)).unanswered, true, 'a result she has not seen is an unfinished turn');
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  const wake = (await k.events(['wake'])).at(-1);
+  assert.equal(wake.data.reasons[0].kind, 'restart');
+  assert.match(wake.data.reasons[0].text, /in the middle of your turn/);
+  assert.equal((await k.events(['out.speak']))[0].data.text, 'Vegetarian: Nepenthe has options.');
+  // Her turn ended with sleep: nothing is owed now.
+  assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+});
+
+test("a turn the user stopped isn't taken up when the conversation opens again, even if her tool calls had come back (spec §6.7)", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, { delayMs: 5000, ...say('Never said.') }]]);
+  k.agent.send('What is in the trip?');
+  await until(() => k.requests.length === 2);
+  k.agent.interrupt();
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).length, 0);
+  assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
+  assert.equal(k.notices.length, 0, 'a stop is no error to show');
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'nothing ran again');
+});
+
+test("Shiori's turns ask the model to call a tool (she reaches the user only through tools); housekeeping and the utility model's jobs don't, nor a turn with the model's own search on (item 15)", async () => {
+  const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
+  for (const m of ['first', 'second', 'third', 'fourth']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.ok(k.requests.slice(0, 4).every((/** @type {any} */ r) => r.toolRequired === true));
+  assert.equal(await k.agent.compact('warm'), true);
+  assert.equal(k.requests.at(-1).toolRequired, undefined, 'warm housekeeping');
+  assert.equal(await k.agent.compact('cold', { forced: true }), true);
+  assert.equal(k.sent['model-u'].at(-1).toolRequired, undefined, 'cold, on the utility model');
+  const search = await agentKit([[say('Open till 10.')]], { models: [{ providerTools: [{ id: 'p-search', name: 'S', kind: 'search', patch: {} }] }] });
+  await search.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
+  search.agent.send('Is it open?');
+  await search.agent.idle();
+  assert.equal(search.requests[0].toolRequired, undefined, "its search answers in words, shown as written (G4): nothing is forced");
+});
+
+test('a tool call is asked for only until she has reached the user in the turn: after that she may end in words (review A4)', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Big Sur: the coast.' } }] }, { text: 'Done.' }]]);
+  k.agent.send('What is Big Sur known for?');
+  await k.agent.idle();
+  assert.deepEqual(k.requests.map((/** @type {any} */ r) => r.toolRequired), [true, undefined]);
+  assert.deepEqual(k.notices, [], 'it reached the user: no nudge');
+});
+
+test('with no steps-per-wake limit set, a turn still stops at 25 steps, with a card (review A4: a backstop)', async () => {
+  const a = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+  const b = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
+  const k = await agentKit([Array.from({ length: 30 }, (_, i) => (i % 2 ? b : a))]);
+  k.agent.send('Go');
+  await k.agent.idle();
+  assert.equal(k.requests.length, STEP_BACKSTOP);
+  assert.equal(STEP_BACKSTOP, 25);
+  assert.equal(k.notices[0].title, 'Shiori stopped: step limit');
+  assert.match(k.notices[0].body, /25 steps/);
 });
 
 test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async () => {
@@ -201,7 +389,7 @@ test('a search whose replies are shown as written (Google Search): one Shiori is
   const search = { id: 'g-search', name: 'Google Search', kind: 'search', patch: {}, paidOnly: true, shows: 'From Google Search' };
   const words = 'A reply in which you search with Google Search is shown to the user as you write it, under "From Google Search", with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.';
   const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
-  const k = await agentKit([[sleep, sleep]], { models: [{ providerTools: [search] }] });
+  const k = await agentKit([[say('Open till 10.')]], { models: [{ providerTools: [search] }] });
   await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
   k.agent.send('Is Nepenthe open?');
   await k.agent.idle();
@@ -325,7 +513,7 @@ test("housekeeping that fails inside a turn ends it with a card and an error eve
   assert.deepEqual((await k.events(['error'])).map((e) => e.data.kind), ['compaction']);
   const card = k.notices.at(-1);
   assert.equal(card.title, "Shiori couldn't tidy up the conversation");
-  assert.match(card.body, /bad utility key/);
+  assert.match(card.body, /bad utility key/i);
   assert.equal(k.agent.transcript.unanswered, false);
 });
 
@@ -387,6 +575,65 @@ test('read sends a request copy, named by the turn that sends it, with both size
   const sent = k.requests[1].messages.at(-1).parts.find((/** @type {any} */ p) => p.type === 'image');
   assert.equal(sent.hash, first.data.images[0].hash);
   assert.equal(sent.path, '/trip/files/big.webp');
+});
+
+test("a model that can't see photos reads one: a model that can describes it, the part asked for too, and says it did (emulator pass, the user: 5b)", async () => {
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }, { name: 'read', input: { path: '/trip/files/menu.webp', region: [0.5, 0.5, 1, 1] } }] },
+    say('The fish is $32.'),
+  ]], { models: [{ input: ['text'] }], utility: [{ text: 'A menu; the fish dish is circled, $32.' }, { text: 'The bottom right: "Fish of the day $32".' }] });
+  await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  k.agent.send('What does the menu say about fish?');
+  await k.agent.idle();
+  const [whole, part] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
+  assert.match(whole.data.content, /^The photo \/trip\/files\/menu\.webp, .*\nWhat it shows \(described by model-u, as you can't see photos\): A menu; the fish dish is circled, \$32\.$/s);
+  assert.match(part.data.content, /part \[0\.5, 0\.5, 1, 1\].*\nWhat it shows \(described by model-u, as you can't see photos\): The bottom right: "Fish of the day \$32"\.$/s);
+  assert.equal(whole.data.images, undefined, 'the words in place of the photo');
+  // The describer saw the photo, and then the crop: the part asked for.
+  const looked = k.sent['model-u'].map((/** @type {any} */ r) => r.messages[0].parts.find((/** @type {any} */ p) => p.type === 'image'));
+  assert.equal(looked.length, 2);
+  assert.match(Buffer.from(looked[1].data, 'base64').toString(), /^2000x1500:\{"x":2000,"y":1500,"width":2000,"height":1500\}/);
+  assert.doesNotMatch(JSON.stringify(k.sent['model-0']), /"type":"image"/);
+  assert.equal(JSON.stringify(k.requests[0].tools), JSON.stringify(k.sent['model-0'].at(-1).tools), 'the same tools: the cached prefix holds');
+});
+
+test("a model that can't see photos reads one, and no model here can: the result says so", async () => {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] }, say('I can\'t see it.')]], { models: [{ input: ['text'] }], utility: [{ text: 'never' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text'] } });
+  await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  k.agent.send('What does the menu say?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nNo model here can see photos, so what it shows can't be told\.$/);
+  assert.equal(k.sent['model-u'], undefined);
+});
+
+test("describing a photo for a model that can't see it has a time limit, and stops with the turn; either way the result says so in words and the turn goes on (review A5)", async () => {
+  const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
+  // A describer slower than the limit (30 s; 300 ms at secondMs 10): words, and her turn goes on.
+  const slow = await agentKit([[read, say('I could not see it.')]], { models: [{ input: ['text'] }], utility: [{ delayMs: 3000, text: 'Too late.' }] });
+  await photo(slow);
+  const t0 = Date.now();
+  slow.agent.send('What does the menu say?');
+  await slow.agent.idle();
+  assert.ok(Date.now() - t0 < 2000, `${Date.now() - t0} ms`);
+  const r = (await slow.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nIt couldn't be described in time \(30 seconds\)\.$/);
+  assert.equal(r.data.ok, true);
+  assert.deepEqual((await slow.events(['out.speak'])).map((e) => e.data.text), ['I could not see it.']);
+  // The user stops her while it is described: the turn ends at once.
+  const stopped = await agentKit([[read, say('Never said.')]], { models: [{ input: ['text'] }], utility: [{ delayMs: 3000, text: 'Too late.' }], agent: { secondMs: 1000 } });
+  await photo(stopped);
+  stopped.agent.send('What does the menu say?');
+  await until(() => (stopped.sent['model-u'] ?? []).length === 1, 3000);
+  const t1 = Date.now();
+  stopped.agent.interrupt();
+  await stopped.agent.idle();
+  assert.ok(Date.now() - t1 < 1000, `${Date.now() - t1} ms`);
+  assert.equal((await stopped.events(['out.speak'])).length, 0);
 });
 
 test('read with a region sends a crop, kept in the conversation, and says which region was used', async () => {

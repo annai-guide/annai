@@ -115,6 +115,49 @@ test('Koe\'s whole list fails: a "Koe can\'t speak" block, and Kokoro\'s speak r
   assert.ok((await shown(k)).some(([type, half, text]) => type === 'out.speak' && half === 'koe' && text === 'Hello again.'));
 });
 
+test("both halves' lists fail: the user gets one card, \"Shiori can't reach her model\", with each half's reason in words (emulator pass)", async () => {
+  const busy = 'This model is currently experiencing high demand. Please try again later.';
+  for (const koeFirst of [true, false]) {
+    const k = await agentKit([[{ ...(koeFirst ? { delayMs: 40 } : {}), error: 'overloaded', message: busy }]], { koe: { type: [{ ...(koeFirst ? {} : { delayMs: 40 }), error: 'timeout', message: 'No output started in time.' }] } });
+    k.agent.send('What is Bixby Bridge? One sentence.');
+    await k.agent.idle();
+    const cards = k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title));
+    assert.equal(cards.length, 1, `once (Koe failing ${koeFirst ? 'first' : 'second'})`);
+    assert.deepEqual(cards[0].body.split('\n'), ['Koe: model-koe: No output started in time.', `Kokoro: model-0: ${busy}`]);
+    assert.ok((await k.events(['error'])).some((e) => !e.data.quiet), 'the conversation says so too');
+  }
+});
+
+test("Koe goes down while Kokoro works: Kokoro tells the user directly once, not again for the \"Koe can't speak\" wake that came meanwhile (emulator pass: two near-identical bubbles)", async () => {
+  const answer = 'Bixby Creek Bridge is a 714-foot concrete arch, opened in 1932.';
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'tell_koe', input: { text: answer } }] }, then: { delayMs: 150, ...calls(['speak', { text: answer }]) } },
+    { match: "Koe can't speak", reply: calls(['speak', { text: `${answer} You're near Monterey right now.` }]) },
+  ] }], { koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
+  k.agent.send('What is Bixby Bridge? One sentence.');
+  await k.agent.idle();
+  assert.equal(k.agent.koeState, 'down');
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak'), [['out.speak', 'kokoro', answer]]);
+});
+
+test("Koe failing twice while Kokoro works asks Kokoro to talk directly once, not twice (review a4: the drop in #talkDirectly)", async () => {
+  let clock = Date.parse('2026-11-26T12:00:00Z');
+  const k = await agentKit([{ rules: [
+    { match: "Koe can't speak", reply: calls(['speak', { text: 'Here I am.' }]) },
+    { match: 'the user wrote', reply: { delayMs: 500, ...sleep } },
+  ] }], { koe: { type: [{ delayMs: 100, error: 'auth', message: 'bad key' }] }, agent: { now: () => clock } });
+  k.agent.send('Is Nepenthe open?');
+  await until(() => k.agent.koeState === 'down', 3000);
+  clock += 10 * 60_000; // Koe's rest is over
+  k.llm.bench.clear('m-koe');
+  k.agent.send('Hello?'); // to Koe again, which fails again while Kokoro's first turn still runs
+  await k.agent.idle();
+  // What woke Kokoro, as its requests' now block says: taken mid-turn or not, "Koe can't speak" once.
+  const woke = k.sent['model-0'].map((/** @type {any} */ r) => String(r.tail).split('\n').find((l) => l.startsWith('woke for')) ?? '');
+  assert.equal(woke.join('\n').split("Koe can't speak right now").length - 1, 1, woke.join('\n'));
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ['Here I am.']);
+});
+
 test("Kokoro's list fails: Koe gets a note and tells the user it couldn't check; no card", async () => {
   const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: { rules: [
     { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: 'Open now?' }]) },
@@ -138,6 +181,8 @@ test('final text: passed to Koe when the turn told no one and never slept; text 
   await k.agent.idle();
   const notes = (await k.events(['note'])).filter((e) => e.data.from === 'kokoro');
   assert.deepEqual(notes.map((e) => [e.data.why, e.data.text]), [['final-text', 'Open till 10, per its site.']]);
+  assert.ok(!JSON.stringify(k.sent['model-0']).includes("The user hasn't been answered"), "Kokoro, behind Koe, isn't asked again for the user (spec §7.1): its plain text went to Koe");
+  assert.deepEqual(k.notices, []);
 });
 
 test("Kokoro sleeps without telling while Koe waits: Koe's wait ends with nothing to add", async () => {
@@ -317,6 +362,41 @@ test('Fix pass 9: Stop on Kokoro while Koe waits tells Koe that Kokoro was stopp
   await k.agent.idle();
   assert.deepEqual((await k.events(['note'])).map((e) => [e.data.from, e.data.text]), [['kokoro', 'Kokoro was stopped.']]);
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'wait')?.data.content, 'Kokoro: see the note below.');
+});
+
+test("Stop sticks: a note Koe wrote before it heard of the Stop starts no Kokoro turn; once the user asks again, Koe's note does (emulator pass K1 #8; review A7)", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { delayMs: 2000, toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: { rules: [
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Stopped.' }]) },
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me plan that.' } }, { name: 'tell_kokoro', input: { text: 'Plan the afternoon around the sunset.' } }, { name: 'wait', input: { seconds: 60 } }] }, then: sleep },
+  ] } } });
+  const turns = () => (k.sent['model-0'] ?? []).length;
+  const late = 'Plan an afternoon at Point Lobos with three stops, including the sunset.';
+  k.agent.send('Plan our afternoon around the sunset at Point Lobos, with three stops.');
+  await until(() => turns() === 1 && k.agent.koe.waiting); // Kokoro's call is in flight
+  k.agent.stopKokoro();
+  // Koe's live session, say, still asks after the Stop, from before it heard of it.
+  await k.agent.channel.send('koe', late, 'append', 'tool');
+  await k.agent.idle();
+  assert.equal(turns(), 1, 'Kokoro stays stopped');
+  assert.ok(!JSON.stringify(k.sent['model-0']).includes(late));
+  assert.ok((await k.events(['note'])).some((e) => e.data.from === 'kokoro' && e.data.text === 'Kokoro was stopped.'));
+  // The user asks again: Kokoro works on it.
+  k.agent.send('Actually, yes: plan it.');
+  await k.agent.idle();
+  assert.ok(turns() > 1);
+});
+
+test("Stop while Koe isn't waiting: Koe is told all the same, and once its model has seen that, a later question of Koe's wakes Kokoro (review a1, the reviewer's probe C)", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }], delayMs: 300 } }] }], { koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'Mm-hm.' }]) }] } } });
+  k.agent.send('Plan our afternoon');
+  await until(() => (k.sent['model-0'] ?? []).length > 0, 3000);
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  assert.ok((await k.events(['note'])).some((e) => e.data.from === 'kokoro' && e.data.text === 'Kokoro was stopped.'));
+  const before = k.sent['model-0'].length;
+  await k.agent.channel.send('koe', 'Check the traffic to Carmel', 'append', 'tool'); // an hour later, say: no user input between
+  await k.agent.idle();
+  assert.ok(k.sent['model-0'].length > before, "Koe's later question reached Kokoro");
 });
 
 // Fix pass 5 (the review's no-koe-identity probe): with no Koe model, Halves sends and logs exactly what Shiori as one did.

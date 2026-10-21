@@ -161,6 +161,13 @@ test('build: a forced tool, logprobs, and never fewer than 16 output tokens', ()
   assert.equal(body.max_output_tokens, 16);
 });
 
+test('build: a turn of Shiori\'s must call a tool: tool_choice "required" (item 15)', () => {
+  const tools = [{ name: 'speak', description: 'Say.', input: { type: 'object' } }, { name: 'sleep', description: 'End.', input: { type: 'object' } }];
+  const messages = [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }];
+  assert.equal(type.build(spec({ request: { tools, messages, toolRequired: true } })).body.tool_choice, 'required');
+  assert.equal('tool_choice' in type.build(spec({ request: { tools, messages } })).body, false);
+});
+
 test('build: reasoning goes back only with what followed it in the same reply, and only when it can be replayed', () => {
   const sig = (/** @type {any} */ item) => JSON.stringify(item);
   const s = spec({ request: { messages: [

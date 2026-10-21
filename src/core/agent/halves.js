@@ -1,4 +1,4 @@
-import { Agent } from './loop.js';
+import { Agent, GATHER, isTheirs } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -25,7 +25,7 @@ import { modelOf, KOE_ROLE } from '../llm/config.js';
  * @typedef {'koe-up' | 'koe-down'} Told
  * @typedef {Told | 'live-open' | 'live-closed' | 'live-dropped'} Block
  * @typedef {'koe' | 'kokoro'} Side
- * @typedef {'tool' | 'gated:speak' | 'gated:show' | 'gated:ask' | 'final-text' | 'kokoro-failed' | 'nothing-to-add'} NoteWhy
+ * @typedef {'tool' | 'gated:speak' | 'gated:show' | 'gated:ask' | 'final-text' | 'kokoro-failed' | 'nothing-to-add' | 'stopped'} NoteWhy
  */
 
 /** The events a half marks as its own while Shiori is two halves. */
@@ -100,6 +100,8 @@ export class Halves {
   #later = false;
   /** What Kokoro was told last, in which conversation. @type {{ scope: string | null, state: Told }} */
   #told = { scope: null, state: 'koe-up' };
+  /** The user's last input (typed, sent or heard), and whether it was a photo on its own: Kokoro waits for it to go quiet (GATHER). */
+  #input = { at: 0, photo: false };
   /** @type {Promise<unknown>} both halves' writes, one at a time */
   #lock = Promise.resolve();
   /** @type {Promise<unknown>} what the user typed and what woke Shiori, in order */
@@ -124,6 +126,15 @@ export class Halves {
   #unsaid = [];
   #failTold = false;
   #nothingTold = false;
+  /** Why each half's list last failed, while it is down (a failure only of models resting keeps the reason before). */
+  #lost = { koe: '', kokoro: '' };
+  /** The card for both halves down was shown: once, until the user writes again or a half works again. */
+  #bothTold = false;
+  /**
+   * The user stopped Kokoro (the sign's Stop), and Koe hasn't heard of it: Koe's notes start no Kokoro turn until the user writes
+   * or speaks again, or Koe's model has seen "Kokoro was stopped" (the seq of that note; Infinity: not written yet).
+   */
+  #stopped = { on: false, seq: Infinity };
   #lastHalves = '';
   #lastView = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
@@ -141,6 +152,7 @@ export class Halves {
   constructor(c) {
     this.nonce = newNonce();
     this.clock = c.now ?? Date.now;
+    this.secondMs = c.secondMs ?? 1000;
     this.channel = new Channel({
       log: { koe: (ev) => this.koe.log(ev), kokoro: (ev) => this.kokoro.log(ev) },
       deliver: {
@@ -151,7 +163,7 @@ export class Halves {
           else this.koe.enqueue(w);
         },
         kokoro: (w) => {
-          if (w.from === 'koe' && this.#answered) return;
+          if (w.from === 'koe' && (this.#answered || this.#stopped.on)) return;
           this.#asked ||= w.from === 'koe';
           this.#wakeKokoro(w);
         },
@@ -172,15 +184,19 @@ export class Halves {
         hidden: async () => (this.#split ? [] : ['tell_koe']),
         // Its errors while Koe talks are set aside: Koe tells the user, and a card says what needs saying.
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.#works() ? { aside: true } : {}) } : {}),
-        logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
+        logged: async (e, r) => {
+          if (e.type === 'note' && e.data?.why === 'stopped') this.#stopped.seq = e.seq;
+          if (this.#split) await this.koe.observe(e, r);
+        },
         gate: (call) => this.#gate(call),
-        failed: (why, e) => this.#kokoroFailed(why, e),
+        failed: (why, e) => this.#down('kokoro', why, e) ?? this.#kokoroFailed(why, e),
         calling: () => {
           this.#nothingTold = false;
           this.#unseen = 0; // it reads every line so far
         },
         ended: (t) => this.#kokoroEnded(t),
         hushed: () => this.live.voiced,
+        hold: (wakes) => this.#hold(wakes),
       },
     });
     this.koe = new Agent({
@@ -199,8 +215,18 @@ export class Halves {
         },
         logged: (e, r) => this.#koeLogged(e, r),
         replied: (names) => { this.#asking = names.includes('tell_kokoro'); },
-        failed: () => this.#koeFailed(),
-        ended: (t) => { if (t.ok) this.#unsaid = []; },
+        // A call that saw "Kokoro was stopped": what Koe asks from now on, it asks knowing.
+        calling: (context) => { if (context && context.to >= this.#stopped.seq) this.#stopped.on = false; },
+        hold: () => 0, // Koe answers at once (GATHER)
+        failed: (why, e) => {
+          const both = this.#down('koe', why, e);
+          return this.#koeFailed() && (both ?? true);
+        },
+        ended: (t) => {
+          if (!t.ok) return;
+          this.#unsaid = [];
+          this.#up('koe');
+        },
       },
     });
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
@@ -290,6 +316,7 @@ export class Halves {
 
   /** @param {Agent} half @param {any} s */
   #stateOf(half, s) {
+    if (half === this.koe) this.kokoro.poke(); // the user speaking to Koe holds Kokoro
     if (half === this.talking && this.koeState !== 'live') this.#emit('state', s);
     if (half === this.kokoro) this.#emitHalves();
     // Koe waits on a Kokoro with nothing to do: nothing to add (the wait is set up right after its state).
@@ -307,6 +334,7 @@ export class Halves {
 
   /** A live session's state changed: the dock's, and the chip's. */
   #liveChanged() {
+    this.kokoro.poke(); // the user speaking into it holds Kokoro
     const name = this.live.view.name;
     if (this.koeState === 'live' && name !== this.#lastView) this.#emit('state', this.live.view);
     this.#lastView = name;
@@ -388,7 +416,7 @@ export class Halves {
     if (this.koeState === 'text') return this.koe.enqueue(w);
     if (this.koeState !== 'down') return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
     this.#notice({ tone: 'warn', title: "Koe's live voice couldn't start", body: 'Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.' });
-    this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true, ...(w.fallbacks?.length ? { fallbacks: w.fallbacks } : {}) });
+    this.#talkDirectly(w.fallbacks);
   }
 
   /**
@@ -403,7 +431,7 @@ export class Halves {
       await this.#refresh();
       if (!cut) return;
       if (this.koeState === 'text') this.koe.enqueue({ kind: 'cue', text: 'the live session dropped while you were answering; finish briefly' });
-      else if (this.koeState === 'down') this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true });
+      else if (this.koeState === 'down') this.#talkDirectly();
     });
   }
 
@@ -442,6 +470,7 @@ export class Halves {
 
   /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip */
   open(trip) {
+    this.#stopped = { on: false, seq: Infinity }; // a Stop belongs to the conversation it was in
     if (trip !== this.kokoro.target) this.live.close('switch', { forget: true });
     const opening = this.kokoro.open(trip);
     if (this.#koeTrip !== undefined) {
@@ -461,6 +490,9 @@ export class Halves {
    * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean }} [o] chose: a tap on a live ask's buttons
    */
   send(text, o = {}) {
+    this.#bothTold = false;
+    this.#stopped.on = false;
+    this.#heardNow(Boolean(o.photos?.length) && !String(text ?? '').trim());
     this.#route(async () => {
       await this.#refresh();
       if (!this.#works() || this.kokoro.pendingId) return this.kokoro.send(text, o);
@@ -517,14 +549,54 @@ export class Halves {
    */
   hush(why) {
     this.live.close(why, { forget: why === 'erase' });
+    this.typing(false); // the page went: nobody types into it (review A3)
   }
 
   /** The page is back in view: what waited for it is said; the microphone opens only at a tap. */
   shown() {
     if (this.koeState === 'live') this.#route(() => this.live.shown());
   }
-  /** The sign's Stop: Kokoro's turn alone. */
-  stopKokoro() { this.kokoro.interrupt(); }
+  /** The typing box holds text, or not: Kokoro waits while the user types (GATHER). @param {boolean} on */
+  typing(on) {
+    this.kokoro.typing(on);
+  }
+
+  /** The user typed, sent or said something now. @param {boolean} photo a photo on its own */
+  #heardNow(photo) {
+    this.#input = { at: Date.now(), photo };
+    this.kokoro.poke();
+  }
+
+  /**
+   * How long Kokoro's turn waits for the user (GATHER): behind Koe, until their input is quiet and they neither type nor speak;
+   * with Koe down or off, as one Shiori. @param {Wake[]} wakes @returns {number} ms; Infinity: until something changes
+   */
+  #hold(wakes) {
+    const speaking = this.kokoro.speakingNow || this.koe.speakingNow || this.live.view.name === 'hearing';
+    const typing = this.kokoro.typingNow;
+    if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
+    // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them (review A3).
+    if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
+    if (typing || speaking) return Infinity;
+    return Math.max(0, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
+  }
+
+  /**
+   * The sign's Stop: Kokoro's turn alone (spec §16.2), and what Koe asked of it meanwhile; Koe's notes start no new turn until Koe
+   * has heard of the Stop or the user asks again (emulator pass K1 #8: a live Koe's late question started the plan over).
+   */
+  stopKokoro() {
+    this.#stopped = { on: true, seq: Infinity };
+    // Still gathering the user's messages (GATHER): its turn never starts, and a waiting Koe hears so.
+    const started = this.kokoro.turning;
+    const scope = this.kokoro.target ?? ME;
+    this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope));
+    this.kokoro.poke();
+    this.kokoro.interrupt();
+    // Koe hears of it, waiting or not (review a1): once its model has seen this, its questions reach Kokoro again.
+    this.#nothingTold = false;
+    this.#nothingToAdd('Kokoro was stopped.', 'stopped');
+  }
 
   async idle() {
     do {
@@ -584,6 +656,7 @@ export class Halves {
     this.#cue = this.#owed = false;
     this.#unseen = 0;
     this.kokoro.enqueue(w);
+    this.#emitHalves(); // the sign, while it still gathers the user's messages too
   }
 
   /**
@@ -595,17 +668,21 @@ export class Halves {
     await this.kokoro.observe(e, r);
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type === 'out.speak' && e.data?.live) this.#unsaid = []; // a live Koe said what it was told
+    if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
     if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
       this.#failTold = false;
+      this.#bothTold = false;
+      this.#stopped.on = false;
     }
+    if (e.type.startsWith('out.')) this.#up('koe'); // a live Koe that spoke works
     // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails.
     const out = e.type.startsWith('out.') && this.#cue;
     const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed;
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
-    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true });
+    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
     if (typed || answered || !LINES.includes(e.type) || !this.#works()) return;
     const now = this.clock();
@@ -623,6 +700,28 @@ export class Halves {
     if (text === null) return null;
     await this.channel.send('kokoro', text, 'append', /** @type {any} */ (`gated:${name}`), wake);
     return { content: 'Koe is speaking for you; use tell_koe.', told: true };
+  }
+
+  /**
+   * A half's list failed (emulator pass: both halves failed, each quietly, and the user heard nothing). When the other is down
+   * too, the card says why for each, once: its words, for the loop's card and error (Half.failed); true, said already; null:
+   * the half's own rule. @param {'koe' | 'kokoro'} side @param {string} why @param {unknown} e @returns {string | true | null}
+   */
+  #down(side, why, e) {
+    if (!this.#split) return null;
+    const resting = e instanceof AllFailedError && e.attempts.every((a) => a.outcome === 'benched');
+    if (!resting || !this.#lost[side]) this.#lost[side] = why;
+    if (!this.#lost.koe || !this.#lost.kokoro) return null;
+    if (this.#bothTold) return true;
+    this.#bothTold = true;
+    const lines = (/** @type {string} */ name, /** @type {string} */ text) => text.split('\n').map((l) => `${name}: ${l}`);
+    return [...lines('Koe', this.#lost.koe), ...lines('Kokoro', this.#lost.kokoro)].join('\n');
+  }
+
+  /** A half works again. @param {'koe' | 'kokoro'} side */
+  #up(side) {
+    this.#lost[side] = '';
+    this.#bothTold = false;
   }
 
   /**
@@ -650,9 +749,20 @@ export class Halves {
     this.#downUntil = this.clock() + KOE_REST_MS;
     this.#route(async () => {
       await this.#refresh();
-      this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true });
+      // Down, Kokoro talks. Gone on to a live model in its list (voice off, its text model resting), Kokoro's answer, gated,
+      // reaches the live session as a note: what it told the failed Koe isn't lost.
+      this.#talkDirectly();
     });
     return true;
+  }
+
+  /**
+   * Kokoro wakes to talk to the user directly: once, however many failures ask it to (emulator pass: two near-identical
+   * bubbles, one from the turn that saw Koe go down and one from the wake that came meanwhile). @param {import('./loop.js').Reminder[]} [fallbacks]
+   */
+  #talkDirectly(fallbacks = []) {
+    const was = this.kokoro.drop((w) => w.kind === 'halves' && w.text === BLOCKS['koe-down']);
+    this.kokoro.enqueue({ kind: 'halves', text: BLOCKS['koe-down'], logged: true, ...(fallbacks.length || was.length ? { fallbacks: [...was.flatMap((w) => w.fallbacks ?? []), ...fallbacks] } : {}) });
   }
 
   /**
@@ -662,13 +772,18 @@ export class Halves {
    */
   #kokoroEnded(t) {
     if (this.#later) this.#route(() => this.#refresh());
-    if (t.ok) this.#why = '';
+    if (t.ok) {
+      this.#why = '';
+      this.#up('kokoro');
+    }
+    // It talked to the user itself (Koe down): a "Koe can't speak" wake that came meanwhile is answered already.
+    if (t.spoke) this.kokoro.drop((w) => w.kind === 'halves' && w.text === BLOCKS['koe-down'] && !w.fallbacks?.length);
     if (!this.#works()) return;
     let told = t.told;
     if (t.ok && t.finalText && !t.told && !t.slept) {
       told = true;
       this.channel.send('kokoro', t.finalText, 'append', 'final-text', t.wakeId).catch(() => {});
-    } else if (!told && this.koe.waiting) this.#nothingToAdd(t.ok ? 'Kokoro has nothing to add.' : 'Kokoro was stopped.');
+    } else if (!told && this.koe.waiting) this.#nothingToAdd(...(t.ok && !this.#stopped.on ? [] : /** @type {const} */ (['Kokoro was stopped.', 'stopped'])));
     if (told) {
       this.#answered = true;
       this.#asked = false;
@@ -676,9 +791,10 @@ export class Halves {
     }
   }
 
-  #nothingToAdd(text = 'Kokoro has nothing to add.') {
+  /** @param {string} [text] @param {NoteWhy} [why] */
+  #nothingToAdd(text = 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add')) {
     if (this.#nothingTold) return;
     this.#nothingTold = true;
-    this.channel.send('kokoro', text, 'append', 'nothing-to-add').catch(() => {});
+    this.channel.send('kokoro', text, 'append', why).catch(() => {});
   }
 }
