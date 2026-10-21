@@ -477,7 +477,7 @@ Every tool can be switched off, except `show`, `ask`, `wait`, `sleep`, `tell_koe
 
   The agent sees a single `fetch` tool. A self-hosted fetch relay is added only if real use shows gaps.
 - **Search** goes to the search role's provider list (§9.6), or to the provider's own search tool, depending on the role's "search via" setting.
-- **PDFs** go to the model as a document when it accepts PDFs. Otherwise Shiori asks for a screenshot; we don't add a PDF library.
+- **PDFs** go to the model as a document when it accepts PDFs. Otherwise a model that reads PDFs tells it in words, as for photos above ("What it says (told by …, as you can't read PDFs)"; the same describers and time limit, its text word for word as far as it goes); with none, the result says so and Shiori asks for a screenshot. We don't add a PDF library, so annai doesn't read a PDF's own text.
 
 ### 7.3 Importing a booking
 
@@ -592,7 +592,7 @@ Each role is an **ordered list** of models, tried front to back:
 | the model answers, including declining | that's an answer: no fallback |
 | its ability is switched off, or its protocol plugin isn't running | skipped ("off", "type-missing"); a call never installs one |
 
-- **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size. A model that takes no photos gets the conversation's photos as words ("[a photo: /trip/files/….webp]"), so a conversation that once held one can still go on; it is skipped only when the user's newest message holds a photo.
+- **The list also handles capability gaps.** Models that lack a capability the request needs are skipped, for example image input or context size. A model that takes no photos gets the conversation's photos as words ("[a photo: /trip/files/….webp]"), so a conversation that once held one can still go on; it is skipped only when the user's newest message holds a photo. A model that reads no PDFs gets them as a note ("[a PDF: booking.pdf]") the same way, and is skipped only when the newest message holds one. A model's PDF input is its "pdf" in the model's facts (Takes PDFs).
 - **Benching.** A failed model is benched for a cooldown (what the provider asked for, otherwise a few minutes). Calls during the cooldown go straight to the next model. A failure to connect while the device is offline benches nothing and isn't retried: the model did nothing wrong, and it is asked again as soon as the connection is back.
 - **Switching back.** Each provider caches separately, so the switch back to a preferred model happens when the backup's cache is cold. An order the user changes in Settings → Models applies from the next turn, warm cache or not.
 - **The transcript stays portable.** It's stored in our own format. When the model changes:

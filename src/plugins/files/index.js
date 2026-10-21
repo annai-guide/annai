@@ -87,7 +87,7 @@ export function activate(annai) {
     },
     {
       name: 'read', group: 'Files',
-      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document when your model reads PDFs, a Wallet pass (.pkpass) as what it says. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
+      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document (in words, if your model reads no PDFs), a Wallet pass (.pkpass) as what it says. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
       input: {
         type: 'object', required: ['path'],
         properties: {
@@ -128,7 +128,6 @@ export function activate(annai) {
           };
         }
         if (entry.type === 'application/pdf') {
-          if (!input.includes('pdf')) return `${i.path} is a PDF, and this model can't read PDFs. Ask the user for a screenshot of the page you need.`;
           return { content: `The PDF ${i.path}.`, document: { mediaType: 'application/pdf', hash: entry.hash, name: path.split('/').pop(), path: i.path } };
         }
         if (entry.type === 'application/vnd.apple.pkpass') {

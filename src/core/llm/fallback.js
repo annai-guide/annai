@@ -80,7 +80,7 @@ export class AllFailedError extends Error {
 
 /** Why a model was passed over without being asked, in words (the codes stay in the Trace). */
 const PASSED = Object.freeze({
-  benched: 'It is resting for a few minutes after an error.', 'no-images': "It doesn't take photos.", 'no-audio': "It doesn't take audio.",
+  benched: 'It is resting for a few minutes after an error.', 'no-images': "It doesn't take photos.", 'no-documents': "It doesn't read PDFs.", 'no-audio': "It doesn't take audio.",
   'no-tools': "It can't use tools.", 'too-long': 'The conversation is too long for it.', 'no-provider-tool': "It doesn't have the provider tool this needs.",
   'not-chat': "It isn't a chat model.", off: 'It is switched off.', removed: 'It was removed.', 'no-speech': "The speech couldn't be sent to it.",
 });
@@ -175,12 +175,20 @@ function newestPhoto(request) {
 }
 
 /**
- * The request for a model that takes no photos (emulator pass): each photo as words, "[a photo: /trip/files/….webp]", so a
- * conversation that once held one can still go on with it. @param {Request} request @returns {Request}
+ * Whether the newest message holds a PDF (a tool's result brought it): a model that reads none can't answer it. @param {Request} request
  */
-export function photosAsWords(request) {
+function newestDocument(request) {
+  return Boolean(request.messages.findLast((m) => m.role === 'user')?.parts.some((p) => p.type === 'document'));
+}
+
+/**
+ * The request for a model that takes no photos or no PDFs (emulator pass): each as words, "[a photo: /trip/files/….webp]" or
+ * "[a PDF: booking.pdf]", so a conversation that once held one can still go on with it. @param {Request} request
+ * @param {{ photos?: boolean, documents?: boolean }} [which] what to word; both when not given @returns {Request}
+ */
+export function photosAsWords(request, { photos = true, documents = true } = {}) {
   /** @param {import('./contract.js').Part} p @returns {import('./contract.js').Part} */
-  const word = (p) => (p.type === 'image' ? { type: 'text', text: `[a photo${p.path ? `: ${p.path}` : ''}]` } : p);
+  const word = (p) => (photos && p.type === 'image' ? { type: 'text', text: `[a photo${p.path ? `: ${p.path}` : ''}]` } : documents && p.type === 'document' ? { type: 'text', text: `[a PDF${p.name ? `: ${p.name}` : ''}]` } : p);
   return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.map(word) })) };
 }
 
@@ -190,6 +198,7 @@ export function photosAsWords(request) {
  */
 export function gap(model, request, provider) {
   if (request.messages.some((m) => m.parts.some((p) => p.type === 'image')) && !model.input.includes('image')) return 'no-images';
+  if (request.messages.some((m) => m.parts.some((p) => p.type === 'document')) && !model.input.includes('pdf')) return 'no-documents';
   if (request.messages.some((m) => m.parts.some((p) => p.type === 'audio')) && !model.input.includes('audio')) return 'no-audio';
   if (request.tools?.length && model.tools === false) return 'no-tools';
   if (request.needsProviderTool && !enabledProviderTools(model, request, provider).some((t) => t.kind === request.needsProviderTool)) return 'no-provider-tool';
@@ -300,8 +309,10 @@ export async function callRole(c) {
     const model = rec ? modelOf(rec) : null;
     // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
     const words = Boolean(model && !model.input.includes('image') && !newestPhoto(request) && request.messages.some((m) => m.parts.some((p) => p.type === 'image')));
+    // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
+    const notes = Boolean(model && !model.input.includes('pdf') && !newestDocument(request) && request.messages.some((m) => m.parts.some((p) => p.type === 'document')));
     const forModel = (/** @type {Request} */ r) => {
-      const sent = words ? photosAsWords(r) : r;
+      const sent = words || notes ? photosAsWords(r, { photos: words, documents: notes }) : r;
       if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
       const { toolRequired, ...rest } = sent;
       return rest;

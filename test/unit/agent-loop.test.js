@@ -219,6 +219,46 @@ test("the card says why each model failed on one line, each reason once, in word
   assert.equal(off.notices[0].body, 'This device is offline.');
 });
 
+test("a model that reads no PDFs reads one: a model that does tells it in words, and says so; with none here, the result says that (the second emulator pass)", async () => {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Check-in is at 3 PM.')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM, 2 nights.' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /^The PDF \/trip\/files\/booking\.pdf\.\nWhat it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM, 2 nights\.$/);
+  assert.equal(r.data.document, undefined, 'the words in place of the document');
+  const asked = k.sent['model-u'][0].messages[0].parts.find((/** @type {any} */ p) => p.type === 'document');
+  assert.equal(asked.mediaType, 'application/pdf');
+  assert.doesNotMatch(JSON.stringify(k.sent['model-0']), /"type":"document"/);
+  // No model that reads PDFs: the result says so.
+  const none = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('I cannot read it.')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'never' }] });
+  await none.ws.write(none.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  none.agent.send('When is check-in?');
+  await none.agent.idle();
+  const nr = (await none.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(nr.data.content, /\nNo model here can read PDFs, so what it says can't be told\.$/);
+});
+
+test('a PDF read earlier does not close the conversation to a model that reads none: it goes as a note (the second emulator pass: halo, "type file is not supported")', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Read it.')], [say('Anything else?')]], { models: [{ input: ['text', 'image', 'pdf'] }, { input: ['text', 'image'] }] });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('Read the booking');
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-0'].at(-1).messages), /"type":"document"/, 'the first model had the PDF');
+  const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ['m-1'] } });
+  k.agent.send('Thanks');
+  await k.agent.idle();
+  const asked = k.sent['model-1'].at(-1);
+  assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"document"/);
+  assert.match(JSON.stringify(asked.messages), /\[a PDF: booking\.pdf\]/);
+  assert.equal(k.notices.length, 0);
+});
+
 test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async () => {
   const k = await agentKit([[{ error: 'credit', status: 402 }], [say('Pfeiffer Beach is close.')]], { models: [{}, { input: ['text'] }] });
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });

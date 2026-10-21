@@ -113,6 +113,8 @@ const AGAIN = 'the user tapped Try again: answer their last message';
 export const DESCRIBE_S = 30;
 /** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
 const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
+/** What a model that reads PDFs is asked, for one that can't (the second emulator pass). */
+const DESCRIBE_PDF = "Give the content of this PDF for someone who can't open it: its text word for word as far as it goes (dates, times, names, addresses, prices and numbers exactly), tables as plain lines, and what any picture in it shows. Reply with the content only.";
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
  * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; typing: a typing
@@ -1734,7 +1736,7 @@ export class Agent {
       };
       ({ output, ms } = await runTool(tool, input, call));
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
-      if (output.images?.length && o.model && !o.model.input?.includes('image')) output = await this.#described(output, o.wakeId, o.signal);
+      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model);
     }
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
@@ -1772,24 +1774,27 @@ export class Agent {
   }
 
   /**
-   * A tool's photos in words, for a model that can't see them (emulator pass, 5b): described by the utility role's models,
-   * then Main's, that take photos (the utility list first: a side job, like a summary, on the cheaper model); the crop when a
-   * part was asked for, as that is what the tool returned. It stops with the turn, and within DESCRIBE_S; either way the result
-   * says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId @param {AbortSignal} signal
+   * A tool's photos and PDF in words, for a model that can't see photos or read PDFs (emulator pass, 5b; the second pass, a PDF):
+   * described by the utility role's models, then Main's, that can (the utility list first: a side job, like a summary, on the
+   * cheaper model); the crop when a part was asked for, as that is what the tool returned. It stops with the turn, and within
+   * DESCRIBE_S; either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
+   * @param {AbortSignal} signal @param {{ input?: string[] }} [model] the model the result is for
    */
-  async #described(output, wakeId, signal) {
+  async #described(output, wakeId, signal, model) {
     const cfg = await this.llm.config();
     const roles = [...(cfg.roles?.utility?.models?.length ? ['utility'] : []), 'main'];
-    const sees = roles.some((role) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image')));
     /** @type {string[]} */
     const said = [];
-    for (const m of output.images ?? []) {
-      if (!sees) {
-        said.push("No model here can see photos, so what it shows can't be told.");
-        continue;
+    /** @param {'image' | 'pdf'} kind @param {any} m */
+    const tell = async (kind, m) => {
+      const pdf = kind === 'pdf';
+      if (!roles.some((role) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes(kind)))) {
+        said.push(pdf ? "No model here can read PDFs, so what it says can't be told." : "No model here can see photos, so what it shows can't be told.");
+        return;
       }
       const bytes = m.data ? null : await blobBytes(this.store, m.hash ?? '');
-      const image = { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data: m.data ?? (bytes ? toBase64(bytes) : '') };
+      const data = m.data ?? (bytes ? toBase64(bytes) : '');
+      const part = pdf ? { type: /** @type {const} */ ('document'), mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data };
       let why = '';
       // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
       const stop = new AbortController();
@@ -1800,8 +1805,8 @@ export class Agent {
         for (const role of roles) {
           if (stop.signal.aborted) break;
           try {
-            const r = await this.llm.call({ role, level: 'off', signal: stop.signal, scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: DESCRIBE, maxOutput: 600, messages: [{ role: 'user', parts: [image, { type: 'text', text: 'Describe this photo.' }] }] } });
-            why = r.reply.text.trim() ? `What it shows (described by ${r.answeredBy}, as you can't see photos): ${r.reply.text.trim()}` : '';
+            const r = await this.llm.call({ role, level: 'off', signal: stop.signal, scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: pdf ? DESCRIBE_PDF : DESCRIBE, maxOutput: pdf ? 3000 : 600, messages: [{ role: 'user', parts: [part, { type: 'text', text: pdf ? 'Give this PDF\'s content.' : 'Describe this photo.' }] }] } });
+            why = r.reply.text.trim() ? `${pdf ? 'What it says' : 'What it shows'} (${pdf ? 'told' : 'described'} by ${r.answeredBy}, as you can't ${pdf ? 'read PDFs' : 'see photos'}): ${r.reply.text.trim()}` : '';
           } catch (e) {
             why ||= `It couldn't be described: ${this.#explain(e, role)}`;
             continue;
@@ -1812,11 +1817,13 @@ export class Agent {
         clearTimeout(late);
         signal.removeEventListener('abort', end);
       }
-      if (stop.signal.aborted && !why.startsWith('What it shows')) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${DESCRIBE_S} seconds).`;
+      if (stop.signal.aborted && !/^What it (shows|says)/.test(why)) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${DESCRIBE_S} seconds).`;
       said.push(why || "It couldn't be described.");
-    }
-    const { images, ...rest } = output;
-    return { ...rest, content: `${output.content}\n${said.join('\n')}` };
+    };
+    if (!model || !model.input?.includes('image')) for (const m of output.images ?? []) await tell('image', m);
+    if (output.document && !model?.input?.includes('pdf')) await tell('pdf', output.document);
+    const { images, document, ...rest } = output;
+    return { ...rest, ...(model?.input?.includes('image') ? { images } : {}), content: `${output.content}\n${said.join('\n')}` };
   }
 
   /** The output tools (spec §7.1). @returns {LoopTool[]} */
