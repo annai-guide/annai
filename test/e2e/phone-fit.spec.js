@@ -273,3 +273,144 @@ test('swiping back into a tab brings back the screen you last had open in it, wh
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 });
+
+/**
+ * The controls of the screen (main) whose middle is on screen, above the dock, but under something else: a card, say.
+ * @param {import('@playwright/test').Page} page
+ */
+const coveredControls = (page) => page.evaluate(() => {
+  const dockTop = document.querySelector('nav.dock')?.getBoundingClientRect().top ?? innerHeight;
+  const barBottom = document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0;
+  return [...document.querySelectorAll('main.view :is(a[href], button, input, select, textarea, summary)')].flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    if (!r.width || !r.height || y <= barBottom || y >= dockTop || x < 0 || x > innerWidth) return [];
+    const hit = document.elementFromPoint(x, y);
+    return hit && (el === hit || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.getAttribute('aria-label') || el.tagName} under ${hit?.closest('.notice, .toast') ? 'a card' : hit?.tagName}`];
+  });
+});
+
+test("a system card never covers the screen's controls: it comes in at the top and moves the screen down, and the screen scrolls clear of it (the emulator pass)", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 });
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  expect(await coveredControls(page)).toEqual([]);
+  // The dock's camera with no trip open: a card says to open one.
+  await page.locator('#dock-camera').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') });
+  const card = page.locator('.notice', { hasText: 'Open a trip first' });
+  await expect(card).toBeVisible();
+  await expect(page.locator('.notices')).not.toHaveClass(/landed/); // the moment that ignores taps on what it moved is over
+  expect(await coveredControls(page)).toEqual([]);
+  // Each control can be scrolled clear of the card and the dock, the last ones too.
+  expect(await page.evaluate(() => [...document.querySelectorAll('main.view :is(a[href], button:not([disabled]), input, select, textarea, summary)')].flatMap((el) => {
+    if (!el.getClientRects().length) return [];
+    el.scrollIntoView({ block: 'center' });
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return hit && (hit === el || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.tagName} under ${hit?.closest('.notice, nav.dock')?.className ?? hit?.tagName}`];
+  }))).toEqual([]);
+  // In the page's flow, not stuck to the top: scrolled down, the card has gone up with the page.
+  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  await expect(card).not.toBeInViewport();
+  await page.evaluate(() => scrollTo(0, 0));
+  await card.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(card).toHaveCount(0);
+});
+
+const PNG1 = { name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') };
+/** A system card, as annai raises one: the dock's camera with no trip open. @param {import('@playwright/test').Page} page */
+const raiseCard = (page) => page.locator('#dock-camera').setInputFiles(PNG1);
+
+test('review S1: scrolled down, a card coming or going keeps the screen where it was, measured, not left to the browser (Safari before 18 has no scroll anchoring)', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 });
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.evaluate(() => scrollTo(0, 400));
+  const mark = () => page.evaluate(() => {
+    const el = [...document.querySelectorAll('main.view a[href]')].find((e) => e.getBoundingClientRect().top > 200);
+    el?.setAttribute('data-mark', '');
+    return el?.getBoundingClientRect().top ?? -1;
+  });
+  const at = () => page.evaluate(() => document.querySelector('[data-mark]')?.getBoundingClientRect().top ?? -1);
+  const was = await mark();
+  await raiseCard(page);
+  await expect(page.locator('.notice')).toHaveCount(1);
+  expect(Math.abs(await at() - was)).toBeLessThanOrEqual(1);
+  await page.evaluate(() => /** @type {HTMLButtonElement} */ (document.querySelector('.notice .btn.ghost')).click()); // Dismiss, from up there
+  await expect(page.locator('.notice')).toHaveCount(0);
+  expect(Math.abs(await at() - was)).toBeLessThanOrEqual(1);
+});
+
+test('review S2: a card that lands while the screen is at its top moves it down, and for a moment a tap on what slid under the finger does nothing', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 });
+  await page.clock.install();
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  // The install warning's Show me how, the first button under the cards.
+  const how = page.getByRole('region', { name: 'Install annai' }).getByRole('button', { name: 'Show me how' });
+  const steps = page.getByRole('region', { name: 'Install annai' }).locator('ol.steps');
+  const was = /** @type {{ x: number, y: number, width: number, height: number }} */ (await how.boundingBox());
+  await raiseCard(page);
+  await expect(page.locator('.notice')).toHaveCount(1);
+  const now = /** @type {{ x: number, y: number, width: number, height: number }} */ (await how.boundingBox());
+  expect(now.y).toBeGreaterThan(was.y); // it slid down
+  await page.mouse.click(now.x + now.width / 2, now.y + now.height / 2);
+  await page.clock.runFor(50);
+  await expect(steps).toBeHidden();
+  await page.clock.runFor(500);
+  await page.mouse.click(now.x + now.width / 2, now.y + now.height / 2);
+  await expect(steps).toBeVisible();
+});
+
+test('review S1: three cards take at most a quarter of a 320 × 544 screen, and scroll within it', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 544 });
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  for (let i = 0; i < 3; i++) await raiseCard(page);
+  await expect(page.locator('.notice')).toHaveCount(3);
+  const box = await page.evaluate(() => { const n = /** @type {HTMLElement} */ (document.querySelector('.notices')); return { h: n.offsetHeight, scroll: n.scrollHeight }; });
+  expect(box.h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
+  expect(box.scroll).toBeGreaterThan(box.h);
+});
+
+for (const [width, height] of [[360, 760], [320, 544]]) {
+  test(`on a phone ${width} × ${height}, every control scrolls clear of the dock: an install's Install and Cancel, Settings, Trips (the emulator pass)`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await openApp(page, '#/plugins');
+    await waitForServiceWorker(page);
+    /** The controls that can't be brought above the dock, scrolling as far as the screen goes. */
+    const underDock = () => page.evaluate(() => [...document.querySelectorAll('main.view :is(a[href], button:not([disabled]), input, select, textarea, summary)')].flatMap((el) => {
+      if (!el.getClientRects().length) return [];
+      el.scrollIntoView({ block: 'center' });
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return hit && (hit === el || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.tagName} under ${hit?.closest('nav.dock') ? 'the dock' : hit?.tagName}`];
+    }));
+    const manifest = { id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js', description: "Test plugin: today's tides as a tool." };
+    await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf({ 'annai-plugin.json': Buffer.from(JSON.stringify(manifest)), 'index.js': Buffer.from('export function activate() {}') }) });
+    await expect(page.getByRole('heading', { name: 'Install Tides?' })).toBeVisible();
+    expect(await underDock()).toEqual([]);
+    for (const hash of ['#/settings', '#/trips']) {
+      await page.evaluate((x) => { location.hash = x; }, hash);
+      await expect(page.locator('main.view h1').first()).toBeVisible();
+      expect(await underDock(), hash).toEqual([]);
+    }
+  });
+}
+
+test('on a short screen (an iPhone SE, 320 × 544) the dock is compact: under a fifth of the height; voice still enlarges it, at the bottom (spec §16.2)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 544 });
+  await openApp(page);
+  const dock = page.locator('nav.dock');
+  const quiet = /** @type {{ y: number, height: number }} */ (await dock.boundingBox());
+  expect(quiet.height).toBeLessThan(544 / 5);
+  expect(Math.round(quiet.y + quiet.height)).toBe(544);
+  await expect(page.getByRole('button', { name: 'Shiori' })).toContainText('Tap to talk'); // her state still shows
+  await page.locator('.voice-chip').click();
+  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
+  await expect(dock).toHaveClass(/\bvoice\b/);
+  const voice = /** @type {{ y: number, height: number }} */ (await dock.boundingBox());
+  expect(voice.height).toBeGreaterThan(quiet.height);
+  expect(Math.round(voice.y + voice.height)).toBe(544);
+});

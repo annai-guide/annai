@@ -134,6 +134,16 @@ test("the welcome's last step names the featured provider's sign-in from annai's
   }
 });
 
+test("the welcome's sentence on the featured sign-in comes with annai's catalog, not seconds later once its plugin has installed (the emulator pass)", async ({ page, context }) => {
+  // Its plugin's files come slowly, as on a phone's connection after Erase.
+  await context.route('**/plugins-official/provider-openrouter/**', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 8000));
+    await route.continue().catch(() => {});
+  });
+  await openApp(page, '#/welcome/5');
+  await expect(page.locator('.welcome p', { hasText: 'so Shiori can think' })).toContainText('Sign in with OpenRouter is the quickest way', { timeout: 4000 });
+});
+
 test.describe('a link that opens a screen is never interrupted', () => {
   test.use({ serviceWorkers: 'block' });
 
@@ -188,6 +198,19 @@ test('every step is reached with the keyboard alone, its heading taking the focu
   await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
   // From the featured provider's plugin, installed in the background once the offline service runs.
   await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' }).or(page.getByRole('link', { name: 'Sign in with OpenRouter' }))).toBeVisible({ timeout: 30_000 });
+});
+
+// The flaky keyboard test above (fixes-ui 14): in WebKit on Linux, a tap's sound unlock loading its silent clip again
+// over one still starting (a tap is pointerup, touchend and click; Enter on a button is keydown and click) wedged
+// the page, about half the time with quick keys. One unlock at a time (Voice.unlock); this held 0 of 8 before it.
+test('quick keys on the welcome never stall the page: one sound unlock at a time', async ({ page }) => {
+  await openApp(page, '#/welcome');
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+  }
+  await expect(h1(page)).toHaveText(STEPS[0]);
 });
 
 test('the welcome fits a phone 320 px wide: no step scrolls sideways', async ({ page }) => {

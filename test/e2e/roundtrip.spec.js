@@ -84,6 +84,23 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   await expect(page.getByText('Archived trips (1)')).toBeVisible();
 });
 
+test('an opened file can be left without importing: Cancel, or the link back to Trips (the emulator pass)', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  const file = await buildAndSave(page);
+  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  for (const leave of ['Cancel', '← Trips']) {
+    await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
+    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Import' })).toBeVisible();
+    await page.getByRole('link', { name: leave, exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Big Sur/ })).toHaveCount(1); // nothing came in
+  }
+});
+
 test.describe('opening a hosted archive', () => {
   test.use({ serviceWorkers: 'block' });
   test('"#import=<url>" downloads and previews the archive', async ({ page }) => {

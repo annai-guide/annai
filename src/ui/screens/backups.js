@@ -1,4 +1,4 @@
-import { h, field, checkbox, twoStep, savedField, savedCheck, savedRadios } from '../dom.js';
+import { h, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf } from '../dom.js';
 import { placeStatus, placeHref, newerText, withArticle, relTime, bytes, limitFromField, limitField, limitText } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
@@ -31,7 +31,7 @@ export async function renderBackups(ctx, route) {
       try {
         ctx.go(placeHref(await ctx.backups.add(pick.value)));
       } catch (e) {
-        status.textContent = String(/** @type {any} */ (e)?.message ?? e);
+        status.textContent = messageOf(e);
         add.disabled = false;
       }
     },
@@ -85,7 +85,7 @@ async function renderPlace(ctx, id) {
           await ctx.backups.turnOn(id);
           ctx.render();
         } catch (e) {
-          say(String(/** @type {any} */ (e)?.message ?? e));
+          say(messageOf(e));
         }
       },
     }, 'Turn it on');
@@ -100,7 +100,7 @@ async function renderPlace(ctx, id) {
       await ctx.backups.backUp(id, o);
       notes.set(id, 'Backed up.');
     } catch (e) {
-      if (/** @type {any} */ (e)?.name !== 'AbortError') notes.set(id, String(/** @type {any} */ (e)?.message ?? e));
+      if (/** @type {any} */ (e)?.name !== 'AbortError') notes.set(id, messageOf(e));
     }
     if (live.isConnected) ctx.render();
   };
@@ -148,7 +148,7 @@ async function renderPlace(ctx, id) {
         notes.set(id, (await ctx.backups.check(id)).note);
         ctx.render();
       } catch (e) {
-        say(String(/** @type {any} */ (e)?.message ?? e));
+        say(messageOf(e));
         offer(e);
         save.disabled = false;
       }
@@ -195,7 +195,7 @@ async function renderPlace(ctx, id) {
           h('span', { class: 'sub', text: [r.label ? `From ${withArticle(r.label)}` : null, r.encrypted ? 'encrypted' : null, relTime(r.at)].filter(Boolean).join(' · ') }),
           h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, t, r, say) }, 'Open')))));
       } catch (e) {
-        say(String(/** @type {any} */ (e)?.message ?? e));
+        say(messageOf(e));
       }
       show.disabled = false;
     },

@@ -14,6 +14,9 @@ import { refuseBreaking, installRequirements } from '../requires.js';
 
 const defaultFetch = (/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init);
 
+/** A catalog entry that makes a model provider: it has abilities. A restore and the provider page install only these (reviews of the emulator-pass fixes). @param {any} entry */
+export const makesProvider = (entry) => Array.isArray(entry?.abilities) && entry.abilities.length > 0;
+
 /** @param {FetchOptions} [opts] @returns {Promise<CatalogPlugin[]>} */
 export async function officialPlugins({ fetch: get = defaultFetch, base = '' } = {}) {
   /** @type {Response} */

@@ -2,7 +2,7 @@
 
 This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8 (extensions). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
 
-A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1).
+A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1): for yours, as for any that isn't annai's own, that it can read every key saved in annai and send it anywhere, naming whose keys are saved now ("now your keys for Google Gemini and Jina"), with **Install anyway**. An update that brings code to a package that had none asks the same way, with **Update anyway**.
 
 ## The package
 
@@ -141,7 +141,7 @@ Some things plugins register have a name only one plugin can hold: tools, protoc
 
 - **One owner per name,** in a fixed order: annai's built-ins, then its official plugins, then third-party plugins by when each was first installed (an update keeps its place), then by id. Plugins start in that order. annai's own components, and the skills it ships, are annai's even when nothing draws them.
 - **The user's choice comes first.** A plugin whose name is taken isn't used, and its page says "Not used: the tool weather is already provided by Places tools", with **Use this one instead**. The choice is kept, shown on both plugins' pages ("The tool weather: this one is used (your choice)") with **Undo**, and holds while your plugin runs; while it is off, the next in order is used. Removing a plugin forgets the choices that named it.
-- **`replaces`** in your manifest names what you mean to replace. The install screen says "It replaces how Shiori looks from annai", with **Install and use it** and **Install, keep annai's**; nothing is chosen until one is tapped. Without `replaces`, your plugin installs, and the user finds the switch on its page.
+- **`replaces`** in your manifest names what you mean to replace. The install screen says "It replaces how Shiori looks from annai", with **Install and use it** and **Install, keep annai's** (for a plugin with code, which says what it could do with the keys saved now, **Install anyway and use it** and **Install anyway, keep annai's**, as every way to install it says "anyway"); nothing is chosen until one is tapped. Without `replaces`, your plugin installs, and the user finds the switch on its page.
 - **What no choice moves:**
   - the agent loop's own tools (`speak`, `show`, `ask`, `wait`, `sleep`, `skill`, `tell_koe`, `tell_kokoro` and the rest of Shiori's own): a plugin's tool by one of those names is never used;
   - protocols and kinds of backup place: they are handed the keys the user gives (a provider's, a place's), so the one used is annai's own, else the one installed first. A name annai's own plugin provides is never yours, even before annai's is installed: while annai's is off or not there, nothing has it, and a call says its plugin isn't running. When a protocol annai has is needed, annai's own is installed, even if yours has its name. Give yours a name of its own.
@@ -348,9 +348,13 @@ export async function list({ endpoint, key, fetch, protocolList }) {
     .then((res) => (res.ok ? res.json() : null)).catch(() => null);
   const n = props?.default_generation_settings?.n_ctx;
   const kinds = props?.modalities;
-  const loaded = listed.find((m) => m.providerId === props?.model_alias) ?? (listed.length === 1 ? listed[0] : null);
-  return listed.map((m) => (m !== loaded ? m : {
+  const alias = props?.model_alias;
+  const tags = listed.filter((m) => typeof alias === 'string' && m.providerId.startsWith(`${alias}:`));
+  const named = listed.filter((m) => m.providerId === alias || (tags.length === 1 && m === tags[0]));
+  const loaded = !props ? [] : named.length ? named : listed.length === 1 ? listed : [];
+  return listed.map((m) => (!loaded.includes(m) ? m : {
     ...m,
+    loaded: true,
     ...(Number.isInteger(n) && n > 0 ? { contextWindow: n } : {}),
     ...(kinds && typeof kinds === 'object' ? { input: ['text', ...(kinds.vision ? ['image'] : []), ...(kinds.audio ? ['audio'] : [])] } : {}),
   }));
@@ -403,7 +407,7 @@ export function activate(annai) {
 - **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.
-  - `listRequest()` and `readList()` make "Fetch model list" work. A listed model may carry its `contextWindow`, `maxOutput`, `input` and its `reasoning` map (spec §9.3), as Gemini API's list does.
+  - `listRequest()` and `readList()` make "Fetch model list" work. A listed model may carry its `contextWindow`, `maxOutput`, `input` and its `reasoning` map (spec §9.3), as Gemini API's list does, and `loaded: true` for one a server you run has loaded now (the list says so).
   - `retryAfter(body)` gives the wait, in ms, an error response's words ask for, when no `retry-after` header or Google RetryInfo says (Gemini: "Please retry in 7h40m31s"). A rest over 10 minutes is said in words.
   - `refusal(status, body, c)` gives words for an error response that is the model declining, such as Gemini's safety block (a 400): the turn ends with them, stopping with `refusal`, and no other model is tried. Null for any other error. `c` is the call, so your type can keep what was blocked out of its later requests: Gemini API leaves the blocked message out of what it sends Gemini from then on, kept by a fingerprint in its own settings.
   - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the provider's page, per ability (the `uploads` tunable).

@@ -1,4 +1,4 @@
-import { h, twoStep } from '../dom.js';
+import { h, twoStep, messageOf } from '../dom.js';
 import { settingsForm, formFields } from '../settings-form.js';
 import { sourceLine, FULL_ACCESS, thingWords, ownerName } from './plugin-install.js';
 import { KEYED } from '../../core/registry.js';
@@ -35,7 +35,7 @@ export async function resetSettings(ctx, r) {
   try {
     notes.set(r.id, resetNote(await ctx.plugins.reset(r.id), r.settings));
   } catch (e) {
-    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name}'s settings weren't reset`, body: `${String(/** @type {any} */ (e)?.message ?? e)} Try again.` });
+    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name}'s settings weren't reset`, body: `${messageOf(e)} Try again.` });
   }
   ctx.render();
 }
@@ -52,7 +52,7 @@ function namesPart(ctx, id, rows) {
   const clashes = ctx.registry.clashes(id);
   if (!clashes.length) return null;
   const act = (/** @type {string} */ label, /** @type {any} */ c, /** @type {string | null} */ to) => h('button', { class: 'btn', type: 'button', onclick: async () => {
-    await ctx.plugins.choose(c.kind, c.name, to).catch((/** @type {any} */ e) => ctx.notices.toast(String(e?.message ?? e)));
+    await ctx.plugins.choose(c.kind, c.name, to).catch((/** @type {any} */ e) => ctx.notices.toast(messageOf(e)));
     ctx.render();
   } }, label);
   return h('section', { class: 'panel', 'aria-label': 'Names' }, h('h2', { class: 'section', text: 'Names' }),

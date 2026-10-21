@@ -7,7 +7,7 @@ import { endpointTypes, ProviderError, typeError, sameOrigin, noRedirect, explai
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders, useSuggestion } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
-import { officialPlugins } from './official.js';
+import { officialPlugins, makesProvider } from './official.js';
 import { PluginError, NOT_OWN, TURN_ON, isPluginBug } from '../registry.js';
 import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
@@ -309,7 +309,7 @@ export function createLlm({
       /** Whether a plugin describes a model provider: by annai's catalog, or by its own manifest when installed from elsewhere. @param {string} id */
       const isProvider = async (id) => {
         const entry = Array.isArray(catalog) ? catalog.find((x) => x.id === id) : undefined;
-        if (entry) return entry.abilities.length > 0;
+        if (entry) return makesProvider(entry);
         if (had[id]) return Boolean((await plugins.manifestOf(id).catch(() => null))?.provider);
         if (!Array.isArray(catalog)) throw catalog;
         throw new Error("its plugin isn't annai's own. Install it again from where it came from.");
