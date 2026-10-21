@@ -23,9 +23,8 @@ export function stampMarks(stamps, { max = 2, big = false } = {}) {
   return h('span', { class: ['stamps', big ? 'big' : ''], role: 'img', 'aria-label': `${stampCount(stamps.length)}: ${stamps.map((s) => s.name).join(', ')}` },
     ...shown.map((s) => {
       const label = stampLabel(s.name);
-      // Longer words get smaller type, so a word is never broken across lines.
-      const n = [...label].length;
-      return h('span', { class: ['stamp', n >= 11 ? 'longer' : n >= 8 ? 'long' : ''], title: s.name, text: label });
+      // A longer word gets smaller type (base.css), so it is never cut or broken across lines.
+      return h('span', { class: 'stamp', style: { '--n': [...label].length }, title: s.name, text: label });
     }),
     stamps.length > shown.length ? h('span', { class: 'stamp more', text: `+${stamps.length - shown.length}` }) : null);
 }
