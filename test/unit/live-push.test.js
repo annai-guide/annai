@@ -134,6 +134,25 @@ test("only a notification shown for this firing counts as reaching the user: one
   again.dispose();
 });
 
+test("a notification for this firing counts though the phone's clock had it a little early: matched by the time it was for, or shown within a minute of it (review A8)", async () => {
+  const k = await liveKit({ live: false });
+  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  const v = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Stretch.' });
+  await k.settle();
+  k.live.dispose();
+  await k.clock.advanceTo(at('10:05'));
+  /** @type {import('../../src/core/live/live.js').PushNews[]} */
+  const news = [
+    { kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, at: at('10:00'), t: at('09:58') },
+    { kind: 'shown', key: `${k.trip}|${v.id}`, scope: k.trip, watch: v.id, t: at('09:59:40') },
+  ];
+  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA, news: async () => news.splice(0) });
+  await again.start();
+  await again.settled();
+  assert.deepEqual(k.agent.wakes[0].fallbacks, []);
+  again.dispose();
+});
+
 test("a reminder whose notification the phone already showed has reached the user: its wake owes no fallback for it (emulator pass m6 #16)", async () => {
   const k = await liveKit({ live: false });
   const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });

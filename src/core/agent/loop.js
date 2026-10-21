@@ -252,6 +252,8 @@ export class Agent {
   #poke = null;
   /** A turn is gathering the user's messages (GATHER): it hasn't started. */
   #gathering = false;
+  /** The microphone hears the user now: from speech starting until its segment comes, or it wasn't speech (GATHER). */
+  #speaking = false;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
 
@@ -516,6 +518,11 @@ export class Agent {
     return this.#typing;
   }
 
+  /** The microphone hears the user now. */
+  get speakingNow() {
+    return this.#speaking;
+  }
+
   /** What the user is doing changed: a turn waiting for them looks again. */
   poke() {
     this.#poke?.();
@@ -536,7 +543,7 @@ export class Agent {
       const wakes = this.#queue.filter((w) => w.scope === this.scope);
       // From the first wake (review a5): a wake that waited out a long turn doesn't wait again.
       const left = Math.min(...wakes.map((w) => w.at ?? Date.now())) + GATHER.most * this.secondMs - Date.now();
-      const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.state.name === 'hearing') ? Infinity : 0;
+      const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.#speaking) ? Infinity : 0;
       const wait = wakes.length && !this.#opens && left > 0 ? Math.min(hold, left) : 0;
       if (wait <= 0) return;
       await new Promise((resolve) => {
@@ -2178,6 +2185,10 @@ export class Agent {
   /** Closes the listening window; speech still going on becomes a segment first. @param {'playback' | 'speaking'} [next] */
   #closeEar(next = 'playback') {
     clearTimeout(this.#quiet);
+    if (this.#speaking) {
+      this.#speaking = false;
+      this.poke();
+    }
     const ear = this.#ear;
     if (!ear) return;
     this.#ear = null;
@@ -2187,6 +2198,8 @@ export class Agent {
 
   /** What the microphone heard (spec §10.4), handled in order. @param {Heard} h */
   #heard(h) {
+    this.#speaking = false; // its segment came: they stopped
+    this.poke();
     this.#hearing = this.#hearing.then(() => this.#route(h)).catch((e) => { console.warn('heard speech was not handled', e); });
   }
 
@@ -2256,6 +2269,7 @@ export class Agent {
 
   /** Someone started speaking: Hearing you, and no silence limit while they speak. */
   #speechStarted() {
+    this.#speaking = true;
     clearTimeout(this.#quiet);
     this.#pending?.hold?.();
     if (!this.voice?.speaker.speaking) this.#setState('hearing');
@@ -2263,6 +2277,7 @@ export class Agent {
 
   /** What began like speech wasn't (a click): the silence limit starts again, or a note waiting is taken. */
   #speechStopped() {
+    this.#speaking = false;
     this.#pending?.arm?.();
     const tapped = this.#ear?.owner === 'tap' && !this.#busy;
     if (tapped) this.#armQuiet();

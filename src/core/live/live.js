@@ -60,6 +60,8 @@ const MIN = 60_000;
 /** @param {number} x */
 const round6 = (x) => Math.round(x * 1e6) / 1e6;
 
+/** How long before its firing came due a notification may have been shown and still be for it (review A8). */
+const SHOWN_SLACK_MS = 60_000;
 /** A watch that is a reminder, not a cue for Shiori: a time watch's, or the plan's leave, running late and coming up (spec §11.3). @param {Watch} w */
 const reminds = (w) => w.when.type === 'time' || w.when.type === 'every' || (w.when.type === 'plan' && ['leave', 'late', 'coming-up'].includes(String(w.when.event)));
 
@@ -135,7 +137,7 @@ export class Live {
   #loaded = false;
   /** start() is starting the sensors: what they say at once is so before its catch-up (fix pass L3). */
   #starting = false;
-  /** @type {Map<string, number>} reminders whose notification the phone showed, by key: when (spec §11.6) */
+  /** @type {Map<string, { t: number, at?: number }>} reminders whose notification the phone showed, by key: when, and the time it was for (spec §11.6) */
   #notified = new Map();
   /** @type {{ scope: string, text: string }[]} notifications the user opened, for the next catch-up wake */
   #openedNews = [];
@@ -692,7 +694,7 @@ export class Live {
     // The phone's own notifications keep real time, whatever clock a simulation runs on.
     const now = (this.#sim?.clock ?? this.clock).now();
     const zone = this.#sim?.timeZone ?? this.timeZone;
-    for (const [k, t] of this.#notified) if (now - t > 86_400_000) this.#notified.delete(k);
+    for (const [k, n] of this.#notified) if (now - n.t > 86_400_000) this.#notified.delete(k);
     /** @type {string[]} */
     const doubles = [];
     for (const n of Array.isArray(list) ? list : []) {
@@ -701,7 +703,7 @@ export class Live {
       if (!(await this.#exists(n.scope))) continue;
       const t = typeof n.t === 'number' && Number.isFinite(n.t) ? n.t : now;
       if (n.kind === 'shown') {
-        this.#notified.set(n.key, t);
+        this.#notified.set(n.key, { t, ...(typeof n.at === 'number' ? { at: n.at } : {}) });
         if (this.#said.has(n.key)) doubles.push(n.key);
       } else {
         const words = String(n.body ?? '').trim().slice(0, 300);
@@ -1270,8 +1272,10 @@ export class Live {
    * earlier one, and doesn't count. @param {Fired} x @returns {number | undefined}
    */
   #shownFor(x) {
-    const shown = this.#notified.get(this.#keyOf(x.scope, x.watch));
-    return shown !== undefined && x.firing.at !== undefined && shown >= x.firing.at ? shown : undefined;
+    const n = this.#notified.get(this.#keyOf(x.scope, x.watch));
+    const due = x.firing.at;
+    // For the time this firing came due, or shown no earlier than a minute before it (the relay sends 30 s after; clocks differ).
+    return n && due !== undefined && (n.at === due || n.t >= due - SHOWN_SLACK_MS) ? n.t : undefined;
   }
 
   /** What fired, in words for Shiori's wake; with when its notification was shown, if it was (spec §11.6). @param {Fired} x */

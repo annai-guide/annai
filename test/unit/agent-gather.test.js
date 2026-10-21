@@ -205,3 +205,19 @@ test('the page going away (hush) ends the typing too: Kokoro goes on once the qu
   assert.ok(Date.now() - gone < 3000, `${Date.now() - gone} ms: the quiet of 1.5 s, not the 5 s of typing`);
   await k.agent.idle();
 });
+
+test("Koe answers at once, typing or not: only Kokoro gathers; the sign shows while it does (the full e2e run)", async () => {
+  const k = await halves();
+  /** @type {any[]} */
+  const signs = [];
+  k.agent.on('halves', (/** @type {any} */ x) => signs.push(x.kokoroWorking));
+  k.agent.typing(true);
+  const sent = Date.now();
+  k.agent.send('Is Nepenthe open?');
+  await until(() => (k.sent['model-koe'] ?? []).length === 1, 3000);
+  assert.ok(Date.now() - sent < 400, `Koe waited ${Date.now() - sent} ms`);
+  assert.equal(k.sent['model-0'], undefined, 'Kokoro still gathers');
+  assert.ok(signs.includes(true), '"Kokoro is working" shows already');
+  k.agent.typing(false);
+  await k.agent.idle();
+});
