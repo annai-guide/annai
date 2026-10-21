@@ -33,6 +33,9 @@ test('build: the URL, the key header and the body', () => {
     input: [{ type: 'user_input', content: [{ type: 'text', text: 'Weather?' }, { type: 'text', text: 'Now: Kyoto, 09:00.' }] }],
   });
   assert.equal(JSON.stringify({ url: built.url, body: built.body }).includes(KEY), false, 'the key is only in its header');
+  // A turn of Shiori's must call a tool: tool_choice any (accepted by Google, 2026-10-21: a call to speak came back) (item 15).
+  const required = type.build(spec(type, { request: { tools: [TOOL], toolRequired: true, messages: [{ role: 'user', parts: [{ type: 'text', text: 'Weather?' }] }] } })).body;
+  assert.equal(required.generation_config.tool_choice, 'any');
   // Nothing optional when the request has none of it; the model's own limit when the request sets none.
   const bare = type.build(spec(type, { request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] } }));
   assert.deepEqual(Object.keys(bare.body).sort(), ['generation_config', 'input', 'model', 'store', 'stream']);

@@ -92,6 +92,7 @@ function build({ endpoint, model, key, tunables: t, request }) {
     body.tools = request.tools.map((/** @type {any} */ x) => ({ type: 'function', name: x.name, description: x.description, parameters: x.input, strict: false }));
   }
   if (request.toolChoice) body.tool_choice = { type: 'function', name: request.toolChoice };
+  else if (request.toolRequired && body.tools) body.tool_choice = 'required';
   if (thinks && t.reasoningSummary) body.reasoning = { summary: t.reasoningSummary };
   if (request.logprobs) {
     body.top_logprobs = request.logprobs;

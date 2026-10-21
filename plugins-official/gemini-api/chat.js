@@ -93,6 +93,7 @@ function build({ endpoint, model, key, request, keep, kept }, leave) {
   // Thought summaries show progress, so a thinking model never looks stalled; the reasoning level's patch adds thinking_level.
   if (Object.keys(model.reasoning ?? {}).length || thinks(model.providerId)) config.thinking_summaries = 'auto';
   if (request.toolChoice) config.tool_choice = { allowed_tools: { mode: 'any', tools: [request.toolChoice] } };
+  else if (request.toolRequired && request.tools?.length) config.tool_choice = 'any'; // some tool, any (taken by Google, 2026-10-21)
   // An id from the OpenAI-compatible endpoint's list, before provider-gemini 2.0, is "models/<id>".
   /** @type {Record<string, any>} */
   const body = { model: String(model.providerId).replace(/^models\//, ''), store: keep === true, stream: true };
