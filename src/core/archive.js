@@ -404,9 +404,21 @@ export async function openArchive(file, passphrase, onProgress) {
 /** A scope's history log: parsed and checked once, then kept. @param {OpenedArchive} opened @param {string} name */
 async function logOf(opened, name) {
   let log = opened.events.get(name);
-  if (!log) opened.events.set(name, log = readLog(name, await readEntry(opened.zip, name)));
+  if (!log) opened.events.set(name, log = readLog(name, await readChecked(opened.zip, name, hashOf(opened.manifest, name))));
   return log;
 }
+
+/** The keys file's list. @param {string} body */
+function keysOf(body) {
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new ArchiveError('This file is damaged: its keys are not readable.');
+  }
+}
+
+/** The hash the manifest gives an entry. @param {Manifest} manifest @param {string} name */
+const hashOf = (manifest, name) => [...manifest.files, ...manifest.blobs, ...manifest.extras].find((x) => x.name === name)?.hash ?? '';
 
 /** One entry of an archive; a damaged entry is an ArchiveError. @param {ZipReader} zip @param {string} name */
 async function readEntry(zip, name) {
@@ -523,7 +535,8 @@ export async function importArchive(store, opened, choices = {}) {
         if (f.path !== '/installed.json') continue;
         /** @type {Record<string, any>} */
         let state = {};
-        try { state = JSON.parse(text(await readEntry(zip, f.name))); } catch { /* treat as empty */ }
+        const body = text(await readChecked(zip, f.name, f.hash));
+        try { state = JSON.parse(body); } catch { throw new ArchiveError('This file is damaged: its plugin list is not readable.'); }
         const off = Object.fromEntries(Object.entries(state ?? {}).map(([id, s]) => [id, { ...s, enabled: false }]));
         const bytes = utf8(JSON.stringify(off, null, 2) + '\n');
         overrides.set(f.name, { bytes, hash: await sha256Hex(bytes) });
@@ -531,7 +544,7 @@ export async function importArchive(store, opened, choices = {}) {
     }
   }
   /** @type {{ id: string, value: any }[]} */
-  const secrets = (choices.secrets && manifest.secrets ? JSON.parse(text(await readEntry(zip, manifest.secrets))) : [])
+  const secrets = (choices.secrets && manifest.secrets ? keysOf(text(await readChecked(zip, manifest.secrets, hashOf(manifest, manifest.secrets)))) : [])
     // Never this device's own secrets, even from an archive made before annai left them out.
     .filter((/** @type {any} */ s) => typeof s?.id === 'string' && !isDeviceSecret(s.id));
 

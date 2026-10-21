@@ -8,7 +8,7 @@ import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, ME, SYS
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { exportArchive, openArchive, peekArchive, verifyArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
-import { PassphraseError } from '../../src/core/archive-crypto.js';
+import { PassphraseError, decrypt } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
 import { readFile } from 'node:fs/promises';
@@ -736,4 +736,50 @@ test('an import of a peeked archive brings the history in and reports how far it
   assert.equal(same.trips.length, 1);
   const events = await b.store.tx(['events'], 'readonly', (t) => t.listEvents(r.trips[0]));
   assert.ok(events.some((e) => e.type === 'import') && events.length > 2);
+});
+
+/** An archive's entries with some changed, and the manifest's hashes left as they were: what a changed file looks like (valid CRC, stale hash). @param {Blob | Uint8Array} blob @param {(name: string, bytes: Uint8Array) => Uint8Array | null | undefined} edit */
+async function rezip(blob, edit) {
+  const entries = await readZip(blob instanceof Blob ? await bytesOf(blob) : blob);
+  const z = new ZipWriter();
+  for (const [name, bytes] of entries) await z.add(name, edit(name, bytes) ?? bytes);
+  return bytesOf(z.finish());
+}
+
+test('an events log changed after export (a valid CRC, the manifest hash stale) is refused, and nothing is imported (review M1)', async () => {
+  const a = await device();
+  const id = await createTrip(a.ws, { title: 'T', start: '2027-04-03', end: '2027-04-10' });
+  await a.ws.write(id, '/notes/a.md', 'first', { author: 'user' });
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [id], include: PRESETS.backup, app: '0.1.0' });
+  const log = /** @type {any} */ (manifest.extras.find((x) => x.name.endsWith('events.jsonl')));
+  const bad = await rezip(blob, (name, bytes) => (name === log.name ? utf8(`${text(bytes).split('\n').filter(Boolean).slice(0, 1).join('\n')}\n`) : null));
+  const b = await device();
+  await assert.rejects(importArchive(b.store, await peekArchive(bad)), (e) => e instanceof ArchiveError && /damaged/.test(e.message) && /events/.test(e.message));
+  assert.deepEqual((await listTrips(b.store)).active, []);
+});
+
+test('a damaged installed.json is refused when the plugins are replaced, and the device keeps its plugin list; so is a changed keys file (review M1)', async () => {
+  const a = await device();
+  await a.ws.write('sys:plugins', '/installed.json', { hello: { version: '1.0.0', name: 'Hello', enabled: true, installed: 1, source: 'x' } }, { author: 'system' });
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  const inst = /** @type {any} */ (manifest.files.find((f) => f.path === '/installed.json' && f.scope === 'sys:plugins'));
+  const bad = await rezip(blob, (name, bytes) => (name === inst.name ? utf8(`${text(bytes)} `) : null));
+  const b = await device();
+  const mine = { mine: { version: '1.0.0', name: 'Mine', enabled: true, installed: 1, source: 'y' } };
+  await b.ws.write('sys:plugins', '/installed.json', mine, { author: 'system' });
+  await assert.rejects(importArchive(b.store, await peekArchive(bad), { plugins: 'replace' }), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  assert.deepEqual(await b.ws.readJSON('sys:plugins', '/installed.json'), mine);
+  // A manifest that names a file of its own, damaged in the same way, is refused too: the hash is compared, not just the parse.
+  const garbled = await rezip(blob, (name) => (name === inst.name ? utf8('not json') : null));
+  await assert.rejects(importArchive(b.store, await peekArchive(garbled), { plugins: 'replace' }), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  // Keys: the file changed after export.
+  const c = await device();
+  await c.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:k', 'sk-1'));
+  const withKeys = await exportArchive(c.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0', secrets: true, passphrase: 'pw', iterations: FAST });
+  const opened = await peekArchive(withKeys.blob, 'pw');
+  const key = /** @type {string} */ (withKeys.manifest.secrets);
+  const keysBytes = await opened.zip.read(key);
+  const plain = await rezip(await bytesOf(await decrypt(withKeys.blob, 'pw')), (name) => (name === key ? utf8(text(keysBytes).replace('sk-1', 'sk-2')) : null));
+  const d = await device();
+  await assert.rejects(importArchive(d.store, await peekArchive(plain), { secrets: true }), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
 });
