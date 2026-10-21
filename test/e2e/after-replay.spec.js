@@ -43,6 +43,30 @@ test('the replay: the timeline, the route on a flat map and in words, scrubbing 
   expect(errors).toEqual([]);
 });
 
+test("the moment's spoken line never tells another moment than the scrubber's, after a drag or a tap on a stop", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Big Sur');
+  await seedMorning(page, trip);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/replay`);
+  const told = page.locator('.replay-now [aria-live]');
+  const scrub = page.getByLabel('Time in the trip');
+  await page.getByLabel('Speed').selectOption({ label: '1 hour a second' });
+  await page.getByRole('button', { name: 'Play' }).click();
+  await expect(told).toHaveText(/^\d\d:\d\d, \S/); // told as the place changes, while it plays
+  await expect(page.locator('.replay-where')).toHaveText('At Hearst Castle', { timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+  await expect(told).toHaveText(''); // stopped at the end, past the moment last told: the scrubber says it
+  const timeline = page.getByRole('list', { name: 'Timeline' });
+  await timeline.getByRole('button', { name: /Hearst Castle · 1 h 35 min/ }).click(); // a tap on a stop: that moment, told
+  await expect(told).toHaveText('16:40, At Hearst Castle');
+  await expect(scrub).toHaveAttribute('aria-valuetext', /16:40, At Hearst Castle$/);
+  await scrub.fill(String(at('09:40'))); // a drag, paused
+  await expect(page.locator('.replay-where')).toHaveText('At Bixby Creek Bridge');
+  await expect(told).toHaveText('');
+  await timeline.getByRole('button', { name: /Bixby Creek Bridge · 20 min/ }).click();
+  await expect(told).toHaveText(/^09:\d\d, At Bixby Creek Bridge$/);
+});
+
 test('a trip with nothing recorded has nothing to replay, and says why', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Not yet');
