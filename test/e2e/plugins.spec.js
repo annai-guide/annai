@@ -148,3 +148,32 @@ test('the installed list can be searched and filtered: provider plugins under Mo
   await expect(cards).toHaveCount(1);
   await expect(page.getByRole('region', { name: 'Developer' })).toHaveCount(0);
 });
+
+// Android Chrome reloads annai past its service worker when dark mode, the screen size or its density changes,
+// as a hard reload does: the worker is active but doesn't control the page (the emulator pass, 2026-10-20).
+test('after a reload that skips the service worker, a code plugin still runs', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'a hard reload over the DevTools protocol is Chromium only');
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await page.getByLabel('Trip name').fill('Plugin trip');
+  await page.getByRole('button', { name: 'Start trip' }).click();
+  await expect(page.getByRole('heading', { name: 'Plugin trip' })).toBeVisible();
+  const tripUrl = page.url();
+  await page.goto('/#/plugins');
+  await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await expect(page.getByText('On', { exact: true })).toBeVisible();
+
+  await page.goto(tripUrl);
+  await expect(page.getByRole('heading', { name: 'Plugin trip' })).toBeVisible();
+  const cdp = await page.context().newCDPSession(page);
+  const loaded = page.waitForEvent('load');
+  await cdp.send('Page.reload', { ignoreCache: true });
+  await loaded;
+  await expect(page.getByRole('heading', { name: 'Plugin trip' })).toBeVisible();
+  await expect(page.getByText(`The plugin "hello" didn't start`)).toHaveCount(0);
+  await page.getByLabel('File path').fill('/hello/a.json');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('alert')).toContainText('greeting', { timeout: 15_000 });
+  expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+});
