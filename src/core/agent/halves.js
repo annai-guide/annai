@@ -1,4 +1,4 @@
-import { Agent } from './loop.js';
+import { Agent, GATHER, isTheirs } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -100,6 +100,10 @@ export class Halves {
   #later = false;
   /** What Kokoro was told last, in which conversation. @type {{ scope: string | null, state: Told }} */
   #told = { scope: null, state: 'koe-up' };
+  /** The user's last input (typed, sent or heard), and whether it was a photo on its own: Kokoro waits for it to go quiet (GATHER). */
+  #input = { at: 0, photo: false };
+  /** The typing box holds text. */
+  #typing = false;
   /** @type {Promise<unknown>} both halves' writes, one at a time */
   #lock = Promise.resolve();
   /** @type {Promise<unknown>} what the user typed and what woke Shiori, in order */
@@ -150,6 +154,7 @@ export class Halves {
   constructor(c) {
     this.nonce = newNonce();
     this.clock = c.now ?? Date.now;
+    this.secondMs = c.secondMs ?? 1000;
     this.channel = new Channel({
       log: { koe: (ev) => this.koe.log(ev), kokoro: (ev) => this.kokoro.log(ev) },
       deliver: {
@@ -193,6 +198,7 @@ export class Halves {
         },
         ended: (t) => this.#kokoroEnded(t),
         hushed: () => this.live.voiced,
+        hold: (wakes) => this.#hold(wakes),
       },
     });
     this.koe = new Agent({
@@ -311,6 +317,7 @@ export class Halves {
 
   /** @param {Agent} half @param {any} s */
   #stateOf(half, s) {
+    if (half === this.koe) this.kokoro.poke(); // the user speaking to Koe holds Kokoro
     if (half === this.talking && this.koeState !== 'live') this.#emit('state', s);
     if (half === this.kokoro) this.#emitHalves();
     // Koe waits on a Kokoro with nothing to do: nothing to add (the wait is set up right after its state).
@@ -328,6 +335,7 @@ export class Halves {
 
   /** A live session's state changed: the dock's, and the chip's. */
   #liveChanged() {
+    this.kokoro.poke(); // the user speaking into it holds Kokoro
     const name = this.live.view.name;
     if (this.koeState === 'live' && name !== this.#lastView) this.#emit('state', this.live.view);
     this.#lastView = name;
@@ -484,6 +492,7 @@ export class Halves {
   send(text, o = {}) {
     this.#bothTold = false;
     this.#stopped.on = false;
+    this.#heardNow(Boolean(o.photos?.length) && !String(text ?? '').trim());
     this.#route(async () => {
       await this.#refresh();
       if (!this.#works() || this.kokoro.pendingId) return this.kokoro.send(text, o);
@@ -546,14 +555,42 @@ export class Halves {
   shown() {
     if (this.koeState === 'live') this.#route(() => this.live.shown());
   }
+  /** The typing box holds text, or not: Kokoro waits while the user types (GATHER). @param {boolean} on */
+  typing(on) {
+    this.#typing = on;
+    this.kokoro.typing(on);
+  }
+
+  /** The user typed, sent or said something now. @param {boolean} photo a photo on its own */
+  #heardNow(photo) {
+    this.#input = { at: Date.now(), photo };
+    this.kokoro.poke();
+  }
+
+  /**
+   * How long Kokoro's turn waits for the user (GATHER): behind Koe, until their input is quiet and they neither type nor speak;
+   * with Koe down or off, as one Shiori. @param {Wake[]} wakes @returns {number} ms; Infinity: until something changes
+   */
+  #hold(wakes) {
+    const speaking = [this.kokoro.state.name, this.koe.state.name, this.live.view.name].includes('hearing');
+    if (!this.#works()) return wakes.some(isTheirs) && (this.#typing || speaking) ? Infinity : 0;
+    if (this.#typing || speaking) return Infinity;
+    return Math.max(0, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
+  }
+
   /**
    * The sign's Stop: Kokoro's turn alone (spec §16.2), and what Koe asked of it meanwhile; Koe's notes start no new turn until Koe
    * has heard of the Stop or the user asks again (emulator pass K1 #8: a live Koe's late question started the plan over).
    */
   stopKokoro() {
     this.#stopped = { on: true, seq: Infinity };
-    this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe');
+    // Still gathering the user's messages (GATHER): its turn never starts, and a waiting Koe hears so.
+    const started = this.kokoro.turning;
+    const scope = this.kokoro.target ?? ME;
+    this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope));
+    this.kokoro.poke();
     this.kokoro.interrupt();
+    if (!started && this.koe.waiting) this.#nothingToAdd('Kokoro was stopped.', 'stopped');
   }
 
   async idle() {
@@ -625,6 +662,7 @@ export class Halves {
     await this.kokoro.observe(e, r);
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type === 'out.speak' && e.data?.live) this.#unsaid = []; // a live Koe said what it was told
+    if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
     if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
       this.#failTold = false;

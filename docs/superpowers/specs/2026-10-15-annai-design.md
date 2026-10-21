@@ -299,6 +299,7 @@ All wakes go into one queue:
 - Simultaneous triggers merge into one wake.
 - User input goes ahead of triggers.
 - If the queue isn't empty when a turn ends, the next turn starts immediately.
+- **The user's messages are gathered before a turn starts** (the user, 2026-10-21: a half-finished message shouldn't cost a turn). A turn the user starts waits while they are typing (the typing box holds text) or speaking (the microphone hears speech), up to 20 seconds from its first wake; there is no fixed wait. Once a turn has started it never restarts: what comes later joins at its next call, as above. Behind Koe, Kokoro waits longer (§6.8).
 
 When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types or says goes to Koe, which writes it into the conversation. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. A wake that asks for her voice (the recap told aloud, §13) goes to Koe alone.
 
@@ -411,6 +412,8 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 - When Koe's whole list fails, it rests at least a minute; Kokoro gets "Koe can't speak right now; talk to the user directly" (and whether its last notes reached the user), its output tools run again, and what the user types goes to Kokoro alone until Koe answers again ("Koe is speaking again; use tell_koe"). No card: Kokoro answers. Kokoro is woken for it once, however many failures come, and not again once it has talked to the user itself.
 - When Kokoro's whole list fails while Koe talks, and Koe waits for it (its question is out, or it is in `wait`), Koe is told once, and tells the user it couldn't check and offers to try again. No card. A check nobody waited for (Koe's own answer, a review, a typed question Koe answered itself) tells Koe nothing: the Trace has it.
 - When both lists have failed (Koe's, for what the user said, and Kokoro's), nobody can tell the user: a card says "Shiori can't reach her model", once, with each half's reason in words, and the conversation says so too. It shows again only after the user writes again or a half works again.
+
+**Kokoro waits for the user to finish** (§6.1). While Koe talks, a Kokoro wake starts only once the user's input has been quiet: no new typed message, photo or heard segment for 1.5 seconds (3 after a photo sent on its own, which words often follow), and they aren't typing or speaking (the microphone or a live session hears speech); at most 20 seconds from the first wake. Koe still answers at once. Kokoro's quiet counts from the user's input, so Koe's question asked after they finished starts it at once. A turn that has started never restarts. The sign's Stop while Kokoro is still waiting means its turn never starts.
 
 **Voice** is Koe's while it works (§10.7).
 

@@ -38,6 +38,7 @@ export function createDock(ctx) {
       const text = input.value.trim();
       if (!text) return;
       input.value = '';
+      ctx.agent.typing?.(false);
       ctx.agent.send(text);
       if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
     },
@@ -45,7 +46,9 @@ export function createDock(ctx) {
   input,
   h('div', { class: 'acts' },
     h('button', { class: 'btn pri', type: 'submit' }, 'Send'),
-    h('button', { class: 'btn ghost', type: 'button', onclick: () => { sheet.hidden = true; } }, 'Close')));
+    h('button', { class: 'btn ghost', type: 'button', onclick: () => { sheet.hidden = true; ctx.agent.typing?.(false); } }, 'Close')));
+  // While the box holds text, a turn of the user's waits for them (spec §6.1, item 16).
+  input.addEventListener('input', () => ctx.agent.typing?.(Boolean(input.value.trim())));
   input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();

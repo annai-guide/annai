@@ -198,7 +198,18 @@ export class Transcript {
       const text = koe ? theirs(String(d.text ?? '')) : String(d.text ?? '');
       const had = this.#heard.get(d.of);
       if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
-      this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'speech' && p.id === d.of ? { ...p, text } : p)) }));
+      /** @type {Map<Part, Part>} */
+      const swapped = new Map();
+      /** @param {Part} p */
+      const worded = (p) => {
+        if (p.type !== 'speech' || p.id !== d.of) return p;
+        if (!swapped.has(p)) swapped.set(p, { ...p, text });
+        return /** @type {Part} */ (swapped.get(p));
+      };
+      this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map(worded) }));
+      // Lines held, or taken since the last reply, are the same parts: a reply made without them can still move them (item 16).
+      this.#since = this.#since.map((x) => ({ seq: x.seq, parts: x.parts.map(worded) }));
+      this.#held = this.#held.map((x) => ({ seq: x.seq, parts: x.parts.map(worded) }));
       return;
     } else if (e.type === 'reminder') {
       // A reminder annai showed (and said) by itself, the model out of reach or her turn silent (spec §11.3): she knows, so she doesn't repeat it.
