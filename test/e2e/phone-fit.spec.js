@@ -314,3 +314,44 @@ test("a system card never covers the screen's controls: it comes in at the top a
   await card.getByRole('button', { name: 'Dismiss' }).click();
   await expect(card).toHaveCount(0);
 });
+
+for (const [width, height] of [[360, 760], [320, 544]]) {
+  test(`on a phone ${width} × ${height}, every control scrolls clear of the dock: an install's Install and Cancel, Settings, Trips (the emulator pass)`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await openApp(page, '#/plugins');
+    await waitForServiceWorker(page);
+    /** The controls that can't be brought above the dock, scrolling as far as the screen goes. */
+    const underDock = () => page.evaluate(() => [...document.querySelectorAll('main.view :is(a[href], button:not([disabled]), input, select, textarea, summary)')].flatMap((el) => {
+      if (!el.getClientRects().length) return [];
+      el.scrollIntoView({ block: 'center' });
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return hit && (hit === el || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.tagName} under ${hit?.closest('nav.dock') ? 'the dock' : hit?.tagName}`];
+    }));
+    const manifest = { id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js', description: "Test plugin: today's tides as a tool." };
+    await pickFile(page, { name: 'tides.zip', mimeType: 'application/zip', buffer: await zipOf({ 'annai-plugin.json': Buffer.from(JSON.stringify(manifest)), 'index.js': Buffer.from('export function activate() {}') }) });
+    await expect(page.getByRole('heading', { name: 'Install Tides?' })).toBeVisible();
+    expect(await underDock()).toEqual([]);
+    for (const hash of ['#/settings', '#/trips']) {
+      await page.evaluate((x) => { location.hash = x; }, hash);
+      await expect(page.locator('main.view h1').first()).toBeVisible();
+      expect(await underDock(), hash).toEqual([]);
+    }
+  });
+}
+
+test('on a short screen (an iPhone SE, 320 × 544) the dock is compact: under a fifth of the height; voice still enlarges it, at the bottom (spec §16.2)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 544 });
+  await openApp(page);
+  const dock = page.locator('nav.dock');
+  const quiet = /** @type {{ y: number, height: number }} */ (await dock.boundingBox());
+  expect(quiet.height).toBeLessThan(544 / 5);
+  expect(Math.round(quiet.y + quiet.height)).toBe(544);
+  await expect(page.getByRole('button', { name: 'Shiori' })).toContainText('Tap to talk'); // her state still shows
+  await page.locator('.voice-chip').click();
+  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
+  await expect(dock).toHaveClass(/\bvoice\b/);
+  const voice = /** @type {{ y: number, height: number }} */ (await dock.boundingBox());
+  expect(voice.height).toBeGreaterThan(quiet.height);
+  expect(Math.round(voice.y + voice.height)).toBe(544);
+});
