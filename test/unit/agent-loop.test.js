@@ -181,6 +181,21 @@ test('the warm model goes first only in the order it answered in: an order the u
   assert.deepEqual((await k.events(['model.turn'])).map((e) => e.data.answeredBy), ['model-1', 'model-1', 'model-0', 'model-0']);
 });
 
+test("a tap while she's thinking stops her turn, and a new one starts at once with what was sent meanwhile; the dock says a tap stops her (item 17)", async () => {
+  const k = await agentKit([[{ delayMs: 5000, ...say('Never said.') }, say('Somewhere vegetarian, then: Big Sur Bakery.')]]);
+  k.agent.send('Where should we eat?');
+  await until(() => k.requests.length === 1);
+  k.agent.send('Actually, somewhere vegetarian.');
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Thinking · tap to stop' });
+  assert.equal(k.agent.tap(), 'stopped');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2);
+  assert.match(JSON.stringify(k.requests[1].messages), /Where should we eat\?.*Actually, somewhere vegetarian\./);
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Somewhere vegetarian, then: Big Sur Bakery.']);
+  assert.equal((await k.events(['wake'])).filter((e) => !e.data.meanwhile).length, 2, 'the stopped turn, and a new one');
+  assert.deepEqual(k.notices, []);
+});
+
 test("no model answers: a system card, never in Shiori's voice", async () => {
   const k = await agentKit([[{ error: 'auth', status: 401 }]]);
   k.agent.send('Hi');
