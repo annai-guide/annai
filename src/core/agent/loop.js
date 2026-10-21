@@ -254,6 +254,14 @@ export class Agent {
     this.voice = voice ?? null;
     // The mode read as annai starts is no change: only changes are logged (spec §4.5).
     this.voice?.onChange((m, first) => { if (!first) this.#voiceChanged(m); });
+    if (!online()) this.state = { name: 'offline', label: LABELS.offline };
+    // The connection coming and going: the dock says so at once, not only when a turn ends (emulator pass m2b #10).
+    for (const type of ['online', 'offline']) globalThis.addEventListener?.(type, () => this.#connection());
+  }
+
+  /** While she rests, her state follows the connection (spec §16.3). */
+  #connection() {
+    if (!this.#busy && (this.state.name === 'sleeping' || this.state.name === 'offline')) this.#setState(this.online() ? 'sleeping' : 'offline');
   }
 
   #rules() {

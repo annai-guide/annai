@@ -141,6 +141,27 @@ test('a turn that spoke to the user, or one the user didn\'t start, ends as it i
   assert.deepEqual(quiet.notices, []);
 });
 
+test("the connection going and coming back sets a resting Shiori's state at once, not only at a turn's end (emulator pass m2b #10)", async () => {
+  /** @type {Record<string, (() => void)[]>} */
+  const on = { online: [], offline: [] };
+  const g = /** @type {any} */ (globalThis);
+  const had = g.addEventListener;
+  g.addEventListener = (/** @type {string} */ type, /** @type {() => void} */ fn) => { on[type]?.push(fn); };
+  let online = false;
+  try {
+    const k = await agentKit([[say('Hi.')]], { agent: { online: () => online } });
+    assert.equal(k.agent.state.label, 'Offline · reminders still work', 'opened offline');
+    online = true;
+    for (const fn of on.online) fn();
+    assert.equal(k.agent.state.label, 'Tap to talk');
+    online = false;
+    for (const fn of on.offline) fn();
+    assert.equal(k.agent.state.name, 'offline');
+  } finally {
+    g.addEventListener = had;
+  }
+});
+
 test("no model answers: a system card, never in Shiori's voice", async () => {
   const k = await agentKit([[{ error: 'auth', status: 401 }]]);
   k.agent.send('Hi');
