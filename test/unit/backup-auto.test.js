@@ -126,3 +126,39 @@ test('startAutoBackup backs up what is due, and tells of each new hold once', as
     auto.stop();
   }
 });
+
+// The emulator pass (m9 #5): a simulated trip writes its log by the simulation's clock, days ahead, and
+// automatic backups waited for "changes still coming" until that date.
+test('changedSince: a log entry dated in the future counts as a change, never as a recent one', async () => {
+  const d = await device(memoryPlace());
+  const seqs = await seqsNow(d.store);
+  const sim = await createTrip(d.ws, { title: 'Big Sur (simulation)' });
+  const now = Date.now();
+  await logEvent(d.store, sim, { type: 'trigger.fired', data: {} }, now + 30 * 24 * H);
+  const ahead = await changedSince(d.store, seqs, now);
+  assert.equal(ahead.changed, true);
+  assert.ok(ahead.lastChangeAt === null || ahead.lastChangeAt <= now, 'not in the future');
+  // A real change in another trip still holds a backup back while it is recent.
+  await d.ws.write(d.trip, '/notes/now.md', 'x', { author: 'user' });
+  const both = await changedSince(d.store, seqs, Date.now());
+  assert.ok((both.lastChangeAt ?? 0) >= now && (both.lastChangeAt ?? 0) <= Date.now());
+});
+
+test('startAutoBackup backs up with a simulated trip on the device, once its real changes are quiet', async () => {
+  const shared = memoryPlace();
+  const d = await device(shared);
+  const id = await placeOn(d);
+  await d.backups.check(id);
+  const sim = await createTrip(d.ws, { title: 'Big Sur (simulation)' });
+  await logEvent(d.store, sim, { type: 'trigger.fired', data: {} }, Date.now() + 30 * 24 * H);
+  const auto = startAutoBackup({
+    backups: d.backups, store: d.store, timings: { ...TIMINGS, tickMs: 24 * H }, now: () => Date.now() + TIMINGS.quietMs + 1000,
+    env: () => ({ visible: true, connection: 'wifi' }), onHold: () => {},
+  });
+  try {
+    await auto.tick();
+    assert.equal(shared.kept.length, 1);
+  } finally {
+    auto.stop();
+  }
+});

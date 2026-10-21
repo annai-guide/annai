@@ -28,11 +28,12 @@ export const TIMINGS = Object.freeze({
 /**
  * Whether anything a backup holds changed after the one whose log positions are seqs, and when the
  * latest change was. The system log and this device's own scope don't count: a backup's own trace
- * and its own notes would otherwise call for the next backup.
+ * and its own notes would otherwise call for the next backup. An entry dated after now (a simulated
+ * trip's, by its own clock) is a change with no time: it would hold backups back until that date.
  * @param {Store} store @param {Record<string, number> | null} seqs null: never backed up
  * @returns {Promise<{ changed: boolean, lastChangeAt: number | null }>}
  */
-export function changedSince(store, seqs) {
+export function changedSince(store, seqs, now = Date.now()) {
   return store.tx(['scopes', 'events'], 'readonly', async (t) => {
     const counted = (/** @type {string} */ id) => id !== SYS && id !== SYS_DEVICE;
     const scopes = (await t.listScopes()).filter((s) => counted(s.id));
@@ -43,7 +44,7 @@ export function changedSince(store, seqs) {
       const [e] = await t.listEvents(s.id, { reverse: true, limit: 1 });
       if (e && e.seq > (seqs?.[s.id] ?? 0)) {
         changed = true;
-        lastChangeAt = Math.max(lastChangeAt ?? 0, e.ts);
+        if (e.ts <= now) lastChangeAt = Math.max(lastChangeAt ?? 0, e.ts);
       }
     }
     const here = new Set(scopes.map((s) => s.id));
@@ -108,7 +109,7 @@ export function startAutoBackup({ backups, store, env, onHold, timings = TIMINGS
       if (stopped) return;
       const type = backups.typeOf(t.type);
       if (!type) continue;
-      const { changed, lastChangeAt } = await changedSince(store, t.last?.seqs ?? null);
+      const { changed, lastChangeAt } = await changedSince(store, t.last?.seqs ?? null, now());
       const due = dueNow(t, type.stores, { ...env(), now: now(), changed, lastChangeAt }, timings);
       if (due.run) await backups.backUp(t.id, { reason: 'auto', maxUpload: due.maxUpload }).catch(() => {});
     }
