@@ -469,6 +469,7 @@ export class Halves {
 
   /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip */
   open(trip) {
+    this.#stopped = { on: false, seq: Infinity }; // a Stop belongs to the conversation it was in
     if (trip !== this.kokoro.target) this.live.close('switch', { forget: true });
     const opening = this.kokoro.open(trip);
     if (this.#koeTrip !== undefined) {
@@ -591,7 +592,9 @@ export class Halves {
     this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope));
     this.kokoro.poke();
     this.kokoro.interrupt();
-    if (!started && this.koe.waiting) this.#nothingToAdd('Kokoro was stopped.', 'stopped');
+    // Koe hears of it, waiting or not (review a1): once its model has seen this, its questions reach Kokoro again.
+    this.#nothingTold = false;
+    this.#nothingToAdd('Kokoro was stopped.', 'stopped');
   }
 
   async idle() {

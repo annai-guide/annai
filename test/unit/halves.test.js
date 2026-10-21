@@ -346,26 +346,39 @@ test('Fix pass 9: Stop on Kokoro while Koe waits tells Koe that Kokoro was stopp
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'wait')?.data.content, 'Kokoro: see the note below.');
 });
 
-test("Stop sticks: a note Koe wrote before it heard of the Stop starts no Kokoro turn; once the user asks again, Koe's note does (emulator pass K1 #8)", async () => {
+test("Stop sticks: a note Koe wrote before it heard of the Stop starts no Kokoro turn; once the user asks again, Koe's note does (emulator pass K1 #8; review A7)", async () => {
   const k = await agentKit([{ rules: [{ match: '.', reply: { delayMs: 2000, toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: { rules: [
     { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Stopped.' }]) },
     { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me plan that.' } }, { name: 'tell_kokoro', input: { text: 'Plan the afternoon around the sunset.' } }, { name: 'wait', input: { seconds: 60 } }] }, then: sleep },
   ] } } });
   const turns = () => (k.sent['model-0'] ?? []).length;
+  const late = 'Plan an afternoon at Point Lobos with three stops, including the sunset.';
   k.agent.send('Plan our afternoon around the sunset at Point Lobos, with three stops.');
-  await until(() => k.agent.koe.waiting && k.agent.kokoro.busy);
+  await until(() => turns() === 1 && k.agent.koe.waiting); // Kokoro's call is in flight
   k.agent.stopKokoro();
   // Koe's live session, say, still asks after the Stop, from before it heard of it.
-  await k.agent.channel.send('koe', 'Plan an afternoon at Point Lobos with three stops, including the sunset.', 'append', 'tool');
+  await k.agent.channel.send('koe', late, 'append', 'tool');
   await k.agent.idle();
-  // Stopped mid-call (one request), or while it was still gathering the user's messages (none: GATHER).
-  const stopped = turns();
-  assert.ok(stopped <= 1, 'Kokoro stays stopped');
+  assert.equal(turns(), 1, 'Kokoro stays stopped');
+  assert.ok(!JSON.stringify(k.sent['model-0']).includes(late));
   assert.ok((await k.events(['note'])).some((e) => e.data.from === 'kokoro' && e.data.text === 'Kokoro was stopped.'));
   // The user asks again: Kokoro works on it.
   k.agent.send('Actually, yes: plan it.');
   await k.agent.idle();
-  assert.ok(turns() > stopped);
+  assert.ok(turns() > 1);
+});
+
+test("Stop while Koe isn't waiting: Koe is told all the same, and once its model has seen that, a later question of Koe's wakes Kokoro (review a1, the reviewer's probe C)", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }], delayMs: 300 } }] }], { koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'Mm-hm.' }]) }] } } });
+  k.agent.send('Plan our afternoon');
+  await until(() => (k.sent['model-0'] ?? []).length > 0, 3000);
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  assert.ok((await k.events(['note'])).some((e) => e.data.from === 'kokoro' && e.data.text === 'Kokoro was stopped.'));
+  const before = k.sent['model-0'].length;
+  await k.agent.channel.send('koe', 'Check the traffic to Carmel', 'append', 'tool'); // an hour later, say: no user input between
+  await k.agent.idle();
+  assert.ok(k.sent['model-0'].length > before, "Koe's later question reached Kokoro");
 });
 
 // Fix pass 5 (the review's no-koe-identity probe): with no Koe model, Halves sends and logs exactly what Shiori as one did.
