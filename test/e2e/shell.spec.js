@@ -112,3 +112,26 @@ test("minors 26: a field in a column keeps its own height: no empty gap between 
   const [start, end] = [await page.locator('label.field', { has: page.getByLabel('Starts') }).boundingBox(), await page.locator('label.field', { has: page.getByLabel('Ends') }).boundingBox()];
   expect(Math.abs((start?.width ?? 0) - (end?.width ?? 1))).toBeLessThan(2);
 });
+
+// The second emulator re-check: after typing a key, the first tap on Save only focused it (the keyboard going down
+// laid the screen out again under the finger) and the second saved. A tap's first half now leaves the field focused.
+test('a tap on a screen\'s button while typing leaves the field focused until the click is done, then lets go of it', async ({ page }) => {
+  await openApp(page, '#/notifications');
+  await expect(page.getByRole('heading', { level: 1, name: 'Notifications' })).toBeVisible();
+  const field = page.getByLabel('Relay address');
+  const save = page.getByRole('button', { name: 'Save address' });
+  await field.click();
+  await field.press('End');
+  const was = await field.inputValue();
+  const at = /** @type {{ x: number, y: number, width: number, height: number }} */ (await save.boundingBox());
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+  await page.mouse.down();
+  expect(await page.evaluate(() => document.activeElement?.id), 'the field keeps the focus while the button is pressed').toBe('push-relay');
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id ?? '')).not.toBe('push-relay'); // the keyboard goes down after the tap
+  await expect(page.getByRole('heading', { level: 1, name: 'Notifications' })).toBeVisible();
+  expect(await field.inputValue()).toBe(was);
+  // With nothing being typed in, a button takes the focus as before.
+  await save.focus();
+  expect(await page.evaluate(() => document.activeElement?.textContent)).toBe('Save address');
+});
