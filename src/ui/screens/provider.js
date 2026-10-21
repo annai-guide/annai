@@ -1,4 +1,4 @@
-import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, autosave, queueSave, whenGone } from '../dom.js';
+import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedRadios, autosave, queueSave, whenGone } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
@@ -268,6 +268,13 @@ async function abilityBody(view, abilityId) {
   }) : null;
   const waiting = keep ? (await ctx.llm.keptCount({ endpoint: `${id}/${abilityId}` })).waiting : 0;
   const keyless = waiting > 0 && !(await ctx.llm.keyFor(id));
+  // Tunables the protocol offers in words (G3): one of its options, or a switch, showing what the JSON field saves too.
+  const tune = (/** @type {string} */ k) => async (/** @type {any} */ v) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, [k]: v }) })).tunables);
+  const choices = Object.entries(type.choices ?? {}).map(([k, c]) => ({ k, el: c.options ? savedRadios(c.label, Object.entries(c.options), String(a.tunables?.[k]), tune(k))
+    : savedCheck(c.label, a.tunables?.[k] !== false, tune(k)).el }));
+  const showChoices = (/** @type {Record<string, any>} */ t) => {
+    for (const { k, el } of choices) for (const input of el.querySelectorAll('input')) input.checked = input.type === 'radio' ? input.value === String(t[k]) : t[k] !== false;
+  };
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
   // What to do with a model from before the provider's list gave windows, while there is one.
   const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
@@ -285,8 +292,11 @@ async function abilityBody(view, abilityId) {
     keep?.el ?? null,
     keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to ${type.keeps.days} days on a paid one. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.` }) : null,
     waiting ? h('p', { class: 'sub', text: `${waiting} deletion${waiting === 1 ? '' : 's'} waiting: ${keyless ? `annai can't send ${waiting === 1 ? 'it' : 'them'} without this provider's key` : `annai sends ${waiting === 1 ? 'it' : 'them'} when it can reach ${who}`}.` }) : null,
+    ...choices.map((c) => c.el),
     h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => {
-      tunables.show((await saveAbility({ tunables: { ...t, ...(uploads ? { uploads: uploads.input.checked } : {}), ...(keep ? { keep: keep.input.checked } : {}) } })).tunables);
+      const saved = (await saveAbility({ tunables: { ...t, ...(uploads ? { uploads: uploads.input.checked } : {}), ...(keep ? { keep: keep.input.checked } : {}) } })).tunables;
+      tunables.show(saved);
+      showChoices(saved);
     })),
     h('div', { class: 'saving' }, extra.el, ...autosave(extra.area, extra.read, async (x) => extra.show((await saveAbility({ extraBody: x })).extraBody))),
     modelsPart(ctx, id, abilityId, models),
