@@ -66,7 +66,10 @@ test('a typed question: Koe answers at once and asks Kokoro; Kokoro\'s context h
 test("the code gate: Kokoro's speak, show and ask while Koe works aren't run; each is a tell_koe append; the result says use tell_koe; no out.* from Kokoro", async () => {
   const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: calls(
     ['speak', { text: 'It is open till 10.' }], ['show', { card: { title: 'Nepenthe', text: 'Open till 10' } }], ['ask', { question: 'Book a table?', options: ['Yes', 'No'] }], ['wait', { seconds: 30 }],
-  ) }] }], { koe: { type: { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }]) }] } } });
+  ) }] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }]) },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'It is open till 10. Shall I book a table?' }]) },
+  ] } } });
   k.agent.send('Is Nepenthe open?');
   await k.agent.idle();
   assert.ok((await shown(k)).every(([type, half]) => type === 'msg.user' || half === 'koe'), JSON.stringify(await shown(k)));
