@@ -4,6 +4,7 @@ import { deviceZone, timeIn } from '../../core/time.js';
 import { answerJSON } from '../../core/answer.js';
 import { OVERPASS, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../../core/pack/osm.js';
 import { loadPack } from '../../core/pack/read.js';
+import { anySignal } from '../../core/signals.js';
 
 export { KINDS };
 
@@ -19,6 +20,20 @@ const NOMINATIM = 'https://nominatim.openstreetmap.org';
 const CREDIT_OPEN_METEO = 'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)';
 /** Nominatim allows one request a second (spec §7.2); the gap is a little more. */
 export const NOMINATIM_GAP = { ms: 1100 };
+/** Each request's time limit, so a server that never answers is left for the next: Overpass ends a query by 20 s ([timeout:20]), plus 5 to connect. */
+export const ASK_MS = { ms: 25_000 };
+
+/** A request within ASK_MS, saying past it who didn't answer. @param {any} call @param {string} url @param {RequestInit} init */
+async function ask(call, url, init) {
+  const late = AbortSignal.timeout(ASK_MS.ms);
+  const where = new URL(url).hostname;
+  try {
+    return await answerJSON(await call.fetch(url, { ...init, signal: anySignal([call.signal, late]) }), where === 'nominatim.openstreetmap.org' ? 'Nominatim' : where);
+  } catch (e) {
+    if (late.aborted && !call.signal.aborted) throw new Error(`${where} didn't answer in time.`);
+    throw e;
+  }
+}
 
 const WEATHER = /** @type {Record<number, string>} */ ({
   0: 'clear', 1: 'mainly clear', 2: 'partly cloudy', 3: 'overcast', 45: 'fog', 48: 'fog', 51: 'drizzle', 53: 'drizzle', 55: 'drizzle', 56: 'freezing drizzle', 57: 'freezing drizzle',
@@ -89,11 +104,10 @@ export function activate(annai) {
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     // Nominatim's usage policy asks apps to say who they are. The app's own policy sends no
     // Referer, so this request sends the origin, which its Origin header shows anyway.
-    const res = await call.fetch(url, { signal: call.signal, headers: { accept: 'application/json' }, referrerPolicy: 'origin' });
-    return answerJSON(res, 'Nominatim');
+    return ask(call, url, { headers: { accept: 'application/json' }, referrerPolicy: 'origin' });
   };
   /** @param {string} url @param {any} call */
-  const json = async (url, call, init = {}) => answerJSON(await call.fetch(url, { signal: call.signal, ...init }), new URL(url).hostname);
+  const json = (url, call, init = {}) => ask(call, url, init);
 
   const tools = [
     {
