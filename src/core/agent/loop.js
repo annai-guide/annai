@@ -36,11 +36,12 @@ import { validate } from '../schema.js';
  *   her (a place, the road), not a reminder: owed only until a model answers
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
- *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number }} Wake
+ *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
- *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it)
+ *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
+ *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -100,10 +101,11 @@ const AGAIN = 'the user tapped Try again: answer their last message';
 const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
- * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; most: the longest
- * any turn waits, from its first wake (they are waiting too). A turn that has started never restarts.
+ * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; typing: a typing
+ * box that holds text stops counting as typing this long after its last keystroke (text left in it); most: the longest any
+ * turn waits, from its first wake (they are waiting too). A turn that has started never restarts.
  */
-export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, most: 20 });
+export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
 /** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
 export const WRITE_TRIES = 3;
 
@@ -236,6 +238,8 @@ export class Agent {
   #reached = 0;
   /** The typing box holds text (the dock says so): a turn of theirs waits for them (GATHER). */
   #typing = false;
+  /** Ends #typing GATHER.typing after the last keystroke. @type {any} */
+  #typingTimer = null;
   /** Wakes a turn waiting for the user to look again. @type {(() => void) | null} */
   #poke = null;
   /** A turn is gathering the user's messages (GATHER): it hasn't started. */
@@ -489,10 +493,19 @@ export class Agent {
     this.poke();
   }
 
-  /** The user is typing (the typing box holds text) or has stopped (GATHER). @param {boolean} on */
+  /** The user is typing (the typing box holds text, called at each keystroke) or has stopped (GATHER). @param {boolean} on */
   typing(on) {
+    clearTimeout(this.#typingTimer);
     this.#typing = on;
+    // Text left in the box with no keystroke stops counting as typing (review A3).
+    if (on) this.#typingTimer = setTimeout(() => this.typing(false), GATHER.typing * this.secondMs);
+    this.#typingTimer?.unref?.(); // in Node (tests), it must not keep the process alive
     this.poke();
+  }
+
+  /** The typing box holds text, and a keystroke came lately. */
+  get typingNow() {
+    return this.#typing;
   }
 
   /** What the user is doing changed: a turn waiting for them looks again. */

@@ -53,7 +53,10 @@ export function createDock(ctx) {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       sheet.requestSubmit();
-    } else if (e.key === 'Escape') sheet.hidden = true;
+    } else if (e.key === 'Escape') {
+      sheet.hidden = true;
+      ctx.agent.typing?.(false);
+    }
   });
   const openTyping = () => {
     sheet.hidden = false;
@@ -71,6 +74,7 @@ export function createDock(ctx) {
     try {
       const { paths } = await addFiles(ctx, ctx.agent.target, files);
       // Snap and ask: the photo goes to Shiori, who guesses why it was taken (spec §16.2).
+      ctx.agent.typing?.(false); // text left in the box isn't being typed now
       ctx.agent.send('', { photos: paths.map((/** @type {string} */ p) => ({ path: `/trip${p}` })) });
       ctx.go('#/talk');
     } catch (e) {
@@ -162,7 +166,10 @@ export function createDock(ctx) {
   if (ctx.voice) layout(ctx.voice.mode);
   return {
     el, avatar, refreshSlots,
-    dispose: () => { for (const off of offs.splice(0)) off?.(); },
+    dispose: () => {
+      for (const off of offs.splice(0)) off?.();
+      ctx.agent.typing?.(false);
+    },
     /** @param {boolean} on */
     setLarge(on) {
       large = on;

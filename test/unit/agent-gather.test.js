@@ -18,8 +18,8 @@ async function kokoroAt(k, ms = 5000) {
   return Date.now();
 }
 
-test('the values: quiet 1.5 s, 3 s after a photo on its own, never held past 20 s', () => {
-  assert.deepEqual(GATHER, { quiet: 1.5, photo: 3, most: 20 });
+test('the values: quiet 1.5 s, 3 s after a photo on its own, typing that lapses after 5 s without a keystroke, never held past 20 s', () => {
+  assert.deepEqual(GATHER, { quiet: 1.5, photo: 3, typing: 5, most: 20 });
 });
 
 test('behind Koe, two typed lines close together reach Kokoro in one turn; Koe answers each at once', async () => {
@@ -66,9 +66,11 @@ test('behind Koe, Kokoro waits while the user is typing, up to 20 s', async () =
   await k.agent.idle();
   const capped = await halves();
   capped.agent.typing(true);
+  const keys = setInterval(() => capped.agent.typing(true), 200); // a keystroke every 2 s, as it runs here
   const sent = Date.now();
   capped.agent.send('Is Nepenthe open');
   const started = await kokoroAt(capped);
+  clearInterval(keys);
   assert.ok(started - sent >= 1900, `held ${started - sent} ms: the cap is 20 s`);
   capped.agent.typing(false);
   await capped.agent.idle();
@@ -105,9 +107,11 @@ test('one Shiori: no fixed wait, but a turn of the user\'s holds while they type
   assert.match(JSON.stringify(typing.requests[0].messages), /Hello.*again/);
   const capped = await agentKit([[say('Hi.')]], { agent: { secondMs: 100 } });
   capped.agent.typing(true);
+  const keys = setInterval(() => capped.agent.typing(true), 200);
   const at = Date.now();
   capped.agent.send('Hello');
   await until(() => capped.requests.length === 1, 5000);
+  clearInterval(keys);
   assert.ok(Date.now() - at >= 1900, `held ${Date.now() - at} ms`);
   capped.agent.typing(false);
   await capped.agent.idle();
@@ -164,4 +168,40 @@ test('one Shiori: a tap while a turn of the user\'s is gathering stops it, as St
   await k.agent.open(k.trip);
   await k.agent.idle();
   assert.equal(k.requests.length, 0, 'not taken up when the conversation opens again');
+});
+
+test("a typing box left holding text stops holding Kokoro after 5 s without a keystroke (review A3, the reviewer's probe B)", async () => {
+  const k = await halves();
+  k.agent.send('Is Nepenthe open tonight?');
+  await k.agent.idle();
+  k.agent.typing(true); // Escape, say, left text in the box, and no keystroke came after
+  await pause(300);
+  const asked = Date.now();
+  await k.agent.channel.send('koe', 'Is Nepenthe open tonight?', 'append', 'tool');
+  await until(() => k.sent['model-0'].length === 2, 5000);
+  assert.ok(Date.now() - asked < 1000, `held ${Date.now() - asked} ms`);
+  await k.agent.idle();
+});
+
+test("behind Koe, what doesn't come from the user (a reminder, a trigger, a review) isn't held while they type (review A3)", async () => {
+  const k = await halves();
+  k.agent.typing(true);
+  const fired = Date.now();
+  await k.agent.wake({ kind: 'trigger', text: 'Your watch w-1 (at 10:00) fired: the time came.', fallbacks: [] });
+  await kokoroAt(k);
+  assert.ok(Date.now() - fired < 400, `held ${Date.now() - fired} ms`);
+  k.agent.typing(false);
+  await k.agent.idle();
+});
+
+test('the page going away (hush) ends the typing too: Kokoro goes on once the quiet has passed (review A3)', async () => {
+  const k = await halves({ secondMs: 1000 });
+  k.agent.typing(true);
+  k.agent.send('Is Nepenthe open');
+  await pause(100);
+  const gone = Date.now();
+  k.agent.hush('away');
+  await kokoroAt(k, 6000);
+  assert.ok(Date.now() - gone < 3000, `${Date.now() - gone} ms: the quiet of 1.5 s, not the 5 s of typing`);
+  await k.agent.idle();
 });

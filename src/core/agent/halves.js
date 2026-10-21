@@ -102,8 +102,6 @@ export class Halves {
   #told = { scope: null, state: 'koe-up' };
   /** The user's last input (typed, sent or heard), and whether it was a photo on its own: Kokoro waits for it to go quiet (GATHER). */
   #input = { at: 0, photo: false };
-  /** The typing box holds text. */
-  #typing = false;
   /** @type {Promise<unknown>} both halves' writes, one at a time */
   #lock = Promise.resolve();
   /** @type {Promise<unknown>} what the user typed and what woke Shiori, in order */
@@ -549,6 +547,7 @@ export class Halves {
    */
   hush(why) {
     this.live.close(why, { forget: why === 'erase' });
+    this.typing(false); // the page went: nobody types into it (review A3)
   }
 
   /** The page is back in view: what waited for it is said; the microphone opens only at a tap. */
@@ -557,7 +556,6 @@ export class Halves {
   }
   /** The typing box holds text, or not: Kokoro waits while the user types (GATHER). @param {boolean} on */
   typing(on) {
-    this.#typing = on;
     this.kokoro.typing(on);
   }
 
@@ -573,8 +571,11 @@ export class Halves {
    */
   #hold(wakes) {
     const speaking = [this.kokoro.state.name, this.koe.state.name, this.live.view.name].includes('hearing');
-    if (!this.#works()) return wakes.some(isTheirs) && (this.#typing || speaking) ? Infinity : 0;
-    if (this.#typing || speaking) return Infinity;
+    const typing = this.kokoro.typingNow;
+    if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
+    // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them (review A3).
+    if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
+    if (typing || speaking) return Infinity;
     return Math.max(0, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
   }
 
@@ -676,7 +677,7 @@ export class Halves {
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
-    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true });
+    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
     if (typed || answered || !LINES.includes(e.type) || !this.#works()) return;
     const now = this.clock();
