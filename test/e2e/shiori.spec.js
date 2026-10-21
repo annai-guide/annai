@@ -534,3 +534,67 @@ test('the conversation follows what comes, clear of the dock: your new question 
     await llm.stop();
   }
 });
+
+test('review S3: after a photo, the conversation keeps following: her answer shows above the dock once the photo has loaded and grown the page', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [{ ...sse(anthropicToolReply([{ name: 'speak', input: { text: 'That is the Ambrosia burger.' } }, { name: 'sleep', input: {} }])), delayMs: 2500 }] });
+  try {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await modelSetUp(page, llm.origin);
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.goto('/#/models');
+    await page.getByRole('link', { name: /Stand-in/ }).click();
+    await page.getByRole('link', { name: /^b-model/ }).click();
+    await page.getByLabel('Takes photos').check();
+    await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
+    for (let i = 0; i < 8; i++) {
+      await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
+      await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}, in a few words that take a line or two on a phone.` } });
+    }
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo > li').last()).toHaveText(/Answer 7/);
+    const big = await page.evaluate(async () => {
+      const c = new OffscreenCanvas(1200, 1600);
+      const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+      g.fillStyle = '#0a7';
+      g.fillRect(0, 0, 1200, 1600);
+      return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.9 })).arrayBuffer())];
+    });
+    await page.locator('#dock-camera').setInputFiles({ name: 'IMG_0002.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(big) });
+    await expect(page.locator('.convo .you img')).toBeVisible({ timeout: 20_000 });
+    const hers = page.locator('.convo .shiori p').last();
+    await expect(hers).toHaveText('That is the Ambrosia burger.', { timeout: 20_000 });
+    await expect.poll(() => hers.evaluate((el) => el.getBoundingClientRect().bottom <= /** @type {Element} */ (document.querySelector('nav.dock')).getBoundingClientRect().top + 1)).toBe(true);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('review S3: a scroll of the user\'s own stops the following: what comes then stays where the user is reading', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [{ ...sse(anthropicToolReply([{ name: 'speak', input: { text: 'Light rain around 1 PM.' } }, { name: 'sleep', input: {} }])), delayMs: 1500 }] });
+  try {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await modelSetUp(page, llm.origin);
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    for (let i = 0; i < 12; i++) {
+      await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
+      await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}, in a few words that take a line or two on a phone.` } });
+    }
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo > li').last()).toHaveText(/Answer 11/);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Weather?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await page.evaluate(() => { // the user reads back, a wheel's turn (mobile WebKit takes no mouse wheel from Playwright)
+      dispatchEvent(new WheelEvent('wheel', { deltaY: -600 }));
+      scrollBy(0, -600);
+    });
+    const y = await page.evaluate(() => scrollY);
+    expect(y).toBeGreaterThan(0);
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('Light rain around 1 PM.');
+    await page.waitForTimeout(300);
+    expect(Math.abs(await page.evaluate(() => scrollY) - y)).toBeLessThan(2);
+  } finally {
+    await llm.stop();
+  }
+});
