@@ -66,6 +66,8 @@ test('warm: the model holding the cache summarizes from the cached conversation,
   assert.match(await k.ws.readText(ME, '/memory.md'), /Vegetarian/);
   assert.equal(await k.ws.read(k.trip, '/notes/x.md'), undefined);
   assert.equal((await k.events(['compaction']))[0].data.mode, 'warm');
+  assert.equal(k.requests.length, 6, "its summary is plain text, as asked: housekeeping isn't the user's turn, so nobody asks again (spec §7.1)");
+  assert.deepEqual(k.notices, []);
 });
 
 test('due at a pause: housekeeping waits until shortly before the cache expires', async () => {

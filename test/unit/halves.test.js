@@ -138,6 +138,8 @@ test('final text: passed to Koe when the turn told no one and never slept; text 
   await k.agent.idle();
   const notes = (await k.events(['note'])).filter((e) => e.data.from === 'kokoro');
   assert.deepEqual(notes.map((e) => [e.data.why, e.data.text]), [['final-text', 'Open till 10, per its site.']]);
+  assert.ok(!JSON.stringify(k.sent['model-0']).includes("The user hasn't been answered"), "Kokoro, behind Koe, isn't asked again for the user (spec §7.1): its plain text went to Koe");
+  assert.deepEqual(k.notices, []);
 });
 
 test("Kokoro sleeps without telling while Koe waits: Koe's wait ends with nothing to add", async () => {
