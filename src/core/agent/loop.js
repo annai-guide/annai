@@ -115,8 +115,11 @@ export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 
 export const WRITE_TRIES = 3;
 
 
-/** A wake the user started: what they typed or sent, a choice they tapped, or their Try again. @param {Wake} w */
-export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || Boolean(w.again);
+/**
+ * A wake the user started: what they typed, sent or said (heard words reach a wake only when not dismissed as chatter, review
+ * a2), a choice they tapped, or their Try again. @param {Wake} w
+ */
+export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.kind === 'heard' && w.gate !== 'chatter') || Boolean(w.again);
 
 /** The card types running plugins add (spec §16.4). @param {import('../registry.js').Registry} registry @returns {any[]} */
 const cardTypes = (registry) => registry.list('ui:card-type').filter((t) => typeof t?.type === 'string');
