@@ -27,7 +27,7 @@ import { SIMULATION } from './simulate.js';
  * @typedef {import('./watches.js').Watch} Watch
  * @typedef {{ scope: string, watch: Watch, type: TriggerType, firing: Firing, late: number, away?: 'start' | 'shown', fallback: string }} Fired
  *   late: minutes after it came due, in a catch-up; away: how annai was away then
- * @typedef {{ watch: string, text: string }} Reminder
+ * @typedef {{ watch: string, text: string, cue?: boolean }} Reminder
  * @typedef {{ target: string | null, wake: (w: any) => Promise<void>, remind: (list: Reminder[], scope?: string) => Promise<void>,
  *   on: (kind: 'event' | 'open', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
@@ -1239,8 +1239,11 @@ export class Live {
     for (const o of opened) notes.set(o.scope, [...(notes.get(o.scope) ?? []), o.text]);
     for (const scope of notes.keys()) if (!by.has(scope)) by.set(scope, []);
     for (const [scope, xs] of by) {
+      // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A time or plan
+      // watch's stays owed until she tells the user; a cue's (a place, the road) only until a model answers (emulator pass).
+      const fallbacks = xs.filter((x) => !this.#notified.has(this.#keyOf(x.scope, x.watch)))
+        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(['time', 'every', 'plan'].includes(x.watch.when.type) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
-      const fallbacks = xs.map((x) => ({ watch: x.watch.id, text: x.fallback }));
       const lines = notes.get(scope) ?? [];
       if (scope !== open) {
         if (fallbacks.length) await this.agent.remind(fallbacks, scope);

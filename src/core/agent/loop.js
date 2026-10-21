@@ -32,7 +32,8 @@ import { validate } from '../schema.js';
  * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap' | 'note' | 'cue' | 'halves'} WakeKind
  *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on; recap: the user asked to hear the trip's recap (spec §13);
  *   note, cue, halves: from the other half, or Halves (the Koe and Kokoro design)
- * @typedef {{ watch: string, text: string }} Reminder  a watch's fallback (spec §11.3)
+ * @typedef {{ watch: string, text: string, cue?: boolean }} Reminder  a watch's fallback (spec §11.3), owed until she tells the user; cue: a cue's for
+ *   her (a place, the road), not a reminder: owed only until a model answers
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate' }} Wake
@@ -212,6 +213,8 @@ export class Agent {
   #facts = { finalText: '', told: false, slept: false, spoke: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
   #userStop = false;
+  /** Counts what reached the user (speak, show, ask, a reply shown as written): what was owed before it is settled. */
+  #reached = 0;
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
@@ -932,15 +935,16 @@ export class Agent {
    * card, the words aloud with voice on, and an entry in the conversation they belong to. They are
    * never in Shiori's voice (§16.1).
    * @param {Reminder[]} list @param {string} [scope] their conversation; the open one if not given
+   * @param {{ unsaid?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user
    */
-  async remind(list, scope = this.#target ?? ME) {
+  async remind(list, scope = this.#target ?? ME, o = {}) {
     const open = scope === (this.#target ?? ME);
     for (const r of list) {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
       // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
       const aloud = Boolean(this.voice?.on) && !this.#half.hushed?.();
-      const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}) } };
+      const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
       else {
         const e = await record(this.store, scope, { now: this.#stamp(scope), ...ev });
@@ -975,6 +979,7 @@ export class Agent {
       const r = await resolveEvent(this.store, stored);
       this.#apply(stored, r);
       if (ev.type.startsWith('out.')) this.#facts.spoke = true;
+      if (ev.type.startsWith('out.') || ev.type === 'grounded') this.#reached++;
       this.#emit('event', stored);
       await this.#half.logged?.(stored, r);
       return stored;
@@ -1089,8 +1094,17 @@ export class Agent {
     // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
     if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
     const reasons = wakes.map((w) => this.#reason(w));
-    /** The reminders of the wakes no model has answered yet: annai says them itself if none does (spec §11.3). */
+    /**
+     * The fallbacks of this turn's wakes that annai shows itself if no model answers (spec §11.3); a reminder's stays owed until
+     * she reaches the user after it came, with speak, show or ask (emulator pass: a turn that only slept dropped them).
+     */
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
+    let reached = this.#reached;
+    /** She reached the user: what was owed before is settled. Checked before more wakes join, and at the end. */
+    const settle = () => {
+      if (this.#reached !== reached) owed = [];
+      reached = this.#reached;
+    };
     const stuck = new Stuck();
     let steps = 0;
     let triedCompacting = false;
@@ -1178,6 +1192,7 @@ export class Agent {
           if (said && this.#noteCut) this.#push({ kind: 'cue', text: `a note stopped you after: ${said}` });
           this.#noteCut = false;
           const more = this.#take();
+          settle();
           if (more.length) {
             await this.#logWakes(more, wakeId, true);
             reasons.push(...more.map((w) => this.#reason(w)));
@@ -1207,7 +1222,7 @@ export class Agent {
       steps++;
       this.#heardBy = result.modelId;
       answered = true;
-      owed = [];
+      owed = owed.filter((r) => !r.cue);
       this.#lastPrompt = promptTokens(result.usage);
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
@@ -1241,6 +1256,7 @@ export class Agent {
       if (sleeping || endTurn || abort.signal.aborted) break;
       await this.#writeChatter(wakeId);
       const more = this.#take();
+      settle();
       if (more.length) {
         await this.#logWakes(more, wakeId, true);
         reasons.push(...more.map((w) => this.#reason(w)));
@@ -1248,7 +1264,8 @@ export class Agent {
         this.#facts.kinds.push(...more.map((w) => w.kind));
       }
     }
-    if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope);
+    settle();
+    if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope, { unsaid: answered && !failed });
     // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
     if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
     return answered && !failed;
