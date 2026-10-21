@@ -125,6 +125,12 @@ export function withArticle(label) {
   return `${/^(?:[aeiou]|iP)/i.test(label) ? 'an' : 'a'} ${label}`;
 }
 
+/** A day as YYYY-MM-DD in this device's own zone, not UTC's. @param {number} ms */
+export const localDay = (ms) => {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 /** A backup place's own screen. @param {string} id */
 export const placeHref = (id) => `#/backups/place?id=${encodeURIComponent(id)}`;
 

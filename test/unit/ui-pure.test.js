@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText } from '../../src/ui/format.js';
+import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -554,4 +554,16 @@ test("the free-tier switch names who doesn't charge: the description's name for 
 test("Try this model's line counts every token a reply used: audio and images too", () => {
   const usage = { input: 100, cacheRead: 20, cacheWrite: 0, cacheWrite1h: 0, output: 10, reasoning: 4, audioIn: 50, image: 30, cacheReadAudio: 5, cacheReadImage: 0, audioOut: 0 };
   assert.equal(metaLine({ usage, cost: 0 }), '215 tokens · free');
+});
+
+test("localDay: a day in this device's own zone, not UTC's, for a backup's file name (the emulator pass: 17:10 on Oct 19 in California was named Oct 20)", () => {
+  const was = process.env.TZ;
+  process.env.TZ = 'America/Los_Angeles';
+  try {
+    assert.equal(localDay(Date.parse('2026-10-20T00:10:00Z')), '2026-10-19');
+    assert.equal(localDay(Date.parse('2026-03-05T20:00:00Z')), '2026-03-05');
+  } finally {
+    if (was === undefined) delete process.env.TZ;
+    else process.env.TZ = was;
+  }
 });
