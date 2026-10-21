@@ -125,13 +125,14 @@ export async function renderReplay(ctx, route) {
       class: 'replay-item', type: 'button',
       onclick: () => {
         clock.seek(e.at);
-        draw();
+        draw(true); // focus stays on the entry: say where it moved to
       },
     }, h('span', { class: 'when', text: when }), h('span', { class: 'what', text })));
   });
 
   let was = { index: -2, where: '', minute: NaN, stamps: -1 };
-  const draw = () => {
+  /** @param {boolean} [say] tell the moment, though paused */
+  const draw = (say = false) => {
     const t = Math.min(r.to, Math.max(r.from, clock.now()));
     const m = momentAt(r, t);
     if (m.xy) {
@@ -146,10 +147,10 @@ export async function renderReplay(ctx, route) {
       scrub.value = String(t);
       scrub.setAttribute('aria-valuetext', `${words}, ${m.where}`);
     }
-    if (m.where !== was.where) {
-      whereEl.textContent = m.where;
-      if (clock.playing) told.textContent = `${timeIn(t, r.tz)}, ${m.where}`;
-    }
+    if (m.where !== was.where) whereEl.textContent = m.where;
+    // Paused, the scrubber says the moment: nothing older stays told.
+    if (say || (clock.playing && m.where !== was.where)) told.textContent = `${timeIn(t, r.tz)}, ${m.where}`;
+    else if (!clock.playing) told.textContent = '';
     if (m.stamps !== was.stamps) soFar.textContent = `${stampCount(m.stamps)} so far`;
     if (m.index !== was.index) {
       items[was.index]?.classList.remove('now');
