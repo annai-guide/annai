@@ -50,6 +50,36 @@ test('a watch fires and Shiori answers: she is told why, and annai shows no remi
   assert.deepEqual(k.notices, []);
 });
 
+test('a watch fires and Shiori only sleeps: the reminder is still owed, so annai shows it itself (emulator pass m6 #16, #17)', async () => {
+  const k = await liveAgent([[{ toolCalls: [sleep] }]]);
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Look at the view!' });
+  await k.to(at('10:00'));
+  assert.equal(k.requests.length, 1, 'she was woken, and answered');
+  assert.deepEqual((await k.events(['reminder'])).map((e) => e.data.text), ['Look at the view!']);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body]), [['Reminder', 'Look at the view!']]);
+  const t = await Transcript.load(k.store, k.trip);
+  assert.ok(JSON.stringify(t.messages).includes(`[annai] Shown by annai itself, since your turn ended without telling the user: \\"Look at the view!\\"`), JSON.stringify(t.messages));
+});
+
+test("a cue for her (a place, the road), not a reminder: when she lets it pass in silence, annai shows nothing; when no model answers, its fallback", async () => {
+  const k = await liveAgent([[{ toolCalls: [sleep] }]]);
+  await k.agent.wake({ kind: 'trigger', text: 'Your watch w-road (activity) fired: moving fast.', fallbacks: [{ watch: 'w-road', text: 'On the road again.', cue: true }] });
+  await k.agent.idle();
+  assert.deepEqual(await k.events(['reminder']), []);
+  const down = await liveAgent([[{ error: 'credit', status: 402 }]]);
+  await down.agent.wake({ kind: 'trigger', text: 'Your watch w-road (activity) fired: moving fast.', fallbacks: [{ watch: 'w-road', text: 'On the road again.', cue: true }] });
+  await down.agent.idle();
+  assert.deepEqual((await down.events(['reminder'])).map((e) => e.data.text), ['On the road again.']);
+});
+
+test("a watch fires and Shiori speaks, works on, then sleeps: what she said reached the user, so annai shows nothing more", async () => {
+  const k = await liveAgent([[{ toolCalls: [{ name: 'speak', input: { text: 'Look up: the view!' } }, { name: 'list', input: { path: '/trip/' } }] }, { toolCalls: [sleep] }]]);
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Look at the view!' });
+  await k.to(at('10:00'));
+  assert.deepEqual(await k.events(['reminder']), []);
+  assert.deepEqual(k.notices, []);
+});
+
 test("no model can be reached: annai shows the watch's reminder, says it with voice on, and Shiori hears of it later (spec §11.3)", async () => {
   const k = await liveAgent([[{ error: 'credit', status: 402 }]], { voice: { mode: 'on' } });
   await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
