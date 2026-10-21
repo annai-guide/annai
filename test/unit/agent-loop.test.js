@@ -523,6 +523,39 @@ test('read sends a request copy, named by the turn that sends it, with both size
   assert.equal(sent.path, '/trip/files/big.webp');
 });
 
+test("a model that can't see photos reads one: a model that can describes it, the part asked for too, and says it did (emulator pass, the user: 5b)", async () => {
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }, { name: 'read', input: { path: '/trip/files/menu.webp', region: [0.5, 0.5, 1, 1] } }] },
+    say('The fish is $32.'),
+  ]], { models: [{ input: ['text'] }], utility: [{ text: 'A menu; the fish dish is circled, $32.' }, { text: 'The bottom right: "Fish of the day $32".' }] });
+  await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  k.agent.send('What does the menu say about fish?');
+  await k.agent.idle();
+  const [whole, part] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
+  assert.match(whole.data.content, /^The photo \/trip\/files\/menu\.webp, .*\nWhat it shows \(described by model-u, as you can't see photos\): A menu; the fish dish is circled, \$32\.$/s);
+  assert.match(part.data.content, /part \[0\.5, 0\.5, 1, 1\].*\nWhat it shows \(described by model-u, as you can't see photos\): The bottom right: "Fish of the day \$32"\.$/s);
+  assert.equal(whole.data.images, undefined, 'the words in place of the photo');
+  // The describer saw the photo, and then the crop: the part asked for.
+  const looked = k.sent['model-u'].map((/** @type {any} */ r) => r.messages[0].parts.find((/** @type {any} */ p) => p.type === 'image'));
+  assert.equal(looked.length, 2);
+  assert.match(Buffer.from(looked[1].data, 'base64').toString(), /^2000x1500:\{"x":2000,"y":1500,"width":2000,"height":1500\}/);
+  assert.doesNotMatch(JSON.stringify(k.sent['model-0']), /"type":"image"/);
+  assert.equal(JSON.stringify(k.requests[0].tools), JSON.stringify(k.sent['model-0'].at(-1).tools), 'the same tools: the cached prefix holds');
+});
+
+test("a model that can't see photos reads one, and no model here can: the result says so", async () => {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] }, say('I can\'t see it.')]], { models: [{ input: ['text'] }], utility: [{ text: 'never' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text'] } });
+  await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  k.agent.send('What does the menu say?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nNo model here can see photos, so what it shows can't be told\.$/);
+  assert.equal(k.sent['model-u'], undefined);
+});
+
 test('read with a region sends a crop, kept in the conversation, and says which region was used', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp', region: [0.75, 0.6, 0.25, 0.1] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });

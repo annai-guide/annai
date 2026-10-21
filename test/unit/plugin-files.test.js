@@ -82,7 +82,8 @@ test('read: long text in pieces; a photo as an image when the model takes images
   const seen = await run('read', { path: '/trip/files/a.webp' });
   assert.deepEqual(seen.images, [{ mediaType: 'image/webp', hash: photo.hash, path: '/trip/files/a.webp' }]);
   assert.match(seen.content, /2048×1536, taken 2026-11-26T16:12:00-08:00/);
-  assert.match(await run('read', { path: '/trip/files/a.webp' }, { input: ['text'] }), /can't see photos/);
+  // A model that can't see photos gets the photo too: the loop has a model that can describe it (5b).
+  assert.deepEqual((await run('read', { path: '/trip/files/a.webp' }, { input: ['text'] })).images, seen.images);
   await ws.write(trip, '/files/menu.pdf', utf8('%PDF-1.4'), { author: 'user', type: 'application/pdf' });
   assert.match(await run('read', { path: '/trip/files/menu.pdf' }), /Ask the user for a screenshot/);
   const doc = await run('read', { path: '/trip/files/menu.pdf' }, { input: ['text', 'pdf'] });
