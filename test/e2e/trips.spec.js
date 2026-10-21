@@ -268,8 +268,16 @@ test('a trip card shows the stamps its arrivals earned, and the trip page all of
   await expect(card).toContainText('3 stamps');
   await expect(card.getByRole('img', { name: '3 stamps: 伏見稲荷大社, Arashiyama, Kiyomizu-dera' })).toBeVisible();
   await expect(card.locator('.stamp')).toHaveText(['伏見', 'Arashiya', 'Kiyomizu']); // a card's ring takes 8 characters at 7 px: a longer word shows its start
+  // A screen reader hears the count once: the line's "3 stamps" is skipped, the marks say it with the names (the second emulator re-check).
+  const name = await card.evaluate((el) => {
+    const read = (/** @type {Node} */ n) => (n.nodeType === 3 ? n.textContent ?? '' : n instanceof HTMLElement && n.getAttribute('aria-hidden') === 'true' ? '' : n instanceof HTMLElement && n.getAttribute('role') === 'img' ? n.getAttribute('aria-label') ?? '' : [...n.childNodes].map(read).join(' '));
+    return read(el);
+  });
+  expect(name.match(/3 stamps/g)?.length).toBe(1);
   await card.click();
   await expect(page.getByRole('img', { name: /^3 stamps:/ })).toBeVisible();
+  const facts = await page.locator('p.sub').filter({ hasText: 'files' }).first().evaluate((p) => [...p.querySelectorAll('[aria-hidden="true"]')].map((e) => e.textContent));
+  expect(facts).toEqual(['3 stamps']);
 });
 
 test("each stamp shows its whole word inside its own ring, on a card on a phone 320 wide and on the trip's page (the emulator pass: \"Nepent\")", async ({ page }) => {

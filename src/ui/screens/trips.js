@@ -6,7 +6,7 @@ import { explainStorageFull } from '../storage-full.js';
 import { relTime, dateRange, backupText } from '../format.js';
 import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
-import { tripStamps, stampMarks } from '../stamps.js';
+import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
 
 /** @param {any} ctx */
@@ -38,7 +38,7 @@ function tripCard(s, trip, backup, stamps) {
   return h('li', {}, h('a', { class: 'card trip-card', href: `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', text: s.title }),
-      h('span', { class: 'sub', text: [when, stamps.length ? stampCount(stamps.length) : null, `updated ${relTime(s.updated)}`, backupText(backup)].filter(Boolean).join(' · ') })),
+      h('span', { class: 'sub' }, ...factsWords([when, stamps.length ? { stamps: stampCount(stamps.length) } : null, `updated ${relTime(s.updated)}`, backupText(backup)]))),
     stampMarks(stamps)));
 }
 

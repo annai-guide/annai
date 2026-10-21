@@ -369,6 +369,22 @@ test("one card taller than the box a quarter of the screen high keeps its Dismis
   await expect(card).toHaveCount(0);
 });
 
+test("a back link has a tap area 44 px tall, and the screen's layout is where it was (the second emulator re-check: 23 px)", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 });
+  for (const route of ['#/models', '#/voice', '#/plugins', '#/notifications']) {
+    await openApp(page, route);
+    const link = page.locator('.crumbs a').first();
+    await expect(link).toBeVisible();
+    const box = /** @type {{ x: number, y: number, width: number, height: number }} */ (await link.boundingBox());
+    expect(box.height, route).toBeGreaterThanOrEqual(44);
+    // The words did not move: the paragraph holding the link is still one line high.
+    expect(await page.locator('p.crumbs').first().evaluate((p) => p.getBoundingClientRect().height), route).toBeLessThan(30);
+    // A tap at the edge of the 44 px, above and below the words, follows the link.
+    const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.crumbs a') !== null, [box.x + 4, box.y + 4]);
+    expect(hit, route).toBe(true);
+  }
+});
+
 test('review S2: a card that lands while the screen is at its top moves it down, and for a moment a tap on what slid under the finger does nothing', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 760 });
   await page.clock.install();

@@ -31,3 +31,18 @@ export function stampMarks(stamps, { max = 2, big = false } = {}) {
     }),
     stamps.length > shown.length ? h('span', { class: 'stamp more', text: `+${stamps.length - shown.length}` }) : null);
 }
+
+/**
+ * The words of a trip's facts joined by " · ", with the stamp count in a span a screen reader skips: the marks beside the line say
+ * the count and the names, and a link holding both said "3 stamps" twice (the second emulator re-check).
+ * @param {(string | { stamps: string } | null)[]} parts @returns {(string | HTMLElement)[]}
+ */
+export function factsWords(parts) {
+  /** @type {(string | HTMLElement)[]} */
+  const out = [];
+  for (const part of parts.filter(Boolean)) {
+    if (out.length) out.push(' · ');
+    out.push(typeof part === 'string' ? part : h('span', { 'aria-hidden': 'true', text: /** @type {{ stamps: string }} */ (part).stamps }));
+  }
+  return out;
+}
