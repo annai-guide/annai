@@ -199,9 +199,22 @@ export async function renderTalk(ctx) {
   };
   addEventListener('message', fit);
   const empty = h('p', { class: 'empty', text: 'Nothing yet. Tap Shiori or Type below to talk.' });
-  // The end of the conversation: the page's foot keeps its last words clear of the dock.
+  // The end of the conversation: the page's foot keeps its last words clear of the dock. Once there, it is followed, as a
+  // photo loads or a frame takes its height too, until the user scrolls of their own accord (review S3).
   const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 120;
-  const toEnd = () => scrollTo(0, document.documentElement.scrollHeight);
+  let following = false;
+  const toEnd = () => {
+    following = true;
+    scrollTo(0, document.documentElement.scrollHeight);
+  };
+  const own = (/** @type {Event} */ e) => {
+    const k = /** @type {KeyboardEvent} */ (e).key;
+    if (e.type !== 'keydown' || (/^(Page|Arrow)(Up|Down)$|^(Home|End| )$/.test(k) && !/** @type {Element} */ (e.target).closest?.('input, textarea, select'))) following = false;
+  };
+  const USER = ['wheel', 'touchmove', 'keydown'];
+  for (const t of USER) addEventListener(t, own, { passive: true });
+  const grows = new ResizeObserver(() => { if (following) scrollTo(0, document.documentElement.scrollHeight); });
+  grows.observe(list);
   let built = false;
   let wasShown = false;
   const stop = await follow(agent, scope, {
@@ -209,7 +222,7 @@ export async function renderTalk(ctx) {
     show: async (e) => {
       if (!SHOWN.includes(e.type)) return;
       // What the user just said is always followed; what comes after, while the user is at the end.
-      const follow = built && (atEnd() || e.type === 'msg.user' || e.type === 'heard');
+      const follow = built && (following || atEnd() || e.type === 'msg.user' || e.type === 'heard');
       const node = await item(e);
       if (node) {
         empty.remove();
@@ -253,6 +266,8 @@ export async function renderTalk(ctx) {
   whenGone(screen, () => {
     stop();
     removeEventListener('message', fit);
+    for (const t of USER) removeEventListener(t, own);
+    grows.disconnect();
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;
