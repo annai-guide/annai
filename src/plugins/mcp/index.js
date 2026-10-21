@@ -9,6 +9,7 @@ import { anySignal } from '../../core/signals.js';
 import { freePath } from '../../core/photos.js';
 import { readPhotoMeta } from '../../core/photo-meta.js';
 import { fromBase64 } from '../../core/bytes.js';
+import { sha256Hex } from '../../core/hash.js';
 
 /**
  * The built-in MCP client plugin (spec §5.1): each MCP server the user adds gives Shiori its tools,
@@ -202,22 +203,41 @@ export async function activate(annai) {
     if (out.isError) throw new Error(content);
     if (!out.images) return content;
     // Each image is kept as a file in the trip, named (spec §4.9), and the model is told its path, so show can show it;
-    // a model that can't see photos gets the path alone, as read gives it.
+    // a model that can't see photos gets the path alone, as read gives it. One that can't be kept leaves the words.
     const scope = call?.trip ?? ME;
     const sees = !call?.model || call.model.input?.includes('image');
     const images = [];
     for (const im of out.images) {
-      const bytes = fromBase64(im.data);
-      const meta = readPhotoMeta(bytes);
-      const path = await freePath(annai.files, scope, `${`${server}_${tool}`.replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 60)}.${EXT[im.mediaType] ?? 'png'}`);
-      const entry = await annai.files.write(scope, path, bytes, {
-        author: 'shiori', type: im.mediaType, source: `${server}: ${tool}`, meta: meta.width && meta.height ? { width: meta.width, height: meta.height } : {},
-      });
-      const shown = `/${scope === ME ? 'me' : 'trip'}${path}`;
-      content = content.replace(`An image (${im.mediaType}).`, `An image (${im.mediaType}), kept as ${shown}: show can show it.`);
-      if (sees) images.push({ mediaType: im.mediaType, hash: entry.hash, path: shown });
+      const was = `An image (${im.mediaType}).`;
+      try {
+        const entry = await keepImage(scope, fromBase64(im.data), im.mediaType, server, tool);
+        const shown = `/${scope === ME ? 'me' : 'trip'}${entry.path}`;
+        content = content.replace(was, `An image (${im.mediaType}), kept as ${shown}: show can show it.`);
+        if (sees) images.push({ mediaType: im.mediaType, hash: entry.hash, path: shown });
+      } catch (e) {
+        content = content.replace(was, `An image (${im.mediaType}), which annai couldn't keep: ${/** @type {any} */ (e)?.message ?? e}`);
+      }
     }
     return images.length ? { content, images } : content;
+  };
+  /** @type {Promise<unknown>} one image at a time, so two calls never take the same name */
+  let keeping = Promise.resolve();
+  /**
+   * An image in the trip's /files/: the file that holds it already, or a new one named after the tool.
+   * @param {string} scope @param {Uint8Array} bytes @param {string} type @param {string} server @param {string} tool
+   * @returns {Promise<{ path: string, hash: string }>}
+   */
+  const keepImage = (scope, bytes, type, server, tool) => {
+    const work = keeping.then(async () => {
+      const hash = await sha256Hex(bytes);
+      const there = (await annai.files.list(scope, '/files/')).find((/** @type {any} */ f) => f.hash === hash);
+      if (there) return there;
+      const meta = readPhotoMeta(bytes);
+      const path = await freePath(annai.files, scope, `${`${server}_${tool}`.replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 60)}.${EXT[type] ?? 'png'}`);
+      return annai.files.write(scope, path, bytes, { author: 'shiori', type, source: `${server}: ${tool}`, meta: meta.width && meta.height ? { width: meta.width, height: meta.height } : {} });
+    });
+    keeping = work.catch(() => {});
+    return work;
   };
 
   /** Asks a server for its tools, within the time limit, in words when it fails. @param {McpClient} client @param {string[]} [own] */
