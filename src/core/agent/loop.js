@@ -36,10 +36,11 @@ import { validate } from '../schema.js';
  *   her (a place, the road), not a reminder: owed only until a model answers
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
- *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate' }} Wake
+ *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
- *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode
+ *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
+ *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -88,9 +89,16 @@ export const LABELS = Object.freeze({
   away: 'Working on …', offline: 'Offline · reminders still work',
 });
 export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen; the user may type.";
+/** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
+export const UNANSWERED = "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
+/** The words a Try again wakes her with. */
+const AGAIN = 'the user tapped Try again: answer their last message';
 /** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
 export const WRITE_TRIES = 3;
 
+
+/** A wake the user started: what they typed or sent, a choice they tapped, or their Try again. @param {Wake} w */
+const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || Boolean(w.again);
 
 /** The card types running plugins add (spec §16.4). @param {import('../registry.js').Registry} registry @returns {any[]} */
 const cardTypes = (registry) => registry.list('ui:card-type').filter((t) => typeof t?.type === 'string');
@@ -1099,11 +1107,35 @@ export class Agent {
      * she reaches the user after it came, with speak, show or ask (emulator pass: a turn that only slept dropped them).
      */
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
+    /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
+    let theirs = wakes.some(isTheirs);
     let reached = this.#reached;
     /** She reached the user: what was owed before is settled. Checked before more wakes join, and at the end. */
     const settle = () => {
-      if (this.#reached !== reached) owed = [];
+      if (this.#reached !== reached) {
+        owed = [];
+        theirs = false;
+      }
       reached = this.#reached;
+    };
+    let nudged = false;
+    let silent = false;
+    /**
+     * A turn of the user's that ends with nothing said to them (spec §7.1): she is asked once more, in the same turn; true when
+     * she is. A second silent end is a card. Not for the half working behind Koe, nor a turn that told the other half.
+     */
+    const nudge = async () => {
+      settle();
+      if (!theirs || abort.signal.aborted || this.#facts.told || !this.#half.voice()) return false;
+      if (nudged) {
+        silent = true;
+        return false;
+      }
+      nudged = true;
+      this.#facts.finalText = '';
+      await this.#logWakes([{ kind: 'cue', text: UNANSWERED }], wakeId, true);
+      reasons.push(UNANSWERED);
+      return true;
     };
     const stuck = new Stuck();
     let steps = 0;
@@ -1197,6 +1229,7 @@ export class Agent {
             await this.#logWakes(more, wakeId, true);
             reasons.push(...more.map((w) => this.#reason(w)));
             owed.push(...more.flatMap((w) => w.fallbacks ?? []));
+            theirs ||= more.some(isTheirs);
           }
           continue;
         }
@@ -1235,6 +1268,7 @@ export class Agent {
       if (!calls.length) {
         if (result.reply.stop === 'pause') continue;
         this.#facts.finalText = String(result.reply.text ?? '').trim();
+        if (await nudge()) continue;
         break;
       }
       const sleeping = calls.some((/** @type {any} */ c) => c.name === 'sleep');
@@ -1253,7 +1287,7 @@ export class Agent {
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'stuck', wake: wakeId, message: 'Three identical tool calls in a row with identical results.' } });
         break;
       }
-      if (sleeping || endTurn || abort.signal.aborted) break;
+      if (abort.signal.aborted || ((sleeping || endTurn) && !(await nudge()))) break;
       await this.#writeChatter(wakeId);
       const more = this.#take();
       settle();
@@ -1262,7 +1296,15 @@ export class Agent {
         reasons.push(...more.map((w) => this.#reason(w)));
         owed.push(...more.flatMap((w) => w.fallbacks ?? []));
         this.#facts.kinds.push(...more.map((w) => w.kind));
+        theirs ||= more.some(isTheirs);
       }
+    }
+    if (silent) {
+      // Asked once more, she still said nothing: the user isn't left waiting in silence.
+      const body = 'Her model finished without saying anything to you.';
+      const scope = this.scope;
+      await this.#notice({ tone: 'warn', title: "Shiori didn't answer", body, actions: [{ label: 'Try again', primary: true, run: () => { this.wake({ kind: 'cue', text: AGAIN, again: true, scope }); } }] });
+      await this.#log({ type: 'error', actor: 'system', data: { kind: 'silent', wake: wakeId, message: body } });
     }
     settle();
     if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope, { unsaid: answered && !failed });

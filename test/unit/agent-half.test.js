@@ -54,7 +54,7 @@ test("a half with registryTools false offers only its own loop tools, and calls 
 });
 
 test('cutIn during a model call cancels that call only; the turn goes on, and the next call sees the queued note', async () => {
-  const k = await agentKit([[{ delayMs: 500, text: 'thinking' }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { agent: { half: halfOf('kokoro') } });
+  const k = await agentKit([[{ delayMs: 500, text: 'thinking' }, { toolCalls: [{ name: 'speak', input: { text: 'Tonight, yes.' } }, { name: 'sleep', input: {} }] }]], { agent: { half: halfOf('kokoro') } });
   k.agent.send('Is Nepenthe open?');
   await until(() => k.requests.length === 1);
   await new Promise((r) => setTimeout(r, 50));
@@ -137,7 +137,7 @@ test('ended() gets the final text, whether the turn told the other half, slept, 
     { toolCalls: [{ name: 'tell_koe', input: { text: 'Open till 10.' } }, { name: 'sleep', input: {} }] },
     { toolCalls: [{ name: 'speak', input: { text: 'Hi.' } }] },
     { text: 'Done.' },
-  ]], { agent: { half: halfOf('kokoro', { ended: (/** @type {any} */ t) => ends.push(t) }) } });
+  ]], { agent: { half: halfOf('kokoro', { voice: () => false, ended: (/** @type {any} */ t) => ends.push(t) }) } }); // behind Koe: its final text is Koe's
   k.agent.addLoopTools([{ name: 'tell_koe', pluginId: 'core', description: 'Tell Koe.', input: { type: 'object', properties: { text: { type: 'string' } } }, run: async () => 'sent' }]);
   for (const text of ['one', 'two', 'three']) {
     k.agent.send(text);

@@ -5,7 +5,7 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
-import { Agent } from '../../src/core/agent/loop.js';
+import { Agent, UNANSWERED } from '../../src/core/agent/loop.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 
@@ -108,6 +108,37 @@ test('tapping Shiori stops a hanging tool and the turn; every call still has a r
   assert.deepEqual(results.map((e) => [e.data.name, e.data.content]), [['hang', 'Stopped by the user.'], ['speak', 'Stopped by the user.']]);
   assert.equal((await k.events(['out.speak'])).length, 0);
   assert.equal(k.agent.state.name, 'sleeping');
+});
+
+test("the user's message, answered only in plain text: she is asked once more; still nothing for the user, a card with Try again (spec §7.1, emulator pass)", async () => {
+  const k = await agentKit([[{ text: 'Big Sur is known for its coast.' }, { toolCalls: [{ name: 'sleep', input: {} }] }, say('Its wild coast, mostly.')]]);
+  k.agent.send('What is Big Sur known for?');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'asked once more, in the same turn');
+  assert.match(JSON.stringify(k.requests[1].messages.at(-1)), new RegExp(UNANSWERED.slice(0, 40)));
+  assert.match(k.requests[1].tail, /The user hasn't been answered/);
+  assert.equal((await k.events(['wake'])).filter((e) => !e.data.meanwhile).length, 1, 'one turn');
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body, n.actions.map((/** @type {any} */ a) => a.label)]), [["Shiori didn't answer", 'Her model finished without saying anything to you.', ['Try again']]]);
+  assert.equal((await k.events(['error']))[0].data.kind, 'silent');
+  assert.equal(k.agent.transcript.unanswered, false, 'the card said so: a later start owes nothing');
+  // Try again: her turn again, the user's, answered this time.
+  k.notices[0].actions[0].run();
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak']))[0].data.text, 'Its wild coast, mostly.');
+  assert.match(k.requests[2].tail, /woke for: the user tapped Try again/);
+  assert.equal(k.notices.length, 1);
+});
+
+test('a turn that spoke to the user, or one the user didn\'t start, ends as it is: no second ask, no card', async () => {
+  const k = await agentKit([[say('Big Sur: the coast.')]]);
+  k.agent.send('What is Big Sur known for?');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+  const quiet = await agentKit([[{ text: 'Low tide noted; nothing to say.' }]]);
+  quiet.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
+  await quiet.agent.idle();
+  assert.equal(quiet.requests.length, 1);
+  assert.deepEqual(quiet.notices, []);
 });
 
 test("no model answers: a system card, never in Shiori's voice", async () => {
@@ -264,7 +295,7 @@ test('a search whose replies are shown as written (Google Search): one Shiori is
   const search = { id: 'g-search', name: 'Google Search', kind: 'search', patch: {}, paidOnly: true, shows: 'From Google Search' };
   const words = 'A reply in which you search with Google Search is shown to the user as you write it, under "From Google Search", with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.';
   const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
-  const k = await agentKit([[sleep, sleep]], { models: [{ providerTools: [search] }] });
+  const k = await agentKit([[say('Open till 10.')]], { models: [{ providerTools: [search] }] });
   await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
   k.agent.send('Is Nepenthe open?');
   await k.agent.idle();

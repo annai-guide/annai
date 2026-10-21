@@ -419,6 +419,8 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 
 Shiori addresses the user **only** through output tools. Any plain text the model writes is her internal transcript: hidden from the user, visible in the trace. (This follows the precedent of MemGPT/Letta's `send_message`.)
 
+**A turn of the user's that says nothing to them.** When a turn the user started (their message, a choice they tapped, or their Try again) ends without `speak`, `show` or `ask`, annai asks the model once more in the same turn: "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see." If that ends without one too, a card says "Shiori didn't answer", with Try again, and the conversation notes that her turn ended. Wakes the user didn't start (housekeeping, plugins, reminders, which §11.3 covers) are left as they are, as is Kokoro behind Koe, whose plain text goes to Koe as a note (§6.8), and a turn that told the other half.
+
 | Tool | Behaviour | Result |
 |---|---|---|
 | `speak(text)` | Plays sentence by sentence, then listens (§10). | What was heard, or where she was interrupted plus what was heard, or "heard nothing" after a silence timeout (default 8 s). |
