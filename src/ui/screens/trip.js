@@ -9,7 +9,7 @@ import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
 import { packPanel } from '../offline-pack.js';
-import { tripStamps, stampMarks } from '../stamps.js';
+import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
 import { slotEntries } from '../slots.js';
 
@@ -35,7 +35,7 @@ export async function renderTrip(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/trips' }, '← Trips')),
     h('h1', { class: 'title', text: scope.title }),
-    h('p', { class: 'sub', text: [trip?.start ? dateRange(trip.start, trip.end) : null, archived ? 'Archived' : null, `${files.length} files`, stamps.length ? stampCount(stamps.length) : null].filter(Boolean).join(' · ') }),
+    h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? 'Archived' : null, `${files.length} files`, stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     h('div', { class: 'acts' },
       h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, 'Plan'),
