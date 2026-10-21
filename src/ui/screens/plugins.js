@@ -8,6 +8,7 @@ import { sourceLine } from './plugin-install.js';
 import { tracedFetch } from '../../core/agent/net.js';
 import { SYS } from '../../core/scopes.js';
 import { renderPlugin } from './plugin.js';
+import { warnKept } from './provider.js';
 import { finder, byKind } from './add.js';
 
 /**
@@ -98,6 +99,8 @@ export function updateButton(ctx, update) {
 /** Update, Restart, Turn off or on, and Remove, for an installed plugin. @param {any} ctx @param {any} r @param {any} [update] */
 export function pluginActions(ctx, r, update) {
   const on = r.enabled && !r.failing;
+  // What its providers keep, named as Remove is armed (G2).
+  const kept = h('p', { class: 'sub' });
   return h('div', { class: 'acts' },
       update ? updateButton(ctx, update) : null,
       r.restart ? h('button', { class: 'btn pri', type: 'button', onclick: () => restartAnnai(ctx) }, 'Restart annai') : null,
@@ -121,5 +124,6 @@ export function pluginActions(ctx, r, update) {
           if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name} wasn't removed`, body: `${message(e)} Try again.` });
         }
         ctx.go('#/plugins');
-      }));
+      }, () => { if (r.provider) warnKept(ctx, kept, { plugin: r.id }); }),
+      kept);
 }

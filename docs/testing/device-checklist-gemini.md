@@ -23,10 +23,10 @@ You need a Gemini key from AI Studio. Before you start, open Settings → Update
 - [ ] **Less sent.** Talk with Shiori for three turns, one with a photo. Trace → Type contains `net.request`: from the second turn on, Gemini's requests say "sent, after a kept turn", and each is about the size of what you just said, not the whole conversation: the photo's turn is large once, never again.
 - [ ] **Switched off.** Turn the switch off, talk again: each request is whole (no "after a kept turn"), and Trace shows `kept turn deleted` for each kept turn. Turn it back on.
 - [ ] **Removing a trip.** Talk in a trip you don't need, then remove it: the first question names what Google keeps, and Trace (System log) shows `kept turn deleted` once per turn of that trip.
-- [ ] **A new key, or Remove key.** With turns kept, the line under the key says annai first asks Google to delete them. Remove key: "Asking Google to delete what it keeps…" shows for a moment, and Trace shows `kept turn deleted` for each. Put the key back.
+- [ ] **A new key, or Remove key.** With turns kept, start typing a new key: the line under it says annai first asks Google to delete them. Remove key (tap twice): the line shows again, "Asking Google to delete what it keeps…" shows for a moment, and Trace shows `kept turn deleted` for each. Put the key back.
 - [ ] **A day later.** On the next day, a conversation from yesterday sends its first message whole once (no "after a kept turn"), then chains again.
 - [ ] **Offline.** Talk in another trip, turn on airplane mode, remove the trip. Google Gemini's page says "N deletions waiting". Turn airplane mode off: the line goes (reopen the page), and Trace shows the deletions.
-- [ ] **Removing the provider, offline.** With turns kept and airplane mode on, the words above Remove provider say "Google keeps N turns until they expire, up to 55 days." (1 day on the free tier). Online, they say annai asks Google to delete them first.
+- [ ] **Removing the provider, offline.** With turns kept and airplane mode on, tap Remove provider once: the words above it say "Google keeps N turns until they expire, up to 55 days." Online, they say annai asks Google to delete them first. Settings → Plugins → Google Gemini → Remove says the same.
 - [ ] **Erase.** With turns kept, Settings → Erase names them before the tap; after Erase, nothing of annai is left on the phone.
 
 ## G3: Gemini's transcription and voices, streamed

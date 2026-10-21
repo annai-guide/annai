@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { Kept, fingerprint, MAX_TURNS } from '../../src/core/llm/kept.js';
+import { Kept, fingerprint, keyPrint, MAX_TURNS } from '../../src/core/llm/kept.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
@@ -26,18 +26,19 @@ const tr = msg('user', { type: 'tool_result', id: 'call_1', content: 'Ichiran, 2
 const r2 = msg('assistant', text('Ichiran is 200 m away.'));
 const m3 = msg('user', text('Is it open now?'));
 
-/** A Kept on memory storage, on a clock the test moves. */
+/** A Kept on memory storage, on a clock the test moves; state.alive: whether a turn may be kept now, as the service checks it. */
 async function keptKit() {
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
   const clock = { t: T0 };
-  const kept = new Kept({ ws, now: () => clock.t });
-  return { store, ws, clock, kept, file: async () => ws.readJSON(SYS_DEVICE, '/llm/kept.json') };
+  const state = { alive: true };
+  const kept = new Kept({ ws, now: () => clock.t, alive: async () => state.alive });
+  return { store, ws, clock, state, kept, file: async () => ws.readJSON(SYS_DEVICE, '/llm/kept.json') };
 }
-const A = { scope: 'trip-a' };
-/** As the gemini type keeps them: tracked 55 days, a chain continued 23 hours. @param {Partial<Parameters<Kept['record']>[0]>} [over] */
-const turn = (over = {}) => ({ id: 'v1_a', endpoint: 'pv-g/chat', scope: 'trip-a', messages: [m1], reply: r1, days: 55, hours: 23, mark: 0, ...over });
+const A = { scope: 'trip-a', key: 'K' };
+/** As the gemini type keeps them: tracked 55 days, a chain continued 23 hours; made by key K. @param {Partial<Parameters<Kept['record']>[0]>} [over] */
+const turn = (over = {}) => ({ id: 'v1_a', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', messages: [m1], reply: r1, days: 55, hours: 23, ...over });
 
 test('fingerprint: by content, stable; base64 hashed, never kept; what only the model that wrote it reads is left out', () => {
   const photo = { type: 'image', mediaType: 'image/jpeg', data: `${'A'.repeat(4000)}B` };
@@ -65,7 +66,8 @@ test('a changed history, a one-off call, another endpoint or trip, a reply not a
   assert.equal(await kept.match('pv-g/chat', [msg('user', text('Where can we drink?')), r1, tr], A), null, 'a changed history');
   assert.equal(await kept.match('pv-g/chat', [msg('user', text('Summarize this.'))], A), null, 'a one-off call');
   assert.equal(await kept.match('pv-other/chat', [m1, r1, tr], A), null, 'another endpoint');
-  assert.equal(await kept.match('pv-g/chat', [m1, r1, tr], { scope: 'trip-b' }), null, "another trip's conversation never continues this one's");
+  assert.equal(await kept.match('pv-g/chat', [m1, r1, tr], { scope: 'trip-b', key: 'K' }), null, "another trip's conversation never continues this one's");
+  assert.equal(await kept.match('pv-g/chat', [m1, r1, tr], { scope: 'trip-a', key: 'K2' }), null, 'another key or address');
   assert.equal(await kept.match('pv-g/chat', [m1, msg('assistant', text('cut short')), tr], A), null, 'a reply other than the one kept (cut off where it was heard)');
   assert.equal(await kept.match('pv-g/chat', [m1, r1], A), null, 'nothing after the reply to send');
 });
@@ -113,7 +115,7 @@ test(`at most ${MAX_TURNS} turns: the oldest chains go whole, each queued for de
   const f = await file();
   assert.equal(f.turns.length, MAX_TURNS - 1);
   assert.deepEqual(f.forget.map((/** @type {any} */ x) => x.id), ['v1_old1', 'v1_old2'], 'its whole chain: what is left of one would lose what came before');
-  assert.deepEqual(f.forget[0], { id: 'v1_old1', endpoint: 'pv-g/chat', until: T0 + 55 * DAY });
+  assert.deepEqual(f.forget[0], { id: 'v1_old1', endpoint: 'pv-g/chat', key: 'K', until: T0 + 55 * DAY });
 });
 
 test('forget: a turn Google no longer has takes its chain with it; the rest of the chain is queued for deletion', async () => {
@@ -121,7 +123,7 @@ test('forget: a turn Google no longer has takes its chain with it; the rest of t
   await kept.record(turn());
   await kept.record(turn({ id: 'v1_b', messages: [m1, r1, tr], reply: r2, after: 'v1_a' }));
   await kept.record(turn({ id: 'v1_other', messages: [msg('user', text('Hello'))], reply: msg('assistant', text('Hi')) }));
-  await kept.forget('v1_b');
+  await kept.forget('v1_b', true);
   const f = await file();
   assert.deepEqual(f.turns.map((/** @type {any} */ x) => x.id), ['v1_other']);
   assert.deepEqual(f.forget.map((/** @type {any} */ x) => x.id), ['v1_a']);
@@ -250,20 +252,34 @@ test("only a conversation's own turns are kept: a utility call, a one-off call i
   }
 });
 
-test('a call that fails after Google kept its turn has that turn queued for deletion', async () => {
+test('a call that fails after Google kept its turn deletes it before it settles; one it cannot delete is queued', async () => {
   const k = await keptKit();
   const sse = [
     { event_type: 'interaction.created', interaction: { id: 'v1_half', object: 'interaction' } },
     { event_type: 'step.start', index: 0, step: { type: 'model_output' } },
     { event_type: 'error', error: { code: 'internal', message: 'Internal error.' } },
   ].map((e) => `event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
-  await assert.rejects(callRole({
+  /** @type {string[]} */
+  const deleted = [];
+  let online = true;
+  const call = () => callRole({
     role: 'main', config: gemConfig('https://generativelanguage.googleapis.com'), types: new Map([['gemini', type]]), bench: new Bench(), keyFor: async () => KEY,
     kept: k.kept, scope: 'trip-a', record: { keepParts: true }, sleep: async () => {}, request: { messages: [m1] },
-    fetch: async () => new Response(sse, { headers: { 'content-type': 'text/event-stream' } }),
-  }));
-  assert.deepEqual((await k.file()).forget.map((/** @type {any} */ f) => f.id), ['v1_half'], 'once, though each of its three tries named it');
-  assert.deepEqual((await k.file()).turns, []);
+    fetch: async (url, init) => {
+      if (init.method === 'DELETE') {
+        if (!online) throw new TypeError('Failed to fetch');
+        deleted.push(String(url));
+        return new Response('{}');
+      }
+      return new Response(sse, { headers: { 'content-type': 'text/event-stream' } });
+    },
+  });
+  await assert.rejects(call());
+  assert.deepEqual(deleted.map((u) => u.split('/').pop()), ['v1_half', 'v1_half', 'v1_half'], 'each of its three tries deleted what it kept');
+  assert.equal(await k.file(), undefined, 'nothing to remember');
+  online = false;
+  await assert.rejects(call());
+  assert.deepEqual((await k.file()).forget.map((/** @type {any} */ f) => f.id), ['v1_half'], "a deletion that couldn't go waits, once");
 });
 
 test('the Trace says when a call continued a kept turn and how much it sent, and each deletion', async () => {
@@ -330,7 +346,13 @@ async function serviceKit({ replyDelay = 0, deleteDelay = 0, anyKey = false } = 
     for (let i = 0; i < 200 && s.bodies().length === n; i++) await new Promise((r) => setTimeout(r, 5));
     return { call };
   };
-  const c = { s, ...k, llm, id, tripA, tripB, talk, net, order, keptFile, fetch, answering };
+  /** The Chat ability's keep switch, saved as the provider page saves it. @param {boolean} [on] */
+  const switchOff = async (on = false) => {
+    const { readConfig, saveProvider } = await import('../../src/core/llm/config.js');
+    const rec = (await readConfig(k.ws)).providers[id];
+    await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user.abilities, chat: { ...rec.user.abilities?.chat, tunables: { keep: on } } } } });
+  };
+  const c = { s, ...k, llm, id, tripA, tripB, talk, net, order, keptFile, fetch, answering, switchOff };
   return c;
 }
 
@@ -388,11 +410,13 @@ test('switching keep off queues all of that ability\'s turns and deletes them; s
   try {
     await c.talk(c.tripA, 2);
     await c.talk(c.tripB, 1);
+    await c.switchOff();
     assert.deepEqual(await c.llm.forgetEndpoint(`${c.id}/chat`), { queued: 3 });
     await c.llm.drainKept();
     assert.deepEqual(c.s.stored(), []);
     assert.equal(c.s.deleted().length, 3);
-    // Back on (as the switch saves it): a new chain, sent whole.
+    // Back on: a new chain, sent whole.
+    await c.switchOff(true);
     await c.talk(c.tripA, 1);
     assert.equal(c.s.bodies().at(-1).previous_interaction_id, undefined);
     assert.equal(c.s.bodies().at(-1).store, true);
@@ -527,22 +551,24 @@ test("a turn Google refused isn't continued: what it blocked would be in every l
     { event_type: 'interaction.created', interaction: { id: 'v1_refused', object: 'interaction' } },
     { event_type: 'error', error: blocked },
   ].map((e) => `event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
+  /** @type {string[]} */
+  const deleted = [];
   const r = await callRole({
     role: 'main', config: gemConfig('https://generativelanguage.googleapis.com'), types: new Map([['gemini', loadGemini()]]), bench: new Bench(), keyFor: async () => KEY,
     kept: k.kept, scope: 'trip-a', record: { keepParts: true }, request: { messages: [m1] },
-    fetch: async () => new Response(sse, { headers: { 'content-type': 'text/event-stream' } }),
+    fetch: async (url, init) => (init.method === 'DELETE' ? (deleted.push(String(url).split('/').pop() ?? ''), new Response('{}')) : new Response(sse, { headers: { 'content-type': 'text/event-stream' } })),
   });
   assert.equal(r.reply.stop, 'refusal');
-  assert.deepEqual((await k.file()).turns, []);
-  assert.deepEqual((await k.file()).forget.map((/** @type {any} */ f) => f.id), ['v1_refused']);
+  assert.deepEqual(deleted, ['v1_refused']);
+  assert.equal(await k.file(), undefined, 'never remembered');
 });
 
-test('a turn still being answered when its provider is removed is deleted at once, with the key the call still holds: nothing of it is left with Google', async () => {
+test('the record-time check: a turn still being answered when it may no longer be kept (its provider going, its key changed, its switch off, its trip gone) is deleted at once, with the key its call holds', async () => {
   const c = await callKit([{ text: 'Ichiran.', delayMs: 300 }]);
   try {
     const answering = c.call([m1]);
     for (let i = 0; i < 100 && !c.s.bodies().length; i++) await new Promise((r) => setTimeout(r, 5));
-    c.kept.removing({ provider: 'pv-g' }); // removeProvider's first step: its key is going
+    c.state.alive = false; // as the service would answer now
     assert.equal((await answering).reply.text, 'Ichiran.');
     assert.deepEqual(c.s.deleted(), ['v1_stand-in-1']);
     assert.deepEqual(c.s.stored(), []);
@@ -558,7 +584,7 @@ test("a key marked free that is really paid: its turns are still tracked, and de
     await c.call([m1]);
     c.clock.t += 10 * DAY;
     assert.equal(await c.kept.queue({ scope: 'trip-a' }), 1);
-    const done = await c.kept.drain({ fetch, resolve: async () => ({ type, endpoint: endpointOf(type, { baseUrl: c.s.url }), key: KEY }) });
+    const done = await c.kept.drain({ fetch, resolve: async () => ({ type, endpoint: endpointOf(type, { baseUrl: c.s.url }), key: KEY, print: await keyPrint(KEY, c.s.url) }) });
     assert.deepEqual([done, c.s.deleted()], [{ done: 1, left: 0 }, ['v1_stand-in-1']]);
   } finally {
     await c.s.close();
@@ -642,7 +668,7 @@ test('a 429 to a deletion rests that endpoint until later: the next drain sends 
   const sent = [];
   let busy = true;
   const deleting = async (/** @type {any} */ url) => { sent.push(String(url)); return busy ? new Response('{}', { status: 429, headers: { 'retry-after': '30' } }) : new Response('{}'); };
-  const resolve = async () => ({ type, endpoint: endpointOf(type), key: KEY });
+  const resolve = async () => ({ type, endpoint: endpointOf(type), key: KEY, print: 'K' });
   assert.deepEqual(await k.kept.drain({ fetch: deleting, resolve }), { done: 0, left: 2 });
   assert.equal(sent.length, 1, 'stopped at the first 429');
   busy = false;
@@ -672,10 +698,12 @@ test('RACE 2: the switch is turned off while a turn is answered: that turn is de
   const c = await serviceKit({ replyDelay: 200 });
   try {
     const { call: p } = await c.answering(c.tripA, 'q');
+    await c.switchOff();
     await c.llm.forgetEndpoint(`${c.id}/chat`);
     await p;
     await c.llm.drainKept();
     assert.deepEqual(c.s.stored(), [], 'switched off: nothing left with Google');
+    await c.switchOff(true);
     await c.talk(c.tripA, 1);
     assert.equal(c.s.stored().length, 1, 'on again: kept as before');
   } finally {
@@ -768,6 +796,153 @@ test('Review Focus 1 through callRole: Gemini rate-limited, another provider ans
     ]);
   } finally {
     await s.close();
+  }
+});
+
+test("a deletion is sent only with the key and address that made the turn: under another key it waits, never sent", async () => {
+  const k = await keptKit();
+  await k.kept.record(turn());
+  await k.kept.queue();
+  /** @type {string[]} */
+  const sent = [];
+  const fetchAll = async (/** @type {any} */ url) => { sent.push(String(url)); return new Response('{}'); };
+  assert.deepEqual(await k.kept.drain({ fetch: fetchAll, resolve: async () => ({ type, endpoint: endpointOf(type), key: 'AIza-another', print: 'K2' }) }), { done: 0, left: 1 });
+  assert.deepEqual(sent, []);
+  assert.deepEqual(await k.kept.drain({ fetch: fetchAll, resolve: async () => ({ type, endpoint: endpointOf(type), key: KEY, print: 'K' }) }), { done: 1, left: 0 });
+});
+
+test('a drain goes on past a deletion that failed to the rest; no answer (offline) leaves the rest of that endpoint for next time', async () => {
+  const k = await keptKit();
+  await k.kept.record(turn());
+  await k.kept.record(turn({ id: 'v1_b', messages: [msg('user', text('Other'))], reply: r2 }));
+  await k.kept.queue();
+  /** @type {string[]} */
+  const sent = [];
+  const resolve = async () => ({ type, endpoint: endpointOf(type), key: KEY, print: 'K' });
+  const failing = async (/** @type {any} */ url) => { sent.push(String(url).split('/').pop() ?? ''); return new Response('{}', { status: sent.length === 1 ? 500 : 200 }); };
+  assert.deepEqual(await k.kept.drain({ fetch: failing, resolve }), { done: 1, left: 1 });
+  assert.deepEqual(sent, ['v1_a', 'v1_b']);
+  const offline = async () => { sent.push('x'); throw new TypeError('Failed to fetch'); };
+  await k.kept.record(turn({ id: 'v1_c', messages: [msg('user', text('Third'))], reply: r2 }));
+  await k.kept.queue();
+  assert.deepEqual(await k.kept.drain({ fetch: offline, resolve }), { done: 0, left: 2 });
+  assert.equal(sent.length, 3, 'one try, then that endpoint waits');
+});
+
+// ---- The second review's VERIFY A–E ----
+
+test('VERIFY A: switch off, then a new key, while a turn is answered: no deletion goes with the new key', async () => {
+  const c = await serviceKit({ anyKey: true, replyDelay: 300 });
+  try {
+    const { setKey } = await import('../../src/core/llm/config.js');
+    const { call: p } = await c.answering(c.tripA, 'q');
+    await c.switchOff();
+    await c.llm.forgetEndpoint(`${c.id}/chat`);
+    await c.llm.reconnect(c.id, () => setKey(c.store, c.id, 'AIza-the-new-key-0123456789'));
+    await p;
+    await c.llm.drainKept();
+    const deletes = c.s.requests().filter((r) => r.method === 'DELETE').map((r) => [decodeURIComponent(r.url.split('/').pop() ?? ''), r.headers['x-goog-api-key']]);
+    assert.deepEqual(deletes, [['v1_stand-in-1', KEY]], 'once, with the key that made it');
+    assert.deepEqual(c.s.stored(), []);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('VERIFY B: a chained bad request: the turn it continued is still at Google, so its deletion is queued, not dropped', async () => {
+  const BAD = { error: { status: 400, body: { error: { message: 'Invalid value at input.', code: 'invalid_request' } } } };
+  const c = await callKit([(/** @type {any} */ b) => (b.previous_interaction_id ? BAD : { text: 'OK' })]);
+  try {
+    const r = await c.call([m1]);
+    await c.call([m1, msg('assistant', ...r.reply.parts), m3]);
+    const f = await c.file();
+    const known = new Set([...f.turns.map((/** @type {any} */ t) => t.id), ...f.forget.map((/** @type {any} */ d) => d.id)]);
+    assert.ok(c.s.stored().every((id) => known.has(id)), 'every turn at Google is one annai knows');
+    assert.deepEqual(f.forget.map((/** @type {any} */ d) => d.id), ['v1_stand-in-1']);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('VERIFY C: the switch goes off while the first model of the list fails; the next model keeps nothing, as it is checked when its turn is recorded', async () => {
+  const k = await keptKit();
+  const s = await startGeminiServer({ key: KEY, replies: [{ text: 'OK' }] });
+  try {
+    const { ProviderError } = await import('../../src/core/llm/contract.js');
+    const config = gemConfig(s.url);
+    config.providers['pv-o'] = { id: 'pv-o', plugin: 'provider-other', template: null, user: { name: 'Other', baseUrl: 'https://other.test', abilities: { chat: { kind: 'chat', type: 'other' } } }, created: 0 };
+    config.models['m-o'] = { id: 'm-o', provider: 'pv-o', ability: 'chat', template: null, user: { providerId: 'other-1' }, created: 0 };
+    config.roles.main.models = ['m-o', 'm-l'];
+    const other = { type: 'other', name: 'Other', pluginId: 'other', run: async function* () { await new Promise((r) => setTimeout(r, 100)); throw new ProviderError('auth', 'no'); } };
+    const p = callRole({ role: 'main', config, types: new Map([['gemini', type], ['other', other]]), bench: new Bench(), keyFor: async () => KEY,
+      kept: k.kept, scope: 'trip-a', record: { keepParts: true }, sleep: async () => {}, request: { messages: [m1] } });
+    await new Promise((r) => setTimeout(r, 20));
+    k.state.alive = false; // the switch saved off
+    await k.kept.queue({ endpoint: 'pv-g/chat' });
+    const r = await p;
+    assert.equal(r.answeredBy, LITE);
+    assert.deepEqual(s.stored(), [], 'switched off: Google keeps nothing');
+  } finally {
+    await s.close();
+  }
+});
+
+test('VERIFY D: a drain already running when a key changes never sends the old key\'s deletion with the new key', async () => {
+  const { hostKit } = await import('./package-kit.js');
+  const { createLlm } = await import('../../src/core/llm/service.js');
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const { setKey, readConfig, saveRoles } = await import('../../src/core/llm/config.js');
+  const s = await startGeminiServer({ replies: [() => ({ text: 'P' })] });
+  const s2 = await startGeminiServer({ replies: [() => ({ text: 'Q' })], ids: 'v1_q-' });
+  const k = await hostKit();
+  const root = new URL('../../', import.meta.url);
+  const fetching = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    const u = String(url);
+    if (u.startsWith(s.url) || u.startsWith(s2.url)) {
+      if (init?.method === 'DELETE' && u.startsWith(s2.url)) await new Promise((r) => setTimeout(r, 600));
+      return globalThis.fetch(url, init);
+    }
+    try { return new Response(await readFile(new URL(`.${new URL(u, 'http://annai.test').pathname}`, root))); } catch { return new Response('not found', { status: 404 }); }
+  };
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: fetching });
+  const P = await llm.addProvider('provider-gemini', { key: 'AIza-old-key-P-0123456789', baseUrl: s.url, official: true });
+  const Q = await llm.addProvider('provider-gemini', { key: 'AIza-key-Q-0123456789', baseUrl: s2.url, official: true });
+  const trip = await createTrip(k.ws, { title: 'Kyoto' });
+  const cfg = await readConfig(k.ws);
+  const mOf = (/** @type {string} */ pid) => /** @type {any} */ (Object.values(cfg.models).find((m) => m.provider === pid && m.ability === 'chat')).id;
+  const ask = async (/** @type {string} */ pid, /** @type {string} */ q) => {
+    await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: [mOf(pid)] } });
+    return llm.call({ role: 'main', scope: trip, request: { messages: [msg('user', text(q))] }, record: { keepParts: true } });
+  };
+  try {
+    await ask(Q, 'on Q');
+    await ask(P, 'on P');
+    llm.forgetScope(trip); // both deletions queued; a drain starts, Q's slow one first
+    await new Promise((r) => setTimeout(r, 50));
+    await llm.reconnect(P, () => setKey(k.store, P, 'AIza-the-new-key-0123456789'));
+    await llm.drainKept();
+    const deletes = s.requests().filter((r) => r.method === 'DELETE').map((r) => r.headers['x-goog-api-key']);
+    assert.ok(!deletes.includes('AIza-the-new-key-0123456789'), "P's turn never deleted with the new key");
+    assert.deepEqual(deletes, ['AIza-old-key-P-0123456789'], 'deleted first, with its own key');
+  } finally {
+    await s.close();
+    await s2.close();
+  }
+});
+
+test('VERIFY E: a Save that fails changes no key, and lets go of nothing', async () => {
+  const c = await serviceKit();
+  try {
+    await c.talk(c.tripA, 1);
+    c.net.online = false;
+    await assert.rejects(c.llm.reconnect(c.id, async () => { throw new Error("Extra headers (JSON) isn't valid JSON."); }));
+    const f = await c.keptFile();
+    assert.equal(f.turns.length + f.forget.length, 1, 'still known, to be deleted');
+    c.net.online = true;
+    await c.llm.drainKept();
+    assert.deepEqual(c.s.stored(), []);
+  } finally {
+    await c.s.close();
   }
 });
 

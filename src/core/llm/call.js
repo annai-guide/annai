@@ -4,7 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { UPLOAD_TTL_S } from './uploads.js';
-import { deleteTurn } from './kept.js';
+import { deleteTurn, keyPrint } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
 
@@ -65,7 +65,7 @@ export function enabledProviderTools(model, request) {
   return (model.providerTools ?? []).filter((t) => want.kinds.includes(t.kind) && !(want.off ?? []).includes(t.id));
 }
 
-/** A conversation's turn kept (G2, kept.js): chain false sends it whole; mark: taken before its key was read. @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, mark?: number }} Keep */
+/** A conversation's turn kept (G2, kept.js): chain false sends it whole; secret: the provider's key the call has. @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, secret: string | null }} Keep */
 
 /**
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
@@ -88,20 +88,24 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
   const keeping = keep && type.keeps && spec.tunables.keep !== false ? keep : null;
-  const mark = keeping ? keeping.mark ?? keeping.kept.mark() : 0;
+  const print = keeping ? await keyPrint(keeping.secret, endpoint.baseUrl) : '';
   if (keeping) {
     spec.keep = true;
     // A record that can't be read is a whole send.
-    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { scope: keeping.scope }).catch(() => null) : null;
+    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { scope: keeping.scope, key: print }).catch(() => null) : null;
   }
   /** @type {string | null} the turn the provider kept */
   let keptId = null;
   let bytes = 0;
-  /** The turn kept, settled: remembered, queued, or deleted now with this call's key (also when it can't be written down). @param {(c: any) => Promise<string>} how */
+  /**
+   * The turn kept, settled: remembered, or deleted now with this call's key (also when it can't be written down); a
+   * deletion that fails is queued. @param {(c: any) => Promise<string>} how
+   */
   const settle = async (how) => {
     if (!keeping || !keptId) return;
-    const c = { id: keptId, endpoint: endpoint.id, scope: keeping.scope, days: Number(type.keeps?.days) || 1, mark };
-    if ((await how(c).catch(() => 'now')) === 'now') await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now }).catch(() => {});
+    const c = { id: keptId, endpoint: endpoint.id, scope: keeping.scope, key: print, days: Number(type.keeps?.days) || 1 };
+    if ((await how(c).catch(() => 'now')) !== 'now') return;
+    if (!(await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now }).catch(() => null))?.done) await keeping.kept.wait(c).catch(() => {});
   };
   const started = now();
   const timer = new AbortController();
@@ -197,7 +201,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     // more whole (callRole); forgotten on an unchained call is not-found.
     await settle((c) => /** @type {any} */ (keeping).kept.record(c));
     if (keeping && spec.kept && (err.kind === 'forgotten' || err.kind === 'bad-request')) {
-      await keeping.kept.forget(spec.kept.id).catch(() => {});
+      await keeping.kept.forget(spec.kept.id, err.kind === 'forgotten').catch(() => {});
       err.whole = true;
     } else if (err.kind === 'forgotten') err.kind = 'not-found';
     await trace?.request({ ...info(), outcome: err.kind, error: err.message });

@@ -15,11 +15,11 @@ import { readFileSync } from 'node:fs';
  *   usage?: Record<string, any>, status?: string, error?: { status: number, body: any }, delayMs?: number }} Reply
  *   one answer to an interaction: a thought, words, calls (stop "requires_action"), or an error response; delayMs: a pause after the interaction is named
  * @typedef {{ method: string, url: string, headers: Record<string, any>, body: any }} Seen  body: parsed JSON, else the bytes' length
- * @param {{ key?: string, replies?: (Reply | ((body: any) => Reply))[], models?: any }} [o]
+ * @param {{ key?: string, replies?: (Reply | ((body: any) => Reply))[], models?: any, ids?: string }} [o]
  *   key: the only key it takes (else any); replies: given in turn, the last repeats; none: the default answers
- *   (a call to report_color with red when that tool is offered, else "OK"); models: its model list (the recorded one)
+ *   (a call to report_color with red when that tool is offered, else "OK"); models: its model list (the recorded one); ids: how it names interactions
  */
-export async function startGeminiServer({ key, replies = [], models } = {}) {
+export async function startGeminiServer({ key, replies = [], models, ids = 'v1_stand-in-' } = {}) {
   const list = models ?? JSON.parse(readFileSync(new URL('../fixtures/gemini/models.json', import.meta.url), 'utf8'));
   /** @type {Seen[]} */
   const seen = [];
@@ -68,7 +68,7 @@ export async function startGeminiServer({ key, replies = [], models } = {}) {
       const pick = replies.length ? replies[Math.min(seen.filter((s) => s.url === req.url && s.method === 'POST').length - 1, replies.length - 1)] : answer;
       const reply = typeof pick === 'function' ? pick(body) : pick;
       if (reply.error) return void json(reply.error.status, reply.error.body);
-      const id = `v1_stand-in-${++n}`;
+      const id = `${ids}${++n}`;
       if (body?.store) stored.add(id);
       if (body?.stream) {
         res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' });

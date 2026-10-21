@@ -13,7 +13,7 @@ import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
-import { Kept } from './kept.js';
+import { Kept, keyPrint } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
 import { openLive, testLive } from '../realtime/open.js';
@@ -39,52 +39,68 @@ export function createLlm({
   const liveTunables = new Map();
   /** Photos uploaded to providers, by provider and ability (spec §4.8). */
   const uploads = new Uploads(ws);
-  /** Conversation turns providers keep on their side, and the deletions waiting (G2). */
-  const kept = new Kept({ ws });
-  /** Kept turns' deletions waiting, sent (spec §4.9): at start, online, after a turn, on removal. @param {AbortSignal} [signal] */
+  /** Providers going, or their key or address changing (G2). @type {Set<string>} */
+  const removing = new Set();
+  let erasing = false;
+  /** Conversations' calls under way, for Erase. @type {Set<Promise<unknown>>} */
+  const inflight = new Set();
+  /** p, for up to ms. @param {Promise<unknown>} p @param {number} ms */
+  const within = async (p, ms) => {
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let timer;
+    await Promise.race([p.catch(() => {}), new Promise((r) => { timer = setTimeout(r, ms); })]);
+    clearTimeout(timer);
+  };
+  /** An endpoint id as calls see it now, with its key's print; null: not reachable. @param {string} endpointId */
+  const reachEndpoint = async (endpointId) => {
+    const pRec = (await readConfig(ws)).providers[endpointId.split('/')[0]];
+    const to = pRec ? await reach(pRec, endpointId.slice(endpointId.indexOf('/') + 1)) : null;
+    return to?.secret ? { ...to, print: await keyPrint(to.secret, to.endpoint.baseUrl) } : null;
+  };
+  /** Kept turns (G2): kept only while the provider is there and not going, with the same key and address, the switch on and the trip there. */
+  const kept = new Kept({
+    ws,
+    alive: async ({ endpoint, scope, key }) => {
+      if (erasing || removing.has(endpoint.split('/')[0])) return false;
+      const to = await reachEndpoint(endpoint);
+      return Boolean(to && to.endpoint.tunables.keep !== false && to.print === key && (await store.tx(['scopes'], 'readonly', (t) => t.getScope(scope))));
+    },
+  });
+  /** Kept turns' deletions waiting, sent (spec §4.9). @param {AbortSignal} [signal] */
   const drainKept = async (signal) => {
     await ready;
     return kept.drain({
       fetch: get, signal, trace: modelTrace(store, SYS),
       scopes: async () => new Set((await store.tx(['scopes'], 'readonly', (t) => t.listScopes())).map((x) => x.id)),
-      resolve: async (endpointId) => {
-        const pRec = (await readConfig(ws)).providers[endpointId.split('/')[0]];
-        const to = pRec ? await reach(pRec, endpointId.slice(endpointId.indexOf('/') + 1)) : null;
-        return to?.secret ? to : null;
-      },
+      resolve: reachEndpoint,
     });
   };
-  /** The deletions waiting, sent for up to ms: a removal waits no longer. @param {number} ms */
+  /** The deletions waiting, sent for up to ms. @param {number} ms */
   const drainFor = async (ms) => {
-    if (!(await kept.count()).waiting) return;
-    /** @type {ReturnType<typeof setTimeout> | undefined} */
-    let timer;
-    await Promise.race([drainKept(AbortSignal.timeout(ms)).catch(() => {}), new Promise((r) => { timer = setTimeout(r, ms); })]);
-    clearTimeout(timer);
+    if ((await kept.count()).waiting) await within(drainKept(AbortSignal.timeout(ms)), ms);
   };
   ready.then(() => drainKept()).catch((e) => console.warn("kept turns' deletions couldn't be sent", e));
-  /** A trip's or the switch's removal, sent in the background. @param {{ scope?: string, endpoint?: string }} which @param {boolean} lasts */
-  const forgetSoon = async (which, lasts) => {
-    const end = kept.removing(which);
-    if (!lasts) end();
+  /** After a trip went or a switch went off: its turns, deleted. @param {{ scope?: string, endpoint?: string }} which */
+  const forgetSoon = async (which) => {
     const queued = await kept.queue(which);
     if (queued) drainKept().catch(() => {});
     return { queued };
   };
   /**
-   * What a provider keeps is deleted with the key that made it, for up to 10 s; then work runs (a key, an address or the
-   * provider going), and what is left is let go: no other key will try. lasts: for good.
-   * @template T @param {string} id @param {() => Promise<T>} work @param {boolean} [lasts] @returns {Promise<T>}
+   * The provider marked as going, its turns are deleted with their key for up to 10 s; then work runs (a key, an address
+   * or the provider going), and once it has, what is left is let go. gone: for good.
+   * @template T @param {string} id @param {() => Promise<T>} work @param {boolean} [gone] @returns {Promise<T>}
    */
-  const releasing = async (id, work, lasts = false) => {
-    const end = kept.removing({ provider: id });
+  const releasing = async (id, work, gone = false) => {
+    removing.add(id);
     try {
       await kept.queue({ provider: id });
       await drainFor(10_000);
-      return await work();
-    } finally {
+      const out = await work();
       await kept.drop(id).catch(() => {});
-      if (!lasts) end();
+      return out;
+    } finally {
+      if (!gone) removing.delete(id);
     }
   };
   const types = () => endpointTypes(plugins.registry);
@@ -381,27 +397,35 @@ export function createLlm({
      */
     async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, repairImages, speech, firstOutputMs }) {
       await ready;
+      const run = callRole({
+        role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope,
+      });
+      if (!record?.keepParts) return run;
+      inflight.add(run);
       try {
-        return await callRole({
-          role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
-          fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope,
-        });
+        return await run;
       } finally {
-        // A deletion a turn left (a failed call's, a chain gone), sent in the background.
-        if (record?.keepParts) kept.count().then((n) => { if (n.waiting) drainKept().catch(() => {}); }, () => {});
+        inflight.delete(run);
+        // A deletion the turn left (one that failed, a chain gone), sent in the background.
+        kept.count().then((n) => { if (n.waiting) drainKept().catch(() => {}); }, () => {});
       }
     },
     /** Sends the kept turns' deletions waiting (G2). */
     drainKept: () => drainKept(),
     /** A removed trip's kept turns, deleted (spec §4.9). @param {string} scope */
-    forgetScope: (scope) => forgetSoon({ scope }, true),
-    /** An ability's kept turns, its switch turned off. @param {string} endpoint */
-    forgetEndpoint: (endpoint) => forgetSoon({ endpoint }, false),
+    forgetScope: (scope) => forgetSoon({ scope }),
+    /** An ability's kept turns, its switch saved off. @param {string} endpoint */
+    forgetEndpoint: (endpoint) => forgetSoon({ endpoint }),
     /** A key or address changing, or the key going: what the provider keeps goes first, with the old key. @template T @param {string} id @param {() => Promise<T>} save */
     reconnect: (id, save) => releasing(id, save),
-    /** Before Erase: every kept turn deleted, for up to timeoutMs; how many are left. @param {{ timeoutMs?: number }} [o] @returns {Promise<{ left: number }>} */
+    /**
+     * Before Erase: nothing more is kept; the calls under way settle, for up to 5 s (each deleting what it kept); then
+     * every kept turn is deleted, for up to timeoutMs. How many are left. @param {{ timeoutMs?: number }} [o] @returns {Promise<{ left: number }>}
+     */
     async forgetAll({ timeoutMs = 10_000 } = {}) {
-      kept.removing();
+      erasing = true;
+      await within(Promise.allSettled([...inflight]), 5000);
       await kept.queue();
       await drainFor(timeoutMs);
       const n = await kept.count();
@@ -409,11 +433,11 @@ export function createLlm({
     },
     /**
      * What providers keep (G2), for words before a removal: turns, deletions waiting, days until the last expires, who.
-     * @param {{ scope?: string, provider?: string, endpoint?: string }} [o] @returns {Promise<{ turns: number, waiting: number, days: number, who: string[] }>}
+     * plugin: its providers' together. @param {{ scope?: string, provider?: string, endpoint?: string, plugin?: string }} [o] @returns {Promise<{ turns: number, waiting: number, days: number, who: string[] }>}
      */
     async keptCount(o = {}) {
-      const n = await kept.count(o);
       const cfg = await readConfig(ws);
+      const n = await kept.count(o.plugin ? { provider: Object.values(cfg.providers).filter((p) => p.plugin === o.plugin).map((p) => p.id) } : o);
       const who = new Set();
       for (const e of n.endpoints) {
         const pRec = cfg.providers[e.split('/')[0]];

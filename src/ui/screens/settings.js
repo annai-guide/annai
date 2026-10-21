@@ -9,7 +9,7 @@ import { storageStatus, requestPersist, platform, isStandalone } from '../platfo
 import { exportPanel } from '../export-panel.js';
 import { openFileButton } from '../open-file.js';
 import { slotEntries } from '../slots.js';
-import { keptLine } from './provider.js';
+import { warnKept } from './provider.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -164,6 +164,7 @@ async function copyDiagnostics(ctx) {
 /** @param {any} ctx */
 function eraseControls(ctx) {
   const input = h('input', { id: 'erase-confirm', autocomplete: 'off', autocapitalize: 'characters' });
+  const keptWarn = h('p', { class: 'sub' });
   const status = h('p', { class: 'sub', role: 'status' });
   const go = h('button', {
     class: 'btn danger', type: 'button', disabled: true,
@@ -171,12 +172,11 @@ function eraseControls(ctx) {
       go.disabled = true;
       // A live session closes and is forgotten first: its microphone with it (security review).
       ctx.agent?.hush?.('erase');
-      // Shiori's turn stops, then what providers keep is deleted, while the keys are here, for up to 10 seconds (spec §4.9).
+      // Shiori's turns stop; what providers keep is deleted while the keys are here (spec §4.9).
       status.textContent = 'Erasing…';
       ctx.agent?.leaving?.();
       ctx.agent?.interrupt?.();
       ctx.agent?.stopKokoro?.();
-      await Promise.race([ctx.agent?.idle?.(), new Promise((r) => { setTimeout(r, 3000); })]).catch(() => {});
       await ctx.llm?.forgetAll?.({ timeoutMs: 10_000 }).catch(() => {});
       ctx.store.close();
       await eraseDatabase();
@@ -195,10 +195,13 @@ function eraseControls(ctx) {
       location.reload();
     },
   }, 'Erase now');
-  input.addEventListener('input', () => { go.disabled = input.value.trim() !== 'ERASE'; });
+  input.addEventListener('input', () => {
+    go.disabled = input.value.trim() !== 'ERASE';
+    warnKept(ctx, keptWarn); // what providers keep, counted as Erase is typed (G2)
+  });
   return h('div', { class: 'screen' },
     h('p', { class: 'sub', text: 'Deletes every trip, file, setting and key on this device. Export a backup first.' }),
-    keptLine(ctx),
+    keptWarn,
     field('Type ERASE to confirm', input),
     h('div', { class: 'acts' }, go),
     status);
