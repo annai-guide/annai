@@ -7,6 +7,8 @@ import { UPLOAD_TTL_S } from './uploads.js';
 import { deleteTurn, keyPrint } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
+import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
+import { forget as forgetHistory } from '../forget.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -23,7 +25,9 @@ import { formatOf } from '../voice/formats.js';
  * @typedef {import('./config.js').Model} Model
  * @typedef {ReturnType<typeof import('./trace.js').modelTrace>} ModelTrace
  * @typedef {{ parts: Part[], text: string, usage: Usage, cost: number | undefined, stop: StopReason, model: string, logprobs?: { token: string, logprob: number }[],
- *   citations?: { url: string, title?: string }[] }} Reply
+ *   citations?: { url: string, title?: string }[], attribution?: Attribution }} Reply
+ *   attribution: what the provider asks shown of a grounded reply (G4), beside its parts: no model is sent it
+ * @typedef {{ source: string, text: string, links: { url: string, title?: string }[], html?: string }} Attribution
  * @typedef {(url: string, init: RequestInit) => Promise<Response>} Fetch
  */
 
@@ -68,17 +72,43 @@ export function enabledProviderTools(model, request, endpoint) {
   return (model.providerTools ?? []).filter((t) => want.kinds.includes(t.kind) && !(want.off ?? []).includes(t.id) && !(t.paidOnly && endpoint?.free));
 }
 
+const MONTH = '/llm/tool-calls.json';
+/** @type {Promise<unknown>} */
+let counting = Promise.resolve();
+
 /**
- * Usage as it is billed: a provider tool with a monthly allowance counts only its calls past it, by this device's count
- * (tool-month.js); without the count, every call. @param {Usage} usage @param {import('./config.js').ProviderTool[]} tools
- * @param {import('./tool-month.js').ToolMonth} [month]
+ * Counts n calls of a provider tool with a monthly allowance (G4: Google Search, 5,000 free a month), one count at a time;
+ * how many are past it. This device's count, by tool id and calendar month in UTC, in /llm/tool-calls.json in "This device"
+ * (no backup carries it, and it keeps no history). An estimate: other devices on the account use the same allowance.
+ * @param {import('../workspace.js').Workspace} ws @param {string} id @param {number} n @param {number} free @param {number} [now]
  */
-async function billed(usage, tools, month) {
+export function billMonth(ws, id, n, free, now = Date.now()) {
+  const run = counting.then(async () => {
+    const month = new Date(now).toISOString().slice(0, 7);
+    const j = await ws.readJSON(SYS_DEVICE, MONTH).catch(() => null);
+    const counts = j?.month === month && j.counts && typeof j.counts === 'object' ? { ...j.counts } : {};
+    const before = Number(counts[id]) || 0;
+    counts[id] = before + n;
+    await ensureDeviceScope(ws.store, now);
+    await ws.write(SYS_DEVICE, MONTH, { month, counts }, { author: 'system' });
+    await forgetHistory(ws.store, SYS_DEVICE, { history: (p) => p === MONTH });
+    return Math.max(0, before + n - free) - Math.max(0, before - free);
+  });
+  counting = run.catch(() => {});
+  return run;
+}
+
+/**
+ * Usage as it is billed: a provider tool with a monthly allowance counts only its calls past it, by this device's count;
+ * without one (tally), every call. @param {Usage} usage @param {import('./config.js').ProviderTool[]} tools
+ * @param {import('../workspace.js').Workspace} [tally]
+ */
+async function billed(usage, tools, tally) {
   let out = usage;
   for (const t of tools) {
     const n = t.freePerMonth !== undefined && t.usageKey ? usage.serverTools?.[t.usageKey] ?? 0 : 0;
-    if (!n || !month || !t.usageKey) continue;
-    const over = await month.bill(t.id, n, t.freePerMonth ?? 0).catch(() => n);
+    if (!n || !tally || !t.usageKey) continue;
+    const over = await billMonth(tally, t.id, n, t.freePerMonth ?? 0).catch(() => n);
     out = { ...out, serverTools: { ...out.serverTools, [t.usageKey]: over } };
   }
   return out;
@@ -90,14 +120,14 @@ async function billed(usage, tools, month) {
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
- *   toolMonth?: import('./tool-month.js').ToolMonth }} c
+ *   tally?: import('../workspace.js').Workspace }} c
  *   firstOutputMs: how long to wait for the first output, and then between pieces of output
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
  *   keep: kept on the provider's side where its type can and its switch is on
- *   toolMonth: this device's monthly count of provider tools with a free allowance (G4)
+ *   tally: where this device counts provider tools with a monthly allowance (billMonth)
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, toolMonth }) {
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally }) {
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -139,6 +169,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   let logprobs;
   /** @type {{ url: string, title?: string }[]} */
   const citations = [];
+  /** @type {Attribution | undefined} */
+  let attribution;
   /** @type {Usage} */
   let usage = { ...NO_USAGE };
   /** @type {StopReason} */
@@ -169,7 +201,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     } else if (ev.type === 'provider') {
       parts.push({ type: 'provider', block: ev.block, model: model.providerId });
     } else if (ev.type === 'attribution') {
-      parts.push({ type: 'attribution', source: ev.source, text: ev.text, links: ev.links, ...(ev.html ? { html: ev.html } : {}), model: model.providerId });
+      attribution = { source: ev.source, text: ev.text, links: ev.links, ...(ev.html ? { html: ev.html } : {}) };
     } else if (ev.type === 'citation') {
       if (ev.url && !citations.some((c) => c.url === ev.url)) citations.push({ url: ev.url, ...(ev.title ? { title: ev.title } : {}) });
     } else if (ev.type === 'logprobs') {
@@ -220,6 +252,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     clearTimeout(t);
     const err = asProviderError(e, linked, type, registry);
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
+    if (!endpoint.free) await billed(usage, model.providerTools ?? [], tally); // searches it made count all the same
     // A failed call's kept turn is deleted. A chained call refused, or whose turn was forgotten, drops its chain and goes once
     // more whole (callRole); forgotten on an unchained call is not-found.
     await settle((c) => /** @type {any} */ (keeping).kept.record(c));
@@ -235,9 +268,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   await settle((c) => /** @type {any} */ (keeping).kept.record(/** @type {StopReason} */ (stop) === 'refusal' ? c
     : { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(spec.kept ? { after: spec.kept.id } : {}) }));
   // A free-tier key costs nothing; a tool's calls within its monthly allowance neither.
-  const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], toolMonth), model.prices, model.providerTools);
+  const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], tally), model.prices, model.providerTools);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
-  return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}) };
+  return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}), ...(attribution ? { attribution } : {}) };
 }
 
 /** A string's length in bytes as UTF-8, without copying it. @param {string} s */
