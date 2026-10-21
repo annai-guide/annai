@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs, isForUser } from './loop.js';
+import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -725,19 +725,27 @@ export class Halves {
 
   /**
    * Kokoro's notes for the user that Koe never passed on, asked once more (spec §6.8): annai shows what Kokoro meant the user to
-   * have, a note it told Koe or a gated speak as "Shiori's answer", a gated card or question as itself (a tap on its buttons
-   * comes to Koe as the user's choice). "Kokoro couldn't check" and a final text were words for Koe: it was asked once more,
-   * and that is all (plan decision 21: no card). @param {Wake[]} notes
+   * have, a note it told Koe or a gated speak as "Shiori's answer", a gated card or question as itself, checked as show and ask
+   * check Shiori's own (a tap on its buttons comes to Koe as the user's choice); one they would refuse, as its words. "Kokoro
+   * couldn't check" and a final text were words for Koe: it was asked once more, and that is all (plan decision 21: no card).
+   * @param {Wake[]} notes
    */
   async #backstop(notes) {
     this.#unsaid = [];
     for (const w of notes) {
       const i = w.call?.input ?? {};
-      if (w.why === 'tool' || w.why === 'gated:speak') await this.kokoro.remind([{ watch: '', text: forUserText(w.note), title: "Shiori's answer" }], undefined, { unsaid: true });
-      else if (w.why === 'gated:show' && i.card && typeof i.card === 'object') await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: i.card } });
-      else if (w.why === 'gated:ask' && Array.isArray(i.options) && i.options.length) {
-        await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: String(i.question ?? ''), options: i.options.map(String) } });
+      /** @type {string} what is shown as words */
+      let words = w.why === 'tool' || w.why === 'gated:speak' ? forUserText(w.note) : '';
+      if (w.why === 'gated:show') {
+        const ok = checkCard(i.card, this.registry);
+        if (!('error' in ok)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: ok.card } });
+        else words = [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ');
+      } else if (w.why === 'gated:ask') {
+        const ok = checkAsk(i);
+        if (!('error' in ok)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ok.question, options: ok.options } });
+        else if (typeof i.question === 'string') words = `${i.question}${Array.isArray(i.options) ? ` (${i.options.map(String).join(', ')})` : ''}`;
       }
+      if (words) await this.kokoro.remind([{ watch: '', text: words, title: "Shiori's answer" }], undefined, { unsaid: true });
     }
   }
 
