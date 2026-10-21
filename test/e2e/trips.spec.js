@@ -348,3 +348,23 @@ test('where the browser closes a question on Back itself (CloseWatcher), annai a
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+test('"Tap again" comes where the first tap was, on a phone 320 wide, and waits 8 seconds for the second, the same everywhere (the emulator pass)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.clock.install();
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const archive = page.getByRole('button', { name: 'Archive trip' });
+  const remove = page.getByRole('button', { name: 'Remove trip' });
+  await archive.evaluate((el) => el.scrollIntoView({ block: 'center' })); // clear of the dock: the tap then doesn't scroll
+  const was = [await archive.boundingBox(), await remove.boundingBox()];
+  await archive.click();
+  const again = page.getByRole('button', { name: 'Tap again to archive' });
+  await expect(again).toBeVisible();
+  expect([await again.boundingBox(), await remove.boundingBox()]).toEqual(was);
+  await page.clock.fastForward(7_500);
+  await expect(again).toBeVisible();
+  await page.clock.fastForward(600);
+  await expect(archive).toBeVisible();
+  await expect(again).toHaveCount(0);
+});
