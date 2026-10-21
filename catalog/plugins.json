@@ -288,7 +288,7 @@
     {
       "id": "provider-llamacpp",
       "name": "llama.cpp",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Models on a llama.cpp server you run (llama-server), or one built on it such as Unsloth Studio or KoboldCpp. Their thinking is switched off for quick decisions.",
       "category": "providers",
       "keywords": [
@@ -302,7 +302,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4236,
+      "size": 4511,
       "requires": [
         {
           "id": "chat-completions",
@@ -311,8 +311,8 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "f909e1c12fd074db893fb93690c2f5ef5b0f1c4a34078c06292b0e2fef547a0d",
-        "index.js": "29fc232f48ffb0ce35ad94f8ee7aa96fef88ba137bdfbfaade2d02dcf643bdc5"
+        "annai-plugin.json": "f26d9c6c7d784b7d7e5abc1b900aa3f78e9e848945ca3df6814c5762c8923ccb",
+        "index.js": "3d912517e33a9f30a2d558228be9db7a8337fbbda636747d2de5d8be6f5dcfb3"
       }
     },
     {

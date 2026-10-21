@@ -252,7 +252,7 @@ export function safeId(id) {
  * @property {boolean} [keep]  the provider keeps this turn (G2)
  * @property {{ id: string, from: number } | null} [kept]  the kept turn this one continues: send request.messages.slice(from)
  * @typedef {{ providerId: string, name?: string, contextWindow?: number, maxOutput?: number, input?: string[], tools?: boolean,
- *   prices?: import('./cost.js').Prices, reasoning?: Record<string, any> }} ListedModel  reasoning: its level map (spec §9.3)
+ *   prices?: import('./cost.js').Prices, reasoning?: Record<string, any>, loaded?: boolean }} ListedModel  reasoning: its level map (spec §9.3); loaded: a server you run has it loaded now
  * @typedef {{ endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null, tunables: Record<string, any> }} SpeechSpec
  *   what a speech endpoint type is given for one call; a request's body is sent as given (a string or a FormData)
  * @typedef {object} EndpointType  what an endpoint-type plugin registers (spec §9.1)

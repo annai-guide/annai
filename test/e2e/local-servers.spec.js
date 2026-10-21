@@ -29,6 +29,7 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     const chat = page.getByRole('region', { name: 'Chat', exact: true });
     await chat.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(chat.getByText('1 model.')).toBeVisible();
+    await expect(chat.locator('ul.listed li')).toContainText('qwen3.8-flash · loaded'); // the one the server has loaded now
     await chat.getByRole('button', { name: 'Add qwen3.8-flash' }).click();
     // The context the server serves, from its /props (decision 22).
     await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toContainText('33K context');
