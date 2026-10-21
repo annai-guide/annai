@@ -52,7 +52,7 @@ export const NEAR_MS = 10 * 60_000;
 export const TEST_IN_MS = 15_000;
 const MIN = 60_000;
 /** A reminder this long past its send is not called off: it was sent. */
-const LONG_SENT_MS = 10 * MIN;
+export const LONG_SENT_MS = 10 * MIN;
 /** The mirror waits this long after live mode's news, so a burst of changes is one sync… */
 const SOON_MS = 500;
 /** …and this long when only times may have moved (a new fix, each second while driving): one sync at most so often. */
@@ -86,7 +86,7 @@ export function plan(items, wanted, now, held = new Set()) {
   const off = [];
   for (const [key, item] of Object.entries(items)) {
     const w = wanted.get(key);
-    if (!w && held.has(item.scope) && key.startsWith(`${item.scope}|plan:`)) continue;
+    if (!w && stays(key, item, held, now)) continue;
     if (!w || w.hash !== item.hash || moves(item.due, w.m.due, now)) off.push(key);
   }
   /** @type {Want[]} */
@@ -98,6 +98,12 @@ export function plan(items, wanted, now, held = new Set()) {
   }
   return { off, send };
 }
+
+/**
+ * Whether a reminder at the relay is a plan reminder of a trip in held (not open now), which stays as it is while it may
+ * still come: until it is long sent (review R7). @param {string} key @param {Item} item @param {Set<string>} held @param {number} now
+ */
+const stays = (key, item, held, now) => held.has(item.scope) && key.startsWith(`${item.scope}|plan:`) && item.sendAt + LONG_SENT_MS > now;
 
 /** The relay's name for a subscription's object: the SHA-256 of its endpoint (6a choice 1). @param {string} endpoint */
 export async function subscriptionName(endpoint) {
@@ -379,7 +385,7 @@ export class PushMirror {
         sub = await this.#subscription(st);
         /** @type {Set<string>} */
         const held = new Set();
-        const wanted = sub ? await this.#wanted(held) : null;
+        const wanted = sub ? await this.#wanted(held, st.items) : null;
         if (sub && wanted) {
           const p = plan(st.items, wanted, this.clock.now(), held);
           for (const key of p.off) this.#offLater(st, tokens, key);
@@ -446,11 +452,15 @@ export class PushMirror {
     st.hello = null;
   }
 
-  /** What should wait at the relay now: the nearest reminders within reach (choice 7). null: live mode hasn't loaded. @param {Set<string>} held */
-  async #wanted(held) {
+  /**
+   * What should wait at the relay now: the nearest reminders within reach (choice 7), as many as the held trips' leave
+   * room for. null: live mode hasn't loaded. @param {Set<string>} held @param {Record<string, Item>} items
+   */
+  async #wanted(held, items) {
     const list = await this.live.reminders({ held: (s) => { for (const x of s) held.add(x); } });
     if (!list) return null;
     const now = this.clock.now();
+    const room = MAX_WAITING - Object.entries(items).filter(([key, item]) => stays(key, item, held, now)).length;
     /** @type {Map<string, Want>} */
     const out = new Map();
     /** @type {Map<string, string>} */
@@ -458,7 +468,7 @@ export class PushMirror {
     for (const m of list) {
       const sendAt = m.due + GRACE_MS;
       if (sendAt <= now + 5000 || sendAt > now + AHEAD_MS) continue; // about to be said on screen, or too far
-      if (out.size >= MAX_WAITING) break;
+      if (out.size >= room) break;
       const title = await this.#title(m.scope, titles);
       const body = String(m.text).slice(0, 500);
       out.set(m.key, { m, sendAt, title, body, hash: await this.#hash(`${title}\n${body}`) });

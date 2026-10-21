@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pushKit, RELAY, at, iso, LA } from './push-kit.js';
-import { moves, plan, GRACE_MS, MAX_WAITING, PAD, FILE, TOKENS, MOVE_MS, NEAR_MS, CALM_MS } from '../../src/core/push/mirror.js';
+import { moves, plan, GRACE_MS, MAX_WAITING, PAD, FILE, TOKENS, MOVE_MS, NEAR_MS, CALM_MS, LONG_SENT_MS } from '../../src/core/push/mirror.js';
 import { relayAddress, relayClient, RelayError } from '../../src/core/push/relay-client.js';
 import { SYS_DEVICE, ME } from '../../src/core/scopes.js';
 import { toBase64Url } from '../../src/core/bytes.js';
@@ -623,6 +623,38 @@ test('a "coming up" reminder at the relay carries its item\'s start, for the pho
     const tea = k.pushed().find((p) => p.watch === 'plan:tea:coming-up');
     assert.equal(tea?.body, 'In 15 min: Tea at the inn at 16:00.');
     assert.equal(tea?.start, at('16:00'));
+  } finally {
+    await k.stop();
+  }
+});
+
+// Review R7: a held trip's plan reminders stay only while they may still come, and count toward the 150.
+test("a held trip's plan reminder is forgotten once it is long sent", () => {
+  const now = at('12:00');
+  const item = (/** @type {number} */ sendAt) => ({ id: 'x', due: sendAt - GRACE_MS, sendAt, hash: 'h', scope: 'trip-b' });
+  const items = { 'trip-b|plan:tea:coming-up|1': item(now - LONG_SENT_MS - 1000), 'trip-b|plan:walk:coming-up|2': item(now + 60_000) };
+  const p = plan(items, new Map(), now, new Set(['trip-b']));
+  assert.deepEqual(p.off, ['trip-b|plan:tea:coming-up|1']);
+});
+
+test("a held trip's plan reminders count toward the 150 waiting at the relay", async () => {
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const k = await pushKit({ live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    for (let i = 0; i < 100; i++) {
+      const start = new Date(at('12:00') + i * 3_600_000).toISOString().replace('.000Z', 'Z');
+      await k.ws.write(k.trip, `/plan/item-${i}.json`, { id: `item-${i}`, title: `Stop ${i}`, fixed: true, start: { at: start, tz: LA } }, { author: 'user' });
+    }
+    await k.flush(5 * MIN);
+    assert.equal((await k.waiting()).length, 100);
+    k.agent.opened(await createTrip(k.ws, { title: 'Yosemite' }));
+    await k.flush(MIN);
+    for (let i = 0; i < 100; i++) {
+      await k.live.setWatch(ME, { when: { type: 'time', at: new Date(at('10:30') + i * 600_000).toISOString().replace('.000Z', 'Z') }, fallback: `No. ${i}` });
+    }
+    await k.flush(5 * MIN);
+    assert.equal((await k.waiting()).length, MAX_WAITING);
   } finally {
     await k.stop();
   }
