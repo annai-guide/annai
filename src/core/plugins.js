@@ -25,6 +25,8 @@ import { checkSetup } from './llm/setup.js';
 import { catalogFacts } from './catalog-facts.js';
 import { toBase64, fromBase64 } from './bytes.js';
 import { OFFICIAL_NAMES } from './official-names.js';
+import { g711 } from './voice/g711.js';
+import { encodeWav, pcm16 } from './voice/pcm.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -49,7 +51,7 @@ function defaultsOf(schema) {
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
   backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer, addressProblem,
-  base64: Object.freeze({ encode: toBase64, decode: fromBase64 }) });
+  base64: Object.freeze({ encode: toBase64, decode: fromBase64 }), g711, wav: Object.freeze({ encode: encodeWav, decode: pcm16 }) });
 
 /** The kinds annai.register refuses, with the call each goes through. @type {Record<string, string>} */
 const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',
@@ -866,6 +868,13 @@ export class PluginHost {
           const formats = (/** @type {any} */ l) => Array.isArray(l) && l.length > 0 && l.every((f) => typeof f?.format === 'string' && Number.isInteger(f?.rate));
           if (type.realtime && !(typeof type.open === 'function' && typeof type.attach === 'function' && formats(type.audio?.in) && formats(type.audio?.out))) {
             throw new PluginError(id, `the realtime type "${type.type}" needs open() and attach(), and the audio it takes and gives`);
+          }
+          // Choices the provider page offers in words (G3): each a label, and a switch or options of words.
+          const words = (/** @type {any} */ x) => typeof x === 'string' && x.trim() !== '';
+          const choice = (/** @type {any} */ c) => c && typeof c === 'object' && words(c.label) && (c.options === undefined
+            || (c.options && typeof c.options === 'object' && !Array.isArray(c.options) && Object.keys(c.options).length > 0 && Object.values(c.options).every(words)));
+          if (type.choices !== undefined && !(type.choices && typeof type.choices === 'object' && !Array.isArray(type.choices) && Object.values(type.choices).every(choice))) {
+            throw new PluginError(id, `the endpoint type "${type.type}" offers choices on its provider page that aren't each a label with a switch or options in words`);
           }
           if (!chat && !hears && !speaks && !type.realtime) {
             throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech(); a realtime type open() and attach()`);

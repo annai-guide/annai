@@ -1,9 +1,9 @@
 {
   "id": "gemini-api",
   "name": "Gemini API",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "api": 1,
   "entry": "index.js",
-  "description": "Talks to Gemini's own API (Interactions) for chat: every audio format, Gemini 3's thought signatures carried exactly, and its usage with cached and thinking tokens.",
-  "provides": { "endpoint-type": ["gemini"] }
+  "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, and a voice that streams.",
+  "provides": { "endpoint-type": ["gemini", "gemini-transcription", "gemini-speech"] }
 }

@@ -1,4 +1,5 @@
 import { Sentences } from './sentences.js';
+import { readyToStart, estimateSeconds } from './stream-start.js';
 import { modelOf, speechKind, SPEECH_DEFAULTS } from '../llm/config.js';
 
 /**
@@ -7,18 +8,22 @@ import { modelOf, speechKind, SPEECH_DEFAULTS } from '../llm/config.js';
  * An API voice's next sentence is fetched while one plays, so there are no gaps. When a voice fails
  * partway through, it is benched and the same sentence plays on the next one. When the user cuts
  * her off, playing stops at once and what she had said is kept: by sentence and the fraction of it
- * played, or by word with the browser voice.
+ * played, or by word with the browser voice. A voice that streams (G3) is played as it comes, through
+ * the stream player, once the start rule says it won't stutter; the next sentence's stream reads ahead.
  * @typedef {import('./platform.js').VoicePlatform} VoicePlatform
  * @typedef {import('./platform.js').Clip} Clip
+ * @typedef {import('../llm/contract.js').SpeechStream} SpeechStream
  * @typedef {{ id: string, name: string, kind: 'browser' | 'api' }} VoiceEntry
  * @typedef {{ sentences: string[], said: number, cut: { index: number, at: number } | null, heard: string, failed: null | 'no-voice' | 'blocked', voices: string[] }} Spoken
  *   said: sentences spoken whole; cut: where she was stopped (a sentence, and characters into it); heard: what the user heard; voices: who spoke, in order;
  *   failed: no voice could speak ('no-voice'), or the page may not play sound yet ('blocked', an iPhone before the first tap)
- * @typedef {{ entries: () => Promise<VoiceEntry[]>, synthesize: (entry: VoiceEntry, text: string, signal: AbortSignal) => Promise<Clip>,
+ * @typedef {{ entries: () => Promise<VoiceEntry[]>, synthesize: (entry: VoiceEntry, text: string, signal: AbortSignal) => Promise<Clip | SpeechStream>,
  *   platform: () => VoicePlatform | null, bench: (id: string, error: unknown) => void,
  *   browserOptions?: () => Promise<{ voice?: string, rate?: number, lang?: string, system?: import('./platform.js').SystemVoice | null }>, onLevel?: (x: number) => void, locale?: string,
- *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void }} SpeakerDeps
- *   browserOptions' system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone)
+ *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void, now?: () => number, onBlocked?: () => void, stallMs?: number }} SpeakerDeps
+ *   browserOptions' system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone);
+ *   synthesize: a clip, or a stream; now: the clock a stream's arrivals are timed by (ms); onBlocked: the page may not play sound now, so a tap
+ *   should unlock it again; stallMs: how long past its end a stream may go unplayed (playStream)
  * @typedef {{ ended: boolean, at: number, failed?: 'no-voice' | 'blocked' }} Said
  */
 
@@ -56,6 +61,111 @@ export function wordStart(text, fraction) {
 function heardText(texts, said, cut) {
   const part = cut && cut.at > 0 ? `${texts[cut.index].slice(0, cut.at).trimEnd()}…` : '';
   return [texts.slice(0, said).join(' '), part].filter(Boolean).join(' ');
+}
+
+/**
+ * A voice's stream read as it arrives, each piece kept with when the first came, so playing can start once it
+ * won't stutter (G3). Reading starts at once, and goes on while another sentence plays.
+ */
+export class Arrivals {
+  /** @type {Int16Array[]} */
+  pieces = [];
+  /** Samples in, all told; the first piece's alone. */
+  samples = 0;
+  head = 0;
+  /** When the first piece came (ms). */
+  firstAt = 0;
+  ended = false;
+  /** @type {unknown} */
+  error = null;
+  /** @type {(() => void)[]} */
+  #waiting = [];
+
+  /** @param {SpeechStream} stream @param {() => number} now */
+  constructor(stream, now) {
+    this.rate = stream.rate;
+    (async () => {
+      try {
+        for await (const pcm of stream.chunks) {
+          if (!this.pieces.length) [this.firstAt, this.head] = [now(), pcm.length];
+          this.pieces.push(pcm);
+          this.samples += pcm.length;
+          this.#wake();
+        }
+      } catch (e) {
+        this.error = e;
+      }
+      this.ended = true;
+      this.#wake();
+    })();
+  }
+
+  #wake() {
+    for (const w of this.#waiting.splice(0)) w();
+  }
+
+  /** Settles at the next piece, the end or a failure. @returns {Promise<void>} */
+  changed() {
+    return this.ended ? Promise.resolve() : new Promise((r) => { this.#waiting.push(r); });
+  }
+}
+
+/** What a stream player that can't play sound gives: the page may not play sound now, as a refused clip says. */
+const notAllowed = () => new DOMException('The page may not play sound now.', 'NotAllowedError');
+
+/**
+ * A stream played through the stream player, started once readyToStart says the rest will be in before
+ * playback reaches it (G3). It ends played, or stopped by signal, with the fraction heard of the whole
+ * sentence (its length estimated while the rest is still coming). A stream that fails stops its player and
+ * throws, so the sentence can go to the next voice. A player whose sound doesn't play (an iPhone's audio
+ * suspended by an interruption or a locked screen) says so, or isn't done stallMs after it should have
+ * been: then it is stopped, as a page that may not play sound (fix pass).
+ * @param {import('./platform.js').Player} player @param {Arrivals} a
+ * @param {{ signal: AbortSignal, onLevel?: (x: number) => void, estimatedS: number, now: () => number, stallMs?: number }} o
+ * @returns {Promise<{ ended: boolean, fraction: number }>}
+ */
+export async function playStream(player, a, { signal, onLevel, estimatedS, now, stallMs = 3000 }) {
+  if (!player.stream) throw new Error("This browser can't play a voice as it arrives.");
+  /** @type {import('./platform.js').PlayerStream | null} */
+  let out = null;
+  let pushed = 0;
+  let openedAt = 0;
+  const stopped = new Promise((r) => { signal.addEventListener('abort', r, { once: true }); });
+  /** @type {(e: unknown) => void} */
+  let refuse = () => {};
+  /** @type {Promise<never>} */
+  const refused = new Promise((_, r) => { refuse = r; });
+  refused.catch(() => {});
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let watchdog;
+  try {
+    while (!signal.aborted) {
+      if (a.error) throw a.error;
+      if (!out && readyToStart({ bufferedS: a.samples / a.rate, receivedS: (a.samples - a.head) / a.rate, elapsedS: (now() - a.firstAt) / 1000, estimatedS, ended: a.ended })) {
+        out = player.stream({ rate: a.rate, onLevel });
+        openedAt = now();
+        out.running?.then((ok) => { if (!ok) refuse(notAllowed()); });
+      }
+      while (out && pushed < a.pieces.length) out.push(a.pieces[pushed++]);
+      if (out && a.ended) {
+        out.end();
+        const left = Math.max(0, (a.samples / a.rate) * 1000 - (now() - openedAt));
+        const stalled = new Promise((_, r) => { watchdog = setTimeout(() => r(notAllowed()), left + stallMs); });
+        await Promise.race([out.done, stopped, refused, stalled]);
+        break;
+      }
+      await Promise.race([a.changed(), stopped, refused]);
+    }
+  } catch (e) {
+    out?.stop();
+    throw e;
+  } finally {
+    clearTimeout(watchdog);
+  }
+  if (!signal.aborted) return { ended: true, fraction: 1 };
+  const heard = out ? out.stop().playedMs : 0;
+  const totalS = a.ended ? a.samples / a.rate : Math.max(a.samples / a.rate, estimatedS);
+  return { ended: false, fraction: totalS ? heard / (totalS * 1000) : 0 };
 }
 
 export class Speaker {
@@ -103,7 +213,7 @@ export class Utterance {
   #abort = new AbortController();
   /** @type {(() => void)[]} */
   #waiting = [];
-  /** @type {Map<number, { entry: string, clip: Promise<Clip> }>} */
+  /** Read-aheads, each stoppable on its own. @type {Map<number, { entry: string, clip: Promise<Clip | Arrivals>, stop: AbortController }>} */
   #prefetched = new Map();
   /** @type {{ index: number, entry: VoiceEntry } | null} */
   #playing = null;
@@ -223,11 +333,23 @@ export class Utterance {
         this.#spoke(entry);
         this.#playing = { index: i, entry };
         this.#prefetch(i + 1, entry);
-        const r = await platform.player.play(clip, { signal: this.#abort.signal, onLevel: this.#deps.onLevel });
+        const o = { signal: this.#abort.signal, onLevel: this.#deps.onLevel };
+        const r = clip instanceof Arrivals
+          ? await playStream(platform.player, clip, { ...o, estimatedS: estimateSeconds(text), now: this.#deps.now ?? Date.now, ...(this.#deps.stallMs ? { stallMs: this.#deps.stallMs } : {}) })
+          : await platform.player.play(clip, o);
         return { ended: r.ended, at: r.ended ? text.length : wordStart(text, r.fraction) };
       } catch (e) {
         if (this.#stopped) return { ended: false, at: 0 };
-        if (/** @type {any} */ (e)?.name === 'NotAllowedError') return { ended: false, at: 0, failed: 'blocked' };
+        if (/** @type {any} */ (e)?.name === 'NotAllowedError') {
+          this.#deps.onBlocked?.();
+          return { ended: false, at: 0, failed: 'blocked' };
+        }
+        // What this voice read ahead goes too, unpaid (traced cancelled): the next voice says those sentences.
+        for (const [k, ahead] of this.#prefetched) {
+          if (ahead.entry !== entry.id) continue;
+          ahead.stop.abort();
+          this.#prefetched.delete(k);
+        }
         this.#deps.bench(entry.id, e);
       } finally {
         this.#playing = null;
@@ -242,18 +364,24 @@ export class Utterance {
     this.#deps.onVoice?.(entry, system);
   }
 
-  /** Sentence i's clip: fetched ahead by the same voice, or now. @param {number} i @param {VoiceEntry} entry @param {string} text */
+  /** Sentence i's clip or stream: fetched ahead by the same voice, or now. @param {number} i @param {VoiceEntry} entry @param {string} text */
   #clip(i, entry, text) {
     const ahead = this.#prefetched.get(i);
     this.#prefetched.delete(i);
-    return ahead && ahead.entry === entry.id ? ahead.clip : this.#deps.synthesize(entry, text, this.#abort.signal);
+    return ahead && ahead.entry === entry.id ? ahead.clip : this.#fetch(entry, text);
+  }
+
+  /** A voice's clip, or its stream, read from the moment it starts. @param {VoiceEntry} entry @param {string} text @param {AbortSignal} [signal] @returns {Promise<Clip | Arrivals>} */
+  #fetch(entry, text, signal = this.#abort.signal) {
+    return this.#deps.synthesize(entry, text, signal).then((x) => ('chunks' in x ? new Arrivals(x, this.#deps.now ?? Date.now) : x));
   }
 
   /** Fetches sentence i's clip while the one before it plays (spec §10.1: no gaps). @param {number} i @param {VoiceEntry} entry */
   #prefetch(i, entry) {
     if (entry.kind !== 'api' || i >= this.#texts.length || this.#prefetched.has(i) || this.#stopped) return;
-    const clip = this.#deps.synthesize(entry, this.#texts[i], this.#abort.signal);
+    const stop = new AbortController();
+    const clip = this.#fetch(entry, this.#texts[i], AbortSignal.any([this.#abort.signal, stop.signal]));
     clip.catch(() => {}); // a failure counts when the clip is wanted
-    this.#prefetched.set(i, { entry: entry.id, clip });
+    this.#prefetched.set(i, { entry: entry.id, clip, stop });
   }
 }

@@ -164,6 +164,21 @@ test('an endpoint type needs build() and read(), or run()', async () => {
   await assert.rejects(host.start('half-type'), /needs build\(\) and read\(\), or run\(\)/);
 });
 
+test("an endpoint type's choices are each a switch or a list of options in words, else the type is refused, saying why (fix pass)", async () => {
+  const { host, registry } = await setup();
+  const type = (/** @type {string} */ id, /** @type {string} */ choices) => new Map([
+    ['annai-plugin.json', utf8(JSON.stringify({ id, name: id, version: '1.0.0', api: 1, entry: 'index.js' }))],
+    ['index.js', utf8(`export function activate(annai) { return annai.providers.register({ type: '${id}', speech: 'out', speechRequest() {}, readSpeech() {}, choices: ${choices} }); }`)],
+  ]);
+  await host.install(type('good-choices', "{ format: { label: 'Sound', options: { a: 'A', b: 'B' } }, stream: { label: 'Stream it' } }"));
+  await host.start('good-choices');
+  assert.ok(registry.list('endpoint-type').some((t) => t.type === 'good-choices'));
+  for (const [i, bad] of ["'loud'", "{ format: { options: { a: 'A' } } }", "{ format: { label: 'Sound', options: { a: 1 } } }", "{ format: { label: 'Sound', options: {} } }", "{ format: { label: 'Sound', options: ['a'] } }"].entries()) {
+    await host.install(type(`bad-choices-${i}`, bad));
+    await assert.rejects(host.start(`bad-choices-${i}`), /offers choices on its provider page that aren't each a label with a switch or options in words/, bad);
+  }
+});
+
 test('the scripted model replies from its script, one step per call, the last one repeating (spec §18)', async () => {
   const { host, registry } = await setup();
   await ensureType(host, 'scripted', { fetch: repoFetch().get });

@@ -23,67 +23,8 @@
  * - usage comes with response.done, by modality, cached tokens apart.
  */
 
-// G.711 (ITU-T G.711): the telephone's 8 kHz audio at a byte a sample, audio/pcmu (μ-law) and audio/pcma (A-law) to OpenAI.
-// annai's sessions speak 16-bit PCM; this codes it at the wire.
-
-/** μ-law's bias. */
-const BIAS = 0x84;
-
-/** 16-bit PCM as μ-law, in G.711's 14-bit domain, as the reference g711.c codes it. @param {Int16Array} pcm @returns {Uint8Array} */
-export function muLaw(pcm) {
-  const out = new Uint8Array(pcm.length);
-  for (let i = 0; i < pcm.length; i++) {
-    const v = pcm[i] >> 2;
-    const s = Math.min(Math.abs(v), 8159) + (BIAS >> 2);
-    let seg = 0;
-    while (seg < 8 && s >= 0x40 << seg) seg++;
-    out[i] = (seg >= 8 ? 0x7f : (seg << 4) | ((s >> (seg + 1)) & 0x0f)) ^ (v < 0 ? 0x7f : 0xff);
-  }
-  return out;
-}
-
-/** μ-law as 16-bit PCM. @param {Uint8Array} bytes @returns {Int16Array} */
-export function fromMuLaw(bytes) {
-  const out = new Int16Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) {
-    const u = ~bytes[i] & 0xff;
-    const s = ((((u & 0x0f) << 3) + BIAS) << ((u >> 4) & 7)) - BIAS;
-    out[i] = u & 0x80 ? -s : s;
-  }
-  return out;
-}
-
-/** 16-bit PCM as A-law. @param {Int16Array} pcm @returns {Uint8Array} */
-export function aLaw(pcm) {
-  const out = new Uint8Array(pcm.length);
-  for (let i = 0; i < pcm.length; i++) {
-    let s = pcm[i] >> 3; // 13 bits
-    const mask = s >= 0 ? 0xd5 : 0x55;
-    if (s < 0) s = -s - 1;
-    let seg = 0;
-    while (seg < 8 && s >= 0x20 << seg) seg++;
-    out[i] = (seg >= 8 ? 0x7f : (seg << 4) | ((s >> (seg < 2 ? 1 : seg)) & 0x0f)) ^ mask;
-  }
-  return out;
-}
-
-/** A-law as 16-bit PCM. @param {Uint8Array} bytes @returns {Int16Array} */
-export function fromALaw(bytes) {
-  const out = new Int16Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) {
-    const a = bytes[i] ^ 0x55;
-    const seg = (a & 0x70) >> 4;
-    const t = ((a & 0x0f) << 4) + (seg ? 0x108 : 8);
-    const s = seg > 1 ? t << (seg - 1) : t;
-    out[i] = a & 0x80 ? s : -s;
-  }
-  return out;
-}
-
 /** annai's formats as OpenAI names them. @param {{ format: string, rate: number }} f */
 const wire = (f) => (f.format === 'pcm16' ? { type: 'audio/pcm', rate: f.rate } : { type: `audio/${f.format}` });
-/** G.711's coders, both ways, by annai's format. @type {Record<string, [(pcm: Int16Array) => Uint8Array, (b: Uint8Array) => Int16Array]>} */
-const G711 = { pcmu: [muLaw, fromMuLaw], pcma: [aLaw, fromALaw] };
 /** A number, or 0. @param {unknown} x */
 const n = (x) => Number(x) || 0;
 
@@ -121,7 +62,12 @@ function kindOf(e) {
 
 /** @param {any} annai */
 export function activate(annai) {
-  const { base64, ProviderError } = annai.helpers;
+  const { base64, ProviderError, g711 } = annai.helpers;
+  // An official update reaches an annai still running its older shell until a restart: nothing ties the two (fix pass).
+  if (!g711) throw new Error('OpenAI Realtime needs a newer annai: restart annai to update it, and this plugin starts.');
+  // G.711, the telephone's 8 kHz audio at a byte a sample, is audio/pcmu and audio/pcma to OpenAI; annai's helper codes it at the wire.
+  /** G.711's coders, both ways, by annai's format. @type {Record<string, [(pcm: Int16Array) => Uint8Array, (b: Uint8Array) => Int16Array]>} */
+  const G711 = { pcmu: [g711.pcmToUlaw, g711.ulawToPcm], pcma: [g711.pcmToAlaw, g711.alawToPcm] };
   /** A note in the trace, every secret annai keeps blanked. @param {string} type @param {any} data */
   const note = (type, data) => Promise.resolve(annai.secrets?.blank(data) ?? data).then((x) => annai.events?.append('sys', type, x)).catch(() => {});
   return annai.providers.register({

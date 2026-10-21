@@ -1,8 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { muLaw, fromMuLaw, aLaw, fromALaw } from '../../plugins-official/openai-realtime/index.js';
+import { pcmToUlaw as muLaw, ulawToPcm as fromMuLaw, pcmToAlaw as aLaw, alawToPcm as fromALaw, g711 } from '../../src/core/voice/g711.js';
+import { createMemoryStore } from '../../src/core/store-memory.js';
+import { Workspace } from '../../src/core/workspace.js';
+import { makeSchemaFor } from '../../src/core/schema.js';
+import { kindOf, ensureBaseScopes } from '../../src/core/scopes.js';
+import { Registry } from '../../src/core/registry.js';
+import { PluginHost } from '../../src/core/plugins.js';
+import { encodeWav, pcm16 } from '../../src/core/voice/pcm.js';
 
-// G.711 (ITU-T G.711), which OpenAI Realtime takes as audio/pcmu and audio/pcma: 8 kHz, one byte a sample. The
+// G.711 (ITU-T G.711), which OpenAI Realtime takes as audio/pcmu and audio/pcma, and Gemini's voices send as audio/mulaw
+// and audio/alaw: 8 kHz, one byte a sample. It is annai's, for every plugin (annai.helpers.g711; G3). The
 // reference is Sun Microsystems' public-domain g711.c, as in ITU-T G.191's tools: μ-law in G.711's 14-bit domain,
 // A-law in its 13-bit one.
 
@@ -65,4 +73,18 @@ test('a 1 kHz tone at 8 kHz keeps its shape through μ-law (signal to noise over
   }
   assert.ok(10 * Math.log10(signal / noise) > 30);
   assert.equal(muLaw(tone).length, tone.length, 'one byte a sample: a quarter of 16-bit PCM at the same rate');
+});
+
+test("every plugin gets G.711, and WAV both ways, in annai.helpers (G3: openai-realtime and gemini-api share them)", async () => {
+  const registry = new Registry();
+  const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  const host = new PluginHost({ registry, workspace: ws });
+  const code = "export const manifest = { id: 'probe-g711', name: 'Probe', version: '1.0.0', api: 1 }; export function activate(a) { globalThis.__probeG711 = a.helpers; }";
+  await host.addBuiltin(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+  const helpers = /** @type {any} */ (globalThis).__probeG711;
+  assert.equal(helpers.g711, g711);
+  assert.deepEqual(Object.keys(g711).sort(), ['alawToPcm', 'pcmToAlaw', 'pcmToUlaw', 'ulawToPcm']);
+  assert.deepEqual([...helpers.wav.encode(Int16Array.of(1, -1), 8000)], [...encodeWav(Int16Array.of(1, -1), 8000)]);
+  assert.equal(helpers.wav.decode, pcm16, 'and a WAV file read back: its 16-bit samples and rate');
 });
