@@ -341,9 +341,15 @@ test("a backup that fails while this phone is offline says it is offline, not th
   assert.equal(hold.message, "This phone is offline, so annai couldn't reach this place. annai tries again once it's back online.");
   assert.equal(hold.needsYou, false);
   assert.equal(hold.retryAt, d.now(), 'no 15-minute wait: due again as soon as the connection is');
-  // Online, an error is the place's own words, and waits as before.
+  // Review R12: failing offline again and again counts as no failure of the place's: the wait after a real one stays short.
+  place.failNext(new TypeError('Failed to fetch'));
+  await assert.rejects(d.backups.backUp(id), /offline/);
+  assert.equal(/** @type {any} */ ((await d.backups.list()).find((t) => t.id === id)?.hold).count, 0);
+  // Online, an error is the place's own words, and waits as after a first failure.
   online = true;
   place.failNext(new TypeError('Failed to fetch'));
   await assert.rejects(d.backups.backUp(id), /Failed to fetch/);
-  assert.ok(/** @type {any} */ ((await d.backups.list()).find((t) => t.id === id)?.hold).retryAt > d.now());
+  const after = /** @type {any} */ ((await d.backups.list()).find((t) => t.id === id)?.hold);
+  assert.equal(after.count, 1);
+  assert.equal(after.retryAt, d.now() + 15 * 60_000);
 });
