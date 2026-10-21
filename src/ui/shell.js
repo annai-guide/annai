@@ -27,6 +27,7 @@ import { renderReplay } from './screens/replay.js';
 import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
+import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
@@ -72,6 +73,7 @@ export function startShell(root, core) {
   nav.addEventListener('scroll', showMore, { passive: true });
   addEventListener('resize', showMore);
   document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
+  tapKeepsKeyboard();
   drawTabs();
 
   // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on (the user,
