@@ -108,4 +108,9 @@ test('a 400 that says the key is wrong is the key, and Test says to check it', (
   // Other words about keys are not the key.
   assert.equal(kind(json({ error: { message: 'Invalid value at key "temperature"' } })), 'bad-request');
   assert.equal(kind(json({ error: { message: 'Unknown name "api_key_header": Cannot find field.' } })), 'bad-request');
+  // Review R2: the words must be the error's own, side by side; a model's text in the body is not the key.
+  assert.equal(kind(json({ error: { message: "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.", type: 'invalid_request_error', code: 'tool_use_failed',
+    failed_generation: '<function=show>{"card": {"text": "That looks like an invalid API key to me."}}</function>' } })), 'bad-request');
+  assert.equal(kind(json({ error: { message: "Invalid value for 'temperature': must be a number. Did you mean to set api_key?" } })), 'bad-request');
+  assert.equal(kind(json({ error: { message: 'Bad request', echo: 'API_KEY_INVALID' } })), 'bad-request', 'only as the reason Google gives');
 });

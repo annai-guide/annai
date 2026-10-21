@@ -77,6 +77,8 @@ test('classify: what Gemini says, as annai\'s kinds', async () => {
     // The emulator pass (m2a #7): a wrong key in other words, or said only in its details.
     [400, JSON.stringify({ error: { code: 400, message: 'Invalid Auth key.', status: 'INVALID_ARGUMENT' } }), 'auth'],
     [400, JSON.stringify({ error: { code: 400, message: 'Request had invalid credentials.', status: 'INVALID_ARGUMENT', details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_INVALID' }] } }), 'auth'],
+    // Review R2: words elsewhere in the body (a model's own, echoed back) are not the key.
+    [400, JSON.stringify({ error: { code: 400, message: 'Invalid JSON payload received.', status: 'INVALID_ARGUMENT', details: [{ description: 'text: "my invalid auth key, API key not valid"' }] } }), null],
     [401, err('Unauthenticated.', 'unauthenticated'), 'auth'],
     [403, err('The caller does not have permission.', 'permission_denied'), 'auth'],
     [429, await fixture('rate-per-minute-429.txt'), 'rate'],
