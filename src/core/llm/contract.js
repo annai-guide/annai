@@ -18,7 +18,7 @@
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model. audio.data is base64, sent only to a model that takes audio. speech is a heard
  *   segment (spec §10.3): annai resolves it for each model attempt into audio or words; text is its words once written down, clip a kept voice clip's hash.
- *   heard: the segment a text or audio part was resolved from, in a conversation's turn (G2); a protocol sends it as any text or audio.
+ *   heard: the segment a text or audio part was resolved from (G2); sent as any text or audio.
  *   A tool_call's extra is what its provider wrote on it to have back (Gemini 3's thought signature), and model the provider model id
  *   that wrote it: it goes back only to that model.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
@@ -51,12 +51,11 @@
  *   | { type: 'kept', id: string }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
- *   model or the same one; what streamed before is void (only callRole sends it). kept: the provider keeps this turn under id, as the call
- *   asked (CallSpec.keep), for annai to continue or delete (G2); annai reads it, and passes it on to no one.
+ *   model or the same one; what streamed before is void (only callRole sends it). kept: the provider keeps this turn under id (G2), for annai alone.
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
  *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect' | 'forgotten'} ErrorKind
  *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one; redirect: see noRedirect;
- *   forgotten: the provider no longer has the kept turn a call continued (G2); for a call that continued none, annai reads it as not-found
+ *   forgotten: the provider no longer has the kept turn a call continued (G2)
  */
 
 /** What the user is told, by kind of error (spec §9.9). */
@@ -98,6 +97,8 @@ export class ProviderError extends Error {
     this.status = more.status;
     this.retryAfter = more.retryAfter;
     this.partial = more.partial ?? '';
+    /** A kept turn the call continued failed: annai sends the conversation whole, once (G2). */
+    this.whole = false;
   }
 }
 
@@ -246,8 +247,8 @@ export function safeId(id) {
  * @property {Record<string, any>} tunables  the endpoint's tunables with the model's over them
  * @property {Request} request
  * @property {AbortSignal} [signal]
- * @property {boolean} [keep]  the provider keeps this turn on its side (a conversation's own turn, its ability's keep switch on; G2)
- * @property {{ id: string, from: number } | null} [kept]  the kept turn this one continues: send only request.messages.slice(from), after id
+ * @property {boolean} [keep]  the provider keeps this turn (G2)
+ * @property {{ id: string, from: number } | null} [kept]  the kept turn this one continues: send request.messages.slice(from)
  * @typedef {{ providerId: string, name?: string, contextWindow?: number, maxOutput?: number, input?: string[], tools?: boolean,
  *   prices?: import('./cost.js').Prices, reasoning?: Record<string, any> }} ListedModel  reasoning: its level map (spec §9.3)
  * @typedef {{ endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null, tunables: Record<string, any> }} SpeechSpec
@@ -271,10 +272,10 @@ export function safeId(id) {
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]
  *   a photo upload to the provider's files API (spec §4.8)
  * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
- * @property {true | string} [keeps]  it can keep a conversation's turns on the provider's side (G2): with keep, build stores the turn and read
- *   names it ({ type: 'kept', id }); with kept, build continues that turn. A string names who keeps them, in the switch's words ("Google")
+ * @property {{ name?: string, days: number, hours: number }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
+ *   who, for the switch's words; the longest it keeps one; how long a chain is continued
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string>, method: 'DELETE' }} [forgetRequest]
- *   the provider's delete call for one kept turn: annai counts a 200 or 404 as done
+ *   its delete call for one kept turn
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
  * @property {'in' | 'out'} [speech]  a speech type (spec §9.1, §10): 'in' transcribes speech, 'out' is a voice
  * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string } }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]

@@ -79,7 +79,11 @@ async function removeFlow(ctx, id, scope, button) {
 
 /** @param {any} ctx @param {string} id @param {any} scope */
 async function askAndRemove(ctx, id, scope) {
-  const sure = await ask({ title: scope.title, body: 'This removes everything in this trip from this device: its files, photos, notes and history. Remove it?', yes: 'Remove' });
+  // What a provider keeps of its conversations goes too, said before the tap (G2).
+  const k = await ctx.llm?.keptCount({ scope: id }).catch(() => null);
+  const n = k?.turns;
+  const kept = n ? ` ${k.who.join(' and ')} keeps ${n} turn${n === 1 ? '' : 's'} of its conversations: annai asks for ${n === 1 ? 'it' : 'them'} to be deleted${navigator.onLine === false ? ", once you're back online" : ''}.` : '';
+  const sure = await ask({ title: scope.title, body: `This removes everything in this trip from this device: its files, photos, notes and history.${kept} Remove it?`, yes: 'Remove' });
   if (!sure) return;
   if ((await backupState(ctx.store, id)).changed) {
     const anyway = await ask({ title: 'Not backed up', body: "This trip hasn't been backed up since it last changed. Remove it anyway?", yes: 'Remove anyway' });

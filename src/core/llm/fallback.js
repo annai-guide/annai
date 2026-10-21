@@ -6,6 +6,7 @@ import { ROLE_LEVELS } from './reasoning.js';
 import { adjusted } from './setup.js';
 import { formatRefused } from '../voice/formats.js';
 import { SYS } from '../scopes.js';
+import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -152,7 +153,6 @@ function nextStep(err, retry) {
     case 'context':
     case 'image':
     case 'upload':
-    case 'forgotten':
     case 'bad-request':
       return {};
     default:
@@ -171,9 +171,9 @@ function prefixed(reply, said) {
 
 const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Parts made from heard speech keep its id (G2): as sound or words, the same to a kept turn. @param {Request} was @param {Request} now @returns {Request} */
+/** Parts made from heard speech keep its id (G2): as sound or words, the same to a kept turn; not words nothing wrote down. @param {Request} was @param {Request} now @returns {Request} */
 const heardIds = (was, now) => (was === now ? now : {
-  ...now, messages: now.messages.map((m, i) => ({ ...m, parts: m.parts.map((p, j) => { const h = was.messages[i]?.parts[j]; return h?.type === 'speech' ? /** @type {any} */ ({ ...p, heard: h.id }) : p; }) })),
+  ...now, messages: now.messages.map((m, i) => ({ ...m, parts: m.parts.map((p, j) => { const h = was.messages[i]?.parts[j]; return h?.type === 'speech' && !(p.type === 'text' && p.text === NOT_TRANSCRIBED) ? /** @type {any} */ ({ ...p, heard: h.id }) : p; }) })),
 });
 
 /**
@@ -193,8 +193,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
  *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
  *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
- *   kept: turns kept on the provider's side (G2). Only a conversation's own turn is kept, Main's or Koe's, its parts kept to rebuild it
- *   (record.keepParts): never a one-off call. scope: the conversation's
+ *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -208,7 +207,6 @@ export async function callRole(c) {
   /** @type {number | undefined} */
   let cost;
   const { keepParts, ...meta } = c.record ?? {};
-  // A conversation's own turn, kept on the provider's side where its ability can (decision 9 of the Gemini plan).
   const keeps = c.kept && keepParts && (role === 'main' || role === KOE_ROLE) ? c.kept : null;
   // A plugin's call is its own in the trace too, so its hooks don't get the requests it caused (fix pass 8b-1).
   const trace = c.trace && typeof meta.tag === 'string' && meta.tag.startsWith('plugin:')
@@ -243,6 +241,8 @@ export async function callRole(c) {
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
     // first, whatever the header's name, as the protocol then gets none to tell it (fix pass). Its plugin's
     // setup may add headers and sharpen error kinds (decision 15).
+    // Its mark before the key is read: a key change meanwhile counts (kept.js).
+    const mark = keeps?.mark() ?? 0;
     const own = await c.keyFor(pRec.id);
     if (own) c.trace?.secret(own);
     const set = adjusted(c.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables), provider.keyHeader);
@@ -269,7 +269,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, mark } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
@@ -291,8 +291,8 @@ export async function callRole(c) {
           request = continueAfter(c.request, said);
           break;
         }
-        if (err.kind === 'forgotten' && !whole) {
-          // The provider no longer has the kept turn this continued: the same model again, whole, once.
+        if (err.whole && !whole) {
+          // The kept turn this continued failed: the same model again, whole, once.
           whole = true;
           continue;
         }

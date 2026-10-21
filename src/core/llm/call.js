@@ -65,11 +65,7 @@ export function enabledProviderTools(model, request) {
   return (model.providerTools ?? []).filter((t) => want.kinds.includes(t.kind) && !(want.off ?? []).includes(t.id));
 }
 
-/**
- * How a conversation's own turn is kept on the provider's side (G2): kept, the turns remembered; scope, the conversation's;
- * chain false sends it whole all the same (the provider forgot the turn it continued).
- * @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean }} Keep
- */
+/** A conversation's turn kept (G2, kept.js): chain false sends it whole; mark: taken before its key was read. @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, mark?: number }} Keep */
 
 /**
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
@@ -77,7 +73,7 @@ export function enabledProviderTools(model, request) {
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep }} c
  *   firstOutputMs: how long to wait for the first output, and then between pieces of output
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
- *   keep: the turn is kept on the provider's side where its type can and its ability's keep switch is on, and continues one kept
+ *   keep: kept on the provider's side where its type can and its switch is on
  * @returns {Promise<Reply>}
  */
 export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep }) {
@@ -91,20 +87,21 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const req = sent.cacheTtl ? { ...sent, cacheTtl: ttlFor(model, sent.cacheTtl) } : sent;
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
-  // Kept on the provider's side (G2): a free key's turns for a day, else the ability's keepDays, never past the type's own (the provider's longest).
   const keeping = keep && type.keeps && spec.tunables.keep !== false ? keep : null;
-  const days = endpoint.free ? 1 : Math.min(Number(spec.tunables.keepDays) > 0 ? Number(spec.tunables.keepDays) : 1, Number(type.tunables?.keepDays) || Infinity);
+  const mark = keeping ? keeping.mark ?? keeping.kept.mark() : 0;
   if (keeping) {
     spec.keep = true;
     // A record that can't be read is a whole send.
-    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { free: Boolean(endpoint.free), keepDays: days, scope: keeping.scope }).catch(() => null) : null;
+    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { scope: keeping.scope }).catch(() => null) : null;
   }
   /** @type {string | null} the turn the provider kept */
   let keptId = null;
   let bytes = 0;
-  /** A kept turn this call made, deleted: queued, or now when its provider was removed meanwhile (the key goes with it). @param {string} id */
-  const unkeep = async (id) => {
-    if (keeping && !(await keeping.kept.discard(id, endpoint.id, days))) await deleteTurn({ type, endpoint, key, id, fetch: get, trace, now });
+  /** The turn kept, settled: remembered, queued, or deleted now with this call's key (also when it can't be written down). @param {(c: any) => Promise<string>} how */
+  const settle = async (how) => {
+    if (!keeping || !keptId) return;
+    const c = { id: keptId, endpoint: endpoint.id, scope: keeping.scope, days: Number(type.keeps?.days) || 1, mark };
+    if ((await how(c).catch(() => 'now')) === 'now') await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now }).catch(() => {});
   };
   const started = now();
   const timer = new AbortController();
@@ -173,7 +170,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       /** @type {Response} */
       let res;
       const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request).map((t) => t.patch)));
-      bytes = body.length; // in the trace: how much a kept turn saves
+      bytes = utf8Length(body); // in the trace: how much a kept turn saves
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });
       } catch (e) {
@@ -196,28 +193,33 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     clearTimeout(t);
     const err = asProviderError(e, linked, type, registry);
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
-    // A turn the provider kept for a call that failed is deleted (spec §4.9); one it forgot goes with its chain. Forgotten
-    // means something only when the call continued a kept turn: else the provider doesn't know the model or address.
-    if (keptId) await unkeep(keptId).catch((x) => console.warn("a kept turn couldn't be queued for deletion", x));
-    if (err.kind === 'forgotten') {
-      if (keeping && spec.kept) await keeping.kept.forget(spec.kept.id).catch(() => {});
-      else err.kind = 'not-found';
-    }
+    // A failed call's kept turn is deleted. A chained call refused, or whose turn was forgotten, drops its chain and goes once
+    // more whole (callRole); forgotten on an unchained call is not-found.
+    await settle((c) => /** @type {any} */ (keeping).kept.record(c));
+    if (keeping && spec.kept && (err.kind === 'forgotten' || err.kind === 'bad-request')) {
+      await keeping.kept.forget(spec.kept.id).catch(() => {});
+      err.whole = true;
+    } else if (err.kind === 'forgotten') err.kind = 'not-found';
     await trace?.request({ ...info(), outcome: err.kind, error: err.message });
     throw err;
   }
   clearTimeout(t);
-  // A refused turn isn't continued (what was refused would be in every later turn's history): it is deleted.
-  if (keeping && keptId && /** @type {StopReason} */ (stop) === 'refusal') await unkeep(keptId).catch(() => {});
-  else if (keeping && keptId) {
-    // The turn the provider kept, to continue next time: fingerprints of what was sent, never what was.
-    const remembered = await keeping.kept.record({ id: keptId, endpoint: endpoint.id, model: model.providerId, scope: keeping.scope, messages: spec.request.messages, reply: { role: 'assistant', parts }, days, ...(spec.kept ? { after: spec.kept.id } : {}) })
-      .catch((x) => console.warn("a kept turn couldn't be recorded", x));
-    if (remembered === false) await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now });
-  }
+  // The turn kept, to continue next time; one refused is deleted, or it would be in every later turn's history.
+  await settle((c) => /** @type {any} */ (keeping).kept.record(/** @type {StopReason} */ (stop) === 'refusal' ? c
+    : { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(spec.kept ? { after: spec.kept.id } : {}) }));
   const cost = endpoint.free ? 0 : costOf(usage, model.prices, model.providerTools); // a free-tier key costs nothing
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
   return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}) };
+}
+
+/** A string's length in bytes as UTF-8, without copying it. @param {string} s */
+function utf8Length(s) {
+  let n = s.length;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 0x80) n += c >= 0x800 && (c < 0xd800 || c > 0xdfff) ? 2 : 1;
+  }
+  return n;
 }
 
 /** @param {Part[]} parts */

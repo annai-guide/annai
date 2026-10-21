@@ -13,8 +13,8 @@ const fixture = (/** @type {string} */ name) => readFile(new URL(`../fixtures/ge
 const TOOL = { name: 'get_weather', description: 'Current weather in a city.', input: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] } };
 
 test('the type: Gemini API, placing the now block itself, taking every audio format Gemini takes, uploading photos, Google keeping the conversation', () => {
-  assert.deepEqual([type.type, type.name, type.tail, type.keeps], ['gemini', 'Gemini API', true, 'Google']);
-  assert.deepEqual(type.tunables, { uploads: true, audioIn: ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'], keep: true, keepDays: 55 });
+  assert.deepEqual([type.type, type.name, type.tail, type.keeps], ['gemini', 'Gemini API', true, { name: 'Google', days: 55, hours: 23 }], 'tracked 55 days, a chain continued 23 hours');
+  assert.deepEqual(type.tunables, { uploads: true, audioIn: ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'], keep: true });
 });
 
 test('build: the URL, the key header and the body', () => {
