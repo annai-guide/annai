@@ -8,7 +8,7 @@ const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 const calls = (...calls) => ({ toolCalls: calls.map(([name, input]) => ({ name, input })) });
 const SAY = 'Say: sunset tonight is at 6:23 PM, but it is overcast.';
 const RELAY = { text: 'x', toolCalls: [{ name: 'speak', input: { text: 'Sunset is at 6:23, though it is overcast.' } }, { name: 'sleep', input: {} }] };
-const CHECK = calls(['speak', { text: 'Let me check.' }], ['tell_kokoro', { text: 'When is sunset?' }], ['wait', { seconds: 60 }]);
+const CHECK = calls(['speak', { text: 'Let me check.' }], ['tell_kokoro', { text: 'When is sunset?' }], ['wait', { seconds: 600 }]);
 /** Kokoro tells Koe and sleeps. @param {string} [text] */
 const kokoro = (text = SAY) => [{ toolCalls: [{ name: 'tell_koe', input: { text } }, { name: 'sleep', input: {} }] }];
 /** What Koe said to the user. @param {any} k */
@@ -49,7 +49,7 @@ test('the note wakes Koe on its own (it had slept) and Koe sleeps at once: asked
 });
 
 test('the user wrote again inside the wait, and Koe ends without answering: asked once more', async () => {
-  const k = await agentKit([[{ delayMs: 1500, ...sleep }]], { koe: { type: [CHECK, { text: 'ok' }, { toolCalls: [{ name: 'speak', input: { text: 'Tomorrow is dry.' } }, { name: 'sleep', input: {} }] }] } });
+  const k = await agentKit([[{ delayMs: 1000, ...sleep }]], { koe: { type: [CHECK, { text: 'ok' }, { toolCalls: [{ name: 'speak', input: { text: 'Tomorrow is dry.' } }, { name: 'sleep', input: {} }] }] } });
   k.agent.send('Will it rain in Carmel tomorrow?');
   await until(() => k.agent.koe.waiting);
   k.agent.send('Which day is it?');
@@ -70,7 +70,7 @@ test('Koe still says nothing after being asked: annai shows the note itself, in 
 });
 
 test('"Kokoro has nothing to add" and "was stopped" are not for the user: Koe may end quietly', async () => {
-  const k = await agentKit([[sleep]], { koe: { type: [calls(['speak', { text: 'Let me look.' }], ['tell_kokoro', { text: 'Anything?' }], ['wait', { seconds: 60 }]), sleep] } });
+  const k = await agentKit([[sleep]], { koe: { type: [calls(['speak', { text: 'Let me look.' }], ['tell_kokoro', { text: 'Anything?' }], ['wait', { seconds: 600 }]), sleep] } });
   k.agent.send('Anything to see here?');
   await k.agent.idle();
   assert.equal(k.sent['model-koe'].length, 2);
@@ -80,7 +80,7 @@ test('"Kokoro has nothing to add" and "was stopped" are not for the user: Koe ma
 
 // Item 3 (F25 again): Koe asked Kokoro anew 4 s after hearing "Kokoro was stopped", and the plan went on.
 test("after the user's Stop, Koe's tell_kokoro is refused in words until the user writes again; then it goes through", async () => {
-  const k = await agentKit([[{ delayMs: 2000, ...sleep }]], { koe: { type: [
+  const k = await agentKit([[{ delayMs: 30_000, ...sleep }]], { koe: { type: [
     CHECK,
     calls(['tell_kokoro', { text: 'Plan it anyway.' }], ['speak', { text: 'Stopped.' }], ['sleep', {}]),
     calls(['tell_kokoro', { text: 'Plan it, as asked.' }], ['sleep', {}]),
@@ -88,7 +88,7 @@ test("after the user's Stop, Koe's tell_kokoro is refused in words until the use
   ] } });
   const turns = () => (k.sent['model-0'] ?? []).length;
   k.agent.send('Plan our afternoon around the sunset');
-  await until(() => turns() === 1 && k.agent.koe.waiting);
+  await until(() => turns() === 1 && k.agent.koe.waiting, 8000);
   k.agent.stopKokoro();
   await k.agent.idle();
   const asks = (await k.events(['tool.result'])).filter((e) => e.data.name === 'tell_kokoro');

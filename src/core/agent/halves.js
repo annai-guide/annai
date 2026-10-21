@@ -566,6 +566,11 @@ export class Halves {
     this.kokoro.typing(on);
   }
 
+  /** The camera's photo is being made, or is ready (the dock's hook): Kokoro waits for it (GATHER). @param {boolean} on */
+  photoComing(on) {
+    this.kokoro.photoComing(on);
+  }
+
   /** The user typed, sent or said something now. @param {boolean} photo a photo on its own */
   #heardNow(photo) {
     this.#input = { at: Date.now(), photo };
@@ -578,7 +583,7 @@ export class Halves {
    */
   #hold(wakes) {
     const speaking = this.kokoro.speakingNow || this.koe.speakingNow || this.live.view.name === 'hearing';
-    const typing = this.kokoro.typingNow;
+    const typing = this.kokoro.typingNow || this.kokoro.photoNow;
     if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
     // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them (review A3).
     if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
