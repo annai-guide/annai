@@ -1,7 +1,7 @@
 {
   "id": "storage-github",
   "name": "GitHub",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "api": 1,
   "entry": "index.js",
   "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",

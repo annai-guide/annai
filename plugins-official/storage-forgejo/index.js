@@ -1,6 +1,6 @@
 // git.js is the GitHub place's file, copied unchanged (hence its header and the helpers unused here): a plugin can't
 // import another's files, and a unit test keeps the two copies identical.
-import { blobId, nest, GitPathError } from './git.js';
+import { blobId, nest, GitPathError, readInOrder } from './git.js';
 
 /**
  * Forgejo and Gitea (Codeberg runs Forgejo) as a place for annai's backups (spec §12.4), through
@@ -640,12 +640,12 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
   }
   const lists = [manifest?.files, manifest?.blobs, manifest?.extras].map((l) => (Array.isArray(l) ? l : []));
   const names = [...new Set(lists.flat().map((x) => x?.name).filter((n) => typeof n === 'string' && n !== MANIFEST))];
+  for (const name of names) if (!files.has(name)) throw new E('missing', `This backup is damaged: ${shown(name)} is missing from ${named(g)}.`);
   const out = new g.zip.ZipWriter();
-  for (const [i, name] of names.entries()) {
-    if (!files.has(name)) throw new E('missing', `This backup is damaged: ${shown(name)} is missing from ${named(g)}.`);
-    await out.add(name, await raw(g, name, id, signal), { compress: false });
+  await readInOrder(names, (name) => raw(g, name, id, signal), async (name, bytes, i) => {
+    await out.add(name, bytes, { compress: false });
     onProgress({ phase: 'downloading', done: i + 1, total: names.length });
-  }
+  });
   await out.add(MANIFEST, manifestBytes, { compress: false });
   return out.finish();
 }

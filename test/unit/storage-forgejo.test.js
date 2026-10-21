@@ -694,3 +694,38 @@ test("through annai, what Save and test filled in is kept as the place's setting
     await fj.stop();
   }
 });
+
+// Review R14: opening a backup of 650 files took 2.5 minutes, one file at a time.
+test('opening a backup reads its files six at a time, and the archive keeps the order the manifest gives', async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {} } });
+  try {
+    const { type } = forgejo();
+    const d = await device();
+    for (let i = 0; i < 30; i++) await d.ws.write(d.trip, `/notes/n${i}.md`, `Note ${i}`, { author: 'user' });
+    const made = await archive(d);
+    const put = await type.put(ctx(fj), made, opts());
+    let open = 0;
+    let most = 0;
+    const slow = forgejo({ activate: (/** @type {any} */ annai) => activate({ ...annai, net: { fetch: async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (!url.includes('/media/')) return annai.net.fetch(url, init);
+      most = Math.max(most, ++open);
+      try {
+        await new Promise((r) => setTimeout(r, 15));
+        return await annai.net.fetch(url, init);
+      } finally {
+        open--;
+      }
+    } } }) });
+    /** @type {number[]} */
+    const done = [];
+    const blob = await slow.type.get(ctx(fj), put.id, { onProgress: (/** @type {any} */ p) => done.push(p.done) });
+    assert.equal(most, 6);
+    assert.deepEqual(done, done.map((_, i) => i + 1), 'progress counts up');
+    const names = [...made.manifest.files, ...made.manifest.blobs, ...made.manifest.extras].map((x) => x.name).filter((n) => n !== 'annai-archive.json');
+    const zip = await ZipReader.open(blob);
+    assert.deepEqual(zip.names().filter((n) => n !== 'annai-archive.json'), [...new Set(names)]);
+    await restored(blob);
+  } finally {
+    await fj.stop();
+  }
+});

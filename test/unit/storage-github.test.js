@@ -334,3 +334,34 @@ test("minors 24: a commit made by hand is no other device's backup: what counts 
     await gh.stop();
   }
 });
+
+// Review R14: opening a backup of 650 files took 2.5 minutes, one file at a time.
+test('opening a backup reads its files six at a time, and the archive keeps the order the manifest gives', async () => {
+  const gh = await startGitHub({ repos: { [REPO]: {} } });
+  try {
+    const { type } = github();
+    const d = await device();
+    for (let i = 0; i < 30; i++) await d.ws.write(d.trip, `/notes/n${i}.md`, `Note ${i}`, { author: 'user' });
+    const made = await archive(d);
+    const put = await type.put(ctx(gh), made, opts());
+    let open = 0;
+    let most = 0;
+    const slow = github({ activate: (/** @type {any} */ annai) => activate({ ...annai, net: { fetch: async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      if (!url.includes('/git/blobs/')) return annai.net.fetch(url, init);
+      most = Math.max(most, ++open);
+      try {
+        await new Promise((r) => setTimeout(r, 15));
+        return await annai.net.fetch(url, init);
+      } finally {
+        open--;
+      }
+    } } }) });
+    const blob = await slow.type.get(ctx(gh), put.id, { onProgress: () => {} });
+    assert.equal(most, 6);
+    const names = [...made.manifest.files, ...made.manifest.blobs, ...made.manifest.extras].map((x) => x.name).filter((n) => n !== 'annai-archive.json');
+    assert.deepEqual((await ZipReader.open(blob)).names().filter((n) => n !== 'annai-archive.json'), [...new Set(names)]);
+    await openArchive(blob);
+  } finally {
+    await gh.stop();
+  }
+});
