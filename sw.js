@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'a54b9b1ad222';
+const BUILD = '2c6023264f93';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -460,22 +460,22 @@ async function showReminder(data) {
     : m.body.slice(0, 500).replace(/^In \d+ min: /, (was) => (left === null ? was : left > 0 ? `In ${left} min: ` : left === 0 ? 'Now: ' : `Started ${-left} min ago: `));
   /** @type {Record<string, unknown>} */
   const info = ok ? { key: m.key.slice(0, 300), scope: String(m.scope ?? ''), watch: String(m.watch ?? ''), at: Number(m.at) || 0, ...(m.test ? { test: true } : {}) } : {};
-  // One annai gave already, or called off, that the phone held back comes quietly, and annai on screen closes it: a push
+  // One annai gave already that the phone held back comes quietly, and annai on screen closes it: a push
   // must show a notification (Safari drops the subscription after a few that don't; Chrome holds up the ones after it).
   const stale = ok && !m.test && (await handled(m.key));
   await sw.registration.showNotification(title, { body, tag: typeof info.key === 'string' ? info.key : 'annai-reminder', data: info, icon: '/assets/icons/icon-192.png', ...(stale ? { silent: true } : {}) });
   await keepNews({ kind: 'shown', ...info, ...(stale ? { stale: true } : {}), t: Date.now() });
 }
 
-/** Whether a reminder no longer waits at the relay as annai last wrote it down (/push.json): it fired, was caught up or called off. @param {string} key */
+/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
 async function handled(key) {
   /** @type {IDBDatabase | undefined} */
   let db;
   try {
     db = await openExisting();
     const file = (await readFiles(db, 'sys:device', ['/push.json'])).get('/push.json');
-    const items = file ? JSON.parse(new TextDecoder().decode(file.data))?.items : null;
-    return Boolean(items && typeof items === 'object' && !Object.hasOwn(items, key));
+    const given = file ? JSON.parse(new TextDecoder().decode(file.data))?.given : null;
+    return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
   } catch {
     return false;
   } finally {

@@ -137,8 +137,8 @@ export class Live {
   #notified = new Map();
   /** @type {{ scope: string, text: string }[]} notifications the user opened, for the next catch-up wake */
   #openedNews = [];
-  /** @type {Set<string>} reminders annai said itself on screen, by key: a notification for one is a double (6b choice 3) */
-  #said = new Set();
+  /** @type {Map<string, number>} reminders annai said itself on screen, by key, with when: a notification for one is a double (6b choice 3) */
+  #said = new Map();
   /** @type {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string } | null} while a simulation runs: the device's clock and zone, and the simulation's trip */
   #sim = null;
   /** @type {Set<string>} simulations' trips (trip.json "simulation": true), still outside their run */
@@ -495,6 +495,11 @@ export class Live {
     });
   }
 
+  /** The reminders annai said itself on screen or in a catch-up, by key, with when: the push mirror writes them down for the service worker (review R8). @returns {[string, number][]} */
+  given() {
+    return [...this.#said];
+  }
+
   /** Hears when what reminders() says may have changed, and how much (#tellReminders). @param {(level: 'calm' | 'prompt' | 'urgent') => void} fn @returns {() => void} */
   onReminders(fn) {
     this.#reminderChanges.add(fn);
@@ -508,6 +513,7 @@ export class Live {
       const prefix = `${scope}\n`;
       for (const k of [...this.#mem.keys()]) if (k.startsWith(prefix)) this.#mem.delete(k);
       for (const k of [...this.#fired.keys()]) if (k.startsWith(prefix)) this.#fired.delete(k);
+      for (const k of [...this.#said.keys()]) if (k.startsWith(`${scope}|`)) this.#said.delete(k);
       this.#tellReminders('urgent');
     });
   }
@@ -1223,8 +1229,8 @@ export class Live {
       if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
       // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
       if (this.shown) {
-        this.#said.add(this.#keyOf(x.scope, x.watch));
-        if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.values().next().value));
+        this.#said.set(this.#keyOf(x.scope, x.watch), this.clock.now());
+        if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.keys().next().value));
       }
     }
     if (this.#catch) this.#catch.fired.push(...done);

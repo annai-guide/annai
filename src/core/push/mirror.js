@@ -19,12 +19,14 @@ import { realClock } from '../live/clock.js';
  * @typedef {{ supported: () => 'yes' | 'install' | 'no', permission: () => string, ask: () => Promise<string>,
  *   get: () => Promise<Sub | null>, subscribe: (key: string) => Promise<Sub>, unsubscribe: () => Promise<void> }} Source
  *   the phone's push subscription and notification permission (src/ui/push.js; a fake in tests)
- * @typedef {{ reminders: (o?: { held?: (scopes: Set<string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void }} LiveLike
+ * @typedef {{ reminders: (o?: { held?: (scopes: Set<string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void,
+ *   given?: () => [string, number][] }} LiveLike
  * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, sending?: boolean }} Item
  *   a reminder at the relay; sending: written down before it was sent, not yet known to have arrived
  * @typedef {{ m: Mirrored, sendAt: number, title: string, body: string, hash: string, reuse?: boolean }} Want
  * @typedef {{ on: boolean, relay: string, key: string | null, endpoint: string | null, hello: { endpoint: string, relay: string, at: number } | null,
- *   items: Record<string, Item>, cancels: Cancel[], problem: { message: string, at: number, needsYou: boolean } | null }} State
+ *   items: Record<string, Item>, cancels: Cancel[], problem: { message: string, at: number, needsYou: boolean } | null, given: Record<string, number> }} State
+ *   given: the reminders annai gave itself, by key, with when, for GIVEN_MS: a push for one the phone held back comes quietly (sw.js)
  * @typedef {{ id: string, relay: string, sendAt: number }} Cancel  a reminder to call off at a relay; sendAt: when that relay would send it
  *   key, endpoint: what the phone subscribed with; hello: the "notifications are on" sent for that endpoint, through that relay
  */
@@ -53,6 +55,8 @@ export const TEST_IN_MS = 15_000;
 const MIN = 60_000;
 /** A reminder this long past its send is not called off: it was sent. */
 export const LONG_SENT_MS = 10 * MIN;
+/** A reminder annai gave is written down this long: past it, a push service has dropped any copy it held (TTL_S). */
+const GIVEN_MS = 2 * 3_600_000;
 /** The mirror waits this long after live mode's news, so a burst of changes is one sync… */
 const SOON_MS = 500;
 /** …and this long when only times may have moved (a new fix, each second while driving): one sync at most so often. */
@@ -145,6 +149,7 @@ function stateOf(v) {
       ? o.cancels.filter((/** @type {any} */ c) => c && typeof c.id === 'string' && typeof c.relay === 'string').map((/** @type {any} */ c) => ({ id: c.id, relay: c.relay, sendAt: Number(c.sendAt) || 0 }))
       : [],
     problem: o.problem && typeof o.problem.message === 'string' ? { message: o.problem.message, at: Number(o.problem.at) || 0, needsYou: o.problem.needsYou === true } : null,
+    given: o.given && typeof o.given === 'object' && !Array.isArray(o.given) ? Object.fromEntries(Object.entries(o.given).filter(([, t]) => Number.isFinite(t))) : {},
   };
 }
 
@@ -371,6 +376,7 @@ export class PushMirror {
     this.#retryTimer = null;
     const st = await this.#read();
     const tokens = await this.#readTokens();
+    await this.#noteGiven(st);
     const before = st.problem; // a passing one from an earlier sync clears once this one goes well
     let sent = 0;
     let calledOff = 0;
@@ -411,6 +417,14 @@ export class PushMirror {
     }
     this.#tell();
     if (this.#dirty) this.#soon('prompt');
+  }
+
+  /** The reminders annai gave itself, for GIVEN_MS; a removed trip's go at once (spec §4.9). @param {State} st */
+  async #noteGiven(st) {
+    const now = this.clock.now();
+    for (const [key, at] of this.live.given?.() ?? []) st.given[key] = Math.max(st.given[key] ?? 0, at);
+    const scopes = new Set((await this.store.tx(['scopes'], 'readonly', (t) => t.listScopes())).map((x) => x.id));
+    for (const [key, at] of Object.entries(st.given)) if (at + GIVEN_MS < now || !scopes.has(key.slice(0, key.indexOf('|')))) delete st.given[key];
   }
 
   /** The phone's subscription, renewed by itself when it is gone and permission stays (choice 12). @param {State} st */
