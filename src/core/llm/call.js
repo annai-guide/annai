@@ -168,6 +168,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       parts.push({ type: 'tool_call', id: ev.id, name: ev.name, input: ev.input, ...(ev.extra !== undefined ? { extra: ev.extra, model: model.providerId } : {}) });
     } else if (ev.type === 'provider') {
       parts.push({ type: 'provider', block: ev.block, model: model.providerId });
+    } else if (ev.type === 'attribution') {
+      parts.push({ type: 'attribution', source: ev.source, text: ev.text, links: ev.links, ...(ev.html ? { html: ev.html } : {}), model: model.providerId });
     } else if (ev.type === 'citation') {
       if (ev.url && !citations.some((c) => c.url === ev.url)) citations.push({ url: ev.url, ...(ev.title ? { title: ev.title } : {}) });
     } else if (ev.type === 'logprobs') {
