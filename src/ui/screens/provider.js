@@ -155,7 +155,6 @@ export async function renderProvider(ctx, id) {
     ...await Promise.all(Object.values(p.abilities).map((a) => abilityPanel(view, a.id, (rec.template?.added ?? []).includes(a.id)))),
     h('div', { class: 'panel' },
       h('p', { class: 'sub', text: removes.join(' ') }),
-      removeWarn,
       h('div', { class: 'acts' }, twoStep('Remove provider', 'Tap again to remove it', async () => {
         try {
           await asking(removing, () => ctx.llm.removeProvider(id));
@@ -164,6 +163,7 @@ export async function renderProvider(ctx, id) {
           status.textContent = messageOf(e);
         }
       }, () => warnKept(ctx, removeWarn, { provider: id }))),
+      removeWarn, // under the button, so arming it doesn't move it
       removing));
 }
 

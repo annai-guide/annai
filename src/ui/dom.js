@@ -72,21 +72,29 @@ export function radios(legend, options, value, onChange = () => {}) {
 }
 
 /**
- * A destructive button that needs a second tap within four seconds; onArm: called at the first, to say what goes.
+ * A destructive button that needs a second tap within eight seconds, the same everywhere; onArm: called at the first, to
+ * say what goes. Both its words hold the same place, the one not shown hidden, so arming it never moves it: the second
+ * tap lands where the first did (the emulator pass: a wider "Tap again to remove" wrapped onto the next line).
  * @param {string} label @param {string} confirmLabel @param {() => Promise<void> | void} action @param {() => unknown} [onArm]
  */
 export function twoStep(label, confirmLabel, action, onArm) {
   let armed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
+  const first = h('span', { text: label });
+  const again = h('span', { class: 'off', text: confirmLabel });
+  const arm = (/** @type {boolean} */ on) => {
+    armed = on;
+    first.classList.toggle('off', on);
+    again.classList.toggle('off', !on);
+  };
   const btn = h('button', {
-    class: 'btn danger', type: 'button',
+    class: 'btn danger two-step', type: 'button',
     onclick: async () => {
       if (!armed) {
-        armed = true;
-        btn.textContent = confirmLabel;
+        arm(true);
         onArm?.();
-        timer = setTimeout(() => { armed = false; btn.textContent = label; }, 4000);
+        timer = setTimeout(() => arm(false), 8000);
         return;
       }
       clearTimeout(timer);
@@ -95,11 +103,10 @@ export function twoStep(label, confirmLabel, action, onArm) {
         await action();
       } finally {
         btn.disabled = false;
-        armed = false;
-        btn.textContent = label;
+        arm(false);
       }
     },
-  }, label);
+  }, first, again);
   return btn;
 }
 
