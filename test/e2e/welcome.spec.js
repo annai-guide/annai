@@ -200,6 +200,19 @@ test('every step is reached with the keyboard alone, its heading taking the focu
   await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' }).or(page.getByRole('link', { name: 'Sign in with OpenRouter' }))).toBeVisible({ timeout: 30_000 });
 });
 
+// The flaky keyboard test above (fixes-ui 14): in WebKit on Linux, a tap's sound unlock loading its silent clip again
+// over one still starting (a tap is pointerup, touchend and click; Enter on a button is keydown and click) wedged
+// the page, about half the time with quick keys. One unlock at a time (Voice.unlock); this held 0 of 8 before it.
+test('quick keys on the welcome never stall the page: one sound unlock at a time', async ({ page }) => {
+  await openApp(page, '#/welcome');
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+  }
+  await expect(h1(page)).toHaveText(STEPS[0]);
+});
+
 test('the welcome fits a phone 320 px wide: no step scrolls sideways', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await openApp(page, '#/welcome');
