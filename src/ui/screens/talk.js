@@ -198,17 +198,23 @@ export async function renderTalk(ctx) {
     if (frame && Number.isFinite(px)) frame.style.setProperty('height', `${Math.min(Math.max(Math.ceil(px), 0), 320)}px`);
   };
   addEventListener('message', fit);
+  const empty = h('p', { class: 'empty', text: 'Nothing yet. Tap Shiori or Type below to talk.' });
+  // The end of the conversation: the page's foot keeps its last words clear of the dock.
+  const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 120;
+  const toEnd = () => scrollTo(0, document.documentElement.scrollHeight);
   let built = false;
   let wasShown = false;
   const stop = await follow(agent, scope, {
     read: async () => (await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }))).reverse(),
     show: async (e) => {
       if (!SHOWN.includes(e.type)) return;
-      const near = built && window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
+      // What the user just said is always followed; what comes after, while the user is at the end.
+      const follow = built && (atEnd() || e.type === 'msg.user' || e.type === 'heard');
       const node = await item(e);
       if (node) {
+        empty.remove();
         list.append(node);
-        if (near) node.scrollIntoView({ block: 'end' });
+        if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
       }
@@ -235,13 +241,13 @@ export async function renderTalk(ctx) {
     h('h1', { class: 'title', text: 'Conversation' }),
     h('p', { class: 'sub', text: agent.trip ? title : 'No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.' }),
     cost,
-    list.childElementCount ? list : h('p', { class: 'empty', text: 'Nothing yet. Tap Shiori or Type below to talk.' }),
-    list.childElementCount ? null : list,
+    list.childElementCount ? null : empty,
+    list,
     split ? toggle.el : null);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
     wasShown = true;
-    list.lastElementChild?.scrollIntoView({ block: 'end' });
+    if (list.childElementCount) toEnd();
   });
   // Gone, it stops listening at once, and the photos it showed let their memory go.
   whenGone(screen, () => {

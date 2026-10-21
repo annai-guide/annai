@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/#/trips');
@@ -482,6 +482,54 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
     await expect(page.getByText(/b-model · ok \(200\)/).first()).toBeVisible();
     for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
     expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('the conversation follows what comes, clear of the dock: your new question and her answer show without scrolling, and "Nothing yet" goes with the first message (the emulator pass)', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [{ ...sse(anthropicToolReply([{ name: 'speak', input: { text: 'Light rain around 1 PM.' } }, { name: 'sleep', input: {} }])), delayMs: 1500 }] });
+  try {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await modelSetUp(page, llm.origin);
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    /** Whether an element is on screen, above the dock. @param {import('@playwright/test').Locator} l */
+    const clear = (l) => l.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= /** @type {Element} */ (document.querySelector('nav.dock')).getBoundingClientRect().top + 1;
+    });
+    const send = async (/** @type {string} */ text) => {
+      await page.getByRole('button', { name: 'Type' }).click();
+      await page.getByLabel('Message to Shiori').fill(text);
+      await page.getByRole('button', { name: 'Send' }).click();
+    };
+    await page.goto('/#/talk');
+    const empty = page.getByText('Nothing yet. Tap Shiori or Type below to talk.');
+    await expect(empty).toBeVisible();
+    await send('Hello');
+    await expect(page.locator('.convo .you')).toHaveText('Hello');
+    await expect(empty).toHaveCount(0);
+    await expect(page.locator('.convo .shiori p')).toHaveText('Light rain around 1 PM.');
+    // A long conversation, opened: its last words show above the dock.
+    for (let i = 0; i < 12; i++) {
+      await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
+      await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}, in a few words that take a line or two on a phone.` } });
+    }
+    await page.goto('/#/trips');
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+    await page.goto('/#/talk');
+    const last = page.locator('.convo > li').last();
+    await expect(last).toHaveText(/Answer 11/);
+    await expect.poll(() => clear(last)).toBe(true);
+    // Asked while she works: the question shows at once, then her answer.
+    await send("What's the weather at Bixby Bridge today?");
+    const mine = page.locator('.convo .you', { hasText: 'Bixby Bridge' });
+    await expect(mine).toBeVisible();
+    await expect(page.locator('.talk-label')).toHaveText('Thinking');
+    await expect.poll(() => clear(mine)).toBe(true);
+    const hers = page.locator('.convo .shiori').last();
+    await expect(hers).toHaveText(/Light rain around 1 PM\./);
+    await expect.poll(() => clear(hers)).toBe(true);
   } finally {
     await llm.stop();
   }
