@@ -322,6 +322,24 @@ test("the user's Unsloth Studio (llama.cpp), as measured on 2026-10-19: /props g
   }
 });
 
+test("llama.cpp: the model /props names is marked loaded, under its own name and under a tag as Unsloth Studio also lists it (\"…-GGUF:Q5_K_M\"), and both take photos; another model is neither (the emulator pass)", async () => {
+  const k = await kit();
+  const listed = JSON.parse(await readFile(new URL('test/fixtures/llm/local/unsloth-studio-models.json', root), 'utf8')).data;
+  const props = JSON.parse(await readFile(new URL('test/fixtures/llm/local/unsloth-studio-props.json', root), 'utf8'));
+  const tagged = { ...listed[0], id: `${listed[0].id}:Q5_K_M` };
+  const s = await startFakeServer({ flavour: 'llamacpp', key: 'sk-unsloth-stand-in', models: [listed[0], tagged, listed[1]], props });
+  try {
+    const id = await k.llm.addProvider('provider-llamacpp', { official: true, baseUrl: `${s.origin}/v1`, key: 'sk-unsloth-stand-in', roles: null });
+    assert.deepEqual((await k.llm.listModels(id, 'chat')).map((m) => pick(m, ['providerId', 'loaded', 'input'])), [
+      { providerId: 'unsloth/Qwen3.8-Flash-Next-GGUF', loaded: true, input: ['text', 'image'] },
+      { providerId: 'unsloth/Qwen3.8-Flash-Next-GGUF:Q5_K_M', loaded: true, input: ['text', 'image'] },
+      { providerId: 'unsloth/Qwen3.8-27B-GGUF' },
+    ]);
+  } finally {
+    await s.stop();
+  }
+});
+
 test("llama.cpp: a server without /props, or one that won't say, still lists its models as the protocol does", async () => {
   const k = await kit();
   const s = await startFakeServer({ flavour: 'vllm' }); // no /props: 404

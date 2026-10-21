@@ -348,9 +348,12 @@ export async function list({ endpoint, key, fetch, protocolList }) {
     .then((res) => (res.ok ? res.json() : null)).catch(() => null);
   const n = props?.default_generation_settings?.n_ctx;
   const kinds = props?.modalities;
-  const loaded = listed.find((m) => m.providerId === props?.model_alias) ?? (listed.length === 1 ? listed[0] : null);
-  return listed.map((m) => (m !== loaded ? m : {
+  const alias = props?.model_alias;
+  const named = listed.filter((m) => typeof alias === 'string' && (m.providerId === alias || m.providerId.startsWith(`${alias}:`)));
+  const loaded = !props ? [] : named.length ? named : listed.length === 1 ? listed : [];
+  return listed.map((m) => (!loaded.includes(m) ? m : {
     ...m,
+    loaded: true,
     ...(Number.isInteger(n) && n > 0 ? { contextWindow: n } : {}),
     ...(kinds && typeof kinds === 'object' ? { input: ['text', ...(kinds.vision ? ['image'] : []), ...(kinds.audio ? ['audio'] : [])] } : {}),
   }));
@@ -403,7 +406,7 @@ export function activate(annai) {
 - **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.
-  - `listRequest()` and `readList()` make "Fetch model list" work. A listed model may carry its `contextWindow`, `maxOutput`, `input` and its `reasoning` map (spec §9.3), as Gemini API's list does.
+  - `listRequest()` and `readList()` make "Fetch model list" work. A listed model may carry its `contextWindow`, `maxOutput`, `input` and its `reasoning` map (spec §9.3), as Gemini API's list does, and `loaded: true` for one a server you run has loaded now (the list says so).
   - `retryAfter(body)` gives the wait, in ms, an error response's words ask for, when no `retry-after` header or Google RetryInfo says (Gemini: "Please retry in 7h40m31s"). A rest over 10 minutes is said in words.
   - `refusal(status, body, c)` gives words for an error response that is the model declining, such as Gemini's safety block (a 400): the turn ends with them, stopping with `refusal`, and no other model is tried. Null for any other error. `c` is the call, so your type can keep what was blocked out of its later requests: Gemini API leaves the blocked message out of what it sends Gemini from then on, kept by a fingerprint in its own settings.
   - `uploadRequest({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds })` and `readUpload(json)` let photos go to the provider's files API (spec §4.8). annai uploads each photo once, sets it to expire after 48 hours, uploads it again when it expires or the provider no longer knows it (classify that error as `upload`), and sends the bytes instead if uploading fails. Image parts then carry `fileId`: send that instead of the bytes. A user can turn uploads off on the provider's page, per ability (the `uploads` tunable).

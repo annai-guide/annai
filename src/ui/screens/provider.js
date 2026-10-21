@@ -422,12 +422,13 @@ function listedModels(ctx, id, abilityId, listed, have, cfg) {
     const rows = listed.filter((m) => !owned.has(m.providerId) && (!q || `${m.providerId} ${m.name ?? ''}`.toLowerCase().includes(q))).slice(0, 50);
     list.replaceChildren(...rows.map((m) => {
       const on = taken.get((m.name || m.providerId).toLowerCase());
+      const { loaded, ...model } = m; // said here, never kept on the model
       return h('li', { class: 'acts' },
-        h('span', { text: m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId }),
+        h('span', { text: `${m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId}${loaded ? ' · loaded' : ''}` }),
         on !== undefined ? h('span', { class: 'sub', text: `Already added, on ${on || 'another provider'}` }) : h('button', {
           class: 'btn', type: 'button', 'aria-label': `Add ${m.providerId}`,
           onclick: async () => {
-            await addListedModel(ctx, id, abilityId, m);
+            await addListedModel(ctx, id, abilityId, model);
             ctx.render();
           },
         }, 'Add'));
