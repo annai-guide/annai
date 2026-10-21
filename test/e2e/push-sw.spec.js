@@ -86,9 +86,21 @@ test('a push for a reminder annai no longer has waiting at the relay comes quiet
     origin: APP, registrationId: /** @type {string} */ (await reg), data: JSON.stringify({ v: 1, key: `${trip}|${watch}`, title: 'Big Sur', body: `Reminder ${watch}.`, at: 1, scope: trip, watch }),
   });
   const showing = () => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => `${n.body}${n.silent ? ' (quiet)' : ''}`).sort());
+  /** What the service worker wrote down as shown, as "<watch> <stale>". */
+  const news = () => page.evaluate(async () => {
+    const box = await caches.open('annai-push');
+    const out = [];
+    for (const k of await box.keys()) {
+      const n = JSON.parse(await (await box.match(k))?.text() ?? '{}');
+      out.push(`${n.watch} ${n.stale === true}`);
+    }
+    return out.sort();
+  });
   await away(page, true);
   await push('given');
+  await expect.poll(news, { timeout: 30_000 }).toEqual(['given true']);
   await push('still');
+  await expect.poll(news, { timeout: 30_000 }).toEqual(['given true', 'still false']);
   await expect.poll(showing, { timeout: 30_000 }).toEqual(['Reminder given. (quiet)', 'Reminder still.']);
   await away(page, false); // the catch-up reads what came, and closes the stale one
   await expect.poll(showing, { timeout: 30_000 }).toEqual(['Reminder still.']);
