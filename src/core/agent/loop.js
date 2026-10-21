@@ -74,6 +74,7 @@ import { validate } from '../schema.js';
  * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended] @property {() => boolean} [hushed]  another voice plays (a live session): annai's reminders are shown, not said
+ * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
  */
@@ -97,12 +98,18 @@ export const UNANSWERED = "The user hasn't been answered. Only speak, show and a
 const AGAIN = 'the user tapped Try again: answer their last message';
 /** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
 const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
+/**
+ * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
+ * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; most: the longest
+ * any turn waits, from its first wake (they are waiting too). A turn that has started never restarts.
+ */
+export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, most: 20 });
 /** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
 export const WRITE_TRIES = 3;
 
 
 /** A wake the user started: what they typed or sent, a choice they tapped, or their Try again. @param {Wake} w */
-const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || Boolean(w.again);
+export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || Boolean(w.again);
 
 /** The card types running plugins add (spec §16.4). @param {import('../registry.js').Registry} registry @returns {any[]} */
 const cardTypes = (registry) => registry.list('ui:card-type').filter((t) => typeof t?.type === 'string');
@@ -227,6 +234,10 @@ export class Agent {
   #userStop = false;
   /** Counts what reached the user (speak, show, ask, a reply shown as written): what was owed before it is settled. */
   #reached = 0;
+  /** The typing box holds text (the dock says so): a turn of theirs waits for them (GATHER). */
+  #typing = false;
+  /** Wakes a turn waiting for the user to look again. @type {(() => void) | null} */
+  #poke = null;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
 
@@ -344,6 +355,7 @@ export class Agent {
     const label = name === 'away' && detail ? `Working on ${detail}` : LABELS[name];
     this.state = { name, label, ...(detail ? { detail } : {}) };
     this.#emit('state', this.state);
+    this.poke(); // a turn waiting while the user speaks looks again
   }
 
   /** @param {LoopTool[]} tools Self tools (spec §7.2), offered after the talk tools */
@@ -471,6 +483,39 @@ export class Agent {
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME });
     if (w.kind === 'note') this.#noted();
+    this.poke();
+  }
+
+  /** The user is typing (the typing box holds text) or has stopped (GATHER). @param {boolean} on */
+  typing(on) {
+    this.#typing = on;
+    this.poke();
+  }
+
+  /** What the user is doing changed: a turn waiting for them looks again. */
+  poke() {
+    this.#poke?.();
+  }
+
+  /** Before a turn starts (GATHER): one Shiori waits only while a turn of theirs finds them typing or speaking; a half may say otherwise. */
+  async #gather() {
+    const end = Date.now() + GATHER.most * this.secondMs;
+    for (;;) {
+      const wakes = this.#queue.filter((w) => w.scope === this.scope);
+      const left = end - Date.now();
+      const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.state.name === 'hearing') ? Infinity : 0;
+      const wait = wakes.length && !this.#opens && left > 0 ? Math.min(hold, left) : 0;
+      if (wait <= 0) return;
+      await new Promise((resolve) => {
+        const go = () => {
+          clearTimeout(timer);
+          if (this.#poke === go) this.#poke = null;
+          resolve(undefined);
+        };
+        const timer = setTimeout(go, wait);
+        this.#poke = go;
+      });
+    }
   }
 
   /**
@@ -620,6 +665,11 @@ export class Agent {
     return (this.#turning && this.#voiceNow) || Boolean(this.#ear);
   }
 
+  /** A turn runs (not one still gathering the user's messages, GATHER). */
+  get turning() {
+    return this.#turning;
+  }
+
   /** The wait tool runs (not speak's listening). */
   get waiting() {
     return Boolean(this.#pending?.tool);
@@ -746,7 +796,12 @@ export class Agent {
     this.#busy = true;
     this.#clearTimer();
     try {
-      while (!this.#opens && this.#queue.some((w) => w.scope === this.scope)) await this.#turn(this.#take());
+      while (!this.#opens && this.#queue.some((w) => w.scope === this.scope)) {
+        await this.#gather();
+        if (this.#opens) break;
+        const wakes = this.#take();
+        if (wakes.length) await this.#turn(wakes);
+      }
     } catch (e) {
       await this.#notice({ tone: 'warn', title: 'Shiori stopped', body: `Something went wrong: ${String(/** @type {any} */ (e)?.message ?? e)}` });
     } finally {

@@ -358,12 +358,14 @@ test("Stop sticks: a note Koe wrote before it heard of the Stop starts no Kokoro
   // Koe's live session, say, still asks after the Stop, from before it heard of it.
   await k.agent.channel.send('koe', 'Plan an afternoon at Point Lobos with three stops, including the sunset.', 'append', 'tool');
   await k.agent.idle();
-  assert.equal(turns(), 1, 'Kokoro stays stopped');
+  // Stopped mid-call (one request), or while it was still gathering the user's messages (none: GATHER).
+  const stopped = turns();
+  assert.ok(stopped <= 1, 'Kokoro stays stopped');
   assert.ok((await k.events(['note'])).some((e) => e.data.from === 'kokoro' && e.data.text === 'Kokoro was stopped.'));
   // The user asks again: Kokoro works on it.
   k.agent.send('Actually, yes: plan it.');
   await k.agent.idle();
-  assert.ok(turns() >= 2);
+  assert.ok(turns() > stopped);
 });
 
 // Fix pass 5 (the review's no-koe-identity probe): with no Koe model, Halves sends and logs exactly what Shiori as one did.
