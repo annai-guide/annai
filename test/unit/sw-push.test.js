@@ -188,22 +188,25 @@ test('a "coming up" reminder says the minutes left when it shows, counted from t
 });
 
 // The emulator pass: a reminder annai had already given in its catch-up, held back by the phone, popped up 6 minutes later.
-test('a reminder annai already gave, or called off, comes quietly, and annai hears it is stale: it is no longer waiting at the relay', async () => {
-  const state = (/** @type {string[]} */ keys) => ({ '/push.json': JSON.stringify({ on: true, items: Object.fromEntries(keys.map((k) => [k, { id: 'x', due: 1, sendAt: 2 }])) }) });
-  const stale = await swKit({ windows: 1, device: state(['trip-1|w-2']) });
+// Review R8: given means given (/push.json's given), never a key merely no longer waiting at the relay.
+test('a reminder annai already gave comes quietly, and annai hears it is stale; one it never gave shows as it came', async () => {
+  const state = (/** @type {string[]} */ given, items = /** @type {string[]} */ ([])) => ({ '/push.json': JSON.stringify({
+    on: true, items: Object.fromEntries(items.map((k) => [k, { id: 'x', due: 1, sendAt: 2 }])), given: Object.fromEntries(given.map((k) => [k, 1])),
+  }) });
+  const stale = await swKit({ windows: 1, device: state(['trip-1|w-1']) });
   await stale.fire('push', { data: { json: () => REMINDER } });
   assert.equal(stale.shown.length, 1, 'shown, as every push must be (Safari takes the subscription away otherwise)');
   assert.equal(stale.shown[0].silent, true, 'without a sound, so it never pops up');
   assert.deepEqual(stale.news().map((n) => [n.kind, n.key, n.stale]), [['shown', 'trip-1|w-1', true]]);
-  // One still waiting shows as it came; so does one when annai keeps nothing yet, or its database can't be read.
-  for (const device of [state(['trip-1|w-1']), {}, null]) {
+  // Not given: as it came, also when it no longer waits at the relay (a sync just before its time), or annai keeps nothing yet, or can't be read.
+  for (const device of [state(['trip-1|w-2']), state([], []), state([], ['trip-1|w-1']), {}, null]) {
     const k = await swKit({ device });
     await k.fire('push', { data: { json: () => REMINDER } });
     assert.equal(k.shown[0].silent, undefined, JSON.stringify(device));
     assert.equal(k.news()[0]?.stale, undefined);
   }
   // annai's own test and "notifications are on" are never stale.
-  const test = await swKit({ device: state([]) });
+  const test = await swKit({ device: state(['hello|abc']) });
   await test.fire('push', { data: { json: () => ({ ...REMINDER, key: 'hello|abc', test: true }) } });
   assert.equal(test.shown[0].silent, undefined);
 });

@@ -659,3 +659,31 @@ test("a held trip's plan reminders count toward the 150 waiting at the relay", a
     await k.stop();
   }
 });
+
+// Review R8: the reminders annai gave itself are written down by key, for the service worker; a removed trip's go.
+test('the reminders annai gave on screen are kept in /push.json by key for two hours, and a removed trip\'s go at once', async () => {
+  const k = await pushKit({ live: false });
+  try {
+    await k.mirror.turnOn(RELAY);
+    k.sensors.visible(true);
+    const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+    const v = await k.live.setWatch(ME, { when: { type: 'time', at: iso('10:01') }, fallback: 'Call home.' });
+    await k.flush();
+    await k.to(at('10:01'));
+    await k.flush();
+    const given = () => k.ws.readJSON(SYS_DEVICE, FILE).then((/** @type {any} */ st) => st.given);
+    assert.deepEqual(Object.keys(await given()).sort(), [`${k.trip}|${w.id}`, `me|${v.id}`].sort());
+    k.agent.opened(null);
+    const { removeTrip } = await import('../../src/core/scopes.js');
+    await removeTrip(k.store, k.trip);
+    await k.live.forget(k.trip);
+    await k.flush();
+    assert.deepEqual(Object.keys(await given()), [`me|${v.id}`]);
+    await k.to(at('12:02'));
+    await k.live.setWatch(ME, { when: { type: 'time', at: iso('15:00') }, fallback: 'Later.' });
+    await k.flush();
+    assert.deepEqual(await given(), {}, 'two hours on, nothing held back can still come');
+  } finally {
+    await k.stop();
+  }
+});

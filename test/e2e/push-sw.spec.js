@@ -59,7 +59,7 @@ test('a push for a reminder reaches the service worker while annai is away: a no
 });
 
 // The emulator pass: a reminder annai had already given in its catch-up, held back by the phone, popped up 6 minutes later.
-test('a push for a reminder annai no longer has waiting at the relay comes quietly, and annai on screen closes it; one still waiting stays', async ({ page, context }) => {
+test('a push for a reminder annai already gave comes quietly, and annai on screen closes it; one still waiting stays', async ({ page, context }) => {
   await context.grantPermissions(['notifications'], { origin: APP });
   await openApp(page);
   await waitForServiceWorker(page);
@@ -71,8 +71,8 @@ test('a push for a reminder annai no longer has waiting at the relay comes quiet
     const store = await createIdbStore();
     const ws = new Workspace(store);
     const id = await createTrip(ws, { title: 'Big Sur' });
-    // /push.json as annai keeps it: only "still" waits at the relay.
-    await ws.write('sys:device', '/push.json', { on: true, items: { [`${id}|still`]: { id: 'x', due: 1, sendAt: 2, hash: 'h', scope: id } } }, { author: 'system' });
+    // /push.json as annai keeps it: "still" waits at the relay; annai gave "given" itself.
+    await ws.write('sys:device', '/push.json', { on: true, items: { [`${id}|still`]: { id: 'x', due: 1, sendAt: 2, hash: 'h', scope: id } }, given: { [`${id}|given`]: Date.now() } }, { author: 'system' });
     store.close();
     return id;
   });
