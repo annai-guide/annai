@@ -206,3 +206,18 @@ test("fix pass: an address typed without https:// isn't saved, on the provider a
   await own.blur();
   await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\./);
 });
+
+test("Add on a provider whose plugin the user turned off says so in words, with no plugin id in them (the emulator pass: \"provider-openrouter:\")", async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await expect(page.getByRole('button', { name: 'Getting the sign-in ready…' })).toHaveCount(0, { timeout: 30_000 }); // OpenRouter's plugin, in the background
+  await page.goto('/#/plugins/provider-openrouter');
+  await page.getByRole('button', { name: 'Turn off' }).click();
+  await expect(page.getByRole('button', { name: 'Turn on' })).toBeVisible();
+  await page.goto('/#/add?kind=providers&from=models');
+  await page.getByLabel('Search the catalog').fill('OpenRouter');
+  await page.getByRole('button', { name: /^Add (another )?OpenRouter$/ }).click();
+  const card = page.locator('.notice', { hasText: "OpenRouter wasn't added" });
+  await expect(card).toContainText('OpenRouter, which you turned off');
+  await expect(card).not.toContainText('provider-openrouter');
+});

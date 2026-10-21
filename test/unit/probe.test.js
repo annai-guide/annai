@@ -394,6 +394,7 @@ test("Add with these doesn't switch on a protocol plugin the user turned off: it
     assert.ok(textOf(panel).includes('✓ Chat Completions'));
     await buttonOf(panel, 'Add with these').attrs.onclick();
     assert.match(textOf(panel), /which you turned off, isn't switched on/);
+    assert.doesNotMatch(textOf(panel), /chat-completions:/, 'in words, with no plugin id (the emulator pass)');
     assert.equal((await d.host.installed())['chat-completions'].enabled, false);
     assert.deepEqual(Object.keys((await readConfig(d.ws)).providers), []);
     assert.deepEqual(d.added, []);

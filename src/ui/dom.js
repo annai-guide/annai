@@ -139,9 +139,15 @@ export function jsonField(label, id, value) {
   };
 }
 
-/** What went wrong, in plain words; for a ValidationError, without the path but with the key refused ("maxEdge must be at least 16"). @param {any} e */
+/**
+ * What went wrong, in plain words; for a ValidationError, without the path but with the key refused ("maxEdge must be at least 16");
+ * for a plugin's error, without the plugin's id it starts with for the logs ("chat-completions: "). @param {any} e
+ */
 export function messageOf(e) {
-  if (!Array.isArray(e?.errors)) return String(e?.message ?? e);
+  if (!Array.isArray(e?.errors)) {
+    const m = String(e?.message ?? e);
+    return typeof e?.pluginId === 'string' && m.startsWith(`${e.pluginId}: `) ? m.slice(e.pluginId.length + 2) : m;
+  }
   return e.errors.map((/** @type {string} */ x) => {
     const m = /^\$([^:]*): (.*)$/s.exec(x);
     if (!m) return x;
