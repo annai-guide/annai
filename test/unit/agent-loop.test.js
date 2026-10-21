@@ -162,6 +162,25 @@ test("the connection going and coming back sets a resting Shiori's state at once
   }
 });
 
+test('the warm model goes first only in the order it answered in: an order the user changed applies from the next turn (emulator pass)', async () => {
+  const { readConfig, saveRoles } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[say('From the first.')], [say('From the second.')]]);
+  const roles = (await readConfig(k.ws)).roles;
+  await saveRoles(k.ws, { ...roles, main: { ...roles.main, models: ['m-1', 'm-0'] } });
+  k.agent.send('One');
+  await k.agent.idle();
+  k.agent.send('Two');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['model.turn'])).map((e) => e.data.answeredBy), ['model-1', 'model-1'], 'its cache is warm: it stays first');
+  // The user moves the other model to the top while the cache is warm.
+  await saveRoles(k.ws, { ...roles, main: { ...roles.main, models: ['m-0', 'm-1'] } });
+  k.agent.send('Three');
+  await k.agent.idle();
+  k.agent.send('Four');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['model.turn'])).map((e) => e.data.answeredBy), ['model-1', 'model-1', 'model-0', 'model-0']);
+});
+
 test("no model answers: a system card, never in Shiori's voice", async () => {
   const k = await agentKit([[{ error: 'auth', status: 401 }]]);
   k.agent.send('Hi');
