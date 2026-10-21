@@ -175,12 +175,16 @@ function retryDelayOf(body) {
   }
 }
 
-/** Words that say the key is wrong, which Google sends with a 400 ("Invalid Auth key.", API_KEY_INVALID). */
-const BAD_KEY = /\b(?:api|auth)[ _-]?key\b.*\b(?:invalid|not valid)\b|\b(?:invalid|not valid)\b.*\b(?:api|auth)[ _-]?key\b|\bAPI_KEY_INVALID\b/i;
+/**
+ * A 400 that says the key is wrong, as Google answers one: the error's own words, side by side ("Invalid Auth key.",
+ * "API key not valid"), or its reason API_KEY_INVALID; never words elsewhere in the body, such as a model's (review R2).
+ */
+const BAD_KEY = /\binvalid (?:api|auth)[ _-]?key\b|\b(?:api|auth)[ _-]?key (?:is )?(?:not valid|invalid)\b/i;
+const BAD_KEY_REASON = /"reason"\s*:\s*"API_KEY_INVALID"/;
 
 /** @param {number} status @param {string} message @param {string} [body] @returns {ErrorKind} */
 function kindOf(status, message, body = '') {
-  if (status === 401 || status === 403 || (status === 400 && BAD_KEY.test(`${message} ${body}`))) return 'auth';
+  if (status === 401 || status === 403 || (status === 400 && (BAD_KEY.test(message) || BAD_KEY_REASON.test(body)))) return 'auth';
   if (status === 402) return 'credit';
   if (status === 404) return 'not-found';
   if (status === 413) return 'context';

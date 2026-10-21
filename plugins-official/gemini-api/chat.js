@@ -144,8 +144,8 @@ export function classify(status, body) {
   // A kept turn Google no longer has (measured: continuing a deleted one); annai reads it so only for a call that continued one.
   if (status === 404 && /requested entity was not found/i.test(message) && /not_found/i.test(String(e.code ?? e.status ?? ''))) return 'forgotten';
   if (status === 503) return 'overloaded';
-  // A wrong key, whatever the words, or said only in the error's details (the emulator pass, m2a #7).
-  if (/api key not valid|api_key_invalid|invalid auth key/i.test(`${message} ${body}`)) return 'auth';
+  // A wrong key, in the error's own words or its reason (the emulator pass, m2a #7); never words elsewhere in the body.
+  if (/api key not valid|invalid auth key/i.test(message) || /"reason"\s*:\s*"API_KEY_INVALID"/.test(body)) return 'auth';
   const kind = codeKind(e.status ?? e.code, message);
   if (kind === 'upload') return kind;
   if (status === 401 || status === 403) return 'auth';
