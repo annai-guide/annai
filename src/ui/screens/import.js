@@ -3,7 +3,7 @@ import { openArchive, describeArchive, importArchive, NeedsPassphraseError } fro
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
-import { relTime, bytes } from '../format.js';
+import { relTime, bytes, placeHref } from '../format.js';
 import { listTrips } from '../../core/scopes.js';
 import { isPhotoType } from '../../core/photos.js';
 import { typeForPath } from '../../core/paths.js';
@@ -25,7 +25,12 @@ export async function renderImport(ctx, route) {
   const forTrip = came.filter((i) => !archive(i));
   if (forTrip.length) return fileInbox(ctx, forTrip, (await listTrips(ctx.store)).active, came.filter(archive));
   const body = h('div', { class: 'screen' });
-  const screen = h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'Open a trip' }), body);
+  // A way back without importing: to the backup place it came from, else Trips; the preview has Cancel too.
+  const from = pending?.from;
+  const place = from ? await ctx.backups?.get(from.target).catch(() => null) : null;
+  const screen = h('div', { class: 'screen' },
+    h('p', { class: 'crumbs' }, h('a', { href: leave(from) }, `← ${from ? place?.name ?? 'Backups' : 'Trips'}`)),
+    h('h1', { class: 'title', text: 'Open a trip' }), body);
   /** @type {Source | null} */
   let source;
   try {
@@ -42,6 +47,9 @@ export async function renderImport(ctx, route) {
   await step(ctx, body, source);
   return screen;
 }
+
+/** Where leaving the import screen goes. @param {import('../import-state.js').From | null | undefined} from */
+const leave = (from) => (from ? placeHref(from.target) : '#/trips');
 
 /** @param {Record<string, string>} params @param {InboxFile[]} archives @returns {Promise<Source | null>} */
 async function pickSource(params, archives) {
@@ -150,7 +158,7 @@ function preview(ctx, body, opened, desc, from, fresh) {
     h('p', { text: `${desc.kind === 'everything' ? 'A backup of everything' : 'A trip'} exported ${relTime(desc.created)} from annai ${desc.app}${desc.encrypted ? ', encrypted' : ''}.` }),
     rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'sub', text: 'There are no trips in this file.' }),
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
-    h('div', { class: 'acts' }, go),
+    h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from) }, 'Cancel')),
     status);
 }
 
