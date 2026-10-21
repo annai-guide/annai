@@ -299,10 +299,14 @@ function controllerReady(timeoutMs = 15_000) {
   });
 }
 
-/** Installed plugins start once an active worker controls the page: a failed import stays failed (spec §5.3). */
-async function pluginsMayLoad() {
+/** Installed plugins start once an active worker controls the page: a failed import stays failed (spec §5.3). At most 15 s. */
+async function pluginsMayLoad(timeoutMs = 15_000) {
   if (!('serviceWorker' in navigator) || navigator.serviceWorker.controller) return;
-  if ((await navigator.serviceWorker.getRegistration().catch(() => undefined))?.active) await controllerReady();
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let t;
+  const reg = await Promise.race([navigator.serviceWorker.getRegistration().catch(() => undefined), new Promise((r) => { t = setTimeout(r, timeoutMs); })]);
+  clearTimeout(t);
+  if (/** @type {ServiceWorkerRegistration | undefined} */ (reg)?.active) await controllerReady(timeoutMs);
 }
 
 /** @param {any} store @param {ReturnType<typeof startShell>} shell @param {Updates} updates */

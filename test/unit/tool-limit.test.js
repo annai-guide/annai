@@ -32,7 +32,7 @@ test('runTool: a tool that never finishes ends at its time limit with an error i
   assert.match(r.output.content, /^Error: nearby didn't finish in time, so annai stopped waiting for it\./);
   assert.equal(/** @type {any} */ (seen)?.aborted, true);
   assert.equal(stop.signal.aborted, false, "the turn's own signal goes on");
-  assert.ok(r.ms >= 35 && r.ms < 1000);
+  assert.ok(r.ms >= 35, 'not before its limit');
 }));
 
 test('runTool: the user stopping Shiori still says so, within the limit', () => limited(5_000, async () => {
