@@ -299,7 +299,7 @@ All wakes go into one queue:
 - Simultaneous triggers merge into one wake.
 - User input goes ahead of triggers.
 - If the queue isn't empty when a turn ends, the next turn starts immediately.
-- **The user's messages are gathered before a turn starts** (the user, 2026-10-21: a half-finished message shouldn't cost a turn). A turn the user starts waits while they are typing (the typing box holds text) or speaking (the microphone hears speech), up to 20 seconds from its first wake; there is no fixed wait. Once a turn has started it never restarts: what comes later joins at its next call, as above. Behind Koe, Kokoro waits longer (§6.8).
+- **The user's messages are gathered before a turn starts** (the user, 2026-10-21: a half-finished message shouldn't cost a turn). A turn the user starts waits while they are typing (the typing box holds text) or speaking (the microphone hears speech), up to 20 seconds from its first wake; there is no fixed wait. Once a turn has started it never restarts: what comes later joins at its next call, as above. A tap on Shiori while a turn is still gathering stops it: what the user sent is written into the conversation, and opening it again takes nothing up. Opening another conversation doesn't wait for a gathering turn. Behind Koe, Kokoro waits longer (§6.8).
 
 When Shiori is two halves (§6.8), each half has its own queue, so neither waits on the other. What the user types or says goes to Koe, which writes it into the conversation. A wake that isn't the user's (a trigger, a plugin, a new file) goes to both, checked against quiet hours and wakes per hour once (§6.6), its fallback reminders going with the half that talks. A wake that asks for her voice (the recap told aloud, §13) goes to Koe alone.
 

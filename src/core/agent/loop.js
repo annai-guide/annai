@@ -36,11 +36,11 @@ import { validate } from '../schema.js';
  *   her (a place, the road), not a reminder: owed only until a model answers
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
- *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean }} Wake
+ *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
- *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs
+ *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it)
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -238,6 +238,8 @@ export class Agent {
   #typing = false;
   /** Wakes a turn waiting for the user to look again. @type {(() => void) | null} */
   #poke = null;
+  /** A turn is gathering the user's messages (GATHER): it hasn't started. */
+  #gathering = false;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
 
@@ -389,6 +391,7 @@ export class Agent {
     this.voice?.speaker.stop();
     this.#target = trip;
     this.#opens++;
+    this.poke(); // a turn still gathering the user's messages doesn't start (review A2)
     const generation = ++this.#generation;
     if (this.#busy) this.#halt();
     this.#clearTimer();
@@ -481,7 +484,7 @@ export class Agent {
 
   /** @param {Wake} w */
   #push(w) {
-    this.#queue.push({ ...w, scope: this.#target ?? ME });
+    this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
     if (w.kind === 'note') this.#noted();
     this.poke();
   }
@@ -499,10 +502,19 @@ export class Agent {
 
   /** Before a turn starts (GATHER): one Shiori waits only while a turn of theirs finds them typing or speaking; a half may say otherwise. */
   async #gather() {
-    const end = Date.now() + GATHER.most * this.secondMs;
+    this.#gathering = true;
+    try {
+      await this.#gatherNow();
+    } finally {
+      this.#gathering = false;
+    }
+  }
+
+  async #gatherNow() {
     for (;;) {
       const wakes = this.#queue.filter((w) => w.scope === this.scope);
-      const left = end - Date.now();
+      // From the first wake (review a5): a wake that waited out a long turn doesn't wait again.
+      const left = Math.min(...wakes.map((w) => w.at ?? Date.now())) + GATHER.most * this.secondMs - Date.now();
       const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.state.name === 'hearing') ? Infinity : 0;
       const wait = wakes.length && !this.#opens && left > 0 ? Math.min(hold, left) : 0;
       if (wait <= 0) return;
@@ -734,7 +746,28 @@ export class Agent {
   /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7), and her voice if it is this half's. */
   interrupt() {
     this.#userStop = true;
+    if (this.#gathering) this.#stopGathered();
     this.#halt();
+  }
+
+  /**
+   * The user stopped a turn still gathering their messages (review a3): it never starts; what they sent is written into the
+   * conversation all the same, with a quiet "stopped", so nothing is lost and opening it again takes nothing up.
+   */
+  #stopGathered() {
+    const wakes = this.#queue.filter((w) => w.scope === this.scope);
+    this.#queue = this.#queue.filter((w) => w.scope !== this.scope);
+    this.poke();
+    if (!wakes.length) return;
+    const wakeId = newId('w');
+    this.#checking++;
+    this.#logWakes(wakes, wakeId, false)
+      .then(() => this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))
+      .catch((e) => console.warn('a stopped message was not written', e))
+      .finally(() => {
+        this.#checking--;
+        this.#settle();
+      });
   }
 
   /** Stops the turn: the user's stop, or another conversation opening. */
@@ -2230,6 +2263,12 @@ export class Agent {
       this.#cut = true;
       if (voiceOn) this.#tapListen();
       return 'cut';
+    }
+    if (this.#gathering) {
+      // A turn of theirs that hasn't started yet (GATHER): a tap stops it, as the sign's Stop does Kokoro's.
+      this.#closeEar();
+      this.interrupt();
+      return 'stopped';
     }
     const s = this.state.name;
     if (s === 'listening' || s === 'hearing') {
