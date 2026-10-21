@@ -100,6 +100,24 @@ export function drawPanel(ctx, pluginId, provider, o) {
   return panel ? made(ctx, { pluginId, item: s }, 'provider setup panel', () => panel(setupUi(ctx, pluginId, o), provider), (x) => (x === null || x instanceof Node ? null : 'its panel is no element')) : null;
 }
 
+/** A catalog entry that makes a model provider: it has abilities (the rule a restore's plugins follow, review M1). @param {any} entry */
+export const isProviderEntry = (entry) => Array.isArray(entry?.abilities) && entry.abilities.length > 0;
+
+/**
+ * Installs annai's own provider plugin that a provider record names but this device lacks, on the provider page's tap
+ * (a restore brings records back without their plugins). Only a catalog entry that makes a model provider: a record
+ * is data, and may name anything (review M1). One that then gives no provider is removed again. @param {any} ctx @param {any} entry
+ */
+export async function installMissing(ctx, entry) {
+  if (!isProviderEntry(entry)) throw new Error(`${entry?.name ?? 'That plugin'} isn't a model provider.`);
+  try {
+    await ctx.llm.installProvider(entry.id, { official: true });
+  } catch (e) {
+    if ((await ctx.plugins.installed())[entry.id] && !ctx.llm.providers().some((/** @type {any} */ x) => x.plugin === entry.id)) await ctx.plugins.uninstall(entry.id).catch(() => {});
+    throw e;
+  }
+}
+
 /** @type {string | null} the plugin a sign-in is being finished for, by name */
 let finishing = null;
 /** @type {{ id: string, name: string, featured: string } | null} the catalog's featured provider, once ready in this run */

@@ -261,3 +261,44 @@ test("a provider whose plugin is missing: annai's own is offered to install righ
   await expect(note).not.toContainText('tide-pools-provider');
   await expect(page.getByRole('button', { name: 'Install it' })).toHaveCount(0);
 });
+
+test('review M1: a restored provider record naming a plugin of annai\'s that makes no model provider (Remote trace) offers no Install, and nothing is installed or sent', async ({ page, context }) => {
+  /** @type {string[]} */
+  const sent = [];
+  await context.route('https://trace.evil.example/**', async (route) => {
+    sent.push(route.request().url());
+    await route.fulfill({ status: 200, body: '{}', headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } });
+  });
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'llama.cpp');
+  const providerUrl = page.url();
+  // What a crafted archive would restore: a provider record naming remote-trace, its settings and its token.
+  await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    for (const f of await ws.list('sys:settings', '/llm/providers/')) {
+      const rec = await ws.readJSON('sys:settings', f.path);
+      await ws.write('sys:settings', f.path, { ...rec, plugin: 'remote-trace' }, { author: 'system' });
+    }
+    await ws.write('sys:settings', '/plugin-settings/remote-trace.json', { server: 'https://trace.evil.example/in', send: true, location: true }, { author: 'system' });
+    await store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('plugin:remote-trace:token', 'attacker-token'));
+    store.close();
+  });
+  await page.reload();
+  await page.goto(providerUrl);
+  await expect(page.locator('.risk-note')).toContainText("isn't one of annai's own providers");
+  await expect(page.getByRole('button', { name: 'Install it' })).toHaveCount(0);
+  const installed = await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const s = await new Workspace(store).readJSON('sys:plugins', '/installed.json');
+    store.close();
+    return Object.keys(s ?? {});
+  });
+  expect(installed).not.toContain('remote-trace');
+  expect(sent).toEqual([]);
+});
