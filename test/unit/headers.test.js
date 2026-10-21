@@ -25,11 +25,22 @@ test('the security policy allows wss: and ws: to localhost and 127.0.0.1, nothin
   assert.ok(!/(^|\s)ws:(\s|;|$)/.test(csp), 'no plain ws: to any host');
 });
 
-test("the frame Google's search suggestions are drawn in has a policy of its own (G4): only its script and inline styles, framed only by annai; annai's own is unchanged", async () => {
+test('as Cloudflare Pages does: a header two rules set is joined with ", ", and "! Name" detaches one an earlier rule set', () => {
+  const rules = parseHeaders('/*\n  A: 1\n  B: 2\n/x\n  A: 3\n  ! B\n  B: 4\n/y\n  ! A\n');
+  assert.deepEqual([...headersFor(rules, '/x').entries()], [['A', '1, 3'], ['B', '4']]);
+  assert.deepEqual([...headersFor(rules, '/y').entries()], [['B', '2']]);
+});
+
+test("the frame Google's search suggestions are drawn in has exactly one policy, its own (G4): only its script, inline styles and inline images, framed only by annai; annai's own is unchanged", async () => {
   const rules = parseHeaders(await readFile(new URL('../../_headers', import.meta.url), 'utf8'));
   const frame = headersFor(rules, '/src/ui/grounding.html');
-  assert.equal(frame.get('Content-Security-Policy'), "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; script-src 'self'; frame-ancestors 'self'");
+  assert.equal(frame.get('Content-Security-Policy'), "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'self'; frame-ancestors 'self'");
   assert.equal(frame.get('Referrer-Policy'), 'no-referrer');
   assert.equal(headersFor(rules, '/src/ui/grounding.js').get('Content-Security-Policy'), CSP);
   assert.equal(headersFor(rules, '/').get('Content-Security-Policy'), CSP);
+  // Where _headers isn't served, the page carries the same policy itself (a meta policy can't say who may frame it).
+  const page = await readFile(new URL('../../src/ui/grounding.html', import.meta.url), 'utf8');
+  const meta = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(page)?.[1];
+  assert.equal(meta, "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'self'");
+  assert.ok(page.indexOf(meta) < page.indexOf('<style>') && page.indexOf(meta) < page.indexOf('<script'), 'before anything it governs');
 });

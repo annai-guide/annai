@@ -7,4 +7,5 @@
   Cache-Control: no-cache
 # The frame Google's search suggestions are drawn in (G4): Google's HTML, with its inline styles, and the one script that sets it.
 /src/ui/grounding.html
-  Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; script-src 'self'; frame-ancestors 'self'
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'self'; frame-ancestors 'self'
