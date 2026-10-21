@@ -390,7 +390,7 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
 | Failure | Handling |
 |---|---|
 | A tool errors | The error is returned as the tool result; the model adapts. |
-| A tool hangs | Each call has a time limit of 150 seconds, above the 2 minutes an MCP call allows itself; past it, its requests are called off, the model is told in words that it didn't finish, and the turn goes on. The tools that wait for the user (`speak`, `show`, `ask`, `wait`, `sleep`) and `task`'s helper have none. The places tools give each request 25 seconds, so a server that never answers is left for the next. |
+| A tool hangs | Each call has a time limit of 150 seconds, above the 2 minutes an MCP call allows itself; past it, its requests are called off, the model is told in words that it didn't finish, and the turn goes on. The tools that wait for the user (`speak`, `show`, `ask`, `wait`, `sleep`) and `task`'s helper have none. The places and web tools give each request 25 seconds, so a server that never answers is left for the next (another mirror; Jina Reader, then a model's own fetch). |
 | The model errors | §9.6 fallback. When every model is exhausted, a card says "Shiori can't reach her model". |
 | The user interrupts | Tapping the avatar cancels the stream. Partial output is logged. |
 | Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. |

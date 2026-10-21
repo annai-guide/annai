@@ -6,6 +6,7 @@ import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { webVia } from '../../src/core/agent/via.js';
+import { STEP_MS } from '../../src/plugins/web/index.js';
 
 async function setup() {
   const registry = new Registry();
@@ -106,4 +107,29 @@ test('search via and fetch via: one search tool, never two competing ones (spec 
   assert.deepEqual(webVia({ web: { searchVia: 'annai', fetchVia: 'provider' }, model: withTools, switches: {} }), { hide: ['fetch'], kinds: ['fetch'], off: [] });
   assert.deepEqual(webVia({ web: { searchVia: 'off', fetchVia: 'off' }, model: withTools, switches: {} }), { hide: ['web_search', 'fetch'], kinds: [], off: [] });
   assert.deepEqual(webVia({ web: {}, model: withTools, switches: { 'provider:a-search': false } }), { hide: [], kinds: [], off: ['a-search'] });
+});
+
+// Review R5: a site that never answered held fetch for the whole tool limit, and Jina and the model were never tried.
+/** A request that never answers until its signal ends it. @param {any} init */
+const hang = (init) => new Promise((_, reject) => { init.signal?.addEventListener('abort', () => reject(init.signal.reason), { once: true }); });
+
+test('fetch and web_search: each step has its own time limit, and the next way is tried', async () => {
+  const was = STEP_MS.ms;
+  STEP_MS.ms = 30;
+  try {
+    const { run, setKey } = await setup();
+    const read = await run('fetch', { url: 'https://slow.test/page' }, (url, init) => (url.startsWith('https://r.jina.ai/') ? new Response('Reader text') : hang(init)));
+    assert.match(read, /^Source: https:\/\/slow\.test\/page \(read through Jina Reader\)/);
+    await assert.rejects(run('fetch', { url: 'https://slow.test/page' }, (_url, init) => hang(init)),
+      { message: "Couldn't read https://slow.test/page: the site didn't answer in time; Jina Reader didn't answer in time; no model with a fetch tool could read it." });
+    await setKey('jina_test_key');
+    await assert.rejects(run('web_search', { query: 'tide pools' }, (_url, init) => hang(init)), /Jina Search didn't answer in time/);
+    // The user's stop is still a stop.
+    STEP_MS.ms = 5_000;
+    const stop = new AbortController();
+    setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 10);
+    await assert.rejects(run('fetch', { url: 'https://slow.test/page' }, (_url, init) => hang(init), { signal: stop.signal }), { name: 'AbortError' });
+  } finally {
+    STEP_MS.ms = was;
+  }
 });
