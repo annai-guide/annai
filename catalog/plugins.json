@@ -149,7 +149,7 @@
     {
       "id": "provider-another-address",
       "name": "Another address",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -167,13 +167,13 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24585,
+      "size": 24590,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "c9ea35e4baa0255a37d50b57b4d08aaedad67aafad60709aac27838f6be5b0fd",
-        "index.js": "2946dce8de1cced71c350f08f5fbfc3572886264beac0e8d7d4a47f67f14cbc3",
+        "annai-plugin.json": "574f9c0f1fe30570b197144e08e747865f3e138abfe20b98d4505e8d34c224ee",
+        "index.js": "57103a29dfcdc650394871578e449f2aecd69b70e35adec4b71caeb3dfbba5ce",
         "probe.js": "79c45207562253ab47bbdfe97da275fb0b175fc56c00d610f6ccb052dc5a1d79"
       }
     },
@@ -288,7 +288,7 @@
     {
       "id": "provider-llamacpp",
       "name": "llama.cpp",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Models on a llama.cpp server you run (llama-server), or one built on it such as Unsloth Studio or KoboldCpp. Their thinking is switched off for quick decisions.",
       "category": "providers",
       "keywords": [
@@ -302,7 +302,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4236,
+      "size": 4623,
       "requires": [
         {
           "id": "chat-completions",
@@ -311,8 +311,8 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "f909e1c12fd074db893fb93690c2f5ef5b0f1c4a34078c06292b0e2fef547a0d",
-        "index.js": "29fc232f48ffb0ce35ad94f8ee7aa96fef88ba137bdfbfaade2d02dcf643bdc5"
+        "annai-plugin.json": "f26d9c6c7d784b7d7e5abc1b900aa3f78e9e848945ca3df6814c5762c8923ccb",
+        "index.js": "a21970b031a674e97b6e9e1d573ae6a360519989015ead689fe86f13229c32a7"
       }
     },
     {

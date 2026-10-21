@@ -29,7 +29,7 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
   await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
   await expect(page.getByRole('heading', { name: 'Install Hello checks?' })).toBeVisible();
   await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
-  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await page.getByRole('button', { name: 'Install anyway' }).click();
   await expect(page.getByText('Hello checks 1.0.0')).toBeVisible();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
 
@@ -82,12 +82,12 @@ test('reinstalling a plugin that is running asks for a restart, which runs the n
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
   await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
-  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await page.getByRole('button', { name: 'Install anyway' }).click();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
   // A new version: its code differs from what ran (the same files again start at once, with no restart).
   await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip('hello', '1.0.1') });
   await expect(page.getByText('Version 1.0.0 is installed now. Installing replaces it.')).toBeVisible();
-  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await page.getByRole('button', { name: 'Install anyway' }).click();
 
   await expect(page.getByText('Restart annai to run the new version of Hello checks.')).toBeVisible();
   await page.getByRole('status').getByRole('button', { name: 'Restart annai' }).click();
@@ -99,7 +99,7 @@ test("a plugin that installs but won't start says so, and stays installed", asyn
   await openApp(page, '#/plugins');
   await waitForServiceWorker(page);
   await pickFile(page, { name: 'broken.zip', mimeType: 'application/zip', buffer: await fixtureZip('broken') });
-  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await page.getByRole('button', { name: 'Install anyway' }).click();
   await expect(page.getByText("Broken was installed, but it didn't start")).toBeVisible();
   await expect(page.getByText('Broken 0.0.1')).toBeVisible();
 });
@@ -161,7 +161,7 @@ test('after a reload that skips the service worker, a code plugin still runs', a
   const tripUrl = page.url();
   await page.goto('/#/plugins');
   await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
-  await page.getByRole('button', { name: 'Install', exact: true }).click();
+  await page.getByRole('button', { name: 'Install anyway' }).click();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
 
   await page.goto(tripUrl);
@@ -176,4 +176,34 @@ test('after a reload that skips the service worker, a code plugin still runs', a
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('alert')).toContainText('greeting', { timeout: 15_000 });
   expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+});
+
+test("installing a code plugin that isn't annai's own says plainly what it can do with the keys saved now, naming whose, never a key; annai's own keep their note (fixes-ui 15)", async ({ page }) => {
+  const GEMINI = 'AIza-test-gemini-key-0123456789';
+  const JINA = 'jina_test_key_0123456789';
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'Google Gemini');
+  await page.getByLabel('API key').fill(GEMINI);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  await page.goto('/#/tools');
+  await page.getByLabel('Jina key').fill(JINA);
+  await page.getByRole('button', { name: 'Save key' }).click();
+  await expect(page.getByText('A key is set.')).toBeVisible();
+  await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });
+  await expect(page.getByRole('heading', { name: 'Install Hello checks?' })).toBeVisible();
+  const note = page.getByRole('note');
+  await expect(note).toContainText('It can read every key saved in annai and send it anywhere: now your keys for Google Gemini and Jina.');
+  const text = await page.locator('main.view').innerText();
+  expect(text).not.toContain(GEMINI);
+  expect(text).not.toContain(JINA);
+  await expect(page.getByRole('button', { name: 'Install', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Install anyway' }).click();
+  await expect(page.getByText('Hello checks 1.0.0')).toBeVisible();
+  // annai's own: its page keeps the note it had, and names no keys.
+  await page.goto('/#/plugins/gemini-api');
+  await expect(page.getByRole('heading', { level: 1, name: 'Gemini API' })).toBeVisible();
+  await expect(page.getByText('This plugin gets full access to your trips and API keys.')).toBeVisible();
+  await expect(page.getByText(/send it anywhere/)).toHaveCount(0);
 });

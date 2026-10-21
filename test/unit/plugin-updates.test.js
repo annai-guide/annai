@@ -202,13 +202,15 @@ test('a package without code whose update adds code asks with the full-trust wor
   const offers = await pluginUpdates(host, { addressFetch: get, fetch: async () => new Response(JSON.stringify({ plugins: [] })) });
   assert.equal(offers[0].added?.code, true);
   const notices = fakeNotices();
+  await host.ws.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('plugin:web:jina', 'jina-key-0123456789'));
   await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get });
   assert.equal((await host.installed()).kit.version, '1.0.0');
   assert.deepEqual(notices.toasts, []);
   const [ask] = notices.cards;
   assert.match(ask.body, /Code that runs in annai/);
-  assert.match(ask.body, /This plugin gets full access to your trips and API keys\./);
-  assert.deepEqual(ask.actions.map((/** @type {any} */ a) => a.label), ['Update', 'Not now']);
+  assert.match(ask.body, /This plugin gets full access to your trips and API keys\. It can read every key saved in annai and send it anywhere: now your keys for Jina\./, 'whose keys, by name (fixes-ui 15)');
+  assert.doesNotMatch(ask.body, /jina-key/, 'never a key');
+  assert.deepEqual(ask.actions.map((/** @type {any} */ a) => a.label), ['Update anyway', 'Not now']);
   await ask.actions[0].run();
   assert.equal((await host.installed()).kit.version, '1.1.0');
 });

@@ -267,7 +267,119 @@ test('a trip card shows the stamps its arrivals earned, and the trip page all of
   const card = page.getByRole('link', { name: /Kyoto in spring/ });
   await expect(card).toContainText('3 stamps');
   await expect(card.getByRole('img', { name: '3 stamps: 伏見稲荷大社, Arashiyama, Kiyomizu-dera' })).toBeVisible();
-  await expect(card.locator('.stamp')).toHaveText(['伏見', 'Arashiyama', 'Kiyomizu']);
+  await expect(card.locator('.stamp')).toHaveText(['伏見', 'Arashiya', 'Kiyomizu']); // a card's ring takes 8 characters at 7 px: a longer word shows its start
   await card.click();
   await expect(page.getByRole('img', { name: /^3 stamps:/ })).toBeVisible();
+});
+
+test("each stamp shows its whole word inside its own ring, on a card on a phone 320 wide and on the trip's page (the emulator pass: \"Nepent\")", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await openApp(page);
+  await startTrip(page, 'Big Sur on Highway 1: Monterey to Cambria');
+  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  const names = ['Nepenthe', 'Westminster Abbey', 'Bixby Creek Bridge', 'Arashiyama', 'Kiyomizu-dera', 'Yellowstone', '伏見稲荷大社', 'Hearst Castle'];
+  for (const name of names) await writeEvent(page, id, { type: 'trigger.fired', data: { type: 'plan', event: 'arrived', place: { name, lat: 36, lng: -121 } } });
+  /** Each mark: whether its word is wider than the inside of its ring, and whether the next mark covers it. @param {import('@playwright/test').Locator} marks */
+  const fits = (marks) => marks.evaluate((box) => document.fonts.ready.then(() => [...box.querySelectorAll('.stamp')].map((m, i, all) => {
+    const el = /** @type {HTMLElement} */ (m);
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const turned = el.style.getPropertyValue('transform');
+    el.style.setProperty('transform', 'none'); // measured upright
+    const word = range.getBoundingClientRect().width;
+    el.style.setProperty('transform', turned);
+    const inside = el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight);
+    const next = /** @type {HTMLElement | undefined} */ (all[i + 1]);
+    const covered = next && next.offsetTop === el.offsetTop && next.offsetLeft < el.offsetLeft + el.offsetWidth;
+    const small = parseFloat(getComputedStyle(el).fontSize) < 7 ? ` ${getComputedStyle(el).fontSize}` : ''; // review m1: never below 7 px
+    return `${el.textContent}${word > inside + 0.5 ? ' cut' : ''}${covered ? ' covered' : ''}${small}`;
+  })));
+  await page.goto('/#/trips');
+  const card = page.getByRole('link', { name: /Big Sur on Highway 1/ }).getByRole('img', { name: /^8 stamps:/ });
+  await expect(card).toBeVisible();
+  expect(await fits(card)).toEqual(['Nepenthe', 'Westmins', '+6']); // a long word: its start, at a type that still reads
+  await page.getByRole('link', { name: /Big Sur on Highway 1/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Big Sur on Highway 1: Monterey to Cambria' })).toBeVisible();
+  const all = page.getByRole('img', { name: /^8 stamps:/ });
+  await expect(all).toBeVisible();
+  expect(await fits(all)).toEqual(['Nepenthe', 'Westminster', 'Bixby', 'Arashiyama', 'Kiyomizu', 'Yellowstone', '伏見', 'Hearst']);
+});
+
+test('Back closes a question as No, where the browser has no CloseWatcher (Chrome before 120, Safari), and its entry never undoes what an answer does', async ({ page }) => {
+  await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const trip = page.url();
+  const question = page.getByRole('dialog', { name: 'Big Sur' });
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(question).toBeVisible();
+  await page.goBack(); // Android's Back
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(page.url()).toBe(trip);
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+
+  // Cancel takes its entry back too: the next Back leaves the trip, as it would have.
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await question.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => history.state?.annaiAsk ?? null)).toBe(null); // a few ms: no finger is that quick
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+
+  // Two questions in a row, then the answer moves to Trips and stays there.
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await question.getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Big Sur/ })).toHaveCount(0);
+});
+
+test('where the browser closes a question on Back itself (CloseWatcher), annai adds no history entry of its own', async ({ page }) => {
+  await openApp(page);
+  test.skip(!(await page.evaluate(() => 'CloseWatcher' in window)), 'this browser has no CloseWatcher');
+  await startTrip(page, 'Big Sur');
+  const before = await page.evaluate(() => history.length);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(page.getByRole('dialog', { name: 'Big Sur' })).toBeVisible();
+  expect(await page.evaluate(() => history.length)).toBe(before);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('"Tap again" comes where the first tap was, on a phone 320 wide, and waits 8 seconds for the second, the same everywhere (the emulator pass)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.clock.install();
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const archive = page.getByRole('button', { name: 'Archive trip' });
+  const remove = page.getByRole('button', { name: 'Remove trip' });
+  await archive.evaluate((el) => el.scrollIntoView({ block: 'center' })); // clear of the dock: the tap then doesn't scroll
+  const was = [await archive.boundingBox(), await remove.boundingBox()];
+  await archive.click();
+  const again = page.getByRole('button', { name: 'Tap again to archive' });
+  await expect(again).toBeVisible();
+  expect([await again.boundingBox(), await remove.boundingBox()]).toEqual(was);
+  await page.clock.fastForward(7_500);
+  await expect(again).toBeVisible();
+  await page.clock.fastForward(600);
+  await expect(archive).toBeVisible();
+  await expect(again).toHaveCount(0);
+});
+
+test("review m2: a question's history entry left from before a reload is never taken for a new question's: answering stays on the screen", async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const trip = page.url();
+  // What a reload with a question open leaves: an entry of an earlier page's first question.
+  await page.evaluate(() => history.replaceState({ ...history.state, annaiAsk: 'ask-0' }, ''));
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.waitForTimeout(300);
+  expect(page.url()).toBe(trip);
+  await expect(page.getByRole('heading', { level: 1, name: 'Big Sur' })).toBeVisible();
 });

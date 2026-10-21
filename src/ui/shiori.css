@@ -133,6 +133,15 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
 .dock.voice .seat.dock { width: 92px; height: 92px; }
 .dock.voice .ib { width: 56px; height: 56px; }
 .dock.voice .talk { font-size: 13px; font-weight: 700; color: var(--ink); }
+/* A short screen (an iPhone SE, a phone on its side): a compact dock, under a fifth of the height; voice still enlarges it. */
+@media (max-height: 600px) {
+  .dock:not(.seat) { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+  .seat.dock, .ib { width: 44px; height: 44px; }
+  .talk { gap: 0; font-size: 11px; line-height: 1.2; }
+  .voice-row { margin-top: 0; }
+  .dock.voice .seat.dock { width: 72px; height: 72px; }
+  .dock.voice .ib { width: 50px; height: 50px; }
+}
 .convo .shiori.said .btn { align-self: flex-start; }
 
 /* The conversation: speech bubbles carry a SHIORI label instead of a second avatar. */
@@ -159,7 +168,7 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
 /* A code block wraps, so it never widens the page (and the page takes sideways swipes itself). */
 .md pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 6px; font-size: 13px; }
 
-/* System cards sit above the dock, so their buttons can be reached. */
-body:has(.dock:not(.seat)) .notices { bottom: calc(var(--dock-h, 140px) + 8px); z-index: 25; }
-/* A menu opened from the dock comes above those cards. */
+/* Toasts float above the dock. */
+body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
+/* A menu opened from the dock comes above the top bar and the cards. */
 .dock:not(.seat):has(.voice-menu:not([hidden])) { z-index: 30; }

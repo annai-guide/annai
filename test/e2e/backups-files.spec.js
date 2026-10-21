@@ -99,6 +99,9 @@ test('WebDAV: automatic backups go to a folder annai makes, and any of them open
     await page.getByRole('button', { name: 'Open', exact: true }).first().click();
     await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('You already have "Kyoto"')).toBeVisible();
+    // A way back to the place it came from, as well as Cancel.
+    await expect(page.locator('.crumbs a')).toHaveAttribute('href', /^#\/backups\/place\?id=/);
+    await expect(page.getByRole('link', { name: 'Cancel', exact: true })).toHaveAttribute('href', /^#\/backups\/place\?id=/);
     await page.getByRole('button', { name: 'Import' }).click();
     await expect(page.getByRole('link', { name: 'Open Kyoto' })).toBeVisible();
   } finally {

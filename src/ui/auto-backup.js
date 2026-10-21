@@ -1,7 +1,7 @@
 import { startAutoBackup, TIMINGS } from '../core/backup-auto.js';
 import { connectionOf } from './platform.js';
 import { setPendingImport } from './import-state.js';
-import { newerText, placeHref, bytes } from './format.js';
+import { newerText, placeHref, bytes, localDay } from './format.js';
 
 /**
  * @typedef {import('../core/backup-targets.js').Target} Target
@@ -108,7 +108,7 @@ export async function restoreFrom(ctx, t, remote, say) {
     const downloading = ctx.backups.download(t.id, remote.id);
     say(ctx.backups.running().some((r) => r.reason === 'user') ? "Waiting for the backup that's running to finish…" : 'Downloading the backup…');
     const blob = await downloading;
-    const day = new Date(remote.at || Date.now()).toISOString().slice(0, 10);
+    const day = localDay(remote.at || Date.now());
     setPendingImport([new File([blob], `annai-backup-${day}.annai.zip`, { type: 'application/zip' })], { archive: true, from: { target: t.id, remote } });
     ctx.go('#/import');
   } catch (e) {

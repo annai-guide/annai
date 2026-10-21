@@ -2,12 +2,13 @@ import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedR
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
+import { officialPlugins } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem } from '../../core/llm/provider-desc.js';
 import { andList } from '../format.js';
-import { drawPanel } from '../provider-setup.js';
+import { drawPanel, isProviderEntry, installMissing } from '../provider-setup.js';
 import { setupOf } from '../../core/llm/setup.js';
 import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
@@ -126,7 +127,7 @@ export async function renderProvider(ctx, id) {
     h('p', { class: 'crumbs' }, h('a', { href: '#/models' }, '← Models')),
     title,
     h('p', { class: 'sub', text: [pluginName !== p.name ? pluginName : null, installed?.source === 'official' ? null : installed ? sourceLine(installed) : null].filter(Boolean).join(' · ') }),
-    src ? null : h('p', { class: 'risk-note', text: `Its plugin, ${rec.plugin}, isn't running, so annai can't say what it offers. Look at it in Settings → Plugins.` }),
+    src ? null : await missingPlugin(ctx, rec.plugin, installed),
     h('section', { class: 'panel', 'aria-label': 'Provider' },
       savedField('Name', name, () => name.value.trim() || providerBase(rec).name, async (v) => { title.textContent = (await saveFields({ name: v })).name; }),
       h('h3', { text: 'Connection' }),
@@ -155,7 +156,6 @@ export async function renderProvider(ctx, id) {
     ...await Promise.all(Object.values(p.abilities).map((a) => abilityPanel(view, a.id, (rec.template?.added ?? []).includes(a.id)))),
     h('div', { class: 'panel' },
       h('p', { class: 'sub', text: removes.join(' ') }),
-      removeWarn,
       h('div', { class: 'acts' }, twoStep('Remove provider', 'Tap again to remove it', async () => {
         try {
           await asking(removing, () => ctx.llm.removeProvider(id));
@@ -164,6 +164,7 @@ export async function renderProvider(ctx, id) {
           status.textContent = messageOf(e);
         }
       }, () => warnKept(ctx, removeWarn, { provider: id }))),
+      removeWarn, // under the button, so arming it doesn't move it
       removing));
 }
 
@@ -204,6 +205,40 @@ export async function renderNewProvider(ctx, pluginId) {
   return screen;
 }
 
+/**
+ * What a provider's page says when its plugin isn't running, in words with no plugin id (fixes-ui 16): installed, a link to it;
+ * annai's own and missing (a restore brings providers back without theirs), Install it, here; another's, that annai can't fetch it.
+ * @param {any} ctx @param {string} plugin @param {any} installed its install state, if any
+ */
+async function missingPlugin(ctx, plugin, installed) {
+  if (installed) {
+    return h('p', { class: 'risk-note' }, `Its plugin, ${installed.name}, isn't running, so annai can't say what it offers. `,
+      h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, 'Look at it in Settings → Plugins'), '.');
+  }
+  const catalog = await officialPlugins().catch(() => null);
+  const entry = catalog?.find((/** @type {any} */ p) => p.id === plugin && isProviderEntry(p));
+  if (!entry) {
+    return h('p', { class: 'risk-note', text: catalog ? "The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider."
+      : "Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again." });
+  }
+  const status = h('p', { class: 'sub', role: 'status' });
+  const install = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async () => {
+      install.disabled = true;
+      status.textContent = 'Installing…';
+      try {
+        await installMissing(ctx, entry);
+        ctx.render();
+      } catch (e) {
+        status.textContent = messageOf(e);
+        install.disabled = false;
+      }
+    },
+  }, 'Install it');
+  return h('div', { class: 'risk-note' }, h('p', { text: `Its plugin, ${entry.name}, isn't installed, so annai can't say what it offers.` }), h('div', { class: 'acts' }, install), status);
+}
+
 /** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
 
 /**
@@ -238,7 +273,8 @@ async function abilityPanel(view, abilityId, added) {
   const a = providerOf(rec, tunablesFor).abilities[abilityId];
   const type = ctx.llm.types().get(a.type);
   const body = h('div', {});
-  const draw = async () => body.replaceChildren(...await abilityBody(view, abilityId));
+  // replaceChildren, unlike h, would show a null as the word.
+  const draw = async () => body.replaceChildren(...(await abilityBody(view, abilityId)).filter((n) => n !== null));
   const use = savedCheck(`Use ${a.name}`, a.on, async (on) => {
     await ctx.llm.setAbility(id, abilityId, on);
     await draw();
@@ -386,7 +422,7 @@ function modelsPart(ctx, id, abilityId, models) {
       try {
         const listed = await ctx.llm.listModels(id, abilityId);
         status.textContent = `${listed.length} model${listed.length === 1 ? '' : 's'}.`;
-        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models));
+        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config()));
       } catch (e) {
         status.textContent = messageOf(e);
       } finally {
@@ -406,25 +442,32 @@ function modelsPart(ctx, id, abilityId, models) {
 }
 
 /**
- * The models an ability listed, minus those already added, with a filter.
+ * The models an ability listed, minus those already added, with a filter. One whose name another model has says where
+ * that is, as adding it by id refuses it, rather than adding it again as "name (2)" (the emulator pass).
  * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed @param {import('../../core/llm/config.js').Model[]} have
+ * @param {import('../../core/llm/config.js').ModelConfig} cfg
  */
-function listedModels(ctx, id, abilityId, listed, have) {
+function listedModels(ctx, id, abilityId, listed, have, cfg) {
   const owned = new Set(have.map((m) => m.providerId));
+  const taken = new Map(Object.values(cfg.models).map(modelOf).map((m) => [m.name.toLowerCase(), cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).name : '']));
   const filter = h('input', { id: `model-filter-${abilityId}`, autocomplete: 'off', placeholder: 'for example: haiku' });
   const list = h('ul', { class: 'listed' });
   const show = () => {
     const q = filter.value.trim().toLowerCase();
     const rows = listed.filter((m) => !owned.has(m.providerId) && (!q || `${m.providerId} ${m.name ?? ''}`.toLowerCase().includes(q))).slice(0, 50);
-    list.replaceChildren(...rows.map((m) => h('li', { class: 'acts' },
-      h('span', { text: m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId }),
-      h('button', {
-        class: 'btn', type: 'button', 'aria-label': `Add ${m.providerId}`,
-        onclick: async () => {
-          await addListedModel(ctx, id, abilityId, m);
-          ctx.render();
-        },
-      }, 'Add'))));
+    list.replaceChildren(...rows.map((m) => {
+      const on = taken.get((m.name || m.providerId).toLowerCase());
+      const { loaded, ...model } = m; // said here, never kept on the model
+      return h('li', { class: 'acts' },
+        h('span', { text: `${m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId}${loaded ? ' · loaded' : ''}` }),
+        on !== undefined ? h('span', { class: 'sub', text: `Already added, on ${on || 'another provider'}` }) : h('button', {
+          class: 'btn', type: 'button', 'aria-label': `Add ${m.providerId}`,
+          onclick: async () => {
+            await addListedModel(ctx, id, abilityId, model);
+            ctx.render();
+          },
+        }, 'Add'));
+    }));
   };
   filter.addEventListener('input', show);
   show();

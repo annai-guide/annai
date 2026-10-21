@@ -4,7 +4,7 @@ import { platform, isStandalone } from './platform.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
 import { descOrigins, addressProblem } from '../core/llm/provider-desc.js';
-import { officialPlugins } from '../core/llm/official.js';
+import { officialPlugins, makesProvider } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 import { NO_SERVICE } from './screens/plugin-install.js';
 
@@ -70,7 +70,9 @@ export function setupUi(ctx, pluginId, { added } = {}) {
         const at = new URL(String(u)).origin;
         if (m?.catchAll !== true && !where.includes(at)) throw new Error(`${m?.name ?? pluginId} can't add a provider at ${at}: it sends keys only to ${where.join(', ') || 'none'}.`);
       }
-      const id = await ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities });
+      // What failed, in words a panel can show as they are: no plugin's id in them.
+      const id = await ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities })
+        .catch((/** @type {unknown} */ e) => { throw new Error(messageOf(e), { cause: e }); });
       await added?.(id);
       return id;
     },
@@ -96,6 +98,24 @@ export function drawPanel(ctx, pluginId, provider, o) {
   const s = setupOf(ctx.registry, pluginId);
   const panel = s?.panel;
   return panel ? made(ctx, { pluginId, item: s }, 'provider setup panel', () => panel(setupUi(ctx, pluginId, o), provider), (x) => (x === null || x instanceof Node ? null : 'its panel is no element')) : null;
+}
+
+/** A catalog entry that makes a model provider, by the rule a restore's plugins follow (review M1). */
+export const isProviderEntry = makesProvider;
+
+/**
+ * Installs annai's own provider plugin that a provider record names but this device lacks, on the provider page's tap
+ * (a restore brings records back without their plugins). Only a catalog entry that makes a model provider: a record
+ * is data, and may name anything (review M1). One that then gives no provider is removed again. @param {any} ctx @param {any} entry
+ */
+export async function installMissing(ctx, entry) {
+  if (!isProviderEntry(entry)) throw new Error(`${entry?.name ?? 'That plugin'} isn't a model provider.`);
+  try {
+    await ctx.llm.installProvider(entry.id, { official: true });
+  } catch (e) {
+    if ((await ctx.plugins.installed())[entry.id] && !ctx.llm.providers().some((/** @type {any} */ x) => x.plugin === entry.id)) await ctx.plugins.uninstall(entry.id).catch(() => {});
+    throw e;
+  }
 }
 
 /** @type {string | null} the plugin a sign-in is being finished for, by name */
