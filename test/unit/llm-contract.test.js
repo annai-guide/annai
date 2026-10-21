@@ -95,3 +95,17 @@ test("a Google API error (a list of one, as Gemini's compatible endpoint sends i
   assert.equal(errorFromResponse(429, body, new Headers({ 'retry-after': '2' })).retryAfter, 2000, 'a header says first');
   assert.equal(errorFromResponse(429, JSON.stringify({ error: { message: 'x' } })).retryAfter, undefined);
 });
+
+// The emulator pass (m2a #7): Google answers a wrong key with HTTP 400, which read as the request's fault, so Test
+// said to check the tunables.
+test('a 400 that says the key is wrong is the key, and Test says to check it', () => {
+  const kind = (/** @type {string} */ body) => errorFromResponse(400, body).kind;
+  assert.equal(kind(json({ error: { code: 400, message: 'Invalid Auth key.', status: 'INVALID_ARGUMENT' } })), 'auth');
+  assert.equal(kind(json([{ error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT' } }])), 'auth');
+  assert.equal(kind(json({ error: { code: 400, message: 'Request had invalid credentials.', details: [{ reason: 'API_KEY_INVALID' }] } })), 'auth');
+  assert.equal(kind(json({ error: { message: 'Invalid API key provided.' } })), 'auth');
+  assert.equal(explain(errorFromResponse(400, json({ error: { message: 'Invalid Auth key.' } }))), 'The key was rejected. Check it in Settings → Models.');
+  // Other words about keys are not the key.
+  assert.equal(kind(json({ error: { message: 'Invalid value at key "temperature"' } })), 'bad-request');
+  assert.equal(kind(json({ error: { message: 'Unknown name "api_key_header": Cannot find field.' } })), 'bad-request');
+});

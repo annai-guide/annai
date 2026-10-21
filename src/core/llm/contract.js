@@ -146,7 +146,7 @@ export function explain(e) {
  */
 export function errorFromResponse(status, body, headers) {
   const message = messageOf(body) || `HTTP ${status}`;
-  return new ProviderError(kindOf(status, message), message, { status, retryAfter: retryAfterOf(headers) ?? retryDelayOf(body) });
+  return new ProviderError(kindOf(status, message, body), message, { status, retryAfter: retryAfterOf(headers) ?? retryDelayOf(body) });
 }
 
 /**
@@ -175,9 +175,12 @@ function retryDelayOf(body) {
   }
 }
 
-/** @param {number} status @param {string} message @returns {ErrorKind} */
-function kindOf(status, message) {
-  if (status === 401 || status === 403) return 'auth';
+/** Words that say the key is wrong, which Google sends with a 400 ("Invalid Auth key.", API_KEY_INVALID). */
+const BAD_KEY = /\b(?:api|auth)[ _-]?key\b.*\b(?:invalid|not valid)\b|\b(?:invalid|not valid)\b.*\b(?:api|auth)[ _-]?key\b|\bAPI_KEY_INVALID\b/i;
+
+/** @param {number} status @param {string} message @param {string} [body] @returns {ErrorKind} */
+function kindOf(status, message, body = '') {
+  if (status === 401 || status === 403 || (status === 400 && BAD_KEY.test(`${message} ${body}`))) return 'auth';
   if (status === 402) return 'credit';
   if (status === 404) return 'not-found';
   if (status === 413) return 'context';
