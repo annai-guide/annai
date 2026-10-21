@@ -272,6 +272,38 @@ test('a trip card shows the stamps its arrivals earned, and the trip page all of
   await expect(page.getByRole('img', { name: /^3 stamps:/ })).toBeVisible();
 });
 
+test("each stamp shows its whole word inside its own ring, on a card on a phone 320 wide and on the trip's page (the emulator pass: \"Nepent\")", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await openApp(page);
+  await startTrip(page, 'Big Sur on Highway 1: Monterey to Cambria');
+  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  const names = ['Nepenthe', 'Westminster Abbey', 'Bixby Creek Bridge', 'Arashiyama', 'Kiyomizu-dera', 'Yellowstone', '伏見稲荷大社', 'Hearst Castle'];
+  for (const name of names) await writeEvent(page, id, { type: 'trigger.fired', data: { type: 'plan', event: 'arrived', place: { name, lat: 36, lng: -121 } } });
+  /** Each mark: whether its word is wider than the inside of its ring, and whether the next mark covers it. @param {import('@playwright/test').Locator} marks */
+  const fits = (marks) => marks.evaluate((box) => document.fonts.ready.then(() => [...box.querySelectorAll('.stamp')].map((m, i, all) => {
+    const el = /** @type {HTMLElement} */ (m);
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const turned = el.style.getPropertyValue('transform');
+    el.style.setProperty('transform', 'none'); // measured upright
+    const word = range.getBoundingClientRect().width;
+    el.style.setProperty('transform', turned);
+    const inside = el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight);
+    const next = /** @type {HTMLElement | undefined} */ (all[i + 1]);
+    const covered = next && next.offsetTop === el.offsetTop && next.offsetLeft < el.offsetLeft + el.offsetWidth;
+    return `${el.textContent}${word > inside + 0.5 ? ' cut' : ''}${covered ? ' covered' : ''}`;
+  })));
+  await page.goto('/#/trips');
+  const card = page.getByRole('link', { name: /Big Sur on Highway 1/ }).getByRole('img', { name: /^8 stamps:/ });
+  await expect(card).toBeVisible();
+  expect(await fits(card)).toEqual(['Nepenthe', 'Westminster', '+6']);
+  await page.getByRole('link', { name: /Big Sur on Highway 1/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Big Sur on Highway 1: Monterey to Cambria' })).toBeVisible();
+  const all = page.getByRole('img', { name: /^8 stamps:/ });
+  await expect(all).toBeVisible();
+  expect(await fits(all)).toEqual(['Nepenthe', 'Westminster', 'Bixby', 'Arashiyama', 'Kiyomizu', 'Yellowstone', '伏見', 'Hearst']);
+});
+
 test('Back closes a question as No, where the browser has no CloseWatcher (Chrome before 120, Safari), and its entry never undoes what an answer does', async ({ page }) => {
   await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
   await openApp(page);
