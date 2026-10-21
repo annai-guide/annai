@@ -95,6 +95,8 @@ export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen
 export const UNANSWERED = "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = 'the user tapped Try again: answer their last message';
+/** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
+const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
 /** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
 export const WRITE_TRIES = 3;
 
@@ -1565,6 +1567,8 @@ export class Agent {
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
       };
       ({ output, ms } = await runTool(tool, input, call));
+      // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
+      if (output.images?.length && o.model && !o.model.input?.includes('image')) output = await this.#described(output, o.wakeId);
     }
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
@@ -1599,6 +1603,41 @@ export class Agent {
       texts: [['content', output.content]], blobs,
     });
     return output;
+  }
+
+  /**
+   * A tool's photos in words, for a model that can't see them (emulator pass, 5b): described by the utility role's models,
+   * then Main's, that take photos (the utility list first: a side job, like a summary, on the cheaper model); the crop when a
+   * part was asked for, as that is what the tool returned. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
+   */
+  async #described(output, wakeId) {
+    const cfg = await this.llm.config();
+    const roles = [...(cfg.roles?.utility?.models?.length ? ['utility'] : []), 'main'];
+    const sees = roles.some((role) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image')));
+    /** @type {string[]} */
+    const said = [];
+    for (const m of output.images ?? []) {
+      if (!sees) {
+        said.push("No model here can see photos, so what it shows can't be told.");
+        continue;
+      }
+      const bytes = m.data ? null : await blobBytes(this.store, m.hash ?? '');
+      const image = { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data: m.data ?? (bytes ? toBase64(bytes) : '') };
+      let why = '';
+      for (const role of roles) {
+        try {
+          const r = await this.llm.call({ role, level: 'off', scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: DESCRIBE, maxOutput: 600, messages: [{ role: 'user', parts: [image, { type: 'text', text: 'Describe this photo.' }] }] } });
+          why = r.reply.text.trim() ? `What it shows (described by ${r.answeredBy}, as you can't see photos): ${r.reply.text.trim()}` : '';
+        } catch (e) {
+          why ||= `It couldn't be described: ${this.#explain(e, role)}`;
+          continue;
+        }
+        if (why) break;
+      }
+      said.push(why || "It couldn't be described.");
+    }
+    const { images, ...rest } = output;
+    return { ...rest, content: `${output.content}\n${said.join('\n')}` };
   }
 
   /** The output tools (spec §7.1). @returns {LoopTool[]} */

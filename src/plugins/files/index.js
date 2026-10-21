@@ -103,7 +103,7 @@ export function activate(annai) {
         const { entry, bytes } = got;
         const input = call.model?.input ?? ['text'];
         if (entry.type.startsWith('image/')) {
-          if (!input.includes('image')) return `${i.path} is a photo, and this model can't see photos.`;
+          // For a model that can't see photos, the loop has one that can describe it (emulator pass).
           const m = entry.meta ?? {};
           const source = { hash: entry.hash, type: entry.type, width: m.width ?? null, height: m.height ?? null, size: entry.size };
           if (i.region) {
