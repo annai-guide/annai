@@ -68,6 +68,10 @@ test('the Big Sur trip, simulated through the app, is replayed and recapped, and
     await page.getByLabel('Speed').selectOption('fast');
     await page.getByRole('button', { name: 'Start the simulation' }).click();
     await expect(page.getByText('The simulation has ended.')).toBeVisible({ timeout: 240_000 });
+    // She slept through the plan's reminders: annai showed them itself (spec §11.3). They are read, and put away.
+    await expect(page.locator('.notice', { hasText: 'Running late: Hearst Castle tour' }).first()).toBeAttached();
+    const cards = page.locator('.notices .notice');
+    while (await cards.count()) await cards.last().getByRole('button', { name: 'Dismiss' }).click();
 
     // Replay: the timeline, the route and the stamps.
     await page.getByRole('link', { name: 'Replay it' }).click();

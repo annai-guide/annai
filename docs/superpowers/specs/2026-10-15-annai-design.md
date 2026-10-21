@@ -818,7 +818,7 @@ When the phone locks, the app freezes, and catch-up (§11.4) covers the gap.
 
 Plugins can add types.
 
-**Every watch has a fallback message.** When the watch fires and the model can't be reached, the fallback is shown or spoken directly. A reminder (a `time`, `every` or `plan` watch's) stays owed until she reaches the user after it fires, with `speak`, `show` or `ask`, or its notification was shown (§11.6): a turn that ends without one shows the fallback too, and tells her so. Other watches are cues for her, which she may let pass in silence. While Shiori is two halves, a firing wakes both (§6.1): Koe says what is simple at once and waits for Kokoro's note for anything that needs judgement, and the fallback goes with Koe's wake only, so it is said once.
+**Every watch has a fallback message.** When the watch fires and the model can't be reached, the fallback is shown or spoken directly. A reminder (a `time` or `every` watch's, or the plan's leave, running late and coming up) stays owed until she reaches the user after it fires, with `speak`, `show` or `ask`, or its notification was shown (§11.6): a turn that ends without one shows the fallback too, and tells her so. Other watches (places, the road, an arrival, a stop off the plan) are cues for her, which she may let pass in silence. While Shiori is two halves, a firing wakes both (§6.1): Koe says what is simple at once and waits for Kokoro's note for anything that needs judgement, and the fallback goes with Koe's wake only, so it is said once.
 
 **Plan items create their own watches.** The system sets these, so they don't depend on Shiori remembering:
 - leave in X minutes
