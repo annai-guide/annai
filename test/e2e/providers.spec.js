@@ -221,3 +221,43 @@ test("Add on a provider whose plugin the user turned off says so in words, with 
   await expect(card).toContainText('OpenRouter, which you turned off');
   await expect(card).not.toContainText('provider-openrouter');
 });
+
+test("a provider whose plugin is missing: annai's own is offered to install right there; another's is said plainly, with no plugin id (fixes-ui 16)", async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'llama.cpp');
+  const providerUrl = page.url();
+  /** Changes what annai keeps, through its own modules, then opens the provider's page again. @param {string} what */
+  const change = async (what) => {
+    await page.evaluate(async (what) => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      if (what === 'plugin') {
+        const state = await ws.readJSON('sys:plugins', '/installed.json');
+        delete state['provider-llamacpp'];
+        await ws.write('sys:plugins', '/installed.json', state, { author: 'system' });
+      } else {
+        for (const f of await ws.list('sys:settings', '/llm/providers/')) {
+          const rec = await ws.readJSON('sys:settings', f.path);
+          await ws.write('sys:settings', f.path, { ...rec, plugin: 'tide-pools-provider' }, { author: 'system' });
+        }
+      }
+      store.close();
+    }, what);
+    await page.reload();
+    await page.goto(providerUrl);
+    await expect(page.getByRole('heading', { level: 1, name: 'llama.cpp' })).toBeVisible();
+  };
+  await change('plugin');
+  const note = page.locator('.risk-note');
+  await expect(note).toContainText("Its plugin, llama.cpp, isn't installed, so annai can't say what it offers.");
+  await expect(note).not.toContainText('provider-llamacpp');
+  await page.getByRole('button', { name: 'Install it' }).click();
+  await expect(page.locator('.risk-note')).toHaveCount(0, { timeout: 30_000 });
+  await change('provider');
+  await expect(note).toContainText("The plugin it was made from isn't on this device, and it isn't one of annai's own");
+  await expect(note).not.toContainText('tide-pools-provider');
+  await expect(page.getByRole('button', { name: 'Install it' })).toHaveCount(0);
+});

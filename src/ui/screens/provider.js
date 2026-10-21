@@ -2,6 +2,7 @@ import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedR
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
+import { officialPlugins } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
@@ -126,7 +127,7 @@ export async function renderProvider(ctx, id) {
     h('p', { class: 'crumbs' }, h('a', { href: '#/models' }, '← Models')),
     title,
     h('p', { class: 'sub', text: [pluginName !== p.name ? pluginName : null, installed?.source === 'official' ? null : installed ? sourceLine(installed) : null].filter(Boolean).join(' · ') }),
-    src ? null : h('p', { class: 'risk-note', text: `Its plugin, ${rec.plugin}, isn't running, so annai can't say what it offers. Look at it in Settings → Plugins.` }),
+    src ? null : await missingPlugin(ctx, rec.plugin, installed),
     h('section', { class: 'panel', 'aria-label': 'Provider' },
       savedField('Name', name, () => name.value.trim() || providerBase(rec).name, async (v) => { title.textContent = (await saveFields({ name: v })).name; }),
       h('h3', { text: 'Connection' }),
@@ -202,6 +203,40 @@ export async function renderNewProvider(ctx, pluginId) {
     if (new URLSearchParams(location.hash.split('?')[1] ?? '').get('new') !== pluginId) ctx.llm.leaveAdd(pluginId).catch((/** @type {unknown} */ e) => console.warn("a provider plugin with no provider couldn't be removed", e));
   });
   return screen;
+}
+
+/**
+ * What a provider's page says when its plugin isn't running, in words with no plugin id (fixes-ui 16): installed, a link to it;
+ * annai's own and missing (a restore brings providers back without theirs), Install it, here; another's, that annai can't fetch it.
+ * @param {any} ctx @param {string} plugin @param {any} installed its install state, if any
+ */
+async function missingPlugin(ctx, plugin, installed) {
+  if (installed) {
+    return h('p', { class: 'risk-note' }, `Its plugin, ${installed.name}, isn't running, so annai can't say what it offers. `,
+      h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, 'Look at it in Settings → Plugins'), '.');
+  }
+  const catalog = await officialPlugins().catch(() => null);
+  const entry = catalog?.find((/** @type {any} */ p) => p.id === plugin);
+  if (!entry) {
+    return h('p', { class: 'risk-note', text: catalog ? "The plugin it was made from isn't on this device, and it isn't one of annai's own, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider."
+      : "Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again." });
+  }
+  const status = h('p', { class: 'sub', role: 'status' });
+  const install = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: async () => {
+      install.disabled = true;
+      status.textContent = 'Installing…';
+      try {
+        await ctx.llm.installProvider(plugin, { official: true });
+        ctx.render();
+      } catch (e) {
+        status.textContent = messageOf(e);
+        install.disabled = false;
+      }
+    },
+  }, 'Install it');
+  return h('div', { class: 'risk-note' }, h('p', { text: `Its plugin, ${entry.name}, isn't installed, so annai can't say what it offers.` }), h('div', { class: 'acts' }, install), status);
 }
 
 /** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any }} View */
