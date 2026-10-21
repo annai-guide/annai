@@ -171,7 +171,7 @@ export async function renderTalk(ctx) {
       asks.delete(d.id);
       return null;
     }
-    if (e.type === 'reminder') return h('li', { class: 'system-line', text: `Reminder${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
+    if (e.type === 'reminder') return h('li', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
     if (e.type === 'note' || e.type === 'halves') {
       split = true;
       if (!halves) return null;
