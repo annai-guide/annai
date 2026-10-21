@@ -61,8 +61,9 @@ test('a restore offline says the providers whose plugins are missing, and a seco
   let online = false;
   const llm = createLlm({ store: b.store, ws: b.ws, plugins: b.host, fetch: (/** @type {any} */ url) => (online ? fromRepo(url) : Promise.reject(new TypeError('Failed to fetch'))) });
   const first = await llm.restorePlugins();
-  assert.equal(first.failed.length, 2);
-  assert.match(first.failed.join(' '), /couldn't be loaded\. Check the connection and try again\./);
+  // The same reason once, naming every provider it holds back (review R4).
+  assert.equal(first.failed.length, 1);
+  assert.match(first.failed[0], /^(OpenRouter, Google Gemini|Google Gemini, OpenRouter): annai's list of plugins couldn't be loaded\. Check the connection and try again\.$/);
   assert.doesNotMatch(first.failed.join(' '), /catalog:/);
   online = true;
   const second = await llm.restorePlugins();
@@ -95,4 +96,22 @@ test('a plugin the restore installed that then provides no provider is removed a
   assert.ok(!got.installed.includes('Google Gemini'));
   assert.equal(got.failed.length, 1);
   assert.ok(before.size === 0 && now.includes('provider-openrouter'));
+});
+
+// Review R3: with "Replace my plugins" ticked, the import itself switched every plugin off, and says so.
+test("plugins the import brought switched off are left as they came, with no line saying the user turned them off", async () => {
+  const { a, b, llm } = await restored();
+  const llmB = llm;
+  for (const id of Object.keys(await a.host.installed())) {
+    const files = new Map();
+    for (const f of await a.ws.list('sys:plugins', `/${id}/`)) files.set(f.path.slice(id.length + 2), /** @type {any} */ (await a.ws.read('sys:plugins', f.path)).bytes);
+    await b.host.install(files, { source: 'official' });
+    await b.host.setEnabled(id, false);
+  }
+  const got = await llmB.restorePlugins({ imported: true });
+  assert.deepEqual(got, { installed: [], failed: [] });
+  assert.ok(Object.values(await b.host.installed()).every((x) => x.enabled === false), 'none switched on');
+  // Not from this import, a plugin the user turned off is named, as before.
+  const mine = await llmB.restorePlugins();
+  assert.match(mine.failed.join(' '), /which you turned off/);
 });

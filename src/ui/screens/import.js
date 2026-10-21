@@ -132,7 +132,7 @@ function preview(ctx, body, opened, desc, from, fresh) {
         if (result.trips.length || result.archived.length) await ctx.live?.tripsChanged().catch(() => {});
         // The plugins the providers that came use, in the same step (spec §12.3).
         if (result.settings) status.textContent = 'Installing the plugins your providers use…';
-        const plugged = result.settings && ctx.llm ? pluginsBrought(ctx, await restorePlugins(ctx)) : null;
+        const plugged = result.settings && ctx.llm ? pluginsBrought(ctx, await restorePlugins(ctx, result.plugins), result.plugins) : null;
         const titles = desc.trips.map((/** @type {any} */ t) => t.title);
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: 'Imported.' }),
@@ -158,16 +158,16 @@ function preview(ctx, body, opened, desc, from, fresh) {
     status);
 }
 
-/** @param {any} ctx @returns {Promise<{ installed: string[], failed: string[] }>} */
-const restorePlugins = (ctx) => ctx.llm.restorePlugins().catch((/** @type {any} */ e) => ({ installed: [], failed: [String(e?.message ?? e)] }));
+/** imported: the plugins came with it, switched off. @param {any} ctx @param {boolean} imported @returns {Promise<{ installed: string[], failed: string[] }>} */
+const restorePlugins = (ctx, imported) => ctx.llm.restorePlugins({ imported }).catch((/** @type {any} */ e) => ({ installed: [], failed: [String(e?.message ?? e)] }));
 
-/** What the restore installed for its providers, and Try again for what it couldn't. @param {any} ctx @param {{ installed: string[], failed: string[] }} got */
-function pluginsBrought(ctx, got) {
+/** What the restore installed for its providers, and Try again for what it couldn't. @param {any} ctx @param {{ installed: string[], failed: string[] }} got @param {boolean} imported */
+function pluginsBrought(ctx, got, imported) {
   const el = h('div', {});
   const draw = (/** @type {{ installed: string[], failed: string[] }} */ g) => el.replaceChildren(
     ...(g.installed.length ? [h('p', { class: 'sub', text: `Installed what your providers use: ${g.installed.join(', ')}.` })] : []),
     ...(g.failed.length ? [h('p', { class: 'error', role: 'alert', text: g.failed.join(' ') }),
-      h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: async () => draw(await restorePlugins(ctx)) }, 'Try again'))] : []));
+      h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: async () => draw(await restorePlugins(ctx, imported)) }, 'Try again'))] : []));
   draw(got);
   return el;
 }
