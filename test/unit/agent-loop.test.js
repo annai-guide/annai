@@ -206,6 +206,34 @@ test("no model answers: a system card, never in Shiori's voice", async () => {
   assert.equal((await k.events(['error']))[0].data.kind, 'model');
 });
 
+test("a model error card is taken down when a later turn works: the same key, then a clear; a \"didn't answer\" card when she then speaks (the second emulator pass)", async () => {
+  const k = await agentKit([[{ error: 'auth', status: 401 }, say('Back again.')]]);
+  /** @type {any[]} */
+  const seen = [];
+  k.agent.on('clear', (/** @type {string} */ key) => seen.push(key));
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.deepEqual(seen, []);
+  assert.equal(k.notices[0].key, 'model', 'the card is named, so the app can take it down');
+  k.llm.bench.clear('m-0');
+  k.agent.send('Hi again');
+  await k.agent.idle();
+  assert.deepEqual(seen, ['model', 'silent']);
+  // The same for a turn that said nothing: its card goes with the turn that speaks.
+  const q = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, say('Now aloud.')]]);
+  /** @type {any[]} */
+  const qs = [];
+  q.agent.on('clear', (/** @type {string} */ key) => qs.push(key));
+  q.agent.send('Hi');
+  await q.agent.idle();
+  assert.deepEqual(q.notices.map((/** @type {any} */ n) => [n.title, n.key]), [["Shiori didn't answer", 'silent']]);
+  assert.deepEqual(qs, ['model'], "that turn worked, but said nothing: the card about saying nothing stays");
+  q.agent.tryAgain();
+  await q.agent.idle();
+  assert.deepEqual(qs, ['model', 'model', 'silent']);
+  assert.equal((await q.events(['out.speak']))[0].data.text, 'Now aloud.');
+});
+
 test("the card says why each model failed on one line, each reason once, in words; offline, that the device is (emulator pass)", async () => {
   const busy = 'This model is currently experiencing high demand. Please try again later.';
   const k = await agentKit([[{ error: 'overloaded', message: busy }], [{ error: 'unreachable', message: 'Failed to fetch' }]], { models: [{}, { input: ['text'] }] });

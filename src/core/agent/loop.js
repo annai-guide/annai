@@ -49,7 +49,8 @@ import { anySignal } from '../signals.js';
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's
  * @typedef {{ name: StateName, label: string, detail?: string }} State
- * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[] }} Notice
+ * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string }} Notice
+ *   key: names a card a later turn takes down (the clear event, when that turn works)
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
  * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
  * @typedef {import('./tools.js').Tool & { pluginId: string }} LoopTool
@@ -186,7 +187,7 @@ export class Agent {
   /** The wake whose photo couldn't be sent: its card already says why. */
   #photoCard = '';
   /** @type {Record<string, Set<(x: any) => void>>} */
-  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set() };
+  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), clear: new Set() };
   /** Speaking and hearing (spec §10); null: no voice here. @type {import('../voice/voice.js').Voice | null} */
   voice = null;
   /** Where the user is and what they are doing, for the now block (spec §6.3): live mode's. @type {(() => { place?: string, activity?: string }) | null} */
@@ -357,10 +358,15 @@ export class Agent {
     return this.#photos.copy(source, await this.#limits(), crop);
   }
 
-  /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11). @param {'state' | 'event' | 'notice' | 'open'} kind @param {(x: any) => void} fn */
+  /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11); clear: a card's key, to take down. @param {'state' | 'event' | 'notice' | 'open' | 'clear'} kind @param {(x: any) => void} fn */
   on(kind, fn) {
     this.#on[kind].add(fn);
     return () => this.#on[kind].delete(fn);
+  }
+
+  /** The user's Try again after a turn that said nothing to them: her turn again, answering their last message. */
+  tryAgain() {
+    this.wake({ kind: 'cue', text: AGAIN, again: true, scope: this.scope });
   }
 
   /** A system card, with any key annai keeps blanked from what it says (spec §9.9). @param {Notice} n */
@@ -368,7 +374,7 @@ export class Agent {
     this.#emit('notice', { ...n, title: await withoutSecrets(this.store, n.title), body: await withoutSecrets(this.store, n.body) });
   }
 
-  /** @param {'state' | 'event' | 'notice' | 'open'} kind @param {any} x */
+  /** @param {'state' | 'event' | 'notice' | 'open' | 'clear'} kind @param {any} x */
   #emit(kind, x) {
     for (const fn of this.#on[kind]) {
       try {
@@ -1238,6 +1244,11 @@ export class Agent {
       ok = await this.#steps(wakes, wakeId, abort);
     } finally {
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn('the end of a turn failed', e));
+      // A turn that worked takes down the cards about a model failing; one that then spoke, the card about her saying nothing.
+      if (ok) {
+        this.#emit('clear', 'model');
+        if (this.#facts.spoke) this.#emit('clear', 'silent');
+      }
       this.#turning = false;
       try {
         this.#half.ended?.({ wakeId, ok, ...this.#facts });
@@ -1503,7 +1514,7 @@ export class Agent {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = 'Her model finished without saying anything to you.';
       const scope = this.scope;
-      await this.#notice({ tone: 'warn', title: "Shiori didn't answer", body, actions: [{ label: 'Try again', primary: true, run: () => { this.wake({ kind: 'cue', text: AGAIN, again: true, scope }); } }] });
+      await this.#notice({ tone: 'warn', title: "Shiori didn't answer", body, key: 'silent', actions: [{ label: 'Try again', primary: true, run: () => { this.wake({ kind: 'cue', text: AGAIN, again: true, scope }); } }] });
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'silent', wake: wakeId, message: body } });
     }
     settle();
@@ -1555,7 +1566,7 @@ export class Agent {
     if (quiet || this.#photoCard === wakeId) {
       // said elsewhere, or its card already says why
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
-    else await this.#notice({ tone: 'warn', title: "Shiori can't reach her model", body: why });
+    else await this.#notice({ tone: 'warn', title: "Shiori can't reach her model", body: why, key: 'model' });
     await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, message: why, ...(quiet ? { quiet: true } : {}) } });
   }
 
