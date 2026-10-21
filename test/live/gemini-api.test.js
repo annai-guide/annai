@@ -11,7 +11,7 @@ import { levelsFor } from '../../plugins-official/gemini-api/levels.js';
 import { STAND_IN_SIGNATURE } from '../../plugins-official/gemini-api/steps.js';
 import { TEST_IMAGE } from '../../src/core/llm/check.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
-import { Kept } from '../../src/core/llm/kept.js';
+import { Kept, keyPrint } from '../../src/core/llm/kept.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
@@ -165,7 +165,7 @@ test('Google keeps the conversation (G2): turn 2 sends only the tool result afte
   assert.equal(sent.at(-1).previous_interaction_id, undefined);
   // Every turn Google keeps, deleted.
   await kept.queue();
-  const done = await kept.drain({ fetch, resolve: async () => ({ type, endpoint, key: KEY }) });
+  const done = await kept.drain({ fetch, resolve: async () => ({ type, endpoint, key: KEY, print: await keyPrint(KEY, endpoint.baseUrl) }) });
   assert.deepEqual(done.left, 0);
   assert.ok(done.done >= 3);
 });

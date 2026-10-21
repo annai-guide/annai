@@ -72,10 +72,10 @@ export function radios(legend, options, value, onChange = () => {}) {
 }
 
 /**
- * A destructive button that needs a second tap within four seconds.
- * @param {string} label @param {string} confirmLabel @param {() => Promise<void> | void} action
+ * A destructive button that needs a second tap within four seconds; onArm: called at the first, to say what goes.
+ * @param {string} label @param {string} confirmLabel @param {() => Promise<void> | void} action @param {() => unknown} [onArm]
  */
-export function twoStep(label, confirmLabel, action) {
+export function twoStep(label, confirmLabel, action, onArm) {
   let armed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
@@ -85,6 +85,7 @@ export function twoStep(label, confirmLabel, action) {
       if (!armed) {
         armed = true;
         btn.textContent = confirmLabel;
+        onArm?.();
         timer = setTimeout(() => { armed = false; btn.textContent = label; }, 4000);
         return;
       }

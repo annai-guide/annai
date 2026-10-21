@@ -241,8 +241,6 @@ export async function callRole(c) {
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
     // first, whatever the header's name, as the protocol then gets none to tell it (fix pass). Its plugin's
     // setup may add headers and sharpen error kinds (decision 15).
-    // Its mark before the key is read: a key change meanwhile counts (kept.js).
-    const mark = keeps?.mark() ?? 0;
     const own = await c.keyFor(pRec.id);
     if (own) c.trace?.secret(own);
     const set = adjusted(c.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables), provider.keyHeader);
@@ -269,7 +267,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, mark } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);

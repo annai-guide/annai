@@ -52,7 +52,12 @@ test("Google keeps the conversation: the switch and its note; Shiori's next turn
     await expect(chat.getByLabel('Let Google keep the conversation between turns: sends less each time.')).toBeChecked();
     await expect(chat.getByText(/Google keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to 55 days on a paid one/)).toBeVisible();
     await expect(chat.getByText(/annai deletes them when you remove their trip, this provider or everything \(Erase\), change or remove its key, or turn this off/)).toBeVisible();
+    // Each warning counts what is kept as it shows: typing a new key, arming Remove provider.
+    await expect(page.getByText(/annai first asks Google to delete/)).toHaveCount(0);
+    await page.getByLabel('API key').fill('AIza-typed-not-saved');
     await expect(page.getByText(/^With a new key or address, or Remove key, annai first asks Google to delete the 2 turns/)).toBeVisible();
+    await page.getByLabel('API key').fill('');
+    await page.getByRole('button', { name: 'Remove provider' }).click();
     await expect(page.getByText(/^First, annai asks Google to delete the 2 turns of your conversations it keeps/)).toBeVisible();
 
     // Offline, the trip is removed: its deletions wait.
@@ -67,7 +72,9 @@ test("Google keeps the conversation: the switch and its note; Shiori's next turn
     await page.locator('a.card', { hasText: 'Google Gemini' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
     await expect(chat.getByText('2 deletions waiting: annai sends them when it can reach Google.')).toBeVisible();
+    await page.getByRole('button', { name: 'Remove provider' }).click();
     await expect(page.getByText('Google keeps 2 turns until they expire, up to 55 days.')).toBeVisible();
+    await page.getByLabel('Address', { exact: true }).fill(`${s.url}/other`);
     await expect(page.getByText('Offline, a new key or address, or Remove key, leaves Google the 2 turns it keeps until they expire, up to 55 days.')).toBeVisible();
     expect(s.deleted()).toEqual([]);
 
@@ -94,8 +101,8 @@ test("Erase names what Google keeps before the tap, and asks Google to delete it
     expect(s.stored().length).toBe(1);
     await page.goto('/#/settings');
     const erase = page.getByRole('region', { name: 'Erase' });
-    await expect(erase.getByText("First, annai asks Google to delete the 1 turn of your conversations it keeps; any it can't in 10 seconds, Google keeps until it expires, up to 55 days.")).toBeVisible();
     await erase.getByLabel('Type ERASE to confirm').fill('ERASE');
+    await expect(erase.getByText("First, annai asks Google to delete the 1 turn of your conversations it keeps; any it can't in 10 seconds, Google keeps until it expires, up to 55 days.")).toBeVisible();
     await erase.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
     await expect(page.getByText('No trips yet.')).toBeVisible();
@@ -167,6 +174,8 @@ test('Remove key: what Google keeps is deleted first, with that key, before it g
     await page.locator('a.card', { hasText: 'Google Gemini' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
     await page.getByRole('button', { name: 'Remove key' }).click();
+    await expect(page.getByText(/^With a new key or address, or Remove key, annai first asks Google to delete the 1 turn/)).toBeVisible();
+    await page.getByRole('button', { name: 'Tap again to remove the key' }).click();
     await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
     expect(s.stored()).toEqual([]);
     const deleted = s.requests().filter((r) => r.method === 'DELETE');

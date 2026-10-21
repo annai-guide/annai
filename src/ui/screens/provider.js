@@ -36,11 +36,9 @@ export function keptWords({ turns, waiting, days, who }, online, key = false) {
   return key ? `Offline, a new key or address, or Remove key, leaves ${name} the ${what} it keeps ${until}.` : `${name} keeps ${what} ${until}.`;
 }
 
-/** keptWords as a line, filled when known. @param {any} ctx @param {{ provider?: string }} [o] @param {boolean} [key] */
-export function keptLine(ctx, o = {}, key = false) {
-  const el = h('p', { class: 'sub' });
+/** keptWords in el, counted now, as the warning shows. @param {any} ctx @param {HTMLElement} el @param {{ provider?: string, plugin?: string }} [o] @param {boolean} [key] */
+export function warnKept(ctx, el, o = {}, key = false) {
   ctx.llm?.keptCount?.(o).then((/** @type {any} */ k) => { el.textContent = keptWords(k, navigator.onLine !== false, key); }, () => {});
-  return el;
 }
 
 /**
@@ -108,6 +106,11 @@ export async function renderProvider(ctx, id) {
   if (!others && installed?.source === 'file') removes.push(`To add it back, you'll need its file again${installed.file ? ` (${installed.file})` : ''}.`);
   const view = { ctx, id, tunablesFor, desc };
   const removing = h('p', { class: 'sub', role: 'status' });
+  // What a provider keeps, named as its warning shows: typing a new key or address, or arming a removal (G2).
+  const keyWarn = h('p', { class: 'sub' });
+  const removeWarn = h('p', { class: 'sub' });
+  const warnKey = () => warnKept(ctx, keyWarn, { provider: id }, true);
+  for (const input of [url, key]) input?.addEventListener('input', warnKey);
   /** work, saying meanwhile that the provider is asked to delete what it keeps. @template T @param {HTMLElement} el @param {() => Promise<T>} work @returns {Promise<T>} */
   const asking = async (el, work) => {
     const k = await ctx.llm.keptCount({ provider: id });
@@ -136,14 +139,19 @@ export async function renderProvider(ctx, id) {
       desc?.freeTier ? h('p', { class: 'sub', text: 'On, its calls show as free in the Trace, and count nothing toward Spend per day.' }) : null,
       headers.el,
       h('div', { class: 'acts' }, save,
-        hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await asking(status, () => ctx.llm.reconnect(id, () => setKey(ctx.store, id, null))); await ctx.llm.unbench(id); ctx.notices.toast('Key removed'); ctx.render(); } }, 'Remove key') : null),
-      keptLine(ctx, { provider: id }, true),
+        hasKey ? twoStep('Remove key', 'Tap again to remove the key', async () => {
+          await asking(status, () => ctx.llm.reconnect(id, () => setKey(ctx.store, id, null)));
+          await ctx.llm.unbench(id);
+          ctx.notices.toast('Key removed');
+          ctx.render();
+        }, warnKey) : null),
+      keyWarn,
       status),
     desc?.roles ? suggestionsPanel(ctx, id, /** @type {any} */ (src)) : null,
     ...await Promise.all(Object.values(p.abilities).map((a) => abilityPanel(view, a.id, (rec.template?.added ?? []).includes(a.id)))),
     h('div', { class: 'panel' },
       h('p', { class: 'sub', text: removes.join(' ') }),
-      keptLine(ctx, { provider: id }),
+      removeWarn,
       h('div', { class: 'acts' }, twoStep('Remove provider', 'Tap again to remove it', async () => {
         try {
           await asking(removing, () => ctx.llm.removeProvider(id));
@@ -151,7 +159,7 @@ export async function renderProvider(ctx, id) {
         } catch (e) {
           status.textContent = messageOf(e);
         }
-      })),
+      }, () => warnKept(ctx, removeWarn, { provider: id }))),
       removing));
 }
 

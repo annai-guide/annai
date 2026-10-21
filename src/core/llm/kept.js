@@ -1,26 +1,25 @@
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget as forgetHistory } from '../forget.js';
+import { sha256Hex } from '../hash.js';
 import { safeId, sameOrigin, noRedirect } from './contract.js';
 
 /**
- * Turns a provider keeps on its side (the Gemini design): a conversation's turn is kept there, and the next sends only
- * what is new. annai remembers each by id, trip and fingerprints, never content, and deletes it when the user removes
- * it here (spec §4.9); deletions wait in the same file. It is this device's ("This device", /llm/kept.json): no backup
- * carries it, a restore never replaces it, and it has no history, which would name a removed trip's turns.
+ * Turns a provider keeps (the Gemini design): a conversation's turn is kept there, and the next sends only what is new.
+ * annai remembers each by id, trip and fingerprints, never content, and deletes it when the user removes it (spec §4.9).
+ * The file is this device's ("This device", /llm/kept.json), without history, which would name a removed trip's turns.
  *
- * Two lifetimes, whatever a key is marked: each turn is tracked as long as the provider may keep one (its type's days),
- * and a chain is continued only its type's hours after its first turn, as Google silently drops a deleted or expired
- * turn's content from the turns after it (measured 2026-10-19). So too the cap takes whole chains, and a forgotten turn its chain.
+ * Each turn is tracked as long as the provider may keep one (its type's days), and a chain continued only its type's
+ * hours after its first turn: Google silently drops a deleted or expired turn's content from the turns after it
+ * (measured 2026-10-19). So too the cap takes whole chains.
  *
- * A removal can race a call: a turn kept after a removal that covers it, begun after the call's mark (or lasting), is
- * deleted, at once with the call's key when its provider or everything goes.
+ * Under one lock a turn is kept only if it still may be (alive, as things are now), else its call deletes it at once,
+ * with its own key; a removal changes that state first, then queues. A turn is deleted only with its key and address (key).
  * @typedef {import('./contract.js').Message} Message
- * @typedef {{ id: string, endpoint: string, scope: string, chain: string, ends: number, n: number, prefix: string, reply: string, until: number }} KeptTurn
- *   chain: its first turn's id, continued until ends; n: messages sent, prefix: their fingerprint, reply: its reply's;
- *   until: when the provider has deleted it anyway
- * @typedef {{ turns: KeptTurn[], forget: { id: string, endpoint: string, until: number }[] }} KeptFile
- * @typedef {{ scope?: string, endpoint?: string, provider?: string }} Which  none: all
- * @typedef {'kept' | 'queued' | 'now'} Settled  now: delete it at once, with the call's key
+ * @typedef {{ id: string, endpoint: string, scope: string, key: string, chain: string, ends: number, n: number, prefix: string, reply: string, until: number }} KeptTurn
+ *   chain: its first turn's id, continued until ends; n: messages sent, prefix: their fingerprint; until: when it expires
+ * @typedef {{ id: string, endpoint: string, key: string, until: number }} Deletion
+ * @typedef {{ turns: KeptTurn[], forget: Deletion[] }} KeptFile
+ * @typedef {{ scope?: string, endpoint?: string, provider?: string | string[] }} Which  none: all
  */
 
 export const MAX_TURNS = 200;
@@ -38,6 +37,9 @@ function hash(s) {
   }
   return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
 }
+
+/** A key and address's fingerprint, never the key. @param {string | null} secret @param {string} baseUrl */
+export const keyPrint = async (secret, baseUrl) => (await sha256Hex(`${baseUrl.replace(/\/+$/, '')}\n${secret ?? ''}`)).slice(0, 16);
 
 /**
  * A message's fingerprint as sent: words, photos (by hash), audio, documents, calls and results; heard speech by its
@@ -67,15 +69,19 @@ function prints(messages) {
 /** An endpoint ("<provider>/<ability>") of the provider. @param {string} endpoint @param {string} provider */
 const ofProvider = (endpoint, provider) => endpoint.startsWith(`${provider}/`);
 /** @param {{ scope?: string, endpoint: string }} x @param {Which} o */
-const matches = (x, o) => (!o.scope || x.scope === o.scope) && (!o.endpoint || x.endpoint === o.endpoint) && (!o.provider || ofProvider(x.endpoint, o.provider));
+const matches = (x, o) => (!o.scope || x.scope === o.scope) && (!o.endpoint || x.endpoint === o.endpoint) && (!o.provider || [o.provider].flat().some((p) => ofProvider(x.endpoint, p)));
 
 /** Queues the deletions of the turns that match, each once; how many. @param {KeptFile} f @param {(t: KeptTurn) => boolean} which */
 function take(f, which) {
   const hit = f.turns.filter(which);
-  const have = new Set(f.forget.map((d) => d.id));
-  f.forget.push(...hit.filter((t) => !have.has(t.id)).map((t) => ({ id: t.id, endpoint: t.endpoint, until: t.until })));
+  for (const t of hit) wait(f, t);
   f.turns = f.turns.filter((t) => !which(t));
   return hit.length;
+}
+
+/** Queues one deletion, once. @param {KeptFile} f @param {Deletion} d */
+function wait(f, { id, endpoint, key, until }) {
+  if (!f.forget.some((x) => x.id === id)) f.forget.push({ id, endpoint, key, until });
 }
 
 export class Kept {
@@ -87,19 +93,17 @@ export class Kept {
   #draining = Promise.resolve();
   /** @type {Promise<{ done: number, left: number }> | null} */
   #nextDrain = null;
-  /** @type {{ which: Which, end: number }[]} */
-  #removals = [];
-  #seq = 0;
   /** Endpoints a 429 rests, until when. @type {Map<string, number>} */
   #rest = new Map();
 
-  /** @param {{ ws: import('../workspace.js').Workspace, now?: () => number }} c */
-  constructor({ ws, now = Date.now }) {
+  /** @param {{ ws: import('../workspace.js').Workspace, now?: () => number, alive?: (t: { endpoint: string, scope: string, key: string }) => Promise<boolean> }} c */
+  constructor({ ws, now = Date.now, alive = async () => true }) {
     this.ws = ws;
     this.now = now;
+    this.alive = alive;
   }
 
-  /** fn on the file, one at a time; written when changed, less what expired, the oldest chains over MAX_TURNS queued. @template T @param {(f: KeptFile, now: number) => T} fn @returns {Promise<T>} */
+  /** fn on the file, under the lock; written when changed, less what expired, the oldest chains over MAX_TURNS queued. @template T @param {(f: KeptFile, now: number) => T | Promise<T>} fn @returns {Promise<T>} */
   #change(fn) {
     const run = this.#lock.then(async () => {
       const j = this.#file ? null : await this.ws.readJSON(SYS_DEVICE, PATH).catch(() => null);
@@ -108,7 +112,7 @@ export class Kept {
       const now = this.now();
       f.turns = f.turns.filter((t) => t.until > now);
       f.forget = f.forget.filter((d) => d.until > now);
-      const out = fn(f, now);
+      const out = await fn(f, now);
       while (f.turns.length > MAX_TURNS) {
         const oldest = f.turns.reduce((a, t) => (t.ends < a.ends ? t : a)).chain;
         take(f, (t) => t.chain === oldest);
@@ -129,32 +133,19 @@ export class Kept {
     return run;
   }
 
-  /** A call's mark, as it starts. */
-  mark() {
-    return this.#seq;
-  }
-
-  /** A removal begins; it lasts until the function it gives is called. @param {Which} [which] none: everything @returns {() => void} */
-  removing(which = {}) {
-    const r = { which, end: Infinity };
-    this.#seq++;
-    this.#removals.push(r);
-    return () => { r.end = ++this.#seq; };
-  }
-
   /**
    * The kept turn a request continues: the longest whose messages begin it, then its reply, then something new, same
-   * trip and endpoint, its chain still continued. @param {string} endpointId @param {Message[]} messages as sent
-   * @param {{ scope: string }} o @returns {Promise<{ id: string, from: number } | null>} from: the first to send
+   * trip, endpoint and key, its chain still continued. @param {string} endpointId @param {Message[]} messages as sent
+   * @param {{ scope: string, key: string }} o @returns {Promise<{ id: string, from: number } | null>} from: the first to send
    */
-  match(endpointId, messages, { scope }) {
+  match(endpointId, messages, { scope, key }) {
     return this.#change((f, now) => {
       /** @type {ReturnType<typeof prints> | null} */
       let p = null;
       /** @type {KeptTurn | null} */
       let best = null;
       for (const t of f.turns) {
-        if (t.endpoint !== endpointId || t.scope !== scope || t.n + 1 >= messages.length || t.ends <= now) continue;
+        if (t.endpoint !== endpointId || t.scope !== scope || t.key !== key || t.n + 1 >= messages.length || t.ends <= now) continue;
         p ??= prints(messages);
         if (p.prefix[t.n] !== t.prefix || p.each[t.n] !== t.reply) continue;
         if (!best || t.n > best.n || (t.n === best.n && t.until > best.until)) best = t;
@@ -164,35 +155,31 @@ export class Kept {
   }
 
   /**
-   * A turn the provider kept, in the chain of the one it continued (after). Deleted instead: one without messages (its
-   * call failed or was refused), one whose chain went meanwhile (it lost what came before), one a removal since its call's
-   * mark covers: at once with the call's key ('now') when its provider or everything is going.
-   * @param {{ id: string, endpoint: string, scope: string, days: number, mark: number, messages?: Message[], reply?: Message, hours?: number, after?: string }} t
-   * @returns {Promise<Settled>}
+   * A turn the provider kept, in the chain it continued (after). 'now': its call deletes it instead (it failed or was
+   * refused, it may not be kept now, or its chain went). @param {{ id: string, endpoint: string, scope: string, key: string, days: number,
+   *   messages?: Message[], reply?: Message, hours?: number, after?: string }} t @returns {Promise<'kept' | 'now'>}
    */
-  record({ id, endpoint, scope, days, mark, messages, reply, hours = 0, after }) {
-    return this.#change((f, now) => {
-      const until = now + days * 24 * HOUR;
-      const r = this.#removals.find((x) => mark < x.end && matches({ endpoint, scope }, x.which));
-      if (r && (r.which.provider || !(r.which.scope || r.which.endpoint))) return 'now';
+  record({ id, endpoint, scope, key, days, messages, reply, hours = 0, after }) {
+    return this.#change(async (f, now) => {
       const prev = after ? f.turns.find((t) => t.id === after) : undefined;
+      if (!messages || !reply || (after && !prev) || !(await this.alive({ endpoint, scope, key }))) return 'now';
       f.turns = f.turns.filter((t) => t.id !== id);
-      if (r || !messages || !reply || (after && !prev)) {
-        if (!f.forget.some((d) => d.id === id)) f.forget.push({ id, endpoint, until });
-        return 'queued';
-      }
-      f.turns.push({ id, endpoint, scope, chain: prev?.chain ?? id, ends: prev?.ends ?? now + hours * HOUR, n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), until });
+      f.turns.push({ id, endpoint, scope, key, chain: prev?.chain ?? id, ends: prev?.ends ?? now + hours * HOUR, n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), until: now + days * 24 * HOUR });
       return 'kept';
     });
   }
 
-  /** A turn the provider forgot: its chain goes, the rest deleted. @param {string} id */
-  forget(id) {
+  /** A turn its call couldn't delete: queued. @param {{ id: string, endpoint: string, key: string, days: number }} t */
+  wait({ id, endpoint, key, days }) {
+    return this.#change((f, now) => wait(f, { id, endpoint, key, until: now + days * 24 * HOUR }));
+  }
+
+  /** A turn forgot (drop) or whose chained call was refused: its chain goes, deleted. @param {string} id @param {boolean} drop */
+  forget(id, drop) {
     return this.#change((f) => {
       const chain = f.turns.find((t) => t.id === id)?.chain;
-      if (chain === undefined) return;
-      take(f, (t) => t.chain === chain);
-      f.forget = f.forget.filter((d) => d.id !== id);
+      if (chain !== undefined) take(f, (t) => t.chain === chain);
+      if (drop) f.forget = f.forget.filter((d) => d.id !== id);
     });
   }
 
@@ -201,7 +188,7 @@ export class Kept {
     return this.#change((f) => take(f, (t) => matches(t, o)));
   }
 
-  /** Lets go of a provider's turns and deletions: the key that made them is going. @param {string} provider */
+  /** Lets go of a provider's turns and deletions: its key or address changed, or it went. @param {string} provider */
   drop(provider) {
     return this.#change((f) => {
       f.turns = f.turns.filter((t) => !ofProvider(t.endpoint, provider));
@@ -219,12 +206,12 @@ export class Kept {
   }
 
   /**
-   * Sends the deletions waiting, one at a time (one asked for meanwhile runs after). A 200 or 404 is done; else its
-   * endpoint's wait, a 429's as long as it asks (a minute); one that can't be sent (no type, provider or key) waits till
-   * it expires. First, turns whose trip is gone are queued.
-   * @param {{ resolve: (endpointId: string) => Promise<{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, key: string | null } | null>,
+   * Sends the deletions waiting, one at a time (one asked meanwhile runs after), each only with its key. A 200 or 404 is
+   * done; else it waits, a 429 resting its endpoint (a minute, or as asked), no answer the rest of its endpoint's.
+   * First, turns whose trip is gone are queued.
+   * @param {{ resolve: (endpointId: string) => Promise<{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, key: string | null, print: string } | null>,
    *   fetch: (url: string, init: RequestInit) => Promise<Response>, scopes?: () => Promise<Set<string>>, signal?: AbortSignal,
-   *   trace?: ReturnType<typeof import('./trace.js').modelTrace> }} c resolve: as calls see it, with its key; null: not now
+   *   trace?: ReturnType<typeof import('./trace.js').modelTrace> }} c resolve: as calls see it now; null: not now
    * @returns {Promise<{ done: number, left: number }>}
    */
   drain(c) {
@@ -254,12 +241,11 @@ export class Kept {
       if ((this.#rest.get(d.endpoint) ?? 0) > this.now()) continue;
       if (!known.has(d.endpoint)) known.set(d.endpoint, await resolve(d.endpoint).catch(() => null));
       const to = known.get(d.endpoint);
-      const res = to ? await deleteTurn({ ...to, id: d.id, fetch, signal, trace, now: this.now }) : null;
-      if (res?.done) done.add(d.id);
-      else {
-        known.set(d.endpoint, null);
-        if (res?.status === 429) this.#rest.set(d.endpoint, this.now() + (res.retryAfter ?? 60_000));
-      }
+      if (!to || to.print !== d.key) continue;
+      const res = await deleteTurn({ ...to, id: d.id, fetch, signal, trace, now: this.now });
+      if (res.done) done.add(d.id);
+      else if (res.status === 429) this.#rest.set(d.endpoint, this.now() + (res.retryAfter ?? 60_000));
+      else if (!res.status) known.set(d.endpoint, null);
     }
     return this.#change((f) => {
       f.forget = f.forget.filter((d) => !done.has(d.id));
