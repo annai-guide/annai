@@ -360,14 +360,15 @@ test("provider-gemini 2.2.0's Google Search (G4): a provider tool on each Gemini
     const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Is Nepenthe open?' }] }], providerTools: { kinds: ['search'] } };
     const paid = await llm.call({ role: 'main', request });
     assert.deepEqual(s.bodies()[0].tools, [{ type: 'google_search' }]);
-    assert.deepEqual(paid.reply.parts.map((/** @type {any} */ p) => p.type), ['provider', 'provider', 'text', 'attribution']);
+    assert.deepEqual(paid.reply.parts.map((/** @type {any} */ p) => p.type), ['provider', 'provider', 'text']);
+    assert.deepEqual(paid.reply.attribution, { source: 'Google Search', text: 'Open till 10.', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], html: '<div>chips</div>' });
     assert.equal(paid.reply.usage.serverTools?.google_search, 2);
     assert.equal(Number(paid.cost?.toFixed(6)), Number(((100 * 0.75 + 10 * 3.75) / 1e6).toFixed(6)), "two searches of this phone's first 5,000 this month: free");
     assert.deepEqual(Object.values((await k.ws.readJSON(SYS_DEVICE, '/llm/tool-calls.json')).counts), [2]);
     await llm.setFree(id, true);
     const free = await llm.call({ role: 'main', request });
     assert.equal(s.bodies()[1].tools, undefined, "a free key's request never offers it");
-    assert.deepEqual([free.cost, free.reply.parts.map((/** @type {any} */ p) => p.type)], [0, ['text']]);
+    assert.deepEqual([free.cost, free.reply.parts.map((/** @type {any} */ p) => p.type), free.reply.attribution], [0, ['text'], undefined]);
   } finally {
     await s.close();
   }

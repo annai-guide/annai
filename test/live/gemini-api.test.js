@@ -249,7 +249,8 @@ test("Google Search (G4, a paid key): a whole send carries a grounded turn's sea
   const map = { name: 'show_on_map', description: 'Shows a place on the trip map.', input: { type: 'object', properties: { place: { type: 'string' } }, required: ['place'] } };
   const ask = { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'What time does Nepenthe restaurant in Big Sur close today? Answer in one sentence.' }] };
   const first = await callOnce({ type, endpoint, model: lite, key: 'recorded', request: { messages: [ask] }, fetch: async () => new Response(recorded, { headers: { 'content-type': 'text/event-stream' } }) });
-  assert.deepEqual(first.parts.map((p) => p.type), ['provider', 'provider', 'reasoning', 'text', 'attribution']);
+  assert.deepEqual(first.parts.map((p) => p.type), ['provider', 'provider', 'reasoning', 'text']);
+  assert.equal(first.attribution?.source, 'Google Search');
   const r = await callOnce({
     type, endpoint, model: lite, key: PAID, level: 'off', fetch: fetching, firstOutputMs: 60_000,
     request: { system: 'You are a travel guide. Answer briefly.', tools: [map], providerTools: { kinds: ['search'] }, messages: [ask, { role: 'assistant', parts: first.parts }, { role: 'user', parts: [{ type: 'text', text: 'And when does it open tomorrow? One sentence.' }] }] },
@@ -258,7 +259,7 @@ test("Google Search (G4, a paid key): a whole send carries a grounded turn's sea
   assert.deepEqual(body.tools.map((/** @type {any} */ x) => x.type), ['function', 'google_search']);
   assert.deepEqual(body.input.map((/** @type {any} */ s) => s.type), ['user_input', 'google_search_call', 'google_search_result', 'thought', 'model_output', 'user_input']);
   assert.ok(!JSON.stringify(body).includes('From Google Search') && !JSON.stringify(body).includes('"attribution"'), 'the card is for the user alone');
-  const card = /** @type {any} */ (r.parts.find((p) => p.type === 'attribution'));
+  const card = r.attribution;
   t.diagnostic(`answer: ${JSON.stringify(r.text)}; searches ${r.usage.serverTools?.google_search ?? 0}; card ${card ? `${card.links.length} links, suggestions ${card.html ? 'yes' : 'no'}` : 'none'}`);
   assert.equal(r.stop, 'end');
   assert.ok(r.text.trim());

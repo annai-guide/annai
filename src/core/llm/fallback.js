@@ -1,5 +1,5 @@
 import { callOnce, enabledProviderTools } from './call.js';
-import { ProviderError } from './contract.js';
+import { ProviderError, portable } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_ROLE } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
@@ -111,11 +111,14 @@ export function koePath(cfg, { voiceOn, types, until, now }) {
   return live;
 }
 
-/** A rough token count, enough to skip models whose window is clearly too small. @param {Request} request */
-export function estimateTokens(request) {
+/**
+ * A rough token count, enough to skip models whose window is clearly too small: of the messages as this model is sent
+ * them (another's search steps aren't). @param {Request} request @param {string} [modelKey] its provider model id
+ */
+export function estimateTokens(request, modelKey) {
   let chars = (request.system ?? '').length + JSON.stringify(request.tools ?? []).length;
   let images = 0;
-  for (const m of request.messages) {
+  for (const m of modelKey ? portable(request.messages, modelKey) : request.messages) {
     for (const p of m.parts) {
       if (p.type === 'image') images++;
       else chars += JSON.stringify(p).length;
@@ -133,7 +136,7 @@ export function gap(model, request, provider) {
   if (request.messages.some((m) => m.parts.some((p) => p.type === 'audio')) && !model.input.includes('audio')) return 'no-audio';
   if (request.tools?.length && model.tools === false) return 'no-tools';
   if (request.needsProviderTool && !enabledProviderTools(model, request, provider).some((t) => t.kind === request.needsProviderTool)) return 'no-provider-tool';
-  if (model.contextWindow && estimateTokens(request) > model.contextWindow) return 'too-long';
+  if (model.contextWindow && estimateTokens(request, model.providerId) > model.contextWindow) return 'too-long';
   return null;
 }
 
@@ -189,7 +192,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
- *   kept?: import('./kept.js').Kept, scope?: string, toolMonth?: import('./tool-month.js').ToolMonth }} c
+ *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
@@ -197,7 +200,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
  *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
  *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
- *   toolMonth: this device's monthly count of provider tools with a free allowance (G4)
+ *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
  */
 export async function callRole(c) {
@@ -271,7 +274,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, toolMonth: c.toolMonth, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);

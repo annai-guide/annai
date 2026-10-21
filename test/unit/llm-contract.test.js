@@ -76,13 +76,6 @@ test('portable: a provider block goes only to the model that wrote it', () => {
   assert.deepEqual(portable(messages, 'b')[0].parts, [{ type: 'text', text: 'Hi' }]);
 });
 
-test('portable drops attribution parts, so no protocol sees them, not even the model that wrote them (G4: "From Google Search" is for the user)', () => {
-  const card = { type: /** @type {const} */ ('attribution'), source: 'Google Search', text: 'Open till 10.', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], html: '<div>chips</div>', model: 'a' };
-  const messages = [{ role: /** @type {const} */ ('assistant'), parts: [{ type: /** @type {const} */ ('text'), text: 'Open till 10.' }, card] }, { role: /** @type {const} */ ('assistant'), parts: [card] }];
-  assert.deepEqual(portable(messages, 'a'), [{ role: 'assistant', parts: [{ type: 'text', text: 'Open till 10.' }] }]);
-  assert.deepEqual(portable(messages, 'b'), [{ role: 'assistant', parts: [{ type: 'text', text: 'Open till 10.' }] }]);
-});
-
 test("portable() drops a tool call's extra for another model, keeps it for the one that wrote it (Gemini 3's thought signature, K1 Task 1)", () => {
   /** @type {import('../../src/core/llm/contract.js').Message[]} */
   const m = [{ role: 'assistant', parts: [{ type: 'tool_call', id: 'a', name: 'x', input: {}, extra: { s: 1 }, model: 'gemini-3.8-flash' }] }];

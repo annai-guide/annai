@@ -173,7 +173,7 @@ test("a reply grounded in the provider's own search is logged for the conversati
   let once = true;
   scripted.run = async function* (/** @type {any} */ c) {
     for await (const e of run(c)) {
-      if (e.type === 'stop' && once) yield { type: 'attribution', source: 'Google Search', text: 'Open till 10.', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], html };
+      if (e.type === 'stop' && once) yield { type: 'attribution', source: 'Google Search', text: 'Open till 10.', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }, { url: 'javascript:alert(1)', title: 'x' }, { title: 'no address' }], html };
       if (e.type === 'stop') once = false;
       yield e;
     }
@@ -183,11 +183,13 @@ test("a reply grounded in the provider's own search is logged for the conversati
   const [g, more] = await k.events(['grounded']);
   assert.equal(more, undefined, 'one card');
   assert.equal(g.actor, 'shiori');
-  assert.deepEqual({ source: g.data.source, links: g.data.links, text: g.data.text }, { source: 'Google Search', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], text: 'Open till 10.' });
+  assert.deepEqual({ source: g.data.source, links: g.data.links, text: g.data.text }, { source: 'Google Search', links: [{ url: 'https://nepenthe.com', title: 'nepenthe.com' }], text: 'Open till 10.' }, 'only web addresses, cleaned once, here');
   assert.ok(g.data.wake, 'the wake it answered');
   assert.deepEqual(g.data.stored, ['html'], 'the suggestions, a blob the entry names (spec §4.9)');
   const { storedTexts } = await import('../../src/core/agent/log.js');
   assert.equal((await storedTexts(k.store, g)).html, html);
+  const turns = await k.events(['model.turn']);
+  assert.ok(turns.length && !JSON.stringify(await Promise.all(turns.map((t) => storedTexts(k.store, t)))).includes('search?q=nepenthe'), "the turn's parts keep no copy of the card");
   // The model sees its own words once, never the card.
   k.agent.send('Thanks.');
   await k.agent.idle();

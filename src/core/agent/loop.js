@@ -1110,7 +1110,7 @@ export class Agent {
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(request), this.#lastPrompt), window, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(request, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
@@ -1196,7 +1196,7 @@ export class Agent {
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
       if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
-      await this.#grounded(result.reply.parts, wakeId);
+      await this.#grounded(result.reply.attribution, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       this.#half.replied?.(calls.map((/** @type {any} */ c) => c.name));
       if (!calls.length) {
@@ -1430,14 +1430,13 @@ export class Agent {
 
   /**
    * A reply grounded in the provider's own search, for the conversation as it came (G4): Google's terms ask it shown to the
-   * user who asked, with its suggestions, so it is, even while Koe talks; the suggestions are a blob the entry names.
-   * @param {any[]} parts @param {string} wakeId
+   * user who asked, with its suggestions, so it is, even while Koe talks; the suggestions are a blob the entry names. Only
+   * web addresses go as its links. @param {import('../llm/call.js').Attribution | undefined} a @param {string} wakeId
    */
-  async #grounded(parts, wakeId) {
-    for (const p of parts) {
-      if (p.type !== 'attribution') continue;
-      await this.#log({ type: 'grounded', actor: 'shiori', data: { wake: wakeId, source: String(p.source ?? ''), links: Array.isArray(p.links) ? p.links : [] }, texts: [['text', String(p.text ?? '')], ['html', String(p.html ?? '')]] });
-    }
+  async #grounded(a, wakeId) {
+    if (!a) return;
+    const links = (Array.isArray(a.links) ? a.links : []).filter((l) => /^https?:\/\//i.test(String(l?.url ?? ''))).map((l) => ({ url: String(l.url), ...(l.title ? { title: String(l.title) } : {}) }));
+    await this.#log({ type: 'grounded', actor: 'shiori', data: { wake: wakeId, source: String(a.source ?? ''), links }, texts: [['text', String(a.text ?? '')], ['html', String(a.html ?? '')]] });
   }
 
   /**

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ToolMonth } from '../../src/core/llm/tool-month.js';
-import { callOnce } from '../../src/core/llm/call.js';
+import { callOnce, billMonth } from '../../src/core/llm/call.js';
 import { gap } from '../../src/core/llm/fallback.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_DEVICE, SYS_SETTINGS } from '../../src/core/scopes.js';
@@ -22,7 +22,7 @@ async function kit() {
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
   const clock = { t: T0 };
-  return { ws, clock, month: new ToolMonth({ ws, now: () => clock.t }) };
+  return { ws, clock, month: { bill: (/** @type {string} */ id, /** @type {number} */ n, /** @type {number} */ free) => billMonth(ws, id, n, free, clock.t) } };
 }
 
 /** An HTTP type whose reply searched `searches` times; the bodies it was sent. @param {number} searches */
@@ -51,6 +51,13 @@ test('the first 5000 searches of a month cost nothing, then 0.014 each', async (
   assert.equal(await month.bill(SEARCH.id, 0, 5000), 0);
 });
 
+test('two calls counted at once are counted one after the other: none is lost, and the allowance is crossed once', async () => {
+  const { ws, month } = await kit();
+  const over = await Promise.all([month.bill(SEARCH.id, 3000, 5000), month.bill(SEARCH.id, 3000, 5000), month.bill(SEARCH.id, 1, 5000)]);
+  assert.equal(over.reduce((a, b) => a + b, 0), 1001);
+  assert.deepEqual((await ws.readJSON(SYS_DEVICE, '/llm/tool-calls.json')).counts, { [SEARCH.id]: 6001 });
+});
+
 test('a new month starts over', async () => {
   const { month, clock } = await kit();
   assert.equal(await month.bill(SEARCH.id, 5002, 5000), 2);
@@ -67,14 +74,14 @@ test("the count is this phone's, in /llm/tool-calls.json in This device: no back
   assert.deepEqual(await ws.history(SYS_DEVICE, '/llm/tool-calls.json'), [], 'one count a month, no version per search');
   // A count annai can't read starts over, rather than failing the call.
   await ws.write(SYS_DEVICE, '/llm/tool-calls.json', { month: '2026-10', counts: 'nonsense' }, { author: 'system' });
-  assert.equal(await new ToolMonth({ ws, now: () => T0 }).bill(SEARCH.id, 1, 5000), 0);
+  assert.equal(await billMonth(ws, SEARCH.id, 1, 5000, T0), 0);
 });
 
 test("a call's searches are priced past this phone's monthly allowance: free within it, $0.014 each after", async () => {
-  const { month } = await kit();
+  const { month, ws } = await kit();
   await month.bill(SEARCH.id, 4999, 5000);
   const s = searching(3);
-  const reply = await callOnce({ type: s.type, endpoint: endpoint(), model: model(), key: null, request, fetch: /** @type {any} */ (s.fetch), toolMonth: month });
+  const reply = await callOnce({ type: s.type, endpoint: endpoint(), model: model(), key: null, request, fetch: /** @type {any} */ (s.fetch), tally: ws });
   assert.equal(reply.usage.serverTools?.google_search, 3, 'the usage says how many it made');
   assert.equal(Number(reply.cost?.toFixed(6)), 0.028, 'two past the 5000');
   // Without a count to go by, every search is priced.
@@ -83,10 +90,10 @@ test("a call's searches are priced past this phone's monthly allowance: free wit
 });
 
 test('a free-tier endpoint leaves paidOnly tools out of the body, and counts nothing', async () => {
-  const { month, ws } = await kit();
+  const { ws } = await kit();
   const s = searching(0);
-  await callOnce({ type: s.type, endpoint: endpoint(), model: model(), key: null, request, fetch: /** @type {any} */ (s.fetch), toolMonth: month });
-  await callOnce({ type: s.type, endpoint: endpoint({ free: true }), model: model(), key: null, request, fetch: /** @type {any} */ (s.fetch), toolMonth: month });
+  await callOnce({ type: s.type, endpoint: endpoint(), model: model(), key: null, request, fetch: /** @type {any} */ (s.fetch), tally: ws });
+  await callOnce({ type: s.type, endpoint: endpoint({ free: true }), model: model(), key: null, request, fetch: /** @type {any} */ (s.fetch), tally: ws });
   assert.deepEqual(s.bodies.map((b) => b.tools ?? []), [[{ type: 'google_search' }], []]);
   assert.equal(await ws.readJSON(SYS_DEVICE, '/llm/tool-calls.json').catch(() => undefined), undefined);
   // A request that needs the tool skips a model whose key is on the free tier.
@@ -94,4 +101,28 @@ test('a free-tier endpoint leaves paidOnly tools out of the body, and counts not
   assert.equal(gap(model(), needs, { free: true }), 'no-provider-tool');
   assert.equal(gap(model(), needs, { free: false }), null);
   assert.equal(gap(model(), needs), null);
+});
+
+test('searches Google reported are counted even when the call then fails (a cut after the search)', async () => {
+  const { ws } = await kit();
+  const type = /** @type {any} */ ({
+    type: 'test', name: 'Test', pluginId: 'p',
+    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: {} }),
+    read: async function* () {
+      yield { type: 'usage', usage: { input: 0, output: 0, serverTools: { google_search: 2 } } };
+      throw new ProviderError('network', 'The reply stopped before it finished.');
+    },
+  });
+  await assert.rejects(callOnce({ type, endpoint: endpoint(), model: model(), key: null, request, fetch: async () => new Response('', { status: 200 }), tally: ws }), { kind: 'network' });
+  assert.deepEqual((await ws.readJSON(SYS_DEVICE, '/llm/tool-calls.json')).counts, { [SEARCH.id]: 2 });
+});
+
+test("a request's size is estimated as a model is sent it: another model's search steps (35 KB each) don't make a 128K fallback look too small", async () => {
+  const { estimateTokens } = await import('../../src/core/llm/fallback.js');
+  const step = (/** @type {number} */ i) => ({ type: /** @type {const} */ ('provider'), block: { type: 'google_search_result', call_id: `s${i}`, signature: 'x'.repeat(35_000), result: [{ search_suggestions: 'y'.repeat(5_000) }] }, model: 'gemini-3.5-flash-lite' });
+  /** @type {any} */
+  const grounded = { messages: Array.from({ length: 10 }, (_, i) => [{ role: 'user', parts: [{ type: 'text', text: `Question ${i}?` }] }, { role: 'assistant', parts: [step(i), { type: 'text', text: `Answer ${i}.` }] }]).flat() };
+  assert.ok(estimateTokens(grounded, 'gemini-3.5-flash-lite') > 100_000, 'the model that made them is sent them');
+  assert.ok(estimateTokens(grounded, 'other-model') < 1000);
+  assert.equal(gap(model({ providerId: 'other-model', contextWindow: 128_000, providerTools: [] }), grounded), null);
 });
