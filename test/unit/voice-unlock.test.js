@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { armUnlock, UNLOCK_EVENTS } from '../../src/ui/unlock.js';
 import { agentKit } from './agent-kit.js';
@@ -101,7 +101,7 @@ test("a voice platform whose unlock gives a plain boolean, not a promise, is tak
   assert.equal(await k.voice.unlock(), true, 'once it worked, it does nothing');
 });
 
-test("one unlock at a time: while one is still starting, a tap's other events, or a tap on Shiori, start no other, so the silent clip is never loaded again over itself (that wedges WebKit on Linux: the welcome's keyboard test); once it fails, the next tap tries", async () => {
+test("one unlock at a time: while one is still starting, a tap's other events, or a tap on Shiori, start no other, so the silent clip is never loaded again over itself (that wedges WebKit on Linux: the welcome's keyboard test); once it fails, the next tap tries; one that never starts is never loaded over", async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
   /** @type {((ok: boolean) => void)[]} */
   const pending = [];
@@ -120,13 +120,17 @@ test("one unlock at a time: while one is still starting, a tap's other events, o
   target.dispatchEvent(new Event('click'));
   assert.equal(pending.length, 2);
 
+  // Review m5: one that never starts is never loaded over, however long it takes: every later tap waits on it.
   const stuck = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
   let tries = 0;
   stuck.platform.player.unlock = () => { tries++; return new Promise(() => {}); }; // a clip that never starts
-  stuck.voice.unlock();
-  stuck.voice.unlock();
+  mock.timers.enable({ apis: ['setTimeout'] }); // a clock of the test's own: no real wait
+  try {
+    for (let i = 0; i < 5; i++) stuck.voice.unlock();
+    mock.timers.tick(60_000);
+    stuck.voice.unlock();
+  } finally {
+    mock.timers.reset();
+  }
   assert.equal(tries, 1);
-  await new Promise((r) => setTimeout(r, 3100));
-  stuck.voice.unlock();
-  assert.equal(tries, 2, 'one that never starts holds the taps after it back for 3 seconds at most');
 });
