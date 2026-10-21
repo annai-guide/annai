@@ -1,6 +1,6 @@
 import { trackFrom, trackFromLog, Simulation } from './simulate.js';
 import { ManualClock, PlayClock, realClock } from './clock.js';
-import { createTrip, removeTrip } from '../scopes.js';
+import { createTrip, removeTrip, listTrips } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { validZone, deviceZone, dayIn } from '../time.js';
 import { pointsOf } from '../after/route.js';
@@ -233,10 +233,12 @@ export class SimRun {
     const tz = validZone(it?.timezone) ? /** @type {string} */ (it.timezone) : deviceZone();
     const title = `${String(it?.name ?? '').trim().slice(0, 150) || 'A simulated trip'} (simulation)`;
     const { ws, store } = this.c;
-    return {
+    /** @type {Prepared} */
+    const prepared = {
       track, tz, title,
       make: async () => {
-        const id = await createTrip(ws, { title, start: /** @type {string} */ (dayIn(track[0].at, tz)), end: /** @type {string} */ (dayIn(track[track.length - 1].at, tz)) });
+        prepared.title = await ownTitle(store, title);
+        const id = await createTrip(ws, { title: prepared.title, start: /** @type {string} */ (dayIn(track[0].at, tz)), end: /** @type {string} */ (dayIn(track[track.length - 1].at, tz)) });
         /** @type {[string, string, any][]} */
         const files = [
           ...Object.entries(it.plan ?? {}).map(([n, v]) => /** @type {[string, string, any]} */ ([`plan item "${n}"`, `/plan/${fileName(n)}.json`, v])),
@@ -261,6 +263,7 @@ export class SimRun {
         return id;
       },
     };
+    return prepared;
   }
 
   /** A trip's recorded track, its plan and bookings (choice 12). @param {string} id @returns {Promise<Prepared>} */
@@ -284,14 +287,30 @@ export class SimRun {
       const v = await ws.readJSON(id, f.path).catch(() => null);
       if (v && typeof v === 'object') copies.push([f.path, v]);
     }
-    return {
+    /** @type {Prepared} */
+    const prepared = {
       track, tz, title,
       make: async () => {
-        const t = await createTrip(ws, { title, start: /** @type {string} */ (dayIn(track[0].at, tz)), end: /** @type {string} */ (dayIn(track[track.length - 1].at, tz)) });
+        prepared.title = await ownTitle(store, title);
+        const t = await createTrip(ws, { title: prepared.title, start: /** @type {string} */ (dayIn(track[0].at, tz)), end: /** @type {string} */ (dayIn(track[track.length - 1].at, tz)) });
         await ws.patch(t, '/trip.json', { timezones: [tz], simulation: true, ...(Array.isArray(info.party) ? { party: info.party } : {}), ...(Array.isArray(info.places) ? { places: info.places } : {}) }, { author: 'user' });
         for (const [path, v] of copies) await ws.write(t, path, v, { author: 'user' }).catch(() => {}); // one annai no longer accepts stays out
         return t;
       },
     };
+    return prepared;
   }
+}
+
+/**
+ * A simulation's trip title no trip on this device has: "<name> (simulation)", then "<name> (simulation 2)" and so on, so each
+ * simulation can be told apart in Trips and in the Trace's trip filter (the second emulator re-check).
+ * @param {import('../types.js').Store} store @param {string} title @returns {Promise<string>}
+ */
+async function ownTitle(store, title) {
+  const { active, archived } = await listTrips(store);
+  const taken = new Set([...active, ...archived].map((t) => t.title));
+  const stem = title.replace(/ \(simulation\)$/, '');
+  if (!taken.has(title)) return title;
+  for (let n = 2; ; n++) if (!taken.has(`${stem} (simulation ${n})`)) return `${stem} (simulation ${n})`;
 }
