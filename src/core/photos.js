@@ -85,7 +85,7 @@ export function photoName(taken, original, type) {
  * A free path for name in the trip's /files/ folder: "name", then "name-2", "name-3"…
  * @param {Workspace} ws @param {string} scope @param {string} name
  */
-async function freePath(ws, scope, name) {
+export async function freePath(ws, scope, name) {
   const taken = new Set((await ws.list(scope, '/files/')).map((f) => f.path));
   const dot = name.lastIndexOf('.');
   const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ''];

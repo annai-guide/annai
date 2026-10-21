@@ -372,3 +372,30 @@ test("fix pass R2: a server added again with no key never gets the key a failed 
     await s.stop();
   }
 });
+
+// The emulator pass (m8 #11, shot 216): the trail map came back as an image with no path, so show used another photo.
+test("an MCP tool's image is kept as a named file in the trip, and the result tells the model its path, for show", async () => {
+  const s = await startMcpServer({ token: TOKEN });
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url, token: TOKEN });
+    const img = await k.call('mcp_trail_map', {});
+    const files = await k.ws.list(k.trip, '/files/');
+    assert.equal(files.length, 1);
+    const [f] = files;
+    assert.match(f.path, /^\/files\/trail_map(-\d+)?\.png$/);
+    assert.equal(f.type, 'image/png');
+    assert.match(img.content, new RegExp(`/trip${f.path.replace(/\./g, '\\.')}`));
+    assert.match(img.content, /show/);
+    // What the model sees is the stored file: the tool's result names it, with no second copy of its bytes.
+    assert.deepEqual(img.images, [{ mediaType: 'image/png', hash: f.hash, path: `/trip${f.path}` }]);
+    // A second map is a file of its own; a model that can't see photos is told its path alone.
+    const tool = k.registry.list('tool').find((t) => t.name === 'mcp_trail_map');
+    const blind = await tool.run({}, { trip: k.trip, scope: k.trip, signal: new AbortController().signal, model: { input: ['text'] }, fetch: tracedFetch(k.store, k.trip, { tool: 'mcp_trail_map' }) });
+    assert.equal(typeof blind, 'string');
+    assert.match(blind, /kept as \/trip\/files\/trail_map-2\.png/);
+    assert.equal((await k.ws.list(k.trip, '/files/')).length, 2);
+  } finally {
+    await s.stop();
+  }
+});
