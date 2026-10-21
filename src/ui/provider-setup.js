@@ -70,7 +70,9 @@ export function setupUi(ctx, pluginId, { added } = {}) {
         const at = new URL(String(u)).origin;
         if (m?.catchAll !== true && !where.includes(at)) throw new Error(`${m?.name ?? pluginId} can't add a provider at ${at}: it sends keys only to ${where.join(', ') || 'none'}.`);
       }
-      const id = await ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities });
+      // What failed, in words a panel can show as they are: no plugin's id in them.
+      const id = await ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities })
+        .catch((/** @type {unknown} */ e) => { throw new Error(messageOf(e), { cause: e }); });
       await added?.(id);
       return id;
     },
