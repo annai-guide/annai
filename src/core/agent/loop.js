@@ -97,6 +97,11 @@ export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen
 export const UNANSWERED = "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = 'the user tapped Try again: answer their last message';
+/**
+ * How long a photo's description may take, in seconds (review A5): the same as a role waits for a model's first words (§9.6),
+ * as a turn shouldn't wait on a side job longer than on its own model; a description is a few sentences.
+ */
+export const DESCRIBE_S = 30;
 /** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
 const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
 /**
@@ -1675,7 +1680,7 @@ export class Agent {
       };
       ({ output, ms } = await runTool(tool, input, call));
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
-      if (output.images?.length && o.model && !o.model.input?.includes('image')) output = await this.#described(output, o.wakeId);
+      if (output.images?.length && o.model && !o.model.input?.includes('image')) output = await this.#described(output, o.wakeId, o.signal);
     }
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
@@ -1715,9 +1720,10 @@ export class Agent {
   /**
    * A tool's photos in words, for a model that can't see them (emulator pass, 5b): described by the utility role's models,
    * then Main's, that take photos (the utility list first: a side job, like a summary, on the cheaper model); the crop when a
-   * part was asked for, as that is what the tool returned. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
+   * part was asked for, as that is what the tool returned. It stops with the turn, and within DESCRIBE_S; either way the result
+   * says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId @param {AbortSignal} signal
    */
-  async #described(output, wakeId) {
+  async #described(output, wakeId, signal) {
     const cfg = await this.llm.config();
     const roles = [...(cfg.roles?.utility?.models?.length ? ['utility'] : []), 'main'];
     const sees = roles.some((role) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image')));
@@ -1731,16 +1737,28 @@ export class Agent {
       const bytes = m.data ? null : await blobBytes(this.store, m.hash ?? '');
       const image = { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data: m.data ?? (bytes ? toBase64(bytes) : '') };
       let why = '';
-      for (const role of roles) {
-        try {
-          const r = await this.llm.call({ role, level: 'off', scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: DESCRIBE, maxOutput: 600, messages: [{ role: 'user', parts: [image, { type: 'text', text: 'Describe this photo.' }] }] } });
-          why = r.reply.text.trim() ? `What it shows (described by ${r.answeredBy}, as you can't see photos): ${r.reply.text.trim()}` : '';
-        } catch (e) {
-          why ||= `It couldn't be described: ${this.#explain(e, role)}`;
-          continue;
+      // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
+      const stop = new AbortController();
+      const end = () => stop.abort();
+      const late = setTimeout(end, DESCRIBE_S * this.secondMs);
+      signal.addEventListener('abort', end, { once: true });
+      try {
+        for (const role of roles) {
+          if (stop.signal.aborted) break;
+          try {
+            const r = await this.llm.call({ role, level: 'off', signal: stop.signal, scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: DESCRIBE, maxOutput: 600, messages: [{ role: 'user', parts: [image, { type: 'text', text: 'Describe this photo.' }] }] } });
+            why = r.reply.text.trim() ? `What it shows (described by ${r.answeredBy}, as you can't see photos): ${r.reply.text.trim()}` : '';
+          } catch (e) {
+            why ||= `It couldn't be described: ${this.#explain(e, role)}`;
+            continue;
+          }
+          if (why) break;
         }
-        if (why) break;
+      } finally {
+        clearTimeout(late);
+        signal.removeEventListener('abort', end);
       }
+      if (stop.signal.aborted && !why.startsWith('What it shows')) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${DESCRIBE_S} seconds).`;
       said.push(why || "It couldn't be described.");
     }
     const { images, ...rest } = output;

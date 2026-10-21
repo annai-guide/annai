@@ -610,6 +610,32 @@ test("a model that can't see photos reads one, and no model here can: the result
   assert.equal(k.sent['model-u'], undefined);
 });
 
+test("describing a photo for a model that can't see it has a time limit, and stops with the turn; either way the result says so in words and the turn goes on (review A5)", async () => {
+  const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
+  const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
+  // A describer slower than the limit (30 s; 300 ms at secondMs 10): words, and her turn goes on.
+  const slow = await agentKit([[read, say('I could not see it.')]], { models: [{ input: ['text'] }], utility: [{ delayMs: 3000, text: 'Too late.' }] });
+  await photo(slow);
+  const t0 = Date.now();
+  slow.agent.send('What does the menu say?');
+  await slow.agent.idle();
+  assert.ok(Date.now() - t0 < 2000, `${Date.now() - t0} ms`);
+  const r = (await slow.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nIt couldn't be described in time \(30 seconds\)\.$/);
+  assert.equal(r.data.ok, true);
+  assert.deepEqual((await slow.events(['out.speak'])).map((e) => e.data.text), ['I could not see it.']);
+  // The user stops her while it is described: the turn ends at once.
+  const stopped = await agentKit([[read, say('Never said.')]], { models: [{ input: ['text'] }], utility: [{ delayMs: 3000, text: 'Too late.' }], agent: { secondMs: 1000 } });
+  await photo(stopped);
+  stopped.agent.send('What does the menu say?');
+  await until(() => (stopped.sent['model-u'] ?? []).length === 1, 3000);
+  const t1 = Date.now();
+  stopped.agent.interrupt();
+  await stopped.agent.idle();
+  assert.ok(Date.now() - t1 < 1000, `${Date.now() - t1} ms`);
+  assert.equal((await stopped.events(['out.speak'])).length, 0);
+});
+
 test('read with a region sends a crop, kept in the conversation, and says which region was used', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp', region: [0.75, 0.6, 0.25, 0.1] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
