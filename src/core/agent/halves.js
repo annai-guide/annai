@@ -124,6 +124,10 @@ export class Halves {
   #unsaid = [];
   #failTold = false;
   #nothingTold = false;
+  /** Why each half's list last failed, while it is down (a failure only of models resting keeps the reason before). */
+  #lost = { koe: '', kokoro: '' };
+  /** The card for both halves down was shown: once, until the user writes again or a half works again. */
+  #bothTold = false;
   #lastHalves = '';
   #lastView = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
@@ -174,7 +178,7 @@ export class Halves {
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.#works() ? { aside: true } : {}) } : {}),
         logged: async (e, r) => { if (this.#split) await this.koe.observe(e, r); },
         gate: (call) => this.#gate(call),
-        failed: (why, e) => this.#kokoroFailed(why, e),
+        failed: (why, e) => this.#down('kokoro', why, e) ?? this.#kokoroFailed(why, e),
         calling: () => {
           this.#nothingTold = false;
           this.#unseen = 0; // it reads every line so far
@@ -199,8 +203,15 @@ export class Halves {
         },
         logged: (e, r) => this.#koeLogged(e, r),
         replied: (names) => { this.#asking = names.includes('tell_kokoro'); },
-        failed: () => this.#koeFailed(),
-        ended: (t) => { if (t.ok) this.#unsaid = []; },
+        failed: (why, e) => {
+          const both = this.#down('koe', why, e);
+          return this.#koeFailed() && (both ?? true);
+        },
+        ended: (t) => {
+          if (!t.ok) return;
+          this.#unsaid = [];
+          this.#up('koe');
+        },
       },
     });
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
@@ -461,6 +472,7 @@ export class Halves {
    * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean }} [o] chose: a tap on a live ask's buttons
    */
   send(text, o = {}) {
+    this.#bothTold = false;
     this.#route(async () => {
       await this.#refresh();
       if (!this.#works() || this.kokoro.pendingId) return this.kokoro.send(text, o);
@@ -598,7 +610,9 @@ export class Halves {
     if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
       this.#failTold = false;
+      this.#bothTold = false;
     }
+    if (e.type.startsWith('out.')) this.#up('koe'); // a live Koe that spoke works
     // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails.
     const out = e.type.startsWith('out.') && this.#cue;
     const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed;
@@ -623,6 +637,28 @@ export class Halves {
     if (text === null) return null;
     await this.channel.send('kokoro', text, 'append', /** @type {any} */ (`gated:${name}`), wake);
     return { content: 'Koe is speaking for you; use tell_koe.', told: true };
+  }
+
+  /**
+   * A half's list failed (emulator pass: both halves failed, each quietly, and the user heard nothing). When the other is down
+   * too, the card says why for each, once: its words, for the loop's card and error (Half.failed); true, said already; null:
+   * the half's own rule. @param {'koe' | 'kokoro'} side @param {string} why @param {unknown} e @returns {string | true | null}
+   */
+  #down(side, why, e) {
+    if (!this.#split) return null;
+    const resting = e instanceof AllFailedError && e.attempts.every((a) => a.outcome === 'benched');
+    if (!resting || !this.#lost[side]) this.#lost[side] = why;
+    if (!this.#lost.koe || !this.#lost.kokoro) return null;
+    if (this.#bothTold) return true;
+    this.#bothTold = true;
+    const lines = (/** @type {string} */ name, /** @type {string} */ text) => text.split('\n').map((l) => `${name}: ${l}`);
+    return [...lines('Koe', this.#lost.koe), ...lines('Kokoro', this.#lost.kokoro)].join('\n');
+  }
+
+  /** A half works again. @param {'koe' | 'kokoro'} side */
+  #up(side) {
+    this.#lost[side] = '';
+    this.#bothTold = false;
   }
 
   /**
@@ -662,7 +698,10 @@ export class Halves {
    */
   #kokoroEnded(t) {
     if (this.#later) this.#route(() => this.#refresh());
-    if (t.ok) this.#why = '';
+    if (t.ok) {
+      this.#why = '';
+      this.#up('kokoro');
+    }
     if (!this.#works()) return;
     let told = t.told;
     if (t.ok && t.finalText && !t.told && !t.slept) {

@@ -410,6 +410,7 @@ Design: docs/superpowers/specs/2026-10-19-koe-kokoro-design.md. Shiori can be tw
 - Kokoro's `speak`, `show` and `ask` while Koe talks aren't run: each becomes a note to Koe, and its result says to use `tell_koe`. Its `wait` is answered too: the microphone is Koe's. This is in code, not instructions alone.
 - When Koe's whole list fails, it rests at least a minute; Kokoro gets "Koe can't speak right now; talk to the user directly" (and whether its last notes reached the user), its output tools run again, and what the user types goes to Kokoro alone until Koe answers again ("Koe is speaking again; use tell_koe"). No card: Kokoro answers.
 - When Kokoro's whole list fails while Koe talks, and Koe waits for it (its question is out, or it is in `wait`), Koe is told once, and tells the user it couldn't check and offers to try again. No card. A check nobody waited for (Koe's own answer, a review, a typed question Koe answered itself) tells Koe nothing: the Trace has it.
+- When both lists have failed (Koe's, for what the user said, and Kokoro's), nobody can tell the user: a card says "Shiori can't reach her model", once, with each half's reason in words, and the conversation says so too. It shows again only after the user writes again or a half works again.
 
 **Voice** is Koe's while it works (§10.7).
 
