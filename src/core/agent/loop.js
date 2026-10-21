@@ -23,6 +23,7 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { GATE_OPTIONS, gatePrompt } from '../voice/gate.js';
 import { cardSchema } from '../ui-slots.js';
 import { validate } from '../schema.js';
+import { anySignal } from '../signals.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -1143,7 +1144,7 @@ export class Agent {
         this.#calling = true;
         this.#callCut = cut;
         result = await this.llm.call({
-          role, request, signal: AbortSignal.any([abort.signal, cut.signal]), scope: this.scope, prefer,
+          role, request, signal: anySignal([abort.signal, cut.signal]), scope: this.scope, prefer,
           record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),

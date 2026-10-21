@@ -1,6 +1,7 @@
 import { Sentences } from './sentences.js';
 import { readyToStart, estimateSeconds } from './stream-start.js';
 import { modelOf, speechKind, SPEECH_DEFAULTS } from '../llm/config.js';
+import { anySignal } from '../signals.js';
 
 /**
  * Speaking (spec §10.1). What Shiori says arrives as text, a piece at a time; each complete
@@ -380,7 +381,7 @@ export class Utterance {
   #prefetch(i, entry) {
     if (entry.kind !== 'api' || i >= this.#texts.length || this.#prefetched.has(i) || this.#stopped) return;
     const stop = new AbortController();
-    const clip = this.#fetch(entry, this.#texts[i], AbortSignal.any([this.#abort.signal, stop.signal]));
+    const clip = this.#fetch(entry, this.#texts[i], anySignal([this.#abort.signal, stop.signal]));
     clip.catch(() => {}); // a failure counts when the clip is wanted
     this.#prefetched.set(i, { entry: entry.id, clip, stop });
   }

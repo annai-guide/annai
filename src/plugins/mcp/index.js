@@ -5,6 +5,7 @@ import { SYS_SETTINGS } from '../../core/scopes.js';
 import { forget } from '../../core/forget.js';
 import { withoutSecrets } from '../../core/agent/net.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
+import { anySignal } from '../../core/signals.js';
 
 /**
  * The built-in MCP client plugin (spec §5.1): each MCP server the user adds gives Shiori its tools,
@@ -183,7 +184,7 @@ export async function activate(annai) {
     /** @type {any} */
     let result;
     try {
-      result = await s.client.callTool(tool, input ?? {}, { fetch: call?.fetch ?? annai.net.fetch, signal: AbortSignal.any([stop, AbortSignal.timeout(CALL_MS)]) });
+      result = await s.client.callTool(tool, input ?? {}, { fetch: call?.fetch ?? annai.net.fetch, signal: anySignal([stop, AbortSignal.timeout(CALL_MS)]) });
     } catch (e) {
       if (stop.aborted) throw e;
       const name = /** @type {any} */ (e)?.name;

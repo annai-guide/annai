@@ -9,6 +9,7 @@ import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget as forgetHistory } from '../forget.js';
+import { anySignal } from '../signals.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -162,7 +163,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const timer = new AbortController();
   const late = () => timer.abort(new DOMException('No output in time.', 'TimeoutError'));
   let t = setTimeout(late, firstOutputMs);
-  const linked = signal ? AbortSignal.any([signal, timer.signal]) : timer.signal;
+  const linked = signal ? anySignal([signal, timer.signal]) : timer.signal;
   /** @type {Part[]} */
   const parts = [];
   /** @type {{ token: string, logprob: number }[] | undefined} */
