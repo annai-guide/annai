@@ -269,9 +269,9 @@ export function createLlm({
     /**
      * Add's tap on a provider with code: its plugin, with what it requires; then null when the plugin has its own
      * Add flow (a panel, decision 15), which adds it, or the provider added. @param {string} plugin
-     * @param {{ official?: boolean, roles?: 'recommended' | 'free' | null }} [o] @returns {Promise<string | null>} the provider's id
+     * @param {{ official?: boolean, roles?: 'recommended' | 'free' | null, filled?: string[] }} [o] @returns {Promise<string | null>} the provider's id
      */
-    async startAdd(plugin, { official, roles } = {}) {
+    async startAdd(plugin, { official, roles, filled } = {}) {
       const had = (await plugins.installed())[plugin];
       await queued(() => service.installProvider(plugin, { official }));
       if (setupOf(plugins.registry, plugin)?.panel) {
@@ -279,7 +279,7 @@ export function createLlm({
         return null;
       }
       try {
-        return await service.addProvider(plugin, { official, roles });
+        return await service.addProvider(plugin, { official, roles, filled });
       } catch (e) {
         // As a failed add: the plugin it brought goes.
         if (!had && !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === plugin)) await drop(plugin).catch(() => {});

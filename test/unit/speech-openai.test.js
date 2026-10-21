@@ -154,7 +154,7 @@ test('a suggested speech model joins its list: transcription after "Send audio t
   const name = (/** @type {string} */ id) => (cfg.models[id] ? modelOf(cfg.models[id]).name : id);
   assert.deepEqual(cfg.roles['speech-in'].models.map(name), ['send-audio', 'dictation', 'Groq: Whisper large v3 turbo', 'OpenAI: GPT Transcribe']);
   assert.deepEqual(cfg.roles['speech-out'].models.map(name), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)']);
-  assert.deepEqual(cfg.roles.main.models.map(name), ['GPT-6.1 Sol'], "Groq suggests nothing for chat roles; OpenAI's fill the empty ones");
+  assert.deepEqual(cfg.roles.main.models.map(name), [], 'neither has a free chat model, so no chat role is filled by adding (spec §9.8)');
 });
 
 test('a speech model the user adds goes where a template would put it; a stand-in added back goes last', () => {

@@ -7,6 +7,7 @@ import { descOrigins, addressProblem } from '../core/llm/provider-desc.js';
 import { officialPlugins, makesProvider } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 import { NO_SERVICE } from './screens/plugin-install.js';
+import { andList } from './format.js';
 
 /**
  * Coming back to annai's address (decision 16): the plugin that sent the browser away expects the next load with a query, within 15 minutes, once.
@@ -206,4 +207,30 @@ export async function finishReturn(ctx, env = {}) {
     finishing = null;
   }
   return true;
+}
+
+/** @type {Record<string, string>} */
+const ROLE_SHORT = { main: 'Main', koe: 'Koe', utility: 'Utility', decide: 'Quick decision', 'speech-in': 'Speech in', 'speech-out': 'Speech out' };
+
+/**
+ * What adding a provider did to the roles, in words (spec §9.8): the chat roles it filled with its free models, the speech
+ * lists it joined behind the free entries, and, when it has models to suggest but none free, where to tap for them.
+ * @param {string} name the provider @param {string[]} filled the roles the add changed @param {boolean} suggests it suggests chat models, free or not
+ */
+export function filledWords(name, filled, suggests) {
+  const chat = filled.filter((r) => !r.startsWith('speech-'));
+  const speech = filled.filter((r) => r.startsWith('speech-'));
+  return [
+    chat.length ? `${andList(chat.map((r) => ROLE_SHORT[r] ?? r))} now ${chat.length === 1 ? 'uses' : 'use'} ${name}'s free models.`
+      : suggests ? `${name} has no free models, so no chat role was filled. "Use the recommended models" on its page fills them.` : '',
+    speech.length ? `Its ${speech.map((r) => ROLE_SHORT[r].toLowerCase()).join(' and ')} models went behind the free entries.` : '',
+  ].filter(Boolean).join(' ');
+}
+
+/** Says what an add did to the roles, if anything. @param {any} ctx @param {string} plugin @param {string[]} filled */
+export function sayFilled(ctx, plugin, filled) {
+  const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === plugin);
+  const roles = src?.provider.roles ?? {};
+  const words = filledWords(src?.name ?? 'The provider', filled, Object.values(roles).some((/** @type {any} */ r) => ['main', 'utility', 'decide'].some((k) => k in r)));
+  if (words) ctx.notices.toast(words);
 }

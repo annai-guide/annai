@@ -29,7 +29,7 @@ const bumped = (src, version, fn) => {
   return next;
 };
 
-test('adding a provider: abilities and their models, one key, recommended chat models in empty roles, speech models behind the free entries', async () => {
+test('adding a provider: abilities and their models, one key, no paid chat model in an empty role, speech models behind the free entries', async () => {
   const ctx = await setup();
   const id = await addProvider(ctx, OPENAI_SRC, { key: 'sk-o' });
   const cfg = await readConfig(ctx.ws);
@@ -41,13 +41,42 @@ test('adding a provider: abilities and their models, one key, recommended chat m
   assert.deepEqual(Object.keys(p.abilities), ['chat', 'chat-completions', 'transcription', 'voice']);
   assert.equal(p.abilities['chat-completions'].on, false);
   assert.equal(await getKey(ctx.store, id), 'sk-o');
-  assert.deepEqual(names(cfg, 'main'), ['GPT-6.1 Sol']);
-  assert.deepEqual(names(cfg, 'utility'), ['GPT-6 Luna']);
+  assert.deepEqual(names(cfg, 'main'), [], 'OpenAI has no free model: an empty chat role stays empty, whatever it recommends');
+  assert.deepEqual(names(cfg, 'utility'), []);
   assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)']); // behind, never ahead (anti-goal)
   assert.deepEqual(names(cfg, 'speech-in'), ['send-audio', 'dictation', 'OpenAI: GPT Transcribe']);
   const voice = Object.values(cfg.models).find((m) => m.ability === 'voice');
   assert.equal(voice?.template?.id, 'provider-openai/voice/gpt-4o-mini-tts');
   assert.deepEqual(modelOf(/** @type {any} */ (voice)).tunables, { voice: 'marin' });
+});
+
+test('adding a provider fills an empty chat role only with a model that costs nothing, and says which roles it filled (the second emulator re-check)', async () => {
+  // OpenRouter: after Add, Utility and Quick decision were Claude Haiku, and a summary cost money.
+  const ctx = await setup();
+  await saveRoles(ctx.ws, { main: { models: [], level: 'medium' } });
+  /** @type {string[]} */
+  const filled = [];
+  const id = await addProvider(ctx, ROUTER_SRC, { key: 'sk-r', filled });
+  const cfg = await readConfig(ctx.ws);
+  assert.deepEqual(names(cfg, 'main'), ['Small (free)']);
+  assert.deepEqual(names(cfg, 'utility'), ['Small (free)'], 'not the recommended paid one');
+  assert.deepEqual(names(cfg, 'decide'), ['Small (free)']);
+  assert.ok(!Object.values(cfg.roles).some((r) => r.models.some((m) => cfg.models[m] && modelOf(cfg.models[m]).name === 'Big')), 'the paid model is in no role');
+  assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'Free voice', 'Paid voice'], 'speech models still join behind the free entries');
+  assert.deepEqual(filled.sort(), ['decide', 'main', 'speech-out', 'utility']);
+  // A role the user already set is left alone, and not named as filled.
+  const second = /** @type {string[]} */ ([]);
+  await addProvider(ctx, ROUTER_SRC, { key: 'sk-r2', filled: second });
+  assert.deepEqual(second.sort(), ['speech-out']);
+  // The user's own tap is what puts the paid ones in.
+  await useSuggestion(ctx, id, ROUTER_SRC, 'recommended');
+  assert.deepEqual(names(await readConfig(ctx.ws), 'main'), ['Big']);
+  // A provider with no free model fills no chat role.
+  const none = await setup();
+  const kinds = /** @type {string[]} */ ([]);
+  await addProvider(none, ANTHROPIC_SRC, { key: 'sk-ant', filled: kinds });
+  assert.deepEqual(kinds, [], 'nothing free to fill');
+  assert.deepEqual(names(await readConfig(none.ws), 'main'), []);
 });
 
 test('two providers from one plugin: two keys, models named apart; removing one keeps the other whole (Review Focus 1)', async () => {
@@ -57,7 +86,7 @@ test('two providers from one plugin: two keys, models named apart; removing one 
   let cfg = await readConfig(ctx.ws);
   assert.ok(modelNames(cfg).includes('GPT-6 Luna (2)'), modelNames(cfg).join());
   assert.deepEqual([providerOf(cfg.providers[a]).name, providerOf(cfg.providers[b]).name], ['OpenAI (work)', 'OpenAI (home)']);
-  assert.deepEqual(names(cfg, 'main'), ['GPT-6.1 Sol'], "the second fills no role the first has filled");
+  assert.deepEqual(names(cfg, 'main'), [], 'neither fills a chat role');
   assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)', 'OpenAI: GPT-4o mini TTS (Marin) (2)']);
   await removeProviderRecords(ctx.ws, ctx.store, a);
   cfg = await readConfig(ctx.ws);
@@ -215,6 +244,7 @@ const HI = /** @type {any} */ ({ messages: [{ role: 'user', parts: [{ type: 'tex
 test('the service adds a provider from a catalog plugin with what it requires, and a role call goes through its ability', async () => {
   const k = await serviceKit();
   const id = await k.llm.addProvider('provider-x', { key: 'sk-x-1234567890' });
+  await k.llm.useSuggestion(id, 'recommended'); // adding fills no chat role with a model that costs money
   assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['proto-a', 'proto-v', 'provider-x'], 'proto-b: its ability starts off, and nothing requires it');
   assert.deepEqual(k.llm.providers().map((p) => [p.plugin, p.name, p.version]), [['provider-x', 'X', '1.0.0']]);
   const r = await k.llm.call({ request: HI });
@@ -232,6 +262,7 @@ test('the service adds a provider from a catalog plugin with what it requires, a
 test("the free-tier switch is the provider's, kept in the user's layer: on, every one of its calls costs nothing; off, the switch is gone from the file", async () => {
   const k = await serviceKit();
   const id = await k.llm.addProvider('provider-x', { key: 'sk-x-1234567890' });
+  await k.llm.useSuggestion(id, 'recommended');
   await k.llm.setFree(id, true);
   const rec = (await k.llm.config()).providers[id];
   assert.equal(rec.user.free, true);

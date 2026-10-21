@@ -96,7 +96,7 @@ test('adding a provider whose description recommends a Koe model fills Main but 
   src.provider.roles = { recommended: { main: ['big'], koe: ['small:free'], 'koe-talk': ['big'], 'koe-type': ['big'] } };
   assert.deepEqual(checkProviderDesc(src.provider), [], 'a description may suggest Koe models, and an older one under the two old names still checks');
   assert.deepEqual(checkProviderDesc({ ...src.provider, roles: { recommended: { koe2: ['big'] } } }), ['$.roles.recommended.koe2: there is no such role']);
-  const id = await addProvider({ ws, store }, src, { key: 'sk-r' });
+  const id = await addProvider({ ws, store }, src, { key: 'sk-r', roles: 'recommended' });
   let cfg = await readConfig(ws);
   const name = (/** @type {string} */ role) => cfg.roles[role].models.map((m) => modelOf(cfg.models[m]).name);
   assert.deepEqual(name('main'), ['Big']);

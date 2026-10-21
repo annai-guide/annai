@@ -97,10 +97,17 @@ test("a provider plugin's own Add flow, by hand: OpenRouter's Add shows its sign
   await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' }).or(page.getByRole('link', { name: 'Sign in with OpenRouter' }))).toBeVisible();
   await page.getByRole('button', { name: 'Add by hand' }).click();
   await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.toast', { hasText: "now use OpenRouter's free models." })).toBeVisible();
   await page.getByLabel('API key').fill('sk-or-typed-key-123');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
   await expect(page.getByLabel('Use Chat', { exact: true })).toBeChecked();
+  // Adding put OpenRouter's free models in the empty chat roles, and said so; never the recommended Claude models, which cost money
+  // (the second emulator re-check: a summary was paid for that nobody had chosen).
+  await page.getByRole('link', { name: '← Models' }).click();
+  const roles = page.getByRole('region', { name: 'Roles' });
+  await expect(roles.locator('.role').first().getByText(/^1\. Google: Gemma 4 31B/)).toBeVisible();
+  await expect(roles.locator('.role-item > span').filter({ hasText: /Claude/ })).toHaveCount(0);
 });
 
 /** The plugins installed, by id. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */

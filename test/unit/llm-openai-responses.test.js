@@ -440,7 +440,7 @@ test('adding OpenAI saves its Responses models, its transcription and voices, an
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
-  const id = await addProvider({ ws, store }, await official('provider-openai'), { key: 'sk-test-r' });
+  const id = await addProvider({ ws, store }, await official('provider-openai'), { key: 'sk-test-r', roles: 'recommended' });
   const cfg = await readConfig(ws);
   assert.equal(providerOf(cfg.providers[id]).abilities.chat.type, 'openai-responses');
   const name = (/** @type {string} */ m) => recordModel(cfg.models[m]).name;

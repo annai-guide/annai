@@ -271,7 +271,7 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
       }
     };
     const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
-    const id = await llm.addProvider('provider-gemini', { key: GKEY, abilities: { live: { on: false, baseUrl: s.origin } } });
+    const id = await llm.addProvider('provider-gemini', { roles: 'recommended', key: GKEY, abilities: { live: { on: false, baseUrl: s.origin } } });
     assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['gemini-api', 'provider-gemini'], 'nothing for live sessions until they are switched on');
     const cfg = await readConfig(k.ws);
     assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
@@ -357,7 +357,7 @@ test("provider-gemini 2.2.0's Google Search (G4): a provider tool on each Gemini
     const k = await hostKit();
     const fetch = async (/** @type {any} */ url, /** @type {any} */ init) => (String(url).startsWith(s.url) ? globalThis.fetch(url, init) : new Response(await readFile(new URL(`.${new URL(String(url), 'http://annai.test').pathname}`, root)).catch(() => 'not found'), { status: 200 }));
     const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
-    const id = await llm.addProvider('provider-gemini', { key: 'AIza-paid', baseUrl: s.url });
+    const id = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-paid', baseUrl: s.url });
     const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Is Nepenthe open?' }] }], providerTools: { kinds: ['search'] } };
     const paid = await llm.call({ role: 'main', request });
     assert.deepEqual(s.bodies()[0].tools, [{ type: 'google_search' }]);
@@ -430,7 +430,7 @@ test('Gemini can be added while the user has Gemini Live turned off: it requires
   const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
   await llm.ensureType('gemini-live');
   await k.host.setEnabled('gemini-live', false);
-  const id = await llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  const id = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-stand-in' });
   assert.ok((await readConfig(k.ws)).providers[id]);
   assert.equal((await k.host.installed())['gemini-live'].enabled, false, 'still off, as the user left it');
 });
@@ -445,7 +445,7 @@ test('"Use the recommended models" switches on every ability whose models it nam
     }
   };
   const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
-  const id = await llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  const id = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-stand-in' });
   const cfg = await readConfig(k.ws);
   const byId = (/** @type {string} */ pid) => Object.values(cfg.models).find((x) => x.ability !== 'transcription' && modelOf(x).providerId === pid)?.id;
   assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
@@ -474,7 +474,7 @@ async function geminiKit() {
 
 test('"Use the recommended models" never switches on an ability the user switched off; one new in an update, which arrived off, it does', async () => {
   const k = await geminiKit();
-  const id = await k.llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  const id = await k.llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-stand-in' });
   await k.llm.setAbility(id, 'chat', false); // on by the description, off by the user
   assert.deepEqual(await k.llm.useSuggestion(id, 'recommended'), { on: ['Live voice'], failed: [] });
   const cfg = await readConfig(k.ws);
@@ -490,7 +490,7 @@ test('"Use the recommended models" never switches on an ability the user switche
 
 test('"Use the recommended models" with Gemini Live turned off in Settings → Plugins: Live stays off, says why, and every role it can fill is filled', async () => {
   const k = await geminiKit();
-  const id = await k.llm.addProvider('provider-gemini', { key: 'AIza-stand-in' });
+  const id = await k.llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-stand-in' });
   await k.llm.ensureType('gemini-live');
   await k.host.setEnabled('gemini-live', false);
   await saveRoles(k.ws, { ...(await readConfig(k.ws)).roles, main: { models: [], level: 'medium' } });

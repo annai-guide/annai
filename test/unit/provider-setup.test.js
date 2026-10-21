@@ -390,3 +390,11 @@ test("review M1: a provider record's missing plugin is installed from the provid
   await assert.rejects(installMissing(ctx, entry('remote-trace-like')), /didn't provide a model provider/);
   assert.equal((await k.host.installed())['remote-trace-like'], undefined, 'installed, it gave no provider, so it went again');
 });
+
+test('the page says which roles an add filled: the chat roles with free models, the speech lists behind the free entries, and where to tap when nothing was free', async () => {
+  const { filledWords } = await import('../../src/ui/provider-setup.js');
+  assert.equal(filledWords('OpenRouter', ['utility', 'decide', 'speech-out'], true), "Utility and Quick decision now use OpenRouter's free models. Its speech out models went behind the free entries.");
+  assert.equal(filledWords('OpenRouter', ['main'], true), "Main now uses OpenRouter's free models.");
+  assert.equal(filledWords('OpenAI', ['speech-in', 'speech-out'], true), 'OpenAI has no free models, so no chat role was filled. "Use the recommended models" on its page fills them. Its speech in and speech out models went behind the free entries.');
+  assert.equal(filledWords('Local', [], false), '', 'a provider with no chat suggestion and nothing filled says nothing');
+});
