@@ -390,8 +390,8 @@ Each model declares its cache TTL options and prices (§9.2). The core tracks, p
 |---|---|
 | A tool errors | The error is returned as the tool result; the model adapts. |
 | The model errors | §9.6 fallback. When every model is exhausted, a card says "Shiori can't reach her model". |
-| The user interrupts | Tapping the avatar cancels the stream. Partial output is logged. |
-| Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. |
+| The user interrupts | Tapping the avatar cancels the stream. Partial output is logged. The turn is over: opening the conversation again doesn't take it up. |
+| Crash or reload mid-turn | At startup, every tool call without a result gets one ("interrupted by app restart"), then a catch-up wake runs. So does a turn cut off after its tool calls had all come back, before her next reply (when the reply that made them didn't call `sleep`). |
 | Voice is off | `speak` becomes an on-screen bubble and doesn't listen. The now block tells Shiori the mode. |
 
 ### 6.8 Two halves: Koe and Kokoro
