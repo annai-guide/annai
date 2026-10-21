@@ -77,3 +77,29 @@ test('"Kokoro has nothing to add" and "was stopped" are not for the user: Koe ma
   assert.deepEqual(k.notices, []);
   assert.deepEqual(await k.events(['reminder']), []);
 });
+
+// Item 3 (F25 again): Koe asked Kokoro anew 4 s after hearing "Kokoro was stopped", and the plan went on.
+test("after the user's Stop, Koe's tell_kokoro is refused in words until the user writes again; then it goes through", async () => {
+  const k = await agentKit([[{ delayMs: 2000, ...sleep }]], { koe: { type: [
+    CHECK,
+    calls(['tell_kokoro', { text: 'Plan it anyway.' }], ['speak', { text: 'Stopped.' }], ['sleep', {}]),
+    calls(['tell_kokoro', { text: 'Plan it, as asked.' }], ['sleep', {}]),
+    sleep,
+  ] } });
+  const turns = () => (k.sent['model-0'] ?? []).length;
+  k.agent.send('Plan our afternoon around the sunset');
+  await until(() => turns() === 1 && k.agent.koe.waiting);
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  const asks = (await k.events(['tool.result'])).filter((e) => e.data.name === 'tell_kokoro');
+  assert.equal(asks.length, 2);
+  assert.equal(asks[1].data.ok, false);
+  assert.match(asks[1].data.content, /the user stopped Kokoro/i);
+  assert.equal(turns(), 1, 'Kokoro was not asked again');
+  assert.deepEqual((await k.events(['note'])).filter((e) => e.data.from === 'koe').map((e) => e.data.text), ['When is sunset?']);
+  // The user writes again: Koe may ask.
+  k.agent.send('Yes, plan it.');
+  await k.agent.idle();
+  assert.equal((await k.events(['tool.result'])).filter((e) => e.data.name === 'tell_kokoro').at(-1).data.ok, true);
+  assert.equal(turns(), 2);
+});
