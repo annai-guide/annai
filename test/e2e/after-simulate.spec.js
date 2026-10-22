@@ -70,8 +70,15 @@ test('the Big Sur trip, simulated through the app, is replayed and recapped, and
     await expect(page.getByText('The simulation has ended.')).toBeVisible({ timeout: 240_000 });
     // She slept through the plan's reminders: annai showed them itself (spec §11.3). They are read, and put away.
     await expect(page.locator('.notice', { hasText: 'Running late: Hearst Castle tour' }).first()).toBeAttached();
-    const cards = page.locator('.notices .notice');
-    while (await cards.count()) await cards.last().getByRole('button', { name: 'Dismiss' }).click();
+    // The reminders of one kind fold into one card (the user, 2026-10-21: "stack them"): opened, each shows, with one Dismiss all.
+    const stack = page.locator('.notices .notice-stack', { hasText: /^Reminder \(\d+\)/ });
+    await expect(stack).toHaveCount(1);
+    expect(await stack.locator('.stack-list .notice').count()).toBeGreaterThanOrEqual(2);
+    await expect(stack.locator('.stack-list')).toBeHidden();
+    await stack.getByRole('button', { name: 'Show' }).click();
+    await expect(stack.locator('.stack-list .notice').first()).toBeVisible();
+    await stack.getByRole('button', { name: 'Dismiss all' }).click();
+    await expect(page.locator('.notices .notice')).toHaveCount(0);
 
     // Replay: the timeline, the route and the stamps.
     await page.getByRole('link', { name: 'Replay it' }).click();
