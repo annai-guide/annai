@@ -170,7 +170,7 @@ export class Halves {
       log: { koe: (ev) => this.koe.log(ev), kokoro: (ev) => this.kokoro.log(ev) },
       deliver: {
         koe: (w) => {
-          if (isForUser(w)) this.#unsaid.push(w.text);
+          if (isForUser(w) && !w.retold) this.#unsaid.push(w.text);
           this.#koeOpen();
           if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', isForUser(w) ? w : null), w);
           else this.koe.enqueue(w);
@@ -270,6 +270,7 @@ export class Halves {
       asked: () => this.#asked && this.kokoro.busy,
       unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
       owed: (notes) => this.#handOn(notes),
+      spoke: () => this.#retold(),
       // Kokoro's words for the user that a switch left unsaid: shown in the conversation left, not aloud (Koe is in another now).
       left: (notes) => {
         const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
@@ -696,6 +697,11 @@ export class Halves {
   /** @param {string | null} detail */
   working(detail) { this.kokoro.working(detail); }
   cacheState() { return this.kokoro.cacheState(); }
+  /** Kokoro's notes held for the user's next words go to Koe again, as appends. */
+  #retold() {
+    for (const w of this.#retell.splice(0)) this.channel.deliver.koe({ ...w, retold: true, mode: 'append' });
+  }
+
   /** For Settings → Tools: tell_koe only while Shiori is two halves. */
   loopTools() { return this.kokoro.loopTools().filter((t) => this.#split || t.name !== 'tell_koe'); }
   /** @param {import('./loop.js').LoopTool[]} tools Shiori's own, which are Kokoro's */
@@ -740,8 +746,10 @@ export class Halves {
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
-    // The user's next words: Kokoro's notes Koe left unsaid go to Koe again, with them.
-    if ((typed || (e.type === 'heard' && !e.data?.dismissed)) && this.#retell.length) for (const w of this.#retell.splice(0)) this.channel.deliver.koe({ ...w, retold: true });
+    // The user's next words: Kokoro's notes Koe left unsaid go to Koe again, with them (live, as their turn ends: spoke); Koe
+    // reaching the user meanwhile has passed them on.
+    if (e.type.startsWith('out.')) this.#retell = [];
+    if (typed || (e.type === 'heard' && !e.data?.dismissed && this.koeState !== 'live')) this.#retold();
     if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
       this.#failTold = false;

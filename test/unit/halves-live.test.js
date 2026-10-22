@@ -709,6 +709,44 @@ test("review S4: switching to another trip with Kokoro's note still owed shows i
   }
 });
 
+test("the review's minors: a note retold goes in as the user's next spoken turn ends, as an append, not after Koe's first word", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}, {}, { heard: 'And the story?', said: 'Highway one took eighteen years.', audio: tone(2) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    await noted(k, STORY, 'tool', undefined, '');
+    await soon(async () => texts(k).filter((t) => CUE.test(t)).length === 1);
+    await settled(k);
+    const { clip } = await import('./voice-kit.js');
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.platform.mic.feed(cat(quiet(0.5), lunch, quiet(1)), 16_000);
+    await soon(async () => texts(k).filter((t) => t.includes('Big Sur story')).length === 2);
+    const last = k.server.received().slice(k.server.received().map((/** @type {any} */ m) => Boolean(m.realtimeInput?.activityEnd)).lastIndexOf(true));
+    assert.ok(last.some((/** @type {any} */ m) => m.clientContent?.turns[0].parts[0].text.includes('Big Sur story')), 'after the activityEnd');
+    assert.ok(!(await k.events(['out.speak'])).some((/** @type {any} */ e) => /eighteen/.test(e.data.text)), 'before Koe answered the spoken turn');
+  } finally {
+    await k.done();
+  }
+});
+
+test("the review's minors: a note held to be retold is let go once Koe reaches the user anyway", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}, {}, { said: 'Sunset is soon.', audio: tone(0.2) }, { said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    await noted(k, STORY, 'tool', undefined, '');
+    await soon(async () => texts(k).filter((t) => CUE.test(t)).length === 1);
+    await settled(k);
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [] });
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Sunset is soon.'));
+    await settled(k);
+    k.agent.send('Thanks');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Sure.'));
+    assert.equal(texts(k).filter((t) => t.includes('Big Sur story')).length, 1, 'not retold');
+  } finally {
+    await k.done();
+  }
+});
+
 test("Kokoro's note that comes while the user is still speaking goes in as soon as they finish (activityEnd), not after Koe's answer", async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'There is a taco stand ahead, and a diner after the bridge.', audio: tone(2) }, { said: 'And Nepenthe is open.', audio: tone(0.2) }], { pace: 1 });
   try {

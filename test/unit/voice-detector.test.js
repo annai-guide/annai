@@ -130,3 +130,13 @@ test("a gate that takes the room down to near silence (not zeros) for 60 ms ever
   assert.deepEqual(events.map((e) => e.type), ['speech', 'segment']);
   assert.equal(/** @type {any} */ (events[1]).cut, 'pause');
 });
+
+test('zero samples here and there (a quiet 16-bit microphone rounds many to 0) are sound; only runs of 2 ms or more are digital silence (review, Step 11)', () => {
+  // A room whose every third sample is exactly 0: a third of each frame, but never two zeros in a row.
+  const pcm = room(8, lunch).map((x, i) => (i % 3 === 0 ? 0 : x));
+  const events = detect(pcm);
+  assert.deepEqual(events.map((e) => e.type), ['speech', 'segment']);
+  const d = new Detector({ sampleRate: RATE });
+  d.push(pcm.subarray(0, RATE));
+  assert.ok(d.floorDb !== null && d.floorDb > -80, `the room set the floor: ${d.floorDb}`);
+});

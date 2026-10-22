@@ -42,8 +42,13 @@ export class Detector {
   #cur;
   #n = 0;
   #energy = 0;
-  /** Samples of the frame being filled that are digital silence. */
+  /**
+   * Samples of the frame being filled that are digital silence: in runs of 2 ms or more (a gate's), as a quiet 16-bit microphone
+   * rounds single samples to 0 all the time (its noise, near one step, -90 dBFS); 1e-7 is under any converter's step (24-bit: 1.2e-7).
+   */
   #zeros = 0;
+  #run = 0;
+  #zeroRun;
   /** Frames in a row far under the floor. */
   #dips = 0;
   /** Frames heard, and the last one louder than markDb. */
@@ -73,6 +78,7 @@ export class Detector {
     this.minSpeech = frames(minSpeechMs);
     this.maxFrames = frames(maxMs);
     this.#frame = Math.round((sampleRate * FRAME_MS) / 1000);
+    this.#zeroRun = Math.round(sampleRate / 500);
     this.#cur = new Float32Array(this.#frame);
     this.#hp = biquad('highpass', 300, sampleRate);
     this.#lp = biquad('lowpass', 3400, sampleRate);
@@ -135,7 +141,9 @@ export class Detector {
     for (let i = 0; i < pcm.length; i++) {
       const x = pcm[i];
       this.#cur[this.#n++] = x;
-      if (Math.abs(x) < 1e-7) this.#zeros++;
+      if (Math.abs(x) >= 1e-7) this.#run = 0;
+      else if (++this.#run === this.#zeroRun) this.#zeros += this.#zeroRun;
+      else if (this.#run > this.#zeroRun) this.#zeros++;
       const y = this.#lp(this.#hp(x));
       this.#energy += y * y;
       if (this.#n === this.#frame) {
