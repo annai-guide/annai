@@ -9,7 +9,8 @@
  *   stream: true gives each tool call's arguments as tool_input events first, pieceMs apart; breakAt: n drops the connection after n of them.
  * With a rules tunable instead ([{ match, reply, then, times }]), the step depends on what woke her: the first
  * rule whose match (a case-insensitive regular expression) finds the request's "woke for:" line replies; a call
- * that follows tool results gets its rule's then (default: sleep); times limits how often a rule answers.
+ * that follows tool results gets the then (default: sleep) of the rule that replied last (the "woke for:" line
+ * gives only what is new since the last call); times limits how often a rule answers.
  * It reads no messages, so it takes the request as built, tail included (tail: true).
  * @param {any} annai
  */
@@ -19,6 +20,8 @@ export function activate(annai) {
   const calls = new Map();
   /** @type {Map<string, number>} how often each rule has answered, by endpoint and rule */
   const used = new Map();
+  /** @type {Map<string, any>} the rule that replied last, by endpoint */
+  const lastRule = new Map();
   /**
    * The step for this call, from the rules (by what woke her) or the script (in turn).
    * @param {any} endpoint @param {any} request @param {number} n
@@ -35,6 +38,7 @@ export function activate(annai) {
     // Results of its own tool calls come last; a new wake's words would follow them in the same message.
     const followUp = last?.role === 'user' && last.parts?.at(-1)?.type === 'tool_result';
     const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+    if (followUp && lastRule.has(endpoint.id)) return lastRule.get(endpoint.id).then ?? sleep;
     let i = 0;
     for (const r of rules) {
       const key = `${endpoint.id}:${i++}`;
@@ -42,6 +46,7 @@ export function activate(annai) {
       if (typeof r.times === 'number' && (used.get(key) ?? 0) >= r.times && !followUp) continue;
       if (followUp) return r.then ?? sleep;
       used.set(key, (used.get(key) ?? 0) + 1);
+      lastRule.set(endpoint.id, r);
       return r.reply ?? sleep;
     }
     return sleep;

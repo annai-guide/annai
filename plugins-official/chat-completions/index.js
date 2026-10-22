@@ -364,7 +364,8 @@ function readList(json) {
     if (window) out.contextWindow = window;
     if (m.top_provider?.max_completion_tokens) out.maxOutput = m.top_provider.max_completion_tokens;
     const kinds = m.architecture?.input_modalities;
-    if (Array.isArray(kinds)) out.input = ['text', 'image', 'audio'].filter((k) => kinds.includes(k));
+    // OpenRouter's "file" is a PDF its model reads.
+    if (Array.isArray(kinds)) out.input = ['text', 'image', 'pdf', 'audio'].filter((k) => kinds.includes(k === 'pdf' ? 'file' : k));
     if (Array.isArray(m.supported_parameters)) out.tools = m.supported_parameters.includes('tools');
     const prices = pricesOf(m.pricing);
     if (prices) out.prices = prices;

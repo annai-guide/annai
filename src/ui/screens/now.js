@@ -157,7 +157,7 @@ export async function eventCard(ctx, e) {
   const d = e.data ?? {};
   const who = () => h('span', { class: 'who', text: 'SHIORI' });
   if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), renderCard(d.card ?? {}, { ctx, onChoice: (o) => ctx.agent.send(o) }));
-  if (e.type === 'reminder') return h('p', { class: 'system-line', text: `Reminder${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
+  if (e.type === 'reminder') return h('p', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { text }));
   // Said aloud: hidden unless asked (spec §2 principle 4).

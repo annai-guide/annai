@@ -206,6 +206,58 @@ test("no model answers: a system card, never in Shiori's voice", async () => {
   assert.equal((await k.events(['error']))[0].data.kind, 'model');
 });
 
+test("a model error card is taken down when a later turn works: the same key, then a clear; a \"didn't answer\" card when she then speaks (the second emulator pass)", async () => {
+  const k = await agentKit([[{ error: 'auth', status: 401 }, say('Back again.')]]);
+  /** @type {any[]} */
+  const seen = [];
+  k.agent.on('clear', (/** @type {string} */ key) => seen.push(key));
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.deepEqual(seen, []);
+  assert.equal(k.notices[0].key, 'model', 'the card is named, so the app can take it down');
+  k.llm.bench.clear('m-0');
+  k.agent.send('Hi again');
+  await k.agent.idle();
+  assert.deepEqual(seen, ['model', `silent:${k.trip}`]);
+  // The same for a turn that said nothing: its card goes with the turn that speaks.
+  const q = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, say('Now aloud.')]]);
+  /** @type {any[]} */
+  const qs = [];
+  q.agent.on('clear', (/** @type {string} */ key) => qs.push(key));
+  q.agent.send('Hi');
+  await q.agent.idle();
+  assert.deepEqual(q.notices.map((/** @type {any} */ n) => [n.title, n.key]), [["Shiori didn't answer", `silent:${q.trip}`]]);
+  assert.deepEqual(qs, ['model'], "that turn worked, but said nothing: the card about saying nothing stays");
+  q.agent.tryAgain();
+  await q.agent.idle();
+  assert.deepEqual(qs, ['model', 'model', `silent:${q.trip}`]);
+  assert.equal((await q.events(['out.speak']))[0].data.text, 'Now aloud.');
+});
+
+test("the \"didn't answer\" card goes only with a later turn the user started in its conversation that spoke to them: not a reminder's, nor another conversation's (the fix pass)", async () => {
+  const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, say('Fuel is low.'), say('Kyoto is lovely.'), say('Now aloud.')]]);
+  /** @type {string[]} */
+  const seen = [];
+  k.agent.on('clear', (/** @type {string} */ key) => seen.push(key));
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const key = `silent:${k.trip}`;
+  assert.equal(k.notices[0].key, key);
+  await k.agent.wake({ kind: 'trigger', text: 'Fuel is low', scope: k.trip });
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).length, 1);
+  assert.ok(!seen.includes(key), "a reminder's turn that spoke");
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.agent.open(other);
+  k.agent.send('Hello there');
+  await k.agent.idle();
+  assert.ok(!seen.includes(key), "another conversation's turn of the user's");
+  await k.agent.open(k.trip);
+  k.agent.send('Hi again');
+  await k.agent.idle();
+  assert.ok(seen.includes(key));
+});
+
 test("the card says why each model failed on one line, each reason once, in words; offline, that the device is (emulator pass)", async () => {
   const busy = 'This model is currently experiencing high demand. Please try again later.';
   const k = await agentKit([[{ error: 'overloaded', message: busy }], [{ error: 'unreachable', message: 'Failed to fetch' }]], { models: [{}, { input: ['text'] }] });
@@ -217,6 +269,117 @@ test("the card says why each model failed on one line, each reason once, in word
   off.agent.send('Hi');
   await off.agent.idle();
   assert.equal(off.notices[0].body, 'This device is offline.');
+});
+
+test("a model that reads no PDFs reads one: a model that does tells it in words, and says so; with none here, the result says that (the second emulator pass)", async () => {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Check-in is at 3 PM.')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM, 2 nights.' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /^The PDF \/trip\/files\/booking\.pdf\.\nWhat it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM, 2 nights\.$/);
+  assert.equal(r.data.document, undefined, 'the words in place of the document');
+  const asked = k.sent['model-u'][0].messages[0].parts.find((/** @type {any} */ p) => p.type === 'document');
+  assert.equal(asked.mediaType, 'application/pdf');
+  assert.doesNotMatch(JSON.stringify(k.sent['model-0']), /"type":"document"/);
+  // No model that reads PDFs: the result says so.
+  const none = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('I cannot read it.')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'never' }] });
+  await none.ws.write(none.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  none.agent.send('When is check-in?');
+  await none.agent.idle();
+  const nr = (await none.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(nr.data.content, /\nNo model here can read PDFs, so what it says can't be told\.$/);
+});
+
+/** A Shiori whose model reads no PDFs, a Utility model that does, and a PDF in the trip. @param {any[]} script @param {any[]} utility */
+async function pdfKit(script, utility) {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([script], { models: [{ input: ['text', 'image'] }], utility });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  return k;
+}
+const readPdf = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
+
+test('a PDF told only up to the output limit says it stops there; a second read in the session is told from what was told, never sent again (the fix pass, S6)', async () => {
+  const k = await pdfKit([readPdf, readPdf, say('Check-in is at 3 PM.')], [{ text: 'Hotel booking: check-in 3 PM, 2 nights. Room', stop: 'length' }]);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const reads = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read').map((e) => e.data.content);
+  assert.equal(reads.length, 2);
+  assert.match(reads[0], /: Hotel booking: check-in 3 PM, 2 nights\. Room …\(it stops here: the PDF goes on\)$/);
+  assert.equal(reads[1], reads[0]);
+  assert.equal(k.sent['model-u'].length, 1, 'the PDF went to be told once');
+});
+
+test("the told PDFs are keyed by the bytes told, in their conversation: a part claiming an earlier PDF's hash with other bytes is told afresh, and another conversation never gets the first one's words (the fix pass's security review)", async () => {
+  const { toBase64 } = await import('../../src/core/bytes.js');
+  const claim = { toolCalls: [{ name: 'claim', input: {} }] };
+  const k = await pdfKit([readPdf, claim, say('Done.'), readPdf, say('Done.')], [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'Ferry ticket: 9:10 AM.' }, { text: 'Kyoto hotel: check-in 4 PM.' }]);
+  const { entry } = /** @type {any} */ (await k.ws.read(k.trip, '/files/booking.pdf'));
+  // A tool's PDF that names the booking's hash, with bytes of its own.
+  k.registry.add('test', 'tool', { name: 'claim', description: 'A PDF.', input: { type: 'object' }, run: async () => ({ content: 'A ticket.', document: { mediaType: 'application/pdf', hash: entry.hash, data: toBase64(new TextEncoder().encode('%PDF-1.4 ferry')), name: 'ticket.pdf' } }) });
+  k.agent.send('What do I have?');
+  await k.agent.idle();
+  const first = (await k.events(['tool.result'])).map((e) => e.data.content);
+  assert.match(first[0], /Hotel booking: check-in 3 PM\.$/);
+  assert.match(first[1], /Ferry ticket: 9:10 AM\.$/, 'told afresh: its bytes are not the booking');
+  // The same bytes in another conversation are told there afresh.
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.ws.write(other, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  await k.agent.open(other);
+  k.agent.send('And here?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 3, 'told in the other conversation afresh');
+});
+
+test('Erase forgets the PDFs told this session (the fix pass\'s security review)', async () => {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPdf, then: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: [{ toolCalls: [{ name: 'sleep', input: {} }] }] }, models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  k.agent.send('And again?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 1, 'told once');
+  k.agent.hush('erase');
+  k.agent.send('Once more?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 2, 'forgotten at Erase');
+});
+
+test("a PDF has longer to be told than a photo to be described: a telling that takes more than a photo's 30 seconds still comes (the fix pass, S6)", async () => {
+  const { DESCRIBE_S, DESCRIBE_PDF_S } = await import('../../src/core/agent/loop.js');
+  assert.ok(DESCRIBE_PDF_S > DESCRIBE_S);
+  // secondMs is 10 here: 30 seconds are 300 ms.
+  const k = await pdfKit([readPdf, say('Check-in is at 3 PM.')], [{ delayMs: (DESCRIBE_S + 15) * 10, text: 'Hotel booking: check-in 3 PM.' }]);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const read = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(read.data.content, /What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\.$/);
+});
+
+test('a PDF read earlier does not close the conversation to a model that reads none: it goes as a note (the second emulator pass: halo, "type file is not supported")', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Read it.')], [say('Anything else?')]], { models: [{ input: ['text', 'image', 'pdf'] }, { input: ['text', 'image'] }] });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('Read the booking');
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-0'].at(-1).messages), /"type":"document"/, 'the first model had the PDF');
+  const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ['m-1'] } });
+  k.agent.send('Thanks');
+  await k.agent.idle();
+  const asked = k.sent['model-1'].at(-1);
+  assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"document"/);
+  assert.match(JSON.stringify(asked.messages), /\[a PDF: booking\.pdf\]/);
+  assert.equal(k.notices.length, 0);
 });
 
 test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async () => {
@@ -735,6 +898,69 @@ test("show: a plugin's card type joins the tool's card, its data is checked, and
   assert.match(results[1], /^Error: the tides card's data isn't valid: .*low/);
   assert.equal(results[2], 'Error: there is no card type ferries. Types: tides.');
   assert.equal((await k.events(['out.show'])).length, 1);
+});
+
+test("show keeps only http(s) links, a photo and a booking inside the trip (or /me), and choices that are words (the fix pass's security review)", async () => {
+  const k = await agentKit([[{ toolCalls: [
+    { name: 'show', input: { card: { title: 'Bixby', links: [{ label: 'Map', url: 'https://maps.example' }, { label: 'Run', url: 'javascript:alert(1)' }], image: '/etc/hosts', booking: '/me/../trip/x.json', choice: ['Go', { no: 1 }] } } },
+    { name: 'show', input: { card: { title: 'Kept', image: '/trip/files/bixby.webp', booking: '/trip/bookings/hotel.json' } } },
+    { name: 'sleep', input: {} },
+  ] }]]);
+  k.agent.send('Bixby?');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['out.show'])).map((e) => e.data.card), [
+    { title: 'Bixby', links: [{ label: 'Map', url: 'https://maps.example' }], choice: ['Go'] },
+    { title: 'Kept', image: '/trip/files/bixby.webp', booking: '/trip/bookings/hotel.json' },
+  ]);
+});
+
+test("show and ask take only so much (the second fix pass): a title of 200 characters, a text of 4,000, 6 links and 6 choices of 100 characters, a URL of 2,000; a question of 500 and options of 100, else ask is refused", async () => {
+  const long = (/** @type {number} */ n) => 'x'.repeat(n);
+  const links = [{ label: long(150), url: 'https://e.example/0' }, ...Array.from({ length: 6 }, (_, i) => ({ label: `L${i + 1}`, url: `https://e.example/${i + 1}` }))];
+  const card = { title: long(300), text: long(5000), place: { name: long(300), address: 'Big Sur' }, links: [{ label: 'far', url: `https://e.example/${long(2100)}` }, ...links], choice: [long(150), ...Array.from({ length: 7 }, (_, i) => `C${i}`)] };
+  const k = await agentKit([[{ toolCalls: [
+    { name: 'show', input: { card } },
+    { name: 'ask', input: { question: long(600), options: ['Yes'] } },
+    { name: 'ask', input: { question: 'Which?', options: ['Yes', long(150)] } },
+    { name: 'sleep', input: {} },
+  ] }]]);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const [shown] = await k.events(['out.show']);
+  const c = shown.data.card;
+  assert.deepEqual([c.title.length, c.text.length, c.place.name.length, c.title.at(-1)], [200, 4000, 200, '…']);
+  assert.equal(c.place.address, 'Big Sur');
+  assert.deepEqual(c.links.map((/** @type {any} */ l) => l.url), Array.from({ length: 6 }, (_, i) => `https://e.example/${i}`), 'the URL too long for a browser left out, then 6');
+  assert.equal(c.links[0].label.length, 100);
+  assert.deepEqual(c.choice, ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']);
+  const asks = (await k.events(['tool.result'])).filter((e) => e.data.name === 'ask');
+  assert.deepEqual(asks.map((e) => e.data.ok), [false, false]);
+  assert.match(asks[0].data.content, /500 characters/);
+  assert.match(asks[1].data.content, /100 characters/);
+  assert.equal((await k.events(['out.ask'])).length, 0);
+});
+
+test('show refuses a card with nothing to show, once what can\'t be shown is left out (the second fix pass)', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'show', input: { card: { links: [{ label: 'Run', url: 'javascript:alert(1)' }] } } }, { name: 'sleep', input: {} }] }]]);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const [r] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'show');
+  assert.equal(r.data.ok, false);
+  assert.match(r.data.content, /nothing to show/);
+  assert.equal((await k.events(['out.show'])).length, 0);
+});
+
+test('a wake already in the log that joins mid-turn (a review, "Koe answered the user") stays a line of the conversation: "woke for" gives it once, and later steps still read it (the second fix pass, M5)', async () => {
+  const list = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+  const k = await agentKit([[{ delayMs: 200, ...list }, list, say('Nothing to add.')]]);
+  k.agent.send('Look around');
+  await until(() => k.requests.length === 1);
+  k.agent.enqueue({ kind: 'cue', text: 'a review: tell Koe what it got wrong; otherwise sleep', logged: true });
+  await k.agent.idle();
+  assert.equal(k.requests.length, 3);
+  assert.match(k.requests[1].tail, /woke for: a review: tell Koe what it got wrong/);
+  assert.doesNotMatch(k.requests[2].tail, /woke for/);
+  assert.match(JSON.stringify(k.requests[2].messages), /\[annai\] a review: tell Koe what it got wrong; otherwise sleep/);
 });
 
 test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shiori's turn goes on", async () => {

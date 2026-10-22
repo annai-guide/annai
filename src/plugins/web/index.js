@@ -51,7 +51,6 @@ export function activate(annai) {
       if (bytes.byteLength > FILE_MAX) return `Source: ${url} (${how})\n\nThis ${type} is over 10 MB, too big to read here.`;
       const input = call.model?.input ?? ['text'];
       if (type === 'application/pdf') {
-        if (!input.includes('pdf')) return `Source: ${url} (${how})\n\nIt's a PDF, and this model can't read PDFs. Ask the user for a screenshot of the page you need.`;
         return { content: `Source: ${url} (${how}): a PDF.`, document: { mediaType: 'application/pdf', data: toBase64(bytes), name } };
       }
       if (!input.includes('image')) return `Source: ${url} (${how})\n\nIt's an image, and this model can't see images.`;

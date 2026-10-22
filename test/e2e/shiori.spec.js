@@ -285,6 +285,48 @@ test('the dock is on every screen; typing to Shiori shows her answer in the conv
   }
 });
 
+test("a turn that said nothing: the conversation's own note offers Try again (the card is at the page's top), and everything goes once she answers (the second emulator pass)", async ({ page }) => {
+  const plain = sse(anthropicToolReply([], 'Big Sur is known for its coast.'));
+  const llm = await startModelServer({ '/b/v1/messages': [plain, plain, sse(anthropicToolReply([{ name: 'speak', input: { text: 'Its wild coast.' } }, { name: 'sleep', input: {} }]))] });
+  try {
+    await setUp(page, llm.origin);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('What is Big Sur known for?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    const card = page.locator('.notice', { hasText: "Shiori didn't answer" });
+    await expect(card).toBeVisible();
+    const note = page.locator('.convo .system', { hasText: 'Her turn ended' });
+    await expect(note).toBeVisible();
+    await note.getByRole('button', { name: 'Try again' }).click();
+    await expect(page.locator('.convo .shiori p')).toHaveText('Its wild coast.');
+    await expect(card).toHaveCount(0);
+    await expect(note.getByRole('button', { name: 'Try again' })).toHaveCount(0);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test("no model answers: the card and the conversation's note say the same, \"Shiori can't reach her model\", and the note offers Try again", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [{ status: 401, type: 'application/json', body: '{"type":"error","error":{"type":"authentication_error","message":"bad key"}}' }, sse(anthropicToolReply([{ name: 'speak', input: { text: 'Back again.' } }, { name: 'sleep', input: {} }]))] });
+  try {
+    await setUp(page, llm.origin);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Hello?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    const card = page.locator('.notice', { hasText: "Shiori can't reach her model" });
+    await expect(card).toBeVisible();
+    const note = page.locator('.convo .system', { hasText: "Shiori can't reach her model" });
+    await expect(note).toBeVisible();
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    // The model rests for a few minutes after a refused key: the user may try it again from Settings; here, a new message.
+    await expect(note.getByRole('button', { name: 'Try again' })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('hostile model output in a card stays text: no HTML, no javascript: links', async ({ page }) => {
   const card = { title: '<b>Hi</b>', text: '<img src=x onerror="window.__pwned=1"> [bad](javascript:window.__pwned=1) and [good](https://example.com/)', links: [{ label: 'evil', url: 'javascript:alert(1)' }] };
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'show', input: { card } }, { name: 'sleep', input: {} }]))] });
