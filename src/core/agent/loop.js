@@ -1673,7 +1673,9 @@ export class Agent {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = 'Her model finished without saying anything to you.';
       const scope = this.scope;
-      await this.#notice({ tone: 'warn', title: "Shiori didn't answer", body, key: `silent:${scope}`, actions: [{ label: 'Try again', primary: true, run: () => { this.wake({ kind: 'cue', text: AGAIN, again: true, scope }); } }] });
+      // Two such cards from two conversations must tell apart: each names its own (the third emulator pass).
+      const whose = scope === ME ? 'Me' : (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)).catch(() => null))?.title;
+      await this.#notice({ tone: 'warn', title: "Shiori didn't answer", body: whose ? `${whose}: ${body}` : body, key: `silent:${scope}`, actions: [{ label: 'Try again', primary: true, run: () => { this.wake({ kind: 'cue', text: AGAIN, again: true, scope }); } }] });
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'silent', wake: wakeId, message: body } });
     }
     settle();

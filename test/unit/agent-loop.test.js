@@ -118,7 +118,7 @@ test("the user's message, answered only in plain text: she is asked once more; s
   assert.match(JSON.stringify(k.requests[1].messages.at(-1)), new RegExp(UNANSWERED.slice(0, 40)));
   assert.match(k.requests[1].tail, /The user hasn't been answered/);
   assert.equal((await k.events(['wake'])).filter((e) => !e.data.meanwhile).length, 1, 'one turn');
-  assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body, n.actions.map((/** @type {any} */ a) => a.label)]), [["Shiori didn't answer", 'Her model finished without saying anything to you.', ['Try again']]]);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body, n.actions.map((/** @type {any} */ a) => a.label)]), [["Shiori didn't answer", 'Big Sur: Her model finished without saying anything to you.', ['Try again']]]);
   assert.equal((await k.events(['error']))[0].data.kind, 'silent');
   assert.equal(k.agent.transcript.unanswered, false, 'the card said so: a later start owes nothing');
   // Try again: her turn again, the user's, answered this time.
@@ -640,6 +640,20 @@ test('opening another conversation while Shiori works: she stops, and a message 
   await k.agent.idle();
   assert.deepEqual((await eventsIn(k, A, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Back in Big Sur.']);
   assert.match(userTexts(k.requests[1]), /second, typed while she thought/);
+});
+
+test('the "didn\'t answer" cards of two conversations name their own: the trip, or Me (the third emulator pass)', async () => {
+  const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }]]);
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  await k.agent.open(other);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  await k.agent.open(null);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body.split(':')[0]), ['Big Sur', 'Kyoto', 'Me']);
 });
 
 test('a turn cut by opening another conversation leaves a line in the one left, and a toast; she still picks it up when the user comes back (the third emulator pass)', async () => {
