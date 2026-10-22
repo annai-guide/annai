@@ -159,7 +159,7 @@ for (const [filter, link, region] of [
   });
 }
 
-test('Add: nothing found among tools offers no Custom provider; and "custom" finds it by name', async ({ page }) => {
+test('Add: nothing found among tools, or with no kind chosen, offers no Custom provider; and "custom" finds it by name', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await startSettled(page);
@@ -170,6 +170,14 @@ test('Add: nothing found among tools offers no Custom provider; and "custom" fin
   await expect(page.getByText('Nothing here matches. Try other words, or take a chip off.')).toBeVisible();
   await expect(page.getByText('Not listed?')).toHaveCount(0);
   await page.getByRole('button', { name: 'Tools and MCP', exact: true }).click();
+  // On everything: a search for a skill or a tool that isn't there may be no provider at all, so none is offered.
+  await page.getByLabel('Search the catalog').fill('tide pools skill');
+  await expect(page.getByText('Nothing here matches. Try other words, or take a chip off.')).toBeVisible();
+  await expect(page.getByText('Not listed?')).toHaveCount(0);
+  // With Model providers chosen, it may be one: offered.
+  await page.getByRole('button', { name: 'Model providers', exact: true }).click();
+  await expect(page.getByText('Not listed? Add it by its address.')).toBeVisible();
+  await page.getByRole('button', { name: 'Model providers', exact: true }).click();
   await page.getByLabel('Search the catalog').fill('custom');
   await expect(page.locator('.found .card .name')).toHaveText('Custom provider');
 });
@@ -276,6 +284,9 @@ for (const scheme of ['light', 'dark']) {
     expect(a.background).not.toBe(b.background);
     expect(a.border).not.toBe(b.border);
     expect(a.style).toBe('italic');
+    // One edge, not a bar with a round corner: no border at all; and with the text panel open it sits under it, right above Shiori, so its tail points at her.
+    expect(a.border).toMatch(/^0px 0px /);
+    expect(await caption.evaluate((el) => el.nextElementSibling?.classList.contains('dock-row'))).toBe(true);
     expect(b.style).toBe('normal');
     // Its tail: the bubble points at her.
     expect(await caption.evaluate((el) => getComputedStyle(el, '::after').content)).toBe('""');

@@ -145,9 +145,10 @@ export async function renderAdd(ctx, route) {
     label: 'Search the catalog', entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
     draw: (found, typed, f) => {
       const item = (/** @type {{ entry: Facts, why?: string }} */ x) => rowItem(ctx, /** @type {Row} */ (byId.get(x.entry.id)), x.why, redraw);
-      // Nothing found for model providers, transcription or voices: the user's own server is one such, so Custom provider is offered, by its address.
+      // Nothing found for model providers, transcription or voices: the user's own server is one such, so Custom provider is offered, by its
+      // address. Not on everything with no chip: a skill or a tool searched for and not there is no provider.
       const custom = rows.find((r) => r.facts.catchAll);
-      const speechy = !f.kind || f.kind === 'providers' || f.kind === 'speech';
+      const speechy = f.kind ? f.kind === 'providers' || f.kind === 'speech' : Boolean(f.ability);
       if (typed && !found.length && custom && speechy && searchCatalog([custom.facts], '', { ...f, kind: undefined }).length) {
         return [h('p', { class: 'empty', text: 'Nothing here matches.' }), h('p', { class: 'sub offer', text: 'Not listed? Add it by its address.' }), h('ul', { class: 'cards' }, item({ entry: custom.facts }))];
       }
