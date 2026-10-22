@@ -55,7 +55,7 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   await expect(page.getByText('1. GPT-6.1 Sol')).toBeVisible();
   await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI: GPT-4o mini TTS (Marin)']);
   // Remove: everything it brought goes.
-  await page.getByRole('link', { name: /^OpenAI/ }).click();
+  await page.locator('a.card', { hasText: 'OpenAI' }).click(); // the provider's card; the models in roles link too
   await expect(page.getByText('Removes its key, its models and their places in roles, and the OpenAI plugin, with OpenAI Responses and OpenAI-compatible speech, which nothing else needs.')).toBeVisible();
   const remove = page.getByRole('button', { name: 'Remove provider' });
   await remove.click();
