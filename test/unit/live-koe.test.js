@@ -584,7 +584,7 @@ test('a handle Gemini no longer keeps (1008 "session not found or expired") is l
   }
 });
 
-test('no answer within 8 s of the user finishing: traced, and a fresh session gets their words, once; silent again, only the trace', async () => {
+test('no answer within 8 s of the user finishing: traced, and a fresh session gets their words, once; silent again, Koe\'s next model answers', async () => {
   const k = await liveKit([{ heard: 'Hello, can you hear me?', heardFirst: true, silent: true }, { said: 'Yes, I can hear you.', audio: tone(0.2) }]);
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here, past the watchdog's 1 s (as 30 s is past 8 s)
@@ -601,15 +601,86 @@ test('no answer within 8 s of the user finishing: traced, and a fresh session ge
   } finally {
     await k.done();
   }
-  const k2 = await liveKit([{ silent: true }]);
+  // Review S2: silent twice in a row, the session is let go, and Koe's next model answers the user.
+  const k2 = await liveKit([{ silent: true }], { koe: { talk: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Hello! Yes, I am here.' } }, { name: 'sleep', input: {} }] } }] } } });
   try {
     await updateAppSettings(k2.ws, { voice: { closeAfterSeconds: 300 } });
     k2.agent.send('Hello?');
     await soon(async () => (await k2.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length === 2, 5000);
-    await new Promise((r) => setTimeout(r, 1500));
-    assert.deepEqual(setups(k2), ['fresh', 'fresh'], 'once');
-    assert.equal((await k2.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length, 2);
+    await soon(async () => (await k2.events(['out.speak'])).some((/** @type {any} */ e) => !e.data.live && /I am here/.test(e.data.text)), 5000);
+    assert.deepEqual(setups(k2), ['fresh', 'fresh'], 'one fresh session, then none');
+    assert.equal(k2.agent.live.state, 'closed', 'no dead session left open');
+    assert.equal(k2.agent.koeState, 'text');
   } finally {
     await k2.done();
   }
 });
+
+// Review M2: the watchdog.
+/** Delays each live session's opening by ms, as a slow network does. @param {any} k @param {number} ms */
+const slowOpen = (k, ms) => {
+  const live = k.llm.live;
+  k.llm.live = async (/** @type {any[]} */ ...a) => { await new Promise((r) => setTimeout(r, ms)); return live(...a); };
+};
+
+test('the watchdog never runs while a connection is being made: a message typed during a slow reconnect is sent once, to one session, and answered there', async () => {
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }, { said: 'Here I am.', audio: tone(0.1) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    slowOpen(k, 1600); // past the watchdog's 1 s here
+    k.server.close(1001, 'Going away.'); // a network drop: the model doesn't rest
+    await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.kind === 'network'));
+    await new Promise((r) => setTimeout(r, 50)); // reconnecting now
+    k.agent.send('Are you there?');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 6000);
+    await new Promise((r) => setTimeout(r, 1500));
+    assert.equal(k.server.connections().length, 2, 'the first, and the one that resumed it');
+    assert.equal(texts(k).filter((t) => t.includes('Are you there?')).length, 1);
+    assert.equal((await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length, 0);
+  } finally {
+    await k.done();
+  }
+});
+
+test('the user speaking again before an answer came stops the wait: no reconnect mid-speech', async () => {
+  const k = await liveKit([{ silent: true }, { said: 'Yes?', audio: tone(0.1) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.platform.mic.feed(cat(quiet(0.5), lunch, quiet(1)), 16_000); // a turn; no answer comes
+    await until(() => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd));
+    await new Promise((r) => setTimeout(r, 400));
+    // They speak again, slowly, for 1.6 s: past the 1 s the wait had left.
+    const talk = cat(lunch, lunch);
+    for (let i = 0; i * 1600 < talk.length && i < 16; i++) {
+      k.platform.mic.feed(talk.subarray(i * 1600, (i + 1) * 1600), 16_000);
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    assert.equal(k.server.connections().length, 1, 'no fresh session while they spoke');
+    assert.equal((await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length, 0);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a new session waits afresh: the fresh session the watchdog made last time, closed by a tap before it answered, leaves no mark on the next', async () => {
+  const k = await liveKit([{ silent: true }, { silent: true }, { silent: true }, { said: 'Got it.', audio: tone(0.1) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.send('First?');
+    await soon(async () => k.server.connections().length === 2, 5000); // silent, so a fresh session
+    await k.agent.idle();
+    k.agent.live.close('tap');
+    k.agent.send('Second?'); // a new session, silent too: it gets its own fresh session, not the end
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Got it.'), 6000);
+    assert.equal(k.server.connections().length, 4);
+  } finally {
+    await k.done();
+  }
+});
+
