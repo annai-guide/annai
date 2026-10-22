@@ -159,6 +159,52 @@ test('half-duplex: her own voice from the speaker, at -40 to 0 dB re speech, sta
   assert.equal(r.sent[0], 'start', 'with no time after her voice, its echo would start one');
 });
 
+/** A quick "yes": the 450 ms of the gas-station clip with the most speech in it. */
+const yes = (() => {
+  const n = Math.round(RATE * 0.45);
+  let best = 0;
+  let most = -1;
+  for (let i = 0; i + n <= gas.length; i += 160) {
+    let e = 0;
+    for (let j = i; j < i + n; j++) e += gas[j] * gas[j];
+    if (e > most) [most, best] = [e, i];
+  }
+  return gas.slice(best, best + n);
+})();
+
+// voice-fix fix pass M1: the 300 ms after her voice must not swallow a quick reply.
+test('half-duplex: a quick "yes" 0, 100 or 200 ms after her voice ends is sent whole, its start included', async () => {
+  for (const after of [0, 100, 200]) {
+    let playing = false;
+    const r = rig({ speaking: () => playing });
+    await r.input.start();
+    r.feed(quiet(1), RATE);
+    playing = true;
+    r.feed(lunch.map((x) => x * 0.3), RATE);
+    playing = false;
+    r.feed(cat(quiet(after / 1000), yes, quiet(1.5)), RATE);
+    assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end'], `${after} ms after`);
+    const ms = msOf(r.sent);
+    // The yes, and the pause that ends it (700 ms), at least: nothing of it lost to the 300 ms after her voice.
+    assert.ok(ms >= 450 + 700 - 20, `${after} ms after: ${Math.round(ms)} ms sent for a 450 ms yes`);
+    r.input.stop();
+  }
+});
+
+test('her voice tapped off mid-word (a tap cut): the user speaking at once is sent whole too', async () => {
+  let playing = false;
+  const r = rig({ speaking: () => playing });
+  await r.input.start();
+  r.feed(quiet(1), RATE);
+  playing = true;
+  r.feed(lunch.subarray(0, lunch.length >> 1).map((x) => x * 0.3), RATE);
+  playing = false; // the tap: her voice stops now
+  r.feed(cat(yes, quiet(1.5)), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  assert.ok(msOf(r.sent) >= 450 + 700 - 20, `${Math.round(msOf(r.sent))} ms`);
+  r.input.stop();
+});
+
 test('half-duplex: the user speaking after her voice ends starts a turn, and nothing heard while she played goes with it (its pre-roll is dropped)', async () => {
   const r = await echo(0, { after: gas });
   assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);

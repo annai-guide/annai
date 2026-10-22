@@ -79,6 +79,11 @@ export class Detector {
     return (this.#seg?.speech ?? 0) * FRAME_MS;
   }
 
+  /** How long the speech going on has been quiet, in ms: 0 while it is loud. */
+  get quietMs() {
+    return (this.#seg?.quiet ?? 0) * FRAME_MS;
+  }
+
   /** The floor now, in dB; null before a frame with sound in it. */
   get floorDb() {
     return this.#floor;
