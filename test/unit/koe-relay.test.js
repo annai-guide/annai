@@ -298,3 +298,24 @@ test("the user's Try again after the Stop lifts its hold: Koe's tell_kokoro goes
   assert.deepEqual(asks.map((e) => e.data.ok), [true, true]);
   assert.equal(k.sent['model-0'].length, 2, 'Kokoro was asked again');
 });
+
+// The second fix pass (M7): a gated card or question too broken to show reaches the user as its words, or as nothing but a Trace line.
+test("a gated card with nothing annai can show and no words of its own: no card, nothing shown, and a line in the Trace", async () => {
+  const k = await agentKit([gated('show', { card: { links: [{ label: 'Run', url: 'javascript:alert(1)' }] } })], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual(await k.events(['out.show']), []);
+  assert.deepEqual(await backstop(k), []);
+  const trace = (await k.events(['error'])).filter((e) => e.data.kind === 'unshown');
+  assert.equal(trace.length, 1);
+  assert.equal(trace[0].data.quiet, true);
+});
+
+test('a gated question too broken to ask reaches the user as its words, cut as a card\'s text is', async () => {
+  const k = await agentKit([gated('ask', { question: `Which table? ${'x'.repeat(5000)}`, options: [] })], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Book us at Nepenthe');
+  await k.agent.idle();
+  const [[title, text]] = await backstop(k);
+  assert.equal(title, "Shiori's answer");
+  assert.ok(text.startsWith('Which table?') && text.length <= 4000, String(text.length));
+});

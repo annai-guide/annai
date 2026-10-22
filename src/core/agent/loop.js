@@ -155,12 +155,24 @@ const webLink = (l) => {
 };
 /** A path under one of the roots, with no step out of it. @param {unknown} p @param {RegExp} root */
 const inside = (p, root) => typeof p === 'string' && root.test(p) && !p.split('/').some((x) => x === '..' || x === '.');
+/** Words: a string with something in it. @param {unknown} x @returns {x is string} */
+const words = (x) => typeof x === 'string' && x.trim() !== '';
+/**
+ * How much a card or a question holds (the second fix pass), in characters: a title of two lines on a phone; a card's text, read
+ * at a glance (more belongs in a file); a place's name or address; as many links or choices as ask has buttons, each a button's
+ * words; a URL every browser takes; a question read in one go.
+ */
+export const CAPS = Object.freeze({ title: 200, text: 4000, place: 200, buttons: 6, label: 100, url: 2000, question: 500 });
+/** Text cut to n characters, its end marked. @param {string} x @param {number} n */
+export const capped = (x, n) => (x.length > n ? `${x.slice(0, n - 1)}…` : x);
+/** What a card shows, besides a plugin's kind. */
+const PARTS = ['title', 'text', 'place', 'links', 'booking', 'image', 'choice'];
 
 /**
  * A card as show takes it (spec §7.1, §16.4), Shiori's own or Kokoro's that annai shows itself: a plugin's kind of card must be
- * running and its data valid, or the card is refused; links that aren't http(s), a photo outside the trip or /me, a booking outside
- * the trip, and choices that aren't words are left out. @param {any} card @param {import('../registry.js').Registry} registry
- * @returns {{ card: any } | { error: string }}
+ * running and its data valid, and a card must show something, or it is refused. Links that aren't http(s), a photo outside the
+ * trip or /me, a booking outside the trip, choices that aren't words and what CAPS leaves out are left out; longer texts are cut.
+ * @param {any} card @param {import('../registry.js').Registry} registry @returns {{ card: any } | { error: string }}
  */
 export function checkCard(card, registry) {
   if (!card || typeof card !== 'object' || Array.isArray(card)) return { error: 'Error: show needs a card.' };
@@ -171,24 +183,34 @@ export function checkCard(card, registry) {
     const wrong = type.schema ? validate(type.schema, card.data ?? {}) : [];
     if (wrong.length) return { error: `Error: the ${type.type} card's data isn't valid: ${wrong.join('; ')}` };
   }
-  const { links, image, booking, choice, ...rest } = card;
-  const kept = {
-    links: Array.isArray(links) ? links.filter(webLink) : [],
-    choice: Array.isArray(choice) ? choice.filter((c) => typeof c === 'string' && c.trim()) : [],
+  const { type, data, title, text, place, links, image, booking, choice } = card;
+  const where = place && typeof place === 'object' && words(place.name) ? {
+    name: capped(place.name, CAPS.place), ...(words(place.address) ? { address: capped(place.address, CAPS.place) } : {}),
+    ...(Number.isFinite(place.lat) && Number.isFinite(place.lng) ? { lat: place.lat, lng: place.lng } : {}),
+  } : null;
+  const go = (Array.isArray(links) ? links : []).filter((l) => webLink(l) && l.url.length <= CAPS.url).slice(0, CAPS.buttons)
+    .map((l) => ({ label: capped(words(l.label) ? l.label : l.url, CAPS.label), url: l.url }));
+  const tap = (Array.isArray(choice) ? choice : []).filter((c) => words(c) && c.length <= CAPS.label).slice(0, CAPS.buttons);
+  const shown = {
+    ...(type !== undefined ? { type, ...(data !== undefined ? { data } : {}) } : {}),
+    ...(words(title) ? { title: capped(title, CAPS.title) } : {}), ...(words(text) ? { text: capped(text, CAPS.text) } : {}), ...(where ? { place: where } : {}),
+    ...(go.length ? { links: go } : {}), ...(inside(image, /^\/(trip|me)\//) ? { image } : {}), ...(inside(booking, /^\/trip\//) ? { booking } : {}), ...(tap.length ? { choice: tap } : {}),
   };
-  return {
-    card: {
-      ...rest, ...(kept.links.length ? { links: kept.links } : {}), ...(inside(image, /^\/(trip|me)\//) ? { image } : {}),
-      ...(inside(booking, /^\/trip\//) ? { booking } : {}), ...(kept.choice.length ? { choice: kept.choice } : {}),
-    },
-  };
+  if (type === undefined && !PARTS.some((k) => k in shown)) return { error: 'Error: the card has nothing to show: give it a title, text, a place, links, a booking, a photo or choices.' };
+  return { card: shown };
 }
 
-/** An ask as the ask tool takes it: a question, and 1 to 6 options that are words, else why not. @param {any} i @returns {{ question: string, options: string[] } | { error: string }} */
+/**
+ * An ask as the ask tool takes it: a question of CAPS.question characters at most, and 1 to 6 options that are words of
+ * CAPS.label at most (the tap gives them back as they are), else why not. @param {any} i
+ * @returns {{ question: string, options: string[] } | { error: string }}
+ */
 export function checkAsk(i) {
   const options = Array.isArray(i?.options) ? i.options : [];
-  if (!options.length || options.length > 6 || options.some((/** @type {unknown} */ o) => typeof o !== 'string' || !o.trim())) return { error: 'Error: ask needs options: a list of 1 to 6 short texts, one per button.' };
-  if (typeof i.question !== 'string' || !i.question.trim()) return { error: 'Error: ask needs a question.' };
+  if (!options.length || options.length > CAPS.buttons || options.some((/** @type {unknown} */ o) => !words(o) || o.length > CAPS.label)) {
+    return { error: `Error: ask needs options: a list of 1 to ${CAPS.buttons} short texts (${CAPS.label} characters at most), one per button.` };
+  }
+  if (!words(i.question) || i.question.length > CAPS.question) return { error: `Error: ask needs a question, of ${CAPS.question} characters at most.` };
   return { question: i.question, options };
 }
 
