@@ -510,7 +510,7 @@ export class LiveKoe {
     if (!due || this.state !== 'open' || (s && s !== this.#s)) return;
     this.#due = null;
     const again = !this.#rescued;
-    this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', wake: this.#wake, message: `The live session gave no answer within ${SILENT_S} seconds${again ? ': a fresh one gets it again' : ''}.`, quiet: true } });
+    this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${again ? ': a fresh one gets it again' : ''}.`, quiet: true } });
     if (!again) return;
     this.#rescued = true;
     const heard = cleanSaid(this.#hear?.text ?? '');
