@@ -182,9 +182,15 @@ test('final text: passed to Koe when the turn told no one and never slept; text 
   ] }], { koe: { type: { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }]) }, { match: 'a note from Kokoro', reply: sleep }] } } });
   k.agent.send('Is Nepenthe open?');
   await k.agent.idle();
+  // idle() waits for the note annai sends Koe as Kokoro's turn ends (the fix pass, S7: it raced it before).
   const notes = (await k.events(['note'])).filter((e) => e.data.from === 'kokoro');
   assert.deepEqual(notes.map((e) => [e.data.why, e.data.text]), [['final-text', 'Open till 10, per its site.']]);
   assert.ok(!JSON.stringify(k.sent['model-0']).includes("The user hasn't been answered"), "Kokoro, behind Koe, isn't asked again for the user (spec §7.1): its plain text went to Koe");
+  // Koe, which slept on it, is asked once more; annai shows nothing of it (the fix pass, M1).
+  const koe = k.sent['model-koe'];
+  assert.equal(koe.length, 3);
+  assert.match(JSON.stringify(koe[2].messages.at(-1)), /Kokoro's note hasn't reached the user/);
+  assert.deepEqual(await k.events(['reminder']), []);
   assert.deepEqual(k.notices, []);
 });
 

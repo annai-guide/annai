@@ -112,6 +112,8 @@ export class Halves {
   /** @type {Promise<unknown>} what the user typed and what woke Shiori, in order */
   #routing = Promise.resolve();
   #routes = 0;
+  /** @type {Set<Promise<unknown>>} annai's own notes from Kokoro to Koe, being written: idle() waits for them */
+  #sending = new Set();
   /** @type {string | null | undefined} the trip Koe has open; undefined: none yet */
   #koeTrip = undefined;
   /** Kokoro told Koe since the user last typed or spoke: Koe asking about it again wakes nobody. */
@@ -288,7 +290,7 @@ export class Halves {
   #visible() { return globalThis.document?.visibilityState !== 'hidden'; }
   /** Koe talks with the user: through the loop, or live. */
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
-  get busy() { return this.#routes > 0 || this.kokoro.busy || this.koe.busy || this.live.busy; }
+  get busy() { return this.#routes > 0 || this.#sending.size > 0 || this.kokoro.busy || this.koe.busy || this.live.busy; }
   /** @param {(() => { place?: string, activity?: string }) | null} fn */
   set sense(fn) { this.kokoro.sense = fn; this.koe.sense = fn; }
   get sense() { return this.kokoro.sense; }
@@ -624,6 +626,7 @@ export class Halves {
   async idle() {
     do {
       await this.#routing;
+      await Promise.all(this.#sending);
       await this.kokoro.idle();
       await this.koe.idle();
       await this.live.idle();
@@ -788,7 +791,7 @@ export class Halves {
     if (!this.#failTold && (this.#asked || this.koe.waiting)) {
       this.#failTold = true;
       this.#asked = false;
-      this.channel.send('kokoro', `Kokoro couldn't check: ${this.#why || 'its models are resting after errors.'} Tell the user you couldn't check, and offer to try again.`, 'append', 'kokoro-failed').catch(() => {});
+      this.#note(`Kokoro couldn't check: ${this.#why || 'its models are resting after errors.'} Tell the user you couldn't check, and offer to try again.`, 'kokoro-failed');
     }
     return true;
   }
@@ -832,7 +835,7 @@ export class Halves {
     let told = t.told;
     if (t.ok && t.finalText && !t.told && !t.slept) {
       told = true;
-      this.channel.send('kokoro', t.finalText, 'append', 'final-text', t.wakeId).catch(() => {});
+      this.#note(t.finalText, 'final-text', t.wakeId);
     } else if (!told && this.koe.waiting) this.#nothingToAdd(...(t.ok && !this.#stopped.on ? [] : /** @type {const} */ (['Kokoro was stopped.', 'stopped'])));
     if (told) {
       this.#answered = true;
@@ -845,6 +848,13 @@ export class Halves {
   #nothingToAdd(text = 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add')) {
     if (this.#nothingTold) return;
     this.#nothingTold = true;
-    this.channel.send('kokoro', text, 'append', why).catch(() => {});
+    this.#note(text, why);
+  }
+
+  /** A note annai sends Koe from Kokoro, not waited for here; idle() waits for it (the fix pass). @param {string} text @param {NoteWhy} why @param {string} [wake] */
+  #note(text, why, wake) {
+    const p = this.channel.send('kokoro', text, 'append', why, wake).catch(() => {});
+    this.#sending.add(p);
+    p.finally(() => this.#sending.delete(p));
   }
 }
