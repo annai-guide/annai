@@ -38,13 +38,14 @@ import { anySignal } from '../signals.js';
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
- *   call?: { name: string, input: any }, seq?: number }} Wake
+ *   call?: { name: string, input: any }, seq?: number, watched?: boolean }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
  *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
  *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it; why: a note's reason (NoteWhy);
- *   call: the call of Kokoro's a gated note stands for (its show or ask); seq: a note's entry in the conversation
+ *   call: the call of Kokoro's a gated note stands for (its show or ask); seq: a note's entry in the conversation;
+ *   watched: Koe's note, or its "answered the user" cue, was made by a Koe turn the user is watching (isWatched)
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -146,11 +147,13 @@ export const WRITE_TRIES = 3;
 export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.kind === 'heard' && w.gate !== 'chatter') || Boolean(w.again);
 
 /**
- * A wake that means the user is there to tap Stop (budgets.js UNWATCHED_STEPS): one they started (isTheirs), and for Kokoro behind
- * Koe, what comes from their conversation through Koe: Koe's note to it, and "Koe answered the user" (input). Not a review, a
- * reminder, a plugin, a catch-up or housekeeping. @param {Wake} w
+ * A wake that means the user is there to tap Stop (budgets.js UNWATCHED_STEPS): one they started (isTheirs), the user turning live
+ * mode on (live mode's own sensing wakes are triggers and catch-ups), and for Kokoro behind Koe, what comes from their conversation
+ * through Koe: Koe's note to it, and "Koe answered the user" (input), only when the Koe turn that made it was watched (`watched`),
+ * so a reminder that woke Koe, or Kokoro's own note to it, never gives Kokoro a turn without a limit. Not a review, a reminder,
+ * a plugin, a catch-up or housekeeping. @param {Wake} w
  */
-export const isWatched = (w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || Boolean(w.input);
+export const isWatched = (w) => isTheirs(w) || w.kind === 'live' || (((w.kind === 'note' && w.from === 'koe') || Boolean(w.input)) && Boolean(w.watched));
 
 /** The card types running plugins add (spec §16.4). @param {import('../registry.js').Registry} registry @returns {any[]} */
 const cardTypes = (registry) => registry.list('ui:card-type').filter((t) => typeof t?.type === 'string');
@@ -338,7 +341,7 @@ export class Agent {
   /** Whether the half might use the voice when its turn's voice was last worked out. */
   #mayVoice = true;
   /** What the running turn did (Half.ended). */
-  #facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, kinds: /** @type {string[]} */ ([]) };
+  #facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
   #userStop = false;
   /** Counts what reached the user (speak, show, ask, a reply shown as written): what was owed before it is settled. */
@@ -832,9 +835,12 @@ export class Agent {
     return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait', 'sleep'].includes(t.name));
   }
 
-  /** A live session's tool call, run and recorded as this half's own, and answered at once (plan decision 10). @param {{ id: string, name: string, input: any }} c @param {string} wake */
-  async liveCall(c, wake) {
-    return this.#runCall(c, await this.liveTools(), { wakeId: wake, signal: new AbortController().signal, model: null, sleeping: false, live: true });
+  /** The user is watching this half's turn (its wakes include one of theirs, isWatched): its notes to the other half say so. */
+  get watched() { return this.#facts.watched; }
+
+  /** A live session's tool call, run and recorded as this half's own, and answered at once (plan decision 10). @param {{ id: string, name: string, input: any }} c @param {string} wake @param {boolean} watched the session is one the user is in */
+  async liveCall(c, wake, watched) {
+    return this.#runCall(c, await this.liveTools(), { wakeId: wake, signal: new AbortController().signal, model: null, sleeping: false, live: true, watched });
   }
 
   /** Its turn has the voice, or its tap's window is open: the other half waits to take the voice. */
@@ -1339,7 +1345,7 @@ export class Agent {
     this.#abort = abort;
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
-    this.#facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, kinds: wakes.map((w) => w.kind) };
+    this.#facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
     this.#userStop = false;
     // Shiori became two halves, or one again.
     if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
@@ -1390,8 +1396,6 @@ export class Agent {
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
     /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
     let theirs = wakes.some(isTheirs);
-    /** Someone is watching: a wake from the user began the turn or joined it (isWatched); it stays so, whatever reaches them. */
-    let watched = wakes.some(isWatched);
     let reached = this.#reached;
     /** What had reached the user when the turn began: a tool call is asked for only until something more has (review A4). */
     const begun = this.#reached;
@@ -1417,7 +1421,7 @@ export class Agent {
     /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
     const join = (more) => {
       theirs ||= more.some(isTheirs);
-      watched ||= more.some(isWatched);
+      this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
     };
@@ -1459,7 +1463,7 @@ export class Agent {
     let forced = 0;
     for (;;) {
       if (abort.signal.aborted) break;
-      const over = budgetStop({ budgets: settings.budgets, steps, spent, watched });
+      const over = budgetStop({ budgets: settings.budgets, steps, spent, watched: this.#facts.watched });
       if (over) {
         await this.#notice({ tone: 'warn', title: over.title, body: over.body });
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'budget', which: over.which, wake: wakeId, message: over.body } });
@@ -1871,7 +1875,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean, watched?: boolean }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -1891,7 +1895,7 @@ export class Agent {
     else {
       const call = {
         id: c.id, scope: this.scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
       };
       ({ output, ms } = await runTool(tool, input, call));

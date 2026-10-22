@@ -1,6 +1,6 @@
 import { LiveInput } from '../realtime/input.js';
 import { escapeTags, wrapNote, theirs } from '../agent/blocks.js';
-import { LABELS, NOTE_UNSAID } from '../agent/loop.js';
+import { LABELS, NOTE_UNSAID, isWatched } from '../agent/loop.js';
 import { newId } from '../scopes.js';
 import { resolveEvent } from '../agent/transcript.js';
 import { spentToday, budgetStop } from '../agent/budgets.js';
@@ -58,6 +58,8 @@ export class LiveKoe {
   /** The resume handle, in memory only (decision 28). @type {string | undefined} */
   #handle;
   #wake = '';
+  /** The user is in this session (they typed, or spoke, or turned it on), so what Koe tells Kokoro is watched (isWatched); a session a trigger opened is not, until they do. */
+  #watched = false;
   /** @type {LiveInput | null} */
   #input = null;
   /** Sends waiting for the session to be ready (a tap's first words, a reconnect). @type {((s: LiveSession) => void)[]} */
@@ -154,6 +156,8 @@ export class LiveKoe {
     if (ok && mic) await this.listen();
     return ok;
   }
+
+  get watched() { return this.#watched; }
 
   /** @param {string} why */
   async #start(why) {
@@ -264,6 +268,7 @@ export class LiveKoe {
     if (why !== 'away' && this.#owed.waiting.length) this.c.owed(this.#owed.waiting.splice(0));
     const was = this.state;
     this.state = 'closed';
+    this.#watched = false;
     // A microphone is always let go, whatever came before; the user's words it cut off are kept, marked.
     this.#cutHearing();
     const input = this.#input;
@@ -322,6 +327,7 @@ export class LiveKoe {
    */
   async send(text, { photos = [], chose = false } = {}) {
     this.#brief = false;
+    this.#watched = true;
     const e = await this.c.koe.logUser(text, photos, chose);
     if (!(await this.open('typed'))) return false;
     const rec = (await this.c.llm.config()).models[this.modelId ?? ''];
@@ -337,6 +343,7 @@ export class LiveKoe {
 
   /** A wake Koe answers (a trigger, the recap asked aloud), as annai's text turn; not said, its reminders are annai's (Halves). @param {import('../agent/loop.js').Wake} w */
   wake(w) {
+    if (isWatched(w)) this.#watched = true;
     return this.#say(`[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`, w.kind);
   }
 
@@ -588,6 +595,7 @@ export class LiveKoe {
     if (!h || !text || text === h.logged) return this.#chain;
     const first = h.logged === null;
     h.logged = text;
+    if (first && !dismissed) this.#watched = true;
     return this.#write(async () => {
       if (!first) return { type: 'heard.text', actor: 'system', data: { of: h.id, wake: this.#wake, text, by: this.modelId } };
       const clip = await this.#clip(h);
@@ -620,7 +628,7 @@ export class LiveKoe {
     try {
       await this.#answered(false);
       // Always answered: the model waits for it.
-      const out = await this.c.koe.liveCall(e, this.#wake).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
+      const out = await this.c.koe.liveCall(e, this.#wake, this.#watched).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
       // A card or question annai showed passes Kokoro's notes on; one it refused passes nothing on.
       if (REACH.includes(e.name) && !out.isError) this.#passed();
       const silent = SILENT.includes(e.name);
