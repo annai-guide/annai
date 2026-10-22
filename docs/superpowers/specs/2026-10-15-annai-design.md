@@ -795,9 +795,9 @@ When the first model of Koe's list that can answer is a realtime one (§9.1, Gem
 
 ## 11. Triggers and live mode
 
-### 11.1 Live mode
+### 11.1 Live mode, called On the road
 
-A switch. While it's on and annai is on screen:
+A switch the user sees as **On the road** (the user, 2026-10-22: Gemini's "Live" is realtime voice, so the GPS-following mode took another name). Its chip reads "On the road" while it's on, with what the user is doing ("On the road · moving fast"), "Off the road" while it's off; its menu says "Start on the road" and "Stop on the road". Internal ids and event types (`live`, `setLive`, `state` entries with `live: on|off`) keep the name live. While it's on and annai is on screen:
 - GPS tracking runs.
 - Triggers are evaluated.
 - The screen wake lock is the user's choice per situation (on the car charger, yes; walking, probably not).
@@ -864,7 +864,7 @@ When the app becomes visible:
 ### 11.6 Push relay (closed app)
 
 - **Scope.** Only time watches are mirrored, and only when notifications are enabled. Location triggers never leave the phone.
-- **Every trip's reminders wait.** Opening another trip, or none, calls nothing off: a trip's plan reminders stay at the relay as they were while live mode follows another trip's plan. Only a cancelled reminder, or a removed or archived trip's, is deleted at the relay.
+- **Every trip's reminders wait.** Opening another trip, or none, calls nothing off: a trip's plan reminders stay at the relay as they were while On the road follows another trip's plan. Only a cancelled reminder, or a removed or archived trip's, is deleted at the relay.
 - **Encryption.** The page encrypts each notification itself with the push subscription's keys (RFC 8291, `aes128gcm`, using WebCrypto's ECDH, HKDF and AES-GCM). The relay never sees the content.
 - **The relay** holds the VAPID keypair and does three things:
   - stores `{push endpoint, ciphertext, sendAt, id, cancel token}`

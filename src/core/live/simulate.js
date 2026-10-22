@@ -108,7 +108,7 @@ export function trackFrom(it) {
  * @param {{ stillSec?: number, end?: number }} [o] @returns {TrackEvent[]}
  */
 export function trackFromLog(points, { stillSec = 10, end } = {}) {
-  if (points.length < 2) throw new Error('That trip has no recorded track yet: live mode records one while it is on.');
+  if (points.length < 2) throw new Error('That trip has no recorded track yet: On the road records one while it is on.');
   const still = stillSec * 1000;
   /** @type {TrackEvent[]} */
   const out = [];

@@ -83,7 +83,7 @@ test('a recorded track: still fixes fill the stops the log kept no points for, a
   assert.ok(fixes.filter((e) => e.at > at('09:30') && e.at < at('09:50')).every((e) => e.kind === 'fix' && e.fix.speed === 0));
   assert.deepEqual(track.filter((e) => e.kind !== 'fix').map((e) => [e.kind, e.at]), [['hide', at('09:52') + 1000], ['show', at('16:40') - 1000]]);
   assert.equal(/** @type {any} */ (fixes.at(-1)).fix.speed, undefined); // no speed recorded: the GPS's own isn't made up
-  assert.throws(() => trackFromLog([{ lat: 1, lng: 1, at: 0 }]), /^Error: That trip has no recorded track yet: live mode records one while it is on\.$/);
+  assert.throws(() => trackFromLog([{ lat: 1, lng: 1, at: 0 }]), /^Error: That trip has no recorded track yet: On the road records one while it is on\.$/);
 });
 
 test('a run stops when told, and waits at its gate', async () => {

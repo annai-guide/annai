@@ -5,7 +5,7 @@ export const manifest = {
   name: 'Sensors',
   version: VERSION,
   api: 1,
-  description: 'Where the phone is (GPS, only while live mode is on and annai is on screen), whether annai is on screen, and whether there is a connection.',
+  description: 'Where the phone is (GPS, only while On the road is on and annai is on screen), whether annai is on screen, and whether there is a connection.',
 };
 
 /** A number the phone gave, or null. @param {unknown} v */

@@ -40,7 +40,7 @@ export async function renderDrive(ctx) {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
     const stops = routeStrip(rows, here, nowOf(live), live?.activity ?? 'unknown');
     strip.replaceChildren(
-      h('li', { class: 'you' }, here ? 'You' : live?.on ? 'You (finding where)' : 'You (live mode is off)'),
+      h('li', { class: 'you' }, here ? 'You' : live?.on ? 'You (finding where)' : 'You (off the road)'),
       ...stops.map((s) => h('li', {},
         h('span', { class: 'name', text: s.name }),
         h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', s.km !== null ? `${distanceText(s.km, locale)} · about ${s.minutes} min` : ''].filter(Boolean).join(' · ') }))),
@@ -62,7 +62,7 @@ export async function renderDrive(ctx) {
     const a = ctx.awake;
     awake.replaceChildren(...(live?.on && a?.available
       ? [h('button', { class: 'btn', type: 'button', 'aria-pressed': String(a.chosen), onclick: async () => { await a.choose(!a.chosen); draw(); } }, `Keep the screen on ${whileText(live.activity)}`)]
-      : live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Turn on live mode')] : []));
+      : live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Start on the road')] : []));
   };
   draw();
   const first = await latestCard(ctx, id);

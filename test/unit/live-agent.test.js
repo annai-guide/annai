@@ -130,7 +130,7 @@ test('a trigger wake the hourly limit drops still reminds; quiet hours hold Shio
   await q.live.setLive(true);
   await q.settle();
   assert.equal(q.requests.length, 1);
-  assert.match(q.requests[0].tail, /woke for: The user turned live mode on/);
+  assert.match(q.requests[0].tail, /woke for: The user started On the road/);
 });
 
 test('the now block says where the user is and what they are doing (spec §6.3)', async () => {
@@ -174,7 +174,7 @@ test('Shiori sets, lists and cancels watches with her Time tools (spec §7.2)', 
   k.agent.send('Tell me about the road as we go.');
   await k.settle();
   const results = await k.events(['tool.result']);
-  assert.match(results[0].data.content, /^Set w-\S+: after 15 km travelled, every time\. Live mode is off, so it waits until the user turns it on\. Now: /);
+  assert.match(results[0].data.content, /^Set w-\S+: after 15 km travelled, every time\. On the road is off, so it waits until the user starts it\. Now: /);
   assert.match(results[1].data.content, /^id\towner\twhen\trepeat\treminder\texpires\tlast_fired\n/);
   assert.match(results[1].data.content, /\tshiori\tafter 15 km travelled\tyes\tPoint Sur is ahead\.\t/);
   assert.match(results[1].data.content, /plan:nepenthe:leave\tsystem\t/);

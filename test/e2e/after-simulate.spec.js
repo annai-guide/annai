@@ -32,10 +32,10 @@ test('Simulate a trip at ten times real time: the chip says so, it pauses and st
     await page.getByRole('button', { name: 'Pause' }).click();
     await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
     await page.locator('.live-chip').click();
-    await page.getByRole('group', { name: 'Live mode' }).getByRole('button', { name: 'Stop the simulation' }).click();
+    await page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Stop the simulation' }).click();
     await expect(page.getByText('You stopped the simulation.')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Replay it' })).toBeVisible();
-    await expect(page.locator('.live-chip')).toHaveText('Live off');
+    await expect(page.locator('.live-chip')).toHaveText('Off the road');
   } finally {
     await llm.stop();
   }

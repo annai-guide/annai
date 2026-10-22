@@ -132,7 +132,7 @@ async function form(ctx) {
       /** @type {any} */
       let source;
       if (fromTrip.input.checked) {
-        if (!trips.value) throw new Error('No trip on this device has a recorded track yet: live mode records one while it is on.');
+        if (!trips.value) throw new Error('No trip on this device has a recorded track yet: On the road records one while it is on.');
         source = { kind: 'trip', trip: trips.value };
       } else if (fromFile.input.checked) {
         const f = file.files?.[0];
@@ -150,7 +150,7 @@ async function form(ctx) {
   });
   const main = (await ctx.llm?.config().catch(() => null))?.roles?.main?.models ?? [];
   return h('section', { class: 'panel', 'aria-label': 'A new simulation' },
-    h('p', { class: 'sub', text: 'A recorded or made-up GPS track, and its clock, run through live mode and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.' }),
+    h('p', { class: 'sub', text: 'A recorded or made-up GPS track, and its clock, run through On the road and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.' }),
     h('p', { class: 'sub', text: main.length
       ? 'Shiori wakes with your own models, as she would on the road: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.'
       : "No model is set up, so Shiori can't answer: annai shows the reminders itself." }),
