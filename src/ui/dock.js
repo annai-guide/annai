@@ -103,10 +103,11 @@ export function createDock(ctx) {
     if ((who === 'her' && s === 'speaking') || (who === 'you' && s === 'hearing')) avatar.setLevel(x, who);
   }));
   avatar.setState(ctx.agent.state.name);
-  // Voice (spec §10.5, §16.2): the chip, "Show what she's saying", and a larger dock while voice is on.
+  // Voice (spec §10.5, §16.2): the chip, Captions, and a larger dock while voice is on.
   const chip = ctx.voice ? voiceChip(ctx) : null;
   const live = ctx.live ? liveChip(ctx) : null;
   offs.push(chip?.dispose, live?.dispose);
+  // Her words, in a bubble of their own that points down at her, and never like a box to type in (the user, 2026-10-22).
   const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true });
   let lastSaid = '';
   const showWords = h('button', {
@@ -116,7 +117,7 @@ export function createDock(ctx) {
       caption.textContent = lastSaid || 'She hasn’t said anything yet.';
       showWords.setAttribute('aria-expanded', String(!caption.hidden));
     },
-  }, "Show what she's saying");
+  }, 'Captions');
   offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
     if (e.type !== 'out.speak' || !e.data?.voice) return;
     lastSaid = String(e.data.text ?? '');
