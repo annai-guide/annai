@@ -136,8 +136,8 @@ export function createDock(ctx) {
   const pluginActions = h('span', { class: 'plugin-actions' });
   // The buttons used most sit above; the states line, used less, at the very bottom, which is harder to reach (the user, 2026-10-18).
   const el = h('nav', { class: 'dock', 'aria-label': 'Shiori' },
-    caption,
     sheet,
+    caption, // under the text panel, right above Shiori: its tail points at her
     h('div', { class: 'dock-row' },
       h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, cameraIcon()), camera,
       talk,

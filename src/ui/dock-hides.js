@@ -4,12 +4,10 @@ import { takesTyping } from './tap-keeps-keyboard.js';
 const NO_CLICK_MS = 400;
 
 /**
- * On a touch screen the dock steps aside while a text field outside it has focus and the keyboard is up, on every screen, and
- * comes back when focus leaves or the keyboard goes (the user, 2026-10-22: on his iPhone the dock "pops in and out" as the
- * keyboard opens and closes). The page gets the class `typing-elsewhere`; shiori.css makes the dock see-through and deaf to
- * taps, but keeps its box, so the page's room for it and every scroll position stay as they are, and keeps it in the
- * accessibility tree, so the captions it announces still come. The dock's own text box is no such field. A mouse has no
- * keyboard to make room for, so it does nothing there.
+ * On a touch screen the dock steps aside while a text field outside it has focus and the keyboard is up, and comes back when focus
+ * leaves or the keyboard goes (the user, 2026-10-22: on an iPhone it "pops in and out"). The page gets `typing-elsewhere`; shiori.css
+ * makes the dock see-through and deaf to taps but keeps its box and its place in the accessibility tree. The dock's own text box
+ * is no such field; a mouse has no keyboard, so nothing happens there.
  * @param {Document} [doc]
  */
 export function dockHidesWhileTyping(doc = document) {
