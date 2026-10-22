@@ -115,6 +115,13 @@ const AGAIN = 'the user tapped Try again: answer their last message';
  * as a turn shouldn't wait on a side job longer than on its own model; a description is a few sentences.
  */
 export const DESCRIBE_S = 30;
+/**
+ * And a PDF's telling (the fix pass): its words, up to 3,000 tokens, take a slow model (a local one, at some 35 tokens a second)
+ * near 90 seconds, where a photo's few sentences fit in 30. Only Kokoro and one Shiori wait for it; Koe never does.
+ */
+export const DESCRIBE_PDF_S = 90;
+/** What a PDF told only up to the output limit ends with. */
+const GOES_ON = ' …(it stops here: the PDF goes on)';
 /** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
 const DESCRIBE = 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
 /** And for one that can't read PDFs (the second emulator pass): the PDF's own words, as annai has no PDF library (spec §7.2). */
@@ -320,6 +327,8 @@ export class Agent {
   #speaking = false;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
+  /** PDFs told in words this session, by hash: a second read isn't sent again. @type {Map<string, string>} */
+  #toldPdfs = new Map();
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
   #reachedTo = { scope: '', to: 0 };
 
@@ -1894,6 +1903,9 @@ export class Agent {
         said.push(pdf ? "No model here can read PDFs, so what it says can't be told." : "No model here can see photos, so what it shows can't be told.");
         return;
       }
+      // A PDF told already this session is told again from what was said, not sent again (the fix pass).
+      const told = pdf ? m.hash ?? (m.data ? await sha256Hex(fromBase64(m.data)) : '') : '';
+      if (this.#toldPdfs.has(told)) return void said.push(/** @type {string} */ (this.#toldPdfs.get(told)));
       const bytes = m.data ? null : await blobBytes(this.store, m.hash ?? '');
       const data = m.data ?? (bytes ? toBase64(bytes) : '');
       const part = pdf ? { type: /** @type {const} */ ('document'), mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data };
@@ -1901,14 +1913,14 @@ export class Agent {
       // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
       const stop = new AbortController();
       const end = () => stop.abort();
-      const late = setTimeout(end, DESCRIBE_S * this.secondMs);
+      const late = setTimeout(end, (pdf ? DESCRIBE_PDF_S : DESCRIBE_S) * this.secondMs);
       signal.addEventListener('abort', end, { once: true });
       try {
         for (const role of roles) {
           if (stop.signal.aborted) break;
           try {
             const r = await this.llm.call({ role, level: 'off', signal: stop.signal, scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: pdf ? DESCRIBE_PDF : DESCRIBE, maxOutput: pdf ? 3000 : 600, messages: [{ role: 'user', parts: [part, { type: 'text', text: pdf ? 'Give this PDF\'s content.' : 'Describe this photo.' }] }] } });
-            why = r.reply.text.trim() ? `${pdf ? 'What it says' : 'What it shows'} (${pdf ? 'told' : 'described'} by ${r.answeredBy}, as you can't ${pdf ? 'read PDFs' : 'see photos'}): ${r.reply.text.trim()}` : '';
+            why = r.reply.text.trim() ? `${pdf ? 'What it says' : 'What it shows'} (${pdf ? 'told' : 'described'} by ${r.answeredBy}, as you can't ${pdf ? 'read PDFs' : 'see photos'}): ${r.reply.text.trim()}${pdf && r.reply.stop === 'length' ? GOES_ON : ''}` : '';
           } catch (e) {
             why ||= `It couldn't be described: ${this.#explain(e, role)}`;
             continue;
@@ -1919,7 +1931,8 @@ export class Agent {
         clearTimeout(late);
         signal.removeEventListener('abort', end);
       }
-      if (stop.signal.aborted && !/^What it (shows|says)/.test(why)) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${DESCRIBE_S} seconds).`;
+      if (stop.signal.aborted && !/^What it (shows|says)/.test(why)) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${pdf ? DESCRIBE_PDF_S : DESCRIBE_S} seconds).`;
+      if (told && why.startsWith('What it says')) this.#toldPdfs.set(told, why);
       said.push(why || "It couldn't be described.");
     };
     if (!model || !model.input?.includes('image')) for (const m of output.images ?? []) await tell('image', m);
