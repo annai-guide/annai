@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { liveKit, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
+import { quiet } from './voice-kit.js';
 import { cleanSaid, realWord } from '../../src/core/koe/live.js';
 
 /** A half's transcript as text. @param {any} half */
@@ -121,11 +122,12 @@ test("words that trail Koe's turn are its own while it is still being said; they
   }
 });
 
-test('cut off by voice: her voice stops at once, what was still to come is dropped, and the line is cut where it was heard, marked ✂', async () => {
+test('cut off by voice, with headphones on: her voice stops at once, what was still to come is dropped, and the line is cut where it was heard, marked ✂', async () => {
   const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
   const k = await liveKit([{ said: words, audio: tone(3) }, { heard: 'Wait', said: 'Yes?', audio: tone(0.2) }], { pace: 1 });
   try {
     k.platform.streamSpeed = 1; // in real time
+    k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone' }, { kind: 'audioinput', label: 'AirPods Pro' }]);
     k.agent.tap();
     await until(() => k.agent.live.listening);
     k.agent.send('Tell me about the bridge');
@@ -142,6 +144,31 @@ test('cut off by voice: her voice stops at once, what was still to come is dropp
     assert.ok(k.platform.streams[0].stopped);
     assert.ok(k.platform.streams[0].playedMs < 2000);
     assert.ok(got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
+  } finally {
+    await k.done();
+  }
+});
+
+test("on the phone's speaker, her own voice coming back into the microphone never cuts her off: no activityStart, no ✂ (the iPhone trace, 2026-10-22)", async () => {
+  const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
+  const k = await liveKit([{ said: words, audio: tone(2) }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1; // in real time
+    k.platform.echoDb = 0; // as loud at the microphone as she was sent
+    k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone' }]);
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    k.platform.mic.feed(quiet(1), 16_000); // the room, before she speaks
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await until(() => k.agent.live.view.name !== 'speaking', 6000);
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+    await new Promise((r) => setTimeout(r, 500)); // her echo's tail
+    const [said] = await k.events(['out.speak']);
+    assert.equal(said.data.text, words);
+    assert.equal(said.data.cut, undefined);
+    assert.ok(!k.platform.streams[0].stopped, 'played to its end');
+    assert.ok(!got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart), 'no turn of the user started');
   } finally {
     await k.done();
   }

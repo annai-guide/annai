@@ -6,8 +6,10 @@ import { Detector } from '../voice/detector.js';
  * detector drives the API's manual turns (decision 9): once a run has minSpeechMs of speech in it, activityStart and
  * everything since just before it; then 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and
  * activityEnd. A click or a door slam, thrown away sooner, sends nothing: no turn to pay for, no sound off the phone.
- * While Koe plays, a start needs bargeInDb more over the floor (decision 13): her own voice from the car's speakers is
- * quieter than a passenger.
+ * Half-duplex (spec §10.4): while Koe plays, and for tailMs after, nothing starts, nothing heard then is kept for a pre-roll,
+ * and the detector's floor doesn't learn her voice; the phone's speaker is loud at its own microphone, and she cut herself off
+ * (the iPhone trace, 2026-10-22). Full duplex only where duplex() says (headphones or the car, cutting in by voice on): there a
+ * start needs bargeInDb more over the floor (decision 13), as her voice from the car's speakers is quieter than a passenger.
  */
 
 export class LiveInput {
@@ -26,14 +28,18 @@ export class LiveInput {
   #before = [];
   #chunk;
   #n = 0;
+  /** Samples at the microphone's rate still to pass after her voice stopped before a start may come (half-duplex). */
+  #hush = 0;
 
   /**
    * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void, audioIn?: { rate: number } },
    *   rate?: number, pauseMs?: number, startDb?: number, minSpeechMs?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
-   *   speaking?: () => boolean, onLevel?: (x: number) => void, onError?: (e: Error) => void }} o
-   *   rate: what the session takes (send's audioIn, K6); speaking: whether Koe's voice is playing; bargeInDb: Infinity turns cutting in by voice off
+   *   speaking?: () => boolean, duplex?: () => boolean, tailMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void }} o
+   *   rate: what the session takes (send's audioIn, K6); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
+   *   speaking now (else half-duplex); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency)
    */
-  constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6, speaking = () => false, onLevel, onError }) {
+  constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6,
+    speaking = () => false, duplex = () => false, tailMs = 300, onLevel, onError }) {
     this.mic = mic;
     this.send = send;
     this.rate = rate;
@@ -42,6 +48,8 @@ export class LiveInput {
     this.minSpeechMs = minSpeechMs;
     this.bargeInDb = bargeInDb;
     this.speaking = speaking;
+    this.duplex = duplex;
+    this.tailMs = tailMs;
     this.onLevel = onLevel;
     this.onError = onError;
     // What the detector keeps before speech, and the frames it takes to be sure of it.
@@ -75,13 +83,29 @@ export class LiveInput {
       this.#resampler = new StreamResampler(sampleRate, this.rate);
     }
     const d = this.#detector;
-    d.startDb = this.startDb + (this.speaking() ? this.bargeInDb : 0);
+    const playing = this.speaking();
+    if (!this.duplex() && (playing || this.#hush > 0)) return this.#deaf(d, playing, pcm.length, sampleRate);
+    d.startDb = this.startDb + (playing ? this.bargeInDb : 0);
     const out = Int16Array.from(/** @type {StreamResampler} */ (this.#resampler).push(pcm), (v) => Math.round(Math.max(-1, Math.min(1, v)) * (v < 0 ? 0x8000 : 0x7fff)));
     if (this.active) this.#add(out);
     else this.#hold(out);
     this.#events(d.push(pcm));
     if (this.#held && d.speechMs >= this.minSpeechMs) this.#start();
     this.onLevel?.(d.level);
+  }
+
+  /**
+   * Half-duplex, her voice playing or just stopped: what the microphone hears is hers, so it is dropped, with the pre-roll; speech
+   * that was being sent ends where her voice began (else her voice would go as the user's). @param {import('../voice/detector.js').Detector} d
+   * @param {boolean} playing @param {number} n samples heard @param {number} sampleRate
+   */
+  #deaf(d, playing, n, sampleRate) {
+    this.#hush = playing ? Math.round((this.tailMs * sampleRate) / 1000) : this.#hush - n;
+    if (this.active) this.#end();
+    this.#held = false;
+    this.#before = [];
+    d.reset();
+    this.onLevel?.(0);
   }
 
   /** @param {import('../voice/detector.js').DetectorEvent[]} events */

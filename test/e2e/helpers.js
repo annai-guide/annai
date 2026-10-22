@@ -342,15 +342,37 @@ export function responsesReply({ text = '', calls = [], reasoning } = {}) {
  * A fake microphone fed from WAV files (spec §18). Each time annai opens the microphone it hears
  * the next clip (the last one repeats), 0.4 s after opening, then silence. getUserMedia gives a
  * stream played by Web Audio, which works the same in Chromium and WebKit. window.__micOpens
- * counts the openings.
- * @param {import('@playwright/test').Page} page @param {string[]} clips paths of WAV files
+ * counts the openings. loopback: the phone's speaker heard by its microphone; whatever the page plays (anything
+ * connected to an AudioContext's destination) goes into the microphone too, as loud as it was played.
+ * @param {import('@playwright/test').Page} page @param {string[]} clips paths of WAV files @param {{ loopback?: boolean }} [o]
  */
-export async function fakeMicrophone(page, clips) {
+export async function fakeMicrophone(page, clips, { loopback = false } = {}) {
   const data = await Promise.all(clips.map(async (p) => (await readFile(p)).toString('base64')));
-  await page.addInitScript((wavs) => {
+  await page.addInitScript(([wavs, loop]) => {
     const w = /** @type {any} */ (window);
     w.__micOpens = 0;
     if (typeof MediaDevices === 'undefined') return;
+    /** What each of the page's AudioContexts plays, as a stream, and the microphones that hear it. @type {MediaStream[]} */
+    const played = [];
+    /** @type {((s: MediaStream) => void)[]} */
+    const ears = [];
+    const connect = AudioNode.prototype.connect;
+    if (loop) {
+      /** @this {AudioNode} @param {any} dest @param {...any} rest */
+      AudioNode.prototype.connect = /** @type {any} */ (function (dest, ...rest) {
+        const r = /** @type {any} */ (connect).call(this, dest, ...rest);
+        if (dest instanceof AudioDestinationNode) {
+          const c = /** @type {any} */ (this.context);
+          if (!c.__loop) {
+            c.__loop = c.createMediaStreamDestination();
+            played.push(c.__loop.stream);
+            for (const ear of ears) ear(c.__loop.stream);
+          }
+          /** @type {any} */ (connect).call(this, c.__loop);
+        }
+        return r;
+      });
+    }
     // On the prototype: WebKit drops a method set on navigator.mediaDevices this early.
     MediaDevices.prototype.getUserMedia = async () => {
       const b64 = wavs[Math.min(w.__micOpens, wavs.length - 1)];
@@ -363,13 +385,18 @@ export async function fakeMicrophone(page, clips) {
       const out = ctx.createMediaStreamDestination();
       source.connect(out);
       source.start(ctx.currentTime + 0.4);
+      if (loop) {
+        const ear = (/** @type {MediaStream} */ s) => { /** @type {any} */ (connect).call(ctx.createMediaStreamSource(s), out); };
+        played.forEach(ear);
+        ears.push(ear);
+      }
       for (const t of out.stream.getTracks()) {
         const stop = t.stop.bind(t);
         t.stop = () => { stop(); ctx.close().catch(() => {}); };
       }
       return out.stream;
     };
-  }, data);
+  }, /** @type {[string[], boolean]} */ ([data, loopback]));
 }
 
 /** Starts a trip from the Trips screen and returns its id. @param {import('@playwright/test').Page} page @param {string} title */
