@@ -285,3 +285,16 @@ test('"woke for" gives the wake\'s reasons on the first request only, and each r
   const last = JSON.stringify(k.sent['model-koe'][3].messages);
   assert.ok(last.includes('sunset is at 6:23 PM') && last.includes("Kokoro's note hasn't reached the user"), 'the note and the cue are in the conversation');
 });
+
+test("the user's Try again after the Stop lifts its hold: Koe's tell_kokoro goes through again (the fix pass)", async () => {
+  const k = await agentKit([[{ delayMs: 30_000, ...sleep }, sleep]], { koe: { type: [CHECK, sleep, calls(['tell_kokoro', { text: 'Plan it, as asked.' }], ['sleep', {}]), sleep] } });
+  k.agent.send('Plan our afternoon around the sunset');
+  await until(() => (k.sent['model-0'] ?? []).length === 1 && k.agent.koe.waiting, 8000);
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  k.agent.tryAgain();
+  await k.agent.idle();
+  const asks = (await k.events(['tool.result'])).filter((e) => e.data.name === 'tell_kokoro');
+  assert.deepEqual(asks.map((e) => e.data.ok), [true, true]);
+  assert.equal(k.sent['model-0'].length, 2, 'Kokoro was asked again');
+});
