@@ -7,7 +7,7 @@
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
-    "test": "node --test \"test/unit/**/*.test.js\"",
+    "test": "node --test --test-timeout=120000 \"test/unit/**/*.test.js\"",
     "test:live": "node --test test/live/",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.sw.json",
     "serve": "node scripts/serve.mjs",
