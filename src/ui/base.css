@@ -148,6 +148,9 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .notice-stack .notice { box-shadow: none; }
 /* A card taller than the box scrolls inside it, and its buttons stay at the bottom edge of what is seen, Dismiss always in reach. */
 .notice .acts { position: sticky; bottom: 0; background: var(--sheet); padding-top: 4px; }
+/* A card longer than the box shows its first lines until More opens it (notices.js); open, the box's cap is lifted. */
+.notice.long:not(.open) p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.notices.opened { max-height: none; }
 .toast { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .blocking { max-width: 560px; margin: 15vh auto 0; padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
 
