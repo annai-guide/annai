@@ -270,10 +270,11 @@ export function startShell(root, core) {
     swipedTo = last?.y ?? null;
     location.hash = last?.hash ?? tab;
   });
-  /** What a redraw now would lose: a field being typed in, a key typed and not saved, or an error shown. */
+  /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown, or a list being dragged. */
   const typing = () => {
     const a = document.activeElement;
     if (a && main.contains(a) && a.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])')) return true;
+    if (main.querySelector('.role-item.dragging')) return true; // a list being dragged
     return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
       || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty)'));
   };

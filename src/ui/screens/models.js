@@ -124,7 +124,7 @@ function rolesSection(ctx, cfg) {
     ...CHAT_ORDER.map((role) => roleBlock(role, cfg.roles, models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')), nameOf, list, edit,
       { live: cfg.roles[role]?.models.some((id) => kind(id) === 'realtime'), known: new Set(Object.keys(cfg.models)) })),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
-    ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
+    ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true, known: new Set(Object.keys(cfg.models)) })));
 }
 
 /**
@@ -178,6 +178,19 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, l
         (n) => edit(role, ({ firstOutputSeconds: _, ...x }) => (n === null ? x : { ...x, firstOutputSeconds: n })))));
 }
 
+/** The numbers and the handles' names, from the list's order as it stands: after a drag, kept or put back. @param {Element} ol */
+function renumber(ol) {
+  const n = ol.children.length;
+  [...ol.children].forEach((x, k) => {
+    const li = /** @type {HTMLElement} */ (x);
+    const num = li.firstElementChild?.firstChild;
+    if (num) num.textContent = `${k + 1}. `;
+    li.querySelector('.grip')?.setAttribute('aria-label', `Reorder ${li.dataset.name}, ${k + 1} of ${n}`);
+  });
+}
+/** Ids for the menus. */
+let menus = 0;
+
 /**
  * One entry of a role's list: its model's name, a link to the model's page where there is one (the user, 2026-10-22), a handle to
  * drag it by, and the remove button. Dragging uses pointer events, so a finger works as a mouse does (HTML5 drag and drop doesn't on
@@ -186,50 +199,57 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, l
  * @param {(id: string, by: number) => Promise<void>} move @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list @param {Node} remove
  */
 function reorderable(role, id, i, n, name, page, note, move, list, remove) {
-  const num = document.createTextNode(`${i + 1}. `);
-  const label = h('span', {}, num, page ? h('a', { href: `#/models/model?id=${encodeURIComponent(id)}`, text: name }) : name, note ? ` (${note})` : '');
+  const label = h('span', {}, `${i + 1}. `, page ? h('a', { href: `#/models/model?id=${encodeURIComponent(id)}`, text: name }) : name, note ? ` (${note})` : '');
+  const menuId = `reorder-menu-${++menus}`;
   const grip = h('button', {
-    class: 'btn ghost grip', type: 'button', 'aria-label': `Reorder ${name}`, 'aria-expanded': 'false', 'aria-haspopup': 'true', 'data-grip': `${role}\n${id}`,
-    title: 'Drag to reorder. Arrow keys move it; a tap shows Move up and Move down.',
+    class: 'btn ghost grip', type: 'button', 'aria-label': `Reorder ${name}, ${i + 1} of ${n}`, 'aria-expanded': 'false', 'aria-controls': menuId, 'data-grip': `${role}\n${id}`,
+    title: 'Drag, or use the arrow keys',
   }, '⠿');
-  const menu = h('div', { class: 'reorder-menu', role: 'group', 'aria-label': `Move ${name}`, hidden: true },
+  const menu = h('div', { id: menuId, class: 'reorder-menu', role: 'group', 'aria-label': `Move ${name}`, hidden: true, onkeydown: (/** @type {KeyboardEvent} */ e) => { if (e.key === 'Escape') shut(true); } },
     h('button', { class: 'btn', type: 'button', disabled: i === 0, onclick: () => again(move(id, -1)) }, 'Move up'),
     h('button', { class: 'btn', type: 'button', disabled: i === n - 1, onclick: () => again(move(id, 1)) }, 'Move down'));
-  const li = h('li', { class: 'role-item', 'data-id': id }, label, grip, remove, menu);
+  const li = h('li', { class: 'role-item', 'data-id': id, 'data-name': name }, label, grip, remove, menu);
   /** Once the list is drawn again, the handle takes the focus back, so arrow keys go on. @param {Promise<void>} moved */
   const again = (moved) => moved.then(() => {
     for (const g of document.querySelectorAll('.grip')) if (g instanceof HTMLElement && g.dataset.grip === `${role}\n${id}`) g.focus();
   });
+  /** @param {boolean} [focus] the handle takes the focus back */
+  const shut = (focus = false) => {
+    menu.hidden = true;
+    grip.setAttribute('aria-expanded', 'false');
+    if (focus) grip.focus();
+  };
   grip.addEventListener('click', () => {
     if (dragged) return;
-    menu.hidden = !menu.hidden;
-    grip.setAttribute('aria-expanded', String(!menu.hidden));
+    if (!menu.hidden) return shut();
+    menu.hidden = false;
+    grip.setAttribute('aria-expanded', 'true');
+    /** @type {HTMLElement | null} */ (menu.querySelector('button:not(:disabled)'))?.focus();
   });
   grip.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !menu.hidden) {
-      menu.hidden = true;
-      grip.setAttribute('aria-expanded', 'false');
-    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    if (e.key === 'Escape' && !menu.hidden) shut();
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
       again(move(id, e.key === 'ArrowUp' ? -1 : 1));
     }
   });
   // Drag: the entry follows the pointer and the others make room, by the DOM's own order; the list is saved as it ends.
   let dragged = false;
-  /** @type {{ y: number, top: number, order: Element[] } | null} */
+  /** @type {{ id: number, y: number, top: number, gate: number, order: Element[] } | null} */
   let drag = null;
   grip.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !e.isPrimary || drag) return;
     grip.setPointerCapture(e.pointerId);
-    drag = { y: e.clientY, top: li.getBoundingClientRect().top, order: [.../** @type {HTMLElement} */ (li.parentElement).children] };
+    // A finger shakes: it needs to move further than a mouse before it is a drag, and less than that is a tap.
+    drag = { id: e.pointerId, y: e.clientY, top: li.getBoundingClientRect().top, gate: e.pointerType === 'touch' ? 8 : 4, order: [.../** @type {HTMLElement} */ (li.parentElement).children] };
   });
   grip.addEventListener('pointermove', (e) => {
-    if (!drag || !li.parentElement) return;
-    if (!dragged && Math.abs(e.clientY - drag.y) < 4) return;
+    if (!drag || e.pointerId !== drag.id || !li.parentElement) return;
+    if (!dragged && Math.abs(e.clientY - drag.y) < drag.gate) return;
     if (!dragged) {
       dragged = true;
       li.classList.add('dragging');
-      menu.hidden = true;
+      shut();
     }
     li.style.transform = '';
     for (;;) {
@@ -242,22 +262,27 @@ function reorderable(role, id, i, n, name, page, note, move, list, remove) {
       else if (after && mid > at(after)) after.after(li);
       else break;
     }
+    if (!grip.hasPointerCapture(drag.id)) grip.setPointerCapture(drag.id); // moving the entry in the page let go of it
     li.style.transform = `translateY(${e.clientY - (drag.y - drag.top) - li.getBoundingClientRect().top}px)`;
-    [...li.parentElement.children].forEach((x, k) => { const t = x.firstElementChild?.firstChild; if (t) t.textContent = `${k + 1}. `; });
+    renumber(li.parentElement);
   });
-  /** @param {boolean} save */
-  const drop = (save) => {
+  /** @param {PointerEvent} e @param {boolean} save */
+  const drop = (e, save) => {
     const d = drag;
+    if (!d || e.pointerId !== d.id) return;
     drag = null;
-    if (!d || !dragged) return;
+    if (!dragged) return;
     li.classList.remove('dragging');
     li.style.transform = '';
     const order = [...(li.parentElement?.children ?? [])].map((x) => /** @type {HTMLElement} */ (x).dataset.id ?? '');
     setTimeout(() => { dragged = false; }, 0); // the click that ends a drag opens nothing
     if (save && order.join() !== d.order.map((x) => /** @type {HTMLElement} */ (x).dataset.id).join()) list(role, (ids) => [...order.filter((x) => ids.includes(x)), ...ids.filter((x) => !order.includes(x))]);
-    else li.parentElement?.replaceChildren(...d.order);
+    else if (li.parentElement) {
+      li.parentElement.replaceChildren(...d.order);
+      renumber(li.parentElement);
+    }
   };
-  grip.addEventListener('pointerup', () => drop(true));
-  grip.addEventListener('pointercancel', () => drop(false));
+  grip.addEventListener('pointerup', (e) => drop(e, true));
+  grip.addEventListener('pointercancel', (e) => drop(e, false));
   return li;
 }

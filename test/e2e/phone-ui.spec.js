@@ -265,6 +265,8 @@ for (const scheme of ['light', 'dark']) {
 
 // Roles: "if the user click on the model name, they can enter the model settings page"; "instead of the up down button, make it
 // possible to drag a model to reorder it" (the user, 2026-10-22).
+/** A role entry's handle, by its model's name whatever its place says. @param {import('@playwright/test').Locator} list @param {string} m */
+const gripOf = (list, m) => list.getByRole('button', { name: new RegExp(`^Reorder ${m}, \\d of \\d$`) });
 /** A main list of three models, a1, a2 and a3. @param {import('@playwright/test').Page} page */
 async function threeModels(page) {
   await openApp(page, '#/models');
@@ -291,7 +293,7 @@ test('Roles: a model\'s name links to its page; the up and down buttons are gone
 
 test('Roles: the handle takes the arrow keys, and a tap on it offers Move up and Move down', async ({ page }) => {
   const { main, order } = await threeModels(page);
-  const grip = (/** @type {string} */ m) => main.getByRole('button', { name: `Reorder ${m}`, exact: true });
+  const grip = (/** @type {string} */ m) => gripOf(main, m);
   await grip('a1').focus();
   await page.keyboard.press('ArrowDown');
   await expect.poll(order).toEqual(['1. a2', '2. a1', '3. a3']);
@@ -313,13 +315,13 @@ test('Roles: the handle takes the arrow keys, and a tap on it offers Move up and
 test('Roles: dragging the handle with a mouse reorders, and the order is kept', async ({ page }) => {
   const { main, order } = await threeModels(page);
   const centre = async (/** @type {import('@playwright/test').Locator} */ l) => { const b = /** @type {any} */ (await l.boundingBox()); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
-  const from = await centre(main.getByRole('button', { name: 'Reorder a1', exact: true }));
-  const to = await centre(main.getByRole('button', { name: 'Reorder a3', exact: true }));
+  const from = await centre(gripOf(main, 'a1'));
+  const to = await centre(gripOf(main, 'a3'));
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x, (from.y + to.y) / 2, { steps: 4 });
   await page.mouse.move(to.x, to.y + 8, { steps: 4 });
-  await main.getByRole('button', { name: 'Reorder a1', exact: true }).evaluate((el) => el.setAttribute('data-seen', ''));
+  await gripOf(main, 'a1').evaluate((el) => el.setAttribute('data-seen', ''));
   await page.mouse.up();
   await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
   // The screen is drawn again once the list is saved (the grip marked before the drop is gone): wait for that before reloading.
@@ -335,8 +337,8 @@ test('Roles: dragging the handle with a finger reorders, and the page does not s
   const { main, order } = await threeModels(page);
   const cdp = await page.context().newCDPSession(page);
   const centre = async (/** @type {import('@playwright/test').Locator} */ l) => { const b = /** @type {any} */ (await l.boundingBox()); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
-  const from = await centre(main.getByRole('button', { name: 'Reorder a3', exact: true }));
-  const to = await centre(main.getByRole('button', { name: 'Reorder a1', exact: true }));
+  const from = await centre(gripOf(main, 'a3'));
+  const to = await centre(gripOf(main, 'a1'));
   const touch = (/** @type {'touchStart' | 'touchMove' | 'touchEnd'} */ type, /** @type {number} */ y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: from.x, y }] });
   const scrolled = await page.evaluate(() => scrollY);
   await touch('touchStart', from.y);
@@ -389,4 +391,77 @@ test('a card is looked at again when the screen turns: More comes and goes with 
   await expect(card.getByRole('button', { name: 'More' })).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 544 });
   await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+});
+
+test('Roles: the handle says where its model stands, the menu is wired for a screen reader, and a drag closes it', async ({ page }) => {
+  const { main } = await threeModels(page);
+  await expect(gripOf(main, 'a1')).toHaveAccessibleName('Reorder a1, 1 of 3');
+  await expect(gripOf(main, 'a3')).toHaveAccessibleName('Reorder a3, 3 of 3');
+  const grip = gripOf(main, 'a2');
+  await expect(grip).not.toHaveAttribute('aria-haspopup', /.*/);
+  await grip.click();
+  await expect(grip).toHaveAttribute('aria-expanded', 'true');
+  const menu = main.getByRole('group', { name: 'Move a2' });
+  await expect(grip).toHaveAttribute('aria-controls', /.+/);
+  expect(await menu.getAttribute('id')).toBe(await grip.getAttribute('aria-controls'));
+  // The focus goes into the menu, and Escape gives it back to the handle.
+  await expect(menu.getByRole('button', { name: 'Move up' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(grip).toBeFocused();
+  await expect(grip).toHaveAttribute('aria-expanded', 'false');
+  // A drag that begins with the menu open closes it, and says so.
+  await grip.click();
+  await expect(grip).toHaveAttribute('aria-expanded', 'true');
+  const b = /** @type {any} */ (await grip.boundingBox());
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 + 12, { steps: 3 });
+  await expect(grip).toHaveAttribute('aria-expanded', 'false');
+  await page.mouse.up();
+});
+
+test('Roles: a drag that is cancelled leaves the list and its numbers as they were', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'touch events are sent through the DevTools protocol, Chromium only');
+  const { main, order } = await threeModels(page);
+  const cdp = await page.context().newCDPSession(page);
+  const b = /** @type {any} */ (await gripOf(main, 'a1').boundingBox());
+  const x = b.x + b.width / 2;
+  const y = b.y + b.height / 2;
+  const touch = (/** @type {'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel'} */ type, /** @type {number} */ at) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' || type === 'touchCancel' ? [] : [{ x, y: at }] });
+  await touch('touchStart', y);
+  for (let k = 1; k <= 4; k++) await touch('touchMove', y + k * 40);
+  await expect.poll(order).not.toEqual(['1. a1', '2. a2', '3. a3']); // it was being dragged
+  await touch('touchCancel', y + 160);
+  await expect.poll(order).toEqual(['1. a1', '2. a2', '3. a3']);
+  await expect(gripOf(main, 'a1')).toHaveAccessibleName('Reorder a1, 1 of 3');
+});
+
+test('Roles: a touch that moves less than 8 px is a tap, which opens the menu, and does not reorder', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'touch events are sent through the DevTools protocol, Chromium only');
+  const { main, order } = await threeModels(page);
+  const cdp = await page.context().newCDPSession(page);
+  const b = /** @type {any} */ (await gripOf(main, 'a2').boundingBox());
+  const x = b.x + b.width / 2;
+  const y = b.y + b.height / 2;
+  const touch = (/** @type {'touchStart' | 'touchMove' | 'touchEnd'} */ type, /** @type {number} */ at) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y: at }] });
+  await touch('touchStart', y);
+  await touch('touchMove', y + 6); // a finger shakes
+  await touch('touchEnd', y + 6);
+  await expect(main.getByRole('group', { name: 'Move a2' })).toBeVisible();
+  expect(await order()).toEqual(['1. a1', '2. a2', '3. a3']);
+});
+
+test("Roles: a speech list's entries link to their model's page too", async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'A voice', url: 'https://v.example.test/v1', key: 'sk-test-v', model: 'tts-x', look: false });
+  await page.getByLabel('Add a model to speech-out').selectOption({ label: 'tts-x' });
+  await page.getByRole('button', { name: 'Add to speech-out' }).click();
+  const out = page.locator('.role', { has: page.getByRole('heading', { name: "Speech out: Shiori's voice" }) });
+  await expect(out.getByRole('link', { name: 'tts-x' })).toBeVisible();
+  // The browser voice is a stand-in with no page: plain text.
+  await expect(out.getByRole('link', { name: /Browser voice/ })).toHaveCount(0);
+  await out.getByRole('link', { name: 'tts-x' }).click();
+  await expect(page.getByLabel('Provider model id')).toHaveValue('tts-x');
 });
