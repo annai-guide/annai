@@ -196,10 +196,12 @@ export class LiveKoe {
     this.#keep = Boolean(settings?.keepClips);
     this.modelId = id;
     this.state = 'open';
+    this.#rescued = false;
     this.c.told('live-open');
     this.#toldOpen = true;
     this.unmute();
     this.#poke();
+    this.#arm();
     this.#idle();
     return true;
   }
@@ -227,6 +229,7 @@ export class LiveKoe {
     this.#s = s;
     this.#rate = s.audioOut.rate;
     for (const fn of this.#waiting.splice(0)) fn(s);
+    this.#arm();
     return s;
   }
 
@@ -282,6 +285,7 @@ export class LiveKoe {
   /** The microphone failed (refused, or taken): a card says why; the session goes on without it. @param {unknown} e */
   #deaf(e) {
     if (!this.#input) return;
+    clearTimeout(this.#stall);
     this.#input.stop();
     this.#input = null;
     this.listening = false;
@@ -498,20 +502,34 @@ export class LiveKoe {
   /** Waits for the answer to a text turn (its words) or the user's turn (null); undefined: stops. @param {string | null | undefined} text */
   #answer(text) {
     clearTimeout(this.#due?.timer);
-    this.#due = null;
-    if (text === undefined || this.state === 'closed') return;
-    const s = this.#s;
-    this.#due = { text, timer: setTimeout(() => this.#silent(s), SILENT_S * Math.max(125, this.c.secondMs ?? 1000)) };
+    this.#due = text === undefined || this.state === 'closed' ? null : { text, timer: null };
+    this.#arm();
   }
 
-  /** Nothing came back in SILENT_S: traced, and once, a fresh session gets the words again. @param {LiveSession | null} s */
+  /** The wait runs only on a connection that is ready and not being left; one being made arms it once ready. */
+  #arm() {
+    const due = this.#due;
+    const s = this.#s;
+    if (!due || due.timer || !s || this.#old || this.state !== 'open') return;
+    due.timer = setTimeout(() => this.#silent(s), SILENT_S * Math.max(125, this.c.secondMs ?? 1000));
+  }
+
+  /** The connection goes (a drop, a GoAway): the wait holds until the next is ready. */
+  #hold() {
+    clearTimeout(this.#due?.timer);
+    if (this.#due) this.#due.timer = null;
+    clearTimeout(this.#stall);
+  }
+
+  /** Nothing came back in SILENT_S: traced, and once, a fresh session gets the words again; silent again, Koe's next model answers. @param {LiveSession} s */
   async #silent(s) {
     const due = this.#due;
-    if (!due || this.state !== 'open' || (s && s !== this.#s)) return;
+    if (!due || this.state !== 'open' || s !== this.#s || this.#old) return;
     this.#due = null;
     const again = !this.#rescued;
     this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${again ? ': a fresh one gets it again' : ''}.`, quiet: true } });
-    if (!again) return;
+    // Twice in a row: not a session to keep (its cut flag has Halves give the answer to Koe's next model, or Kokoro).
+    if (!again) return this.#gone(true);
     this.#rescued = true;
     const heard = cleanSaid(this.#hear?.text ?? '');
     const words = due.text ?? (heard ? theirs(heard) : null);
@@ -527,6 +545,7 @@ export class LiveKoe {
     let cut = {};
     clearTimeout(this.#stall);
     if (edge === 'start') {
+      this.#answer(undefined); // the user talks again: no answer is waited for while they do
       this.#brief = false; // the user talks: the quiet spell holds
       // The user cut in: her voice stops now, and the provider cuts its turn.
       if (this.#sounding) cut = this.#cut();
@@ -750,7 +769,7 @@ export class LiveKoe {
   /** A new connection with the handle (fresh: without), the conversation going on. @param {string} why @param {{ fresh?: boolean }} [o] @returns {Promise<boolean>} */
   async #reconnect(why, { fresh = false } = {}) {
     this.#again();
-    this.#answer(undefined);
+    this.#hold();
     if (fresh) this.#handle = undefined;
     const old = (this.#old = this.#s);
     const gen = this.#gen;
@@ -766,6 +785,7 @@ export class LiveKoe {
     }
     this.#poke();
     this.#changed();
+    this.#arm();
     this.#idle();
     return Boolean(s);
   }
@@ -777,7 +797,7 @@ export class LiveKoe {
    */
   async #closed(s, { kind }, why) {
     if (s !== this.#s || !kind) return;
-    this.#answer(undefined);
+    this.#hold();
     const cut = Boolean(this.#sounding || this.#t?.spoken);
     this.#cut();
     this.#t = null;
