@@ -27,7 +27,7 @@ test('every official provider is valid, its id is provider-*, and its requires c
   for (const m of providers) {
     assert.match(m.id, /^provider-[a-z0-9-]+$/);
     assert.deepEqual(checkProviderDesc(m.provider), [], m.id);
-    // Data only, but for those with quirks no data can carry: OpenRouter's sign-in and the context a server serves (milestone 4, decision 22), and Another address's look at what an address offers (milestone 5).
+    // Data only, but for those with quirks no data can carry: OpenRouter's sign-in and the context a server serves (milestone 4, decision 22), and Custom provider's look at what an address offers (milestone 5).
     assert.equal(m.entry, CODE.includes(m.id) ? 'index.js' : undefined, `${m.id}: ${CODE.includes(m.id) ? 'has code' : 'data only'}`);
     for (const [id, a] of Object.entries(m.provider.abilities)) {
       if (/** @type {any} */ (a).on !== false) assert.ok(providedBy(/** @type {any} */ (a).type, m.requires), `${m.id}/${id}: ${/** @type {any} */ (a).type}`);
@@ -564,7 +564,7 @@ test("OpenAI's Realtime voice: off until switched on, which installs openai-real
   }
 });
 
-test('Another address has a Realtime voice ability, off, for any server that speaks OpenAI Realtime (K6)', async () => {
+test('Custom provider has a Realtime voice ability, off, for any server that speaks OpenAI Realtime (K6)', async () => {
   const m = await official('provider-another-address');
   const rt = /** @type {any} */ (m.provider.abilities.realtime);
   assert.deepEqual([rt.kind, rt.type, rt.on], ['realtime', 'openai-realtime', false]);

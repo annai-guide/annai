@@ -188,7 +188,7 @@ test('moving over: endpoints from before providers, with their keys, are removed
 test("fix pass: an address typed without https:// isn't saved, on the provider and on an ability, and the words say what to type", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await add(page, 'Another address');
+  await add(page, 'Custom provider');
   await page.getByLabel('Address', { exact: true }).fill('llm.example.com/v1');
   await page.getByLabel('API key').fill('sk-test-typed-address-1');
   await page.getByRole('button', { name: 'Save' }).click();

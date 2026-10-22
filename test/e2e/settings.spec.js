@@ -78,7 +78,7 @@ test('Spend per day, the cache and housekeeping are on Settings → Models, and 
 test('a setting saves as it changes, with no Save button, and is still there after a reload: a checkbox, a radio, a number, a time, a choice and JSON', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model', look: false });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model', look: false });
   const fiveMinutes = page.getByRole('radio', { name: '5 minutes' });
   await fiveMinutes.check();
   await expect(savedBy(fiveMinutes)).toHaveText('Saved');

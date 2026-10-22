@@ -168,11 +168,11 @@ test("Ollama's and LM Studio's notes say how to let annai's address in; vLLM's a
   }
 });
 
-test("vLLM's transcription starts off, and brings its protocol when turned on; Another address says what to do for a server that never streams", async () => {
+test("vLLM's transcription starts off, and brings its protocol when turned on; Custom provider says what to do for a server that never streams", async () => {
   const v = (await official('provider-vllm')).provider.abilities;
   assert.deepEqual([v.chat.on, v.transcription.on, v.transcription.kind, v.transcription.type], [undefined, false, 'transcription', 'openai-transcription']);
   const another = JSON.parse(await readFile(new URL('plugins-official/provider-another-address/annai-plugin.json', root), 'utf8'));
-  assert.equal(another.version, '2.1.1', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1');
+  assert.equal(another.version, '2.1.2', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1; named Custom provider in 2.1.2');
   assert.equal(another.catchAll, true);
   assert.match(another.provider.note, /Wait for the first words/);
   assert.match(another.provider.note, /never streams/);

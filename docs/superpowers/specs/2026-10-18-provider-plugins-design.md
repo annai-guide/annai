@@ -20,7 +20,7 @@ What the code shows:
 2. **One catalog** for everything a user can add: providers, plugins, backup places, voices, skills, personalities. It's **searchable** (a must) and **browsable**. It's annai's curated official list, plus third-party plugins installed from a URL, as today.
 3. **The plugins page** gets search and filters by kind, category and ability.
 4. **A known provider brings its own setup screen** where it has quirks (OpenRouter's sign-in). A provider without quirks gets the standard screen.
-5. **"Another address"** (a custom OpenAI-compatible server, a router like the user's maiGo, a local server) finds out for itself, at no cost, what the address offers.
+5. **"Custom provider"** (a custom OpenAI-compatible server, a router like the user's maiGo, a local server) finds out for itself, at no cost, what the address offers.
 6. **Plugin conflicts are explicit and visible,** never silent.
 
 ## Non-goals
@@ -58,7 +58,7 @@ What the code shows:
   - **Data-only by default:** most provider plugins are data with no code, so they need no full-access warning. A provider plugin with code shows the warning, as code plugins do today.
   - **Two layers:** provider plugins depend straight on the shared protocol plugins. There is no "base provider" layer.
   - **Everything at add time:** what a known provider needs installs with it. Official parts install without an extra question; a third-party part asks.
-  - **"Another address":** probe first, at no cost, then install only what was found.
+  - **"Custom provider":** probe first, at no cost, then install only what was found.
   - **Updates:** a provider plugin's update (new models, new prices) is offered like any plugin update, and applies when the user taps.
   - **Removing:** removing a provider removes its key and models. Protocol plugins that nothing needs any more are removed too.
 
@@ -71,7 +71,7 @@ What the code shows:
   - **With code** only where the provider has real quirks:
     - **OpenRouter:** sign-in, its free models, its speech list paths and its free-limit message. This moves annai's OpenRouter code out of the core.
     - **Anthropic:** the browser-access header, if that can't be data.
-    - **"Another address":** the probing.
+    - **"Custom provider":** the probing.
   - **Local servers are separate provider plugins** (the user's suggestion, 2026-10-18: "maybe llama, vllm, SGLang etc can be separate plugins because maybe they are slightly different"). Candidates: llama.cpp (Unsloth Studio runs it), vLLM, SGLang, Ollama and LM Studio. Each is data first; their quirks are data where possible:
     - the reasoning field's name;
     - how thinking is switched (e.g. vLLM's and SGLang's `chat_template_kwargs`);
@@ -84,7 +84,7 @@ What the code shows:
 - **Dependencies are declared** in the manifest as `requires` (protocol plugin ids, with version ranges on the interface major version) and resolved when the plugin is installed or updated. Protocol plugins are small (today 4.6 to 16.1 KiB each, about 45 KiB for all four), so installing what a provider needs costs little.
 
 ### Provider plugins and configured providers (my call)
-- **One installed provider plugin can back several configured providers.** For example, two OpenAI accounts with two keys, or several servers added through "Another address". On the Add screen, a provider that's already set up shows "Added", with "Add another".
+- **One installed provider plugin can back several configured providers.** For example, two OpenAI accounts with two keys, or several servers added through "Custom provider". On the Add screen, a provider that's already set up shows "Added", with "Add another".
 - **Each ability may have its own address,** which defaults to the provider's. That way "Local server" is one provider even when chat, transcription and voice run on different ports, as today's three local templates do.
 - **Provider plugins appear in the Plugins list** under the kind "Model providers", naming the providers configured from them.
 - **Removing the last configured provider of a provider plugin uninstalls that plugin too,** then any protocol plugin nothing requires any more (removing means removing). An official one comes back from the catalog when needed. For a third-party one, the remove confirmation says its address will be needed again to add it back.
@@ -144,7 +144,7 @@ What the code shows:
 - **The link must exist before the tap.** On an iPhone Home Screen app, Safari opens a page only from the tap itself; after an await, nothing opens (found 2026-10-18). So a screen offering the one-tap start installs the featured provider's plugin in the background as soon as it opens. That plugin is official, hash-checked and small, so its sign-in link is ready before the tap.
 - The sign-in's return to annai's address (with `?code=`) and the iPhone paste-the-code path are routed to that plugin.
 
-### "Another address"
+### "Custom provider"
 - **The user gives an address,** and optionally a key. "Look for what it offers" then runs, at no cost:
   1. ask for the model list;
   2. send an empty request to each known path (`/chat/completions`, `/responses`, `/v1/messages` for Anthropic, `/audio/transcriptions`, `/audio/speech`).
@@ -209,6 +209,6 @@ The plan starts from main after these merge: settings-tidy (it reworks the Model
   1. providers, abilities, `requires` and data-only provider plugins;
   2. the catalog screen and plugins-page search;
   3. OpenRouter as a code provider;
-  4. "Another address";
+  4. "Custom provider";
   5. conflicts.
 - Keeping the shipped core within a sensible size: the provider data moves out of the core, and the catalog screen comes in.

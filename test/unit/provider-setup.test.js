@@ -48,7 +48,7 @@ const ACME = {
     });
   }`,
 };
-/** A provider for any address (catchAll), as Another address is. */
+/** A provider for any address (catchAll), as Custom provider is. */
 const ANY = {
   'annai-plugin.json': JSON.stringify({ id: 'provider-any', name: 'Any', version: '1.0.0', api: 1, catchAll: true,
     provider: { baseUrl: '', key: 'optional', abilities: { chat: { kind: 'chat', type: 'type-h', on: false } } } }),

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, waitForServiceWorker, startSettled } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-22).
 
@@ -42,4 +42,46 @@ test('a button under the dock still takes a click while a field has focus: the d
   await page.locator('#under-dock').click();
   await expect(page.locator('#under-dock')).toHaveAttribute('data-clicked', '1');
   await expect(page.locator('nav.dock')).toBeVisible();
+});
+
+// "In the add, at model providers, if user type in something returns nothing, maybe we should put the 'another address' there ...
+// same for voices and transcription. also maybe call that custom providers?" (the user, 2026-10-22)
+for (const [filter, link, region] of [
+  ['model providers', 'Add a provider', 'Model providers'],
+  ['transcription', 'Add a provider for speech-in', 'Voices and transcription'],
+  ['voice', 'Add a provider for speech-out', 'Voices and transcription'],
+]) {
+  test(`Add on ${filter}: a search that finds nothing offers Custom provider, by its address`, async ({ page }) => {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await startSettled(page);
+    await page.getByRole('link', { name: link, exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Add' })).toBeVisible();
+    await expect(page.getByRole('region', { name: region })).toBeVisible();
+    const found = page.locator('.found');
+    await page.getByLabel('Search the catalog').fill('zzqx');
+    await expect(found.getByText('Not listed? Add it by its address.')).toBeVisible();
+    await expect(found.locator('.card')).toHaveCount(1);
+    await expect(found.locator('.card .name')).toHaveText('Custom provider');
+    await expect(found.getByRole('button', { name: 'Add Custom provider' })).toBeVisible();
+    // A search that finds something shows what it found, with no offer.
+    await page.getByLabel('Search the catalog').fill('openai');
+    await expect(found.getByText('Not listed?')).toHaveCount(0);
+    await expect(found.getByRole('button', { name: 'Add OpenAI', exact: true })).toBeVisible();
+  });
+}
+
+test('Add: nothing found among tools offers no Custom provider; and "custom" finds it by name', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await startSettled(page);
+  await page.goto('/#/plugins');
+  await page.getByRole('link', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Tools and MCP', exact: true }).click();
+  await page.getByLabel('Search the catalog').fill('zzqx');
+  await expect(page.getByText('Nothing here matches. Try other words, or take a chip off.')).toBeVisible();
+  await expect(page.getByText('Not listed?')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Tools and MCP', exact: true }).click();
+  await page.getByLabel('Search the catalog').fill('custom');
+  await expect(page.locator('.found .card .name')).toHaveText('Custom provider');
 });

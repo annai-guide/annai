@@ -180,7 +180,7 @@ export async function renderProvider(ctx, id) {
 }
 
 /**
- * A provider plugin's own Add flow (decision 15), such as Another address's look: its panel, whose provider opens
+ * A provider plugin's own Add flow (decision 15), such as Custom provider's look: its panel, whose provider opens
  * its page, and Add by hand. Nothing is installed here: Add did. @param {any} ctx @param {string} pluginId
  */
 export async function renderNewProvider(ctx, pluginId) {

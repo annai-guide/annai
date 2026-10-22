@@ -15,7 +15,7 @@ import { setupUi } from '../../src/ui/provider-setup.js';
 import { setupOf } from '../../src/core/llm/setup.js';
 import { PluginHost } from '../../src/core/plugins.js';
 
-// Another address looks for what a server offers, at no cost (milestone 5 of providers as plugins,
+// Custom provider looks for what a server offers, at no cost (milestone 5 of providers as plugins,
 // decision 18): its model list, and an empty request to each path annai knows, read against a control
 // request to a path that can't exist. Stand-ins answer as each server does, reached as a page at annai's
 // address reaches them (a browser's CORS rules); reach is the check a browser makes without those rules.
@@ -341,7 +341,7 @@ test('Add with these turns on what was found, Messages at the root address, and 
   const d = await device();
   const s = await startFakeServer({ flavour: 'llamacpp', key: KEY });
   try {
-    // Add on Another address: its plugin, and nothing else, for its own Add flow.
+    // Add on Custom provider: its plugin, and nothing else, for its own Add flow.
     assert.equal(await d.llm.startAdd('provider-another-address', { official: true, roles: 'recommended' }), null);
     assert.deepEqual(Object.keys(await d.host.installed()), ['provider-another-address']);
     const setup = /** @type {any} */ (setupOf(d.registry, 'provider-another-address'));

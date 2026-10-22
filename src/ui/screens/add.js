@@ -85,7 +85,7 @@ export function addRows(catalog, installed, configured) {
  * draw the list again, never the screen, so the box keeps its focus. A chip shows when it would keep
  * some of the list and not all of it, or when it is on.
  * @template {import('../../core/search.js').SearchEntry} T
- * @param {{ label: string, entries: T[], filters?: import('../../core/search.js').Filters, draw: (found: ({ entry: T } & Rank)[], typed: boolean) => (Node | null)[] }} o
+ * @param {{ label: string, entries: T[], filters?: import('../../core/search.js').Filters, draw: (found: ({ entry: T } & Rank)[], typed: boolean, filters: import('../../core/search.js').Filters) => (Node | null)[] }} o
  * @returns {{ el: HTMLElement, update: () => void }}
  */
 export function finder({ label, entries, filters = {}, draw }) {
@@ -105,7 +105,7 @@ export function finder({ label, entries, filters = {}, draw }) {
   };
   const update = () => {
     for (const [b, key, value] of chips) b.setAttribute('aria-pressed', String(f[key] === value));
-    list.replaceChildren(...draw(searchCatalog(entries, box.value, f), Boolean(squash(box.value).text)).filter((n) => n !== null));
+    list.replaceChildren(...draw(searchCatalog(entries, box.value, f), Boolean(squash(box.value).text), f).filter((n) => n !== null));
   };
   box.addEventListener('input', update);
   const el = h('div', { class: 'finder' }, box,
@@ -143,7 +143,16 @@ export async function renderAdd(ctx, route) {
   const redraw = () => view.update(); // after an install, the row it changed
   const view = finder({
     label: 'Search the catalog', entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
-    draw: (found, typed) => byKind(typed ? found : found.sort((a, b) => last(a) - last(b)), typed, (x) => rowItem(ctx, /** @type {Row} */ (byId.get(x.entry.id)), x.why, redraw)),
+    draw: (found, typed, f) => {
+      const item = (/** @type {{ entry: Facts, why?: string }} */ x) => rowItem(ctx, /** @type {Row} */ (byId.get(x.entry.id)), x.why, redraw);
+      // Nothing found for model providers, transcription or voices: the user's own server is one such, so Custom provider is offered, by its address.
+      const custom = rows.find((r) => r.facts.catchAll);
+      const speechy = !f.kind || f.kind === 'providers' || f.kind === 'speech';
+      if (typed && !found.length && custom && speechy && searchCatalog([custom.facts], '', { ...f, kind: undefined }).length) {
+        return [h('p', { class: 'empty', text: 'Nothing here matches.' }), h('p', { class: 'sub offer', text: 'Not listed? Add it by its address.' }), h('ul', { class: 'cards' }, item({ entry: custom.facts }))];
+      }
+      return byKind(typed ? found : found.sort((a, b) => last(a) - last(b)), typed, item);
+    },
   });
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: back }, backText)),
