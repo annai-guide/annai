@@ -25,9 +25,9 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  */
 
 /** Tool answers that add no speech (decision 10). */
-const SILENT = ['tell_kokoro', 'show', 'ask'];
-/** Tools that pass a note on to the user, as words do. */
-const REACH = ['show', 'ask'];
+const SILENT = ['tell_kokoro', 'show', 'ask', 'already_told'];
+/** Tools that pass a note on to the user, as words do, or settle it as passed on. */
+const REACH = ['show', 'ask', 'already_told'];
 
 /** A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped. @param {string} text */
 export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());

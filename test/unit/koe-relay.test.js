@@ -22,7 +22,7 @@ test('Koe ends its wait on a bare sleep: it is asked once more, with the request
   const koe = k.sent['model-koe'];
   assert.equal(koe.length, 3);
   assert.equal(koe[1].toolRequired, true, 'forcing stays on while the note is unsaid');
-  assert.match(JSON.stringify(koe[2].messages.at(-1)), /Kokoro's note is for the user/);
+  assert.match(JSON.stringify(koe[2].messages.at(-1)), /Kokoro's note hasn't reached the user/);
   assert.deepEqual(k.notices, []);
 });
 
@@ -203,4 +203,51 @@ test("a gated question with an option that isn't words isn't asked: annai gives 
   await k.agent.idle();
   assert.deepEqual(await k.events(['out.ask']), []);
   assert.deepEqual(await backstop(k), [["Shiori's answer", 'Which table time? (18:00, 7)']]);
+});
+
+// The fix pass (S1): the cue asks for what the note adds, and Koe settles a note it has already said with already_told.
+test("Koe already said what Kokoro's note says, and settles it with already_told: nothing is shown and Koe isn't asked again (probe P4)", async () => {
+  const k = await agentKit([kokoro('Say: Nepenthe is open until 10 PM today.')], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'Nepenthe is open until 10 tonight.' }], ['sleep', {}]) },
+    { match: 'a note from Kokoro', reply: calls(['already_told', {}], ['sleep', {}]) },
+  ] } } });
+  k.agent.send('Is Nepenthe open tonight?');
+  await k.agent.idle();
+  assert.deepEqual(await said(k), ['Nepenthe is open until 10 tonight.']);
+  assert.equal(k.sent['model-koe'].length, 2, 'no cue');
+  assert.deepEqual(await backstop(k), []);
+  assert.deepEqual(k.notices, []);
+});
+
+test("the cue asks Koe for what the note adds, in its own words, and names already_told; Koe settles it after the cue", async () => {
+  const k = await agentKit([kokoro()], { koe: { type: [CHECK, sleep, calls(['already_told', {}], ['sleep', {}])] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].length, 3);
+  const cue = JSON.stringify(k.sent['model-koe'][2].messages.at(-1));
+  assert.match(cue, /what it adds, in your own words/);
+  assert.match(cue, /already_told/);
+  assert.doesNotMatch(cue, /Say what the note says/);
+  assert.deepEqual(await backstop(k), []);
+});
+
+test("already_told settles Kokoro's note, not a message the user wrote in Koe's wait: that is still owed", async () => {
+  const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'tell_koe', input: { text: SAY } }, { name: 'sleep', input: {} }] }, sleep]], { koe: { type: [CHECK, { delayMs: 600, ...sleep }, calls(['already_told', {}], ['sleep', {}]), sleep] } });
+  k.agent.send('A sunset drink in Carmel');
+  await until(() => k.agent.koe.waiting);
+  k.agent.send('Which day is it?');
+  await k.agent.idle();
+  assert.deepEqual(await backstop(k), []);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), ["Shiori didn't answer"]);
+});
+
+test("Koe's instructions say a note it has already said is settled with already_told, and the tool is always on", async () => {
+  const k = await agentKit([[sleep]], { koe: { type: [CHECK, sleep] } });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const koe = k.sent['model-koe'][0];
+  assert.match(koe.system, /if it adds nothing, call already_told/);
+  assert.ok(koe.tools.some((/** @type {any} */ t) => t.name === 'already_told'));
+  const { ALWAYS_ON } = await import('../../src/core/agent/tools.js');
+  assert.ok(ALWAYS_ON.includes('already_told'));
 });
