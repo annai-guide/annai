@@ -21,10 +21,10 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void }} LiveHost
+ *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
- *   conversation leaves, shown there
+ *   conversation leaves, shown there; spoke: the user's spoken turn ended
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -604,8 +604,8 @@ export class LiveKoe {
       this.#answer(undefined); // the user talks again: no answer is waited for while they do
       this.#turnAt = Date.now();
       this.#brief = false; // the user talks: the quiet spell holds
-      // The user cut in: her voice stops now, and the provider cuts its turn.
-      if (this.#sounding) cut = this.#cut();
+      // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
+      if (this.#sounding || this.#t) cut = this.#cut();
       this.#flushHeard(false);
       this.#hear = hearing();
     } else {
@@ -617,6 +617,7 @@ export class LiveKoe {
     this.#changed();
     if (edge === 'end') {
       this.#answer(null);
+      this.c.spoke?.(); // what waited for the user's next words goes to Koe with them
       if (this.#hearFirst) this.#heardFirst();
       else this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
     }

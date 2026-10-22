@@ -237,6 +237,24 @@ test('Auto, AirPods taken out while she speaks: voice goes off, as Auto says on 
   }
 });
 
+test("the review's minors: Koe's turn with no word yet when the user starts speaking is cut, so its late first word never plays over them", async () => {
+  const k = await liveKit([{ audio: tone(2), said: 'Here you go.', saidAt: 800, interruptOn: 'text' }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.agent.send('Hi');
+    await soon(async () => got(k, 'clientContent').length === 1);
+    await new Promise((r) => setTimeout(r, 100)); // its sound is in, held: no word yet
+    k.platform.mic.feed(cat(quiet(0.3), lunch.subarray(0, lunch.length >> 1)), 16_000); // the user starts
+    await new Promise((r) => setTimeout(r, 1500)); // its first word comes after
+    assert.equal(k.platform.streams.length, 0, 'nothing played over the user');
+  } finally {
+    await k.done();
+  }
+});
+
 test('with "Keep voice clips", what was said live is kept with its line, in the smallest format the phone makes and plays', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'Tacos.', audio: tone(0.2) }], { voice: { keepClips: true, encoder: { makes: ['ogg'] }, plays: ['ogg', 'mp3', 'wav'] } });
   try {
