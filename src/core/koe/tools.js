@@ -29,10 +29,24 @@ export async function lightChange(name, input, { ws, trip }) {
   if ((name === 'write' || name === 'patch') && ITEM.test(path) && trip) {
     const { scope, path: inner } = resolvePath(path, trip);
     const item = await ws.readJSON(scope, inner).catch(() => null);
-    if (name === 'write' && !item && input?.content?.fixed === false) return null;
+    // A record may come as its JSON text (a model on Gemini writes it so), which write takes the same.
+    if (name === 'write' && !item && recordOf(input?.content)?.fixed === false) return null;
     if (name === 'patch' && item?.fixed === false && input?.changes && Object.keys(input.changes).every((k) => MOVABLE.includes(k))) return null;
   }
   return BIGGER;
+}
+
+/** A write's content as the record it stores: an object, or text that is one. @param {unknown} content @returns {Record<string, any> | null} */
+function recordOf(content) {
+  let value = content;
+  if (typeof content === 'string') {
+    try {
+      value = JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? /** @type {Record<string, any>} */ (value) : null;
 }
 
 /**

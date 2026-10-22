@@ -36,7 +36,12 @@ export function activate(annai) {
         properties: { kind: { enum: ['flight', 'hotel', 'car'] }, params: { type: 'object', additionalProperties: { type: ['string', 'number'] } } },
       },
       /** @param {{ kind: string, params: Record<string, unknown> }} i @param {any} call */
-      run: async (i, call) => ({ links: searchLinks(await catalog(call), i.kind, i.params ?? {}) }),
+      run: async (i, call) => {
+        if (i.params !== undefined && (typeof i.params !== 'object' || i.params === null || Array.isArray(i.params))) {
+          throw new Error('params must be an object of the search\'s fields, such as {"place": "Big Sur", "checkin": "2026-11-25"}, so nothing was searched.');
+        }
+        return { links: searchLinks(await catalog(call), i.kind, i.params ?? {}) };
+      },
     },
   ];
   const off = tools.map((t) => annai.tools.register(t));

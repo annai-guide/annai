@@ -43,12 +43,12 @@ const fetching = (url, init) => {
 
 /** Each answer's text, as it came, when GEMINI_RECORD asks for it. @type {string[]} */
 const answers = [];
-/** @type {import('../../src/core/llm/call.js').Fetch} */
-const recording = async (url, init) => {
+/** Only when recording: reading a whole answer first would hide how it streams. @type {import('../../src/core/llm/call.js').Fetch} */
+const recording = process.env.GEMINI_RECORD ? async (url, init) => {
   const res = await fetching(url, init);
   answers.push(await res.clone().text());
   return res;
-};
+} : fetching;
 
 /** One call, or a polite skip when the free day is used up. @param {any} t @param {any} request @param {string} [level] */
 async function call(t, request, level = 'low') {
@@ -86,7 +86,7 @@ test('two turns with a tool call: turn 2 carries both signatures back, and the a
   assert.ok(second.usage.input > 0 && second.usage.output > 0);
 });
 
-test("Shiori's write and patch: a booking written as a real record, then changed by a merge patch whose keys a JSON object can't name on Gemini (\"notes+\"); turn 2 sends the call back as Gemini wrote it", { skip }, async (t) => {
+test("Shiori's write and patch: a booking written as a real record, then changed by a merge patch whose keys a JSON object can't name on Gemini (\"notes+\"); turns 2 and 3 send each call back as Gemini fills it, with its signature", { skip }, async (t) => {
   await pause();
   const { ws, trip, tools, run } = await tripFiles();
   const offered = ['read', 'write', 'patch'].map((n) => ({ name: n, description: tools[n].description, input: tools[n].input }));
@@ -114,13 +114,27 @@ test("Shiori's write and patch: a booking written as a real record, then changed
   const patch = /** @type {any} */ (second.parts.find((p) => p.type === 'tool_call'));
   assert.equal(patch?.name, 'patch');
   assert.equal(typeof patch.input.changes, 'object', 'the merge patch reaches the tool as an object');
-  await run('patch', patch.input);
+  const patched = await run('patch', patch.input);
   const changed = await ws.readJSON(trip, '/bookings/post-ranch-inn.json');
   assert.equal(changed.confirmation, 'PRI-9000');
   assert.deepEqual(changed.notes, ['late arrival']);
   if (process.env.GEMINI_RECORD) {
     for (const [i, name] of ['tools-write.sse', 'tools-patch.sse'].entries()) await writeFile(new URL(`../fixtures/gemini/${name}`, import.meta.url), answers.at(i - 2) ?? '');
   }
+  // Turn 3: the patch goes back too, its merge patch as compact JSON text again, with its signature, and Google takes it.
+  await pause();
+  const third = await call(t, { system, tools: offered, tail: NOW, messages: [
+    ask,
+    { role: 'assistant', parts: first.parts },
+    { role: 'user', parts: [{ type: 'tool_result', id: write.id, content: wrote }, { type: 'text', text: 'They changed the confirmation to PRI-9000. Also add "late arrival" to the booking\'s notes list (key "notes+" appends). One patch.' }] },
+    { role: 'assistant', parts: second.parts },
+    { role: 'user', parts: [{ type: 'tool_result', id: patch.id, content: patched }, { type: 'text', text: 'Thanks. In one sentence, what is the confirmation now?' }] },
+  ] });
+  if (!third) return;
+  const patchBack = sent.at(-1).input.find((/** @type {any} */ s) => s.type === 'function_call' && s.name === 'patch');
+  assert.equal(patchBack.arguments.changes, JSON.stringify(patch.input.changes));
+  assert.ok(patchBack.signature, "the patch's own signature, back");
+  assert.match(third.text, /PRI-9000/);
 });
 
 test("a call another model wrote, answered with a photo, with the now block: Gemini takes it (the stand-in signature) and sees the photo", { skip }, async (t) => {
