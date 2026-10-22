@@ -1997,7 +1997,17 @@ export class Agent {
     if (!model || !model.input?.includes('image')) for (const m of output.images ?? []) await tell('image', m);
     if (output.document && !model?.input?.includes('pdf')) await tell('pdf', output.document);
     const { images, document, ...rest } = output;
-    return { ...rest, ...(model?.input?.includes('image') ? { images } : {}), content: `${output.content}\n${said.join('\n')}` };
+    return { ...rest, ...(model?.input?.includes('image') ? { images } : {}), ...(model?.input?.includes('pdf') ? { document } : {}), content: `${output.content}\n${said.join('\n')}` };
+  }
+
+  /**
+   * A tool's photos and PDF for a model the loop doesn't run, a helper's (the task tool, the third emulator pass): what that model
+   * can't take comes back in words, the same as for her own. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
+   * @param {AbortSignal} signal @param {{ input?: string[] }} model
+   */
+  describe(output, wakeId, signal, model) {
+    const blind = (output.images?.length && !model.input?.includes('image')) || (output.document && !model.input?.includes('pdf'));
+    return blind ? this.#described(output, wakeId, signal, model) : Promise.resolve(output);
   }
 
   /** The output tools (spec §7.1). @returns {LoopTool[]} */
