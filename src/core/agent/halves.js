@@ -166,7 +166,7 @@ export class Halves {
         koe: (w) => {
           if (isForUser(w)) this.#unsaid.push(w.text);
           this.#koeOpen();
-          if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append'), w);
+          if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', isForUser(w) ? w : null), w);
           else this.koe.enqueue(w);
         },
         kokoro: (w) => {
@@ -262,6 +262,7 @@ export class Halves {
       budgets: async () => (await this.kokoro.settings()).budgets,
       timeZone: () => this.kokoro.timeZone(), secondMs: c.secondMs,
       asked: () => this.#asked && this.kokoro.busy,
+      unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.#ready = this.#refresh({ tell: false }).catch(() => {});
