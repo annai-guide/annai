@@ -84,3 +84,56 @@ test('skill: a file from the skill, as text or as an image; a missing one says w
   assert.equal(r[4].data.content, "assets/data.bin is application/octet-stream, 3 bytes: annai can't show this kind of file.");
   assert.match(r[5].data.content, /^There is no file nope\.md in the skill tide-pools\. Its files: references\/safety\.md/);
 });
+
+/** A Shiori whose helper (the utility model) reads PDFs or not, and a PDF in the trip. @param {any[]} main @param {any[]} utility @param {{ helperPdf?: boolean, mainInput?: string[] }} o */
+async function helperKit(main, utility, { helperPdf = false, mainInput = ['text', 'image'] } = {}) {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([main], { models: [{ input: mainInput }], utility });
+  if (helperPdf) {
+    const u = (await k.llm.config()).models['m-u'];
+    await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  }
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  return k;
+}
+const helperReads = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
+const delegate = { toolCalls: [{ name: 'task', input: { prompt: 'Read the booking PDF', tools: ['read'] } }] };
+/** The helper's requests. @param {any} k */
+const helperRequests = (k) => k.requests.filter((/** @type {any} */ r) => r.messages[0].parts[0].text === 'Read the booking PDF');
+
+test("task: a helper whose model reads PDFs gets the document itself from its read, as Shiori would (the third emulator pass)", async () => {
+  const k = await helperKit([delegate, sleep], [helperReads, { text: 'Check-in 4 PM, PRI-88412.' }], { helperPdf: true });
+  k.agent.send('What does the booking say?');
+  await k.agent.idle();
+  const last = helperRequests(k)[1].messages.at(-1);
+  const doc = last.parts.find((/** @type {any} */ p) => p.type === 'document');
+  assert.equal(doc?.mediaType, 'application/pdf');
+  assert.ok(doc.data.length > 0);
+  assert.equal(last.parts[0].type, 'tool_result');
+});
+
+test("task: a helper whose model reads no PDFs is told it in words by a model that does, with the main loop's words", async () => {
+  const k = await helperKit([delegate, { text: 'Hotel booking: check-in 4 PM, PRI-88412.' }, sleep], [helperReads, { text: 'Check-in 4 PM.' }], { mainInput: ['text', 'pdf'] });
+  k.agent.send('What does the booking say?');
+  await k.agent.idle();
+  const last = helperRequests(k)[1].messages.at(-1);
+  assert.equal(last.parts.some((/** @type {any} */ p) => p.type === 'document'), false);
+  assert.match(last.parts[0].content, /^The PDF \/trip\/files\/booking\.pdf\.\nWhat it says \(told by model-0, as you can't read PDFs\): Hotel booking: check-in 4 PM, PRI-88412\.$/);
+});
+
+test("task: with no model that reads PDFs, the helper's result says it can't be read, not just that a PDF is there", async () => {
+  const k = await helperKit([delegate, sleep], [helperReads, { text: 'I could not read it.' }]);
+  k.agent.send('What does the booking say?');
+  await k.agent.idle();
+  const last = helperRequests(k)[1].messages.at(-1);
+  assert.match(last.parts[0].content, /\nNo model here can read PDFs, so what it says can't be told\.$/);
+});
+
+test("task: a helper's photo goes to it as an image when its model sees photos", async () => {
+  const photo = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
+  const k = await helperKit([delegate, sleep], [photo, { text: 'A menu.' }]);
+  await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.send('Look at the menu');
+  await k.agent.idle();
+  assert.equal(helperRequests(k)[1].messages.at(-1).parts.some((/** @type {any} */ p) => p.type === 'image'), true);
+});

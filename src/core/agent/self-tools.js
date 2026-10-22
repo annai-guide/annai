@@ -1,11 +1,12 @@
 import { tunePersonality } from './personalities.js';
 import { toolList, definitions, runTool, toolSwitches, TALK } from './tools.js';
-import { record, storedTexts } from './log.js';
+import { record, storedTexts, blobBytes } from './log.js';
 import { photoStub } from './compaction.js';
 import { tracedFetch } from './net.js';
 import { newId } from '../scopes.js';
 import { isTextType } from '../paths.js';
-import { text, toBase64 } from '../bytes.js';
+import { text, toBase64, fromBase64 } from '../bytes.js';
+import { modelOf } from '../llm/config.js';
 
 /** The most model calls a helper may make. */
 export const TASK_STEPS = 25;
@@ -51,6 +52,7 @@ export function selfTools(agent) {
               request: { system: TASK_SYSTEM, messages, tools: definitions(tools) },
             });
             said = r.reply.text || said;
+            const cfg = await agent.llm.config();
             const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
             if (!calls.length) return r.reply.text.trim() || 'The helper found nothing to report.';
             /** @type {import('../llm/contract.js').Part[]} */
@@ -58,11 +60,16 @@ export function selfTools(agent) {
             for (const c of calls) {
               await record(agent.store, agent.scope, { now: agent.now(), type: 'tool.call', actor: 'shiori', data: { id: c.id, name: c.name, input: c.input, wake: call.wake, task: taskId } });
               const tool = tools.find((t) => t.name === c.name);
-              const { output, ms } = tool
-                ? await runTool(tool, c.input ?? {}, { ...call, id: c.id, fetch: tracedFetch(agent.store, agent.scope, { tool: c.name, wake: call.wake }, agent.get) })
+              // The helper's own model, the one that answered: its tools see what it takes (read's PDF, a photo).
+              const model = cfg.models[r.modelId] ? modelOf(cfg.models[r.modelId]) : null;
+              const ran = tool
+                ? await runTool(tool, c.input ?? {}, { ...call, id: c.id, model, fetch: tracedFetch(agent.store, agent.scope, { tool: c.name, wake: call.wake }, agent.get) })
                 : { output: { content: `Error: the helper has no tool called ${c.name}.`, isError: true }, ms: 0 };
+              const { ms } = ran;
+              // A photo or PDF reaches it as one, or in words from a model that can, as it does for Shiori (never as a bare stub).
+              const output = await agent.describe(ran.output, call.wake, call.signal, model ?? { input: ['text'] });
               await record(agent.store, agent.scope, { now: agent.now(), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: call.wake, task: taskId }, texts: [['content', output.content]] });
-              results.push({ type: 'tool_result', id: c.id, content: output.content, ...(output.isError ? { isError: true } : {}) });
+              results.push({ type: 'tool_result', id: c.id, content: output.content, ...(output.isError ? { isError: true } : {}) }, ...(await mediaParts(agent.store, output)));
             }
             messages.push({ role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results });
           }
@@ -88,6 +95,21 @@ export function selfTools(agent) {
       run: async (/** @type {{ query?: string, from?: number, to?: number, start?: number }} */ i) => recall(agent, i),
     },
   ];
+}
+
+/**
+ * The photos and PDF a tool returned, as parts for a model that takes them. @param {import('../types.js').Store} store
+ * @param {import('./tools.js').ToolOutput} output @returns {Promise<import('../llm/contract.js').Part[]>}
+ */
+async function mediaParts(store, output) {
+  /** @type {import('../llm/contract.js').Part[]} */
+  const parts = [];
+  for (const m of [...(output.images ?? []), ...(output.document ? [output.document] : [])]) {
+    const data = m.data ?? (m.hash ? await blobBytes(store, m.hash).then((b) => (b ? toBase64(b) : '')) : '');
+    if (!data) continue;
+    parts.push(m === output.document ? { type: 'document', mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: 'image', mediaType: m.mediaType, data });
+  }
+  return parts;
 }
 
 /**
