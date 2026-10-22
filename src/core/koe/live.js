@@ -158,6 +158,7 @@ export class LiveKoe {
     }
     const ok = this.#opening ? await this.#opening : this.state === 'open';
     if (ok && mic) await this.listen();
+    if (ok && this.state === 'open') this.#idle(); // what waited for a session (Kokoro's notes kept at a tap's close) goes in
     return ok;
   }
 
@@ -279,8 +280,9 @@ export class LiveKoe {
       this.#owed = { waiting: [], sent: [], cued: false, cue: false };
     }
     this.#again();
-    // Kokoro's notes it owes: a page out of view has them go in once back (shown()); any other close hands them on (Halves).
-    if (why !== 'away' && this.#owed.waiting.length) this.c.owed(this.#owed.waiting.splice(0));
+    // Kokoro's notes it owes: a page out of view has them go in once back (shown()), and the user's tap with the next session (the
+    // iPhone trace, 2026-10-22: a tap had annai read one aloud); any other close hands them on (Halves).
+    if (why !== 'away' && why !== 'tap' && this.#owed.waiting.length) this.c.owed(this.#owed.waiting.splice(0));
     const was = this.state;
     this.state = 'closed';
     this.#watched = false;
@@ -483,6 +485,7 @@ export class LiveKoe {
     this.#poke();
     this.#send((s) => s.activity(edge, cut));
     this.#changed();
+    if (edge === 'end') this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
   }
 
   /** @param {Uint8Array} b */
