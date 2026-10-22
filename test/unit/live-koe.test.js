@@ -513,3 +513,96 @@ test("a live turn ends when the model's transcript of it has stopped growing for
     await k.done();
   }
 });
+
+// voice-fix item 4 (the iPhone trace, 2026-10-22: after a few taps, Gemini heard the user and never answered).
+/** The setups the stand-in got: whether each resumed a handle. @param {any} k */
+const setups = (k) => got(k, 'setup').map((/** @type {any} */ m) => (m.setup.sessionResumption?.handle ? 'resume' : 'fresh'));
+/** The user starts speaking and is still at it: activityStart is out. @param {any} k */
+async function speaking(k) {
+  const lunch = await clip('where-lunch');
+  k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000);
+  await until(() => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
+}
+
+test("a tap that closes the session while the user speaks ends their turn first (activityEnd), and the next session starts fresh, not from the handle", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story', said: 'Once, in Big Sur.', audio: tone(0.2) }]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await speaking(k);
+    assert.equal(k.agent.tap(), 'stopped');
+    await k.agent.idle();
+    await soon(async () => k.server.connections().length === 1 && got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd), 1000);
+    const input = got(k, 'realtimeInput').map((/** @type {any} */ m) => Object.keys(m.realtimeInput)[0]);
+    assert.equal(input.at(-1), 'activityEnd', 'the turn was ended before the close');
+    k.agent.send('Hello?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.deepEqual(setups(k), ['fresh', 'fresh'], 'no resuming after a tap');
+  } finally {
+    await k.done();
+  }
+});
+
+test('a quiet spell keeps the handle: the next session resumes it', async () => {
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    k.agent.live.close('quiet');
+    k.agent.send('Again');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    assert.deepEqual(setups(k), ['fresh', 'resume']);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a handle Gemini no longer keeps (1008 "session not found or expired") is let go: a fresh session with the last lines answers at once, and the model never rests', async () => {
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }, { said: 'Still here.', audio: tone(0.1) }], { server: { expired: true } });
+  try {
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    k.agent.live.close('quiet');
+    k.agent.send('Are you there?');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    assert.deepEqual(setups(k), ['fresh', 'resume', 'fresh']);
+    assert.equal(k.llm.bench.until('m-live'), 0, 'not rested');
+    assert.equal(k.agent.koeState, 'live');
+    const last = got(k, 'setup').at(-1).setup.systemInstruction.parts[0].text;
+    assert.match(last, /The conversation so far:[\s\S]*Hi/, 'with the last lines');
+  } finally {
+    await k.done();
+  }
+});
+
+test('no answer within 8 s of the user finishing: traced, and a fresh session gets their words, once; silent again, only the trace', async () => {
+  const k = await liveKit([{ heard: 'Hello, can you hear me?', heardFirst: true, silent: true }, { said: 'Yes, I can hear you.', audio: tone(0.2) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here, past the watchdog's 1 s (as 30 s is past 8 s)
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await say(k, 'where-lunch');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+    assert.equal((await k.events(['out.speak']))[0].data.text, 'Yes, I can hear you.');
+    assert.deepEqual(setups(k), ['fresh', 'fresh']);
+    assert.ok(texts(k).some((t) => t.includes('Hello, can you hear me?')), 'their words, as text, in the fresh session');
+    const silent = (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent');
+    assert.equal(silent.length, 1);
+    assert.equal(silent[0].data.quiet, true);
+  } finally {
+    await k.done();
+  }
+  const k2 = await liveKit([{ silent: true }]);
+  try {
+    await updateAppSettings(k2.ws, { voice: { closeAfterSeconds: 300 } });
+    k2.agent.send('Hello?');
+    await soon(async () => (await k2.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length === 2, 5000);
+    await new Promise((r) => setTimeout(r, 1500));
+    assert.deepEqual(setups(k2), ['fresh', 'fresh'], 'once');
+    assert.equal((await k2.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length, 2);
+  } finally {
+    await k2.done();
+  }
+});
