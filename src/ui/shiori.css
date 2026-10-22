@@ -142,6 +142,13 @@ body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
   .dock.voice .seat.dock { width: 72px; height: 72px; }
   .dock.voice .ib { width: 50px; height: 50px; }
 }
+/* And a phone on its side, which has little height and plenty of width: the text panel is one row (the box, Send, Close), not
+   three stacked, so the page keeps a third of the height with it open (the third emulator pass: 11 px of 296). */
+@media (orientation: landscape) and (max-height: 420px) {
+  .type-sheet { flex-direction: row; align-items: stretch; gap: 8px; margin-bottom: 0; }
+  .type-sheet textarea { flex: 1; min-width: 0; height: 44px; min-height: 0; resize: none; padding: 8px 12px; }
+  .type-sheet .acts { flex-wrap: nowrap; }
+}
 .convo .shiori.said .btn { align-self: flex-start; }
 
 /* The conversation: speech bubbles carry a SHIORI label instead of a second avatar. */
