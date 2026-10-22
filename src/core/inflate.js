@@ -13,10 +13,21 @@ const ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
 
 /** @typedef {{ count: Uint16Array, symbol: Uint16Array }} Huffman */
 
-/** @param {ArrayLike<number>} lengths code length of each symbol, 0 for unused @returns {Huffman} */
-function huffman(lengths) {
+/**
+ * @param {ArrayLike<number>} lengths code length of each symbol, 0 for unused
+ * @param {boolean} [partial] a code that doesn't use every bit pattern is allowed when it has one code of one bit (a lone distance), as zlib's puff has it
+ * @returns {Huffman}
+ */
+function huffman(lengths, partial = false) {
   const count = new Uint16Array(16);
   for (let i = 0; i < lengths.length; i++) count[lengths[i]]++;
+  // Over-subscribed (more codes than the lengths have room for) or incomplete codes are damaged data, as in zlib.
+  let left = 1;
+  for (let len = 1; len <= 15; len++) {
+    left = (left << 1) - count[len];
+    if (left < 0) throw new Error('bad code lengths');
+  }
+  if (left > 0 && !(partial && count[0] + count[1] === lengths.length)) throw new Error('incomplete code');
   const offs = new Uint16Array(16);
   for (let len = 1; len < 15; len++) offs[len + 1] = offs[len] + count[len];
   const symbol = new Uint16Array(lengths.length);
@@ -25,7 +36,7 @@ function huffman(lengths) {
 }
 
 const FIXED_LIT = huffman([...Array(144).fill(8), ...Array(112).fill(9), ...Array(24).fill(7), ...Array(8).fill(8)]);
-const FIXED_DIST = huffman(Array(30).fill(5));
+const FIXED_DIST = huffman(Array(32).fill(5)); // 30 codes are used; the last two are never sent
 
 /**
  * @param {Uint8Array} data raw DEFLATE
@@ -131,7 +142,7 @@ export function inflateSmall(data, limit) {
         if (i + rep > all.length) throw new Error('bad repeat');
         while (rep--) all[i++] = prev;
       }
-      codes(huffman(all.subarray(0, nlen)), huffman(all.subarray(nlen)));
+      codes(huffman(all.subarray(0, nlen), true), huffman(all.subarray(nlen), true));
     } else throw new Error('bad block');
   } while (!last);
   return out.subarray(0, outPos);
