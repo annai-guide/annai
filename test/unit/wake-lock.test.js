@@ -101,7 +101,7 @@ test('the live chip says how things stand, in a few words', () => {
   assert.equal(whileText('moving-fast'), 'while driving or riding');
   assert.equal(whileText('walking'), 'while walking');
   assert.equal(whileText('still'), 'while stopped');
-  assert.equal(whileText('unknown'), 'on the road');
+  assert.equal(whileText('unknown'), 'while on the road');
 });
 
 test('a GPS position from before the GPS was lost, or too old, is not shown as where you are (B1)', () => {

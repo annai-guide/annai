@@ -26,7 +26,7 @@ export function liveText(live) {
 
 /** "Keep the screen on while driving or riding". @param {string} activity */
 export function whileText(activity) {
-  return /** @type {Record<string, string>} */ ({ 'moving-fast': 'while driving or riding', walking: 'while walking', still: 'while stopped' })[activity] ?? 'on the road';
+  return /** @type {Record<string, string>} */ ({ 'moving-fast': 'while driving or riding', walking: 'while walking', still: 'while stopped' })[activity] ?? 'while on the road';
 }
 
 /**
