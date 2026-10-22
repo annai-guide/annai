@@ -893,7 +893,7 @@ When the app becomes visible:
 
 ### 12.1 Archive format
 
-A zip written and read by our own code: `CompressionStream` / `DecompressionStream` with `deflate-raw`, plus a CRC-32 of our own.
+A zip written and read by our own code: `CompressionStream` with `deflate-raw` to write; to read, `DecompressionStream` for entries over 64 KB compressed and a small inflate of our own (checked against zlib's output) for the smaller ones, because a stream per small entry costs more than the entry on a slow phone (a backup of 300 notes took minutes of them); plus a CRC-32 of our own. The file is read a piece at a time, a window at once for a run of small entries.
 
 ```
 annai-archive.json                   manifest: format version, app version, kind (trip | everything),

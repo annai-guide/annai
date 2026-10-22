@@ -69,3 +69,43 @@ test('an entry that says it is smaller than it is still stops the plain inflate'
   const zip = await ZipReader.open(new Blob([bytes]));
   await assert.rejects(zip.read('a.txt'), (e) => e instanceof ZipError && /larger than it says/.test(e.message));
 });
+
+test('a fixed-seed fuzz against node\'s zlib: valid streams agree; a damaged one is refused, or gives what zlib gives, never more (review)', async () => {
+  const { default: zlib } = await import('node:zlib');
+  let seed = 20261021;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
+  const ri = (/** @type {number} */ n) => Math.floor(rnd() * n);
+  const strategies = [zlib.constants.Z_DEFAULT_STRATEGY, zlib.constants.Z_FILTERED, zlib.constants.Z_HUFFMAN_ONLY, zlib.constants.Z_RLE, zlib.constants.Z_FIXED];
+  const words = ['the ', 'quick ', 'brown ', 'fox ', '京都 ', '\n', '{"a":1}', 'zz'];
+  /** @param {number} n */
+  const sampleOf = (n) => {
+    const out = new Uint8Array(n);
+    const kind = ri(4);
+    if (kind === 0) for (let i = 0; i < n; i++) out[i] = ri(256);
+    else if (kind === 1) { let t = ''; while (t.length < n) t += words[ri(words.length)]; out.set(new TextEncoder().encode(t).subarray(0, n)); }
+    else if (kind === 2) { out.fill(ri(256)); for (let i = 0; i < n / 50; i++) out[ri(n)] = ri(256); }
+    else for (let i = 0; i < n; i++) out[i] = i > 300 && rnd() < 0.6 ? out[i - 1 - ri(Math.min(i, 32768) - 1 || 1)] : ri(8);
+    return out;
+  };
+  const same = (/** @type {Uint8Array} */ a, /** @type {Uint8Array} */ b) => Buffer.compare(Buffer.from(a), Buffer.from(b)) === 0;
+  let damagedRefused = 0;
+  for (let iter = 0; iter < 120; iter++) {
+    const n = [0, 1, 2, 10, 100, 1000, 5000, 20000][ri(8)];
+    const data = sampleOf(n);
+    const packed = zlib.deflateRawSync(data, { level: ri(10), strategy: strategies[ri(5)], memLevel: 1 + ri(9), windowBits: 9 + ri(7) });
+    assert.ok(same(inflateSmall(packed, n), data), `valid stream ${iter}`);
+    for (let k = 0; k < 5; k++) {
+      const c = new Uint8Array(packed);
+      const mode = ri(3);
+      if (mode === 0 && c.length) c[ri(c.length)] ^= 1 << ri(8);
+      else if (mode === 1 && c.length) for (let j = 0; j < 1 + ri(8); j++) c[ri(c.length)] = ri(256);
+      const input = mode === 2 ? c.subarray(0, ri(c.length + 1)) : c;
+      let ours = null;
+      try { ours = inflateSmall(input, n + 64); } catch { damagedRefused++; }
+      let ref = null;
+      try { ref = zlib.inflateRawSync(input, { maxOutputLength: Math.max(n + 64, 1) }); } catch { /* refused */ }
+      if (ours) assert.ok(ref && same(ours, ref), `a damaged stream ${iter}.${k} that zlib refuses, or reads differently, was read`);
+    }
+  }
+  assert.ok(damagedRefused > 100, String(damagedRefused));
+});
