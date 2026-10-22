@@ -7,7 +7,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, ME, SYS_SETTINGS, recordBackup, backupState, removeTrip } from '../../src/core/scopes.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, peekArchive, verifyArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
+import { exportArchive, peekArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
 import { PassphraseError, decrypt } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
@@ -53,7 +53,7 @@ test('a backup of everything restores onto an empty device, history included', a
   assert.equal(manifest.kind, 'everything');
 
   const b = await device();
-  const opened = await openArchive(await bytesOf(blob));
+  const opened = await peekArchive(await bytesOf(blob));
   const desc = await describeArchive(b.store, opened);
   assert.deepEqual(desc.trips.map((t) => [t.title, t.existing]), [['京都 in spring', null]]);
   const result = await importArchive(b.store, opened, { me: 'replace', settings: 'replace' });
@@ -82,7 +82,7 @@ test('the share preset leaves out memory and history', async () => {
   assert.equal(manifest.blobs.length, 0);
   assert.equal(manifest.scopes[0].events, undefined);
   const b = await device();
-  const r = await importArchive(b.store, await openArchive(await bytesOf(blob)));
+  const r = await importArchive(b.store, await peekArchive(await bytesOf(blob)));
   assert.equal(await b.ws.readText(r.trips[0], '/memory.md'), undefined);
   assert.deepEqual(await b.ws.history(r.trips[0], '/notes/案内.md'), []);
 });
@@ -100,9 +100,9 @@ test('encrypted exports need the passphrase', async () => {
   const { blob, filename } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, passphrase: 'pine needle', iterations: FAST, app: '0.1.0' });
   assert.match(filename, /^annai-京都-in-spring-\d{4}-\d{2}-\d{2}\.annai$/);
   const bytes = await bytesOf(blob);
-  await assert.rejects(openArchive(bytes), NeedsPassphraseError);
-  await assert.rejects(openArchive(bytes, 'wrong'), PassphraseError);
-  const opened = await openArchive(bytes, 'pine needle');
+  await assert.rejects(peekArchive(bytes), NeedsPassphraseError);
+  await assert.rejects(peekArchive(bytes, 'wrong'), PassphraseError);
+  const opened = await peekArchive(bytes, 'pine needle');
   assert.equal(opened.manifest.encrypted, true);
 });
 
@@ -114,7 +114,7 @@ test('a tampered entry is refused, and nothing is imported', async () => {
   const z = new ZipWriter();
   for (const [name, bytes] of entries) await z.add(name, name.endsWith('案内.md') ? utf8('evil') : bytes);
   const b = await device();
-  await assert.rejects(openArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /damaged/.test(e.message) && /案内\.md/.test(e.message));
+  await assert.rejects(importArchive(b.store, await peekArchive(await bytesOf(z.finish()))), (e) => e instanceof ArchiveError && /damaged/.test(e.message) && /案内\.md/.test(e.message));
   assert.deepEqual((await listTrips(b.store)).active, []);
 });
 
@@ -127,14 +127,14 @@ test('an archive from a newer annai is refused', async () => {
   manifest.format = 99;
   const z = new ZipWriter();
   for (const [name, bytes] of entries) await z.add(name, name === MANIFEST_NAME ? utf8(JSON.stringify(manifest)) : bytes);
-  await assert.rejects(openArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /newer version of annai/.test(e.message));
+  await assert.rejects(peekArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /newer version of annai/.test(e.message));
 });
 
 test('something that is not an annai file is refused', async () => {
-  await assert.rejects(openArchive(utf8('hello')), ArchiveError);
+  await assert.rejects(peekArchive(utf8('hello')), ArchiveError);
   const z = new ZipWriter();
   await z.add('readme.txt', utf8('hi'));
-  await assert.rejects(openArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /isn't an annai file/.test(e.message));
+  await assert.rejects(peekArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /isn't an annai file/.test(e.message));
 });
 
 test('"replace mine" archives the existing copy; "add as new" keeps both', async () => {
@@ -143,8 +143,8 @@ test('"replace mine" archives the existing copy; "add as new" keeps both', async
   const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
   const bytes = await bytesOf(blob);
   const b = await device();
-  const first = (await importArchive(b.store, await openArchive(bytes))).trips[0];
-  const opened = await openArchive(bytes);
+  const first = (await importArchive(b.store, await peekArchive(bytes))).trips[0];
+  const opened = await peekArchive(bytes);
   const desc = await describeArchive(b.store, opened);
   assert.equal(desc.trips[0].existing, first);
   const r = await importArchive(b.store, opened, { trips: { [trip]: 'replace' } });
@@ -152,7 +152,7 @@ test('"replace mine" archives the existing copy; "add as new" keeps both', async
   const trips = await listTrips(b.store);
   assert.deepEqual(trips.active.map((s) => s.id), r.trips);
   assert.deepEqual(trips.archived.map((s) => s.id), [first]);
-  const again = await importArchive(b.store, await openArchive(bytes), { trips: { [trip]: 'new' } });
+  const again = await importArchive(b.store, await peekArchive(bytes), { trips: { [trip]: 'new' } });
   assert.equal((await listTrips(b.store)).active.length, 2);
   assert.equal(again.archived.length, 0);
 });
@@ -164,10 +164,10 @@ test('API keys travel only in encrypted backups of everything, and only when cho
   const { blob } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, secrets: true, passphrase: 'p', iterations: FAST, app: '0.1.0' });
   const bytes = await bytesOf(blob);
   const b = await device();
-  const without = await importArchive(b.store, await openArchive(bytes, 'p'));
+  const without = await importArchive(b.store, await peekArchive(bytes, 'p'));
   assert.equal(without.secrets, 0);
   assert.equal(await b.store.tx(['secrets'], 'readonly', (t) => t.getSecret('openrouter')), undefined);
-  const withKeys = await importArchive(b.store, await openArchive(bytes, 'p'), { secrets: true });
+  const withKeys = await importArchive(b.store, await peekArchive(bytes, 'p'), { secrets: true });
   assert.equal(withKeys.secrets, 1);
   assert.equal(await b.store.tx(['secrets'], 'readonly', (t) => t.getSecret('openrouter')), 'sk-or-1');
 });
@@ -180,7 +180,7 @@ test('a 5 MB photo round-trips byte for byte', async () => {
   await a.ws.write(trip, '/files/bixby.jpg', photo, { author: 'user' });
   const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   const b = await device();
-  const r = await importArchive(b.store, await openArchive(await bytesOf(blob)));
+  const r = await importArchive(b.store, await peekArchive(await bytesOf(blob)));
   assert.deepEqual((await b.ws.read(r.trips[0], '/files/bixby.jpg'))?.bytes, photo);
 });
 
@@ -191,7 +191,7 @@ test('Japanese names round-trip and file names stay readable', async () => {
   const { blob, filename } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   assert.match(filename, /^annai-京都-/);
   const b = await device();
-  const r = await importArchive(b.store, await openArchive(await bytesOf(blob)));
+  const r = await importArchive(b.store, await peekArchive(await bytesOf(blob)));
   assert.equal(await b.ws.readText(r.trips[0], '/notes/伏見稲荷.md'), '千本鳥居');
   assert.equal(archiveName({ kind: 'trip', title: 'Big Sur · Thanksgiving', encrypted: false, now: Date.UTC(2026, 10, 30), tz: 'UTC' }), 'annai-big-sur-thanksgiving-2026-11-30.annai.zip');
 });
@@ -202,7 +202,7 @@ test('settings are kept unless the user chooses to replace them', async () => {
   const { blob } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
   const b = await device();
   await updateAppSettings(b.ws, { units: 'metric' });
-  await importArchive(b.store, await openArchive(await bytesOf(blob)));
+  await importArchive(b.store, await peekArchive(await bytesOf(blob)));
   assert.equal((await readAppSettings(b.ws)).units, 'metric');
   assert.equal((await b.ws.list(SYS_SETTINGS)).length, 1);
 });
@@ -213,7 +213,7 @@ test('imported plugins arrive switched off, so running their code is always an e
   await a.ws.write('sys:plugins', '/installed.json', { hello: { version: '1.0.0', name: 'Hello', enabled: true, installed: 1, source: 'x' } }, { author: 'system' });
   const { blob } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
   const b = await device();
-  await importArchive(b.store, await openArchive(await bytesOf(blob)), { plugins: 'replace' });
+  await importArchive(b.store, await peekArchive(await bytesOf(blob)), { plugins: 'replace' });
   assert.equal((await b.ws.readJSON('sys:plugins', '/installed.json')).hello.enabled, false);
   assert.equal(await b.ws.readText('sys:plugins', '/hello/index.js'), 'export function activate() {}');
 });
@@ -224,7 +224,7 @@ test('imported API keys never replace keys already on this device', async () => 
   const { blob } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, secrets: true, passphrase: 'p', iterations: FAST, app: '0.1.0' });
   const b = await device();
   await b.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('openrouter', 'mine'));
-  const r = await importArchive(b.store, await openArchive(await bytesOf(blob), 'p'), { secrets: true });
+  const r = await importArchive(b.store, await peekArchive(await bytesOf(blob), 'p'), { secrets: true });
   assert.equal(r.secrets, 1);
   assert.deepEqual(r.keptSecrets, ['openrouter']);
   assert.equal(await b.store.tx(['secrets'], 'readonly', (t) => t.getSecret('openrouter')), 'mine');
@@ -241,7 +241,7 @@ test('archives with unsafe file paths are refused', async () => {
     manifest.files[0].path = bad;
     const z = new ZipWriter();
     for (const [name, bytes] of entries) await z.add(name, name === MANIFEST_NAME ? utf8(JSON.stringify(manifest)) : bytes);
-    await assert.rejects(openArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /unsafe file path/.test(e.message), bad);
+    await assert.rejects(peekArchive(await bytesOf(z.finish())), (e) => e instanceof ArchiveError && /unsafe file path/.test(e.message), bad);
   }
 });
 
@@ -287,9 +287,9 @@ test('"replace mine" archives every active copy of the trip, not just the first'
   const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   const bytes = await bytesOf(blob);
   const b = await device();
-  const one = (await importArchive(b.store, await openArchive(bytes))).trips[0];
-  const two = (await importArchive(b.store, await openArchive(bytes))).trips[0];
-  const r = await importArchive(b.store, await openArchive(bytes), { trips: { [trip]: 'replace' } });
+  const one = (await importArchive(b.store, await peekArchive(bytes))).trips[0];
+  const two = (await importArchive(b.store, await peekArchive(bytes))).trips[0];
+  const r = await importArchive(b.store, await peekArchive(bytes), { trips: { [trip]: 'replace' } });
   assert.deepEqual(r.archived.slice().sort(), [one, two].sort());
   assert.deepEqual((await listTrips(b.store)).active.map((s) => s.id), r.trips);
 });
@@ -311,7 +311,7 @@ test('an archive whose history log is damaged is refused before anything is impo
       const name = m.scopes[0].events;
       entries.set(name, utf8(text(/** @type {Uint8Array} */ (entries.get(name))) + line + '\n'));
     });
-    await assert.rejects(openArchive(tampered), (e) => e instanceof ArchiveError && /damaged/.test(e.message), line);
+    await assert.rejects(importArchive((await device()).store, await peekArchive(tampered)), (e) => e instanceof ArchiveError && /damaged/.test(e.message), line);
   }
 });
 
@@ -329,9 +329,9 @@ test('an archive that describes its contents wrongly is refused', async () => {
     (m) => { m.files[0].created = null; },
   ];
   for (const edit of edits) {
-    await assert.rejects(openArchive(await rewrite(blob, edit)), (e) => e instanceof ArchiveError && /damaged/.test(e.message), String(edit));
+    await assert.rejects(peekArchive(await rewrite(blob, edit)), (e) => e instanceof ArchiveError && /damaged/.test(e.message), String(edit));
   }
-  await assert.rejects(openArchive(await rewrite(blob, (m) => { m.scopes[0].record.format = 2; })), (e) => e instanceof ArchiveError && /newer version of annai/.test(e.message));
+  await assert.rejects(peekArchive(await rewrite(blob, (m) => { m.scopes[0].record.format = 2; })), (e) => e instanceof ArchiveError && /newer version of annai/.test(e.message));
 });
 
 test('export file names keep titles in any script', () => {
@@ -353,7 +353,7 @@ test('importing onto a full device says storage is full and imports nothing', as
   const b = fillableDevice();
   await ensureBaseScopes(b.ws);
   b.state.full = true;
-  await assert.rejects(importArchive(b.store, await openArchive(await bytesOf(blob))), StorageFullError);
+  await assert.rejects(importArchive(b.store, await peekArchive(await bytesOf(blob))), StorageFullError);
   b.state.full = false;
   assert.deepEqual((await listTrips(b.store)).active, []);
 });
@@ -373,7 +373,7 @@ test('opening and importing a backup reads the file in pieces, never whole (spec
     const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', passphrase, iterations: FAST });
     const file = new PiecesOnly([blob]);
     const b = await device();
-    const r = await importArchive(b.store, await openArchive(file, passphrase));
+    const r = await importArchive(b.store, await peekArchive(file, passphrase));
     assert.deepEqual((await b.ws.read(r.trips[0], '/files/p3.jpg'))?.bytes, (await a.ws.read(trip, '/files/p3.jpg'))?.bytes);
     assert.ok(file.largest < 2 * 1024 * 1024, `read ${file.largest} of ${file.size} bytes at once`);
   }
@@ -389,7 +389,7 @@ test('an import that runs out of space partway leaves none of its content behind
   const hashes = [...new Set([...manifest.files, ...manifest.blobs].map((x) => x.hash))];
   const before = new Set((await Promise.all(hashes.map(async (h) => [h, await has(h)]))).filter(([, x]) => x).map(([h]) => h));
   b.state.room = 2;
-  await assert.rejects(importArchive(b.store, await openArchive(await bytesOf(blob))), StorageFullError);
+  await assert.rejects(importArchive(b.store, await peekArchive(await bytesOf(blob))), StorageFullError);
   b.state.room = Infinity;
   for (const h of hashes) assert.equal(await has(h), before.has(h), h);
   assert.deepEqual((await listTrips(b.store)).active, []);
@@ -404,7 +404,7 @@ test('opening a file that says it unpacks to gigabytes is refused before anythin
   const cd = v.getUint32(b.length - 22 + 16, true);
   v.setUint32(cd + 24, 1000 * 1024 * 1024, true); // and the index's
   const file = new PiecesOnly([b]);
-  await assert.rejects(openArchive(file), (e) => e instanceof ArchiveError && /zip bomb/.test(e.message));
+  await assert.rejects(peekArchive(file), (e) => e instanceof ArchiveError && /zip bomb/.test(e.message));
 });
 
 /** @param {string} name */
@@ -418,7 +418,7 @@ test('photos keep their metadata through a backup', async () => {
   await a.ws.write(trip, '/files/2026-11-26-1904.webp', await photoFixture('portrait.webp'), { author: 'user', type: 'image/webp', meta });
   const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
   const b = await device();
-  const r = await importArchive(b.store, await openArchive(blob));
+  const r = await importArchive(b.store, await peekArchive(blob));
   assert.deepEqual((await b.ws.read(r.trips[0], '/files/2026-11-26-1904.webp'))?.entry.meta, meta);
 });
 
@@ -461,7 +461,7 @@ test('a Share without locations carries none: not in metadata, not in the photos
   }
   assert.ok(manifest.blobs.every((b) => !b.type.startsWith('image/')), 'older versions of photos are left out');
   const b = await device();
-  assert.equal((await importArchive(b.store, await openArchive(blob))).trips.length, 1);
+  assert.equal((await importArchive(b.store, await peekArchive(blob))).trips.length, 1);
 });
 
 test('with locations included, a Share still encodes kept originals and keeps their place beside them', async () => {
@@ -483,7 +483,7 @@ test('an archive with malformed photo metadata is refused', async () => {
   await a.ws.write(trip, '/files/p.webp', await photoFixture('portrait.webp'), { author: 'user', type: 'image/webp', meta: { width: 64, height: 48, place: nepenthe } });
   const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   for (const edit of [(/** @type {any} */ m) => { m.files.find((/** @type {any} */ f) => f.meta).meta.place.lat = 200; }, (/** @type {any} */ m) => { m.files.find((/** @type {any} */ f) => f.meta).meta.script = 'x'; }]) {
-    await assert.rejects(openArchive(await rewrite(blob, edit)), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+    await assert.rejects(peekArchive(await rewrite(blob, edit)), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
   }
 });
 
@@ -537,7 +537,7 @@ test('a Backup always opens again, even when a photo has details that make no se
   await a.ws.write(trip, '/files/odd.jpg', await photoFixture('plain.jpg'), { author: 'user', type: 'image/jpeg', meta: { width: 0, height: 48, taken } });
   const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
   const b = await device();
-  const r = await importArchive(b.store, await openArchive(blob));
+  const r = await importArchive(b.store, await peekArchive(blob));
   assert.deepEqual((await b.ws.read(r.trips[0], '/files/odd.jpg'))?.entry.meta, { height: 48, taken });
 });
 
@@ -623,7 +623,7 @@ test("a trip's backup record stays on the device that made it", async () => {
   const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
   assert.equal('backup' in manifest.scopes[0].record, false);
   const b = await device();
-  const opened = await openArchive(await bytesOf(blob));
+  const opened = await peekArchive(await bytesOf(blob));
   opened.manifest.scopes[0].record.backup = { at: 1, seq: 999 }; // as an older or hand-made file might say
   const [copy] = (await importArchive(b.store, opened)).trips;
   assert.deepEqual(await backupState(b.store, copy), { at: null, changed: true });
@@ -654,9 +654,9 @@ test('an import whose content is removed before it finishes imports nothing and 
   const bytes = await bytesOf(blob);
   // Its content is already on this device, so the import stores none of it; then the trip holding it goes.
   const racing = beforeCommit(a.store, () => removeTrip(a.store, trip));
-  await assert.rejects(importArchive(racing, await openArchive(bytes)), (e) => e instanceof ArchiveError && /Import it again/.test(e.message));
+  await assert.rejects(importArchive(racing, await peekArchive(bytes)), (e) => e instanceof ArchiveError && /Import it again/.test(e.message));
   assert.deepEqual((await listTrips(a.store)).active, []);
-  const [copy] = (await importArchive(a.store, await openArchive(bytes))).trips;
+  const [copy] = (await importArchive(a.store, await peekArchive(bytes))).trips;
   assert.deepEqual((await a.ws.read(copy, '/files/photo.jpg'))?.bytes, photo);
 });
 
@@ -673,7 +673,7 @@ test('a failed import keeps content that history came to point at while it ran',
     await b.ws.write(trip, '/files/p.jpg', new Uint8Array([1]), { author: 'user' });
     throw new Error('the phone went to sleep');
   });
-  await assert.rejects(importArchive(failing, await openArchive(await bytesOf(blob))), /went to sleep/);
+  await assert.rejects(importArchive(failing, await peekArchive(await bytesOf(blob))), /went to sleep/);
   const [first] = await b.ws.history(trip, '/files/p.jpg');
   await b.ws.restore(trip, '/files/p.jpg', /** @type {string} */ (first.new), { author: 'user' });
   assert.deepEqual((await b.ws.read(trip, '/files/p.jpg'))?.bytes, photo);
@@ -708,7 +708,6 @@ test('peeking at an archive reads only its manifest, and the content is checked 
   const z = new ZipWriter();
   for (const [name, bytes] of entries) await z.add(name, name === note.name ? utf8('changed') : bytes);
   const tampered = await bytesOf(z.finish());
-  await assert.rejects(openArchive(tampered), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
   const peeked = await peekArchive(tampered);
   assert.equal((await describeArchive((await device()).store, peeked)).trips.length, 1);
   assert.equal(peeked.events.size, 0);
@@ -716,10 +715,6 @@ test('peeking at an archive reads only its manifest, and the content is checked 
   await assert.rejects(importArchive(b.store, peeked), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
   assert.equal((await listTrips(b.store)).active.length, 0);
   assert.equal((await b.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(note.hash))), false);
-  // verifyArchive says the same up front, with progress.
-  const steps = /** @type {number[]} */ ([]);
-  await assert.rejects(verifyArchive(peeked, (done) => steps.push(done)), /damaged/);
-  assert.ok(steps.length > 0);
 });
 
 test('an import of a peeked archive brings the history in and reports how far it has read', async () => {
@@ -732,7 +727,7 @@ test('an import of a peeked archive brings the history in and reports how far it
   const r = await importArchive(b.store, await peekArchive(await bytesOf(blob)), { onProgress: (done, total) => seen.push([done, total]) });
   assert.equal(r.trips.length, 1);
   assert.ok(seen.length >= 2 && seen.at(-1)?.[0] === seen.at(-1)?.[1], JSON.stringify(seen));
-  const same = await importArchive((await device()).store, await openArchive(await bytesOf(blob)));
+  const same = await importArchive((await device()).store, await peekArchive(await bytesOf(blob)));
   assert.equal(same.trips.length, 1);
   const events = await b.store.tx(['events'], 'readonly', (t) => t.listEvents(r.trips[0]));
   assert.ok(events.some((e) => e.type === 'import') && events.length > 2);

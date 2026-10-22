@@ -329,7 +329,7 @@ async function readBlob(store, hash, path) {
 /**
  * Decrypts (if needed) and opens an archive, and reads only its manifest: enough for the preview,
  * however large the file. The content is checked when it is imported, one entry at a time
- * (importArchive), or all at once by verifyArchive. Throws ArchiveError (or NeedsPassphraseError /
+ * (importArchive). Throws ArchiveError (or NeedsPassphraseError /
  * PassphraseError) without touching storage.
  * @param {Blob | Uint8Array} file
  * @param {string} [passphrase]
@@ -372,33 +372,6 @@ export async function peekArchive(file, passphrase) {
   for (const f of [...manifest.files, ...manifest.blobs, ...manifest.extras]) if (!zip.has(f.name)) missing.push(`${f.name} is missing`);
   if (missing.length) throw new ArchiveError(`This file is damaged: ${missing.join('; ')}.`);
   return { manifest, zip, events: new Map() };
-}
-
-/**
- * Reads and checks every entry of an opened archive, one at a time, and parses its history logs
- * (spec §12.1). Throws ArchiveError.
- * @param {OpenedArchive} opened
- * @param {(done: number, total: number) => void} [onProgress]
- * @returns {Promise<OpenedArchive>}
- */
-export async function verifyArchive(opened, onProgress) {
-  const { manifest, zip } = opened;
-  /** @type {string[]} */
-  const problems = [];
-  const all = [...manifest.files, ...manifest.blobs, ...manifest.extras];
-  let done = 0;
-  for (const f of all) {
-    if ((await sha256Hex(await readEntry(zip, f.name))) !== f.hash) problems.push(`${f.name} was changed`);
-    onProgress?.(++done, all.length);
-  }
-  if (problems.length) throw new ArchiveError(`This file is damaged: ${problems.join('; ')}.`);
-  for (const s of manifest.scopes) if (s.events) await logOf(opened, s.events);
-  return opened;
-}
-
-/** Decrypts, opens and fully verifies an archive. @param {Blob | Uint8Array} file @param {string} [passphrase] @param {(done: number, total: number) => void} [onProgress] */
-export async function openArchive(file, passphrase, onProgress) {
-  return verifyArchive(await peekArchive(file, passphrase), onProgress);
 }
 
 /** A scope's history log: parsed and checked once, then kept. @param {OpenedArchive} opened @param {string} name */

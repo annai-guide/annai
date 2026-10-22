@@ -5,7 +5,7 @@ import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, isDeviceSecret } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, importArchive, PRESETS, MANIFEST_NAME } from '../../src/core/archive.js';
+import { exportArchive, peekArchive, importArchive, PRESETS, MANIFEST_NAME } from '../../src/core/archive.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8, text } from '../../src/core/bytes.js';
@@ -25,7 +25,7 @@ test("the relay's cancel tokens never leave this device: not even an encrypted B
   });
   const { blob } = await exportArchive(a.store, { kind: 'everything', include: { ...PRESETS.backup }, secrets: true, passphrase: 'correct horse battery', app: 'test' });
   const b = await device();
-  const result = await importArchive(b.store, await openArchive(blob, 'correct horse battery'), { secrets: true });
+  const result = await importArchive(b.store, await peekArchive(blob, 'correct horse battery'), { secrets: true });
   assert.equal(result.secrets, 1);
   assert.deepEqual(await b.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), ['endpoint:e']);
   assert.equal(isDeviceSecret('push:tokens'), true);
@@ -46,6 +46,6 @@ test("an archive that holds push tokens anyway (made elsewhere) doesn't bring th
   await zip.add('system/secrets.json', body);
   await zip.add(MANIFEST_NAME, utf8(JSON.stringify(manifest)));
   const b = await device();
-  await importArchive(b.store, await openArchive(zip.finish()), { secrets: true });
+  await importArchive(b.store, await peekArchive(zip.finish()), { secrets: true });
   assert.deepEqual(await b.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), ['endpoint:y']);
 });
