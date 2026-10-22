@@ -34,8 +34,8 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await add(page, 'OpenAI');
-  // Nothing of OpenAI's is free, so no chat role is filled by adding, and the page says where to tap (the second emulator re-check).
-  await expect(page.getByText(/^OpenAI has no free models, so no chat role was filled\./)).toBeVisible();
+  // Nothing of OpenAI's is free, and it is the first provider: Main must not stay empty, so its recommended model goes in, and the page says it costs money.
+  await expect(page.getByText(/^Main GPT-6\.1 Sol.*cost money/)).toBeVisible();
   expect(await installedIds(page)).toEqual(['openai-responses', 'provider-openai', 'speech-openai']);
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
   await expect(page.getByRole('link', { name: 'Get a key' })).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
@@ -50,15 +50,10 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
   expect(await page.content()).not.toContain('sk-test-openai-123456');
   expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toHaveLength(1);
-  // No chat model went into a role by itself; its voice is behind the browser's, never ahead of it.
-  await page.getByRole('link', { name: '← Models' }).click();
-  await expect(page.getByText('1. GPT-6.1 Sol')).toHaveCount(0);
-  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI: GPT-4o mini TTS (Marin)']);
-  // The user's own tap puts the recommended chat models in.
-  await page.getByRole('link', { name: /^OpenAI/ }).click();
-  await page.getByRole('button', { name: 'Use the recommended models' }).click();
+  // Main has its model; its voice is behind the browser's, never ahead of it.
   await page.getByRole('link', { name: '← Models' }).click();
   await expect(page.getByText('1. GPT-6.1 Sol')).toBeVisible();
+  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI: GPT-4o mini TTS (Marin)']);
   // Remove: everything it brought goes.
   await page.getByRole('link', { name: /^OpenAI/ }).click();
   await expect(page.getByText('Removes its key, its models and their places in roles, and the OpenAI plugin, with OpenAI Responses and OpenAI-compatible speech, which nothing else needs.')).toBeVisible();

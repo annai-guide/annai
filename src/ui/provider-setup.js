@@ -213,24 +213,27 @@ export async function finishReturn(ctx, env = {}) {
 const ROLE_SHORT = { main: 'Main', koe: 'Koe', utility: 'Utility', decide: 'Quick decision', 'speech-in': 'Speech in', 'speech-out': 'Speech out' };
 
 /**
- * What adding a provider did to the roles, in words (spec §9.8): the chat roles it filled with its free models, the speech
- * lists it joined behind the free entries, and, when it has models to suggest but none free, where to tap for them.
- * @param {string} name the provider @param {string[]} filled the roles the add changed @param {boolean} suggests it suggests chat models, free or not
+ * What adding a provider did to the roles, in words (spec §9.8): the chat roles it filled with free models, and those it had to
+ * fill with models that cost money (Main is never left empty), by name, and the speech lists it joined behind the free entries.
+ * @param {string} name the provider @param {string[]} filled the roles the add changed
+ * @param {Record<string, string>} [costs] role to the name of a model that costs money, for the roles filled with one
+ * @param {boolean} [freeTier] the provider has a free-tier switch
  */
-export function filledWords(name, filled, suggests) {
+export function filledWords(name, filled, costs = {}, freeTier = false) {
   const chat = filled.filter((r) => !r.startsWith('speech-'));
   const speech = filled.filter((r) => r.startsWith('speech-'));
+  const paid = chat.filter((r) => costs[r]);
+  const free = chat.filter((r) => !costs[r]);
   return [
-    chat.length ? `${andList(chat.map((r) => ROLE_SHORT[r] ?? r))} now ${chat.length === 1 ? 'uses' : 'use'} ${name}'s free models.`
-      : suggests ? `${name} has no free models, so no chat role was filled. "Use the recommended models" on its page fills them.` : '',
+    free.length ? `${andList(free.map((r) => ROLE_SHORT[r] ?? r))} now ${free.length === 1 ? 'uses' : 'use'} ${name}'s free models.` : '',
+    paid.length ? `${andList(paid.map((r) => `${ROLE_SHORT[r] ?? r} ${costs[r]}`))} ${paid.length === 1 ? 'costs' : 'cost'} money: ${name} has no free model to start with, and Shiori needs one to answer.${freeTier ? ' If your key is on the free tier, switch that on, on this page: its models then cost nothing.' : ''}` : '',
     speech.length ? `Its ${speech.map((r) => ROLE_SHORT[r].toLowerCase()).join(' and ')} models went behind the free entries.` : '',
   ].filter(Boolean).join(' ');
 }
 
-/** Says what an add did to the roles, if anything. @param {any} ctx @param {string} plugin @param {string[]} filled */
-export function sayFilled(ctx, plugin, filled) {
+/** Says what an add did to the roles, if anything. @param {any} ctx @param {string} plugin @param {string[]} filled @param {Record<string, string>} [costs] */
+export function sayFilled(ctx, plugin, filled, costs = {}) {
   const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === plugin);
-  const roles = src?.provider.roles ?? {};
-  const words = filledWords(src?.name ?? 'The provider', filled, Object.values(roles).some((/** @type {any} */ r) => ['main', 'utility', 'decide'].some((k) => k in r)));
+  const words = filledWords(src?.name ?? 'The provider', filled, costs, Boolean(src?.provider.freeTier));
   if (words) ctx.notices.toast(words);
 }

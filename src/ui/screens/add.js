@@ -207,10 +207,12 @@ function actions(ctx, r, update) {
         // Chat roles still empty get free models only; the speech lists get the rest behind the free entries (spec §9.8).
         /** @type {string[]} */
         const filled = [];
-        const o = { official: r.official, filled };
+        /** @type {Record<string, string>} */
+        const costs = {};
+        const o = { official: r.official, filled, costs };
         const added = r.facts.code ? await ctx.llm.startAdd(id, o) : await ctx.llm.addProvider(id, o);
         ctx.go(added === null ? `#/models/provider?new=${encodeURIComponent(id)}` : `#/models/provider?id=${encodeURIComponent(added)}`);
-        if (added !== null) sayFilled(ctx, id, filled);
+        if (added !== null) sayFilled(ctx, id, filled, costs);
       }),
   }, label);
   return [r.added ? h('span', { class: 'sub', text: 'Added' }) : null, b];
