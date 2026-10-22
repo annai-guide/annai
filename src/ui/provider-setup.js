@@ -21,8 +21,11 @@ export function expectReturn(pluginId, { storage = localStorage, now = Date.now(
   storage.setItem(SLOT, JSON.stringify({ plugin: pluginId, at: now }));
 }
 
-/** Whose return this page load is, or null; any query uses the note up. @param {string} search @param {{ storage?: KeyValue, now?: number }} [o] */
-export function returnFor(search, { storage = localStorage, now = Date.now() } = {}) {
+/**
+ * Whose return this page load is, or null; any query uses the note up, but keep leaves a return's for finishReturn.
+ * @param {string} search @param {{ storage?: KeyValue, now?: number, keep?: boolean }} [o]
+ */
+export function returnFor(search, { storage = localStorage, now = Date.now(), keep = false } = {}) {
   const params = new URLSearchParams(search);
   if (!params.size) return null;
   /** @type {any} */
@@ -32,8 +35,8 @@ export function returnFor(search, { storage = localStorage, now = Date.now() } =
   } catch {
     // unreadable: no one's
   }
-  storage.removeItem(SLOT);
   const fresh = typeof note?.plugin === 'string' && typeof note.at === 'number' && now >= note.at && now - note.at <= MAX_AGE;
+  if (!fresh || !keep) storage.removeItem(SLOT);
   return fresh ? { plugin: note.plugin, params } : null;
 }
 
@@ -173,21 +176,24 @@ export function featuredStart(ctx) {
 }
 
 /**
- * When this page load is annai's address coming back to the plugin that expected it (decision 16): the
- * query leaves the address, Models says it is finishing, and the plugin's returned() takes the rest once
- * plugins have started; how it ends is on a card. Any other query is removed, and a card says a sign-in came back too late.
- * @param {any} ctx llm, store, registry, plugins, notices, render, go
+ * When this page load is annai's address coming back to the plugin that expected it (decision 16): Models says it is
+ * finishing, and once plugins have started, the query and the note go and the plugin's returned() takes the rest; how
+ * it ends is on a card. Until then a reload (spec §5.3) finishes it. Any other query is removed, and a card says so.
+ * @param {any} ctx llm, store, registry, plugins, notices, render, go; held: why plugins can't load on this page, if so
  * @param {{ location?: { search: string, pathname: string, hash: string }, history?: { replaceState: History['replaceState'] }, storage?: KeyValue, now?: number }} [env]
  * @returns {Promise<boolean>} whether it was a return
  */
 export async function finishReturn(ctx, env = {}) {
   const loc = env.location ?? location;
-  if (!loc.search) return false;
-  const back = returnFor(loc.search, env);
-  (env.history ?? history).replaceState(null, '', `${loc.pathname}${back ? '#/models' : loc.hash}`);
+  // Read once: the address changes below.
+  const search = loc.search;
+  if (!search) return false;
+  const back = returnFor(search, { ...env, keep: true });
+  const to = (/** @type {string} */ address) => (env.history ?? history).replaceState(null, '', `${loc.pathname}${address}`);
+  to(back ? `${search}#/models` : loc.hash);
   if (!back) {
     // In annai's own words: no plugin's are known for it.
-    if (new URLSearchParams(loc.search).size) ctx.notices.card({ tone: 'warn', title: 'A sign-in came back too late', body: 'A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.' });
+    if (new URLSearchParams(search).size) ctx.notices.card({ tone: 'warn', title: 'A sign-in came back too late', body: 'A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.' });
     return false;
   }
   const name = String((await ctx.plugins.installed())[back.plugin]?.name ?? back.plugin);
@@ -195,6 +201,11 @@ export async function finishReturn(ctx, env = {}) {
   try {
     ctx.render?.();
     await ctx.llm.ready;
+    // Where plugins can't load (no service worker took the page), both stay for the reload, which finishes it.
+    const held = ctx.held?.();
+    if (held) throw new Error(held);
+    (env.storage ?? localStorage).removeItem(SLOT);
+    to(loc.hash);
     const returned = setupOf(ctx.registry, back.plugin)?.returned;
     if (!returned) throw new Error(`${name} isn't running. Look at it in Settings → Plugins, then sign in again.`);
     await Promise.resolve(returned(back.params, setupUi(ctx, back.plugin))).catch((e) => {
