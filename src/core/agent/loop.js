@@ -327,7 +327,10 @@ export class Agent {
   #speaking = false;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
-  /** PDFs told in words this session, by hash: a second read isn't sent again. @type {Map<string, string>} */
+  /**
+   * PDFs told in words in the open conversation, by its scope and the hash of the bytes told: a second read isn't sent again. A
+   * conversation switch and Erase forget them. @type {Map<string, string>}
+   */
   #toldPdfs = new Map();
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
   #reachedTo = { scope: '', to: 0 };
@@ -425,6 +428,11 @@ export class Agent {
     return () => this.#on[kind].delete(fn);
   }
 
+  /** Erase: what it keeps in memory of the conversations' files goes. */
+  forgetTold() {
+    this.#toldPdfs.clear();
+  }
+
   /** The user's Try again after a turn that said nothing to them: her turn again, answering their last message. */
   tryAgain() {
     this.wake({ kind: 'cue', text: AGAIN, again: true, scope: this.scope });
@@ -484,6 +492,7 @@ export class Agent {
     this.#closeEar();
     this.voice?.speaker.stop();
     this.#target = trip;
+    this.#toldPdfs.clear(); // a conversation's told PDFs are its own
     this.#opens++;
     this.poke(); // a turn still gathering the user's messages doesn't start (review A2)
     const generation = ++this.#generation;
@@ -1903,10 +1912,11 @@ export class Agent {
         said.push(pdf ? "No model here can read PDFs, so what it says can't be told." : "No model here can see photos, so what it shows can't be told.");
         return;
       }
-      // A PDF told already this session is told again from what was said, not sent again (the fix pass).
-      const told = pdf ? m.hash ?? (m.data ? await sha256Hex(fromBase64(m.data)) : '') : '';
-      if (this.#toldPdfs.has(told)) return void said.push(/** @type {string} */ (this.#toldPdfs.get(told)));
       const bytes = m.data ? null : await blobBytes(this.store, m.hash ?? '');
+      // A PDF told already in this conversation is told from those words, not sent again (the fix pass): keyed by the bytes told,
+      // their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
+      const told = !pdf ? '' : m.data ? `${this.scope}\n${await sha256Hex(fromBase64(m.data))}` : bytes ? `${this.scope}\n${m.hash}` : '';
+      if (told && this.#toldPdfs.has(told)) return void said.push(/** @type {string} */ (this.#toldPdfs.get(told)));
       const data = m.data ?? (bytes ? toBase64(bytes) : '');
       const part = pdf ? { type: /** @type {const} */ ('document'), mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data };
       let why = '';

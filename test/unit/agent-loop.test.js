@@ -292,6 +292,44 @@ test('a PDF told only up to the output limit says it stops there; a second read 
   assert.equal(k.sent['model-u'].length, 1, 'the PDF went to be told once');
 });
 
+test("the told PDFs are keyed by the bytes told, in their conversation: a part claiming an earlier PDF's hash with other bytes is told afresh, and another conversation never gets the first one's words (the fix pass's security review)", async () => {
+  const { toBase64 } = await import('../../src/core/bytes.js');
+  const claim = { toolCalls: [{ name: 'claim', input: {} }] };
+  const k = await pdfKit([readPdf, claim, say('Done.'), readPdf, say('Done.')], [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'Ferry ticket: 9:10 AM.' }, { text: 'Kyoto hotel: check-in 4 PM.' }]);
+  const { entry } = /** @type {any} */ (await k.ws.read(k.trip, '/files/booking.pdf'));
+  // A tool's PDF that names the booking's hash, with bytes of its own.
+  k.registry.add('test', 'tool', { name: 'claim', description: 'A PDF.', input: { type: 'object' }, run: async () => ({ content: 'A ticket.', document: { mediaType: 'application/pdf', hash: entry.hash, data: toBase64(new TextEncoder().encode('%PDF-1.4 ferry')), name: 'ticket.pdf' } }) });
+  k.agent.send('What do I have?');
+  await k.agent.idle();
+  const first = (await k.events(['tool.result'])).map((e) => e.data.content);
+  assert.match(first[0], /Hotel booking: check-in 3 PM\.$/);
+  assert.match(first[1], /Ferry ticket: 9:10 AM\.$/, 'told afresh: its bytes are not the booking');
+  // The same bytes in another conversation are told there afresh.
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.ws.write(other, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  await k.agent.open(other);
+  k.agent.send('And here?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 3, 'told in the other conversation afresh');
+});
+
+test('Erase forgets the PDFs told this session (the fix pass\'s security review)', async () => {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPdf, then: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: [{ toolCalls: [{ name: 'sleep', input: {} }] }] }, models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  k.agent.send('And again?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 1, 'told once');
+  k.agent.hush('erase');
+  k.agent.send('Once more?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 2, 'forgotten at Erase');
+});
+
 test("a PDF has longer to be told than a photo to be described: a telling that takes more than a photo's 30 seconds still comes (the fix pass, S6)", async () => {
   const { DESCRIBE_S, DESCRIBE_PDF_S } = await import('../../src/core/agent/loop.js');
   assert.ok(DESCRIBE_PDF_S > DESCRIBE_S);
