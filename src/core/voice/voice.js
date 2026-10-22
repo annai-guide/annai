@@ -61,6 +61,8 @@ export class Voice {
   wavOnly = new Set();
   /** Voices that refused the format they offered: what to say the phone plays to them, until annai restarts. @type {Map<string, string[]>} */
   voicePlays = new Map();
+  /** The voices that answered a 400 naming instructions: asked without their style from then on (until annai restarts). @type {Set<string>} */
+  unstyled = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'auto', on: false, why: 'not sure' };
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
@@ -284,7 +286,8 @@ export class Voice {
 
   /**
    * One voice's clip, in the smallest format it offers that the phone plays (spec §10.6). A voice
-   * that refuses it (Speaches refuses opus and aac) is asked for MP3, then WAV, until annai restarts.
+   * that refuses it (Speaches refuses opus and aac) is asked for MP3, then WAV, until annai restarts; one that refuses its
+   * style (a 400 naming instructions) is asked without it, as long.
    * A voice that streams gives its stream once a tap has unlocked sound (G3): before then, the stream
    * player might never sound (an iPhone), where a whole clip's refusal says so.
    * @param {string} id @param {string} text @param {AbortSignal} [signal]
@@ -296,9 +299,14 @@ export class Voice {
     const stream = Boolean(this.#unlocked && this.platform?.player.stream);
     for (let plays = this.voicePlays.get(id) ?? this.plays(); ;) {
       try {
-        const r = await this.llm.synthesize({ modelId: id, text, signal, scope: this.scope, plays, ...(stream ? { stream } : {}) });
+        const r = await this.llm.synthesize({ modelId: id, text, signal, scope: this.scope, plays, ...(stream ? { stream } : {}), ...(this.unstyled.has(id) ? { unstyled: true } : {}) });
         return r.stream ?? r.clip;
       } catch (e) {
+        // A server that has no instructions field says so in a 400: asked again without the style, once.
+        if (e instanceof ProviderError && e.kind === 'bad-request' && /instructions/i.test(e.message) && (t.style || t.instructions) && !this.unstyled.has(id)) {
+          this.unstyled.add(id);
+          continue;
+        }
         const order = ['mp3', 'wav'];
         const next = order.slice(order.indexOf(asked(plays) ?? '') + 1).find((f) => asked([f]) === f);
         if (!(e instanceof ProviderError && e.kind === 'bad-request') || t.format !== 'auto' || !next) throw e;

@@ -21,6 +21,12 @@ const VOICES = ['Zephyr', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Leda', 'Orus', 'A
   'Algenib', 'Rasalgethi', 'Laomedeia', 'Achernar', 'Alnilam', 'Schedar', 'Gacrux', 'Pulcherrima', 'Achird', 'Zubenelgenubi', 'Vindemiatrix', 'Sadachbia', 'Sadaltager', 'Sulafat'];
 /** The models whose guide has the style in the text (2.5 and 3.1); from 3.8, it is speech_metadata. */
 const IN_TEXT = /(?:^|-)(?:2\.\d|3\.[0-7])(?:-|$)/;
+/** A style as plain words: whitespace collapsed, at most 200 characters, no trailing punctuation. @param {unknown} s */
+const plain = (s) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 200).replace(/[\s.,;:!?]+$/, '');
+/** The style a request carries, or ''. @param {Record<string, any>} t */
+const styleOf = (t) => (t.styled === false ? '' : plain(t.style));
+/** What a model that reads its text may be told after "Say": a few plain words, never a colon, a sentence or a tag it might say aloud. @param {string} style */
+const foldable = (style) => /^[\p{L}\p{N}][\p{L}\p{N} ,'’-]*$/u.test(style) && style.length <= 80 && style.split(' ').length <= 6;
 /** The voice's qualities, as Google is asked for them. @type {Record<string, { mime_type: string, sample_rate: number }>} */
 const FORMATS = { pcm24: { mime_type: 'audio/l16', sample_rate: 24000 }, mulaw8: { mime_type: 'audio/mulaw', sample_rate: 8000 } };
 /** @param {unknown} x @returns {x is Record<string, any>} */
@@ -183,13 +189,15 @@ export function speechType(annai) {
       format: { label: 'Sound', options: { pcm24: 'Full quality (the most data: about 4 MB a minute of speech)', mulaw8: 'Phone quality, 8 kHz (about 0.8 MB a minute)' } },
       stream: { label: 'Stream her voice, so she starts sooner (off: each sentence arrives whole first)' },
     },
+    /** The style is input text, billed with the text. @param {any} c */
+    extraChars: ({ tunables: t }) => styleOf(t).length,
     /** @param {any} c */
     speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
       // An update reaches an annai still running its older shell, without G.711 and WAV, until a restart.
       if (!g711 || !wav) throw new Error('Gemini API voice needs a newer annai: restart annai to update it.');
       const id = idOf(model.providerId);
-      const style = String(t.style ?? '').trim();
-      const sentence = !style ? { type: 'text', text }
+      const style = styleOf(t);
+      const sentence = !style || (IN_TEXT.test(id) && !foldable(style)) ? { type: 'text', text }
         : IN_TEXT.test(id) ? { type: 'text', text: `Say ${style}: ${text}` } : { type: 'text', text, annotations: [{ type: 'speech_metadata', style }] };
       return post(endpoint, key, {
         model: id, store: false, stream: true,

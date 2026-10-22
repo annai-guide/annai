@@ -144,6 +144,44 @@ test("replays the real Gemini calls (2026-10-22, test/fixtures/voices): the requ
   assert.match(JSON.parse(refused).error.message, /AUDIO_L16 is not supported for models\/gemini-3\.1-flash-tts-preview/);
 });
 
+test("a style is plain words (phone1-voices): whitespace collapsed, no trailing punctuation, at most 200 characters; the older models are told only a short plain phrase, never a colon or a sentence that could be read aloud", () => {
+  const item = (/** @type {string} */ id, /** @type {any} */ t) => JSON.parse(say.speechRequest({ ...spec(say, id, t), text: 'Hello there.' }).body).input[0].content[0];
+  // Gemini 3.8 has a field of its own for it: whatever is typed, tidied, goes there.
+  assert.equal(item('gemini-3.8-flash-tts', { style: 'calm\nwarm\t and   friendly. ' }).annotations[0].style, 'calm warm and friendly');
+  assert.equal(item('gemini-3.8-flash-tts', { style: 'Speak slowly: kindly!' }).annotations[0].style, 'Speak slowly: kindly');
+  assert.equal(item('gemini-3.8-flash-tts', { style: 'x'.repeat(1000) }).annotations[0].style.length, 200);
+  assert.equal(item('gemini-3.8-flash-tts', { style: ' ,. ' }).annotations, undefined, 'only punctuation is no style');
+  // The older ones read their text: a phrase of a few plain words is folded in; anything else is left out rather than risk Shiori saying it.
+  const old = (/** @type {string} */ style) => item('gemini-2.5-flash-preview-tts', { style }).text;
+  assert.equal(old('calm, warm and friendly.'), 'Say calm, warm and friendly: Hello there.');
+  assert.equal(old('calm\nwarm'), 'Say calm warm: Hello there.');
+  assert.equal(old("in a child's gentle voice"), "Say in a child's gentle voice: Hello there.");
+  for (const bad of ['Speak slowly: and kindly', 'Speak calmly. Then warmly', 'Read this aloud, calm, warm, friendly, slow, soft, kind', 'say "hello" first', '[whispers]', '<sigh> calm', 'x'.repeat(1000)]) {
+    assert.equal(old(bad), 'Hello there.', `${bad.slice(0, 30)}: no style rather than a risk`);
+  }
+});
+
+test("a voice the server refused a style for (styled: false) is sent none by Gemini's type too; the style is billed as the text is", () => {
+  const body = (/** @type {any} */ t) => JSON.parse(say.speechRequest({ ...spec(say, 'gemini-3.8-flash-tts', t), text: 'Hi.' }).body).input[0].content[0];
+  assert.equal(body({ style: 'calm', styled: false }).annotations, undefined);
+  assert.equal(body({ style: 'calm' }).annotations[0].style, 'calm');
+  assert.equal(say.extraChars(spec(say, 'x', { style: 'calm, warm and friendly.' })), 'calm, warm and friendly'.length);
+  assert.equal(say.extraChars(spec(say, 'x', { style: 'calm', styled: false })), 0);
+  assert.equal(say.extraChars(spec(say, 'x', {})), 0);
+});
+
+test("an ability-level voice (the provider page's Tunables) is the voice of a Gemini model that has none of its own (phone1-voices)", async () => {
+  const { speechCall } = await import('../../src/core/llm/speech.js');
+  /** @type {any[]} */
+  const bodies = [];
+  const fetch = async (/** @type {string} */ _url, /** @type {any} */ init) => { bodies.push(JSON.parse(init.body)); return sse(await readFile(new URL('../fixtures/voices/gemini-tts-style-sulafat.sse', import.meta.url), 'utf8')); };
+  const endpoint = { ...spec(say, 'x').endpoint, tunables: { ...say.tunables, voice: 'Achird' } };
+  const model = { id: 'm', name: 'TTS', providerId: 'gemini-3.8-flash-lite-tts', prices: null, tunables: { style: 'calm' }, extraBody: {} };
+  await speechCall({ type: say, endpoint: /** @type {any} */ (endpoint), model: /** @type {any} */ (model), key: KEY, text: 'Hi.', fetch });
+  await speechCall({ type: say, endpoint: /** @type {any} */ (endpoint), model: /** @type {any} */ ({ ...model, tunables: { ...model.tunables, voice: 'Kore' } }), key: KEY, text: 'Hi.', fetch });
+  assert.deepEqual(bodies.map((b) => b.generation_config.speech_config[0].voice), ['Achird', 'Kore']);
+});
+
 test("the type lists Google's 30 prebuilt voices for the Voice field, Sulafat (warm) among them", () => {
   assert.equal(say.voices.length, 30);
   assert.equal(new Set(say.voices).size, 30);

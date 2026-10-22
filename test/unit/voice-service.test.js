@@ -18,11 +18,11 @@ const enc = new TextEncoder();
 
 /**
  * A Voice over a fake llm: one API voice (v1), one transcription model (t1), and the stand-ins.
- * @param {{ failing?: boolean, retryAfter?: number, micFails?: string, format?: string, refuses?: string[], plays?: string[], streams?: boolean }} [o]
+ * @param {{ failing?: boolean, retryAfter?: number, micFails?: string, format?: string, refuses?: string[], plays?: string[], streams?: boolean, style?: string, refusal?: string }} [o]
  *   format: v1's format tunable (it offers OpenAI's list); refuses: the formats v1 answers 400 to, as Speaches does opus and aac; plays: what the phone plays;
- *   streams: v1 streams when asked to (G3), 0.2 s of 24 kHz PCM
+ *   streams: v1 streams when asked to (G3), 0.2 s of 24 kHz PCM; style: v1's style tunable; refusal: what v1 answers a 400 with unless the call is unstyled
  */
-async function voiceKit({ failing = false, retryAfter, micFails, format = 'mp3', refuses = [], plays, streams = false } = {}) {
+async function voiceKit({ failing = false, retryAfter, micFails, format = 'mp3', refuses = [], plays, streams = false, style = '', refusal = '' } = {}) {
   const registry = new Registry();
   const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
@@ -42,12 +42,13 @@ async function voiceKit({ failing = false, retryAfter, micFails, format = 'mp3',
         po: { id: 'po', plugin: 'p', template: null, user: { abilities: { voice: { kind: 'voice', type: 'say', tunables: { format, audioOut: offers } } } } },
         pi: { id: 'pi', plugin: 'p', template: null, user: { abilities: { transcription: { kind: 'transcription', type: 'hear' } } } },
       },
-      models: { v1: { id: 'v1', provider: 'po', ability: 'voice', template: null, user: { providerId: 'tts' } }, t1: { id: 't1', provider: 'pi', ability: 'transcription', template: null, user: { providerId: 'asr' } } },
+      models: { v1: { id: 'v1', provider: 'po', ability: 'voice', template: null, user: { providerId: 'tts', ...(style ? { tunables: { style } } : {}) } }, t1: { id: 't1', provider: 'pi', ability: 'transcription', template: null, user: { providerId: 'asr' } } },
       roles: { 'speech-out': { models: ['v1', 'browser-voice'], level: 'off' }, 'speech-in': { models: ['send-audio', 't1', 'dictation'], level: 'off' } },
     }),
-    /** @param {{ modelId: string, text: string, plays?: string[], stream?: boolean }} c */
-    async synthesize({ modelId, text, plays: p, stream }) {
-      calls.push(`say ${modelId} ${text}${stream ? ' (stream)' : ''}`);
+    /** @param {{ modelId: string, text: string, plays?: string[], stream?: boolean, unstyled?: boolean }} c */
+    async synthesize({ modelId, text, plays: p, stream, unstyled }) {
+      calls.push(`say ${modelId} ${text}${stream ? ' (stream)' : ''}${unstyled ? ' (unstyled)' : ''}`);
+      if (refusal && !unstyled) throw new ProviderError('bad-request', refusal);
       if (streams && stream) return { stream: { rate: 24_000, chunks: (async function* () { yield new Int16Array(2400); yield new Int16Array(2400); })() } };
       if (failing) throw new ProviderError('rate', 'Slow down.', { retryAfter });
       const f = format === 'auto' ? pickOut(offers, p ?? ['mp3', 'wav']) ?? 'mp3' : format;
@@ -122,6 +123,26 @@ test("a voice that refuses the format it offers is asked for MP3, then WAV, and 
   const chosen = await voiceKit({ format: 'opus', refuses: ['opus'], plays: ['ogg', 'mp3', 'wav'] });
   await chosen.voice.say('Hello.');
   assert.deepEqual(chosen.asked, ['opus'], 'a format the user chose is left alone');
+});
+
+test("a server that answers a 400 naming instructions is asked again without the style, once, and gets none until annai restarts (phone1-voices)", async () => {
+  const k = await voiceKit({ style: 'calm, warm and friendly', refusal: 'Unrecognized request argument supplied: instructions' });
+  await k.voice.say('Hello.');
+  assert.deepEqual(k.calls, ['say v1 Hello.', 'say v1 Hello. (unstyled)']);
+  assert.deepEqual(k.platform.log.filter((l) => l.startsWith('play')), ['play v1:Hello.'], 'it spoke: no other voice');
+  assert.equal(k.bench.until('v1'), 0, 'not benched');
+  await k.voice.say('Again.');
+  assert.deepEqual(k.calls.slice(2), ['say v1 Again. (unstyled)'], 'remembered for the model: straight away without it');
+  await k.voice.sample('v1', 'A sample.');
+  assert.equal(k.calls.at(-1), 'say v1 A sample. (unstyled)');
+  // A 400 that doesn't name it, or a voice with no style, is not this: the next voice takes over, as before.
+  const other = await voiceKit({ style: 'calm', refusal: 'Invalid request' });
+  await other.voice.say('Hello.');
+  assert.deepEqual(other.calls, ['say v1 Hello.']);
+  assert.deepEqual(other.platform.log.filter((l) => l.startsWith('browser')), ['browser Hello.']);
+  const bare = await voiceKit({ style: '', refusal: 'instructions' });
+  await bare.voice.say('Hello.');
+  assert.deepEqual(bare.calls, ['say v1 Hello.']);
 });
 
 test('a resting voice rests as long as the provider asked, else the usual cooldown (spec §9.6)', () => {
