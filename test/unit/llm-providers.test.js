@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -92,9 +93,35 @@ test('adding a provider fills an empty chat role only with a model that costs no
   const gem = await setup();
   const paidWords = /** @type {Record<string, string>} */ ({});
   const gf = /** @type {string[]} */ ([]);
-  await addProvider(gem, OPENAI_SRC, { key: 'sk-g', free: true, filled: gf, costs: paidWords });
-  assert.deepEqual(names(await readConfig(gem.ws), 'main'), ['GPT-6.1 Sol']);
+  const gemini = JSON.parse(await readFile(new URL('../../plugins-official/provider-gemini/annai-plugin.json', import.meta.url), 'utf8'));
+  const GEMINI_SRC = /** @type {any} */ ({ plugin: 'provider-gemini', name: gemini.name, version: gemini.version, provider: gemini.provider });
+  await addProvider(gem, GEMINI_SRC, { key: 'AIza-g', free: true, filled: gf, costs: paidWords });
+  assert.deepEqual(names(await readConfig(gem.ws), 'main'), ['Gemini 3.8 Flash', 'Gemini 3.6 Flash', 'Gemini 3.5 Flash Lite']);
   assert.deepEqual(paidWords, {}, 'a free key: no model costs money');
+  // On a paid key the same models cost money, and Main says so.
+  const paid = await setup();
+  const gp = /** @type {Record<string, string>} */ ({});
+  await addProvider(paid, GEMINI_SRC, { key: 'AIza-p', costs: gp });
+  assert.ok(gp.main, 'a paid Gemini key: Main costs money');
+});
+
+test('a local model in Main is free: a paid provider added after it leaves Utility and Quick decision empty (the verification)', async () => {
+  const c = await setup();
+  const LOCAL_SRC = /** @type {any} */ ({
+    plugin: 'provider-llamacpp', name: 'llama.cpp', version: '1.0.0',
+    provider: { baseUrl: 'http://localhost:8080', key: 'none', local: true, abilities: { chat: { kind: 'chat', type: 'chat-completions', models: [{ providerId: 'qwen', name: 'Local Qwen' }] } } },
+  });
+  const lid = await addProvider(c, LOCAL_SRC, { roles: null });
+  let cfg = await readConfig(c.ws);
+  const local = /** @type {any} */ (Object.values(cfg.models).find((m) => m.provider === lid));
+  await saveRoles(c.ws, { ...cfg.roles, main: { models: [local.id], level: 'off' } });
+  const filled = /** @type {string[]} */ ([]);
+  await addProvider(c, OPENAI_SRC, { key: 'sk-o', filled });
+  cfg = await readConfig(c.ws);
+  assert.deepEqual(names(cfg, 'main'), ['Local Qwen']);
+  assert.deepEqual(names(cfg, 'utility'), []);
+  assert.deepEqual(names(cfg, 'decide'), []);
+  assert.ok(!filled.includes('utility') && !filled.includes('decide'), filled.join());
 });
 
 test('two providers from one plugin: two keys, models named apart; removing one keeps the other whole (Review Focus 1)', async () => {
