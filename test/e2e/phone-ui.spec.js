@@ -345,3 +345,48 @@ test('Roles: dragging the handle with a finger reorders, and the page does not s
   await expect.poll(order).toEqual(['1. a3', '2. a1', '3. a2']);
   expect(await page.evaluate(() => scrollY)).toBe(scrolled);
 });
+
+// The review of 2026-10-22: on a 320 x 544 screen every card had a More, and the wrapped, sticky row of buttons covered a short card's title.
+/** Notices of the test's own, under the top bar. @param {import('@playwright/test').Page} page @param {{ title: string, body: string }[]} cards */
+async function raise(page, cards) {
+  await page.evaluate(async (cards) => {
+    const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
+    const notices = createNotices();
+    notices.el.id = 'test-notices';
+    document.querySelector('header.topbar')?.after(notices.el);
+    for (const c of cards) notices.card({ tone: 'info', ...c });
+  }, cards);
+}
+
+test('at 320 x 544 a short card has no More and its title shows; the long sign-in card still gets More, beside the text and not in the buttons', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 544 });
+  await openApp(page, '#/trips');
+  await raise(page, [{ title: 'Signed in with OpenRouter', body: OPENROUTER_CARD }]);
+  const long = page.locator('.notice', { hasText: 'Signed in with OpenRouter' });
+  await expect(long.getByRole('button', { name: 'More' })).toBeVisible();
+  await expect(long.locator('.acts').getByRole('button', { name: 'More' })).toHaveCount(0);
+  await long.getByRole('button', { name: 'Dismiss' }).click();
+  await raise(page, [{ title: 'Open a trip first', body: 'Photos are kept in a trip. Open one from Trips, then take the photo again.' }]);
+  const short = page.locator('.notice', { hasText: 'Open a trip first' });
+  await expect(short).toBeVisible();
+  await expect(short.getByRole('button', { name: 'More' })).toHaveCount(0);
+  // Its title is clear of the buttons that stay at the foot of the box.
+  const gap = await short.evaluate((card) => {
+    const title = /** @type {HTMLElement} */ (card.querySelector('strong')).getBoundingClientRect();
+    const acts = /** @type {HTMLElement} */ (card.querySelector('.acts')).getBoundingClientRect();
+    return acts.top - title.bottom;
+  });
+  expect(gap).toBeGreaterThanOrEqual(0);
+});
+
+test('a card is looked at again when the screen turns: More comes and goes with how much of the text fits', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 544 });
+  await openApp(page, '#/trips');
+  await raise(page, [{ title: 'Heads up', body: 'This card says a little more than a narrow screen can show in its first three lines, but a wide screen holds all of it in three lines, with room to spare at the end.' }]);
+  const card = page.locator('.notice', { hasText: 'Heads up' });
+  await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+  await page.setViewportSize({ width: 900, height: 544 });
+  await expect(card.getByRole('button', { name: 'More' })).toHaveCount(0);
+  await page.setViewportSize({ width: 320, height: 544 });
+  await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+});
