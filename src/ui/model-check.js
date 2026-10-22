@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, settled } from './dom.js';
 import { relTime, outcomeText } from './format.js';
 import { withoutSecrets } from '../core/agent/net.js';
 
@@ -19,6 +19,7 @@ export function testPanel(ctx, modelId, verified, title = 'Test', live = false) 
     class: 'btn', type: 'button',
     onclick: async () => {
       run.disabled = true;
+      await settled();
       status.textContent = live ? 'Opening a live session…' : 'Testing: a tiny request, then one with a tool and a small picture…';
       const platform = live ? ctx.voice?.platform : null;
       /** @type {import('../core/voice/platform.js').PlayerStream | undefined} */

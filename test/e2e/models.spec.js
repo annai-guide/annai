@@ -349,3 +349,32 @@ test('Another address with OpenAI Responses switched on: its model list, the Tes
     await llm.stop();
   }
 });
+
+// The verification: typing a new Provider model id and tapping Test at once sent the old id, because Test read the model
+// before the save the field's change had started landed. With a finger, the change comes at the tap, just before the click.
+for (const how of ['touch', 'mouse']) {
+  test(`Test sent at once after typing a new provider model id carries the new id (${how})`, async ({ page }) => {
+    const chat = { status: 200, type: 'application/json', body: JSON.stringify({ id: 'c', object: 'chat.completion', model: 'x', choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }) };
+    const server = await startModelServer({ '/v1/chat/completions': chat });
+    try {
+      await openApp(page, '#/models');
+      await waitForServiceWorker(page);
+      await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Endpoint A', url: `${server.origin}/v1`, key: 'sk-a', model: 'a-model', look: false });
+      await page.getByRole('link', { name: /Endpoint A/ }).click();
+      await page.getByRole('link', { name: /^a-model/ }).click();
+      const id = page.getByLabel('Provider model id');
+      await expect(id).toHaveValue('a-model');
+      await id.fill('');
+      await id.pressSequentially('b-model');
+      const test = page.getByRole('region', { name: 'Test', exact: true }).getByRole('button', { name: 'Test', exact: true });
+      await test.scrollIntoViewIfNeeded();
+      const at = /** @type {{ x: number, y: number, width: number, height: number }} */ (await test.boundingBox());
+      if (how === 'touch') await page.touchscreen.tap(at.x + at.width / 2, at.y + at.height / 2);
+      else await test.click();
+      await expect.poll(() => server.bodies('/v1/chat/completions').length).toBeGreaterThan(0);
+      expect(server.bodies('/v1/chat/completions').every((b) => b.model === 'b-model'), JSON.stringify(server.bodies('/v1/chat/completions').map((b) => b.model))).toBe(true);
+    } finally {
+      await server.stop();
+    }
+  });
+}
