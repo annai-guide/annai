@@ -21,9 +21,10 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void }} LiveHost
+ *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
- *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on
+ *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
+ *   conversation leaves, shown there
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -76,6 +77,8 @@ export class LiveKoe {
   #devices = false;
   /** Why it closes once Koe's sentence has ended (Auto turned voice off), the microphone closed already. @type {string | null} */
   #closing = null;
+  /** A tap opened it to talk: Kokoro's kept notes wait for the user's first turn to end, or 2 s with no speech (review S3). @type {any} */
+  #hearFirst = null;
   /** @type {any} */
   #stall = null;
   /** When the user's turn began; the pause that ends a sentence. */
@@ -325,7 +328,11 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
+    // Another conversation: Kokoro's notes it owed are shown in the one left, never lost (review S4).
+    if (forget && why === 'switch' && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
+    clearTimeout(this.#hearFirst);
+    this.#hearFirst = null;
     if (forget) {
       this.#handle = undefined;
       this.#notes = [];
@@ -399,8 +406,17 @@ export class LiveKoe {
     }
     this.#brief = false;
     if (!this.c.voice?.on) return 'typing';
+    if (this.state === 'closed' && this.#owed.waiting.length) this.#hearFirst = setTimeout(() => this.#heardFirst(), 2 * Math.max(500, this.c.secondMs ?? 1000));
     this.open('tap', { mic: true }).catch(() => {});
     return 'listening';
+  }
+
+  /** The user's first turn after a tap ended, or never began: what was kept goes in. */
+  #heardFirst() {
+    if (!this.#hearFirst) return;
+    clearTimeout(this.#hearFirst);
+    this.#hearFirst = null;
+    this.#idle();
   }
 
   /** Her voice stops now, and the provider is told where (cut: OpenAI truncates its record there); the session stays. */
@@ -601,7 +617,8 @@ export class LiveKoe {
     this.#changed();
     if (edge === 'end') {
       this.#answer(null);
-      this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
+      if (this.#hearFirst) this.#heardFirst();
+      else this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
     }
   }
 
@@ -805,10 +822,11 @@ export class LiveKoe {
     if (this.busy || !this.#s || this.#closing) return;
     if (this.#rotate) return void this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
     const o = this.#owed;
-    const text = [...this.#notes.splice(0), ...o.waiting.map((w) => wrapNote(String(w.note ?? ''), this.c.nonce)), ...(o.cue ? [CUE] : [])];
+    const kept = this.#hearFirst ? [] : o.waiting;
+    const text = [...this.#notes.splice(0), ...kept.map((w) => wrapNote(String(w.note ?? ''), this.c.nonce)), ...(o.cue ? [CUE] : [])];
     if (!text.length) return;
     o.cue = false;
-    if (o.waiting.length) this.#went(o.waiting.splice(0));
+    if (kept.length) this.#went(o.waiting.splice(0));
     this.#text(text.join('\n'));
   }
 

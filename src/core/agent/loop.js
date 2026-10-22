@@ -1228,7 +1228,7 @@ export class Agent {
    * card, the words aloud with voice on, and an entry in the conversation they belong to. They are
    * never in Shiori's voice (§16.1).
    * @param {Reminder[]} list @param {string} [scope] their conversation; the open one if not given
-   * @param {{ unsaid?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user
+   * @param {{ unsaid?: boolean, silent?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user; silent: shown, never said
    */
   async remind(list, scope = this.#target ?? ME, o = {}) {
     const open = scope === (this.#target ?? ME);
@@ -1236,7 +1236,7 @@ export class Agent {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
       // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
-      const aloud = Boolean(this.voice?.on) && !this.#half.hushed?.();
+      const aloud = Boolean(this.voice?.on) && !this.#half.hushed?.() && !o.silent;
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.title ? { title: r.title } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
       else {
