@@ -186,7 +186,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
         setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace: modelTrace(store, o.scope ?? SYS), wake: o.wake,
         socket: (/** @type {string} */ url, /** @type {string[]} */ protocols) => { const w = new WebSocket(url, protocols); sockets.push(w); return w; },
       });
-      s.closed.then(({ kind }) => { if (kind === 'auth' || kind === 'rate' || kind === 'server' || kind === 'not-found') bench.bench(modelId, COOLDOWN_MS); });
+      s.closed.then(({ kind }) => { if (kind === 'auth' || kind === 'rate' || kind === 'server' || (kind === 'not-found' && !setup.resume)) bench.bench(modelId, COOLDOWN_MS); });
       sessions.push(s);
       return s;
     },

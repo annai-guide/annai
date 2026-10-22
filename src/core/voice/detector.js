@@ -9,15 +9,23 @@ import { biquad } from './pcm.js';
  * frames stay keepDb over it. The floor falls fast and rises slowly. When the sound stays steady for
  * a second (an engine, a fan, a window opened) it becomes the new floor: speech rises and falls with
  * every syllable, steady noise doesn't. A segment keeps a little before the speech and after it; one
- * with too little speech in it (a click, a door) is thrown away.
- * @typedef {{ type: 'speech' } | { type: 'segment', pcm: Float32Array, sampleRate: number, ms: number } | { type: 'discard' }} DetectorEvent
- * @typedef {{ frames: Float32Array[], dbs: number[], speech: number, quiet: number }} Run  speech going on: its frames, their loudness, and counts
+ * with too little speech in it (a click, a door) is thrown away. A frame of near digital silence (under
+ * SILENT_DB, or a quarter of it zeros: a microphone just opened, an iPhone's echo canceller) neither sets
+ * nor moves the floor, and in speech it is quiet (the iPhone trace, 2026-10-22: a turn ran on for 29 s).
+ * @typedef {{ type: 'speech' } | { type: 'segment', pcm: Float32Array, sampleRate: number, ms: number, cut: 'pause' | 'cap' | 'end', peakDb: number } | { type: 'discard' }} DetectorEvent
+ *   cut: what ended it: its pause, maxMs, or end(); peakDb: its loudest frame
+ * @typedef {{ frames: Float32Array[], dbs: number[], speech: number, quiet: number, peak: number }} Run  speech going on: its frames, their loudness, and counts
  */
 
 export const FRAME_MS = 20;
 const STEADY_FRAMES = 50; // one second
 const STEADY_DB = 3;
 const FLOOR_MIN_DB = -60;
+const SILENT_DB = -90;
+const DIP_DB = 10;
+const DIP_FRAMES = 5;
+/** A floor this many frames old (one second) is learned: before, it may have come from speech, and falls freely. */
+const LEARN_FRAMES = 50;
 
 /** @param {number[]} xs */
 function spread(xs) {
@@ -36,6 +44,22 @@ export class Detector {
   #cur;
   #n = 0;
   #energy = 0;
+  /**
+   * Samples of the frame being filled that are digital silence: in runs of 2 ms or more (a gate's), as a quiet 16-bit microphone
+   * rounds single samples to 0 all the time (its noise, near one step, -90 dBFS); 1e-7 is under any converter's step (24-bit: 1.2e-7).
+   */
+  #zeros = 0;
+  #run = 0;
+  #zeroRun;
+  /** Frames in a row far under the floor. */
+  #dips = 0;
+  /** Frames with sound since the floor was set from one: a young floor (a first frame that was speech) falls freely. */
+  #learned = 0;
+  /** Frames heard, and the last one louder than markDb. */
+  #count = 0;
+  #marked = 0;
+  /** A loudness to watch for, in dB (null: none): sinceMarkMs says how long since a frame was louder. @type {number | null} */
+  markDb = null;
   /** Frames heard while waiting for speech, for the bit before it. @type {Float32Array[]} */
   #before = [];
   /** @type {boolean[]} */
@@ -58,6 +82,7 @@ export class Detector {
     this.minSpeech = frames(minSpeechMs);
     this.maxFrames = frames(maxMs);
     this.#frame = Math.round((sampleRate * FRAME_MS) / 1000);
+    this.#zeroRun = Math.round(sampleRate / 500);
     this.#cur = new Float32Array(this.#frame);
     this.#hp = biquad('highpass', 300, sampleRate);
     this.#lp = biquad('lowpass', 3400, sampleRate);
@@ -73,6 +98,46 @@ export class Detector {
     return (this.#seg?.speech ?? 0) * FRAME_MS;
   }
 
+  /** How long the speech going on has been quiet, in ms: 0 while it is loud. */
+  get quietMs() {
+    return (this.#seg?.quiet ?? 0) * FRAME_MS;
+  }
+
+  /** The floor now, in dB; null before a frame with sound in it. */
+  get floorDb() {
+    return this.#floor;
+  }
+
+  /** The floor put back (to where it was when a turn began, say). */
+  set floorDb(db) {
+    this.#floor = db;
+  }
+
+  /** How long since a frame louder than markDb, in ms (from when it was set). */
+  get sinceMarkMs() {
+    return (this.#count - this.#marked) * FRAME_MS;
+  }
+
+  /** Watches for frames louder than db from now. @param {number | null} db */
+  mark(db) {
+    this.markDb = db;
+    this.#marked = this.#count;
+  }
+
+  /** The loudest frame of the speech going on, in dB; null with none. */
+  get peakDb() {
+    return this.#seg?.peak ?? null;
+  }
+
+  /** Forgets any speech going on and the frames before it; floor: the floor to go on from. @param {{ floor?: number | null }} [o] */
+  reset({ floor } = {}) {
+    if (floor !== undefined) this.#floor = floor;
+    this.#seg = null;
+    this.#before = [];
+    this.#recent = [];
+    this.level = 0;
+  }
+
   /** @param {Float32Array} pcm @returns {DetectorEvent[]} */
   push(pcm) {
     /** @type {DetectorEvent[]} */
@@ -80,14 +145,18 @@ export class Detector {
     for (let i = 0; i < pcm.length; i++) {
       const x = pcm[i];
       this.#cur[this.#n++] = x;
+      if (Math.abs(x) >= 1e-7) this.#run = 0;
+      else if (++this.#run === this.#zeroRun) this.#zeros += this.#zeroRun;
+      else if (this.#run > this.#zeroRun) this.#zeros++;
       const y = this.#lp(this.#hp(x));
       this.#energy += y * y;
       if (this.#n === this.#frame) {
         const raw = this.#cur;
-        const db = 10 * Math.log10(this.#energy / this.#frame + 1e-12);
+        const db = this.#zeros * 4 > this.#frame ? -Infinity : 10 * Math.log10(this.#energy / this.#frame + 1e-12);
         this.#cur = new Float32Array(this.#frame);
         this.#n = 0;
         this.#energy = 0;
+        this.#zeros = 0;
         this.#step(raw, db, events);
       }
     }
@@ -98,14 +167,29 @@ export class Detector {
   end() {
     /** @type {DetectorEvent[]} */
     const events = [];
-    if (this.#seg) this.#finish(events);
+    if (this.#seg) this.#finish(events, 'end');
     this.level = 0;
     return events;
   }
 
   /** @param {Float32Array} raw @param {number} db @param {DetectorEvent[]} events */
   #step(raw, db, events) {
-    if (this.#floor === null) this.#floor = db;
+    this.#count++;
+    if (this.markDb !== null && db > this.markDb) this.#marked = this.#count;
+    if (db < SILENT_DB) {
+      this.level = 0;
+      const s = this.#seg;
+      if (!s) return;
+      s.frames.push(raw);
+      s.quiet++;
+      if (s.quiet >= this.pauseFrames || s.frames.length >= this.maxFrames) this.#finish(events);
+      return;
+    }
+    if (this.#floor === null) {
+      this.#floor = db;
+      this.#learned = 0;
+    }
+    this.#learned++;
     const over = db - this.#floor;
     this.level = Math.max(0, Math.min(1, over / 30));
     const s = this.#seg;
@@ -115,17 +199,18 @@ export class Detector {
       this.#before.push(raw);
       if (this.#before.length > this.preroll + 4) this.#before.shift();
       if (this.#recent.filter(Boolean).length >= 3) {
-        this.#seg = { frames: this.#before, dbs: [], speech: 3, quiet: 0 };
+        this.#seg = { frames: this.#before, dbs: [], speech: 3, quiet: 0, peak: db };
         this.#before = [];
         this.#recent = [];
         events.push({ type: 'speech' });
       } else {
-        this.#floor += (db - this.#floor) * (db < this.#floor ? 0.2 : 0.005);
+        this.#floor += (db - this.#floor) * this.#rate(db, 0.005);
       }
       return;
     }
     s.frames.push(raw);
     s.dbs.push(db);
+    s.peak = Math.max(s.peak, db);
     if (s.dbs.length >= STEADY_FRAMES) {
       const last = spread(s.dbs.slice(-STEADY_FRAMES));
       if (last.std < STEADY_DB) {
@@ -144,12 +229,22 @@ export class Detector {
     } else {
       s.quiet++;
     }
-    this.#floor += (db - this.#floor) * (db < this.#floor ? 0.2 : 0.002);
+    this.#floor += (db - this.#floor) * this.#rate(db, 0.002);
     if (s.quiet >= this.pauseFrames || s.frames.length >= this.maxFrames) this.#finish(events);
   }
 
-  /** @param {DetectorEvent[]} events */
-  #finish(events) {
+  /**
+   * How fast the floor follows a frame: up slowly, down fast; but once it is learned, a dip of DIP_DB under it only once it has lasted
+   * DIP_FRAMES (a gate, not the room). @param {number} db @param {number} up
+   */
+  #rate(db, up) {
+    const floor = /** @type {number} */ (this.#floor);
+    this.#dips = db < floor - DIP_DB ? this.#dips + 1 : 0;
+    return db >= floor ? up : this.#dips === 0 || this.#dips >= DIP_FRAMES || this.#learned < LEARN_FRAMES ? 0.2 : 0;
+  }
+
+  /** @param {DetectorEvent[]} events @param {'pause' | 'cap' | 'end'} [cut] */
+  #finish(events, cut) {
     const s = /** @type {Run} */ (this.#seg);
     this.#seg = null;
     if (s.speech < this.minSpeech) {
@@ -159,6 +254,6 @@ export class Detector {
     const keep = s.frames.length - s.quiet + Math.min(s.quiet, this.tail);
     const pcm = new Float32Array(keep * this.#frame);
     for (let i = 0; i < keep; i++) pcm.set(s.frames[i], i * this.#frame);
-    events.push({ type: 'segment', pcm, sampleRate: this.sampleRate, ms: Math.round((pcm.length / this.sampleRate) * 1000) });
+    events.push({ type: 'segment', pcm, sampleRate: this.sampleRate, ms: Math.round((pcm.length / this.sampleRate) * 1000), cut: cut ?? (s.quiet >= this.pauseFrames ? 'pause' : 'cap'), peakDb: s.peak });
   }
 }

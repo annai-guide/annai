@@ -153,7 +153,7 @@ export async function renderVoice(ctx) {
       h('p', { class: 'sub', text: `While a live session listens, what you say goes straight to ${live.join(' or ') || 'its provider'} as audio, only while someone speaks, and the chip says "Listening live". It closes after the quiet below, on voice off, or when annai leaves the screen.` }),
       savedField('Close a live session after (seconds of quiet)', closeAfter, () => numberIn(closeAfter, 10, 300, 'Close after 10 to 300 seconds of quiet.', { whole: true, need: true }), (n) => save({ closeAfterSeconds: n })),
       bargeIn.el,
-      h('p', { class: 'sub', text: 'Off: only a tap cuts her off, for a car whose speakers echo her voice back.' })),
+      h('p', { class: 'sub', text: "Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back." })),
     section('Where your voice goes',
       h('p', { class: 'sub' }, 'What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to ', h('a', { href: '#/models' }, 'Settings → Models'), '.'),
       h('h3', { class: 'section', text: 'What you say' }), heardWhere,

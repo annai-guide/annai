@@ -47,10 +47,10 @@ const THEIRS = ['user', 'choice', 'file', 'live'];
 /** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
 export const REVIEW_MS = 180_000;
 const REVIEW = "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
+/** Words for the user as annai shows them: a leading "Say:" (an instruction to Koe) goes, and the first letter is a capital. @param {unknown} text */
+const forUserText = (text) => String(text ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 /** The conversation's lines, for the review. */
 const LINES = ['msg.user', 'heard', 'out.speak', 'out.show', 'out.ask'];
-/** Kokoro's words to Koe as annai shows them: "Say: …" is an instruction to Koe, and the user reads what follows. @param {unknown} note */
-const forUserText = (note) => String(note ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 
 /** The notes between the halves: written into the conversation, then handed over; the sender never waits. */
 export class Channel {
@@ -65,13 +65,14 @@ export class Channel {
    * append reaches the other half before its next model call, or starts its turn; immediate also cuts its call.
    * @param {Side} from @param {string} text @param {'append' | 'immediate'} mode @param {NoteWhy} why @param {string} [wake]
    * @param {{ name: string, input: any }} [call] the gated call of Kokoro's it stands for
-   * @param {boolean} [watched] Koe's turn that sends it is one the user is watching (isWatched): a note of Koe's is the user's only then @returns {Promise<'sent'>}
+   * @param {boolean} [watched] Koe's turn that sends it is one the user is watching (isWatched): a note of Koe's is the user's only then
+   * @param {string} [forUser] Kokoro's exact words for the user (tell_koe's for_user) @returns {Promise<'sent'>}
    */
-  async send(from, text, mode, why, wake, call, watched = false) {
+  async send(from, text, mode, why, wake, call, watched = false, forUser = '') {
     const to = from === 'koe' ? 'kokoro' : 'koe';
-    const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text]] });
+    const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }
@@ -85,13 +86,13 @@ export function channelTool(from, channel, refuse = () => null) {
     name, pluginId: 'core', group: 'Talk',
     description: koe
       ? "Ask or tell Kokoro, your other half, who looks things up and works behind you. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
-      : 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says it in its own words. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim.',
-    input: { type: 'object', properties: { text: { type: 'string', minLength: 1 }, mode: { enum: ['append', 'immediate'] } }, required: ['text'] },
-    run: async (/** @type {{ text: string, mode?: string }} */ i, /** @type {any} */ call) => {
+      : 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says it in its own words. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them; annai shows them only if Koe never says it.',
+    input: { type: 'object', properties: { text: { type: 'string', minLength: 1 }, mode: { enum: ['append', 'immediate'] }, ...(koe ? {} : { for_user: { type: 'string' } }) }, required: ['text'] },
+    run: async (/** @type {{ text: string, mode?: string, for_user?: string }} */ i, /** @type {any} */ call) => {
       const text = String(i.text ?? '').trim();
       const no = text ? refuse() : `Error: ${name} needs the text to pass on.`;
       if (no) return { content: no, isError: true };
-      return channel.send(from, text, i.mode === 'immediate' ? 'immediate' : 'append', 'tool', call.wake, undefined, Boolean(call.watched));
+      return channel.send(from, text, i.mode === 'immediate' ? 'immediate' : 'append', 'tool', call.wake, undefined, Boolean(call.watched), koe ? '' : String(i.for_user ?? '').trim());
     },
   };
 }
@@ -132,6 +133,8 @@ export class Halves {
   #unseen = 0;
   /** @type {string[]} what Kokoro told Koe for the user that Koe hasn't passed on since */
   #unsaid = [];
+  /** Kokoro's notes with no words for the user that Koe never passed on: each goes to Koe once more, with the user's next words (§7.1). @type {Wake[]} */
+  #retell = [];
   #failTold = false;
   #nothingTold = false;
   /** Why each half's list last failed, while it is down (a failure only of models resting keeps the reason before). */
@@ -167,7 +170,7 @@ export class Halves {
       log: { koe: (ev) => this.koe.log(ev), kokoro: (ev) => this.kokoro.log(ev) },
       deliver: {
         koe: (w) => {
-          if (isForUser(w)) this.#unsaid.push(w.text);
+          if (isForUser(w) && !w.retold) this.#unsaid.push(w.text);
           this.#koeOpen();
           if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', isForUser(w) ? w : null), w);
           else this.koe.enqueue(w);
@@ -267,6 +270,12 @@ export class Halves {
       asked: () => this.#asked && this.kokoro.busy,
       unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
       owed: (notes) => this.#handOn(notes),
+      spoke: () => this.#retold(),
+      // Kokoro's words for the user that a switch left unsaid: shown in the conversation left, not aloud (Koe is in another now).
+      left: (notes) => {
+        const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
+        if (list.length) this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {});
+      },
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.#ready = this.#refresh({ tell: false }).catch(() => {});
@@ -391,7 +400,11 @@ export class Halves {
     const model = this.live.modelId;
     const voiceOff = this.#voiceWas && !voiceOn;
     // One closed with Kokoro's notes waiting for the page lets go of them too (they are handed on).
-    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) this.live.close(voiceOff ? 'voice off' : 'pathway');
+    // Auto turning voice off (AirPods out) lets Koe's sentence end whole; the user's Off, or another pathway, closes at once.
+    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) {
+      if (voiceOff && this.voice?.mode.setting === 'auto') this.live.closeSoon('voice off');
+      else this.live.close(voiceOff ? 'voice off' : 'pathway');
+    }
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
     if (this.state.name !== was) this.#emit('state', this.state);
@@ -504,7 +517,10 @@ export class Halves {
   open(trip, o) {
     this.#stopped = { on: false, seq: Infinity }; // a Stop belongs to the conversation it was in
     this.#stopHeld = false;
-    if (trip !== this.kokoro.target) this.live.close('switch', { forget: true });
+    if (trip !== this.kokoro.target) {
+      this.live.close('switch', { forget: true });
+      this.#retell = [];
+    }
     const opening = this.kokoro.open(trip, o);
     this.#emitHalves(); // the left one's turn isn't this one's sign
     opening.finally(() => this.#emitHalves()).catch(() => {});
@@ -590,7 +606,10 @@ export class Halves {
    */
   hush(why) {
     this.live.close(why, { forget: why === 'erase' });
-    if (why === 'erase') for (const a of [this.kokoro, this.koe]) a.forgetTold();
+    if (why === 'erase') {
+      for (const a of [this.kokoro, this.koe]) a.forgetTold();
+      this.#retell = [];
+    }
     this.typing(false); // the page went: nobody types into it (review A3)
   }
 
@@ -678,6 +697,11 @@ export class Halves {
   /** @param {string | null} detail */
   working(detail) { this.kokoro.working(detail); }
   cacheState() { return this.kokoro.cacheState(); }
+  /** Kokoro's notes held for the user's next words go to Koe again, as appends. */
+  #retold() {
+    for (const w of this.#retell.splice(0)) this.channel.deliver.koe({ ...w, retold: true, mode: 'append' });
+  }
+
   /** For Settings → Tools: tell_koe only while Shiori is two halves. */
   loopTools() { return this.kokoro.loopTools().filter((t) => this.#split || t.name !== 'tell_koe'); }
   /** @param {import('./loop.js').LoopTool[]} tools Shiori's own, which are Kokoro's */
@@ -722,6 +746,10 @@ export class Halves {
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
+    // The user's next words: Kokoro's notes Koe left unsaid go to Koe again, with them (live, as their turn ends: spoke); Koe
+    // reaching the user meanwhile has passed them on.
+    if (e.type.startsWith('out.')) this.#retell = [];
+    if (typed || (e.type === 'heard' && !e.data?.dismissed && this.koeState !== 'live')) this.#retold();
     if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
       this.#failTold = false;
@@ -758,10 +786,11 @@ export class Halves {
 
   /**
    * Kokoro's notes for the user that Koe never passed on, asked once more (spec §6.8): annai shows what Kokoro meant the user to
-   * have, a note it told Koe or a gated speak as "Shiori's answer", a gated card or question as itself, checked as show and ask
-   * check Shiori's own (a tap on its buttons comes to Koe as the user's choice); one they would refuse, as its words, or with none
-   * only a Trace line, never a card that says nothing. "Kokoro couldn't check" and a final text were words for Koe: it was asked
-   * once more, and that is all (plan decision 21: no card). @param {Wake[]} notes
+   * have, a note's words for them (tell_koe's for_user) or a gated speak as "Shiori's answer", a gated card or question as itself,
+   * checked as show and ask check Shiori's own (a tap on its buttons comes to Koe as the user's choice); one they would refuse, as
+   * its words, or with none only a Trace line, never a card that says nothing. A note's own text is for Koe, never shown or said:
+   * with no for_user, it goes to Koe once more with the user's next words, then only the Trace has it. "Kokoro couldn't check" and a final text were words for Koe: it
+   * was asked once more, and that is all (plan decision 21: no card). @param {Wake[]} notes
    */
   async #backstop(notes) {
     this.#unsaid = [];
@@ -777,7 +806,10 @@ export class Halves {
           : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
         if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
         else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
-      } else if (w.why === 'tool' || w.why === 'gated:speak') await this.kokoro.remind([{ watch: '', text: forUserText(w.note), title: "Shiori's answer" }], undefined, { unsaid: true });
+      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
+      else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
+      else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
+      else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
     }
   }
 

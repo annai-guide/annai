@@ -7,10 +7,12 @@ const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 /** @param {...[string, any]} calls */
 const calls = (...calls) => ({ toolCalls: calls.map(([name, input]) => ({ name, input })) });
 const SAY = 'Say: sunset tonight is at 6:23 PM, but it is overcast.';
+/** Kokoro's exact words for the user with it (tell_koe's for_user). */
+const FOR_USER = 'Sunset is at 6:23 PM tonight, though it is overcast.';
 const RELAY = { text: 'x', toolCalls: [{ name: 'speak', input: { text: 'Sunset is at 6:23, though it is overcast.' } }, { name: 'sleep', input: {} }] };
 const CHECK = calls(['speak', { text: 'Let me check.' }], ['tell_kokoro', { text: 'When is sunset?' }], ['wait', { seconds: 600 }]);
-/** Kokoro tells Koe and sleeps. @param {string} [text] */
-const kokoro = (text = SAY) => [{ toolCalls: [{ name: 'tell_koe', input: { text } }, { name: 'sleep', input: {} }] }];
+/** Kokoro tells Koe and sleeps. @param {string} [text] @param {string} [forUser] its words for the user */
+const kokoro = (text = SAY, forUser = text === SAY ? FOR_USER : undefined) => [{ toolCalls: [{ name: 'tell_koe', input: { text, ...(forUser ? { for_user: forUser } : {}) } }, { name: 'sleep', input: {} }] }];
 /** What Koe said to the user. @param {any} k */
 const said = async (k) => (await k.events(['out.speak'])).filter((e) => e.data.half === 'koe').map((e) => e.data.text);
 
@@ -60,12 +62,12 @@ test('the user wrote again inside the wait, and Koe ends without answering: aske
   assert.deepEqual((await said(k)).at(-1), 'Tomorrow is dry.');
 });
 
-test('Koe still says nothing after being asked: annai shows the note itself, in plain words, with no "didn\'t answer" card', async () => {
+test('Koe still says nothing after being asked: annai shows Kokoro\'s words for the user (for_user), with no "didn\'t answer" card', async () => {
   const k = await agentKit([kokoro()], { koe: { type: [CHECK, sleep] } });
   k.agent.send('A sunset drink in Carmel');
   await k.agent.idle();
   const shown = (await k.events(['reminder'])).map((e) => [e.data.title, e.data.text, e.data.unsaid]);
-  assert.deepEqual(shown, [["Shiori's answer", 'Sunset tonight is at 6:23 PM, but it is overcast.', true]]);
+  assert.deepEqual(shown, [["Shiori's answer", FOR_USER, true]]);
   assert.ok(!k.notices.some((/** @type {any} */ n) => /didn't answer/.test(n.title)));
 });
 
@@ -166,12 +168,12 @@ test("Kokoro's speak, gated, that Koe never passes on: annai shows it as Shiori'
 });
 
 test('Koe owes a note and a message the user wrote in its wait, and says nothing: annai shows the note, and the "didn\'t answer" card still comes', async () => {
-  const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'tell_koe', input: { text: SAY } }, { name: 'sleep', input: {} }] }, sleep]], { koe: { type: [CHECK, { delayMs: 600, ...sleep }, sleep] } });
+  const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'tell_koe', input: { text: SAY, for_user: FOR_USER } }, { name: 'sleep', input: {} }] }, sleep]], { koe: { type: [CHECK, { delayMs: 600, ...sleep }, sleep] } });
   k.agent.send('A sunset drink in Carmel');
   await until(() => k.agent.koe.waiting);
   k.agent.send('Which day is it?');
   await k.agent.idle();
-  assert.deepEqual(await backstop(k), [["Shiori's answer", 'Sunset tonight is at 6:23 PM, but it is overcast.']]);
+  assert.deepEqual(await backstop(k), [["Shiori's answer", FOR_USER]]);
   assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title).filter((t) => /didn't answer/.test(t)), ["Shiori didn't answer"]);
 });
 
@@ -255,7 +257,7 @@ test("Koe's instructions say a note it has already said is settled with already_
 // The fix pass (S3): forcing is bounded without a step limit.
 test("Koe owes a note and keeps asking Kokoro instead: the cue comes after its first such step, two steps more at most, then annai shows the note (probe P5b)", async () => {
   const more = Array.from({ length: 40 }, (_, j) => calls(['tell_kokoro', { text: `More ${j}` }]));
-  const k = await agentKit([kokoro('Say: it is open.')], { koe: { type: [CHECK, ...more] } });
+  const k = await agentKit([kokoro('Say: it is open.', 'It is open.')], { koe: { type: [CHECK, ...more] } });
   k.agent.send('Is Nepenthe open?');
   await k.agent.idle();
   const koe = k.sent['model-koe'];
@@ -318,4 +320,49 @@ test('a gated question too broken to ask reaches the user as its words, cut as a
   const [[title, text]] = await backstop(k);
   assert.equal(title, "Shiori's answer");
   assert.ok(text.startsWith('Which table?') && text.length <= 4000, String(text.length));
+});
+
+// voice-fix item 2 (the iPhone trace, 2026-10-22: "Tell them a short Big Sur story…" was shown, and read aloud): a note is words for Koe.
+test("Kokoro's note with no words for the user that Koe never says: nothing is shown or said; Koe gets it again with the user's next message, and after that only the Trace has it", async () => {
+  const note = 'Tell them sunset is at 6:23 PM tonight (timeanddate.com), and that it is overcast.';
+  const k = await agentKit([kokoro(note), [sleep], [sleep]], { voice: { mode: 'on' }, koe: { type: [CHECK, sleep, sleep, sleep, sleep, sleep] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].length, 3, 'asked once more');
+  assert.deepEqual(await backstop(k), [], 'not shown');
+  assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('6:23')), 'not said');
+  k.agent.send('And the weather?');
+  await k.agent.idle();
+  const after = k.sent['model-koe'].slice(3).map((/** @type {any} */ r) => JSON.stringify(r.messages)).join('');
+  assert.ok(after.includes('sunset is at 6:23 PM tonight'), "the note is in Koe's next turn");
+  assert.deepEqual(await backstop(k), []);
+  assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('6:23')));
+  assert.equal((await k.events(['error'])).filter((e) => e.data.kind === 'unshown').length, 1, 'a quiet Trace line, once');
+});
+
+test("tell_koe gives Kokoro for_user, and Kokoro's instructions say to fill it when it has the user's answer", async () => {
+  const k = await agentKit([kokoro()], { koe: { type: [CHECK, RELAY] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  const tell = k.sent['model-0'][0].tools.find((/** @type {any} */ t) => t.name === 'tell_koe');
+  assert.deepEqual(tell.input.properties.for_user, { type: 'string' });
+  assert.match(k.sent['model-0'][0].system, /for_user: the exact words for them/);
+  const [note] = (await k.events(['note'])).filter((e) => e.data.from === 'kokoro');
+  assert.equal(note.data.forUser, FOR_USER, 'kept with the note in the conversation');
+});
+
+// The review's minors: the words annai shows keep the old tidying, and a gated speak with no words leaves a Trace line.
+test('for_user that starts "Say:" is shown without it, with a capital', async () => {
+  const k = await agentKit([kokoro('Tell them sunset is at 6:23 PM.', 'say: sunset is at 6:23 PM tonight.')], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  assert.deepEqual(await backstop(k), [["Shiori's answer", 'Sunset is at 6:23 PM tonight.']]);
+});
+
+test("Kokoro's speak with no words, gated, that Koe never passes on: nothing shown, and a quiet line in the Trace (review: it vanished)", async () => {
+  const k = await agentKit([gated('speak', {})], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual(await backstop(k), []);
+  assert.equal((await k.events(['error'])).filter((e) => e.data.kind === 'unshown' && e.data.quiet).length, 1);
 });
