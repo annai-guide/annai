@@ -38,7 +38,7 @@ export async function renderNow(ctx) {
     const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
     const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? 'Offline · reminders still work' : null];
     chips.replaceChildren(...words.filter(Boolean).map((t) => h('span', { class: 'chip', text: String(t) })));
-    start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Turn on live mode')] : []));
+    start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Start on the road')] : []));
   };
   draw();
   // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
@@ -123,11 +123,11 @@ export function planRowOf(ctx, trip, r, when, own) {
 
 /** Where the user is, in words for them (Shiori's are in the now block). @param {any} live @param {string} locale */
 export function whereWords(live, locale) {
-  if (!live || !live.on) return "Live mode is off, so annai isn't following where you are.";
+  if (!live || !live.on) return "You're off the road, so annai isn't following where you are.";
   const f = knownFix(live);
   if (!f) {
-    if (live.gps === 'denied') return "Location isn't allowed for annai. Tap Live below to say where you are.";
-    return live.gps === 'unavailable' ? 'No GPS signal right now. Tap Live below to say where you are.' : 'Finding where you are…';
+    if (live.gps === 'denied') return "Location isn't allowed for annai. Tap On the road below to say where you are.";
+    return live.gps === 'unavailable' ? 'No GPS signal right now. Tap On the road below to say where you are.' : 'Finding where you are…';
   }
   const near = live.near(f);
   if (near) return near.m < 100 ? `At ${near.name}` : `Near ${near.name}, ${distanceText(near.m / 1000, locale)}`;

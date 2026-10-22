@@ -1,7 +1,7 @@
 {
   "id": "remote-trace",
   "name": "Remote trace (for developers)",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "api": 1,
   "category": "developer",
   "entry": "index.js",
@@ -25,7 +25,7 @@
         "type": "boolean",
         "default": false,
         "title": "Send location points",
-        "description": "Also send the location points live mode records, about one a second on a drive. Off, other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input."
+        "description": "Also send the location points On the road records, about one a second on a drive. Off, other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input."
       },
       "send": {
         "type": "boolean",

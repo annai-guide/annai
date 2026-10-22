@@ -47,7 +47,7 @@ export async function renderReplay(ctx, route) {
   ];
   if (!r) {
     return h('div', { class: 'screen replay' }, ...head,
-      h('p', { class: 'empty', text: "Nothing to replay yet. While live mode is on, annai records the road; Shiori's cards, your messages and your photos show here too." }));
+      h('p', { class: 'empty', text: "Nothing to replay yet. While you are on the road with annai following, it records the road; Shiori's cards, your messages and your photos show here too." }));
   }
   const clock = new PlayClock(r.from, { speed: 600, playing: false });
   const clockText = (/** @type {number} */ t) => new Intl.DateTimeFormat(locale, { timeZone: r.tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t);
