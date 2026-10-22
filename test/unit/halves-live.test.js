@@ -582,3 +582,24 @@ test('L3: no live session could open for the note: the text Koe has it, and a la
     await k.done();
   }
 });
+
+// The second fix pass (L2): a live show or ask that annai refuses passes nothing on.
+for (const [what, tool] of /** @type {const} */ ([
+  ['show of a card of a kind no plugin draws', { name: 'show', args: { card: { type: 'ferries', title: 'Nepenthe' } } }],
+  ['ask with no options', { name: 'ask', args: { question: 'Shall I book?', options: [] } }],
+])) {
+  test(`L2: after Kokoro's note, a live Koe's ${what} is refused: Koe gets the cue, then annai shows the note`, async () => {
+    const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { tool }, {}]);
+    try {
+      await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+      await soon(async () => (await answers(k)).length === 1, 5000);
+      await settled(k);
+      assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === tool.name)?.data.ok, false);
+      assert.equal(texts(k).filter((t) => CUE.test(t)).length, 1);
+      assert.deepEqual(await answers(k), SHOWN);
+      assert.deepEqual(await k.events(['out.show', 'out.ask']), []);
+    } finally {
+      await k.done();
+    }
+  });
+}
