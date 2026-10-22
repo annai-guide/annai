@@ -175,9 +175,21 @@ function preview(ctx, body, opened, desc, from, fresh) {
     status);
 }
 
-/** The imported settings and plugins are used from the next start: the sentence, and the button that does it. @param {any} ctx */
+/**
+ * The imported settings and plugins are used from the next start: the sentence, and the button that does it. A restart loads the
+ * page again at its address, and this screen has nothing left to open then, so annai starts on Trips, where what came in is
+ * (the third emulator pass). @param {any} ctx
+ */
 function restartPanel(ctx) {
-  const b = h('button', { class: 'btn pri', type: 'button', onclick: () => { b.disabled = true; b.textContent = 'Restarting…'; restartAnnai(ctx); } }, 'Restart annai');
+  const b = h('button', {
+    class: 'btn pri', type: 'button',
+    onclick: () => {
+      b.disabled = true;
+      b.textContent = 'Restarting…';
+      history.replaceState(history.state, '', '#/trips');
+      restartAnnai(ctx);
+    },
+  }, 'Restart annai');
   return h('div', {}, h('p', { class: 'sub', text: 'Restart annai to use the imported settings and plugins.' }), h('div', { class: 'acts' }, b));
 }
 
