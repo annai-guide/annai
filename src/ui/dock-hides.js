@@ -12,10 +12,30 @@ const takesTyping = (el) => el instanceof HTMLTextAreaElement || (el instanceof 
  * @param {Document} [doc]
  */
 export function dockHidesWhileTyping(doc = document) {
+  /** A press is on, and the dock's return was put off until it ends. */
+  let pressed = false;
+  let later = false;
   /** @param {EventTarget | null} el */
-  const update = (el) => doc.documentElement.classList.toggle('typing-elsewhere', takesTyping(el) && !(/** @type {Element} */ (el)).closest('.dock:not(.seat)'));
+  const update = (el) => {
+    const on = takesTyping(el) && !(/** @type {Element} */ (el)).closest('.dock:not(.seat)');
+    // Pressing a button lets go of the field at the press: the dock coming back then would cover a button under it, and the
+    // release would miss. It comes back once the press is over (a tap on a phone keeps the field until the click, tap-keeps-keyboard.js).
+    if (!on && pressed) {
+      later = true;
+      return;
+    }
+    later = false;
+    doc.documentElement.classList.toggle('typing-elsewhere', Boolean(on));
+  };
   doc.addEventListener('focusin', (e) => update(e.target));
   doc.addEventListener('focusout', (e) => update(e.relatedTarget));
+  doc.addEventListener('pointerdown', () => { pressed = true; }, true);
+  for (const type of ['pointerup', 'pointercancel']) {
+    doc.addEventListener(type, () => {
+      pressed = false;
+      if (later) setTimeout(() => { if (later && !pressed) update(doc.activeElement); }, 0); // after the click
+    }, true);
+  }
   // A field taken off the page while it has focus sends no focusout in every browser: look again after the page changes.
   let queued = false;
   new MutationObserver(() => {
