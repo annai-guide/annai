@@ -414,6 +414,37 @@ test('cards of one kind fold into one card that shows each when opened, with one
   await expect(page.locator('.notices .notice')).toHaveCount(0);
 });
 
+test('a card with anything to do but Dismiss is never folded into a stack; a stack is announced, named, and its buttons say what they act on (the verification)', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 });
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  // Two cards that each offer Try again stay two cards, each with its button in sight.
+  await page.evaluate(async () => {
+    const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
+    const n = createNotices();
+    n.el.id = 'probe-notices';
+    document.querySelector('main')?.before(n.el);
+    for (const why of ['one', 'two']) n.card({ title: "Shiori didn't answer", body: `Because ${why}.`, actions: [{ label: 'Try again', run() {} }] });
+  });
+  const probe = page.locator('#probe-notices');
+  await expect(probe.locator('.notice-stack')).toHaveCount(0);
+  await expect(probe.getByRole('button', { name: 'Try again' })).toHaveCount(2);
+  await page.evaluate(() => document.getElementById('probe-notices')?.remove());
+  // A stack of plain cards: named, controlled, labelled, announced.
+  for (let i = 0; i < 3; i++) await raiseCard(page);
+  const stack = page.locator('.notices .notice-stack');
+  await expect(stack).toHaveAttribute('aria-label', 'Open a trip first, 3 cards');
+  const show = stack.getByRole('button', { name: 'Show the 3 cards: Open a trip first' });
+  await expect(show).toHaveAttribute('aria-controls', /^stack-\d+$/);
+  const list = /** @type {string} */ (await show.getAttribute('aria-controls'));
+  expect(await page.locator(`#${list}`).count()).toBe(1);
+  await expect(stack.getByRole('button', { name: 'Dismiss all 3 cards: Open a trip first' })).toBeVisible();
+  // A card joining is announced by its own words, though it sits folded away.
+  await expect(stack.locator('.visually-hidden[role="status"]')).toContainText('Open a trip first');
+  await show.click();
+  await expect(stack.getByRole('button', { name: 'Hide the 3 cards: Open a trip first' })).toHaveAttribute('aria-expanded', 'true');
+});
+
 test('review S2: a card that lands while the screen is at its top moves it down, and for a moment a tap on what slid under the finger does nothing', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 760 });
   await page.clock.install();
