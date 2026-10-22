@@ -14,8 +14,9 @@ import { utf8 } from '../bytes.js';
  * @typedef {import('../llm/contract.js').LiveSetup} LiveSetup
  * @typedef {Omit<LiveDriver, 'close'> & { closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>, on(fn: (e: LiveEvent) => void): () => void,
  *   close(why?: string): void, bytes: { in: number, out: number }, handle?: string, tunables: Record<string, any>,
- *   audioIn: LiveSetup['audioIn'], audioOut: LiveSetup['audioOut'] }} LiveSession
- *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with; audioIn, audioOut: 16-bit PCM at their rates (K6)
+ *   audioIn: LiveSetup['audioIn'], audioOut: LiveSetup['audioOut'], heardLive: boolean }} LiveSession
+ *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with; audioIn, audioOut: 16-bit PCM at their rates (K6);
+ *   heardLive: its tunable heardLive, its transcript of the user streaming in while they speak
  */
 
 /** How long a session may take to be ready. */
@@ -237,6 +238,7 @@ export function openLive(c) {
     tunables: c.tunables,
     audioIn: setup.audioIn,
     audioOut: setup.audioOut,
+    heardLive: c.tunables.heardLive === true,
     on(/** @type {(e: LiveEvent) => void} */ fn) {
       listeners.add(fn);
       return () => { listeners.delete(fn); };

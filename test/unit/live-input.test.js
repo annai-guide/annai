@@ -274,8 +274,12 @@ test('a realtime turn is capped at about 15 s: speech that never pauses goes as 
   const turns = [];
   const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
   await r.input.start();
-  r.feed(cat(quiet(0.5), ...Array.from({ length: 10 }, () => cat(lunch, quiet(0.2), gas, quiet(0.2)))), RATE);
+  const talk = cat(...Array.from({ length: 10 }, () => cat(lunch, quiet(0.2), gas, quiet(0.2))));
+  r.feed(cat(quiet(0.5), talk), RATE);
   r.input.stop();
+  // The rest of the sentence after a cap is a turn at once: the floor goes back to where the turn began (review M3).
+  const said = (talk.length / RATE) * 1000;
+  assert.ok(msOf(r.sent) > said * 0.97, `${Math.round(msOf(r.sent))} ms sent of ${Math.round(said)} ms of speech`);
   /** The ms of sound in each turn. */
   const each = [];
   let n = 0;

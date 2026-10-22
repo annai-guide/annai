@@ -39,6 +39,8 @@ export class LiveInput {
   #gate = 0;
   /** The run of speech going on began before the gate. */
   #tailRun = false;
+  /** The floor when the turn going on began, in dB. @type {number | null} */
+  #startFloor = null;
   /** Samples sent in the turn going on. */
   #sent = 0;
 
@@ -90,13 +92,18 @@ export class LiveInput {
     this.onLevel?.(0);
   }
 
-  /** The turn going on ends now, as the model has stopped transcribing it; what follows must start one of its own, over a floor learned again. @param {TurnEnd} why */
+  /** How long the turn going on has had no frame keepDb over the floor it began on, in ms: a detector whose floor fell may still call it speech. */
+  get quietMs() {
+    return this.active ? this.#detector?.sinceMarkMs ?? 0 : 0;
+  }
+
+  /** The turn going on ends now (its transcript stalled); the floor goes back to where it began. @param {TurnEnd} why */
   cut(why) {
     if (!this.active || this.#closed) return;
     this.#end(why);
     this.#held = false;
     this.#before = [];
-    this.#detector?.reset({ floor: true });
+    this.#detector?.reset({ floor: this.#startFloor });
   }
 
   /** @param {Float32Array} pcm @param {number} sampleRate */
@@ -146,6 +153,8 @@ export class LiveInput {
         if (!this.active) this.#start();
         // The cut; or a noise thrown away once already sent: the turn ends either way.
         this.#end(e.type === 'discard' ? 'noise' : e.cut === 'end' ? 'close' : e.cut, e.type === 'segment' ? e.peakDb : null);
+        // At the cap the floor has crept up with the speech: back to where it was, so what follows is heard as speech.
+        if (e.type === 'segment' && e.cut === 'cap' && this.#startFloor !== null && this.#detector) this.#detector.floorDb = this.#startFloor;
       } else this.#held = false; // thrown away before it was sent: nothing at all
     }
   }
@@ -154,6 +163,9 @@ export class LiveInput {
     this.#held = false;
     this.active = true;
     this.#sent = 0;
+    const d = /** @type {Detector} */ (this.#detector);
+    this.#startFloor = d.floorDb;
+    d.mark(this.#startFloor === null ? null : this.#startFloor + d.keepDb);
     this.send.activity('start');
     for (const b of this.#before.splice(0)) this.#add(b);
   }

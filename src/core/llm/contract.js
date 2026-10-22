@@ -297,7 +297,8 @@ export function safeId(id) {
  *   16-bit PCM as it comes, at its rate; annai plays it once it won't stutter, unless the ability's tunable stream is false (then readSpeech)
  * @property {Record<string, { label: string, options?: Record<string, string> }>} [choices]  tunables the provider page offers in words (G3):
  *   with options, one of them (value → its words); without, a switch for a tunable that is on unless false
- * @property {true} [realtime]  a realtime voice type (K4), with audio, open and attach: annai opens the socket, the type drives it
+ * @property {true} [realtime]  a realtime voice type (K4), with audio, open and attach: annai opens the socket, the type drives it;
+ *   its tunable heardLive says its transcript of the user streams in while they speak, not after their turn (a live session's heardLive)
  * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what it sends and takes, preferred first (tunables input, output pick, K6)
  * @property {(c: SpeechSpec) => { url: string, protocols?: string[] }} [open]  a session's address and subprotocols
  * @property {(socket: LiveSocket, c: { endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, tunables: Record<string, any>,

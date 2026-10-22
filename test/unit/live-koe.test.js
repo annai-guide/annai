@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { liveKit, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
-import { quiet, cat, clip } from './voice-kit.js';
+import { quiet, cat, clip, room } from './voice-kit.js';
 import { cleanSaid, realWord } from '../../src/core/koe/live.js';
 
 /** A half's transcript as text. @param {any} half */
@@ -492,30 +492,120 @@ test("Spend per day reached: the session closes with the budget card, its turns 
 });
 
 // voice-fix item 3 (the iPhone trace, 2026-10-22: "Listening" went on long after the user stopped).
-test("a live turn ends when the model's transcript of it has stopped growing for 1.5 s, though the microphone still hears speech; each turn's end is traced in numbers only", async () => {
-  const k = await liveKit([{ heard: 'Where should we eat?', heardFirst: true, said: 'There is a taco stand ahead.', audio: tone(0.3) }], { pace: 1 });
+/**
+ * Fed as the microphone hears it, 100 ms at a time. @param {any} k @param {Float32Array} pcm @param {() => void} [at] called after each piece
+ */
+async function feedLive(k, pcm, at) {
+  for (let i = 0; i * 1600 < pcm.length; i++) {
+    k.platform.mic.feed(pcm.subarray(i * 1600, (i + 1) * 1600), 16_000);
+    at?.();
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+/**
+ * A room a noise gate takes down to near silence for 160 ms every half second once the user stops: long enough that the detector's
+ * floor falls to it, and the room is speech to it up to the 15 s cap (a detector stuck on a room it misjudged). Lunch at 0.5 s.
+ * @param {Float32Array} lunch @param {number} seconds
+ */
+function gatedRoom(lunch, seconds) {
+  const pcm = room(seconds + 2.5, lunch).slice(2.5 * 16_000);
+  let n = 7;
+  const r = () => ((n = (n * 1103515245 + 12345) >>> 0) / 2 ** 32) * 2 - 1;
+  for (let i = 0; i < pcm.length; i++) if (i / 16_000 > 0.5 + lunch.length / 16_000 && (i / 16_000) % 0.5 < 0.16) pcm[i] = r() * 1e-4;
+  return pcm;
+}
+const turnEnds = async (/** @type {any} */ k) => (await k.events(['live.turn'])).map((/** @type {any} */ e) => e.data.end);
+
+// voice-fix item 3, and the review's M3: the transcript stall ends only a turn the microphone says is over.
+test("a live turn whose transcript has stopped growing for 3 s, with nothing over the floor it began on for the pause, ends there (a detector stuck on a gated room), and each turn's end is traced in numbers only", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', heardAt: 1200, said: 'A taco stand.', audio: tone(0.3) }], { pace: 1, live: { tunables: { heardLive: true } } });
   try {
     const lunch = await clip('where-lunch');
-    const gas = await clip('gas-station');
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here: the quiet spell waits for the slow feed
     k.agent.tap();
     await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
-    const talk = cat(quiet(0.5), ...Array.from({ length: 3 }, () => cat(lunch, gas)));
-    const started = Date.now();
-    // Fed as it is heard, 100 ms at a time, for 4 s: a detector that never hears the pause (a room it misjudged).
-    for (let i = 0; i < 40 && i * 1600 < talk.length; i++) {
-      k.platform.mic.feed(talk.subarray(i * 1600, (i + 1) * 1600), 16_000);
-      await new Promise((r) => setTimeout(r, 100));
-    }
-    const input = got(k, 'realtimeInput').map((/** @type {any} */ m) => Object.keys(m.realtimeInput)[0]);
-    assert.equal(input[0], 'activityStart');
-    assert.ok(input.includes('activityEnd'), 'ended without a pause');
-    await soon(async () => (await k.events(['live.turn'])).length >= 1);
+    await feedLive(k, gatedRoom(lunch, 7));
+    assert.deepEqual(await turnEnds(k), ['transcript']);
     const [turn] = await k.events(['live.turn']);
-    assert.equal(turn.data.end, 'transcript');
-    assert.ok(turn.data.ms > 1000 && turn.data.ms < 3000, `${turn.data.ms} ms sent, in ${Date.now() - started} ms`);
     for (const key of ['ms', 'floorDb', 'peakDb']) assert.equal(typeof turn.data[key], 'number', key);
     assert.deepEqual(Object.keys(turn.data).sort(), ['end', 'floorDb', 'ms', 'peakDb', 'wake']);
+    assert.ok(turn.data.ms > 3000 && turn.data.ms < 6000, `${turn.data.ms} ms sent`);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a speaker still talking when the transcript stalls is never cut: their turn ends at their pause (review M3)', async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', heardAt: 1200, said: 'A taco stand.', audio: tone(0.3) }], { pace: 1, live: { tunables: { heardLive: true } } });
+  try {
+    const lunch = await clip('where-lunch');
+    const gas = await clip('gas-station');
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await feedLive(k, cat(quiet(0.5), lunch, gas, lunch, gas, quiet(1.2)));
+    await soon(async () => (await turnEnds(k)).length >= 1);
+    assert.deepEqual(await turnEnds(k), ['pause']);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a transcript in the turn's first second says nothing yet: it never starts the stall (review M3)", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', heardFirst: true, said: 'A taco stand.', audio: tone(0.3) }], { pace: 1, live: { tunables: { heardLive: true } } });
+  try {
+    const lunch = await clip('where-lunch');
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await feedLive(k, gatedRoom(lunch, 5.5));
+    assert.deepEqual(await turnEnds(k), [], 'still the turn: only the 15 s cap ends it now');
+  } finally {
+    await k.done();
+  }
+});
+
+test("the stall is only for a protocol whose transcript streams in as the user speaks: neither Gemini Live (measured: whole, after activityEnd) nor OpenAI Realtime does", async () => {
+  const { activate: gemini } = await import('../../plugins-official/gemini-live/index.js');
+  const { activate: openai } = await import('../../plugins-official/openai-realtime/index.js');
+  /** @type {any[]} */
+  const types = [];
+  const annai = { helpers: new Proxy({}, { get: () => ({}) }), providers: { register: (/** @type {any} */ t) => { types.push(t); return () => {}; } } };
+  gemini(annai);
+  openai(annai);
+  assert.deepEqual(types.map((t) => [t.type, t.tunables?.heardLive === true]), [['gemini-live', false], ['openai-realtime', false]]);
+  // So the gated room of the test above, on Gemini as it is, ends only at the 15 s cap, never on a transcript.
+  const k = await liveKit([{ heard: 'Where should we eat?', heardAt: 1200, said: 'A taco stand.', audio: tone(0.3) }], { pace: 1 });
+  try {
+    const lunch = await clip('where-lunch');
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await feedLive(k, gatedRoom(lunch, 5.5));
+    assert.deepEqual(await turnEnds(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a drop mid-turn lets go of the stall timer: the resumed session\'s turn is not cut by the old one (review M2 d)', async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', heardAt: 1200, said: 'A taco stand.', audio: tone(0.3) }], { pace: 1, live: { tunables: { heardLive: true } } });
+  try {
+    const lunch = await clip('where-lunch');
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    let dropped = false;
+    const started = Date.now();
+    await feedLive(k, gatedRoom(lunch, 6.5), () => {
+      // Once the transcript came (the stall's timer runs), the connection drops; the resumed one sends none.
+      if (!dropped && Date.now() - started > 2500) {
+        dropped = true;
+        k.server.close(1001, 'Going away.');
+      }
+    });
+    assert.equal(k.server.connections().length, 2, 'resumed');
+    assert.ok(!(await turnEnds(k)).includes('transcript'), JSON.stringify(await turnEnds(k)));
   } finally {
     await k.done();
   }
