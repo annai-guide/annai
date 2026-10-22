@@ -40,6 +40,15 @@ test('maps_link and search_link give links to show, in the Go group', async () =
   assert.match(skill.text, /getting there, getting around, where to stay, then the rest/);
 });
 
+test("search_link takes params only as an object: anything else (JSON text that isn't one, from a model that gives objects as text) is refused in words that say so", async () => {
+  const { run } = await setup();
+  for (const params of ['{"place": "Hoboken"', 'Hoboken', ['Hoboken'], 3, null]) {
+    await assert.rejects(run('search_link', { kind: 'hotel', params }), /^Error: params must be an object of the search's fields, such as \{"place": "Big Sur", "checkin": "2026-11-25"\}, so nothing was searched\./);
+  }
+  // Left out, it is no fields: the search says which it needs.
+  await assert.rejects(run('search_link', { kind: 'hotel' }), /A hotel search needs/);
+});
+
 test('without the catalog, the tools say so plainly', async () => {
   const { run } = await setup();
   await assert.rejects(run('maps_link', { destination: 'Nepenthe' }, false), /hasn't downloaded its link formats yet/);

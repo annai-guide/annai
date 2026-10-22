@@ -52,6 +52,8 @@ test('light changes: a note, a reminder, a flexible item moved, one new flexible
     ['edit', { path: '/trip/notes/today.md', old: 'jacket', new: 'coat' }],
     ['patch', { path: '/trip/plan/lunch.json', changes: { start: { at: '2026-11-26T13:00:00-08:00', tz: 'America/Los_Angeles' }, notes: 'Later', priority: 2 } }],
     ['write', { path: '/trip/plan/beach.json', content: { id: 'beach', title: 'Pfeiffer Beach', fixed: false } }],
+    // As a model on Gemini writes it: the record as JSON text (gemini-api's schema.js).
+    ['write', { path: '/trip/plan/cove.json', content: '{"id": "cove", "title": "Partington Cove", "fixed": false}' }],
   ])) assert.equal(await lightChange(name, input, ctx), null, `${name} ${input.path}`);
   for (const [name, input] of /** @type {[string, any][]} */ ([
     ['patch', { path: '/trip/plan/flight.json', changes: { notes: 'x' } }],
@@ -59,6 +61,9 @@ test('light changes: a note, a reminder, a flexible item moved, one new flexible
     ['patch', { path: '/trip/plan/gone.json', changes: { notes: 'x' } }],
     ['write', { path: '/trip/plan/lunch.json', content: { id: 'lunch', title: 'Lunch', fixed: false } }],
     ['write', { path: '/trip/plan/fixed.json', content: { id: 'fixed', title: 'Show', fixed: true } }],
+    ['write', { path: '/trip/plan/fixed.json', content: '{"id": "fixed", "title": "Show", "fixed": true}' }],
+    ['write', { path: '/trip/plan/odd.json', content: 'fixed: false' }],
+    ['write', { path: '/trip/plan/list.json', content: '[{"fixed": false}]' }],
     ['write', { path: '/trip/bookings/b.json', content: {} }],
     ['write', { path: '/trip/trip.json', content: {} }],
     ['write', { path: '/trip/memory.md', content: 'x' }],

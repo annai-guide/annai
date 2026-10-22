@@ -411,3 +411,18 @@ test("a call that goes back to Gemini (a fallback's, or its own when Google does
   // A tool no longer offered goes back as it was.
   assert.deepEqual(type.build(spec(type, { request: { messages } })).body.input[1].arguments, { path: '/trip/bookings/x.json', content: { id: 'x', kind: 'lodging' } });
 });
+
+test("a step of Google's own tools takes its delta's keys as keys: a \"__proto__\" in it never becomes the kept step's prototype", async () => {
+  const lines = [
+    { event_type: 'step.start', index: 0, step: { type: 'google_search_call', id: 's1' } },
+    '{"event_type":"step.delta","index":0,"delta":{"type":"google_search_call","__proto__":{"polluted":true},"arguments":{"queries":["kyoto"]}}}',
+    { event_type: 'step.stop', index: 0 },
+    { event_type: 'interaction.completed', interaction: { status: 'completed' } },
+  ].map((e) => `event: x\ndata: ${typeof e === 'string' ? e : JSON.stringify(e)}\n\n`).join('');
+  const out = [];
+  for await (const e of type.read(new Response(lines, { headers: { 'content-type': 'text/event-stream' } }), spec(type))) out.push(e);
+  const block = out.find((e) => e.type === 'provider')?.block;
+  assert.equal(Object.getPrototypeOf(block), Object.prototype);
+  assert.equal(block.polluted, undefined);
+  assert.deepEqual(block.arguments, { queries: ['kyoto'] });
+});

@@ -288,7 +288,8 @@ class Steps {
   delta(index, d) {
     const server = this.#server.get(index);
     if (server) {
-      if (d?.type === server.type) Object.assign(server, d); // its delta is the step's content, whole
+      // Its delta is the step's content, whole; its keys defined, never assigned, so "__proto__" stays a key.
+      if (d?.type === server.type) for (const [k, v] of Object.entries(d)) Object.defineProperty(server, k, { value: v, enumerable: true, writable: true, configurable: true });
       return [];
     }
     const s = this.#open.get(index) ?? this.#open.set(index, { type: d?.type === 'text' ? 'model_output' : '', summary: [], args: '' }).get(index);
