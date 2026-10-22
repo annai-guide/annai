@@ -10,7 +10,9 @@
  * So a free-form object below the top (typed object, with no `properties`, or with extra keys let in by
  * additionalProperties, true or a schema) goes as JSON text, which takes any key, and its description says so; it comes
  * back as the object when the text is one, and as the text otherwise, for the tool to refuse in words. One that may also
- * be text (write's content) goes as text both ways: the tool takes text as it is, a .json file's text too.
+ * be text (write's content) goes as text both ways: the tool takes text as it is, a .json file's text too. One whose
+ * structure is in a $ref or a combinator (no `properties` of its own) is not free-form: Gemini fills it right as it is
+ * (checked), so it stays as it is. A nullable one that was made text takes the text "null" back as null.
  *
  * Only `properties`, `items` and `prefixItems` are walked, from the top down, once each. A $ref is never followed, and
  * $defs, allOf, anyOf, oneOf, not, if/then/else and patternProperties go as they are, with all that is in them: Gemini
@@ -43,23 +45,36 @@ const byPlace = (s) => (Array.isArray(s.prefixItems) ? s.prefixItems : Array.isA
 function kind(s) {
   if (!isObject(s) || !typesOf(s).includes('object')) return 'walk';
   if (typesOf(s).includes('string')) return 'union';
+  // A typed object with no properties of its own whose structure is in a $ref or a combinator isn't free-form: Gemini fills
+  // it right as it is (checked), so it goes as it is, and costs nothing to say so.
+  if (!isObject(s.properties) && (typeof s.$ref === 'string' || ['allOf', 'anyOf', 'oneOf'].some((k) => Array.isArray(s[k])))) return 'walk';
   return !isObject(s.properties) || s.additionalProperties === true || isObject(s.additionalProperties) ? 'text' : 'walk';
 }
 
-/** Whether the paths walked fit the budget and the depth, counted as they are walked, and given up at once when they don't. @param {Record<string, any>} schema */
+/** What fits() found for a schema, kept by the schema object: a call's history asks again for each past call. A schema isn't changed once it is sent. @type {WeakMap<object, boolean>} */
+const counted = new WeakMap();
+
+/** Whether the paths walked fit the budget and the depth, counted as they are walked, and given up at once when they don't. Once per schema. @param {Record<string, any>} schema */
 function fits(schema) {
+  let known = counted.get(schema);
+  if (known === undefined) counted.set(schema, (known = count(schema)));
+  return known;
+}
+
+/** @param {Record<string, any>} schema @returns {boolean} */
+function count(schema) {
   let left = BUDGET;
   /** @param {unknown} s @param {number} depth @returns {boolean} */
-  const count = (s, depth) => {
+  const visit = (s, depth) => {
     if (--left < 0 || depth > DEPTH) return false;
     if (!isObject(s) || (depth > 0 && kind(s) !== 'walk')) return true;
     const props = isObject(s.properties) ? s.properties : {};
     const names = Object.keys(props);
     if ((left -= names.length) < 0) return false;
-    const next = (/** @type {unknown} */ x) => count(x, depth + 1);
+    const next = (/** @type {unknown} */ x) => visit(x, depth + 1);
     return names.every((name) => next(props[name])) && byPlace(s).every(next) && (!isObject(s.items) || next(s.items));
   };
-  return count(schema, 0);
+  return visit(schema, 0);
 }
 
 /**
@@ -91,11 +106,11 @@ function translate(s, top) {
 
 /**
  * A call's arguments as the tool takes them: each free-form object Gemini gave as JSON text, as the object when the
- * text is one. A union's text stays text. Arguments that weren't JSON (kept as text) stay as they are.
+ * text is one. A union's text stays text. The text "null" for a nullable one is null. Arguments that weren't JSON (kept as text) stay as they are.
  * @param {unknown} schema the tool's own input schema @param {unknown} args @returns {any}
  */
 export function fromGemini(schema, args) {
-  return walk(schema, args, (as, v) => (as === 'text' && typeof v === 'string' ? parsed(v) : v));
+  return walk(schema, args, (as, v, s) => (v === 'null' && typesOf(s).includes('null') ? null : as === 'text' && typeof v === 'string' ? parsed(v) : v));
 }
 
 /** Text that is a JSON object, as the object, else the text. @param {string} v */
@@ -127,14 +142,14 @@ export function toGeminiArgs(schema, input) {
 /**
  * The value walked down the paths forGemini walks, each key and item once; where it made text, at gives the value.
  * New objects are made with Object.fromEntries, which defines their keys. Nothing is changed in place.
- * @param {unknown} schema @param {unknown} value @param {(as: 'text' | 'union', v: unknown) => unknown} at
+ * @param {unknown} schema @param {unknown} value @param {(as: 'text' | 'union', v: unknown, s: Record<string, any>) => unknown} at
  */
 function walk(schema, value, at) {
   if (!isObject(schema) || !fits(schema)) return value;
   /** @param {unknown} s @param {unknown} v @param {boolean} top @returns {unknown} */
   const visit = (s, v, top) => {
     const as = top ? 'walk' : kind(s);
-    if (as !== 'walk') return at(as, v);
+    if (as !== 'walk') return at(as, v, /** @type {Record<string, any>} */ (s));
     if (!isObject(s)) return v;
     if (Array.isArray(v)) {
       const first = byPlace(s);
