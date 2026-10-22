@@ -695,3 +695,31 @@ test("Kokoro failing on a typed question Koe answered itself tells Koe nothing; 
   await k.agent.idle();
   assert.deepEqual((await k.events(['note'])).filter((e) => e.data.from === 'kokoro').map((e) => e.data.why), ['kokoro-failed']);
 });
+
+// The fix pass (M3): heard words, the user's Stop, then Koe answers them and asks Kokoro. Its question is refused, and the
+// refusal isn't a failed question that wakes Kokoro with "Koe answered the user" (the review's probe P7).
+test("heard, then the Stop, then Koe's answer and a question for Kokoro: the question is refused, and Kokoro isn't woken", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', reply: { delayMs: 400, toolCalls: [{ name: 'speak', input: { text: 'Sure, looking.' } }, { name: 'tell_kokoro', input: { text: 'Find lunch too' } }, { name: 'sleep', input: {} }] } },
+      { match: '.', reply: sleep },
+    ] } },
+    voice: { speechIn: ['m-hear'], hears: ['find lunch too'] },
+  });
+  let stopped = false;
+  k.agent.on('event', (/** @type {any} */ e) => {
+    if (e.type === 'heard' && !stopped) {
+      stopped = true;
+      setTimeout(() => k.agent.stopKokoro(), 50);
+    }
+  });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 300));
+  await k.agent.idle();
+  assert.ok(stopped);
+  assert.deepEqual((await results(k, 'tell_kokoro')).map((e) => e.data.ok), [false]);
+  assert.equal((k.sent['model-0'] ?? []).length, 0, 'Kokoro was not woken');
+});
