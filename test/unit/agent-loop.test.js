@@ -950,6 +950,19 @@ test('show refuses a card with nothing to show, once what can\'t be shown is lef
   assert.equal((await k.events(['out.show'])).length, 0);
 });
 
+test('a wake already in the log that joins mid-turn (a review, "Koe answered the user") stays a line of the conversation: "woke for" gives it once, and later steps still read it (the second fix pass, M5)', async () => {
+  const list = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+  const k = await agentKit([[{ delayMs: 200, ...list }, list, say('Nothing to add.')]]);
+  k.agent.send('Look around');
+  await until(() => k.requests.length === 1);
+  k.agent.enqueue({ kind: 'cue', text: 'a review: tell Koe what it got wrong; otherwise sleep', logged: true });
+  await k.agent.idle();
+  assert.equal(k.requests.length, 3);
+  assert.match(k.requests[1].tail, /woke for: a review: tell Koe what it got wrong/);
+  assert.doesNotMatch(k.requests[2].tail, /woke for/);
+  assert.match(JSON.stringify(k.requests[2].messages), /\[annai\] a review: tell Koe what it got wrong; otherwise sleep/);
+});
+
 test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shiori's turn goes on", async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'snap', input: {} }] }, say('That picture was broken.')]]);
   k.registry.add('test', 'tool', { name: 'snap', description: 'A picture.', input: { type: 'object' }, run: async () => ({ content: 'A picture.', images: [{ mediaType: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=' }] }) });
