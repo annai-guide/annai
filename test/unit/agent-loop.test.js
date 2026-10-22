@@ -218,7 +218,7 @@ test("a model error card is taken down when a later turn works: the same key, th
   k.llm.bench.clear('m-0');
   k.agent.send('Hi again');
   await k.agent.idle();
-  assert.deepEqual(seen, ['model', 'silent']);
+  assert.deepEqual(seen, ['model', `silent:${k.trip}`]);
   // The same for a turn that said nothing: its card goes with the turn that speaks.
   const q = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, say('Now aloud.')]]);
   /** @type {any[]} */
@@ -226,12 +226,36 @@ test("a model error card is taken down when a later turn works: the same key, th
   q.agent.on('clear', (/** @type {string} */ key) => qs.push(key));
   q.agent.send('Hi');
   await q.agent.idle();
-  assert.deepEqual(q.notices.map((/** @type {any} */ n) => [n.title, n.key]), [["Shiori didn't answer", 'silent']]);
+  assert.deepEqual(q.notices.map((/** @type {any} */ n) => [n.title, n.key]), [["Shiori didn't answer", `silent:${q.trip}`]]);
   assert.deepEqual(qs, ['model'], "that turn worked, but said nothing: the card about saying nothing stays");
   q.agent.tryAgain();
   await q.agent.idle();
-  assert.deepEqual(qs, ['model', 'model', 'silent']);
+  assert.deepEqual(qs, ['model', 'model', `silent:${q.trip}`]);
   assert.equal((await q.events(['out.speak']))[0].data.text, 'Now aloud.');
+});
+
+test("the \"didn't answer\" card goes only with a later turn the user started in its conversation that spoke to them: not a reminder's, nor another conversation's (the fix pass)", async () => {
+  const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, say('Fuel is low.'), say('Kyoto is lovely.'), say('Now aloud.')]]);
+  /** @type {string[]} */
+  const seen = [];
+  k.agent.on('clear', (/** @type {string} */ key) => seen.push(key));
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const key = `silent:${k.trip}`;
+  assert.equal(k.notices[0].key, key);
+  await k.agent.wake({ kind: 'trigger', text: 'Fuel is low', scope: k.trip });
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).length, 1);
+  assert.ok(!seen.includes(key), "a reminder's turn that spoke");
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.agent.open(other);
+  k.agent.send('Hello there');
+  await k.agent.idle();
+  assert.ok(!seen.includes(key), "another conversation's turn of the user's");
+  await k.agent.open(k.trip);
+  k.agent.send('Hi again');
+  await k.agent.idle();
+  assert.ok(seen.includes(key));
 });
 
 test("the card says why each model failed on one line, each reason once, in words; offline, that the device is (emulator pass)", async () => {

@@ -52,7 +52,7 @@ import { anySignal } from '../signals.js';
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's
  * @typedef {{ name: StateName, label: string, detail?: string }} State
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string }} Notice
- *   key: names a card a later turn takes down (the clear event, when that turn works)
+ *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
  * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
  * @typedef {import('./tools.js').Tool & { pluginId: string }} LoopTool
@@ -1314,10 +1314,11 @@ export class Agent {
       ok = await this.#steps(wakes, wakeId, abort);
     } finally {
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn('the end of a turn failed', e));
-      // A turn that worked takes down the cards about a model failing; one that then spoke, the card about her saying nothing.
+      // A turn that worked takes down the cards about a model failing; a turn of the user's that spoke to them, the card about
+      // her saying nothing in its conversation (not a reminder's turn, nor another conversation's).
       if (ok) {
         this.#emit('clear', 'model');
-        if (this.#facts.spoke) this.#emit('clear', 'silent');
+        if (this.#facts.spoke && wakes.some(isTheirs)) this.#emit('clear', `silent:${this.scope}`);
       }
       this.#turning = false;
       try {
@@ -1606,7 +1607,7 @@ export class Agent {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = 'Her model finished without saying anything to you.';
       const scope = this.scope;
-      await this.#notice({ tone: 'warn', title: "Shiori didn't answer", body, key: 'silent', actions: [{ label: 'Try again', primary: true, run: () => { this.wake({ kind: 'cue', text: AGAIN, again: true, scope }); } }] });
+      await this.#notice({ tone: 'warn', title: "Shiori didn't answer", body, key: `silent:${scope}`, actions: [{ label: 'Try again', primary: true, run: () => { this.wake({ kind: 'cue', text: AGAIN, again: true, scope }); } }] });
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'silent', wake: wakeId, message: body } });
     }
     settle();
