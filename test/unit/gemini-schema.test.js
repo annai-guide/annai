@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { forGemini, fromGemini, toGeminiArgs, OBJECT_TEXT, TEXT_OR_OBJECT } from '../../plugins-official/gemini-api/schema.js';
-import { toolSchema } from '../../plugins-official/gemini-api/steps.js';
+import { toolSchema, toInput } from '../../plugins-official/gemini-api/steps.js';
+import { cardSchema } from '../../src/core/ui-slots.js';
 import { activate as files } from '../../src/plugins/files/index.js';
 import { activate as go } from '../../src/plugins/go/index.js';
 import { callOnce } from '../../src/core/llm/call.js';
@@ -23,8 +24,22 @@ test('a free-form object below the top goes as JSON text, keeping only its title
   assert.deepEqual(forGemini(PATCH), { type: 'object', properties: { path: { type: 'string' }, changes: { type: 'string', description: OBJECT_TEXT } }, required: ['path', 'changes'] });
   assert.deepEqual(forGemini(WRITE).properties.content, { type: 'string', description: TEXT_OR_OBJECT });
   // Its own title and description stay, first; nothing else of it does.
-  const f = { title: 'F', description: 'Any fields.', type: 'object', default: {}, minProperties: 1, $ref: '#/$defs/X', anyOf: [{ type: 'object' }], patternProperties: { '^x': {} } };
+  const f = { title: 'F', description: 'Any fields.', type: 'object', default: {}, minProperties: 1, not: { required: ['x'] }, patternProperties: { '^x': {} } };
   assert.deepEqual(forGemini({ type: 'object', properties: { f } }).properties.f, { title: 'F', type: 'string', description: `Any fields. ${OBJECT_TEXT}` });
+  // But a typed object whose structure is in a $ref or a combinator (no properties of its own) is not free-form here: it
+  // goes as it is, since Gemini fills those correctly (checked), and a call to it comes back as it came.
+  for (const key of /** @type {const} */ (['$ref', 'allOf', 'anyOf', 'oneOf'])) {
+    const structure = key === '$ref' ? '#/$defs/X' : [{ $ref: '#/$defs/X' }, { type: 'object', properties: { a: { type: 'string' } } }];
+    const node = { title: 'F', description: 'Structured.', type: 'object', [key]: structure };
+    const schema = { type: 'object', properties: { f: node, n: { type: ['object', 'null'], [key]: structure } }, $defs: { X: { type: 'object', properties: { a: { type: 'string' } } } } };
+    const sent = forGemini(schema);
+    assert.deepEqual(sent, schema, key);
+    const args = { f: { a: 'x' }, n: null };
+    assert.equal(fromGemini(schema, args).f, args.f, key);
+    assert.deepEqual(toGeminiArgs(schema, args), args, key);
+    // Its own properties still make it a node that is walked, as before; only no properties and no structure elsewhere makes text.
+    assert.deepEqual(forGemini({ type: 'object', properties: { f: { type: 'object', properties: { m: { type: 'object' } }, [key]: structure } } }).properties.f.properties.m, { type: 'string', description: OBJECT_TEXT }, key);
+  }
   // Free-form: typed object with no properties, or with extra keys let in by additionalProperties (true or a schema), beside
   // named ones too. A nullable one stays nullable. Named properties and nothing else said, or extra keys refused, are walked.
   assert.deepEqual(forGemini({ type: 'object', properties: {
@@ -129,6 +144,23 @@ test('on the way back: JSON text that is an object becomes the object; any other
   assert.deepEqual(args, { path: '/p', changes: '{"a":1}' });
 });
 
+test('a nullable field made text takes the text "null" as null; a field that is not nullable keeps it as text', () => {
+  const s = { type: 'object', properties: {
+    changes: { type: ['object', 'null'] },
+    content: { type: ['string', 'object', 'null'] },
+    plain: { type: 'object' },
+    legs: { type: 'array', items: { type: ['object', 'null'] } },
+    note: { type: ['string', 'null'] },
+  } };
+  const back = fromGemini(s, { changes: 'null', content: 'null', plain: 'null', legs: ['null', '{"a":1}', 'nullable'], note: 'null' });
+  // note was not made text (a plain string or null): it is left as the model gave it.
+  assert.deepEqual(back, { changes: null, content: null, plain: 'null', legs: [null, { a: 1 }, 'nullable'], note: 'null' });
+  // A real null stays null, and text that is merely like it stays text.
+  assert.deepEqual(fromGemini(s, { changes: null, content: ' null', plain: '"null"' }), { changes: null, content: ' null', plain: '"null"' });
+  // And the way out: null goes as null.
+  assert.deepEqual(toGeminiArgs(s, { changes: null, content: null }), { changes: null, content: null });
+});
+
 test("a call's arguments go back to Gemini as it fills them: its own, or another model's, free-form objects as JSON text; the round trip is exact", () => {
   const input = { path: '/trip/bookings/x.json', changes: { 'notes+': ['late'], end: null } };
   const sent = toGeminiArgs(PATCH, input);
@@ -143,20 +175,27 @@ test("a call's arguments go back to Gemini as it fills them: its own, or another
   assert.deepEqual(fromGemini(s, toGeminiArgs(s, value)), value);
 });
 
-test("annai's own tools as Gemini gets them: write, patch and search_link's params take JSON text, and nothing else of the files and go tools changes", () => {
+test("annai's own tools as Gemini gets them: write, patch, search_link's params and show's card data (once a plugin adds a card type) take JSON text, and nothing else of the files and go tools changes", () => {
   /** @type {any[]} */
   const tools = [];
   const annai = { tools: { register: (/** @type {any} */ t) => { tools.push(t); return () => {}; } }, files: {}, helpers: { tsv: {} } };
   files(/** @type {any} */ (annai));
   go(/** @type {any} */ (annai));
+  // show: once a plugin adds a card type, its card has a free-form data (ui-slots.js cardSchema); with none, it has not.
+  const showWith = (/** @type {{ type: string, name: string, description: string }[]} */ types) => ({ name: `show${types.length ? '' : '-plain'}`, description: 'Show a card.', input: { type: 'object', properties: { card: cardSchema(types) }, required: ['card'] } });
+  tools.push(showWith([{ type: 'tides', name: 'Tides', description: 'Low and high tides.' }]), showWith([]));
   /** @type {string[]} */
   const changed = [];
   for (const t of tools) {
     const sent = toolSchema(t).parameters;
     if (JSON.stringify(sent) !== JSON.stringify(t.input)) changed.push(t.name);
   }
-  assert.deepEqual(changed.sort(), ['patch', 'search_link', 'write']);
+  assert.deepEqual(changed.sort(), ['patch', 'search_link', 'show', 'write']);
   assert.deepEqual(toolSchema(tools.find((t) => t.name === 'search_link')).parameters.properties.params, { type: 'string', description: OBJECT_TEXT });
+  const card = toolSchema(tools.find((t) => t.name === 'show')).parameters.properties.card;
+  assert.deepEqual(card.properties.data, { type: 'string', description: `What a typed card shows, as its type asks. ${OBJECT_TEXT}` });
+  // The card's built-in parts stay as they are, place's object with its properties too.
+  assert.deepEqual(card.properties.place, tools.find((t) => t.name === 'show').input.properties.card.properties.place);
 });
 
 test("recorded (gemini-3.5-flash-lite, 2026-10-22): Gemini writes Shiori's booking as JSON text, which annai stores as the record, and a merge patch with \"notes+\" reaches patch as the object", async () => {
@@ -327,6 +366,31 @@ test('a schema over the budget or the depth is sent as it is, and its calls come
   const fine = deep(90);
   assert.deepEqual(nest(90, forGemini(fine), (s) => s.properties.n).properties.leaf, { type: 'string', description: OBJECT_TEXT });
   assert.deepEqual(nest(90, fromGemini(fine, value(90)), (v) => v.n).leaf, { a: 1 });
+});
+
+test("history: 200 past calls to a tool with a large schema cost the request under 100 ms, over the budget or within it: a schema is counted once, not once a call", (t) => {
+  const MODEL = 'gemini-3.5-flash-lite';
+  /** A conversation of 200 calls to `name`, each answered. @param {string} name */
+  const history = (name) => Array.from({ length: 200 }, (_, i) => [
+    { role: 'assistant', parts: [{ type: 'tool_call', id: `c${i}`, name, input: { k0: { n: i }, k1: 'x' } }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: `c${i}`, content: 'ok' }] },
+  ]).flat();
+  // 100,000 keys is over the 50,000 budget (each key and its node count); 20,000 is within it, so the whole schema is walked, once.
+  for (const [what, keys] of /** @type {const} */ ([['over the budget', 100_000], ['within the budget', 20_000]])) {
+    const input = { type: 'object', properties: { ...many(keys, { type: 'string' }), k0: { type: 'object' }, k1: { type: 'string' } } };
+    const messages = history('big');
+    const started = performance.now();
+    const sent = toolSchema({ name: 'big', description: 'Big.', input });
+    const steps = toInput(messages, { model: MODEL, tools: [{ name: 'big', input }] });
+    const ms = performance.now() - started;
+    t.diagnostic(`${ms.toFixed(1)} ms: tool schema and 200 past calls, ${what} (${keys.toLocaleString('en')} keys)`);
+    assert.ok(ms < 100, `${ms.toFixed(1)} ms ${what}`);
+    const calls = steps.filter((x) => x.type === 'function_call');
+    assert.equal(calls.length, 200);
+    // Over the budget, as it is; within it, the free-form k0 as JSON text.
+    assert.deepEqual(calls[7].arguments, what === 'over the budget' ? { k0: { n: 7 }, k1: 'x' } : { k0: '{"n":7}', k1: 'x' });
+    assert.equal(sent.parameters === input, what === 'over the budget');
+  }
 });
 
 test('a real MCP schema of 400 $defs is far under the budget: its $defs are never walked, and its own properties are translated', () => {
