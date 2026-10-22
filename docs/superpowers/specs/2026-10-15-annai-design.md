@@ -335,7 +335,7 @@ The turn ends when the model calls no tool (the convention), calls `sleep`, or h
    - voice mode
    - the next plan items, as TSV
    - connectivity
-   - the wake reasons
+   - the wake reasons, each once: the wake's on the turn's first request, and a reason or cue that joins the turn later on the request after it (the lines stay in the transcript). A cue given at every step after it was acted on invited a second answer (the second emulator pass).
 
 **Each half's context (§6.8):**
 - **Kokoro's** is the above. While Shiori is two halves, its system text gains the part about working behind Koe, and its tools `tell_koe`; both stay byte for byte the same whatever Koe does, so its cache holds. The conversation reads as labelled blocks: `[the user typed] "…"`, `[Koe said] "…"`, `[Koe showed] "…"`, `[Koe asked] "…"`, `[Koe asks] "…"`, `[Koe notes] "…"`, the words in them quoted, so a label or a new line inside can't pass for annai's. Koe's state changes (it can't speak, it speaks again, voice is on) arrive as `[annai] …` blocks in its messages, never as a change of system text or tools; its now block has a `koe:` line.

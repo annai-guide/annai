@@ -68,9 +68,9 @@ export class Channel {
    */
   async send(from, text, mode, why, wake, call) {
     const to = from === 'koe' ? 'kokoro' : 'koe';
-    await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text]] });
+    const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text]] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, ...(call ? { call } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }

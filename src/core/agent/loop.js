@@ -38,13 +38,13 @@ import { anySignal } from '../signals.js';
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
- *   call?: { name: string, input: any } }} Wake
+ *   call?: { name: string, input: any }, seq?: number }} Wake
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
  *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
  *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it; why: a note's reason (NoteWhy);
- *   call: the call of Kokoro's a gated note stands for (its show or ask)
+ *   call: the call of Kokoro's a gated note stands for (its show or ask); seq: a note's entry in the conversation
  * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
@@ -320,6 +320,8 @@ export class Agent {
   #speaking = false;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
+  /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
+  #reachedTo = { scope: '', to: 0 };
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, registry: import('../registry.js').Registry,
@@ -1321,6 +1323,7 @@ export class Agent {
     this.#snapshot = nextSnapshot(this.#snapshot, fresh, { cold });
     // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
     if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
+    /** What woke her, then what joins her turn, until a request of hers has said it (the now block says each once). */
     const reasons = wakes.map((w) => this.#reason(w));
     // The user reordered the list (or changed it) since: their order applies from this turn, warm cache or not (emulator pass).
     const order = chatCandidates(await this.llm.config(), this.#half.role).join('\n');
@@ -1355,10 +1358,11 @@ export class Agent {
     const owes = () => notes.length > 0 || wrote;
     /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
     const unanswered = () => wrote || (theirs && !this.#facts.told);
-    /** Wakes joining the turn: what they owe. @param {Wake[]} more */
+    /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
     const join = (more) => {
       theirs ||= more.some(isTheirs);
-      notes.push(...more.filter(isForUser));
+      const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
+      notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
     };
     join(wakes);
     let nudged = false;
@@ -1455,6 +1459,7 @@ export class Agent {
       /** @type {any} */
       let result;
       const cut = new AbortController();
+      const before = this.#reached;
       try {
         this.#half.calling?.(context);
         this.#calling = true;
@@ -1509,6 +1514,7 @@ export class Agent {
         break;
       }
       this.#callCut = null;
+      reasons.length = 0; // the model has read them
       steps++;
       this.#heardBy = result.modelId;
       answered = true;
@@ -1539,6 +1545,7 @@ export class Agent {
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
+      if (this.#reached !== before) this.#reachedTo = { scope: this.scope, to: context.to };
       // Koe has told the user what Kokoro's notes say already: they are settled, and annai doesn't show them.
       if (ordered.some((/** @type {any} */ c) => c.name === 'already_told')) notes = [];
       // The user wrote inside Koe's wait: its answer is owed, whatever Koe asked of Kokoro meanwhile.

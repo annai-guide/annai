@@ -94,7 +94,8 @@ const KOE = /** @type {Record<string, string>} */ ({ text: 'talking with the use
 /**
  * The now block (spec §6.3, item 4): sent last, never cached.
  * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][] | null, place?: string, activity?: string, voiceWhy?: string, koe?: string }} c
- *   voiceWhy: why voice is what it is, for Auto (spec §10.5); plan null: no plan line (Koe's view has the plan); koe: Koe's state, for Kokoro
+ *   voiceWhy: why voice is what it is, for Auto (spec §10.5); plan null: no plan line (Koe's view has the plan); koe: Koe's state, for Kokoro;
+ *   reasons: what woke her, or joined her turn, since her last request: none, no line (each is said once; the fix pass)
  */
 export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '', koe }) {
   const lines = [
@@ -104,7 +105,7 @@ export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 
     `voice: ${VOICE[voice] ?? voice}${voiceWhy ? ` (${voiceWhy})` : ''}`,
     ...(koe ? [`koe: ${KOE[koe] ?? koe}`] : []),
     `connection: ${online ? 'online' : 'offline'}`,
-    `woke for: ${reasons.length ? reasons.join('; ') : 'a reason annai did not record'}`,
+    ...(reasons.length ? [`woke for: ${reasons.join('; ')}`] : []),
     ...(plan === null ? [] : [plan.length ? `next in the plan:\n${tsv(['start', 'title', 'fixed', 'place'], plan)}` : 'next in the plan: nothing']),
   ];
   return `<now>\n${lines.join('\n')}\n</now>`;

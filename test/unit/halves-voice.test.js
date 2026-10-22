@@ -574,6 +574,8 @@ test("Koe coming back while Kokoro's turn has the voice waits for that turn's en
 test("Koe failing while Kokoro's turn runs, voice on: Kokoro's answer is said aloud, not a silent bubble (probe G)", async () => {
   const k = await agentKit([{ rules: [
     { match: 'the user wrote', reply: { delayMs: 150, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, then: calls(['speak', { text: 'Nepenthe is open till 10.' }]) },
+    // Its next step woke only for this (each reason is said once: the fix pass, S2).
+    { match: "Koe can't speak", reply: calls(['speak', { text: 'Nepenthe is open till 10.' }]) },
     { match: '.', reply: sleep },
   ] }], { koe: { talk: [{ delayMs: 30, error: 'auth', message: 'bad key' }] }, voice: { speechIn: ['m-hear'] } });
   k.agent.send('Is Nepenthe open?');
