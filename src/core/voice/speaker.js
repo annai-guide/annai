@@ -15,7 +15,7 @@ import { anySignal } from '../signals.js';
  * @typedef {import('./platform.js').Clip} Clip
  * @typedef {import('../llm/contract.js').SpeechStream} SpeechStream
  * @typedef {{ id: string, name: string, kind: 'browser' | 'api' }} VoiceEntry
- * @typedef {{ sentences: string[], said: number, cut: { index: number, at: number } | null, heard: string, failed: null | 'no-voice' | 'blocked', voices: string[], failedVoices: { name: string, why: string }[] }} Spoken
+ * @typedef {{ sentences: string[], said: number, cut: { index: number, at: number } | null, heard: string, failed: null | 'no-voice' | 'blocked', voices: string[], failedVoices: { name: string, why: string, error: unknown }[] }} Spoken
  *   said: sentences spoken whole; cut: where she was stopped (a sentence, and characters into it); heard: what the user heard; voices: who spoke, in order;
  *   failedVoices: the voices that failed and were benched, with why in the provider's own plain words, so the Voice test can say the first voice failed;
  *   failed: no voice could speak ('no-voice'), or the page may not play sound yet ('blocked', an iPhone before the first tap)
@@ -221,7 +221,7 @@ export class Utterance {
   #playing = null;
   /** The voices that spoke, in order. @type {string[]} */
   #voices = [];
-  /** The voices that failed, and why. @type {{ name: string, why: string }[]} */
+  /** The voices that failed, and why. @type {{ name: string, why: string, error: unknown }[]} */
   #failedVoices = [];
   /** @type {Promise<Spoken>} */
   done;
@@ -354,7 +354,7 @@ export class Utterance {
           ahead.stop.abort();
           this.#prefetched.delete(k);
         }
-        this.#failedVoices.push({ name: entry.name, why: String(/** @type {any} */ (e)?.message ?? e).slice(0, 300) });
+        this.#failedVoices.push({ name: entry.name, why: String(/** @type {any} */ (e)?.message ?? e).slice(0, 300), error: e });
         this.#deps.bench(entry.id, e);
       } finally {
         this.#playing = null;

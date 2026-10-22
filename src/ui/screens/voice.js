@@ -3,6 +3,7 @@ import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf, abilityOf, providerOf, KOE_ROLE } from '../../core/llm/config.js';
 import { SAMPLE, speechProblem } from '../speech-check.js';
+import { withoutSecrets } from '../../core/agent/net.js';
 import { whereHeard, whereSaid } from '../../core/voice/where.js';
 
 /** @param {string} title @param {...any} children */
@@ -58,7 +59,8 @@ export async function renderVoice(ctx) {
         const r = await voice.say(SAMPLE);
         sayStatus.textContent = r.failed === 'blocked' ? "This browser didn't let annai play sound yet. Tap anywhere on the page, then try again."
           : r.failed ? 'No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.'
-            : [...r.failedVoices.map((/** @type {any} */ f) => `${f.name} couldn't speak: ${f.why}`), `Spoken by ${r.voices.join(', then ')}.`].join(' ');
+            // A provider's own words may hold a key (spec §9.9), as in a model's Test.
+            : await withoutSecrets(ctx.store, [...r.failedVoices.map((/** @type {any} */ f) => `${f.name} couldn't speak: ${speechProblem(f.error)}`), `Spoken by ${r.voices.join(', then ')}.`].join(' '));
       } catch (e) {
         sayStatus.textContent = speechProblem(e);
       } finally {

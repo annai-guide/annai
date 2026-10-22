@@ -69,7 +69,7 @@ test("a transcription model's Test: you say something and it writes it down, sen
 
 test('Settings → Voice: a voice that fails gives its sentence to the next one; the microphone test writes down what it heard', async ({ page }) => {
   const server = await startModelServer({
-    '/bad/audio/speech': { status: 500, type: 'application/json', body: JSON.stringify({ error: { message: 'Voice server down' } }) },
+    '/bad/audio/speech': { status: 500, type: 'application/json', body: JSON.stringify({ error: { message: 'Voice server down for sk-a-test' } }) },
     '/good/audio/speech': wav,
     '/ears/audio/transcriptions': { status: 200, type: 'application/json', body: JSON.stringify({ text: 'Is there a gas station nearby?' }) },
   });
@@ -98,6 +98,7 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await page.getByRole('button', { name: 'Test the voice' }).click();
     // Says the first voice failed, then who spoke (the second emulator re-check: it said only "Spoken by Browser voice.").
     await expect(page.getByText(/^voice-a couldn't speak: .+ Spoken by voice-b\.$/)).toBeVisible({ timeout: 20_000 });
+    expect(await page.locator('main').innerText(), "a provider's words that echo the key never reach the page").not.toContain('sk-a-test');
     expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
     expect(server.bodies('/good/audio/speech')).toHaveLength(2);
     await page.getByLabel('Pause that ends a sentence (ms)').fill('900');
