@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Detector } from '../../src/core/voice/detector.js';
-import { clip, quiet, brown, burst, cat, mix, detect, segments, RATE } from './voice-kit.js';
+import { clip, quiet, brown, burst, cat, mix, detect, segments, room, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -72,4 +72,51 @@ test('speech that never pauses is cut into pieces no longer than maxMs; it never
   const lens = segments(detect(cat(quiet(0.5), run, quiet(1)), { maxMs: 8000 }));
   assert.ok(lens.length >= 3, `${lens.length} segments`);
   assert.ok(lens.every((l) => l <= 8000), lens.join(', '));
+});
+
+// voice-fix item 3 (the iPhone trace, 2026-10-22: a live turn ran on for 29 s after the user stopped): near-silent frames.
+/** When the run that starts with the speech at 3 s ends, in seconds after it starts. @param {Float32Array} pcm @param {Record<string, number>} [opts] */
+function runEnds(pcm, opts) {
+  const d = new Detector({ sampleRate: RATE, ...opts });
+  let start = null;
+  for (let i = 0; i < pcm.length; i += 2048) {
+    for (const e of d.push(pcm.subarray(i, i + 2048))) {
+      const t = (i + 2048) / RATE;
+      if (e.type === 'speech' && start === null) start = t;
+      else if (start !== null) return { start, end: t - start, type: e.type };
+    }
+  }
+  return { start, end: Infinity, type: 'none' };
+}
+
+test('near-silent frames (60 ms of zeros every half second, as an iPhone gives) neither move the floor nor keep speech going: it ends at its pause', () => {
+  const after = (/** @type {number} */ t) => t > 3 + lunch.length / RATE && t % 0.5 < 0.06;
+  const r = runEnds(room(40, lunch, after));
+  assert.ok(r.start !== null && r.start > 2.9, `speech found at ${r.start} s`);
+  assert.deepEqual(detect(room(40, lunch, after)).map((e) => e.type), ['speech', 'segment'], 'and the room is never speech after it (frames partly of zeros too)');
+  assert.equal(r.type, 'segment');
+  assert.ok(r.end < 4, `the run lasted ${r.end.toFixed(1)} s for ${(lunch.length / RATE).toFixed(1)} s of speech`);
+  // And 200 ms of them right after the speech.
+  const once = runEnds(room(40, lunch, (t) => t > 3 + lunch.length / RATE && t < 3.2 + lunch.length / RATE));
+  assert.ok(once.end < 3, `${once.end.toFixed(1)} s`);
+});
+
+test('a microphone that opens with 100 ms of digital silence: the floor starts from the first real frames, so the room is not speech', () => {
+  const r = runEnds(room(10, lunch, (t) => t < 0.1));
+  assert.ok(r.start !== null && r.start > 2.9, `speech found at ${r.start} s, not in the room before it`);
+  assert.equal(r.type, 'segment');
+});
+
+test("the floor and the loudest frame of the run, in dB, for the Trace", () => {
+  const d = new Detector({ sampleRate: RATE });
+  assert.equal(d.floorDb, null);
+  const events = [];
+  const pcm = cat(quiet(0.6), lunch, quiet(1));
+  for (let i = 0; i < pcm.length; i += 2048) events.push(...d.push(pcm.subarray(i, i + 2048)));
+  const seg = /** @type {any} */ (events.find((e) => e.type === 'segment'));
+  assert.equal(seg.cut, 'pause');
+  assert.ok(d.floorDb !== null && d.floorDb < -60, `floor ${d.floorDb}`);
+  assert.ok(seg.peakDb > -30 && seg.peakDb > /** @type {number} */ (d.floorDb) + 30, `peak ${seg.peakDb}`);
+  const capped = /** @type {any} */ (detect(cat(quiet(0.5), ...Array.from({ length: 6 }, () => cat(lunch, quiet(0.2), gas, quiet(0.2)))), { maxMs: 5000 }).find((e) => e.type === 'segment'));
+  assert.equal(capped.cut, 'cap');
 });

@@ -11,7 +11,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request', 'pack.download'],
-  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn'],
   Housekeeping: ['compaction'],
   // Live is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
@@ -145,6 +145,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
     return [`live session ${d.state}`, d.model, d.ms !== undefined ? (d.ms >= 60_000 ? `${(d.ms / 60_000).toFixed(1)} min` : `${(d.ms / 1000).toFixed(1)} s`) : null, d.why ? cut(d.why) : null, d.kind,
       d.bytesIn !== undefined ? `${bytes(d.bytesIn)} in, ${bytes(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null].filter(Boolean).join(' · ');
   }
+  // How the user's turn in a live session ended, in numbers only (the voice investigation, 2026-10-22).
+  if (e.type === 'live.turn') return `your turn ended: ${d.end} · ${((d.ms ?? 0) / 1000).toFixed(1)} s sent · floor ${d.floorDb ?? '?'} dB, loudest ${d.peakDb ?? '?'} dB`;
   if (e.type === 'net.request') {
     // Each clip's format and size (spec §10.6).
     const clips = d.format ? ` · ${d.format}, ${bytes(d.bytes ?? 0)}` : d.audio?.length ? ` · audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${bytes(a.bytes)}`).join('; ')}` : '';

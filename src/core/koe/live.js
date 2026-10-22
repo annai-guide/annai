@@ -34,6 +34,8 @@ const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 const REACH = ['show', 'ask', 'already_told'];
 /** Where her voice doesn't reach the microphone, so speaking may cut her off (spec §10.4): elsewhere, half-duplex. */
 const DUPLEX = ['headphones', 'car'];
+/** The user's turn ends when the model's transcript of it has stopped growing this long (a detector stuck on a room it misjudged). */
+const STALL_MS = 1500;
 
 /** A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped. @param {string} text */
 export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
@@ -66,6 +68,8 @@ export class LiveKoe {
   #input = null;
   /** Speaking may cut her off now: "Cut her off by speaking" is on, and the microphone in use is headphones' or the car's. */
   #duplex = false;
+  /** @type {any} */
+  #stall = null;
   /** Sends waiting for the session to be ready (a tap's first words, a reconnect). @type {((s: LiveSession) => void)[]} */
   #waiting = [];
   /** @type {Hearing | null} */
@@ -248,6 +252,8 @@ export class LiveKoe {
     this.#input = new LiveInput({
       mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding), duplex: () => this.#duplex,
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
+      // Each turn's end, why and in numbers only, for the Trace.
+      onTurn: (t) => { this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } }); },
     });
     this.listening = true;
     p.session('play-and-record');
@@ -291,6 +297,7 @@ export class LiveKoe {
     const input = this.#input;
     this.#input = null;
     this.listening = false;
+    clearTimeout(this.#stall);
     input?.stop();
     this.#old?.close(why); // one being left for a new connection
     this.#old = null;
@@ -472,6 +479,7 @@ export class LiveKoe {
     if (!this.c.visible()) return this.close('away'); // a page out of view never streams a sound
     /** @type {{ playedMs?: number }} */
     let cut = {};
+    clearTimeout(this.#stall);
     if (edge === 'start') {
       this.#brief = false; // the user talks: the quiet spell holds
       // The user cut in: her voice stops now, and the provider cuts its turn.
@@ -504,6 +512,12 @@ export class LiveKoe {
     if (e.type === 'heard') {
       const h = (this.#hear ??= hearing());
       h.text += e.text;
+      // While the user's turn goes on, its transcript growing says they speak; stopped for STALL_MS, they have finished.
+      if (this.#input?.active && e.text) {
+        clearTimeout(this.#stall);
+        const input = this.#input;
+        this.#stall = setTimeout(() => input.cut('transcript'), STALL_MS);
+      }
       if (h.answered) this.#flushHeard(Boolean(h.dismissed)); // the last words can come after Koe's turn: added
     } else if (e.type === 'usage') this.#over().then((over) => { if (over) this.close('budget'); }, () => {});
     else if (e.type === 'goaway') {

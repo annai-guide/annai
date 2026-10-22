@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LiveInput } from '../../src/core/realtime/input.js';
 import { StreamResampler } from '../../src/core/voice/pcm.js';
-import { clip, quiet, cat, burst, RATE } from './voice-kit.js';
+import { clip, quiet, cat, burst, room, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -206,4 +206,74 @@ test("given the session to send to, it sends at the session's rate: 8 kHz for on
   assert.deepEqual([sent[0], sent.at(-1)], ['start', 'end']);
   assert.ok(chunks.slice(0, -1).every((c) => c.length === 1600), '100 ms chunks of 8 kHz PCM16');
   input.stop();
+});
+
+// voice-fix item 3 (the iPhone trace, 2026-10-22: "Listening" for 29 s after the user stopped): the investigation's zero-frame pattern.
+test("near-silent frames from the microphone (60 ms of zeros every half second) don't keep a turn going: it ends at the user's pause", async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  r.feed(room(40, lunch, (t) => t > 3 + lunch.length / RATE && t % 0.5 < 0.06), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  const ms = msOf(r.sent);
+  assert.ok(ms < (lunch.length / RATE) * 1000 + 1500, `${Math.round(ms)} ms sent for ${Math.round((lunch.length / RATE) * 1000)} ms of speech`);
+  assert.equal(turns.length, 1);
+  assert.equal(turns[0].end, 'pause');
+  r.input.stop();
+});
+
+test('a realtime turn is capped at about 15 s: speech that never pauses goes as turns of 15 s at most, each traced as capped', async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  r.feed(cat(quiet(0.5), ...Array.from({ length: 10 }, () => cat(lunch, quiet(0.2), gas, quiet(0.2)))), RATE);
+  r.input.stop();
+  /** The ms of sound in each turn. */
+  const each = [];
+  let n = 0;
+  for (const x of r.sent) {
+    if (x === 'start') n = 0;
+    else if (x === 'end') each.push(n);
+    else if (typeof x !== 'string') n += (x.length / 2 / RATE) * 1000;
+  }
+  assert.ok(each.length >= 2, `${each.length} turns`);
+  assert.ok(each.every((ms) => ms <= 15_500), each.map(Math.round).join(', '));
+  assert.equal(turns[0].end, 'cap');
+  assert.equal(turns.at(-1).end, 'close', 'what was still going when listening stopped');
+});
+
+test("each turn's end is traced as numbers only: why it ended, how long, the floor and the loudest frame in dB", async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  r.feed(cat(quiet(1), lunch, quiet(1.5)), RATE);
+  assert.equal(turns.length, 1);
+  const [t] = turns;
+  assert.deepEqual(Object.keys(t).sort(), ['end', 'floorDb', 'ms', 'peakDb']);
+  assert.equal(t.end, 'pause');
+  assert.ok(Number.isFinite(t.floorDb) && Number.isFinite(t.peakDb) && t.peakDb > t.floorDb + 30, JSON.stringify(t));
+  assert.ok(t.ms > 1000 && t.ms < 4000, JSON.stringify(t));
+  r.input.stop();
+});
+
+test('cut(): a turn the model has stopped transcribing ends now (traced so), and its sound after the cut must start a turn of its own over a floor learned again', async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  r.feed(cat(quiet(1), lunch.subarray(0, lunch.length >> 1)), RATE);
+  assert.equal(r.input.active, true);
+  r.input.cut('transcript');
+  assert.equal(r.input.active, false);
+  assert.equal(r.sent.at(-1), 'end');
+  assert.equal(turns[0].end, 'transcript');
+  const n = r.sent.length;
+  r.feed(quiet(2), RATE);
+  assert.equal(r.sent.length, n, 'nothing while nobody speaks');
+  r.input.cut('transcript'); // no turn: nothing
+  assert.equal(r.sent.length, n);
+  r.input.stop();
 });

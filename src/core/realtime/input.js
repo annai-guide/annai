@@ -10,6 +10,8 @@ import { Detector } from '../voice/detector.js';
  * and the detector's floor doesn't learn her voice; the phone's speaker is loud at its own microphone, and she cut herself off
  * (the iPhone trace, 2026-10-22). Full duplex only where duplex() says (headphones or the car, cutting in by voice on): there a
  * start needs bargeInDb more over the floor (decision 13), as her voice from the car's speakers is quieter than a passenger.
+ * A turn lasts maxMs at most, and cut() ends one the model has stopped transcribing; onTurn hears why each ended, in numbers.
+ * @typedef {'pause' | 'cap' | 'transcript' | 'close' | 'voice' | 'noise'} TurnEnd  voice: Koe's began (half-duplex); noise: thrown away once sent
  */
 
 export class LiveInput {
@@ -30,16 +32,20 @@ export class LiveInput {
   #n = 0;
   /** Samples at the microphone's rate still to pass after her voice stopped before a start may come (half-duplex). */
   #hush = 0;
+  /** Samples sent in the turn going on. */
+  #sent = 0;
 
   /**
    * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void, audioIn?: { rate: number } },
    *   rate?: number, pauseMs?: number, startDb?: number, minSpeechMs?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
-   *   speaking?: () => boolean, duplex?: () => boolean, tailMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void }} o
+   *   speaking?: () => boolean, duplex?: () => boolean, tailMs?: number, maxMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void,
+   *   onTurn?: (t: { end: TurnEnd, ms: number, floorDb: number | null, peakDb: number | null }) => void }} o
    *   rate: what the session takes (send's audioIn, K6); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
-   *   speaking now (else half-duplex); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency)
+   *   speaking now (else half-duplex); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency);
+   *   maxMs: a turn's longest (the iPhone trace: one ran on for 29 s)
    */
   constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6,
-    speaking = () => false, duplex = () => false, tailMs = 300, onLevel, onError }) {
+    speaking = () => false, duplex = () => false, tailMs = 300, maxMs = 15_000, onLevel, onError, onTurn }) {
     this.mic = mic;
     this.send = send;
     this.rate = rate;
@@ -50,8 +56,10 @@ export class LiveInput {
     this.speaking = speaking;
     this.duplex = duplex;
     this.tailMs = tailMs;
+    this.maxMs = maxMs;
     this.onLevel = onLevel;
     this.onError = onError;
+    this.onTurn = onTurn;
     // What the detector keeps before speech, and the frames it takes to be sure of it.
     this.keep = Math.round(((preRollMs + 100) * rate) / 1000);
     this.#chunk = new Int16Array(Math.round((chunkMs * rate) / 1000));
@@ -75,11 +83,20 @@ export class LiveInput {
     this.onLevel?.(0);
   }
 
+  /** The turn going on ends now, as the model has stopped transcribing it; what follows must start one of its own, over a floor learned again. @param {TurnEnd} why */
+  cut(why) {
+    if (!this.active || this.#closed) return;
+    this.#end(why);
+    this.#held = false;
+    this.#before = [];
+    this.#detector?.reset({ floor: true });
+  }
+
   /** @param {Float32Array} pcm @param {number} sampleRate */
   #frames(pcm, sampleRate) {
     if (this.#closed) return;
     if (this.#detector?.sampleRate !== sampleRate) {
-      this.#detector = new Detector({ sampleRate, pauseMs: this.pauseMs, startDb: this.startDb, minSpeechMs: this.minSpeechMs });
+      this.#detector = new Detector({ sampleRate, pauseMs: this.pauseMs, startDb: this.startDb, minSpeechMs: this.minSpeechMs, maxMs: this.maxMs });
       this.#resampler = new StreamResampler(sampleRate, this.rate);
     }
     const d = this.#detector;
@@ -101,7 +118,7 @@ export class LiveInput {
    */
   #deaf(d, playing, n, sampleRate) {
     this.#hush = playing ? Math.round((this.tailMs * sampleRate) / 1000) : this.#hush - n;
-    if (this.active) this.#end();
+    if (this.active) this.#end('voice');
     this.#held = false;
     this.#before = [];
     d.reset();
@@ -114,7 +131,8 @@ export class LiveInput {
       if (e.type === 'speech') this.#held = !this.active;
       else if (this.active || (this.#held && e.type === 'segment')) {
         if (!this.active) this.#start();
-        this.#end(); // the cut; or a noise thrown away once already sent: the turn ends either way
+        // The cut; or a noise thrown away once already sent: the turn ends either way.
+        this.#end(e.type === 'discard' ? 'noise' : e.cut === 'end' ? 'close' : e.cut, e.type === 'segment' ? e.peakDb : null);
       } else this.#held = false; // thrown away before it was sent: nothing at all
     }
   }
@@ -122,6 +140,7 @@ export class LiveInput {
   #start() {
     this.#held = false;
     this.active = true;
+    this.#sent = 0;
     this.send.activity('start');
     for (const b of this.#before.splice(0)) this.#add(b);
   }
@@ -148,12 +167,16 @@ export class LiveInput {
 
   #flush() {
     if (this.#n) this.send.audio(new Uint8Array(this.#chunk.slice(0, this.#n).buffer));
+    this.#sent += this.#n;
     this.#n = 0;
   }
 
-  #end() {
+  /** @param {TurnEnd} why @param {number | null} [peak] the run's, once the detector has let go of it */
+  #end(why, peak = this.#detector?.peakDb ?? null) {
     this.#flush();
     this.active = false;
     this.send.activity('end');
+    const db = (/** @type {number | null} */ x) => (x === null ? null : Math.round(x * 10) / 10);
+    this.onTurn?.({ end: why, ms: Math.round((this.#sent / this.rate) * 1000), floorDb: db(this.#detector?.floorDb ?? null), peakDb: db(peak) });
   }
 }

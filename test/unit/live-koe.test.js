@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { liveKit, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
-import { quiet } from './voice-kit.js';
+import { quiet, cat, clip } from './voice-kit.js';
 import { cleanSaid, realWord } from '../../src/core/koe/live.js';
 
 /** A half's transcript as text. @param {any} half */
@@ -479,6 +479,36 @@ test("Spend per day reached: the session closes with the budget card, its turns 
     k.agent.send('Hi again');
     await k.agent.idle();
     assert.equal(k.server.connections().length, 1, 'no session opens over the budget');
+  } finally {
+    await k.done();
+  }
+});
+
+// voice-fix item 3 (the iPhone trace, 2026-10-22: "Listening" went on long after the user stopped).
+test("a live turn ends when the model's transcript of it has stopped growing for 1.5 s, though the microphone still hears speech; each turn's end is traced in numbers only", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', heardFirst: true, said: 'There is a taco stand ahead.', audio: tone(0.3) }], { pace: 1 });
+  try {
+    const lunch = await clip('where-lunch');
+    const gas = await clip('gas-station');
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here: the quiet spell waits for the slow feed
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    const talk = cat(quiet(0.5), ...Array.from({ length: 3 }, () => cat(lunch, gas)));
+    const started = Date.now();
+    // Fed as it is heard, 100 ms at a time, for 4 s: a detector that never hears the pause (a room it misjudged).
+    for (let i = 0; i < 40 && i * 1600 < talk.length; i++) {
+      k.platform.mic.feed(talk.subarray(i * 1600, (i + 1) * 1600), 16_000);
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const input = got(k, 'realtimeInput').map((/** @type {any} */ m) => Object.keys(m.realtimeInput)[0]);
+    assert.equal(input[0], 'activityStart');
+    assert.ok(input.includes('activityEnd'), 'ended without a pause');
+    await soon(async () => (await k.events(['live.turn'])).length >= 1);
+    const [turn] = await k.events(['live.turn']);
+    assert.equal(turn.data.end, 'transcript');
+    assert.ok(turn.data.ms > 1000 && turn.data.ms < 3000, `${turn.data.ms} ms sent, in ${Date.now() - started} ms`);
+    for (const key of ['ms', 'floorDb', 'peakDb']) assert.equal(typeof turn.data[key], 'number', key);
+    assert.deepEqual(Object.keys(turn.data).sort(), ['end', 'floorDb', 'ms', 'peakDb', 'wake']);
   } finally {
     await k.done();
   }
