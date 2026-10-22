@@ -264,7 +264,7 @@ test('at most four requests are out at once, each given its time from when it is
 test('an address annai takes keys to, alone, is checked before anything is sent: https, or http only for this device', async () => {
   let sent = 0;
   const counting = io({ fetch: async () => { sent += 1; return new Response('{}'); } });
-  await assert.rejects(probe('http://192.168.1.20:8080/v1', KEY, counting), /needs an https address, such as tailscale serve/);
+  await assert.rejects(probe('http://192.168.1.20:8080/v1', KEY, counting), /needs one\. Tailscale Serve can give it: tailscale serve --bg --https=8443 http:\/\/localhost:8080/);
   await assert.rejects(probe('llm.example.com/v1', KEY, counting), /isn't a web address/);
   // A key pasted into the address field isn't shown back.
   await assert.rejects(probe(KEY, null, counting), (/** @type {any} */ e) => /isn't a web address/.test(e.message) && !e.message.includes(KEY));

@@ -6,7 +6,7 @@ import { officialPlugins } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
-import { addressProblem, LOCAL_NOTE } from '../../core/llm/provider-desc.js';
+import { addressProblem, localNote } from '../../core/llm/provider-desc.js';
 import { platform } from '../platform.js';
 import { andList } from '../format.js';
 import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
@@ -135,6 +135,11 @@ export async function renderProvider(ctx, id) {
       el.textContent = '';
     }
   };
+  // A server you run: what reaching it takes; on a phone, a warning while its address is localhost, which can't work there (the user, 2026-10-22).
+  const serverNote = { el: desc?.local || desc?.serverNote ? h('p', { class: 'sub', 'data-note': 'local-server', text: localNote(desc.baseUrl) }) : null };
+  const paintNote = () => serverNote.el?.classList.toggle('warn', platform() !== 'desktop' && /^http:\/\/(localhost|127\.0\.0\.1)(?![\w.-])/i.test(url.value.trim()));
+  url.addEventListener('input', paintNote);
+  paintNote();
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/models' }, '← Models')),
     title,
@@ -149,8 +154,7 @@ export async function renderProvider(ctx, id) {
       desc?.note || desc?.keyUrl
         ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
-      // A server you run: on a phone, where its default address can't work, the note is a warning (the user, 2026-10-22).
-      desc?.local ? h('p', { class: platform() === 'desktop' ? 'sub' : 'sub warn', 'data-note': 'local-server', text: LOCAL_NOTE }) : null,
+      serverNote.el,
       desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName ?? p.name), p.free, async (on) => {
         await ctx.llm.setFree(id, on);
         for (const s of document.querySelectorAll('section.panel')) s.dispatchEvent(new Event('redraw')); // its tools' switches follow (G4)

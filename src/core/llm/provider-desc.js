@@ -12,10 +12,10 @@ import { validate } from '../schema.js';
  *   noWindowNote: shown only while one of its models has no context window (one from before its list gave them);
  *   modelDefaults: what a model added by id or from a list starts with
  * @typedef {{ baseUrl: string, key: 'required' | 'optional' | 'none', keyHeader?: string, keyUrl?: string, note?: string,
- *   headers?: Record<string, string>, local?: boolean, freeTier?: boolean | string, abilities: Record<string, AbilityDesc>,
+ *   headers?: Record<string, string>, local?: boolean, serverNote?: boolean, freeTier?: boolean | string, abilities: Record<string, AbilityDesc>,
  *   roles?: Record<string, Record<string, string[]>> }} ProviderDesc
  *   key none: no key field; keyHeader: the key goes in this header, not the protocol's way; roles: "recommended" | "free" → role → provider model ids;
- *   freeTier: its keys may be on a free tier, which the user marks (its calls then cost nothing); a string names who doesn't charge (else the plugin's name)
+ *   serverNote: its page says what reaching a server you run takes (local providers' do anyway); freeTier: its keys may be on a free tier, which the user marks (its calls then cost nothing); a string names who doesn't charge (else the plugin's name)
  */
 
 export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice', 'realtime']);
@@ -48,7 +48,7 @@ const DESC = {
   properties: {
     baseUrl: { type: 'string', maxLength: 2000 }, key: { enum: ['required', 'optional', 'none'] }, keyHeader: { type: 'string', pattern: '^[A-Za-z0-9-]{1,80}$' },
     keyUrl: { type: 'string', pattern: '^https://', maxLength: 500 }, note: { type: 'string', maxLength: 1000 },
-    headers: { type: 'object', additionalProperties: { type: 'string' } }, local: { type: 'boolean' }, freeTier: { type: ['boolean', 'string'], minLength: 1, maxLength: 80 },
+    headers: { type: 'object', additionalProperties: { type: 'string' } }, local: { type: 'boolean' }, serverNote: { type: 'boolean' }, freeTier: { type: ['boolean', 'string'], minLength: 1, maxLength: 80 },
     abilities: { type: 'object', additionalProperties: ABILITY },
     roles: { type: 'object', additionalProperties: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } } },
   },
@@ -99,10 +99,23 @@ export function checkProviderDesc(desc) {
   return errors;
 }
 
-/** The one example the notes and the refusal give for reaching a server on your network (item 4, the user, 2026-10-22). */
-const SERVE = 'tailscale serve --https=8443 http://localhost:8080';
-/** What every local server's page says: a phone's localhost, why a LAN address needs https, one way to get one, and CORS. */
-export const LOCAL_NOTE = `On a phone, localhost is the phone itself. A server elsewhere on your network needs an https address, because browsers won't let an https page call plain http on the network. One simple way is Tailscale Serve, run where the server is: ${SERVE}. The server must also allow CORS from annai.guide.`;
+/** The command both the note and the refusal give, for the port the server listens on (the user, 2026-10-22). @param {string | number} port */
+const serve = (port) => `tailscale serve --bg --https=8443 http://localhost:${port}`;
+/**
+ * What a server you run's page says (its provider is local, or has a serverNote): a phone's localhost, https only and why, one way
+ * to get it with that server's own port, the address to type, the tailnet, CORS, and Chrome's permission. annai's own security
+ * policy allows only https addresses (and http://localhost) to call, so a plain http one on your network is not a thing to try.
+ * @param {string} baseUrl the provider's address, for the port its server listens on
+ */
+export function localNote(baseUrl) {
+  let port = '8080';
+  try {
+    port = new URL(baseUrl).port || port;
+  } catch {
+    // no address of its own: a usual port
+  }
+  return `On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run ${serve(port)} where the server is, then give annai https://<machine>.<tailnet>.ts.net:8443/v1. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.`;
+}
 
 /**
  * Why an address can't be one a key is sent to, in words, or null: it must parse, and be https, or http
@@ -119,7 +132,7 @@ export function addressProblem(url) {
   }
   if ((u.protocol === 'https:' && u.hostname) || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
   // A server on the user's network: say how to reach it.
-  return `An address must start with https:// (http:// only for localhost or 127.0.0.1).${u.protocol === 'http:' ? ` Browsers won't let an https page call plain http on your network: a server on another computer needs an https address, such as ${SERVE}, and must allow CORS from annai.guide.` : ''}`;
+  return `An address must start with https:// (http:// only for localhost or 127.0.0.1).${u.protocol === 'http:' ? ` Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: ${serve(u.port || 80)}. The server must also allow CORS from annai.guide.` : ''}`;
 }
 
 /** An address's origin (scheme, host and port); one that doesn't parse is kept as it is, never dropped. @param {string} url */

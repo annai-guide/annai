@@ -101,7 +101,7 @@ test('an address on your network over plain http is refused in words that say ho
   await expect(page.getByText(/OLLAMA_ORIGINS=https:\/\/annai\.guide/)).toBeVisible();
   await page.getByLabel('Address', { exact: true }).fill('http://192.168.1.20:11434/v1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText(/a server on another computer needs an https address, such as tailscale serve --https=8443 http:\/\/localhost:8080, and must allow CORS from annai\.guide/)).toBeVisible();
+  await expect(page.getByText(/needs one\. Tailscale Serve can give it: tailscale serve --bg --https=8443 http:\/\/localhost:11434\. The server must also allow CORS from annai\.guide/)).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Address', { exact: true }), 'nothing was saved').toHaveValue('http://localhost:11434/v1');
 });

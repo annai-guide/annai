@@ -176,18 +176,37 @@ test('Add: nothing found among tools offers no Custom provider; and "custom" fin
 
 // "for local llama.cpp etc, the default address is http://localhost:… we require https to work right? ... maybe put a note somewhere
 // explaining this? and suggest maybe look into tailscale serve?" (the user, 2026-10-22)
-for (const provider of ['llama.cpp', 'Ollama', 'Custom provider']) {
-  test(`${provider}'s page says what a phone, https and CORS mean for a server you run, with a tailscale serve example`, async ({ page }) => {
+/** @type {[string, number][]} */
+const SERVERS = [['llama.cpp', 9931], ['Ollama', 11434], ['Custom provider', 8080]];
+for (const [provider, port] of SERVERS) {
+  test(`${provider}'s page says what a phone, https, the tailnet and CORS mean for a server you run, with a Tailscale Serve command for its own port`, async ({ page }) => {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await pickProvider(page, provider);
-    const note = page.getByText(/On a phone, localhost is the phone itself\./);
+    const note = page.locator('[data-note="local-server"]');
     await expect(note).toBeVisible();
-    await expect(note).toContainText('needs an https address, because browsers won\'t let an https page call plain http on the network');
-    await expect(note).toContainText('tailscale serve --https=8443 http://localhost:8080');
-    await expect(note).toContainText('The server must also allow CORS from annai.guide.');
+    await expect(note).toContainText('On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page.');
+    await expect(note).toContainText(`tailscale serve --bg --https=8443 http://localhost:${port} where the server is, then give annai https://<machine>.<tailnet>.ts.net:8443/v1.`);
+    await expect(note).toContainText('with the phone on your tailnet');
+    await expect(note).toContainText('The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.');
   });
 }
+
+// A warning on a phone only while the address is one that can't work there.
+test('the note is a warning on a phone only while the address is http localhost or 127.0.0.1', async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'llama.cpp');
+  const note = page.locator('[data-note="local-server"]');
+  const address = page.getByLabel('Address', { exact: true });
+  await expect(address).toHaveValue('http://localhost:9931/v1');
+  await expect(note).toHaveClass(/\bwarn\b/);
+  await address.fill('http://127.0.0.1:9931/v1');
+  await expect(note).toHaveClass(/\bwarn\b/);
+  await address.fill('https://llama.example.ts.net:8443/v1');
+  await expect(note).not.toHaveClass(/\bwarn\b/);
+  await expect(note).toBeVisible();
+});
 
 // "The OpenRouter sign-in card is cut off": its body stopped mid-sentence inside the box of a quarter of the screen (the user, 2026-10-22).
 const OPENROUTER_CARD = "Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the phone's own dictation and the browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.";
