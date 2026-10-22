@@ -1,4 +1,4 @@
-import { h, field, savedField, savedCheck, queueSave, messageOf } from './dom.js';
+import { h, field, savedField, savedCheck, savingNote, messageOf } from './dom.js';
 import { validate } from '../core/schema.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
 
@@ -104,8 +104,7 @@ export async function settingsForm(ctx, pluginId, schema) {
       const error = h('p', { class: 'error', role: 'alert', hidden: true });
       const save = h('button', {
         class: 'btn', type: 'button',
-        onclick: () => queueSave(async () => {
-          if (!input.value) return;
+        onclick: () => input.value && savingNote(note, async () => {
           try {
             await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret(`plugin:${pluginId}:${f.key}`, input.value));
           } catch (e) {
