@@ -142,3 +142,28 @@ test('a finger tap on a screen\'s button while typing: the field changes, then t
   await save.click();
   expect(await page.evaluate(() => /** @type {any} */ (window).__order)).toEqual(['change', 'click', 'change', 'click']);
 });
+
+// The verification: a finger's tap, while typing, on a button that opens a question left the focus on the page body when the
+// question closed, since the button had never had it.
+test('a finger tap while typing on a button that opens a question: the focus goes back to that button when it closes', async ({ page }) => {
+  await openApp(page, '#/notifications');
+  await expect(page.getByRole('heading', { level: 1, name: 'Notifications' })).toBeVisible();
+  await page.evaluate(async () => {
+    const { ask } = await import(/** @type {string} */ ('/src/ui/ask.js'));
+    const button = document.createElement('button');
+    button.id = 'k-ask';
+    button.type = 'button';
+    button.textContent = 'KAsk';
+    button.style.cssText = 'display:block;height:44px';
+    document.querySelector('main')?.prepend(button);
+    button.addEventListener('click', () => { ask({ title: 'KQ', body: 'b', yes: 'Yes' }); });
+  });
+  await page.getByLabel('Relay address').click();
+  await page.keyboard.type('x');
+  await page.locator('#k-ask').scrollIntoViewIfNeeded();
+  const at = /** @type {{ x: number, y: number, width: number, height: number }} */ (await page.locator('#k-ask').boundingBox());
+  await page.touchscreen.tap(at.x + at.width / 2, at.y + at.height / 2);
+  await page.getByRole('dialog', { name: 'KQ' }).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('k-ask');
+});
