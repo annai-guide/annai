@@ -7,16 +7,16 @@
  *   the two alike, so Shiori wrote a booking as `content: {}` three times over;
  * - an open object (additionalProperties: true) is filled, but only with keys like names: a merge patch's "notes+"
  *   came back "notes__append", and "Content-Type" as "Content".
- * So an object whose keys aren't all named (no properties, or extra keys allowed by additionalProperties or
- * patternProperties) goes as JSON text, which takes any key, and its description says so; it comes back as the object
- * when the text is one, and as the text otherwise, for the tool to refuse in words. One that may also be text (write's
- * content) goes as text: the tool takes text as it is, a .json file's text too. The input as a whole stays an object,
- * and so does a combinator's branch (allOf, anyOf, oneOf) of an object that does: it is part of that object.
+ * So a free-form object below the top (typed object, with no `properties`, or with extra keys let in by
+ * additionalProperties, true or a schema) goes as JSON text, which takes any key, and its description says so; it comes
+ * back as the object when the text is one, and as the text otherwise, for the tool to refuse in words. One that may also
+ * be text (write's content) goes as text both ways: the tool takes text as it is, a .json file's text too.
  *
- * Schemas can come from MCP servers, and arguments from the model, so neither is trusted: every walk has a budget and
- * a depth, and stops at a schema already being walked for the same value. A schema that runs out of either is sent as
- * it is and its calls come back as they came, never half-translated. Schema patterns are never run, and keys are only
- * ever defined, never assigned, so "__proto__" stays a key.
+ * Only `properties`, `items` and `prefixItems` are walked, from the top down, once each. A $ref is never followed, and
+ * $defs, allOf, anyOf, oneOf, not, if/then/else and patternProperties go as they are, with all that is in them: Gemini
+ * may fill a free-form object there as {}, as it did before. A schema (an MCP server's) whose walked paths are too big
+ * or too deep is sent as it is, and its calls come back and go back as they came. Keys are only ever defined, never
+ * assigned, so "__proto__" stays a key.
  */
 
 /** What a free-form object's description says, after its own. */
@@ -24,91 +24,42 @@ export const OBJECT_TEXT = 'Give it as JSON text: an object, such as {"key": "va
 /** What a string-or-object's description says, after its own. */
 export const TEXT_OR_OBJECT = 'Text; an object goes as its JSON text, such as {"key": "value"}.';
 
-/** Visits each translation or walk may make, and how deep it may go. */
-const BUDGET = 20_000;
-const DEPTH = 500;
-/** Thrown when a walk runs out: the whole of it is given up. */
-const SPENT = Symbol('spent');
-/** What a text schema made from an object stands for: an object only, or text or an object. @type {WeakMap<object, 'object' | 'union'>} */
-const made = new WeakMap();
-/** Each tool's input schema, translated once. @type {WeakMap<object, { tree: any, ok: boolean }>} */
-const plans = new WeakMap();
+/** How many nodes and property keys the walked paths may have, and how deep they may go: far past any real tool's. */
+const BUDGET = 50_000;
+const DEPTH = 100;
 
 /** @param {unknown} x @returns {x is Record<string, any>} */
 const isObject = (x) => typeof x === 'object' && x !== null && !Array.isArray(x);
-/** @param {unknown} x @returns {any[]} */
-const list = (x) => (Array.isArray(x) ? x : []);
-/** @param {unknown} x */
-const named = (x) => isObject(x) && Object.keys(x).length > 0;
-/** @param {Record<string, any>} s @returns {unknown[]} */
-const typesOf = (s) => (typeof s.type === 'string' ? [s.type] : list(s.type));
-/** A key defined, never assigned, so "__proto__" is a key like any other. @param {Record<string, any>} o @param {string} k @param {unknown} value */
-const put = (o, k, value) => Object.defineProperty(o, k, { value, enumerable: true, writable: true, configurable: true });
+/** A schema's types. JSON Schema has seven, so a longer list isn't one. @param {Record<string, any>} s @returns {unknown[]} */
+const typesOf = (s) => (typeof s.type === 'string' ? [s.type] : Array.isArray(s.type) && s.type.length <= 7 ? s.type : []);
+/** The schemas a list's items take by place: prefixItems, or an older schema's items list. @param {Record<string, any>} s @returns {unknown[]} */
+const byPlace = (s) => (Array.isArray(s.prefixItems) ? s.prefixItems : Array.isArray(s.items) ? s.items : []);
 
 /**
- * The schema a local $ref names ("#/$defs/Filter", "#/prefixItems/0"), or undefined: own keys only, and list indexes
- * as JSON Pointer writes them. @param {any} root @param {string} ref
+ * What a schema below the top goes as: 'text' (a free-form object), 'union' (text or an object) or 'walk' (as it is,
+ * its properties and items walked). The top is always walked: the input as a whole stays an object.
+ * @param {unknown} s @returns {'text' | 'union' | 'walk'}
  */
-function lookUp(root, ref) {
-  if (ref !== '#' && !ref.startsWith('#/')) return undefined;
-  let at = root;
-  for (const raw of ref === '#' ? [] : ref.slice(2).split('/')) {
-    const part = raw.replace(/~1/g, '/').replace(/~0/g, '~');
-    if (Array.isArray(at)) at = /^(0|[1-9]\d*)$/.test(part) && Number(part) < at.length ? at[Number(part)] : undefined;
-    else at = isObject(at) && Object.hasOwn(at, part) ? at[part] : undefined;
-  }
-  return isObject(at) ? at : undefined;
+function kind(s) {
+  if (!isObject(s) || !typesOf(s).includes('object')) return 'walk';
+  if (typesOf(s).includes('string')) return 'union';
+  return !isObject(s.properties) || s.additionalProperties === true || isObject(s.additionalProperties) ? 'text' : 'walk';
 }
 
-/** A budget's step, at a depth. @param {{ left: number }} ctx @param {number} depth */
-function step(ctx, depth) {
-  if (--ctx.left < 0 || depth > DEPTH) throw SPENT;
-}
-
-/** Whether a walk ran out (or the stack did, on a schema deeper than a budget ever lets it go). @param {unknown} e */
-const spent = (e) => e === SPENT || e instanceof RangeError;
-
-/**
- * What a schema says of objects, its allOf parts and $ref included: whether it allows an object, text, has named
- * properties, or lets in keys it doesn't name. @param {any} s @param {{ left: number, root: any }} ctx @param {number} depth
- */
-function facts(s, ctx, depth) {
-  /** @type {Set<object>} */
-  const seen = new Set();
-  /** @param {any} x @param {number} d @returns {{ object: boolean, text: boolean, props: boolean, open: boolean }} */
-  const of = (x, d) => {
-    step(ctx, d);
-    if (!isObject(x) || seen.has(x)) return { object: false, text: false, props: false, open: false };
-    seen.add(x);
-    const parts = [...list(x.allOf), ...(typeof x.$ref === 'string' ? [lookUp(ctx.root, x.$ref)] : [])].map((p) => of(p, d + 1));
-    const types = typesOf(x);
-    return {
-      object: types.includes('object') || (!types.length && parts.some((p) => p.object)),
-      text: types.includes('string') || (!types.length && parts.some((p) => p.text)),
-      props: named(x.properties) || parts.some((p) => p.props),
-      open: x.additionalProperties === true || isObject(x.additionalProperties) || named(x.patternProperties) || parts.some((p) => p.open),
-    };
+/** Whether the paths walked fit the budget and the depth, counted as they are walked, and given up at once when they don't. @param {Record<string, any>} schema */
+function fits(schema) {
+  let left = BUDGET;
+  /** @param {unknown} s @param {number} depth @returns {boolean} */
+  const count = (s, depth) => {
+    if (--left < 0 || depth > DEPTH) return false;
+    if (!isObject(s) || (depth > 0 && kind(s) !== 'walk')) return true;
+    const props = isObject(s.properties) ? s.properties : {};
+    const names = Object.keys(props);
+    if ((left -= names.length) < 0) return false;
+    const next = (/** @type {unknown} */ x) => count(x, depth + 1);
+    return names.every((name) => next(props[name])) && byPlace(s).every(next) && (!isObject(s.items) || next(s.items));
   };
-  return of(s, depth);
-}
-
-/** Whether a schema goes as text: an object whose keys aren't all named, never one kept as an object. @param {ReturnType<typeof facts>} f @param {boolean} keep */
-const asText = (f, keep) => !keep && f.object && (!f.props || f.open);
-
-/** A tool's input schema translated, or as it is when it is too big to walk. @param {any} schema */
-function plan(schema) {
-  const had = isObject(schema) ? plans.get(schema) : undefined;
-  if (had) return had;
-  const ctx = { left: BUDGET, root: schema, inlining: new Set() };
-  let p;
-  try {
-    p = { tree: isObject(schema) ? translate(schema, true, ctx, 0) : schema, ok: true };
-  } catch (e) {
-    if (!spent(e)) throw e;
-    p = { tree: schema, ok: false };
-  }
-  if (isObject(schema)) plans.set(schema, p);
-  return p;
+  return count(schema, 0);
 }
 
 /**
@@ -116,67 +67,35 @@ function plan(schema) {
  * @param {unknown} schema @returns {any}
  */
 export function forGemini(schema) {
-  return plan(schema).tree;
+  return isObject(schema) && fits(schema) ? translate(schema, true) : schema;
 }
 
-/**
- * keep: the schema is an object that stays one (the top, or a branch of an object that does).
- * @param {any} s @param {boolean} keep @param {{ left: number, root: any, inlining: Set<object> }} ctx @param {number} depth @returns {any}
- */
-function translate(s, keep, ctx, depth) {
-  step(ctx, depth);
+/** @param {unknown} s @param {boolean} top @returns {unknown} */
+function translate(s, top) {
+  const as = top ? 'walk' : kind(s);
   if (!isObject(s)) return s;
-  // A $ref where the object is kept: what it names is put in its place when that would go as text where it is defined.
-  if (keep && typeof s.$ref === 'string') {
-    const target = lookUp(ctx.root, s.$ref);
-    const f = target && facts(target, ctx, depth);
-    if (target && f && (!f.props || f.open) && !ctx.inlining.has(target)) {
-      ctx.inlining.add(target);
-      try {
-        const { $ref, ...rest } = s;
-        return translate({ ...rest, allOf: [...list(rest.allOf), target] }, true, ctx, depth + 1);
-      } finally {
-        ctx.inlining.delete(target);
-      }
-    }
+  if (as !== 'walk') {
+    const types = [...new Set(typesOf(s).map((t) => (t === 'object' ? 'string' : t)))];
+    const note = as === 'union' ? TEXT_OR_OBJECT : OBJECT_TEXT;
+    return { ...(typeof s.title === 'string' ? { title: s.title } : {}), type: types.length === 1 ? types[0] : types, description: typeof s.description === 'string' && s.description ? `${s.description} ${note}` : note };
   }
-  const f = facts(s, ctx, depth);
-  if (asText(f, keep)) {
-    const types = typesOf(s).includes('object') ? [...new Set(typesOf(s).map((t) => (t === 'object' ? 'string' : t)))] : ['string'];
-    const note = f.text ? TEXT_OR_OBJECT : OBJECT_TEXT;
-    const out = { ...(typeof s.title === 'string' ? { title: s.title } : {}), type: types.length === 1 ? types[0] : types, description: typeof s.description === 'string' && s.description ? `${s.description} ${note}` : note };
-    made.set(out, f.text ? 'union' : 'object');
-    return out;
-  }
-  const inner = keep || f.props; // a branch of an object with named properties is part of it
-  /** @type {Record<string, any>} */
   const out = { ...s };
-  /** @param {any} x */
-  const each = (x) => translate(x, false, ctx, depth + 1);
-  for (const k of ['properties', '$defs', 'definitions']) if (isObject(s[k])) out[k] = Object.fromEntries(Object.entries(s[k]).map(([n, x]) => [n, each(x)]));
-  for (const k of ['additionalProperties', 'items']) if (isObject(s[k])) out[k] = each(s[k]);
-  for (const k of ['items', 'prefixItems']) if (Array.isArray(s[k])) out[k] = s[k].map(each);
-  for (const k of ['allOf', 'anyOf', 'oneOf']) if (Array.isArray(s[k])) out[k] = s[k].map((x) => translate(x, inner, ctx, depth + 1));
+  /** @param {unknown} x */
+  const each = (x) => translate(x, false);
+  if (isObject(s.properties)) out.properties = Object.fromEntries(Object.entries(s.properties).map(([name, x]) => [name, each(x)]));
+  if (Array.isArray(s.prefixItems)) out.prefixItems = s.prefixItems.map(each);
+  else if (Array.isArray(s.items)) out.items = s.items.map(each);
+  if (isObject(s.items)) out.items = each(s.items);
   return out;
 }
 
 /**
  * A call's arguments as the tool takes them: each free-form object Gemini gave as JSON text, as the object when the
- * text is one. Text in a place that takes text stays text. Arguments that weren't JSON (kept as text) stay as they are.
- * @param {unknown} schema the tool's own input schema @param {unknown} args
+ * text is one. A union's text stays text. Arguments that weren't JSON (kept as text) stay as they are.
+ * @param {unknown} schema the tool's own input schema @param {unknown} args @returns {any}
  */
 export function fromGemini(schema, args) {
-  return walk(schema, args, {
-    text: (mark, v) => {
-      if (mark !== 'object' || typeof v !== 'string') return v;
-      return parsed(v);
-    },
-    options: (s, v, options) => {
-      if (typeof v !== 'string' || typesOf(s).includes('string')) return undefined;
-      const parse = options.some((o) => made.get(o) === 'object') && !options.some((o) => !made.has(o) && typesOf(o).includes('string'));
-      return parse ? parsed(v) : undefined;
-    },
-  });
+  return walk(schema, args, (as, v) => (as === 'text' && typeof v === 'string' ? parsed(v) : v));
 }
 
 /** Text that is a JSON object, as the object, else the text. @param {string} v */
@@ -190,83 +109,41 @@ function parsed(v) {
 }
 
 /**
- * A call's arguments as Gemini fills them, for a call that goes back to it: each free-form object as its JSON text.
- * fromGemini takes them back to what they were.
- * @param {unknown} schema the tool's own input schema @param {unknown} input
+ * A call's arguments as Gemini fills them, for a call that goes back to it: each free-form object, and a union's
+ * object, as its JSON text. fromGemini takes them back to what they were.
+ * @param {unknown} schema the tool's own input schema @param {unknown} input @returns {any}
  */
 export function toGeminiArgs(schema, input) {
-  return walk(schema, input, {
-    text: (_mark, v) => (isObject(v) ? JSON.stringify(v) : v),
-    options: (_s, v, options) => {
-      if (!isObject(v) || !options.some((o) => made.has(o))) return undefined;
-      return options.some((o) => !made.has(o) && (typesOf(o).includes('object') || isObject(o.properties))) ? undefined : JSON.stringify(v);
-    },
+  return walk(schema, input, (_as, v) => {
+    if (!isObject(v)) return v;
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return v;
+    }
   });
 }
 
 /**
- * The value walked alongside the schema Gemini was sent: at a text schema made from an object, at.text gives the value;
- * at an anyOf or oneOf, at.options may (undefined: walk on into it). Nothing is changed in place, and a walk that runs
- * out gives the value back as it came.
- * @param {unknown} schema the tool's own input schema @param {unknown} value
- * @param {{ text: (mark: 'object' | 'union', v: any) => any, options: (s: Record<string, any>, v: any, options: Record<string, any>[]) => any }} at
+ * The value walked down the paths forGemini walks, each key and item once; where it made text, at gives the value.
+ * New objects are made with Object.fromEntries, which defines their keys. Nothing is changed in place.
+ * @param {unknown} schema @param {unknown} value @param {(as: 'text' | 'union', v: unknown) => unknown} at
  */
 function walk(schema, value, at) {
-  const { tree, ok } = plan(schema);
-  if (!ok) return value;
-  const ctx = { left: BUDGET, root: tree };
-  /** Schemas being walked, each for the values it is being walked for. @type {Map<object, Set<unknown>>} */
-  const on = new Map();
-  /** A $ref followed, a few in a row at most. @param {any} o */
-  const follow = (o) => {
-    for (let i = 0; i < 8 && isObject(o) && typeof o.$ref === 'string' && !made.has(o); i++) o = lookUp(tree, o.$ref) ?? o;
-    return o;
-  };
-  /** @param {any} s @param {any} v @param {number} depth @returns {any} */
-  const visit = (s, v, depth) => {
-    step(ctx, depth);
+  if (!isObject(schema) || !fits(schema)) return value;
+  /** @param {unknown} s @param {unknown} v @param {boolean} top @returns {unknown} */
+  const visit = (s, v, top) => {
+    const as = top ? 'walk' : kind(s);
+    if (as !== 'walk') return at(as, v);
     if (!isObject(s)) return v;
-    const mark = made.get(s);
-    if (mark) return at.text(mark, v);
-    let walking = on.get(s);
-    if (walking?.has(v)) return v;
-    if (!walking) on.set(s, (walking = new Set()));
-    walking.add(v);
-    try {
-      const options = [...list(s.anyOf), ...list(s.oneOf)].map(follow).filter(isObject);
-      const done = options.length ? at.options(s, v, options) : undefined;
-      if (done !== undefined) return done;
-      let out = v;
-      for (const part of [...list(s.allOf), ...(typeof s.$ref === 'string' ? [lookUp(tree, s.$ref)] : [])]) out = visit(part, out, depth + 1);
-      const option = Array.isArray(out) ? options.find((o) => !made.has(o) && (o.items !== undefined || Array.isArray(o.prefixItems) || typesOf(o).includes('array')))
-        : isObject(out) ? options.find((o) => !made.has(o) && (typesOf(o).includes('object') || isObject(o.properties))) : undefined;
-      if (option) out = visit(option, out, depth + 1);
-      if (Array.isArray(out) && (s.items !== undefined || Array.isArray(s.prefixItems))) {
-        const first = Array.isArray(s.prefixItems) ? s.prefixItems : list(s.items);
-        const rest = isObject(s.items) ? s.items : undefined;
-        out = out.map((x, i) => {
-          const sub = first[i] ?? rest;
-          return sub ? visit(sub, x, depth + 1) : x;
-        });
-      } else if (isObject(out) && (isObject(s.properties) || isObject(s.additionalProperties))) {
-        // patternProperties are never run: a key they'd match is walked as additionalProperties says, if at all.
-        /** @type {Record<string, any>} */
-        const next = {};
-        for (const [k, x] of Object.entries(out)) {
-          const sub = isObject(s.properties) && Object.hasOwn(s.properties, k) ? s.properties[k] : isObject(s.additionalProperties) ? s.additionalProperties : undefined;
-          put(next, k, sub ? visit(sub, x, depth + 1) : x);
-        }
-        out = next;
-      }
-      return out;
-    } finally {
-      walking.delete(v);
+    if (Array.isArray(v)) {
+      const first = byPlace(s);
+      const rest = isObject(s.items) ? s.items : undefined;
+      return first.length || rest ? v.map((x, i) => (i < first.length ? visit(first[i], x, false) : rest ? visit(rest, x, false) : x)) : v;
     }
+    if (!isObject(v) || !isObject(s.properties)) return v;
+    const props = s.properties;
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, Object.hasOwn(props, k) ? visit(props[k], x, false) : x]));
   };
-  try {
-    return visit(tree, value, 0);
-  } catch (e) {
-    if (!spent(e)) throw e;
-    return value;
-  }
+  return visit(schema, value, true);
 }
