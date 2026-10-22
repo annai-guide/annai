@@ -112,7 +112,7 @@ The top-level folder `/.annai` is reserved inside every scope; archives keep the
 
 ### 4.5 Events
 
-Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `plugin.error`, `error`, `state` (live mode on/off, voice mode), `trip.remove` (§4.9).
+Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `paused` (a turn cut by opening another conversation), `plugin.error`, `error`, `state` (live mode on/off, voice mode), `trip.remove` (§4.9).
 
 - **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it, by listing its fingerprint in `refs` (§4.9).
 - **A model request is logged as a reference,** not a copy: the range of events in context, the prefix fingerprint, token counts, cost. Copying every context would grow storage quadratically.

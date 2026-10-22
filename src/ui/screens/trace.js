@@ -6,7 +6,7 @@ import { toolSwitchList } from './tools.js';
 /** What each kind of entry is, for the Kind filter. */
 const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Everything: null,
-  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded'],
+  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'paused'],
   // What Shiori's two halves tell each other, and the blocks annai gives Kokoro (the Koe and Kokoro design).
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result'],
@@ -120,6 +120,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   // A deletion of a turn the provider kept (G2).
   if (e.type === 'net.request' && d.kind === 'forget') return `kept turn ${d.outcome === 'ok' ? 'deleted' : 'not deleted yet'} · ${d.endpoint} · ${d.status || 'no answer'} · ${d.ms ?? '?'} ms`;
   if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
+  if (e.type === 'paused') return 'a turn cut off by opening another conversation';
   if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
   if (e.type === 'location') return `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
   if (e.type === 'trigger.fired') return `${d.watch} · ${cut(d.text)}${d.late ? ` · late by ${d.late} min` : ''}${d.offline ? ' · no connection' : ''}`;

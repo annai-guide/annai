@@ -52,7 +52,7 @@ import { anySignal } from '../signals.js';
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's
  * @typedef {{ name: StateName, label: string, detail?: string }} State
- * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string }} Notice
+ * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
  * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
@@ -344,6 +344,8 @@ export class Agent {
   #facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
   #userStop = false;
+  /** The turn running was cut by opening another conversation: the one left is told (the third emulator pass). */
+  #cutByOpen = false;
   /** Counts what reached the user (speak, show, ask, a reply shown as written): what was owed before it is settled. */
   #reached = 0;
   /** The typing box holds text (the dock says so): a turn of theirs waits for them (GATHER). */
@@ -530,6 +532,7 @@ export class Agent {
     this.#opens++;
     this.poke(); // a turn still gathering the user's messages doesn't start (review A2)
     const generation = ++this.#generation;
+    if (this.#turning && trip !== this.trip) this.#cutByOpen = true;
     if (this.#busy) this.#halt();
     this.#clearTimer();
     this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).finally(() => {
@@ -1347,12 +1350,14 @@ export class Agent {
     this.#heardBy = null;
     this.#facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
     this.#userStop = false;
+    this.#cutByOpen = false;
     // Shiori became two halves, or one again.
     if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
     let ok = false;
     this.#turning = true;
     try {
       ok = await this.#steps(wakes, wakeId, abort);
+      await this.#paused(abort);
     } finally {
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn('the end of a turn failed', e));
       // A turn that worked takes down the cards about a model failing; a turn of the user's that spoke to them, the card about
@@ -1368,6 +1373,19 @@ export class Agent {
         console.warn('the end of a turn failed', e);
       }
     }
+  }
+
+  /**
+   * A turn cut by opening another conversation says so in the one left, and in a toast: she was in the middle of something, and
+   * the turn is taken up when the user comes back (the stop itself is as it was). Not an error with a wake, which would end the turn.
+   * @param {AbortController} abort
+   */
+  async #paused(abort) {
+    if (!abort.signal.aborted || !this.#cutByOpen || this.#userStop || this.#leaving) return;
+    this.#cutByOpen = false;
+    const text = 'Shiori was in the middle of something. She picks it up when you come back.';
+    await this.#log({ type: 'paused', actor: 'system', data: { text } });
+    await this.#notice({ tone: 'info', title: text, body: '', toast: true });
   }
 
   /**
