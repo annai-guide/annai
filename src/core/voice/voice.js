@@ -430,7 +430,9 @@ export class Voice {
       const devices = (await this.platform?.devices?.()) ?? [];
       const used = this.platform?.mic.inUse?.() ?? null;
       const using = used && (used.label || devices.find((d) => d.deviceId && d.deviceId === used.deviceId)?.label || '');
-      const route = routeOf(used ? [{ kind: 'audioinput', label: /** @type {string} */ (using) }] : devices);
+      // An input no longer among the devices (AirPods taken out, its track still named for them) is unknown.
+      const gone = used?.deviceId && devices.some((d) => d.deviceId) && !devices.some((d) => d.deviceId === used.deviceId);
+      const route = gone ? 'unknown' : routeOf(used ? [{ kind: 'audioinput', label: /** @type {string} */ (using) }] : devices);
       const data = { route, using, devices: devices.map((d) => d.label) };
       const key = JSON.stringify(data);
       if (key !== this.#routed && this.store) {

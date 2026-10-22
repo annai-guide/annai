@@ -23,6 +23,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   let frames = null;
   /** @type {any} */
   let heard = null;
+  /** The input in use when the microphone opened. @type {{ label: string, deviceId: string } | null} */
+  let openedWith = null;
   let opens = 0;
   let files = 0;
   const platform = {
@@ -47,6 +49,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     deviceList: devices,
     /** The input an open microphone takes (its track's label and deviceId); null: the newest audio input present, as a phone picks it. @type {{ label: string, deviceId: string } | null} */
     input: /** @type {{ label: string, deviceId: string } | null} */ (null),
+    /** inUse gives the input as it was when the microphone opened, as a plugin that reads its track once would. */
+    snapshot: false,
     /** @type {(() => void)[]} */
     deviceChanges: [],
     async devices() { return platform.deviceList; },
@@ -103,11 +107,12 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
             started ||= Date.now();
             const at = s.ms;
             s.ms += (pcm.length / rate) * 1000;
-            if (platform.echoDb === null) return;
-            const gain = 10 ** (platform.echoDb / 20) / 0x8000;
-            const back = Float32Array.from({ length: Math.floor((pcm.length * 16_000) / rate) }, (_, i) => pcm[Math.floor((i * rate) / 16_000)] * gain);
-            // Heard when it plays: never before the player has it.
-            setTimeout(() => { if (s.playedMs === null) platform.mic.feed(back, 16_000); }, Math.max(0, started + at / platform.streamSpeed - Date.now()));
+            // Heard when it plays (never before the player has it), as loud as echoDb is then.
+            setTimeout(() => {
+              if (s.playedMs !== null || platform.echoDb === null) return;
+              const gain = 10 ** (platform.echoDb / 20) / 0x8000;
+              platform.mic.feed(Float32Array.from({ length: Math.floor((pcm.length * 16_000) / rate) }, (_, i) => pcm[Math.floor((i * rate) / 16_000)] * gain), 16_000);
+            }, Math.max(0, started + at / platform.streamSpeed - Date.now()));
           },
           end() { s.ended = true; log.push('stream end'); },
           stop() { s.stopped = true; log.push('stream stop'); return finish(); },
@@ -144,6 +149,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       /** The input in use while open. */
       inUse() {
         if (!frames) return null;
+        if (platform.snapshot && openedWith) return openedWith;
         const last = platform.deviceList.filter((d) => d.kind === 'audioinput').at(-1);
         return platform.input ?? (last ? { label: last.label, deviceId: last.deviceId ?? '' } : null);
       },
@@ -153,6 +159,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         opens++;
         log.push(record ? `mic open, recording ${record}` : 'mic open');
         frames = onFrames;
+        openedWith = null;
+        openedWith = platform.mic.inUse();
         return {
           close() { log.push('mic close'); frames = null; },
           ...(record ? {

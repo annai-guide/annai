@@ -392,7 +392,11 @@ export class Halves {
     const model = this.live.modelId;
     const voiceOff = this.#voiceWas && !voiceOn;
     // One closed with Kokoro's notes waiting for the page lets go of them too (they are handed on).
-    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) this.live.close(voiceOff ? 'voice off' : 'pathway');
+    // Auto turning voice off (AirPods out) lets Koe's sentence end whole; the user's Off, or another pathway, closes at once.
+    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) {
+      if (voiceOff && this.voice?.mode.setting === 'auto') this.live.closeSoon('voice off');
+      else this.live.close(voiceOff ? 'voice off' : 'pathway');
+    }
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
     if (this.state.name !== was) this.#emit('state', this.state);
