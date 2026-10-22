@@ -43,9 +43,10 @@ test('the kinds, categories and which ability kind each role takes', () => {
   assert.deepEqual(ABILITY_KINDS, ['chat', 'transcription', 'voice', 'realtime']);
   assert.deepEqual(CATEGORIES, ['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
   // Koe's lists take realtime voice models too (K4); no other role does.
-  assert.deepEqual(ROLE_KINDS, { main: ['chat'], utility: ['chat'], decide: ['chat'], koe: ['chat', 'realtime'], 'speech-in': ['transcription'], 'speech-out': ['voice'] });
+  assert.deepEqual(ROLE_KINDS, { main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-realtime': ['realtime'], 'koe-classic': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'] });
   const live = { baseUrl: 'https://live.test', key: 'required', abilities: { live: { kind: 'realtime', type: 'gemini-live', on: false, models: [{ providerId: 'live-1' }] } } };
-  assert.deepEqual(checkProviderDesc({ ...live, roles: { recommended: { koe: ['live-1'] } } }), []);
+  assert.deepEqual(checkProviderDesc({ ...live, roles: { recommended: { 'koe-realtime': ['live-1'] } } }), []);
+  assert.deepEqual(checkProviderDesc({ ...live, roles: { recommended: { koe: ['live-1'] } } }), [], "Koe's one list, in an older description");
   assert.deepEqual(checkProviderDesc({ ...live, roles: { recommended: { main: ['live-1'] } } }), ['$.roles.recommended.main: live-1 isn\'t a chat model of this provider']);
 });
 

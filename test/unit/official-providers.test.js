@@ -330,7 +330,7 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
     const id = await llm.addProvider('provider-gemini', { roles: 'recommended', key: GKEY, abilities: { live: { on: false, baseUrl: s.origin } } });
     assert.deepEqual(Object.keys(await k.host.installed()).sort(), ['gemini-api', 'provider-gemini'], 'nothing for live sessions until they are switched on');
     const cfg = await readConfig(k.ws);
-    assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
+    assert.deepEqual([cfg.roles['koe-realtime'].models, cfg.roles['koe-classic'].models], [[], []], 'adding Gemini never fills Koe (the split is opt-in)');
     const liveId = /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'gemini-3.8-live')?.id);
     await llm.setAbility(id, 'live', true);
     assert.ok((await k.host.installed())['gemini-live'], 'switching it on installs its protocol');
@@ -355,16 +355,18 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
     assert.match(bad.steps[0].detail, /key was rejected/);
     await llm.useSuggestion(id, 'recommended');
     const lite = Object.values((await readConfig(k.ws)).models).find((m) => m.ability === 'chat' && modelOf(m).providerId === 'gemini-3.5-flash-lite')?.id;
-    assert.deepEqual((await readConfig(k.ws)).roles.koe.models, [liveId, lite], '"Use the recommended models" puts Live in Koe, then flash-lite');
+    const after = await readConfig(k.ws);
+    assert.deepEqual([after.roles['koe-realtime'].models, after.roles['koe-classic'].models, after.koeMode], [[liveId], [lite], 'realtime'],
+      '"Use the recommended models" puts Live in Koe · Realtime and flash-lite in Koe · Classic, and Realtime is chosen');
   } finally {
     await s.stop();
   }
 });
 
-test('provider-gemini 2.3.1: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
+test('provider-gemini 2.4.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.3.1');
+  assert.equal(m.version, '2.4.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");
@@ -386,7 +388,7 @@ test('provider-gemini 2.3.1: Gemini through its own API (gemini-api), its chat m
   assert.ok(d.abilities.live.models?.every((/** @type {any} */ x) => x.input.join() === 'text,image'), 'the live models take photos');
   assert.deepEqual(d.roles, { recommended: {
     main: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'], utility: ['gemini-3.5-flash-lite'], decide: ['gemini-3.5-flash-lite'],
-    koe: ['gemini-3.8-live', 'gemini-3.5-flash-lite'],
+    'koe-realtime': ['gemini-3.8-live'], 'koe-classic': ['gemini-3.5-flash-lite'],
     'speech-in': ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite'], 'speech-out': ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'],
   } }, 'different quotas: a used-up day falls to the next flash, a used-up minute to the next voice');
   assert.match(chat.noWindowNote ?? '', /add it again with Fetch model list/, "what to do when a model from before 2.0 can't be kept, in words, shown while one is there");
@@ -504,7 +506,7 @@ test('"Use the recommended models" switches on every ability whose models it nam
   const id = await llm.addProvider('provider-gemini', { roles: 'recommended', key: 'AIza-stand-in' });
   const cfg = await readConfig(k.ws);
   const byId = (/** @type {string} */ pid) => Object.values(cfg.models).find((x) => x.ability !== 'transcription' && modelOf(x).providerId === pid)?.id;
-  assert.deepEqual(cfg.roles.koe.models, [], 'adding Gemini never fills Koe (the split is opt-in)');
+  assert.deepEqual([cfg.roles['koe-realtime'].models, cfg.roles['koe-classic'].models], [[], []], 'adding Gemini never fills Koe (the split is opt-in)');
   assert.deepEqual(cfg.roles.main.models, ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'].map(byId));
   assert.equal(providerOf(cfg.providers[id]).abilities.live.on, false);
   assert.equal((await k.host.installed())['gemini-live'], undefined);
@@ -512,7 +514,7 @@ test('"Use the recommended models" switches on every ability whose models it nam
   const after = await readConfig(k.ws);
   assert.equal(providerOf(after.providers[id]).abilities.live.on, true);
   assert.ok((await k.host.installed())['gemini-live'], 'switched on through setAbility, which installs its protocol');
-  assert.deepEqual(after.roles.koe.models, [byId('gemini-3.8-live'), byId('gemini-3.5-flash-lite')]);
+  assert.deepEqual([after.roles['koe-realtime'].models, after.roles['koe-classic'].models, after.koeMode], [[byId('gemini-3.8-live')], [byId('gemini-3.5-flash-lite')], 'realtime'], 'Live switched on: Realtime chosen');
 });
 
 /** A model service on a fresh host that installs annai's own plugins from this repository. */
@@ -535,7 +537,7 @@ test('"Use the recommended models" never switches on an ability the user switche
   assert.deepEqual(await k.llm.useSuggestion(id, 'recommended'), { on: ['Live voice'], failed: [] });
   const cfg = await readConfig(k.ws);
   assert.equal(providerOf(cfg.providers[id]).abilities.chat.on, false, 'the user\'s choice stands');
-  assert.deepEqual(cfg.roles.koe.models.map((m) => modelOf(cfg.models[m]).providerId), ['gemini-3.8-live'], 'only what is on');
+  assert.deepEqual([cfg.roles['koe-realtime'].models.map((m) => modelOf(cfg.models[m]).providerId), cfg.roles['koe-classic'].models], [['gemini-3.8-live'], []], 'only what is on');
   // An ability an update brought arrives switched off in the user's layer: that isn't the user's choice.
   const rec = cfg.providers[id];
   const { saveProvider } = await import('../../src/core/llm/config.js');
@@ -557,7 +559,7 @@ test('"Use the recommended models" with Gemini Live turned off in Settings → P
   assert.equal(providerOf(cfg.providers[id]).abilities.live.on, false);
   assert.equal((await k.host.installed())['gemini-live'].enabled, false, 'the plugin stays as the user left it');
   assert.deepEqual(cfg.roles.main.models.map((m) => modelOf(cfg.models[m]).providerId), ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'], 'Main is filled all the same');
-  assert.deepEqual(cfg.roles.koe.models.map((m) => modelOf(cfg.models[m]).providerId), ['gemini-3.5-flash-lite']);
+  assert.deepEqual([cfg.roles['koe-realtime'].models, cfg.roles['koe-classic'].models.map((m) => modelOf(cfg.models[m]).providerId), cfg.koeMode], [[], ['gemini-3.5-flash-lite'], 'classic'], 'Live stays off: Classic');
 });
 
 test("OpenAI's Realtime voice: off until switched on, which installs openai-realtime; Test opens a session through the key as a subprotocol that answers OK aloud, in 24 kHz PCM; a refused key is said as one (K6)", async () => {
@@ -571,7 +573,7 @@ test("OpenAI's Realtime voice: off until switched on, which installs openai-real
   ]);
   assert.ok(rt.models.every((/** @type {any} */ m) => m.input.includes('image') && m.contextWindow === 128000));
   assert.match(rt.note, /short-lived/);
-  assert.ok(!desc.roles?.recommended?.koe, 'not recommended for Koe until a real key has shown OpenAI takes one from a browser');
+  assert.ok(!desc.roles?.recommended?.['koe-realtime'] && !desc.roles?.recommended?.koe, 'not recommended for Koe until a real key has shown OpenAI takes one from a browser');
   assert.ok(!entry('provider-openai').requires.some((/** @type {any} */ r) => r.id === 'openai-realtime'), 'it brings its protocol only when switched on');
   assert.ok(entry('provider-openai').version > '1.0.0', 'a version past the one released');
   const SK = 'sk-proj-stand-in-openai-key-0123456789';
@@ -589,7 +591,7 @@ test("OpenAI's Realtime voice: off until switched on, which installs openai-real
     const id = await llm.addProvider('provider-openai', { key: SK, abilities: { realtime: { on: false, baseUrl: `${s.origin}/v1` } } });
     assert.ok(!(await k.host.installed())['openai-realtime'], 'nothing for live sessions until they are switched on');
     const cfg = await readConfig(k.ws);
-    assert.deepEqual(cfg.roles.koe.models, [], 'adding OpenAI never fills Koe (the split is opt-in)');
+    assert.deepEqual([cfg.roles['koe-realtime'].models, cfg.roles['koe-classic'].models], [[], []], 'adding OpenAI never fills Koe (the split is opt-in)');
     const rtId = /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'gpt-realtime-2.1')?.id);
     await llm.setAbility(id, 'realtime', true);
     assert.ok((await k.host.installed())['openai-realtime'], 'switching it on installs its protocol');

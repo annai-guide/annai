@@ -599,8 +599,9 @@ export function createLlm({
       const { rec, type, endpoint, model, key } = await resolve(modelId, { install: true });
       // Test asks at the level of the first role that asks this model at one (fix pass).
       const { roles } = await readConfig(ws);
-      const r = ['main', 'koe', 'utility'].find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
-      const role = r ? { name: r[0].toUpperCase() + r.slice(1), level: roles[r].level } : undefined;
+      const names = { main: 'Main', 'koe-classic': 'Koe · Classic', utility: 'Utility' };
+      const r = /** @type {const} */ (['main', 'koe-classic', 'utility']).find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
+      const role = r ? { name: names[r], level: roles[r].level } : undefined;
       const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
         : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
           .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));

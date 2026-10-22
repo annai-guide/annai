@@ -232,7 +232,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "2.3.1",
+      "version": "2.4.0",
       "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
@@ -245,7 +245,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 11125,
+      "size": 11169,
       "requires": [
         {
           "id": "gemini-api",
@@ -254,7 +254,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "615e808fe6ad1b6edb42b21191a87d1b2592a9f370c3692d59b04503bec5cad8"
+        "annai-plugin.json": "43f23c9e0dc655daf3bb785f51934aea927feb298ac2369bd5b11ee7697926fe"
       }
     },
     {
