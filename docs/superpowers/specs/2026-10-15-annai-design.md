@@ -1082,6 +1082,7 @@ Reference: mockups draft 6.
     - the install guide, the featured provider's sign-in, profile
   - **Import preview**
   - **Recap and Replay**
+- **Back to where you were, and "the trip you had open".** Back returns to a screen where it was (its scroll position, kept through a reload). A fresh start at "/" (the Home Screen icon, a notification that opens annai) opens the trip's screen that was open, or the Now, Plan or Conversation tab of the open trip, and shows Trips only when that trip is gone, archived or removed, or when the last screen noted was Trips (the user, 2026-10-21). A link, a share or a sign-in coming back that points at a screen goes there, and the welcome comes first at the first start.
 - **Swiping sideways between the top bar's tabs** is experimental and off by default (Settings → Experimental). On, swiping into a tab brings back the screen last open in it, where you were on it.
 - **Visual identity:**
   - vermilion accent

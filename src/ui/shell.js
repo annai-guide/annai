@@ -28,6 +28,7 @@ import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
+import { noteScreen } from './resume.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
@@ -207,6 +208,7 @@ export function startShell(root, core) {
     // The screen you are on stays in view in the top bar, however far along it is.
     const on = links.find((a) => a.hasAttribute('aria-current'));
     shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name };
+    noteScreen(location.hash);
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
     if (on) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade

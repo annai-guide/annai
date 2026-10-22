@@ -429,3 +429,36 @@ test("review m2: a question's history entry left from before a reload is never t
   expect(page.url()).toBe(trip);
   await expect(page.getByRole('heading', { level: 1, name: 'Big Sur' })).toBeVisible();
 });
+
+// The user, 2026-10-21: "the trip you had open". A fresh start at "/" reopens the trip's screen that was open.
+test('a fresh start reopens the trip screen that was open, and shows Trips when that trip is gone', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  await page.evaluate(async () => { // the welcome has been seen on this device
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
+    store.close();
+  });
+  await page.getByRole('link', { name: 'Plan', exact: true }).first().click();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('annai.resume'))).toContain('#/plan'); // drawn, and noted
+  await page.goto('/'); // a new launch from the Home Screen icon
+  await expect.poll(() => page.url()).toMatch(/#\/plan$/);
+  // A link that points at a screen is respected.
+  await page.goto('/#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  // The trip's own page, then gone: removed, with the screen still noted as it was.
+  await page.goto(`/#/trip/${id}`);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.evaluate((id) => localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/plan`, trip: id })), id);
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(page.url()).not.toContain('/trip/');
+});
