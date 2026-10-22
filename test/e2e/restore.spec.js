@@ -25,13 +25,16 @@ test('a restore brings the providers back with the plugins they use, in one step
 
     // The sentence asking to restart comes with the button that does it (the second emulator re-check).
     await expect(page.getByText('Restart annai to use the imported settings and plugins.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Restart annai' })).toBeVisible();
+    // Pressing it restarts annai: the page loads again and annai is back.
+    const restarted = page.waitForEvent('load');
+    await page.getByRole('button', { name: 'Restart annai' }).click();
+    await restarted;
+    await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
 
     await page.goto('/#/plugins');
     await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
     await expect(page.locator('.card', { hasText: 'Another address' }).getByText('On', { exact: true })).toBeVisible();
-    // As the import asks: annai restarts, and the provider is there with its plugin.
-    await page.reload();
+    // As the import asks: annai has restarted, and the provider is there with its plugin.
     await page.goto('/#/trips');
     await page.getByRole('link', { name: /Big Sur/ }).click();
     await page.getByRole('button', { name: 'Type' }).click();

@@ -109,3 +109,23 @@ test('a fixed-seed fuzz against node\'s zlib: valid streams agree; a damaged one
   }
   assert.ok(damagedRefused > 100, String(damagedRefused));
 });
+
+test('a large entry is read without pulling a window of the file for its header', async () => {
+  const w = new ZipWriter();
+  await w.add('small.md', utf8('hello '.repeat(50)));
+  await w.add('big.bin', crypto.getRandomValues(new Uint8Array(65536)).map((b, i) => (i % 2 ? b : 7)), { compress: false });
+  const big = new Uint8Array(400_000).fill(9);
+  await w.add('huge.bin', big, { compress: false });
+  const blob = w.finish();
+  /** @type {number[]} */
+  const sizes = [];
+  const counted = new Proxy(blob, { get(t, k) {
+    if (k === 'slice') return (/** @type {number} */ a, /** @type {number} */ b) => { sizes.push((b ?? t.size) - a); return t.slice(a, b); };
+    const v = Reflect.get(t, k, t);
+    return typeof v === 'function' ? v.bind(t) : v;
+  } });
+  const zip = await ZipReader.open(/** @type {Blob} */ (counted));
+  sizes.length = 0;
+  assert.deepEqual(await zip.read('huge.bin'), big);
+  assert.ok(Math.max(...sizes) <= 400_000 + 1 && !sizes.some((n) => n > 30 && n < 400_000), `reads: ${sizes.join()}`);
+});
