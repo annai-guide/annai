@@ -350,3 +350,19 @@ test("tell_koe gives Kokoro for_user, and Kokoro's instructions say to fill it w
   const [note] = (await k.events(['note'])).filter((e) => e.data.from === 'kokoro');
   assert.equal(note.data.forUser, FOR_USER, 'kept with the note in the conversation');
 });
+
+// The review's minors: the words annai shows keep the old tidying, and a gated speak with no words leaves a Trace line.
+test('for_user that starts "Say:" is shown without it, with a capital', async () => {
+  const k = await agentKit([kokoro('Tell them sunset is at 6:23 PM.', 'say: sunset is at 6:23 PM tonight.')], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  assert.deepEqual(await backstop(k), [["Shiori's answer", 'Sunset is at 6:23 PM tonight.']]);
+});
+
+test("Kokoro's speak with no words, gated, that Koe never passes on: nothing shown, and a quiet line in the Trace (review: it vanished)", async () => {
+  const k = await agentKit([gated('speak', {})], { koe: { type: [CHECK, sleep, sleep] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual(await backstop(k), []);
+  assert.equal((await k.events(['error'])).filter((e) => e.data.kind === 'unshown' && e.data.quiet).length, 1);
+});

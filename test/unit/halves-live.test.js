@@ -648,9 +648,62 @@ test("a tap that closes a live session with Kokoro's note still owed says and sh
     assert.equal(k.agent.live.state, 'closed');
     assert.deepEqual(await storyOut(k), [], 'no voice.say, no reminder with its words');
     assert.ok(!texts(k).some((t) => t.includes('Big Sur story')), 'it never went in');
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here: past the 1 s a tap's session holds kept notes for
     k.agent.tap();
     await until(() => k.agent.live.listening);
     await soon(async () => texts(k).some((t) => t.includes('Big Sur story')));
+  } finally {
+    await k.done();
+  }
+});
+
+test("review S3: the session a tap opens holds a kept note while the user starts to speak: it goes in after their activityEnd, not over them", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    const { clip } = await import('./voice-kit.js');
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000);
+    await until(() => k.agent.live.view.name === 'hearing');
+    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    await until(() => k.agent.live.owing);
+    assert.equal(k.agent.tap(), 'stopped');
+    await settled(k);
+    k.agent.tap(); // a tap to talk
+    await until(() => k.agent.live.listening && k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length >= 2);
+    await new Promise((r) => setTimeout(r, 150)); // they start a moment after the tap
+    k.platform.mic.feed(cat(quiet(0.3), lunch, quiet(1)), 16_000);
+    await soon(async () => texts(k).some((t) => t.includes('Big Sur story')));
+    const all = k.server.received();
+    const second = all.slice(all.findIndex((/** @type {any} */ m, /** @type {number} */ i) => m.setup && i > 0));
+    const order = second.filter((/** @type {any} */ m) => m.realtimeInput?.activityStart || m.realtimeInput?.activityEnd || m.clientContent).map((/** @type {any} */ m) => (m.clientContent ? 'note' : Object.keys(m.realtimeInput)[0]));
+    assert.deepEqual(order, ['activityStart', 'activityEnd', 'note']);
+  } finally {
+    await k.done();
+  }
+});
+
+test("review S4: switching to another trip with Kokoro's note still owed shows its words for the user (for_user) in the trip left, not aloud; a note without them shows nothing", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    const { clip } = await import('./voice-kit.js');
+    const { createTrip } = await import('../../src/core/scopes.js');
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000); // still speaking: the notes wait
+    await until(() => k.agent.live.view.name === 'hearing');
+    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    await k.agent.channel.send('kokoro', 'Tell them to check the tide table too.', 'append', 'tool');
+    await until(() => k.agent.live.owing);
+    const other = await createTrip(k.ws, { title: 'Carmel' });
+    await k.agent.open(other);
+    await k.agent.idle();
+    const shown = (await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text, e.data.unsaid, e.data.aloud]);
+    assert.deepEqual(shown, [["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]]);
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('Highway')), 'not said');
   } finally {
     await k.done();
   }

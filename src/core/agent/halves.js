@@ -47,6 +47,8 @@ const THEIRS = ['user', 'choice', 'file', 'live'];
 /** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
 export const REVIEW_MS = 180_000;
 const REVIEW = "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
+/** Words for the user as annai shows them: a leading "Say:" (an instruction to Koe) goes, and the first letter is a capital. @param {unknown} text */
+const forUserText = (text) => String(text ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 /** The conversation's lines, for the review. */
 const LINES = ['msg.user', 'heard', 'out.speak', 'out.show', 'out.ask'];
 
@@ -268,6 +270,11 @@ export class Halves {
       asked: () => this.#asked && this.kokoro.busy,
       unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
       owed: (notes) => this.#handOn(notes),
+      // Kokoro's words for the user that a switch left unsaid: shown in the conversation left, not aloud (Koe is in another now).
+      left: (notes) => {
+        const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
+        if (list.length) this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {});
+      },
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.#ready = this.#refresh({ tell: false }).catch(() => {});
@@ -791,7 +798,8 @@ export class Halves {
           : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
         if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
         else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
-      } else if (w.forUser || w.why === 'gated:speak') await this.kokoro.remind([{ watch: '', text: capped(w.forUser || String(w.note ?? ''), CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
+      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
+      else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
       else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
       else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
     }
