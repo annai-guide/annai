@@ -30,6 +30,10 @@ test('a restore brings the providers back with the plugins they use, in one step
     await page.getByRole('button', { name: 'Restart annai' }).click();
     await restarted;
     await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    // It starts on Trips, not on the import screen with nothing left to open (the third emulator pass).
+    await expect(page.getByRole('heading', { name: 'Trips', level: 1 })).toBeVisible();
+    expect(new URL(page.url()).hash).toBe('#/trips');
+    await expect(page.getByRole('heading', { name: 'Open a trip' })).toHaveCount(0);
 
     await page.goto('/#/plugins');
     await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
