@@ -79,7 +79,7 @@ export async function renderProvider(ctx, id) {
   const key = desc?.key === 'none' || (panel && setupOf(ctx.registry, rec.plugin)?.keyField === false) ? null : h('input', { id: 'provider-key', type: 'password', autocomplete: 'off', placeholder: hasKey ? 'saved (type a new one to replace it)' : 'not set' });
   const headers = jsonField('Extra headers (JSON)', 'provider-headers', p.headers);
   // The address, key and extra headers (often a credential too) are saved together with a button, so a half-typed connection is never used.
-  const saving = h('span', { class: 'saved', role: 'status' });
+  const saving = h('span', { class: 'sub', role: 'status' });
   const save = h('button', {
     class: 'btn pri', type: 'button',
     onclick: () => {
