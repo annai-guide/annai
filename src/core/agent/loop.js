@@ -316,9 +316,9 @@ export class Agent {
   #typing = false;
   /** Ends #typing GATHER.typing after the last keystroke. @type {any} */
   #typingTimer = null;
-  /** The camera's photo is being made, and its timer. @type {any} */
+  /** The camera's photos being made (one quick photo after another: each lets go only of itself), and their timer. @type {any} */
   #photoTimer = null;
-  #coming = false;
+  #coming = 0;
   /** Wakes a turn waiting for the user to look again. @type {(() => void) | null} */
   #poke = null;
   /** A turn is gathering the user's messages (GATHER): it hasn't started. */
@@ -607,18 +607,21 @@ export class Agent {
     return this.#typing;
   }
 
-  /** The camera came back, and its photo is still being made: a turn of the user's waits for it (at most the GATHER cap). @param {boolean} on */
+  /**
+   * The camera came back, and its photo is still being made (on), or it is ready (off): a turn of the user's waits while any is
+   * being made, at most the GATHER cap, which lets go of them all. @param {boolean} on
+   */
   photoComing(on) {
     clearTimeout(this.#photoTimer);
-    this.#coming = on;
-    if (on) this.#photoTimer = setTimeout(() => this.photoComing(false), GATHER.most * this.secondMs);
+    this.#coming = Math.max(0, this.#coming + (on ? 1 : -1));
+    if (this.#coming) this.#photoTimer = setTimeout(() => { this.#coming = 0; this.poke(); }, GATHER.most * this.secondMs);
     this.#photoTimer?.unref?.();
     this.poke();
   }
 
   /** The camera's photo is on its way. */
   get photoNow() {
-    return this.#coming;
+    return this.#coming > 0;
   }
 
   /** The microphone hears the user now. */
@@ -646,7 +649,7 @@ export class Agent {
       const wakes = this.#queue.filter((w) => w.scope === this.scope);
       // From the first wake (review a5): a wake that waited out a long turn doesn't wait again.
       const left = Math.min(...wakes.map((w) => w.at ?? Date.now())) + GATHER.most * this.secondMs - Date.now();
-      const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.#speaking || this.#coming) ? Infinity : 0;
+      const hold = this.#half.hold ? this.#half.hold(wakes) : wakes.some(isTheirs) && (this.#typing || this.#speaking || this.#coming > 0) ? Infinity : 0;
       const wait = wakes.length && !this.#opens && left > 0 ? Math.min(hold, left) : 0;
       if (wait <= 0) return;
       await new Promise((resolve) => {
