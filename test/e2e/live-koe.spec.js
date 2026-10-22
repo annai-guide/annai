@@ -139,6 +139,35 @@ test('the page out of view: the session closes and the microphone stops; back in
   }
 });
 
+test("on the phone's speaker, her voice coming back into the microphone never cuts her off: one activityStart, her line whole, no ✂ (the iPhone trace, 2026-10-22)", async ({ page }) => {
+  const words = 'There is a taco stand two miles ahead, and a diner just after the bridge with a view of the cliffs.';
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ heard: 'Where should we eat?', said: words, audio: voice(3), usage }] });
+  const kokoro = await startModelServer({ '/kokoro/v1/messages': sse([sleep]) });
+  try {
+    // The iPhone's own microphone, and everything the page plays heard by it, as from the phone's speaker.
+    await page.addInitScript(() => {
+      if (typeof MediaDevices === 'undefined') return;
+      MediaDevices.prototype.enumerateDevices = async () => /** @type {any} */ ([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'mic', groupId: 'mic' }]);
+    });
+    await fakeMicrophone(page, [clipPath('where-eat')], { loopback: true });
+    await liveSetUp(page, kokoro.origin, s.origin);
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect(page.locator('.voice-chip')).toHaveText('Listening live');
+    await page.getByRole('link', { name: 'Conversation' }).click();
+    const said = page.locator('.convo .shiori.said');
+    await expect(said).toHaveCount(1, { timeout: 20_000 });
+    await page.waitForTimeout(1500); // her echo's tail
+    await expect(said).toContainText(words);
+    await expect(said).not.toContainText('✂');
+    const input = s.received().filter((/** @type {any} */ m) => m.realtimeInput).map((/** @type {any} */ m) => Object.keys(m.realtimeInput)[0]);
+    expect(input.filter((/** @type {string} */ x) => x === 'activityStart')).toHaveLength(1);
+    expect(input.filter((/** @type {string} */ x) => x === 'activityEnd')).toHaveLength(1);
+  } finally {
+    await s.stop();
+    await kokoro.stop();
+  }
+});
+
 // K6's plan, Task 3: the same conversation through OpenAI Realtime, against the stand-in's openai flavour.
 test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoken question answered and passed to Kokoro, whose note goes in marked and is said; voice off closes it; the key never shows", async ({ page }) => {
   const usage = { input_tokens: 900, output_tokens: 40, input_token_details: { text_tokens: 600, audio_tokens: 300 }, output_token_details: { audio_tokens: 40 } };

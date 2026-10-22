@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LiveInput } from '../../src/core/realtime/input.js';
 import { StreamResampler } from '../../src/core/voice/pcm.js';
-import { clip, quiet, cat, burst, RATE } from './voice-kit.js';
+import { clip, quiet, cat, burst, room, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -112,7 +112,7 @@ test('while Koe plays, a start needs 6 dB more over the floor', async () => {
   /** A voice-like tone over the hiss: a in amplitude, rising and falling four times a second. @param {number} a */
   const voice = (a) => hiss(1).map((x, i) => x + a * (0.75 + 0.25 * Math.sin((2 * Math.PI * 4 * i) / RATE)) * Math.sin((2 * Math.PI * 1000 * i) / RATE));
   const starts = async (/** @type {number} */ a, /** @type {boolean} */ playing) => {
-    const r = rig({ speaking: () => playing });
+    const r = rig({ speaking: () => playing, duplex: () => true });
     await r.input.start();
     r.feed(cat(hiss(2), voice(a)), RATE);
     r.input.stop();
@@ -121,10 +121,107 @@ test('while Koe plays, a start needs 6 dB more over the floor', async () => {
   assert.equal(await starts(0.002, false), true, 'about 12 dB over the hiss starts speech');
   assert.equal(await starts(0.002, true), false, 'but not while Koe plays');
   assert.equal(await starts(0.008, true), true, 'a louder voice cuts in while Koe plays');
-  const off = rig({ speaking: () => true, bargeInDb: Infinity });
+  const off = rig({ speaking: () => true });
   await off.input.start();
   off.feed(cat(hiss(2), voice(0.05)), RATE);
-  assert.ok(!off.sent.includes('start'), 'with cutting in by voice off, nothing starts while Koe plays');
+  assert.ok(!off.sent.includes('start'), 'half-duplex (the phone speaker, or cutting in by voice off): nothing starts while Koe plays, however loud');
+});
+
+/**
+ * Koe's voice from the phone's speaker, heard by its microphone (the iPhone trace, 2026-10-22: she cut herself off after a word or
+ * two, ✂, every turn): 1 s of quiet, her voice (a speech clip) at gainDb re the clip as recorded while speaking() is true, 280 ms of
+ * it after it stops, then quiet, and then, if given, the user's own words. Fed in the worklet's batches at 16 kHz.
+ * @param {number} gainDb @param {{ after?: Float32Array, duplex?: boolean, tailMs?: number }} [o]
+ */
+async function echo(gainDb, { after, duplex = false, tailMs } = {}) {
+  let playing = false;
+  const r = rig({ speaking: () => playing, duplex: () => duplex, ...(tailMs === undefined ? {} : { tailMs }) });
+  await r.input.start();
+  const her = lunch.map((x) => x * 10 ** (gainDb / 20));
+  // Her last 280 ms, heard after the player said it ended: the speaker's latency and the room's echo.
+  const tail = her.slice(-Math.round(RATE * 0.28) - RATE / 2, -RATE / 2);
+  const parts = /** @type {[Float32Array, boolean][]} */ ([[quiet(1), false], [her, true], [tail, false], [quiet(1), false], ...(after ? [[cat(after, quiet(1.5)), false]] : [])]);
+  for (const [pcm, on] of /** @type {[Float32Array, boolean][]} */ (parts)) {
+    playing = on;
+    r.feed(pcm, RATE);
+  }
+  return r;
+}
+
+test('half-duplex: her own voice from the speaker, at -40 to 0 dB re speech, starts no turn while she plays nor in the 300 ms after', async () => {
+  for (const g of [-40, -30, -20, -10, -6, 0]) {
+    const r = await echo(g);
+    // (Counted, not compared: a diff of the audio sent takes minutes to print.)
+    assert.equal(r.sent.length, 0, `echo at ${g} dB: ${r.sent.filter((x) => typeof x === 'string').join(', ')} and ${Math.round(msOf(r.sent))} ms of sound left the phone`);
+    r.input.stop();
+  }
+  const r = await echo(0, { tailMs: 0 });
+  assert.equal(r.sent[0], 'start', 'with no time after her voice, its echo would start one');
+});
+
+/** A quick "yes": the 450 ms of the gas-station clip with the most speech in it. */
+const yes = (() => {
+  const n = Math.round(RATE * 0.45);
+  let best = 0;
+  let most = -1;
+  for (let i = 0; i + n <= gas.length; i += 160) {
+    let e = 0;
+    for (let j = i; j < i + n; j++) e += gas[j] * gas[j];
+    if (e > most) [most, best] = [e, i];
+  }
+  return gas.slice(best, best + n);
+})();
+
+// voice-fix fix pass M1: the 300 ms after her voice must not swallow a quick reply.
+test('half-duplex: a quick "yes" 0, 100 or 200 ms after her voice ends is sent whole, its start included', async () => {
+  for (const after of [0, 100, 200]) {
+    let playing = false;
+    const r = rig({ speaking: () => playing });
+    await r.input.start();
+    r.feed(quiet(1), RATE);
+    playing = true;
+    r.feed(lunch.map((x) => x * 0.3), RATE);
+    playing = false;
+    r.feed(cat(quiet(after / 1000), yes, quiet(1.5)), RATE);
+    assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end'], `${after} ms after`);
+    const ms = msOf(r.sent);
+    // The yes, and the pause that ends it (700 ms), at least: nothing of it lost to the 300 ms after her voice.
+    assert.ok(ms >= 450 + 700 - 20, `${after} ms after: ${Math.round(ms)} ms sent for a 450 ms yes`);
+    r.input.stop();
+  }
+});
+
+test('her voice tapped off mid-word (a tap cut): the user speaking at once is sent whole too', async () => {
+  let playing = false;
+  const r = rig({ speaking: () => playing });
+  await r.input.start();
+  r.feed(quiet(1), RATE);
+  playing = true;
+  r.feed(lunch.subarray(0, lunch.length >> 1).map((x) => x * 0.3), RATE);
+  playing = false; // the tap: her voice stops now
+  r.feed(cat(yes, quiet(1.5)), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  assert.ok(msOf(r.sent) >= 450 + 700 - 20, `${Math.round(msOf(r.sent))} ms`);
+  r.input.stop();
+});
+
+test('half-duplex: the user speaking after her voice ends starts a turn, and nothing heard while she played goes with it (its pre-roll is dropped)', async () => {
+  const r = await echo(0, { after: gas });
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  const ms = msOf(r.sent);
+  const said = (gas.length / RATE) * 1000;
+  assert.ok(ms > said && ms < said + 1400, `${ms} ms sent for ${said} ms of speech: none of her ${Math.round((lunch.length / RATE) * 1000)} ms`);
+  r.input.stop();
+});
+
+test('full duplex (headphones or the car, with cutting in by voice on): the user speaking over her starts a turn', async () => {
+  let playing = true;
+  const r = rig({ speaking: () => playing, duplex: () => true });
+  await r.input.start();
+  r.feed(cat(quiet(1), lunch, quiet(1)), RATE);
+  assert.equal(r.sent[0], 'start', 'the user cut in');
+  playing = false;
+  r.input.stop();
 });
 
 test('a click or a door slam leaves nothing: no activity and no audio, so no billed turn (review)', async () => {
@@ -155,4 +252,78 @@ test("given the session to send to, it sends at the session's rate: 8 kHz for on
   assert.deepEqual([sent[0], sent.at(-1)], ['start', 'end']);
   assert.ok(chunks.slice(0, -1).every((c) => c.length === 1600), '100 ms chunks of 8 kHz PCM16');
   input.stop();
+});
+
+// voice-fix item 3 (the iPhone trace, 2026-10-22: "Listening" for 29 s after the user stopped): the investigation's zero-frame pattern.
+test("near-silent frames from the microphone (60 ms of zeros every half second) don't keep a turn going: it ends at the user's pause", async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  r.feed(room(40, lunch, (t) => t > 3 + lunch.length / RATE && t % 0.5 < 0.06), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  const ms = msOf(r.sent);
+  assert.ok(ms < (lunch.length / RATE) * 1000 + 1500, `${Math.round(ms)} ms sent for ${Math.round((lunch.length / RATE) * 1000)} ms of speech`);
+  assert.equal(turns.length, 1);
+  assert.equal(turns[0].end, 'pause');
+  r.input.stop();
+});
+
+test('a realtime turn is capped at about 15 s: speech that never pauses goes as turns of 15 s at most, each traced as capped', async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  const talk = cat(...Array.from({ length: 10 }, () => cat(lunch, quiet(0.2), gas, quiet(0.2))));
+  r.feed(cat(quiet(0.5), talk), RATE);
+  r.input.stop();
+  // The rest of the sentence after a cap is a turn at once: the floor goes back to where the turn began (review M3).
+  const said = (talk.length / RATE) * 1000;
+  assert.ok(msOf(r.sent) > said * 0.97, `${Math.round(msOf(r.sent))} ms sent of ${Math.round(said)} ms of speech`);
+  /** The ms of sound in each turn. */
+  const each = [];
+  let n = 0;
+  for (const x of r.sent) {
+    if (x === 'start') n = 0;
+    else if (x === 'end') each.push(n);
+    else if (typeof x !== 'string') n += (x.length / 2 / RATE) * 1000;
+  }
+  assert.ok(each.length >= 2, `${each.length} turns`);
+  assert.ok(each.every((ms) => ms <= 15_500), each.map(Math.round).join(', '));
+  assert.equal(turns[0].end, 'cap');
+  assert.equal(turns.at(-1).end, 'close', 'what was still going when listening stopped');
+});
+
+test("each turn's end is traced as numbers only: why it ended, how long, the floor and the loudest frame in dB", async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  r.feed(cat(quiet(1), lunch, quiet(1.5)), RATE);
+  assert.equal(turns.length, 1);
+  const [t] = turns;
+  assert.deepEqual(Object.keys(t).sort(), ['end', 'floorDb', 'ms', 'peakDb']);
+  assert.equal(t.end, 'pause');
+  assert.ok(Number.isFinite(t.floorDb) && Number.isFinite(t.peakDb) && t.peakDb > t.floorDb + 30, JSON.stringify(t));
+  assert.ok(t.ms > 1000 && t.ms < 4000, JSON.stringify(t));
+  r.input.stop();
+});
+
+test('cut(): a turn the model has stopped transcribing ends now (traced so), and its sound after the cut must start a turn of its own over a floor learned again', async () => {
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ onTurn: (/** @type {any} */ t) => turns.push(t) });
+  await r.input.start();
+  r.feed(cat(quiet(1), lunch.subarray(0, lunch.length >> 1)), RATE);
+  assert.equal(r.input.active, true);
+  r.input.cut('transcript');
+  assert.equal(r.input.active, false);
+  assert.equal(r.sent.at(-1), 'end');
+  assert.equal(turns[0].end, 'transcript');
+  const n = r.sent.length;
+  r.feed(quiet(2), RATE);
+  assert.equal(r.sent.length, n, 'nothing while nobody speaks');
+  r.input.cut('transcript'); // no turn: nothing
+  assert.equal(r.sent.length, n);
+  r.input.stop();
 });

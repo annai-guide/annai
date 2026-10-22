@@ -195,7 +195,7 @@ test("its address is the ability's own, as wss: for https and ws: for a server o
   assert.equal(TYPE.open({ endpoint: endpoint('http://127.0.0.1:9000/'), key: 'a b', tunables: { ...TYPE.tunables, apiVersion: 'v1beta' }, model: model() }).url,
     'ws://127.0.0.1:9000/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=a%20b');
   assert.deepEqual(TYPE.audio, { in: [{ format: 'pcm16', rate: 16000 }], out: [{ format: 'pcm16', rate: 24000 }] });
-  assert.deepEqual(TYPE.tunables, { apiVersion: 'v1alpha', proactive: true, voice: '', compression: true });
+  assert.deepEqual(TYPE.tunables, { apiVersion: 'v1alpha', proactive: true, voice: '', compression: true, heardLive: false });
 });
 
 test("gemini-live is a protocol in annai's catalog: a keyed name, so a third party's never takes it, and its key, from annai's (Milestone 6)", async () => {

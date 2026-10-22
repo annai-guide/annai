@@ -6,7 +6,7 @@
  *   answer (§7.1); firstWordsSeconds: how long her first words may take with voice on (§9.6); keepClips: keep what the microphone heard
  *   (§10.2); browserVoice: the system voice's id ('' for automatic: one on this phone when there is one, §11.7); rate: its speed; lastChoices: an explicit On or Off where
  *   annai couldn't tell what audio is connected, by activity (§10.5); closeAfterSeconds: the quiet spell that closes a live session (K5,
- *   decision 12); bargeIn: speaking cuts a live Koe off (decision 13), a tap always does
+ *   decision 12); bargeIn: speaking cuts a live Koe off (decision 13) with headphones or car audio only (§10.4), a tap always does
  */
 export const VOICE_DEFAULTS = Object.freeze({ mode: 'auto', pauseMs: 700, silenceSeconds: 8, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, lastChoices: Object.freeze({}), closeAfterSeconds: 30, bargeIn: true });
 

@@ -1,6 +1,6 @@
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf } from './mode.js';
-import { SYS } from '../scopes.js';
+import { SYS, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
 import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates } from '../llm/fallback.js';
 import { speechKind, modelOf, abilityOf, STAND_INS } from '../llm/config.js';
@@ -70,6 +70,8 @@ export class Voice {
   /** The mode has been read once: the first reading, as annai starts, is no change of mode. */
   #read = false;
   #watching = false;
+  /** The last route decision traced. */
+  #routed = '';
   /** @type {Set<LevelListener>} */
   #levels = new Set();
   /** Sound may play: a tap unlocked it (spec §10.1). */
@@ -427,10 +429,26 @@ export class Voice {
     }
   }
 
-  /** What audio is connected, from the devices' names (spec §10.5). */
+  /**
+   * What audio is in use, from the devices' names (spec §10.5): while the microphone is open, the one input it takes (its track's
+   * label, else its deviceId's); else those present. Each new decision goes in this device's own Trace, with the names.
+   */
   async route() {
     try {
-      return routeOf((await this.platform?.devices?.()) ?? []);
+      const devices = (await this.platform?.devices?.()) ?? [];
+      const used = this.platform?.mic.inUse?.() ?? null;
+      const using = used && (used.label || devices.find((d) => d.deviceId && d.deviceId === used.deviceId)?.label || '');
+      // An input no longer among the devices (AirPods taken out, its track still named for them) is unknown.
+      const gone = used?.deviceId && devices.some((d) => d.deviceId) && !devices.some((d) => d.deviceId === used.deviceId);
+      const route = gone ? 'unknown' : routeOf(used ? [{ kind: 'audioinput', label: /** @type {string} */ (using) }] : devices);
+      const data = { route, using, devices: devices.map((d) => d.label) };
+      const key = JSON.stringify(data);
+      if (key !== this.#routed && this.store) {
+        this.#routed = key;
+        const store = this.store;
+        ensureDeviceScope(store).then(() => logEvent(store, SYS_DEVICE, { type: 'voice.route', actor: 'system', data })).catch(() => {});
+      }
+      return route;
     } catch {
       return 'unknown';
     }

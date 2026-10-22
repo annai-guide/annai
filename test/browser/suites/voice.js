@@ -133,13 +133,32 @@ export default function (test, assert) {
     ]);
     try {
       const p = browserPlatform();
-      assert.deepEqual(await /** @type {any} */ (p).devices(), [{ kind: 'audioinput', label: 'AirPods Pro' }, { kind: 'videoinput', label: 'Back camera' }]);
+      assert.deepEqual(await /** @type {any} */ (p).devices(), [{ kind: 'audioinput', label: 'AirPods Pro', deviceId: 'a' }, { kind: 'videoinput', label: 'Back camera', deviceId: 'v' }]);
       let told = 0;
       /** @type {any} */ (p).onDeviceChange(() => { told++; });
       navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
       assert.equal(told, 1);
     } finally {
       MediaDevices.prototype.enumerateDevices = real;
+    }
+  });
+
+  test('the input in use while the microphone is open: its track\'s label and deviceId; none once closed (voice-fix item 5)', async () => {
+    const ctx = new AudioContext();
+    const out = ctx.createMediaStreamDestination();
+    const [track] = out.stream.getAudioTracks();
+    const real = navigator.mediaDevices.getUserMedia;
+    navigator.mediaDevices.getUserMedia = async () => out.stream;
+    try {
+      const p = browserPlatform();
+      assert.equal(p.mic.inUse?.(), null);
+      const mic = await p.mic.open({ onFrames: () => {}, onError: () => {} });
+      assert.deepEqual(p.mic.inUse?.(), { label: track.label, deviceId: track.getSettings?.().deviceId ?? '' });
+      mic.close();
+      assert.equal(p.mic.inUse?.(), null);
+    } finally {
+      navigator.mediaDevices.getUserMedia = real;
+      await ctx.close();
     }
   });
 }

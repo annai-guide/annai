@@ -41,6 +41,25 @@ export function brown(seconds, amp, seed = 7) {
   });
 }
 
+/**
+ * A room whose noise wanders by about 2 dB from 20 ms to 20 ms (people, a TV, the road), with speech said at 3 s; zeroAt(t): the
+ * microphone gives digital silence then, as an iPhone's echo canceller and a just-opened microphone do (the voice investigation, 2026-10-22).
+ * @param {number} seconds @param {Float32Array} speech @param {(t: number) => boolean} [zeroAt] @param {number} [amp]
+ */
+export function room(seconds, speech, zeroAt = () => false, amp = 0.003) {
+  const r = random(9);
+  const g = random(10);
+  const out = new Float32Array(Math.round(seconds * RATE));
+  let w = 0;
+  for (let i = 0; i < out.length; i++) {
+    if (i % 320 === 0) w = 0.8 * w + 1.2 * g();
+    out[i] = r() * amp * 10 ** (w / 20);
+  }
+  out.set(speech.map((x, j) => x + out[3 * RATE + j]), 3 * RATE);
+  for (let i = 0; i < out.length; i++) if (zeroAt(i / RATE)) out[i] = 0;
+  return out;
+}
+
 /** @param {...Float32Array} parts */
 export function cat(...parts) {
   const out = new Float32Array(parts.reduce((n, p) => n + p.length, 0));

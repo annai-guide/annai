@@ -580,6 +580,7 @@ annai's official plugin **Remote trace (for developers)** sends annai's trace to
   - It sends a batch 3 seconds after the first entry waiting, or at once when 100 wait.
   - The batch is a POST of `{ app, build, device, dropped, entries }` with `Authorization: Bearer <token>`. `app` is "annai" and its version, `build` annai's build stamp, `device` an id made at the first send and kept in the plugin's settings (its page shows it as Device id, which you may change to a name of your own, so two phones are easy to tell apart), and `dropped` how many entries it dropped since the last batch the server took.
   - Its own requests are in annai's trace, as any plugin's are.
+- **What it does send that you may not expect:** the names of this phone's audio devices. Each `voice.route` entry (which audio annai decided is in use: the speaker, headphones, the car) carries the microphone in use and every audio device's name, such as "AirPods Pro" or a car's, and goes to your server like any other entry. They are kept in this device's own scope, which no backup holds, but Remote trace sends them.
 - **What it never sends:**
   - **Keys and its token.** Every entry first goes through `annai.secrets.blank`, annai's own blanking, as annai's cards do, so a key you type into a message is blanked too.
   - **Stored content:** texts over 2,000 characters (such as model replies and their reasoning), photos and other bytes. Only their names and hashes go.

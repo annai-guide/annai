@@ -77,6 +77,8 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
   const player = () => (element ??= new Audio());
   /** @type {Promise<void> | null} */
   let worklet = null;
+  /** Each open microphone's track (§10.5): the newest is the one in use, read afresh each time (AirPods taken out). @type {MediaStreamTrack[]} */
+  const inputs = [];
   /** @type {Promise<string[]> | null} */
   let made = null;
   /** Codecs whose encoding failed or hung: WAV and the rest until annai restarts. */
@@ -317,6 +319,10 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
       },
     },
     mic: {
+      inUse: () => {
+        const t = inputs.at(-1);
+        return t ? { label: t.label ?? '', deviceId: t.getSettings?.().deviceId ?? '' } : null;
+      },
       async open({ onFrames, onError, record }) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         try {
@@ -337,6 +343,8 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           source.connect(node);
           node.connect(silent).connect(c.destination); // some browsers run a node only when it leads somewhere
           for (const t of stream.getAudioTracks()) t.onended = () => onError(new Error('The microphone stopped.'));
+          const input = stream.getAudioTracks()[0];
+          if (input) inputs.push(input);
           // A MediaRecorder alongside (decision 24), in files cut by take().
           /** @type {MediaRecorder | null} */
           let rec = null;
@@ -378,6 +386,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
             } : {}),
             close() {
               end();
+              if (inputs.includes(input)) inputs.splice(inputs.indexOf(input), 1);
               node.port.onmessage = null;
               for (const t of stream.getTracks()) {
                 t.onended = null;
@@ -459,7 +468,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
     async devices() {
       // Names come only once the microphone was allowed (spec §10.5: without them Auto can't tell).
       if (!navigator.mediaDevices?.enumerateDevices) return [];
-      return (await navigator.mediaDevices.enumerateDevices()).map((d) => ({ kind: d.kind, label: d.label }));
+      return (await navigator.mediaDevices.enumerateDevices()).map((d) => ({ kind: d.kind, label: d.label, deviceId: d.deviceId }));
     },
     onDeviceChange(fn) {
       navigator.mediaDevices?.addEventListener?.('devicechange', fn);

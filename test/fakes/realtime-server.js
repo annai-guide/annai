@@ -22,17 +22,21 @@ import { createHash } from 'node:crypto';
  * Unit tests reach it with Node's WebSocket, and end-to-end tests from the page, at ws://127.0.0.1:<port> (WebKit
  * can't stand in for a page's own requests).
  * @typedef {{ heard?: string, said?: string, audio?: Uint8Array, tool?: { name: string, args: any }, goAway?: number, handle?: string,
- *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string, heardAfter?: string, heardFirst?: boolean, saidAfter?: string }} Turn
+ *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string, heardAfter?: string, heardFirst?: boolean, saidAfter?: string, silent?: boolean, heardAt?: number, saidAt?: number }} Turn
  *   one answer, played when a clientContent turn or an activityEnd comes (openai: a response.create); turns are given in order,
  *   and the last repeats. audio: 24 kHz 16-bit PCM (openai: in the session's output format); tool: a call it makes after its words;
  *   goAway, handle: Gemini's, seconds left, sent after the turn; usage: Gemini's usageMetadata, or OpenAI's response usage;
  *   interruptOn: only this cuts a Gemini turn off (default: either); refuse: OpenAI refuses the response.create with this error code;
  *   Gemini's (K5): heardAfter: the last words heard, sent after turnComplete, as Gemini's input transcript sometimes comes; heardFirst:
- *   heard is sent as the user starts speaking, not with the answer; saidAfter: the last words said, sent after turnComplete
+ *   heard is sent as the user starts speaking, not with the answer; saidAfter: the last words said, sent after turnComplete; silent: it never
+ *   answers at all, not even turnComplete (Gemini on the user's iPhone, 2026-10-22, in a session resumed after a close with no activityEnd);
+ *   heardAt: heard is sent this many ms after the user starts speaking, as Gemini's streams in (once, whatever connection); saidAt: its
+ *   words come this many ms after its sound, before its end (a late first word)
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
- *   pace?: number, chunkBytes?: number }} Options
+ *   pace?: number, chunkBytes?: number, expired?: boolean }} Options
  *   key: the one key it takes (none: any); models: the ids it knows (none: any); closeWith: how it closes each session at its setup (openai: its session.update);
- *   pace: how long a turn stays open, as a share of its audio's real time (1, as Gemini; 0: at once); openai: how long generating it takes; chunkBytes: audio per message
+ *   pace: how long a turn stays open, as a share of its audio's real time (1, as Gemini; 0: at once); openai: how long generating it takes; chunkBytes: audio per message;
+ *   expired: Gemini refuses every resumption handle as it does one it no longer keeps (1008, measured in the user's trace, 2026-10-22)
  */
 
 /** Gemini Live's path, by API version. @param {string} version */
@@ -151,7 +155,7 @@ export async function startRealtimeServer(o) {
     open.add(conn);
     socket.on('close', () => open.delete(conn));
     socket.on('error', () => {});
-    const c = { conn, received, turns, turnAt, counter, early, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '' };
+    const c = { conn, received, turns, turnAt, counter, early, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '', expired: Boolean(o.expired) };
     const session = isOpenai ? openaiSession(c) : geminiSession(c);
     /** @type {Buffer} */
     let buf = Buffer.alloc(0);
@@ -216,12 +220,12 @@ export async function startRealtimeServer(o) {
 
 /**
  * @typedef {{ conn: ReturnType<typeof link>, received: any[], turns: Turn[], turnAt: () => Turn | undefined, counter: { next: number, calls: number, ids: number }, early: Set<Turn>,
- *   key?: string, given: string | null, models?: string[], closeWith?: { code: number, reason: string }, pace: number, chunkBytes: number, url: URL, version: string }} Ctx
+ *   key?: string, given: string | null, models?: string[], closeWith?: { code: number, reason: string }, pace: number, chunkBytes: number, url: URL, version: string, expired?: boolean }} Ctx
  */
 
 /** Gemini Live, as measured. @param {Ctx} c @returns {{ handle(m: any): void, stop(): void }} */
 function geminiSession(c) {
-  const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version } = c;
+  const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version, expired } = c;
   const send = conn.send;
   let ready = false;
   /** The turn being played: its timers, and what cuts it off. @type {{ timers: NodeJS.Timeout[], turn: Turn } | null} */
@@ -233,8 +237,8 @@ function geminiSession(c) {
   const play = () => {
     stopTurn();
     const turn = turns[Math.min(counter.next++, turns.length - 1)];
-    if (!turn) return;
-    if (turn.heard && !turn.heardFirst) send({ serverContent: { inputTranscription: { text: turn.heard } } });
+    if (!turn || turn.silent) return;
+    if (turn.heard && !turn.heardFirst && turn.heardAt === undefined) send({ serverContent: { inputTranscription: { text: turn.heard } } });
     const audio = turn.audio ?? new Uint8Array(0);
     const words = turn.said ? turn.said.match(/\S+\s*/g) ?? [] : [];
     const pieces = Math.max(1, Math.ceil(audio.length / chunkBytes));
@@ -244,8 +248,9 @@ function geminiSession(c) {
       if (part.length) send({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: Buffer.from(part).toString('base64') } }] } } });
       const from = Math.floor((i * words.length) / pieces);
       const to = Math.floor(((i + 1) * words.length) / pieces);
-      if (to > from) send({ serverContent: { outputTranscription: { text: words.slice(from, to).join('') } } });
+      if (to > from && turn.saidAt === undefined) send({ serverContent: { outputTranscription: { text: words.slice(from, to).join('') } } });
     }
+    const late = turn.saidAt !== undefined ? [setTimeout(() => send({ serverContent: { outputTranscription: { text: turn.said } } }), turn.saidAt)] : [];
     if (turn.tool) send({ toolCall: { functionCalls: [{ name: turn.tool.name, args: turn.tool.args, id: `call_${++counter.calls}` }] } });
     send({ serverContent: { generationComplete: true } });
     const ms = Math.round(((audio.length / 2 / 24_000) * 1000) * pace);
@@ -258,7 +263,7 @@ function geminiSession(c) {
       if (turn.goAway !== undefined) send({ goAway: { timeLeft: `${turn.goAway}s` } });
     };
     if (ms <= 0) done();
-    else playing = { turn, timers: [setTimeout(done, ms)] };
+    else playing = { turn, timers: [setTimeout(done, ms), ...late] };
   };
   /** Something the user did while a turn plays cuts it off; the cut turn still ends, with its usage, as Gemini's do. @param {'text' | 'activity'} by */
   const cut = (by) => {
@@ -281,6 +286,7 @@ function geminiSession(c) {
           return conn.close(1008, `${s.model} is not found for API version ${version}, or is not supported for bidiGenerateContent. Call ModelService.ListModels to see the list of available models and their supported methods.`);
         }
         if (version === 'v1beta' && s.proactivity) return conn.close(1007, 'Invalid JSON payload received. Unknown name "proactivity" at \'setup\': Cannot find field.');
+        if (expired && s.sessionResumption?.handle) return conn.close(1008, 'BidiGenerateContent session not found or expired');
         ready = true;
         send({ setupComplete: {} });
         send({ sessionResumptionUpdate: { newHandle: s.sessionResumption?.handle ?? `stand-in-${++counter.ids}`, resumable: true } });
@@ -291,6 +297,10 @@ function geminiSession(c) {
       if (input?.activityStart && coming?.heardFirst && coming.heard && !early.has(coming)) {
         early.add(coming);
         send({ serverContent: { inputTranscription: { text: coming.heard } } });
+      }
+      if (input?.activityStart && coming?.heardAt !== undefined && coming.heard && !early.has(coming)) {
+        early.add(coming);
+        setTimeout(() => send({ serverContent: { inputTranscription: { text: coming.heard } } }), coming.heardAt);
       }
       if (input?.activityStart) cut('activity');
       else if (input?.activityEnd) play();

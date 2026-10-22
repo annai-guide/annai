@@ -10,10 +10,10 @@ export const tone = (seconds = 0.6) => new Uint8Array(Int16Array.from({ length: 
 /**
  * Shiori as two halves with a realtime model (m-live) first in Koe's list, at a stand-in Gemini Live server
  * that answers with turns; a voice (on unless voice says otherwise), and Kokoro's scripts.
- * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any }} [o]
+ * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any, server?: { expired?: boolean } }} [o] server: the stand-in's options
  */
 export async function liveKit(turns, o = {}) {
-  const server = await startRealtimeServer({ flavour: o.live?.type === 'openai-realtime' ? 'openai' : 'gemini', turns, pace: o.pace ?? 0.05 });
+  const server = await startRealtimeServer({ flavour: o.live?.type === 'openai-realtime' ? 'openai' : 'gemini', turns, pace: o.pace ?? 0.05, ...o.server });
   const k = await agentKit(o.kokoro ?? [{ rules: [{ match: '.', reply: sleep }] }], {
     live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], ...o.voice },
   });

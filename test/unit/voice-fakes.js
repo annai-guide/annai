@@ -9,7 +9,7 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 /**
- * @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string, devices?: { kind: string, label: string }[],
+ * @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string, devices?: { kind: string, label: string, deviceId?: string }[],
  *   encoder?: { makes: string[], records?: { type: string, format: string }[], fails?: string[] }, plays?: string[] }} [o]
  *   encoder: an encoder that makes these formats (a file is its format and length in samples, as text), records these with MediaRecorder,
  *   and fails these; plays: what the player plays
@@ -23,11 +23,18 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   let frames = null;
   /** @type {any} */
   let heard = null;
+  /** The input in use when the microphone opened. @type {{ label: string, deviceId: string } | null} */
+  let openedWith = null;
   let opens = 0;
   let files = 0;
   const platform = {
     /** How much faster than real time a live stream plays here. */
     streamSpeed: 20,
+    /**
+     * The phone's speaker heard by its own microphone: a live stream's sound, this many dB re as played, comes back into an open
+     * microphone as it plays (at 16 kHz); null: none, as with headphones. @type {number | null}
+     */
+    echoDb: /** @type {number | null} */ (null),
     /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
     voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
     /** Whether dictation recognizes speech on the phone. */
@@ -38,14 +45,18 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     sessions,
     get opens() { return opens; },
     session(/** @type {string} */ t) { sessions.push(t); },
-    /** @type {{ kind: string, label: string }[]} */
+    /** @type {{ kind: string, label: string, deviceId?: string }[]} */
     deviceList: devices,
+    /** The input an open microphone takes (its track's label and deviceId); null: the newest audio input present, as a phone picks it. @type {{ label: string, deviceId: string } | null} */
+    input: /** @type {{ label: string, deviceId: string } | null} */ (null),
+    /** inUse gives the input as it was when the microphone opened, as a plugin that reads its track once would. */
+    snapshot: false,
     /** @type {(() => void)[]} */
     deviceChanges: [],
     async devices() { return platform.deviceList; },
     /** @param {() => void} fn */
     onDeviceChange(fn) { platform.deviceChanges.push(fn); },
-    /** Plugs in or unplugs audio devices. @param {{ kind: string, label: string }[]} list */
+    /** Plugs in or unplugs audio devices. @param {{ kind: string, label: string, deviceId?: string }[]} list */
     setDevices(list) {
       platform.deviceList = list;
       for (const fn of platform.deviceChanges) fn();
@@ -94,7 +105,14 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
           push(/** @type {Int16Array} */ pcm) {
             if (s.playedMs !== null) return;
             started ||= Date.now();
+            const at = s.ms;
             s.ms += (pcm.length / rate) * 1000;
+            // Heard when it plays (never before the player has it), as loud as echoDb is then.
+            setTimeout(() => {
+              if (s.playedMs !== null || platform.echoDb === null) return;
+              const gain = 10 ** (platform.echoDb / 20) / 0x8000;
+              platform.mic.feed(Float32Array.from({ length: Math.floor((pcm.length * 16_000) / rate) }, (_, i) => pcm[Math.floor((i * rate) / 16_000)] * gain), 16_000);
+            }, Math.max(0, started + at / platform.streamSpeed - Date.now()));
           },
           end() { s.ended = true; log.push('stream end'); },
           stop() { s.stopped = true; log.push('stream stop'); return finish(); },
@@ -128,12 +146,21 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       },
     },
     mic: {
+      /** The input in use while open. */
+      inUse() {
+        if (!frames) return null;
+        if (platform.snapshot && openedWith) return openedWith;
+        const last = platform.deviceList.filter((d) => d.kind === 'audioinput').at(-1);
+        return platform.input ?? (last ? { label: last.label, deviceId: last.deviceId ?? '' } : null);
+      },
       /** @param {{ onFrames: (pcm: Float32Array, rate: number) => void, onError: (e: Error) => void, record?: string }} o */
       async open({ onFrames, record }) {
         if (micFails) throw Object.assign(new Error('Permission denied'), { name: micFails });
         opens++;
         log.push(record ? `mic open, recording ${record}` : 'mic open');
         frames = onFrames;
+        openedWith = null;
+        openedWith = platform.mic.inUse();
         return {
           close() { log.push('mic close'); frames = null; },
           ...(record ? {

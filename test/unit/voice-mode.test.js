@@ -36,11 +36,31 @@ test("what audio is connected, from the devices' names; nothing to go on without
   assert.equal(routeOf([input('Default - MacBook Pro Microphone (Built-in)')]), 'speaker');
   assert.equal(routeOf([input('iPhone Microphone'), input('AirPods Pro')]), 'headphones');
   assert.equal(routeOf([input('Speakerphone'), input('Bluetooth headset')]), 'headphones');
-  assert.equal(routeOf([input('JBL Flip 5')]), 'headphones', 'a brand nobody listed is still not the phone');
+  assert.equal(routeOf([input('JBL Flip 5')]), 'unknown', 'a name nobody listed is unknown, not headphones (voice-fix item 5)');
   assert.equal(routeOf([input('iPhone Microphone'), input("Kevin's car")]), 'car');
   assert.equal(routeOf([input('CarPlay')]), 'car');
   assert.equal(routeOf([{ kind: 'audiooutput', label: 'Toyota Camry' }]), 'car');
   assert.equal(routeOf([{ kind: 'videoinput', label: 'Car camera' }]), 'unknown');
+});
+
+// voice-fix item 5 (the iPhone trace, 2026-10-22: Auto said "headphones" on the phone's own speaker): the table.
+test('routeOf: the phone\'s own names (speaker and receiver too) are the speaker; names nobody listed are unknown, never headphones', () => {
+  const input = (/** @type {string} */ label) => ({ kind: 'audioinput', label });
+  const output = (/** @type {string} */ label) => ({ kind: 'audiooutput', label });
+  for (const [devices, want] of /** @type {[{ kind: string, label: string }[], string][]} */ ([
+    [[input('iPhone Microphone')], 'speaker'],
+    [[input('iPhone Microphone'), output('Speaker')], 'speaker'],
+    [[input('iPhone Microphone'), output('Receiver')], 'speaker'],
+    [[input('iPhone Microphone'), input('AirPods Pro')], 'headphones'],
+    [[input('Beats Studio Buds')], 'headphones'],
+    [[input('Bluetooth headset')], 'headphones'],
+    [[input('Wired Headphones')], 'headphones'],
+    [[input('iPhone Microphone'), input('Bose QC')], 'unknown'],
+    [[input('Fake Default Audio Input'), input('Fake Audio Input 1'), input('Fake Audio Input 2')], 'unknown'],
+    [[input('iPhone Microphone'), input('CarPlay')], 'car'],
+    [[input('Headset earpiece')], 'speaker'],
+    [[input('')], 'unknown'],
+  ])) assert.equal(routeOf(devices), want, devices.map((d) => d.label).join(' + '));
 });
 
 test('the chip says what voice is now', () => {
@@ -50,7 +70,7 @@ test('the chip says what voice is now', () => {
   assert.equal(chipText({ setting: 'off', on: false, why: 'off' }), 'Voice off');
 });
 
-/** A Voice over a fake device with these audio devices. @param {{ kind: string, label: string }[]} [devices] */
+/** A Voice over a fake device with these audio devices. @param {{ kind: string, label: string, deviceId?: string }[]} [devices] */
 async function voiceKit(devices = []) {
   const registry = new Registry();
   const store = createMemoryStore();
@@ -62,7 +82,7 @@ async function voiceKit(devices = []) {
   /** @type {any[]} */
   const changes = [];
   voice.onChange((m) => changes.push(m));
-  return { voice, platform, registry, ws, changes };
+  return { voice, platform, registry, ws, store, changes };
 }
 
 test('the Voice follows the devices as they come and go, and the activity sensor when there is one', async () => {
@@ -135,4 +155,39 @@ test('the voice mode read as annai starts is no change: nothing is logged for it
   await voice.choose('on');
   await tick();
   assert.deepEqual(await states(), ['on']);
+});
+
+// voice-fix item 5: while the microphone is open, the route is the input in use, not the devices present.
+test('while the microphone is open, the route is the one input in use (its label, else its deviceId), and each decision is traced, with the names, on this device only', async () => {
+  const k = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }, { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'pods' }]);
+  assert.equal(await k.voice.route(), 'headphones', 'closed: the devices present');
+  k.platform.input = { label: 'iPhone Microphone', deviceId: 'phone' }; // AirPods connected, in their case: the phone's mic is in use
+  const mic = await k.platform.mic.open({ onFrames: () => {}, onError: () => {} });
+  assert.equal(await k.voice.route(), 'speaker', 'open: the input in use');
+  k.platform.input = { label: '', deviceId: 'pods' };
+  assert.equal(await k.voice.route(), 'headphones', 'a track with no label: named by its deviceId');
+  k.platform.input = { label: '', deviceId: 'gone' };
+  assert.equal(await k.voice.route(), 'unknown');
+  mic.close();
+  assert.equal(await k.voice.route(), 'headphones');
+  await tick();
+  const { SYS_DEVICE } = await import('../../src/core/scopes.js');
+  const traced = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS_DEVICE, { types: ['voice.route'] }))).map((/** @type {any} */ e) => [e.data.route, e.data.using, e.data.devices.join(' + ')]);
+  assert.deepEqual(traced, [
+    ['headphones', null, 'iPhone Microphone + AirPods Pro'],
+    ['speaker', 'iPhone Microphone', 'iPhone Microphone + AirPods Pro'],
+    ['headphones', 'AirPods Pro', 'iPhone Microphone + AirPods Pro'],
+    ['unknown', '', 'iPhone Microphone + AirPods Pro'],
+    ['headphones', null, 'iPhone Microphone + AirPods Pro'],
+  ], 'each change once, in this device\'s own scope (never exported)');
+});
+
+test('an input in use that is no longer among the devices (AirPods taken out, its track still named for them) is unknown, not headphones (review S1)', async () => {
+  const k = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }, { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'pods' }]);
+  k.platform.snapshot = true;
+  const mic = await k.platform.mic.open({ onFrames: () => {}, onError: () => {} });
+  assert.equal(await k.voice.route(), 'headphones');
+  k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }]);
+  assert.equal(await k.voice.route(), 'unknown');
+  mic.close();
 });

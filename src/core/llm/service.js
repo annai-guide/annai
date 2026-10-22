@@ -526,7 +526,8 @@ export function createLlm({
     },
     /**
      * A live session with one realtime model (K4), traced in scope: annai opens it at the ability's origin, with the key
-     * in the trace's secrets. A key refused, a rate limit or a server failure rests the model, as a call's would.
+     * in the trace's secrets. A key refused, a rate limit or a server failure rests the model, as a call's would; "not found" too, unless
+     * it was a resume handle the provider no longer keeps, which Koe follows with a fresh session (the iPhone trace, 2026-10-22).
      * @param {string} modelId @param {Omit<import('./contract.js').LiveSetup, 'audioIn' | 'audioOut'> & Partial<import('./contract.js').LiveSetup>} setup
      * @param {{ scope?: string, wake?: string }} [o] @returns {Promise<import('../realtime/open.js').LiveSession>}
      */
@@ -542,7 +543,7 @@ export function createLlm({
       });
       session.ready.then(() => { if (session.tunables !== tunables) liveTunables.set(modelId, session.tunables); }, () => {});
       session.closed.then(({ kind }) => {
-        if (kind === 'auth' || kind === 'rate' || kind === 'server' || kind === 'not-found') bench.bench(modelId, COOLDOWN_MS);
+        if (kind === 'auth' || kind === 'rate' || kind === 'server' || (kind === 'not-found' && !setup.resume)) bench.bench(modelId, COOLDOWN_MS);
       });
       return session;
     },
