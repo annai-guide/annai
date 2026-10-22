@@ -40,6 +40,7 @@ import { startBackups } from '../ui/auto-backup.js';
 import { PushMirror } from '../core/push/mirror.js';
 import { browserSource, takeNews, onPushMessage, closeNotifications } from '../ui/push.js';
 import { shouldWelcome } from '../ui/welcome.js';
+import { screenToResume } from '../ui/resume.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
 /** @type {{ store: import('../core/types.js').Store } | null} */
@@ -160,6 +161,11 @@ async function boot() {
   // The welcome, once per device, at annai's plain start (the user, 2026-10-18): a link that opens a screen
   // (a shared trip, a share, the sign-in coming back) is never interrupted. Decided before the first draw.
   if (await shouldWelcome(ws, location).catch(() => false)) history.replaceState(history.state, '', '#/welcome');
+  else {
+    // Otherwise a plain start opens the trip's screen that was open, unless that trip is gone (the user, 2026-10-21).
+    const back = await screenToResume({ ws, store }, location).catch(() => null);
+    if (back) history.replaceState(history.state, '', back);
+  }
   // Updates (spec §5.3, §17 rule 5): annai's own and its plugins', checked at start, on coming back to the screen,
   // once a day, and on Check now. Packages installed from an address are checked there, each request in the trace.
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: 'plugin updates' }) } });
