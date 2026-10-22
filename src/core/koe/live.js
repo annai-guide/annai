@@ -36,6 +36,8 @@ const REACH = ['show', 'ask', 'already_told'];
 const DUPLEX = ['headphones', 'car'];
 /** The user's turn ends when the model's transcript of it has stopped growing this long (a detector stuck on a room it misjudged). */
 const STALL_MS = 1500;
+/** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
+const SILENT_S = 8;
 
 /** A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped. @param {string} text */
 export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
@@ -70,6 +72,10 @@ export class LiveKoe {
   #duplex = false;
   /** @type {any} */
   #stall = null;
+  /** Waiting for an answer: to a text turn's words, or the user's turn (null). @type {{ timer: any, text: string | null } | null} */
+  #due = null;
+  /** A silent session was replaced already, with no answer since: the next silence is only traced. */
+  #rescued = false;
   /** Sends waiting for the session to be ready (a tap's first words, a reconnect). @type {((s: LiveSession) => void)[]} */
   #waiting = [];
   /** @type {Hearing | null} */
@@ -178,7 +184,7 @@ export class LiveKoe {
     this.#changed();
     await this.c.koe.opening.catch(() => {}); // its lines go into Koe's conversation
     // One that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
-    const s = (await this.#over()) ? null : await this.#connect(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
+    const s = (await this.#over()) ? null : await this.#resume(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
     if (gen !== this.#gen || !s) {
       s?.close('closed');
       if (gen === this.#gen) this.state = 'closed';
@@ -196,6 +202,17 @@ export class LiveKoe {
     this.#poke();
     this.#idle();
     return true;
+  }
+
+  /** A connection with the handle, or a fresh one where the provider no longer keeps it (1008): never a rest. @param {string} id @param {string | undefined} handle @param {string} why */
+  async #resume(id, handle, why) {
+    try {
+      return await this.#connect(id, handle, why);
+    } catch (e) {
+      if (!handle || /** @type {any} */ (e)?.kind !== 'not-found') throw e;
+      this.#handle = undefined;
+      return this.#connect(id, undefined, why);
+    }
   }
 
   /** One connection, ready, its events handled while it is the session's. @param {string} id @param {string | undefined} resume @param {string} why @returns {Promise<LiveSession>} */
@@ -290,6 +307,9 @@ export class LiveKoe {
     // iPhone trace, 2026-10-22: a tap had annai read one aloud); any other close hands them on (Halves).
     if (why !== 'away' && why !== 'tap' && this.#owed.waiting.length) this.c.owed(this.#owed.waiting.splice(0));
     const was = this.state;
+    // The user's turn going on ends first: no session is left waiting for its end.
+    if (this.#input?.active) this.#s?.activity('end', {});
+    this.#answer(undefined);
     this.state = 'closed';
     this.#watched = false;
     // A microphone is always let go, whatever came before; the user's words it cut off are kept, marked.
@@ -306,6 +326,7 @@ export class LiveKoe {
     const s = this.#s;
     this.#s = null;
     if (!forget && s?.handle) this.#handle = s.handle;
+    if (why === 'tap') this.#handle = undefined; // the user stopped it: the next one starts fresh, with the last lines
     this.voiced = this.#rotate = false;
     this.#cut();
     this.#t = null;
@@ -471,6 +492,31 @@ export class LiveKoe {
     this.#trail = null;
     this.#poke();
     this.#send((s) => s.text(text, { interrupt: Boolean(cut), ...cut }));
+    this.#answer(text);
+  }
+
+  /** Waits for the answer to a text turn (its words) or the user's turn (null); undefined: stops. @param {string | null | undefined} text */
+  #answer(text) {
+    clearTimeout(this.#due?.timer);
+    this.#due = null;
+    if (text === undefined || this.state === 'closed') return;
+    const s = this.#s;
+    this.#due = { text, timer: setTimeout(() => this.#silent(s), SILENT_S * Math.max(125, this.c.secondMs ?? 1000)) };
+  }
+
+  /** Nothing came back in SILENT_S: traced, and once, a fresh session gets the words again. @param {LiveSession | null} s */
+  async #silent(s) {
+    const due = this.#due;
+    if (!due || this.state !== 'open' || (s && s !== this.#s)) return;
+    this.#due = null;
+    const again = !this.#rescued;
+    this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', wake: this.#wake, message: `The live session gave no answer within ${SILENT_S} seconds${again ? ': a fresh one gets it again' : ''}.`, quiet: true } });
+    if (!again) return;
+    this.#rescued = true;
+    const heard = cleanSaid(this.#hear?.text ?? '');
+    const words = due.text ?? (heard ? theirs(heard) : null);
+    if (!(await this.#reconnect('silent', { fresh: true }))) return this.#gone(false);
+    if (words) this.#text(words);
   }
 
   /** @param {'start' | 'end'} edge */
@@ -493,7 +539,10 @@ export class LiveKoe {
     this.#poke();
     this.#send((s) => s.activity(edge, cut));
     this.#changed();
-    if (edge === 'end') this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
+    if (edge === 'end') {
+      this.#answer(null);
+      this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
+    }
   }
 
   /** @param {Uint8Array} b */
@@ -509,6 +558,10 @@ export class LiveKoe {
   #on(s, e) {
     if (s !== this.#s) return; // a connection being left
     if (e.type !== 'usage' && e.type !== 'resume') this.#poke();
+    if (['audio', 'said', 'tool', 'turn'].includes(e.type)) {
+      this.#answer(undefined); // it answers
+      this.#rescued = false;
+    }
     if (e.type === 'heard') {
       const h = (this.#hear ??= hearing());
       h.text += e.text;
@@ -694,15 +747,17 @@ export class LiveKoe {
     this.#text(text.join('\n'));
   }
 
-  /** A new connection with the handle, the conversation going on. @param {string} why @returns {Promise<boolean>} */
-  async #reconnect(why) {
+  /** A new connection with the handle (fresh: without), the conversation going on. @param {string} why @param {{ fresh?: boolean }} [o] @returns {Promise<boolean>} */
+  async #reconnect(why, { fresh = false } = {}) {
     this.#again();
+    this.#answer(undefined);
+    if (fresh) this.#handle = undefined;
     const old = (this.#old = this.#s);
     const gen = this.#gen;
     this.#rotate = false;
     this.#s = null; // what is said meanwhile waits for the new one, speech going on starting again there first
     if (this.#input?.active) this.#waiting.unshift((x) => x.activity('start'));
-    const s = await this.#connect(/** @type {string} */ (this.modelId), old?.handle ?? this.#handle, why).catch(() => null);
+    const s = await this.#resume(/** @type {string} */ (this.modelId), fresh ? undefined : old?.handle ?? this.#handle, why).catch(() => null);
     old?.close(why);
     this.#old = null;
     if (gen !== this.#gen) {
@@ -722,6 +777,7 @@ export class LiveKoe {
    */
   async #closed(s, { kind }, why) {
     if (s !== this.#s || !kind) return;
+    this.#answer(undefined);
     const cut = Boolean(this.#sounding || this.#t?.spoken);
     this.#cut();
     this.#t = null;
