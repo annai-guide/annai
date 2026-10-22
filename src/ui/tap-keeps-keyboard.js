@@ -11,19 +11,24 @@ const NOT_TEXT = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'fil
  */
 export function tapKeepsKeyboard(doc = document) {
   let touch = false;
-  /** The field being typed in, when the target is a screen's button. @param {Event} e */
+  /** The field being typed in and the button, when the target is a screen's button. @param {Event} e */
   const typingFor = (e) => {
     const a = doc.activeElement;
     const typing = a instanceof HTMLTextAreaElement || (a instanceof HTMLInputElement && !NOT_TEXT.has(a.type)) ? a : null;
     const button = e.target instanceof Element ? e.target.closest('main button, main a.btn') : null;
-    return touch && typing && button && !button.contains(typing) ? typing : null;
+    return touch && typing && button && !button.contains(typing) ? { typing, button } : null;
   };
   doc.addEventListener('pointerdown', (e) => { touch = e.pointerType === 'touch'; }, true);
   doc.addEventListener('mousedown', (e) => {
     if (typingFor(e)) e.preventDefault();
   });
   doc.addEventListener('click', (e) => {
-    typingFor(e)?.blur();
+    const tap = typingFor(e);
+    if (tap) {
+      tap.typing.blur();
+      // The press never gave the button the focus: it takes it now, so a question or the photo viewer it opens gives the focus back to it.
+      if (tap.button instanceof HTMLElement) tap.button.focus({ preventScroll: true });
+    }
     touch = false;
   }, true);
 }
