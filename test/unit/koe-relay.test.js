@@ -273,3 +273,15 @@ test('Koe looks something up after the note, then says it: the cue comes once, a
   assert.deepEqual((await said(k)).at(-1), 'Sunset is at 6:23, though it is overcast.');
   assert.deepEqual(await backstop(k), []);
 });
+
+// The fix pass (S2): "woke for" gives each reason once, so a cue already acted on isn't read again at every step.
+test('"woke for" gives the wake\'s reasons on the first request only, and each reason or cue that joins later once, on the next; the lines stay in the transcript (probe P8)', async () => {
+  const { NOTE_UNSAID } = await import('../../src/core/agent/loop.js');
+  const k = await agentKit([kokoro('Say: sunset is at 6:23 PM.')], { koe: { type: [CHECK, sleep, calls(['speak', { text: 'Sunset is at 6:23.' }], ['recall', { query: 'sunset spots' }]), sleep] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  const woke = k.sent['model-koe'].map((/** @type {any} */ r) => String(r.tail).split('\n').find((l) => l.startsWith('woke for')) ?? '');
+  assert.deepEqual(woke, ['woke for: the user wrote', 'woke for: a note from Kokoro', `woke for: ${NOTE_UNSAID}`, '']);
+  const last = JSON.stringify(k.sent['model-koe'][3].messages);
+  assert.ok(last.includes('sunset is at 6:23 PM') && last.includes("Kokoro's note hasn't reached the user"), 'the note and the cue are in the conversation');
+});

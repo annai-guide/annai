@@ -91,6 +91,8 @@ test('the now block: local time and zone, voice, connection, why she woke, and t
   assert.match(block, /\nvoice: off \(speak shows a bubble; wait waits for typing\)\n/);
   assert.match(block, /\nconnection: online\n/);
   assert.match(block, /\nwoke for: the user wrote\n/);
+  // A later step of the turn with nothing new: no "woke for" (the fix pass, S2).
+  assert.doesNotMatch(nowBlock({ now, timeZone: 'America/Los_Angeles', voice: 'off', online: true, reasons: [], plan }), /woke for/);
   assert.match(block, /\nnext in the plan:\nstart\ttitle\tfixed\tplace\n2026-11-26T16:53:00-08:00\tsunset\tno\tsunset place\n2026-11-26T18:30:00-08:00\tdinner\tyes\tdinner place\n<\/now>$/);
 });
 
