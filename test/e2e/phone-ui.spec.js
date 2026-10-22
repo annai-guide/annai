@@ -100,3 +100,43 @@ for (const provider of ['llama.cpp', 'Ollama', 'Custom provider']) {
     await expect(note).toContainText('The server must also allow CORS from annai.guide.');
   });
 }
+
+// "The OpenRouter sign-in card is cut off": its body stopped mid-sentence inside the box of a quarter of the screen (the user, 2026-10-22).
+const OPENROUTER_CARD = "Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the phone's own dictation and the browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.";
+
+test("a card whose text is longer than the box gets More, which opens it to its full height and Less closes; Dismiss stays in view (390 x 844)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page, '#/trips');
+  await page.evaluate(async (body) => {
+    const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
+    const notices = createNotices();
+    notices.el.id = 'test-notices';
+    document.querySelector('header.topbar')?.after(notices.el);
+    notices.card({ tone: 'ok', title: 'Signed in with OpenRouter', body });
+    notices.card({ tone: 'info', title: 'A short card', body: 'Nothing to expand here.' });
+  }, OPENROUTER_CARD);
+  const box = page.locator('#test-notices');
+  const card = page.locator('.notice', { hasText: 'Signed in with OpenRouter' });
+  const more = card.getByRole('button', { name: 'More' });
+  await expect(more).toBeVisible();
+  // The short card has no More; the box stays within a quarter of the screen.
+  await expect(page.locator('.notice', { hasText: 'A short card' }).getByRole('button', { name: 'More' })).toHaveCount(0);
+  const cap = 844 * 0.25;
+  expect((await box.boundingBox())?.height ?? 0).toBeLessThanOrEqual(cap + 1);
+  await expect(card.getByRole('button', { name: 'Dismiss' })).toBeInViewport();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  // Closed, the text stops short of its end; open, all of it shows, and so does Dismiss.
+  const shown = () => card.locator('p').evaluate((p) => p.scrollHeight - p.clientHeight);
+  expect(await shown()).toBeGreaterThan(0);
+  await more.click();
+  await expect(card.getByRole('button', { name: 'Less' })).toHaveAttribute('aria-expanded', 'true');
+  expect(await shown()).toBeLessThanOrEqual(1);
+  await expect(card.locator('p')).toContainText('move them up under Roles.');
+  await expect(card.getByRole('button', { name: 'Dismiss' })).toBeInViewport();
+  expect((await box.boundingBox())?.height ?? 0).toBeGreaterThan(cap);
+  await card.getByRole('button', { name: 'Less' }).click();
+  expect(await shown()).toBeGreaterThan(0);
+  expect((await box.boundingBox())?.height ?? 0).toBeLessThanOrEqual(cap + 1);
+  await card.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(card).toHaveCount(0);
+});
