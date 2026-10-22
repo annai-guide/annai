@@ -149,30 +149,37 @@ test('cut off by voice, with headphones on: her voice stops at once, what was st
   }
 });
 
-test("on the phone's speaker, her own voice coming back into the microphone never cuts her off: no activityStart, no ✂ (the iPhone trace, 2026-10-22)", async () => {
-  const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
-  const k = await liveKit([{ said: words, audio: tone(2) }], { pace: 1 });
-  try {
-    k.platform.streamSpeed = 1; // in real time
-    k.platform.echoDb = 0; // as loud at the microphone as she was sent
-    k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone' }]);
-    k.agent.tap();
-    await until(() => k.agent.live.listening);
-    k.platform.mic.feed(quiet(1), 16_000); // the room, before she speaks
-    k.agent.send('Tell me about the bridge');
-    await until(() => k.agent.live.view.name === 'speaking');
-    await until(() => k.agent.live.view.name !== 'speaking', 6000);
-    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
-    await new Promise((r) => setTimeout(r, 500)); // her echo's tail
-    const [said] = await k.events(['out.speak']);
-    assert.equal(said.data.text, words);
-    assert.equal(said.data.cut, undefined);
-    assert.ok(!k.platform.streams[0].stopped, 'played to its end');
-    assert.ok(!got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart), 'no turn of the user started');
-  } finally {
-    await k.done();
-  }
-});
+for (const [where, devices, input] of /** @type {const} */ ([
+  ["on the phone's speaker", [{ kind: 'audioinput', label: 'iPhone Microphone' }], null],
+  // voice-fix item 5: AirPods connected but in their case: the phone's own microphone is the one in use.
+  ["on the phone's speaker with AirPods connected but not in use", [{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }, { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'pods' }], { label: 'iPhone Microphone', deviceId: 'phone' }],
+])) {
+  test(`${where}, her own voice coming back into the microphone never cuts her off: no activityStart, no ✂ (the iPhone trace, 2026-10-22)`, async () => {
+    const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
+    const k = await liveKit([{ said: words, audio: tone(2) }], { pace: 1 });
+    try {
+      k.platform.streamSpeed = 1; // in real time
+      k.platform.echoDb = 0; // as loud at the microphone as she was sent
+      k.platform.setDevices(devices);
+      k.platform.input = input;
+      k.agent.tap();
+      await until(() => k.agent.live.listening);
+      k.platform.mic.feed(quiet(1), 16_000); // the room, before she speaks
+      k.agent.send('Tell me about the bridge');
+      await until(() => k.agent.live.view.name === 'speaking');
+      await until(() => k.agent.live.view.name !== 'speaking', 6000);
+      await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+      await new Promise((r) => setTimeout(r, 500)); // her echo's tail
+      const [said] = await k.events(['out.speak']);
+      assert.equal(said.data.text, words);
+      assert.equal(said.data.cut, undefined);
+      assert.ok(!k.platform.streams[0].stopped, 'played to its end');
+      assert.ok(!got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart), 'no turn of the user started');
+    } finally {
+      await k.done();
+    }
+  });
+}
 
 test('with "Keep voice clips", what was said live is kept with its line, in the smallest format the phone makes and plays', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'Tacos.', audio: tone(0.2) }], { voice: { keepClips: true, encoder: { makes: ['ogg'] }, plays: ['ogg', 'mp3', 'wav'] } });
