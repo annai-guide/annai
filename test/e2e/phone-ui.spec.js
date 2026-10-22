@@ -231,8 +231,11 @@ test('Roles: dragging the handle with a mouse reorders, and the order is kept', 
   await page.mouse.down();
   await page.mouse.move(from.x, (from.y + to.y) / 2, { steps: 4 });
   await page.mouse.move(to.x, to.y + 8, { steps: 4 });
+  await main.getByRole('button', { name: 'Reorder a1', exact: true }).evaluate((el) => el.setAttribute('data-seen', ''));
   await page.mouse.up();
   await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+  // The screen is drawn again once the list is saved (the grip marked before the drop is gone): wait for that before reloading.
+  await expect(main.locator('[data-seen]')).toHaveCount(0);
   // A drag opens no menu.
   await expect(main.getByRole('group', { name: /^Move / })).toHaveCount(0);
   await page.reload();
