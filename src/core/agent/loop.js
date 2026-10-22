@@ -106,6 +106,8 @@ export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT
 export const NOTE_UNSAID = "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, in your own words; if you have already told them all of it, call already_told.";
 /** How many steps Koe takes after the cue while it still owes the user, before annai's backstop. */
 const AFTER_CUE = 2;
+/** How many calls of a turn may be forced while she hasn't reached the user: ten without a word to them is far past any real plan's lookups before its first word. */
+export const FORCED_STEPS = 10;
 /** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
 export const UNANSWERED = "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
@@ -1443,6 +1445,8 @@ export class Agent {
     let spent = await spentToday(this.store, this.#real.now(), this.#real.timeZone());
     let answered = false;
     let failed = false;
+    /** Calls of this turn sent with a tool call required while she hadn't reached the user. */
+    let forced = 0;
     for (;;) {
       if (abort.signal.aborted) break;
       const over = budgetStop({ budgets: settings.budgets, steps, spent });
@@ -1463,6 +1467,8 @@ export class Agent {
       const here = this.sense?.() ?? {};
       const now = { now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, place: here.place, activity: here.activity };
       const koe = this.#half.koe?.() ?? null;
+      const reachedUser = this.#reached !== begun || this.#facts.told;
+      const force = !providerTools.providerTools && ((owes() && this.#half.voice()) || !(reachedUser || forced >= FORCED_STEPS));
       const tail = this.#half.tail ? await this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now()), ...(koe ? { koe } : {}) });
       const snapshot = /** @type {import('./context.js').Snapshot} */ (this.#snapshot);
       // What the request holds: the other half's later lines follow this reply.
@@ -1474,8 +1480,10 @@ export class Agent {
         // the backstop). Not with the model's own search on: it answers in words, shown as written (G4).
         // Only until she has reached the user (or told the other half): after that, she may end in words.
         // Koe owing the user (Kokoro's note, their message in its wait) is forced until it reaches them, told or not.
-        ...(providerTools.providerTools || (!(owes() && this.#half.voice()) && (this.#reached !== begun || this.#facts.told)) ? {} : { toolRequired: true }),
+        // Koe owing is bounded by its cue; any other forcing ends after FORCED_STEPS calls, and the nudge takes over.
+        ...(force ? { toolRequired: true } : {}),
       };
+      if (force && !reachedUser) forced++;
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;

@@ -252,7 +252,7 @@ test("Koe's instructions say a note it has already said is settled with already_
   assert.ok(ALWAYS_ON.includes('already_told'));
 });
 
-// The fix pass (S3): forcing is bounded by more than the 25 steps.
+// The fix pass (S3): forcing is bounded without a step limit.
 test("Koe owes a note and keeps asking Kokoro instead: the cue comes after its first such step, two steps more at most, then annai shows the note (probe P5b)", async () => {
   const more = Array.from({ length: 40 }, (_, j) => calls(['tell_kokoro', { text: `More ${j}` }]));
   const k = await agentKit([kokoro('Say: it is open.')], { koe: { type: [CHECK, ...more] } });
