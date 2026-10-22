@@ -6,13 +6,17 @@ import { Detector } from '../voice/detector.js';
  * detector drives the API's manual turns (decision 9): once a run has minSpeechMs of speech in it, activityStart and
  * everything since just before it; then 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and
  * activityEnd. A click or a door slam, thrown away sooner, sends nothing: no turn to pay for, no sound off the phone.
- * Half-duplex (spec §10.4): while Koe plays, and for tailMs after, nothing starts, nothing heard then is kept for a pre-roll,
- * and the detector's floor doesn't learn her voice; the phone's speaker is loud at its own microphone, and she cut herself off
- * (the iPhone trace, 2026-10-22). Full duplex only where duplex() says (headphones or the car, cutting in by voice on): there a
+ * Half-duplex (spec §10.4): while Koe plays, nothing heard starts a turn or is kept, and the detector's floor doesn't learn her
+ * voice; the phone's speaker is loud at its own microphone, and she cut herself off (the iPhone trace, 2026-10-22). For tailMs
+ * after (her echo, the speaker's latency), what is heard is kept, but speech that began then starts a turn only if it goes on
+ * at least GO_ON_MS past it: her echo dies inside it, and a quick "yes" right after her question is sent whole. Full duplex only where duplex() says (headphones or the car, cutting in by voice on): there a
  * start needs bargeInDb more over the floor (decision 13), as her voice from the car's speakers is quieter than a passenger.
  * A turn lasts maxMs at most, and cut() ends one the model has stopped transcribing; onTurn hears why each ended, in numbers.
  * @typedef {'pause' | 'cap' | 'transcript' | 'close' | 'voice' | 'noise'} TurnEnd  voice: Koe's began (half-duplex); noise: thrown away once sent
  */
+
+/** How far past her voice's tail speech that began in it must go on to be the user's. */
+const GO_ON_MS = 60;
 
 export class LiveInput {
   /** Speech is being sent now. */
@@ -30,8 +34,11 @@ export class LiveInput {
   #before = [];
   #chunk;
   #n = 0;
-  /** Samples at the microphone's rate still to pass after her voice stopped before a start may come (half-duplex). */
-  #hush = 0;
+  /** Samples heard, at the microphone's rate; and until when, after her voice, speech must go on to start a turn (half-duplex). */
+  #clock = 0;
+  #gate = 0;
+  /** The run of speech going on began before the gate. */
+  #tailRun = false;
   /** Samples sent in the turn going on. */
   #sent = 0;
 
@@ -101,23 +108,27 @@ export class LiveInput {
     }
     const d = this.#detector;
     const playing = this.speaking();
-    if (!this.duplex() && (playing || this.#hush > 0)) return this.#deaf(d, playing, pcm.length, sampleRate);
+    this.#clock += pcm.length;
+    if (this.duplex()) this.#gate = 0;
+    else if (playing) {
+      this.#gate = this.#clock + Math.round(((this.tailMs + GO_ON_MS) * sampleRate) / 1000);
+      return this.#deaf(d);
+    }
     d.startDb = this.startDb + (playing ? this.bargeInDb : 0);
     const out = Int16Array.from(/** @type {StreamResampler} */ (this.#resampler).push(pcm), (v) => Math.round(Math.max(-1, Math.min(1, v)) * (v < 0 ? 0x8000 : 0x7fff)));
     if (this.active) this.#add(out);
     else this.#hold(out);
     this.#events(d.push(pcm));
-    if (this.#held && d.speechMs >= this.minSpeechMs) this.#start();
+    // Speech that began in her voice's tail starts a turn only once it is still going on past the gate.
+    if (this.#held && d.speechMs >= this.minSpeechMs && (!this.#tailRun || (this.#clock >= this.#gate && d.quietMs < 100))) this.#start();
     this.onLevel?.(d.level);
   }
 
   /**
-   * Half-duplex, her voice playing or just stopped: what the microphone hears is hers, so it is dropped, with the pre-roll; speech
-   * that was being sent ends where her voice began (else her voice would go as the user's). @param {import('../voice/detector.js').Detector} d
-   * @param {boolean} playing @param {number} n samples heard @param {number} sampleRate
+   * Half-duplex, her voice playing: what the microphone hears is hers, so it is dropped, with the pre-roll; speech that was being
+   * sent ends where her voice began (else her voice would go as the user's). @param {import('../voice/detector.js').Detector} d
    */
-  #deaf(d, playing, n, sampleRate) {
-    this.#hush = playing ? Math.round((this.tailMs * sampleRate) / 1000) : this.#hush - n;
+  #deaf(d) {
     if (this.active) this.#end('voice');
     this.#held = false;
     this.#before = [];
@@ -128,8 +139,10 @@ export class LiveInput {
   /** @param {import('../voice/detector.js').DetectorEvent[]} events */
   #events(events) {
     for (const e of events) {
-      if (e.type === 'speech') this.#held = !this.active;
-      else if (this.active || (this.#held && e.type === 'segment')) {
+      if (e.type === 'speech') {
+        this.#held = !this.active;
+        this.#tailRun = this.#clock < this.#gate;
+      } else if (this.active || (this.#held && e.type === 'segment' && !this.#tailRun)) {
         if (!this.active) this.#start();
         // The cut; or a noise thrown away once already sent: the turn ends either way.
         this.#end(e.type === 'discard' ? 'noise' : e.cut === 'end' ? 'close' : e.cut, e.type === 'segment' ? e.peakDb : null);
