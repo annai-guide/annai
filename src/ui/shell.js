@@ -28,6 +28,7 @@ import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
+import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
@@ -75,6 +76,7 @@ export function startShell(root, core) {
   addEventListener('resize', showMore);
   document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
   tapKeepsKeyboard();
+  dockHidesWhileTyping();
   drawTabs();
 
   // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on (the user,
