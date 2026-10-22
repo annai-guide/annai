@@ -12,7 +12,7 @@ import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { createBackups } from '../../src/core/backup.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, importArchive, PRESETS } from '../../src/core/archive.js';
+import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { text } from '../../src/core/bytes.js';
 import { startForgejo, READ_TOKEN, USER_TOKEN } from '../fakes/forgejo.js';
 import { browserFetch as browserAt } from '../fakes/browser-fetch.js';
@@ -74,7 +74,7 @@ async function restored(blob) {
   const fresh = createMemoryStore();
   const ws = new Workspace(fresh, { schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
   await ensureBaseScopes(ws);
-  const { trips: [id] } = await importArchive(fresh, await openArchive(blob), { me: 'replace' });
+  const { trips: [id] } = await importArchive(fresh, await peekArchive(blob), { me: 'replace' });
   return { ws, id };
 }
 

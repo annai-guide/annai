@@ -8,7 +8,7 @@ import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, importArchive, PRESETS } from '../../src/core/archive.js';
+import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { browserFetch } from '../fakes/browser-fetch.js';
 
 // A real Forgejo or Gitea server. Opt-in, like the providers' live suite. Make a private repository
@@ -100,7 +100,7 @@ test('a real Forgejo or Gitea server: backups in parts and whole, only changes s
   const fresh = createMemoryStore();
   const ws2 = new Workspace(fresh, { schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
   await ensureBaseScopes(ws2);
-  const { trips: [id] } = await importArchive(fresh, await openArchive(blob), { me: 'replace' });
+  const { trips: [id] } = await importArchive(fresh, await peekArchive(blob), { me: 'replace' });
   assert.equal(await ws2.readText(id, '/notes/京都 day 1.md'), '千本鳥居, at dawn\n');
   assert.equal(await ws2.readText(id, '/notes/day2/morning.md'), 'Now a folder');
   assert.deepEqual((await ws2.read(id, '/files/photo4.jpg'))?.bytes, binary(30_004));
