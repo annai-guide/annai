@@ -200,7 +200,7 @@ An official protocol plugin, like chat-completions or openai-responses, register
 - **Requirements:** `gemini-api` (all or nothing, as `requires` works) and, for live, `gemini-live`. It no longer requires chat-completions.
 - **Major version 2,** because its requirements and ability types change. A phone with 1.x gets it through Settings → Updates.
 - An existing Gemini provider keeps its key and models; its chat ability's type changes with the update. The user said a moving-over needn't be perfect. If a model needs re-adding, the provider's page says so in words.
-- **Using it on a phone with a Chat Completions Gemini today:** the update is the switch. Someone who wants the old route can use "Another address" with the OpenAI-compatible URL.
+- **Using it on a phone with a Chat Completions Gemini today:** the update is the switch. Someone who wants the old route can use "Custom provider" with the OpenAI-compatible URL.
 
 ### 3. Docs and tests
 - **Docs:** docs/plugins.md (the Audio formats list: Gemini takes all of them now), spec §9 / §10.6 where they name Gemini, the catalog (`npm run catalog`), and a device checklist (`docs/testing/device-checklist-gemini.md`): the iPhone sends AAC, and a voice reply and a transcription go through Gemini. The streamed voice on the iPhone: with the silent switch on, over Bluetooth, in the car, the screen locking mid-sentence, and on a weak connection (it waits, then plays without gaps).

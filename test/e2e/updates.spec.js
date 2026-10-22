@@ -66,7 +66,7 @@ test('a new build is found when annai comes back to the screen, without a reload
     // Coming back is checked at most every 15 minutes: the phone was set aside for 16.
     await page.clock.setSystemTime(Date.now() + 16 * 60_000);
     await go(page, '#/models');
-    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await go(page, '#/trips');

@@ -116,7 +116,7 @@ export async function buildAndSave(page) {
  * A stand-in model server on its own port, for tests that need real CORS (WebKit can't route
  * requests from a page a service worker controls). A route is a reply, or a list of replies served
  * in turn (the last repeats); a reply may wait delayMs. bodies(path) gives what was posted: parsed JSON, or the bytes.
- * An empty request (no model: {}, or only an output limit), as Another address sends to look for what a server
+ * An empty request (no model: {}, or only an output limit), as Custom provider sends to look for what a server
  * offers, is refused with 400 on a route it has, as a real server refuses it, and is neither served a reply nor kept
  * among the bodies.
  * @param {Record<string, { status: number, type: string, body: string | Buffer, delayMs?: number } | { status: number, type: string, body: string | Buffer, delayMs?: number }[]>} routes
@@ -204,7 +204,7 @@ export async function tapAdd(page, provider) {
 
 /**
  * From the Models screen: the provider is added (tapAdd), by hand where its plugin has an Add flow of its own
- * (OpenRouter's sign-in, Another address's look: milestone 5); then its page.
+ * (OpenRouter's sign-in, Custom provider's look: milestone 5); then its page.
  * @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
  * @param {string} [heading] its page's title, when it isn't the provider's name
  */
@@ -218,12 +218,12 @@ export async function pickProvider(page, provider, heading = provider) {
 }
 
 /**
- * From the Models screen: Another address looks at an address (with its key) and is added with what it found,
+ * From the Models screen: Custom provider looks at an address (with its key) and is added with what it found,
  * at no cost; then its page, named by the address's host. @param {import('@playwright/test').Page} page
  * @param {{ url: string, key?: string }} o
  */
 export async function lookAndAdd(page, { url, key }) {
-  await tapAdd(page, 'Another address');
+  await tapAdd(page, 'Custom provider');
   await page.getByLabel('Address', { exact: true }).fill(url);
   if (key) await page.getByLabel('API key (optional)').fill(key);
   await page.getByRole('button', { name: 'Look for what it offers' }).click();
@@ -234,14 +234,14 @@ export async function lookAndAdd(page, { url, key }) {
 /**
  * From the Models screen: adds a provider (installing its plugin and what it needs), names it, gives
  * its address and key, switches on one ability, adds one model by id to it, and comes back. ability:
- * the ability's name, such as "Anthropic Messages" for Another address; a provider's only chat ability is "Chat".
- * Another address looks at the address and is added with what it found (lookAndAdd), unless look is false: an
+ * the ability's name, such as "Anthropic Messages" for Custom provider; a provider's only chat ability is "Chat".
+ * Custom provider looks at the address and is added with what it found (lookAndAdd), unless look is false: an
  * address with nothing there, added by hand.
  * @param {import('@playwright/test').Page} page @param {string} provider its name in the catalog
  * @param {{ ability?: string, name: string, url: string, key: string, model: string, look?: boolean }} o
  */
 export async function addProvider(page, provider, { ability = 'Chat', name, url, key, model, look = true }) {
-  if (provider === 'Another address' && look) {
+  if (provider === 'Custom provider' && look) {
     // Its address and key were saved by Add with these: only the name, which saves as it changes.
     await lookAndAdd(page, { url, key });
     await page.getByLabel('Name', { exact: true }).fill(name);
@@ -436,14 +436,14 @@ export async function zipOf(files, top) {
 }
 
 /**
- * Shiori's main model on a stand-in Anthropic server at origin (/b), through Another address and its
+ * Shiori's main model on a stand-in Anthropic server at origin (/b), through Custom provider and its
  * Anthropic Messages ability, and a trip, from a fresh start. look: false for an address with nothing there.
  * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip] @param {{ look?: boolean }} [o]
  */
 export async function modelSetUp(page, origin, trip = 'Big Sur', { look = true } = {}) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model', look });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model', look });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
@@ -454,15 +454,15 @@ export async function modelSetUp(page, origin, trip = 'Big Sur', { look = true }
 
 /**
  * Shiori as two halves (the Koe and Kokoro design), from a fresh start: Kokoro (main) and Koe on stand-in
- * Anthropic servers at origin (/kokoro and /koe), through two Another address
+ * Anthropic servers at origin (/kokoro and /koe), through two Custom provider
  * providers, and a trip.
  * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip]
  */
 export async function koeSetUp(page, origin, trip = 'Big Sur') {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${origin}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Koe stand-in', url: `${origin}/koe`, key: 'sk-test-koe', model: 'koe-model' });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${origin}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Koe stand-in', url: `${origin}/koe`, key: 'sk-test-koe', model: 'koe-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByText('1. kokoro-model')).toBeVisible();

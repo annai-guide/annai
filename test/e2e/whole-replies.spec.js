@@ -37,7 +37,7 @@ for (const kind of /** @type {const} */ (['Chat Completions', 'OpenAI Responses'
     try {
       await openApp(page, '#/models');
       await waitForServiceWorker(page);
-      await addProvider(page, 'Another address', { ability: kind, name: 'Router', url: `${llm.origin}/v1`, key: 'sk-test-secret-w', model: 'router-model' });
+      await addProvider(page, 'Custom provider', { ability: kind, name: 'Router', url: `${llm.origin}/v1`, key: 'sk-test-secret-w', model: 'router-model' });
       await page.getByRole('link', { name: /Router/ }).click();
       await page.getByRole('link', { name: /^router-model/ }).click();
       await page.getByLabel('Takes photos').check();

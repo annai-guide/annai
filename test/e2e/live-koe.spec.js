@@ -19,13 +19,13 @@ const GEMINI = { provider: 'Google Gemini', key: KEY, ability: 'Live voice', add
 const OPENAI = { provider: 'OpenAI', key: 'sk-proj-e2e-koe-live-stand-in-0123456789abcdef', ability: 'Realtime voice', address: (/** @type {string} */ o) => `${o}/v1`, model: 'GPT Realtime 2.1' };
 
 /**
- * Kokoro on Another address, then a realtime provider (Gemini by default) with its realtime voice at the stand-in, its
+ * Kokoro on Custom provider, then a realtime provider (Gemini by default) with its realtime voice at the stand-in, its
  * model in Koe's list, a trip, and voice on. @param {import('@playwright/test').Page} page @param {string} kokoro @param {string} live
  */
 async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${kokoro}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${kokoro}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByText('1. kokoro-model')).toBeVisible();

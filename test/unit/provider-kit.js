@@ -69,9 +69,9 @@ export const ANTHROPIC_SRC = /** @type {ProviderSource} */ ({
   },
 });
 
-/** Another address: every ability off until the user turns it on. @type {ProviderSource} */
+/** Custom provider: every ability off until the user turns it on. @type {ProviderSource} */
 export const ANOTHER_SRC = /** @type {ProviderSource} */ ({
-  plugin: 'provider-another-address', name: 'Another address', version: '1.0.0',
+  plugin: 'provider-another-address', name: 'Custom provider', version: '1.0.0',
   provider: {
     baseUrl: '', key: 'optional',
     abilities: {

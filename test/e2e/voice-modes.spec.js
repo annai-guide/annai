@@ -72,8 +72,8 @@ test('spoken words stay hidden unless asked: folded in the conversation, and sho
     await fakeDevices(page, ['Toyota Camry']);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
-    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await expect(page.getByText('1. b-model')).toBeVisible();

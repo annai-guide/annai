@@ -1,5 +1,5 @@
 /**
- * Another address looks for what a server offers, at no cost (spec §9.8; the provider plan's decision 18).
+ * Custom provider looks for what a server offers, at no cost (spec §9.8; the provider plan's decision 18).
  * It asks for the model list, and sends an empty request to each path annai knows: no model and no input,
  * and for a chat path an output limit of one token, as a lax server may run an empty chat all the same
  * (KoboldCpp's messages default to none), so at most one token is made. How the server answers says what is there:

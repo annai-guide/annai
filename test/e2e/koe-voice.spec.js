@@ -28,11 +28,11 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     await fakeMicrophone(page, [clipPath('where-eat'), clipPath('gas-station')]);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${server.origin}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
-    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Koe stand-in', url: `${server.origin}/koe`, key: 'sk-test-koe', model: 'koe-model' });
-    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Decider', url: `${server.origin}/d`, key: 'sk-decide-test', model: 'd-model' });
-    await addProvider(page, 'Another address', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
-    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${server.origin}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Koe stand-in', url: `${server.origin}/koe`, key: 'sk-test-koe', model: 'koe-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Decider', url: `${server.origin}/d`, key: 'sk-decide-test', model: 'd-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
+    await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
     /** @type {[string, string][]} */
     const roles = [['main', 'kokoro-model'], ['Koe', 'koe-model'], ['decide', 'd-model'], ['speech-in', 'ears'], ['speech-out', 'voice']];
     for (const [role, model] of roles) {

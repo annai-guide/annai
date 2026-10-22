@@ -51,8 +51,8 @@ test('no screen says "null": providers, their abilities, Live voice, a look at a
     expect(await nulls(page)).toEqual([]);
     await page.getByRole('link', { name: '← Models' }).click();
 
-    // Another address's look at a site that refuses web apps: nothing to add.
-    await tapAdd(page, 'Another address');
+    // Custom provider's look at a site that refuses web apps: nothing to add.
+    await tapAdd(page, 'Custom provider');
     await page.getByLabel('Address', { exact: true }).fill(`${origin}/v1`);
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
     await expect(page.getByText(/doesn't allow web apps like annai to call it/)).toBeVisible({ timeout: 30_000 });

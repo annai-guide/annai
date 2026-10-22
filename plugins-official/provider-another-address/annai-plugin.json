@@ -1,7 +1,7 @@
 {
   "id": "provider-another-address",
-  "name": "Another address",
-  "version": "2.1.1",
+  "name": "Custom provider",
+  "version": "2.1.2",
   "catchAll": true,
   "api": 1,
   "entry": "index.js",
@@ -13,6 +13,7 @@
   "keywords": [
     "OpenAI-compatible",
     "router",
+    "custom",
     "proxy",
     "self-hosted"
   ],
