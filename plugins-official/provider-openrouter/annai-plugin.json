@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "api": 1,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -370,17 +370,15 @@
           "listPath": "/models?output_modalities=speech",
           "audioOut": [
             "mp3"
-          ]
+          ],
+          "voice": "e3cd384158934cc9a01029cd7d278634",
+          "style": "calm, warm and friendly"
         },
-        "note": "Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). Fish Audio's free voice is set to Laura, a voice from Fish Audio's library; with no Voice it picks another speaker for each sentence. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.",
+        "note": "Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Laura, a voice from Fish Audio's library, and a calm, warm style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.",
         "models": [
           {
             "providerId": "fish-audio/s2.1-pro-free:free",
             "name": "Fish Audio: S2.1 Pro Free (free)",
-            "tunables": {
-              "voice": "e3cd384158934cc9a01029cd7d278634",
-              "style": "calm, warm and friendly"
-            },
             "prices": {
               "perMillionChars": 0
             }

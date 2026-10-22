@@ -556,10 +556,10 @@ export function createLlm({
     /**
      * A voice clip of one text from one voice (spec §10.1), traced in scope. plays: what the device plays, for a format of 'auto';
      * stream: the caller plays a stream, which a voice that streams gives (G3).
-     * @param {{ modelId: string, text: string, scope?: string, signal?: AbortSignal, wake?: string, plays?: string[], stream?: boolean }} c
+     * @param {{ modelId: string, text: string, scope?: string, signal?: AbortSignal, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean }} c
      */
-    async synthesize({ modelId, text, scope = SYS, signal, wake, plays, stream }) {
-      return speechCall({ ...(await speechOf(modelId, 'out', scope)), text, fetch: get, signal, registry: plugins.registry, wake, plays, stream });
+    async synthesize({ modelId, text, scope = SYS, signal, wake, plays, stream, unstyled }) {
+      return speechCall({ ...(await speechOf(modelId, 'out', scope)), text, fetch: get, signal, registry: plugins.registry, wake, plays, stream, unstyled });
     },
     /**
      * The quick-decision gate (spec §10.4): one decision whose question may carry heard speech,

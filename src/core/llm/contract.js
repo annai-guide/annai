@@ -294,6 +294,7 @@ export function safeId(id) {
  * @property {(res: Response, c: SpeechSpec) => Promise<{ text: string }>} [readTranscript]
  * @property {(c: SpeechSpec & { text: string }) => { url: string, headers: Record<string, string>, body: any }} [speechRequest]
  * @property {(res: Response, c: SpeechSpec) => Promise<{ data: Uint8Array, mediaType: string }>} [readSpeech]
+ * @property {(c: SpeechSpec) => number} [extraChars]  characters a voice request carries besides the text (its style), billed with it
  * @property {(res: Response, c: SpeechSpec) => AsyncIterable<{ pcm: Int16Array, rate: number }>} [readSpeechStream]  a voice that streams (G3): its
  *   16-bit PCM as it comes, at its rate; annai plays it once it won't stutter, unless the ability's tunable stream is false (then readSpeech)
  * @property {Record<string, { label: string, options?: Record<string, string> }>} [choices]  tunables the provider page offers in words (G3):

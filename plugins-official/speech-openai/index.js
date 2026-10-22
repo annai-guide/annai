@@ -39,19 +39,31 @@ const listed = (m) => (typeof m.name === 'string' && m.name ? { providerId: m.id
 const readList = (json) => entries(json).map(listed);
 /** A model's id, as OpenRouter's audio docs say whether its vendor takes instructions: OpenAI's gpt-4o-mini-tts, Gemini and Fish Audio. */
 const TAKES_STYLE = /^(?:openai\/gpt-4o-mini-tts|google\/|fish-audio\/)/;
-/** Fish Audio's models have no voice of their own: sent none, each request is a speaker of its choosing. This is Laura, a library voice by Fish Audio, as provider-openrouter's description has it. */
-const FISH = { voice: 'e3cd384158934cc9a01029cd7d278634', style: 'calm, warm and friendly' };
+/** A calm, warm voice among a list's, which is the model's voice before the list's first. */
+const WARM = /^(?:sulafat|marin|af_heart)$|neutral/i;
 /**
- * A speech list: also each model's own voices (OpenRouter's supported_voices) and, where its id says it ignores a style
- * (OpenAI's tts-1, or a vendor on OpenRouter other than those above), `styled: false`; a Fish Audio model starts with FISH.
+ * A speech list. Only OpenRouter's entries carry supported_voices (null for Fish Audio's, which takes any voice of its library): from
+ * those, each model's own voices, its voice (a warm one, else the first) and, for a vendor its docs say ignores instructions,
+ * `styled: false`. Any other server's list is read as it is.
  * @param {any} json
  */
 const readSpeechList = (json) => entries(json).map((m) => {
   const voices = Array.isArray(m.supported_voices) ? m.supported_voices.filter((/** @type {any} */ v) => typeof v === 'string' && v) : [];
-  const ignores = /^tts-1/.test(m.id) || (m.id.includes('/') && !TAKES_STYLE.test(m.id));
-  const tunables = { ...(m.id.startsWith('fish-audio/') ? FISH : {}), ...(voices.length ? { voices } : {}), ...(ignores ? { styled: false } : {}) };
+  const tunables = {
+    ...(voices.length ? { voice: voices.find((/** @type {string} */ v) => WARM.test(v)) ?? voices[0], voices } : {}),
+    ...('supported_voices' in m && !TAKES_STYLE.test(m.id) ? { styled: false } : {}),
+  };
   return Object.keys(tunables).length ? { ...listed(m), tunables } : listed(m);
 });
+
+/** A style as plain words: whitespace collapsed, at most 200 characters, no trailing punctuation. @param {unknown} s */
+const plain = (s) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 200).replace(/[\s.,;:!?]+$/, '');
+/**
+ * The style a request carries, or ''. `instructions` is this tunable's name before the Style field: a user's own, since no description
+ * has it (spec §9.2), so it wins over a description's `style`; the page says it is emptied when a style is typed.
+ * @param {Record<string, any>} t
+ */
+const styleOf = (t) => (t.styled === false ? '' : plain(plain(t.instructions) || t.style));
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -86,13 +98,15 @@ export function activate(annai) {
       name: 'OpenAI-compatible voice',
       speech: 'out',
       tunables: { path: '/audio/speech', listPath: '/models', voice: 'marin', format: 'auto', audioOut: ['opus', 'aac', 'mp3', 'flac', 'wav'], style: '', speed: null },
+      /** What OpenRouter adds to a Fish Audio model's text, "[style] ", is billed with it. @param {any} c */
+      extraChars: ({ model, tunables: t }) => styleOf(t).length + (styleOf(t) && /^fish-audio\//.test(model.providerId) ? 3 : 0),
       /** @param {any} c */
       speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
         /** @type {Record<string, any>} */
         let body = { model: model.providerId, input: text, response_format: t.format === 'auto' ? 'mp3' : t.format }; // auto: annai chose none
         if (t.voice) body.voice = t.voice; // none: the provider picks (Fish Audio's free voice on OpenRouter picks a different speaker each time)
-        const style = String(t.style || t.instructions || '').trim(); // instructions: this tunable's name before the Style field
-        if (style && t.styled !== false) body.instructions = style;
+        const style = styleOf(t);
+        if (style) body.instructions = style;
         if (t.speed) body.speed = t.speed;
         body = mergePatch(mergePatch(body, endpoint.extraBody ?? {}), model.extraBody ?? {});
         return { url: join(endpoint.baseUrl, t.path), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body: JSON.stringify(body) };
