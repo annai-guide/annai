@@ -5,8 +5,7 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
-import { Agent, UNANSWERED } from '../../src/core/agent/loop.js';
-import { STEP_BACKSTOP } from '../../src/core/agent/budgets.js';
+import { Agent, UNANSWERED, FORCED_STEPS } from '../../src/core/agent/loop.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 
@@ -481,16 +480,26 @@ test('a tool call is asked for only until she has reached the user in the turn: 
   assert.deepEqual(k.notices, [], 'it reached the user: no nudge');
 });
 
-test('with no steps-per-wake limit set, a turn still stops at 25 steps, with a card (review A4: a backstop)', async () => {
+test('with no steps-per-wake limit set, a long turn runs past 25 steps and reaches the user, with no step card', async () => {
   const a = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
   const b = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
-  const k = await agentKit([Array.from({ length: 30 }, (_, i) => (i % 2 ? b : a))]);
-  k.agent.send('Go');
+  const k = await agentKit([[...Array.from({ length: 30 }, (_, i) => (i % 2 ? b : a)), say('The whole day is planned.')]]);
+  k.agent.send('Plan our whole Big Sur day');
   await k.agent.idle();
-  assert.equal(k.requests.length, STEP_BACKSTOP);
-  assert.equal(STEP_BACKSTOP, 25);
-  assert.equal(k.notices[0].title, 'Shiori stopped: step limit');
-  assert.match(k.notices[0].body, /25 steps/);
+  assert.equal(k.requests.length, 31);
+  assert.deepEqual(k.notices, [], 'no step-limit card, and she reached the user');
+});
+
+test(`forcing stops after ${FORCED_STEPS} forced calls without reaching the user: she may then end in words, is nudged once, and the card follows`, async () => {
+  const a = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+  const b = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
+  const k = await agentKit([[...Array.from({ length: FORCED_STEPS }, (_, i) => (i % 2 ? b : a)), { text: 'Here is the plan.' }, { text: 'Still no tool.' }]]);
+  k.agent.send('Plan our whole Big Sur day');
+  await k.agent.idle();
+  assert.equal(FORCED_STEPS, 10);
+  assert.deepEqual(k.requests.map((/** @type {any} */ r) => r.toolRequired), [...Array(FORCED_STEPS).fill(true), undefined, undefined]);
+  assert.match(JSON.stringify(k.requests[FORCED_STEPS + 1].messages.at(-1)), /hasn't been answered/, 'the one nudge');
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), ["Shiori didn't answer"]);
 });
 
 test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async () => {

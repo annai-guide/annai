@@ -82,12 +82,6 @@ export async function costs(store, scope) {
 }
 
 /**
- * With no steps-per-wake limit set, a wake still ends after this many model calls (review A4): a backstop like stuck-loop
- * detection, for a model that never stops calling tools; a long plan takes far fewer.
- */
-export const STEP_BACKSTOP = 25;
-
-/**
  * Whether a budget ends the turn before the next model call.
  * @param {{ budgets: Budgets, steps: number, spent: number }} c
  * @returns {{ which: 'steps' | 'spend', title: string, body: string } | null}
@@ -95,9 +89,6 @@ export const STEP_BACKSTOP = 25;
 export function budgetStop({ budgets, steps, spent }) {
   if (budgets.stepsPerWake && steps >= budgets.stepsPerWake) {
     return { which: 'steps', title: 'Shiori stopped: step limit', body: `She took the ${budgets.stepsPerWake} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.` };
-  }
-  if (!budgets.stepsPerWake && steps >= STEP_BACKSTOP) {
-    return { which: 'steps', title: 'Shiori stopped: step limit', body: `She took ${STEP_BACKSTOP} steps in one wake, the most annai lets a wake take when no limit is set (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.` };
   }
   if (budgets.spendPerDay && spent >= budgets.spendPerDay) {
     return { which: 'spend', title: "Shiori stopped: today's budget is spent", body: `Today's model calls cost $${spent.toFixed(2)} of the $${budgets.spendPerDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
