@@ -270,6 +270,39 @@ test("a model that reads no PDFs reads one: a model that does tells it in words,
   assert.match(nr.data.content, /\nNo model here can read PDFs, so what it says can't be told\.$/);
 });
 
+/** A Shiori whose model reads no PDFs, a Utility model that does, and a PDF in the trip. @param {any[]} script @param {any[]} utility */
+async function pdfKit(script, utility) {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([script], { models: [{ input: ['text', 'image'] }], utility });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  return k;
+}
+const readPdf = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
+
+test('a PDF told only up to the output limit says it stops there; a second read in the session is told from what was told, never sent again (the fix pass, S6)', async () => {
+  const k = await pdfKit([readPdf, readPdf, say('Check-in is at 3 PM.')], [{ text: 'Hotel booking: check-in 3 PM, 2 nights. Room', stop: 'length' }]);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const reads = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read').map((e) => e.data.content);
+  assert.equal(reads.length, 2);
+  assert.match(reads[0], /: Hotel booking: check-in 3 PM, 2 nights\. Room …\(it stops here: the PDF goes on\)$/);
+  assert.equal(reads[1], reads[0]);
+  assert.equal(k.sent['model-u'].length, 1, 'the PDF went to be told once');
+});
+
+test("a PDF has longer to be told than a photo to be described: a telling that takes more than a photo's 30 seconds still comes (the fix pass, S6)", async () => {
+  const { DESCRIBE_S, DESCRIBE_PDF_S } = await import('../../src/core/agent/loop.js');
+  assert.ok(DESCRIBE_PDF_S > DESCRIBE_S);
+  // secondMs is 10 here: 30 seconds are 300 ms.
+  const k = await pdfKit([readPdf, say('Check-in is at 3 PM.')], [{ delayMs: (DESCRIBE_S + 15) * 10, text: 'Hotel booking: check-in 3 PM.' }]);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const read = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(read.data.content, /What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\.$/);
+});
+
 test('a PDF read earlier does not close the conversation to a model that reads none: it goes as a note (the second emulator pass: halo, "type file is not supported")', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Read it.')], [say('Anything else?')]], { models: [{ input: ['text', 'image', 'pdf'] }, { input: ['text', 'image'] }] });
   await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
