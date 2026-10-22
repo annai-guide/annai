@@ -19,33 +19,36 @@ test("a realtime model first in Koe's list: Koe is live; resting, the text model
   }
 });
 
-test("Koe's pathway follows its list's order: a chat model first talks through the loop, voice on or off; resting, the realtime model after it is live, muted with voice off (the user, 2026-10-19: one Koe list)", async () => {
+test("Classic chosen: Koe talks through the loop, voice on or off, though Realtime holds a model that could answer; Classic resting, Koe is down, never a muted session", async () => {
   const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
     assert.equal(k.agent.koeState, 'text', 'voice on');
+    assert.deepEqual(k.agent.way, { mode: 'classic', using: 'classic', why: '', koe: true, split: true, path: { kind: 'text' } });
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
     await k.agent.idle();
     assert.equal(k.agent.koeState, 'text', 'voice off');
     k.llm.bench.bench('m-koe', 60_000);
     assert.equal(await k.agent.split(), true);
-    assert.equal(k.agent.koeState, 'live', 'a session for typing, muted');
+    assert.equal(k.agent.koeState, 'down', 'Classic resting: Kokoro answers directly');
+    assert.equal(k.server.connections().length, 0);
   } finally {
     await k.done();
   }
 });
 
-test("voice off, a chat model later in Koe's list answers before the realtime one ahead of it, saving the session's unheard audio; voice on, the realtime one is live again", async () => {
+test("Realtime chosen: voice off, Koe types through Classic (a live reply would be sound nobody hears); voice on, Realtime again; Classic resting with voice off: Koe is down, never a muted session", async () => {
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
-    assert.equal(k.agent.koeState, 'live', 'voice on: Gemini Live, first in the list');
+    assert.equal(k.agent.koeState, 'live', 'voice on: Gemini Live, Realtime chosen');
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
     await k.agent.idle();
-    assert.equal(k.agent.koeState, 'text', 'voice off: the chat model after it');
+    assert.equal(k.agent.koeState, 'text', 'voice off: Classic');
+    assert.deepEqual([k.agent.way.using, k.agent.way.why], ['classic', 'voice off']);
     k.llm.bench.bench('m-koe', 60_000);
     assert.equal(await k.agent.split(), true);
-    assert.equal(k.agent.koeState, 'live', 'the chat model resting: the live one, muted');
+    assert.equal(k.agent.koeState, 'down', 'Classic resting, voice off: Koe is down');
     k.llm.bench.clear('m-koe');
     await updateAppSettings(k.ws, { voice: { mode: 'on' } });
     await k.voice.refresh();
@@ -56,21 +59,76 @@ test("voice off, a chat model later in Koe's list answers before the realtime on
   }
 });
 
-test("a session for typing that closes because the pathway moved to a text model says so, not \"voice off\": voice was off all along (fix pass)", async () => {
-  const k = await liveKit([{ said: 'A taco stand, two minutes ahead.', audio: tone(0.2) }], { voice: { mode: 'off' }, koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+test("the voice chip's switch applies at once: Classic chosen closes an open session ('pathway') and the loop answers; Realtime chosen again, Koe is live", async () => {
+  const k = await liveKit([{ said: 'A taco stand, two minutes ahead.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
-    k.llm.bench.bench('m-koe', 60_000);
-    assert.equal(await k.agent.split(), true);
-    assert.equal(k.agent.koeState, 'live', 'the chat model resting: Live, muted');
     k.agent.send('Where can we eat?');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
     await k.agent.idle();
     assert.equal(k.agent.live.state, 'open');
-    k.llm.bench.clear('m-koe');
-    await k.agent.split();
+    await k.agent.chooseKoe('classic');
     assert.equal(k.agent.koeState, 'text');
+    assert.deepEqual([k.agent.way.mode, k.agent.way.using], ['classic', 'classic']);
     await soon(async () => (await lives(k, 'closed')).length === 1);
     assert.equal((await lives(k, 'closed'))[0].data.why, 'pathway');
+    assert.equal((await k.ws.readJSON('sys:settings', '/llm/roles.json'))['koe-mode'], 'classic', 'kept with the lists');
+    await k.agent.chooseKoe('realtime');
+    assert.equal(k.agent.koeState, 'live');
+  } finally {
+    await k.done();
+  }
+});
+
+test("a change to Koe's lists in Settings → Models applies at once, with no voice change or message: Realtime emptied, Classic answers and the way says Realtime has no model", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    assert.equal(k.agent.koeState, 'live');
+    /** @type {any[]} */
+    const seen = [];
+    k.agent.on('halves', (/** @type {any} */ x) => seen.push(x.way));
+    const { readConfig, saveRoles } = await import('../../src/core/llm/config.js');
+    const cfg = await readConfig(k.ws);
+    await saveRoles(k.ws, { ...cfg.roles, 'koe-realtime': { models: [], level: 'off' } });
+    await soon(async () => k.agent.koeState === 'text');
+    await k.agent.idle();
+    assert.deepEqual([k.agent.way.mode, k.agent.way.using, k.agent.way.why], ['realtime', 'classic', 'none'], 'the choice stays Realtime');
+    assert.deepEqual(seen.at(-1), { mode: 'realtime', using: 'classic', why: 'none', koe: true }, "the chip hears of it");
+  } finally {
+    await k.done();
+  }
+});
+
+test("Realtime resting: Classic answers and the way says Realtime is unavailable; once its model can answer again, Realtime is back by itself, since it is the user's choice", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-live', 300);
+    assert.equal(await k.agent.split(), true);
+    assert.deepEqual([k.agent.koeState, k.agent.way.using, k.agent.way.why], ['text', 'classic', 'unavailable']);
+    await soon(async () => k.agent.koeState === 'live', 3000);
+    assert.equal(k.agent.way.using, 'realtime');
+    // Classic chosen meanwhile: a model coming back changes nothing.
+    await k.agent.chooseKoe('classic');
+    k.llm.bench.bench('m-live', 100);
+    await new Promise((r) => setTimeout(r, 300));
+    await k.agent.idle();
+    assert.equal(k.agent.koeState, 'text');
+  } finally {
+    await k.done();
+  }
+});
+
+test("Realtime chosen, its model resting, Classic empty: Koe is down and Kokoro answers directly; voice off, Shiori is one", async () => {
+  const k = await liveKit([]);
+  try {
+    assert.equal(k.agent.koeState, 'live');
+    k.llm.bench.bench('m-live', 60_000);
+    assert.equal(await k.agent.split(), true);
+    assert.deepEqual([k.agent.koeState, k.agent.way.why], ['down', 'unavailable']);
+    await updateAppSettings(k.ws, { voice: { mode: 'off' } });
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.equal(await k.agent.split(), false, 'Classic is empty');
+    assert.equal(k.agent.koeState, 'off');
   } finally {
     await k.done();
   }

@@ -1,7 +1,7 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "api": 1,
   "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
@@ -315,8 +315,10 @@
         "decide": [
           "gemini-3.5-flash-lite"
         ],
-        "koe": [
-          "gemini-3.8-live",
+        "koe-realtime": [
+          "gemini-3.8-live"
+        ],
+        "koe-classic": [
           "gemini-3.5-flash-lite"
         ],
         "speech-in": [

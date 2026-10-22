@@ -4,7 +4,7 @@ import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, ValidationError } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_SETTINGS } from '../../src/core/scopes.js';
 import {
-  CHAT_ROLES, KOE_ROLE, SPEECH_ROLES, readConfig, providerOf, providerBase, endpointOf, modelOf, modelBase, diffLayer, newProvider, newModel,
+  CHAT_ROLES, KOE_ROLES, SPEECH_ROLES, readConfig, providerOf, providerBase, endpointOf, modelOf, modelBase, diffLayer, newProvider, newModel,
   saveProvider, saveModel, saveRoles, removeProviderRecords, removeModel, setKey, getKey, abilityOf, speechKind, sendKey,
 } from '../../src/core/llm/config.js';
 
@@ -154,7 +154,7 @@ test('roles: every chat and speech role, its default level, and only models that
   await saveProvider(ws, rec, [a]);
   await saveRoles(ws, { main: { models: [a.id, 'm-gone'], level: 'high', firstOutputSeconds: 20 }, utility: { models: [], level: 'low' }, 'speech-in': { models: ['browser-voice', 'dictation'], level: 'off' } });
   const { roles } = await readConfig(ws);
-  assert.deepEqual(Object.keys(roles).sort(), [...CHAT_ROLES, KOE_ROLE, ...SPEECH_ROLES].sort());
+  assert.deepEqual(Object.keys(roles).sort(), [...CHAT_ROLES, ...KOE_ROLES, ...SPEECH_ROLES].sort());
   assert.deepEqual(roles.main, { models: [a.id], level: 'high', firstOutputSeconds: 20 });
   assert.deepEqual(roles.decide, { models: [], level: 'off' });
   assert.deepEqual(roles['speech-in'].models, ['dictation'], "the browser voice isn't speech-in's");

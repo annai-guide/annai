@@ -74,6 +74,11 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
     await tryIt.getByLabel('Message', { exact: true }).fill('Hello again');
     await tryIt.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(tryIt.getByText('110 tokens · free')).toBeVisible();
+    // Koe's two lists: Gemini Live in Realtime, flash-lite in Classic (the user, 2026-10-22).
+    await page.goto('/#/models');
+    const roles = page.getByRole('region', { name: 'Roles' });
+    await expect(roles.locator('.role').nth(1).locator('.role-item')).toHaveText([/^1\. Gemini 3\.8 Live/]);
+    await expect(roles.locator('.role').nth(2).locator('.role-item')).toHaveText([/^1\. Gemini 3\.5 Flash Lite/]);
     expect(await page.content()).not.toContain(KEY);
   } finally {
     await s.close();
@@ -315,9 +320,9 @@ test('Google Search with Koe on and the halves\' notes hidden: Kokoro\'s grounde
   try {
     await geminiTrip(page, s.url);
     await page.goto('/#/models');
-    await page.getByLabel('Add a model to Koe').selectOption({ label: 'Gemini 3.5 Flash Lite' });
-    await page.getByRole('button', { name: 'Add to Koe' }).click();
-    await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('1. Gemini 3.5 Flash Lite')).toBeVisible();
+    await page.getByLabel('Add a model to Koe · Classic').selectOption({ label: 'Gemini 3.5 Flash Lite' });
+    await page.getByRole('button', { name: 'Add to Koe · Classic' }).click();
+    await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. Gemini 3.5 Flash Lite')).toBeVisible();
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
     await type(page, 'Is Nepenthe open tonight?');

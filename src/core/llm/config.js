@@ -49,13 +49,25 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  *   extraBody: Record<string, any>, providerTools: ProviderTool[], logprobs: boolean, images: ImageLimits }} Model
  * @typedef {Record<string, { models: string[], level: string, firstOutputSeconds?: number }>} Roles
  *   firstOutputSeconds: how long to wait for a model's first words before trying the next (spec §9.6)
- * @typedef {{ providers: Record<string, ProviderRecord>, models: Record<string, ModelRecord>, roles: Roles }} ModelConfig
+ * @typedef {'realtime' | 'classic'} KoeMode
+ * @typedef {{ providers: Record<string, ProviderRecord>, models: Record<string, ModelRecord>, roles: Roles, koeMode?: KoeMode, koeChosen?: KoeMode | null }} ModelConfig
+ *   koeMode: which of Koe's lists leads (the voice chip's switch); koeChosen: the one the user chose (or an old list implied), else null and
+ *   koeMode follows the lists
  */
 
 /** The roles that call chat models; an empty one uses the main list (spec §9.6). */
 export const CHAT_ROLES = Object.freeze(['main', 'utility', 'decide']);
-/** Koe's list (the Koe and Kokoro design): chat and realtime models, in order; empty, there is no Koe, never Main. */
-export const KOE_ROLE = 'koe';
+/**
+ * Koe's two lists (the user, 2026-10-22: "Two lists + a switch", named "Realtime / Classic"): realtime models that hear and
+ * speak, and chat models used with the speech lists. Neither ever uses Main.
+ */
+export const KOE_REALTIME = 'koe-realtime';
+export const KOE_CLASSIC = 'koe-classic';
+export const KOE_ROLES = Object.freeze([KOE_REALTIME, KOE_CLASSIC]);
+/** Which of the two Koe uses, as the user chose on the voice chip. @type {readonly KoeMode[]} */
+export const KOE_MODES = Object.freeze(['realtime', 'classic']);
+/** Where the choice is kept: in roles.json, beside the lists, so a backup carries both. */
+const MODE_KEY = 'koe-mode';
 /** The speech roles (spec §9.6, §10). Their lists hold stand-in entries besides models. */
 export const SPEECH_ROLES = Object.freeze(['speech-in', 'speech-out']);
 /** @type {Readonly<Record<string, { role: string, name: string }>>} */
@@ -140,6 +152,7 @@ const MODEL_SCHEMA = {
 };
 const ROLES_SCHEMA = {
   type: 'object',
+  properties: { [MODE_KEY]: { enum: KOE_MODES } },
   additionalProperties: {
     type: 'object',
     required: ['models', 'level'],
@@ -269,23 +282,40 @@ export async function readConfig(ws) {
     const rec = await ws.readJSON(SYS_SETTINGS, f.path).catch(() => null);
     if (rec && !validate(MODEL_SCHEMA, rec).length && has.get(rec.provider)?.has(rec.ability)) cfg.models[rec.id] = rec;
   }
-  cfg.roles = rolesFrom(await ws.readJSON(SYS_SETTINGS, ROLES_PATH).catch(() => null), cfg.models);
+  const { roles, chosen } = rolesFrom(await ws.readJSON(SYS_SETTINGS, ROLES_PATH).catch(() => null), cfg);
+  cfg.roles = roles;
+  cfg.koeChosen = chosen;
+  cfg.koeMode = chosen ?? (roles[KOE_REALTIME]?.models.length ? 'realtime' : 'classic');
   return cfg;
 }
 
 /**
  * Every chat, Koe and speech role with its level, keeping only models that exist and, in a speech
  * list, its own stand-ins. A speech list never saved holds the defaults; one the user emptied stays empty.
- * @param {any} saved @param {Record<string, ModelRecord>} models @returns {Roles}
+ * chosen: the Koe mode saved, or the one an old Koe list implies.
+ * @param {any} saved @param {ModelConfig} cfg @returns {{ roles: Roles, chosen: KoeMode | null }}
  */
-function rolesFrom(saved, models) {
-  const { 'koe-talk': talk, 'koe-type': type, ...s } = saved && typeof saved === 'object' ? saved : {};
+function rolesFrom(saved, cfg) {
+  const { models } = cfg;
+  const { 'koe-talk': talk, 'koe-type': type, koe: one, [MODE_KEY]: mode, ...s } = saved && typeof saved === 'object' ? saved : {};
+  /** @type {KoeMode | null} */
+  let chosen = KOE_MODES.includes(mode) ? mode : null;
   // Koe's two lists before they were one (2026-10-19): the talking list's models, then the typing list's, and its wait, else
   // the typing list's. Not their level: old files hold an explicit 'off', the old default, which would defeat the new 'low'.
-  s.koe ??= talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))], firstOutputSeconds: talk?.firstOutputSeconds ?? type?.firstOutputSeconds } : undefined;
+  const old = one ?? (talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))], firstOutputSeconds: talk?.firstOutputSeconds ?? type?.firstOutputSeconds } : undefined);
+  // The one list before it was two again (the user, 2026-10-22): its realtime models make Realtime, the rest Classic, each in its
+  // order, Classic keeping the list's level and wait; the mode is the kind of its first model that could answer (its ability on).
+  if (old && !s[KOE_REALTIME] && !s[KOE_CLASSIC]) {
+    const ids = (Array.isArray(old.models) ? old.models : []).filter((/** @type {any} */ id) => typeof id === 'string' && models[id]);
+    const live = (/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime';
+    s[KOE_REALTIME] = { models: ids.filter(live) };
+    s[KOE_CLASSIC] = { models: ids.filter((/** @type {string} */ id) => !live(id)), level: old.level, firstOutputSeconds: old.firstOutputSeconds };
+    const first = ids.find((/** @type {string} */ id) => abilityOf(cfg, id)?.on) ?? ids[0];
+    chosen ??= first ? (live(first) ? 'realtime' : 'classic') : null;
+  }
   /** @type {Roles} */
   const out = {};
-  for (const role of new Set([...CHAT_ROLES, KOE_ROLE, ...SPEECH_ROLES, ...Object.keys(s)])) {
+  for (const role of new Set([...CHAT_ROLES, ...KOE_ROLES, ...SPEECH_ROLES, ...Object.keys(s)])) {
     const r = s[role] ?? {};
     const speech = SPEECH_ROLES.includes(role);
     const kept = (/** @type {any} */ id) => typeof id === 'string' && (Boolean(models[id]) || (speech && STAND_INS[id]?.role === role));
@@ -295,7 +325,7 @@ function rolesFrom(saved, models) {
       ...(Number.isInteger(r.firstOutputSeconds) && r.firstOutputSeconds >= 1 ? { firstOutputSeconds: r.firstOutputSeconds } : {}),
     };
   }
-  return out;
+  return { roles: out, chosen };
 }
 
 /** Saves a provider, and any of its models given, in one transaction. @param {Workspace} ws @param {ProviderRecord} rec @param {ModelRecord[]} [models] */
@@ -323,11 +353,24 @@ export async function saveModel(ws, rec) {
   await ws.write(SYS_SETTINGS, path, rec, { author: 'user' });
 }
 
-/** @param {Workspace} ws @param {Roles} roles */
-export async function saveRoles(ws, roles) {
-  check(ROLES_SCHEMA, roles, ROLES_PATH);
-  await ws.write(SYS_SETTINGS, ROLES_PATH, roles, { author: 'user' });
+/**
+ * Saves the roles, with Koe's mode as chosen (koeMode, else the one saved, or that an old Koe list implied).
+ * @param {Workspace} ws @param {Roles} roles @param {{ koeMode?: KoeMode }} [o]
+ */
+export async function saveRoles(ws, roles, { koeMode } = {}) {
+  const file = rolesFile(roles, koeMode ?? (await readConfig(ws)).koeChosen);
+  check(ROLES_SCHEMA, file, ROLES_PATH);
+  await ws.write(SYS_SETTINGS, ROLES_PATH, file, { author: 'user' });
 }
+
+/** Chooses Koe's mode (the voice chip's switch); the lists stay as they are. @param {Workspace} ws @param {KoeMode} mode */
+export async function saveKoeMode(ws, mode) {
+  if (!KOE_MODES.includes(mode)) throw new ValidationError(ROLES_PATH, [`$.${MODE_KEY}: realtime or classic`]);
+  await saveRoles(ws, (await readConfig(ws)).roles, { koeMode: mode });
+}
+
+/** roles.json's content: the roles, and Koe's mode when one is chosen. @param {Roles} roles @param {KoeMode | null | undefined} mode */
+const rolesFile = (roles, mode) => (mode ? { ...roles, [MODE_KEY]: mode } : roles);
 
 /** @param {Roles} roles @param {Set<string>} gone @returns {Roles} */
 function without(roles, gone) {
@@ -345,7 +388,7 @@ export async function removeProviderRecords(ws, store, id) {
   await ws.writeMany(SYS_SETTINGS, [
     { path: providerPath(id), content: null },
     ...[...gone].map((m) => ({ path: modelPath(m), content: null })),
-    { path: ROLES_PATH, content: without(cfg.roles, gone) },
+    { path: ROLES_PATH, content: rolesFile(without(cfg.roles, gone), cfg.koeChosen) },
   ], { author: 'user' });
   await setKey(store, id, null);
   const uploads = await ws.readJSON(SYS_SETTINGS, UPLOADS_PATH).catch(() => null);
@@ -358,7 +401,7 @@ export async function removeProviderRecords(ws, store, id) {
 /** Removes a model and its places in roles. @param {Workspace} ws @param {string} id */
 export async function removeModel(ws, id) {
   const cfg = await readConfig(ws);
-  await ws.writeMany(SYS_SETTINGS, [{ path: modelPath(id), content: null }, { path: ROLES_PATH, content: without(cfg.roles, new Set([id])) }], { author: 'user' });
+  await ws.writeMany(SYS_SETTINGS, [{ path: modelPath(id), content: null }, { path: ROLES_PATH, content: rolesFile(without(cfg.roles, new Set([id])), cfg.koeChosen) }], { author: 'user' });
 }
 
 /** Stores a provider's one API key, or removes it (null or empty), only in secrets. @param {Store} store @param {string} providerId @param {string | null} key */

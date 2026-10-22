@@ -378,26 +378,29 @@ test('ask shows its buttons and is answered at once; the tap comes as the next t
 });
 
 // Task 6: a realtime model in a typing conversation.
-test('typing to a realtime Koe, voice off: its transcript is the reply, nothing plays, and no microphone opens; voice on later, the same session speaks, and a tap gives it the microphone', async () => {
+test('voice off, Koe types through Classic: with Realtime chosen and Classic empty, Shiori is one and no session opens (2026-10-22); voice on, a typed message opens a session without the microphone, which speaks, and a tap gives it the microphone', async () => {
   const k = await liveKit([{ said: "There's a taco stand two minutes ahead.", audio: tone(0.3) }, { heard: 'Thanks', said: "You're welcome.", audio: tone(0.2) }], { voice: { mode: 'off' } });
   try {
-    assert.equal(k.agent.koeState, 'live', 'voice off with only a realtime model: Koe is live, muted');
+    assert.equal(k.agent.koeState, 'off', 'voice off with only a realtime model: Classic is empty, so Shiori is one');
+    assert.deepEqual([k.agent.way.mode, k.agent.way.using, k.agent.way.why], ['realtime', 'classic', 'voice off']);
     k.agent.send('Where can we eat?');
-    await soon(async () => (await k.events(['out.speak'])).length === 1);
     await k.agent.idle();
-    const [said] = await k.events(['out.speak']);
-    assert.deepEqual([said.data.text, said.data.voice, said.data.live], ["There's a taco stand two minutes ahead.", undefined, true]);
-    assert.equal(k.platform.streams.length, 0, 'its sound was dropped');
-    assert.ok(!k.platform.log.includes('mic open'));
-    assert.equal(k.agent.live.listening, false);
-    assert.ok(read(k.agent.kokoro).includes(`[Koe said] "There's a taco stand two minutes ahead."`), 'Kokoro reads it as said, not aloud');
-    // Voice comes on (the chip is a tap): the same session speaks from now on; the microphone opens at a tap on Shiori.
+    assert.equal(k.server.connections().length, 0, 'no live session, whose reply would be sound nobody hears');
+    assert.equal((await k.events(['out.speak'])).length, 0);
+    // Voice comes on (the chip is a tap): Koe is live; a typed message opens a session that speaks, and the microphone opens only at a tap on Shiori.
     await updateAppSettings(k.ws, { voice: { mode: 'on' } });
     await k.voice.unlock();
     await k.voice.refresh();
     await k.agent.idle();
+    assert.equal(k.agent.koeState, 'live');
+    k.agent.send('Where can we eat?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const [said] = await k.events(['out.speak']);
+    assert.deepEqual([said.data.text, said.data.voice, said.data.live], ["There's a taco stand two minutes ahead.", true, true]);
     assert.equal(k.agent.live.state, 'open');
     assert.ok(!k.platform.log.includes('mic open'));
+    assert.equal(k.agent.live.listening, false);
     k.agent.tap();
     await until(() => k.agent.live.listening);
     await say(k, 'first-one');
@@ -410,7 +413,7 @@ test('typing to a realtime Koe, voice off: its transcript is the reply, nothing 
 });
 
 test('a photo goes in as a turn of its own, then the words that ask about it; Kokoro gets the same request copy', async () => {
-  const k = await liveKit([{ said: 'That looks like Bixby Bridge.', audio: tone(0.2) }], { voice: { mode: 'off' } });
+  const k = await liveKit([{ said: 'That looks like Bixby Bridge.', audio: tone(0.2) }]);
   try {
     await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
     k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
@@ -513,7 +516,7 @@ test("a drop that can't resume: its model rests, Kokoro is told, and the next mo
     assert.ok((await k.events(['halves'])).some((/** @type {any} */ e) => e.data.state === 'live-dropped'));
     assert.equal(k.agent.koeState, 'text');
     const turn = (await k.events(['model.turn'])).find((/** @type {any} */ e) => e.data.tag === 'koe');
-    assert.deepEqual([turn?.data.role, turn?.data.answeredBy], ['koe', 'model-koet']);
+    assert.deepEqual([turn?.data.role, turn?.data.answeredBy], ['koe-classic', 'model-koet']);
     assert.ok(k.llm.bench.until('m-live') > Date.now(), 'the live model rests');
   } finally {
     await k.done();
