@@ -55,7 +55,8 @@ test('done names the voices that failed and why, for the Voice test to say befor
   u.end('One thing.');
   const done = await u.done;
   assert.deepEqual(done.voices, ['v2']);
-  assert.deepEqual(done.failedVoices, [{ name: 'v1', why: 'v1 failed' }]);
+  assert.deepEqual(done.failedVoices.map((f) => [f.name, f.why]), [['v1', 'v1 failed']]);
+  assert.ok(done.failedVoices[0].error instanceof Error, 'the error itself, for the Voice test to put in words');
   const ok = fakeVoices(['v1']);
   const u2 = speaker(ok, fakePlatform()).begin();
   u2.end('Fine.');
