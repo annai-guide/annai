@@ -24,6 +24,7 @@ export function providerValues(src) {
   const v = { name: src.name, baseUrl: d.baseUrl ?? '' };
   if (d.headers) v.headers = d.headers;
   if (d.keyHeader) v.keyHeader = d.keyHeader;
+  if (d.local) v.local = true;
   v.abilities = Object.fromEntries(Object.entries(d.abilities).map(([id, a]) => [id, {
     kind: a.kind, type: a.type, on: a.on !== false,
     ...(a.name ? { name: a.name } : {}), ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}), ...(a.tunables ? { tunables: a.tunables } : {}),
@@ -94,11 +95,12 @@ function suggested(roles, pick, suggestion, o) {
   return next;
 }
 
-/** Whether a model costs nothing: its provider's key is on the free tier, or its prices are all zero. @param {import('./config.js').ModelConfig} cfg @param {string} id */
+/** Whether a model costs nothing: its provider is a local server or its key is on the free tier, or its prices are all zero (a model with no price on another provider is not free). @param {import('./config.js').ModelConfig} cfg @param {string} id */
 function free(cfg, id) {
   const m = cfg.models[id];
   if (!m) return false;
-  if (providerOf(cfg.providers[m.provider]).free) return true;
+  const owner = providerOf(cfg.providers[m.provider]);
+  if (owner.free || owner.local) return true;
   const prices = modelOf(m).prices;
   return Boolean(prices) && Object.keys(prices ?? {}).length > 0 && Object.values(prices ?? {}).every((v) => v === 0);
 }

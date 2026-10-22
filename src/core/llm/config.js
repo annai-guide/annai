@@ -15,9 +15,10 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  * @typedef {{ on?: boolean, kind?: string, type?: string, name?: string, baseUrl?: string, tunables?: Record<string, any>,
  *   extraBody?: Record<string, any>, modelDefaults?: ModelValues }} AbilityValues
  *   baseUrl: its own address, '' for the provider's; modelDefaults: what a model added by id or from a list starts with
- * @typedef {{ name?: string, baseUrl?: string, headers?: Record<string, string | null>, keyHeader?: string, abilities?: Record<string, AbilityValues>, free?: boolean }} ProviderValues
+ * @typedef {{ name?: string, baseUrl?: string, headers?: Record<string, string | null>, keyHeader?: string, abilities?: Record<string, AbilityValues>, free?: boolean, local?: boolean }} ProviderValues
  *   headers: null is a description's header the user removed; keyHeader: the key goes in this header (decision 25);
- *   free: the user's key is on the provider's free tier, so its calls cost nothing (offered when the description says freeTier)
+ *   free: the user's key is on the provider's free tier, so its calls cost nothing (offered when the description says freeTier);
+ *   local: the description's own flag, a server of the user's (Ollama, llama.cpp): its models cost nothing
  * @typedef {{ name?: string, providerId?: string, input?: string[], tools?: boolean, contextWindow?: number | null, maxOutput?: number | null,
  *   prices?: Prices | null, cacheTtls?: string[], reasoning?: Record<string, any>, tunables?: Record<string, any>, extraBody?: Record<string, any>,
  *   providerTools?: ProviderTool[], logprobs?: boolean, images?: ImageLimits }} ModelValues
@@ -39,7 +40,7 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  * @typedef {{ id: string, kind: string, type: string, name: string, on: boolean, baseUrl: string, tunables: Record<string, any>,
  *   extraBody: Record<string, any>, modelDefaults: ModelValues }} Ability
  * @typedef {{ id: string, plugin: string, name: string, baseUrl: string, headers: Record<string, string>, keyHeader: string,
- *   abilities: Record<string, Ability>, free: boolean }} Provider
+ *   abilities: Record<string, Ability>, free: boolean, local: boolean }} Provider
  * @typedef {{ id: string, provider: string, ability: string, type: string, name: string, baseUrl: string, headers: Record<string, string>,
  *   tunables: Record<string, any>, extraBody: Record<string, any>, free?: boolean }} Endpoint
  *   what a call to one ability sees, as protocol plugins get it: id "<provider>/<ability>", name the provider's; free: its calls cost nothing
@@ -116,7 +117,7 @@ const PROVIDER_VALUES = {
   properties: {
     name: { type: 'string', maxLength: 120 }, baseUrl: { type: 'string', maxLength: 2000 }, keyHeader: { type: 'string', maxLength: 80 },
     headers: { type: 'object', additionalProperties: { type: ['string', 'null'] } }, // null: a description's header the user removed
-    abilities: { type: 'object', additionalProperties: ABILITY_VALUES }, free: { type: 'boolean' },
+    abilities: { type: 'object', additionalProperties: ABILITY_VALUES }, free: { type: 'boolean' }, local: { type: 'boolean' },
   },
 };
 const PROVIDER_SCHEMA = {
@@ -190,7 +191,7 @@ function build(rec, tunablesFor, withUser) {
     };
   }
   const headers = /** @type {Record<string, string>} */ (Object.fromEntries(Object.entries(v.headers ?? {}).filter(([, x]) => typeof x === 'string')));
-  return { id: rec.id, plugin: rec.plugin, name: v.name || rec.plugin, baseUrl: v.baseUrl ?? '', headers, keyHeader: v.keyHeader ?? '', abilities, free: v.free === true };
+  return { id: rec.id, plugin: rec.plugin, name: v.name || rec.plugin, baseUrl: v.baseUrl ?? '', headers, keyHeader: v.keyHeader ?? '', abilities, free: v.free === true, local: v.local === true };
 }
 
 /** The provider as settings and calls see it. @param {ProviderRecord} rec @param {(type: string) => Record<string, any>} [tunablesFor] the type's tunable defaults @returns {Provider} */
