@@ -551,8 +551,9 @@ export class Halves {
     return this.live.tap();
   }
 
-  /** The user's Try again: the half that talks answers their last message. */
+  /** The user's Try again: the half that talks answers their last message; a Stop holds no more, as when they write again. */
   tryAgain() {
+    this.#stopped.on = this.#stopHeld = false;
     this.talking.tryAgain();
   }
 
