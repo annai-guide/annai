@@ -72,6 +72,10 @@ export class LiveKoe {
   #input = null;
   /** Speaking may cut her off now: "Cut her off by speaking" is on, and the microphone in use is headphones' or the car's. */
   #duplex = false;
+  /** It follows the audio devices coming and going. */
+  #devices = false;
+  /** Why it closes once Koe's sentence has ended (Auto turned voice off), the microphone closed already. @type {string | null} */
+  #closing = null;
   /** @type {any} */
   #stall = null;
   /** When the user's turn began; the pause that ends a sentence. */
@@ -156,6 +160,11 @@ export class LiveKoe {
   }
 
   #changed() {
+    if (this.#closing && !this.#sounding && !this.#t) {
+      const why = this.#closing;
+      this.#closing = null;
+      return this.close(why);
+    }
     if (!this.busy) for (const fn of this.#idlers.splice(0)) fn();
     this.c.changed();
   }
@@ -275,6 +284,15 @@ export class LiveKoe {
     this.c.release();
     this.#inRate = this.#s.audioIn.rate; // what is said is kept at it too
     this.#duplex = false; // half-duplex until the microphone in use says otherwise
+    if (!this.#devices) {
+      this.#devices = true;
+      // AirPods taken out: half-duplex at once, before the route is read again (review S1).
+      p.onDeviceChange?.(() => {
+        if (!this.#input) return;
+        this.#duplex = false;
+        this.#route();
+      });
+    }
     this.#input = new LiveInput({
       mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding), duplex: () => this.#duplex,
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
@@ -307,6 +325,7 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
+    this.#closing = null;
     if (forget) {
       this.#handle = undefined;
       this.#notes = [];
@@ -349,6 +368,21 @@ export class LiveKoe {
     this.modelId = null;
     if (this.#toldOpen) this.c.told('live-closed');
     this.#toldOpen = false;
+    this.#changed();
+  }
+
+  /**
+   * Closes once Koe's sentence has ended, whole: the microphone closes now, and nothing more goes in (Auto turning voice off as
+   * AirPods come out, review S1). @param {string} why
+   */
+  closeSoon(why) {
+    if (this.state === 'closed' || !(this.#sounding || this.#t)) return this.close(why);
+    this.#closing = why;
+    const input = this.#input;
+    this.#input = null;
+    this.listening = false;
+    clearTimeout(this.#stall);
+    input?.stop();
     this.#changed();
   }
 
@@ -768,7 +802,7 @@ export class LiveKoe {
    * reconnects with its handle first, as what goes into it now would be answered there and lost.
    */
   #idle() {
-    if (this.busy || !this.#s) return;
+    if (this.busy || !this.#s || this.#closing) return;
     if (this.#rotate) return void this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
     const o = this.#owed;
     const text = [...this.#notes.splice(0), ...o.waiting.map((w) => wrapNote(String(w.note ?? ''), this.c.nonce)), ...(o.cue ? [CUE] : [])];

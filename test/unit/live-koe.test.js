@@ -181,6 +181,62 @@ for (const [where, devices, input] of /** @type {const} */ ([
   });
 }
 
+// Review S1: AirPods taken out mid-session.
+test('AirPods taken out while she speaks: at once half-duplex, so her voice from the speaker never cuts her off (voice On)', async () => {
+  const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
+  const k = await liveKit([{ said: words, audio: tone(2.5) }], { pace: 1 });
+  try {
+    const phone = { kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' };
+    k.platform.streamSpeed = 1;
+    k.platform.setDevices([phone, { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'pods' }]);
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await new Promise((r) => setTimeout(r, 50)); // the route read: headphones, so cutting in by voice is on
+    k.platform.mic.feed(quiet(1), 16_000);
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.agent.live.view.name === 'speaking');
+    // Out they come: the phone's microphone and speaker now, and her voice comes back into it.
+    k.platform.input = { label: 'iPhone Microphone', deviceId: 'phone' };
+    k.platform.setDevices([phone]);
+    k.platform.echoDb = 0;
+    await until(() => k.agent.live.view.name !== 'speaking', 6000);
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+    await new Promise((r) => setTimeout(r, 500));
+    const [said] = await k.events(['out.speak']);
+    assert.equal(said.data.cut, undefined, said.data.text);
+    assert.ok(!got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
+  } finally {
+    await k.done();
+  }
+});
+
+test('Auto, AirPods taken out while she speaks: voice goes off, as Auto says on the speaker, but her sentence ends whole before the session closes, and the microphone closes at once', async () => {
+  const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
+  const k = await liveKit([{ said: words, audio: tone(1.5) }], { pace: 1, voice: { mode: 'auto' } });
+  try {
+    const phone = { kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' };
+    k.platform.streamSpeed = 1;
+    k.platform.setDevices([phone, { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'pods' }]);
+    await until(() => k.voice.on);
+    await k.voice.unlock();
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.agent.live.view.name === 'speaking');
+    k.platform.input = { label: 'iPhone Microphone', deviceId: 'phone' };
+    k.platform.setDevices([phone]);
+    await until(() => !k.voice.on);
+    await until(() => !k.agent.live.listening, 1000);
+    await until(() => k.agent.live.state === 'closed', 6000);
+    const [said] = await k.events(['out.speak']);
+    assert.equal(said.data.text, words);
+    assert.equal(said.data.cut, undefined);
+    assert.ok(!k.platform.streams[0].stopped, 'played to its end');
+  } finally {
+    await k.done();
+  }
+});
+
 test('with "Keep voice clips", what was said live is kept with its line, in the smallest format the phone makes and plays', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'Tacos.', audio: tone(0.2) }], { voice: { keepClips: true, encoder: { makes: ['ogg'] }, plays: ['ogg', 'mp3', 'wav'] } });
   try {

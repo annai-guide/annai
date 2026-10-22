@@ -181,3 +181,13 @@ test('while the microphone is open, the route is the one input in use (its label
     ['headphones', null, 'iPhone Microphone + AirPods Pro'],
   ], 'each change once, in this device\'s own scope (never exported)');
 });
+
+test('an input in use that is no longer among the devices (AirPods taken out, its track still named for them) is unknown, not headphones (review S1)', async () => {
+  const k = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }, { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'pods' }]);
+  k.platform.snapshot = true;
+  const mic = await k.platform.mic.open({ onFrames: () => {}, onError: () => {} });
+  assert.equal(await k.voice.route(), 'headphones');
+  k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }]);
+  assert.equal(await k.voice.route(), 'unknown');
+  mic.close();
+});
