@@ -80,7 +80,7 @@ test("today's 22 templates are all somewhere: models, prices, notes and roles ke
   assert.deepEqual((await official('provider-groq')).provider.abilities.transcription.models?.[0].prices, { perMinute: 0.000667, minSeconds: 10 });
   // The notes, merged where three templates became one.
   assert.match(or.provider.note ?? '', /Free models allow 50 requests a day/);
-  assert.match(or.provider.abilities.voice.note ?? '', /put one in the model's Voice/);
+  assert.match(or.provider.abilities.voice.note ?? '', /suggested in the model's Voice/);
   assert.match((await official('provider-openai')).provider.abilities.chat.note ?? '', /call tools only through Responses/);
   assert.match((await official('provider-gemini')).provider.note ?? '', /Gemini's own API/);
   assert.match((await official('provider-local-speech')).provider.note ?? '', /needs an HTTPS address/);
@@ -91,6 +91,34 @@ test("today's 22 templates are all somewhere: models, prices, notes and roles ke
     recommended: { main: ['anthropic/claude-sonnet-5.5'], utility: ['anthropic/claude-haiku-5.5'], decide: ['anthropic/claude-haiku-5.5'], 'speech-in': ['openai/whisper-large-v3-turbo'], 'speech-out': ['fish-audio/s2.1-pro-free:free', 'x-ai/grok-voice-tts-1.0'] },
   });
   assert.deepEqual((await official('provider-openai')).provider.roles?.recommended, { main: ['gpt-6.1-sol'], utility: ['gpt-6-luna'], decide: ['gpt-6-luna'], 'speech-in': ['gpt-transcribe'], 'speech-out': ['gpt-4o-mini-tts'] });
+});
+
+test("every official voice model has one fixed voice, never the provider's pick; a model that takes a style has one, a model that doesn't says so (phone1-voices)", async () => {
+  const LAURA = 'e3cd384158934cc9a01029cd7d278634';
+  const STYLE = 'calm, warm and friendly';
+  /** @param {string} id @returns {Promise<Record<string, any>>} */
+  const voiceModels = async (id) => Object.fromEntries(((await official(id)).provider.abilities.voice.models ?? []).map((m) => [m.providerId, m.tunables ?? {}]));
+  const or = await voiceModels('provider-openrouter');
+  const oai = await voiceModels('provider-openai');
+  const gem = await voiceModels('provider-gemini');
+  assert.deepEqual(or['fish-audio/s2.1-pro-free:free'], { voice: LAURA, style: STYLE }, "a Fish Audio library voice (Laura): with none, Fish Audio picks another speaker for each request");
+  for (const id of ['x-ai/grok-voice-tts-1.0', 'mistralai/voxtral-mini-tts-2603', 'hexgrad/kokoro-82m']) assert.equal(or[id].styled, false, `${id}: OpenRouter's audio docs: only OpenAI's mini TTS, Gemini and Fish Audio take instructions`);
+  assert.deepEqual({ ...oai['gpt-4o-mini-tts'], voices: undefined }, { voice: 'marin', style: 'Speak in a calm, warm and friendly tone.', voices: undefined });
+  assert.equal(oai['tts-1'].styled, false);
+  assert.equal(oai['tts-1-hd'].styled, false);
+  assert.equal(oai['tts-1'].voices.length, 9, "tts-1's smaller set");
+  assert.equal(oai['gpt-4o-mini-tts'].voices.length, 13);
+  for (const m of ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts']) assert.deepEqual(gem[m], { voice: 'Sulafat', style: STYLE }, 'Google\'s warm voice, and a style short enough to send each time');
+  for (const [name, models] of Object.entries({ openrouter: or, openai: oai, gemini: gem })) {
+    for (const [id, t] of Object.entries(models)) {
+      assert.ok(t.voice, `${name}/${id}: a voice`);
+      if (t.voices) assert.ok(t.voices.includes(t.voice), `${name}/${id}: its voice is one of its list`);
+      if (t.styled !== false) assert.ok(t.style, `${name}/${id}: takes a style, so has one`);
+      else assert.equal(t.style, undefined, `${name}/${id}: no style where none is taken`);
+    }
+  }
+  const local = /** @type {any} */ ((await official('provider-local-speech')).provider.abilities.voice);
+  assert.deepEqual(local.modelDefaults, { tunables: { styled: false } }, 'Kokoro and Speaches take no style');
 });
 
 test('Anthropic, OpenRouter and OpenAI chat models list their web tools; Responses models carry their reasoning maps (spec §9.3, §9.5)', async () => {
@@ -171,9 +199,9 @@ test("OpenRouter's speech abilities: OpenAI-style requests to its audio API with
   assert.equal(seen[1].url, 'https://openrouter.ai/api/v1/audio/speech');
   assert.equal(seen[1].headers['X-Title'], 'annai');
   assert.deepEqual(JSON.parse(seen[1].body), { model: 'x-ai/grok-voice-tts-1.0', input: 'Bixby Bridge is two miles ahead.', voice: 'ara', response_format: 'mp3' });
-  // Its free voice is asked for its default voice by sending none (the user, 2026-10-18).
+  // Its free voice is asked for one fixed voice and a style (phone1-voices): with none, Fish Audio picks another speaker each time.
   await llm.synthesize({ modelId: by('fish-audio/s2.1-pro-free:free'), text: 'Hello.' });
-  assert.deepEqual(JSON.parse(seen[2].body), { model: 'fish-audio/s2.1-pro-free:free', input: 'Hello.', response_format: 'mp3' });
+  assert.deepEqual(JSON.parse(seen[2].body), { model: 'fish-audio/s2.1-pro-free:free', input: 'Hello.', voice: 'e3cd384158934cc9a01029cd7d278634', response_format: 'mp3', instructions: 'calm, warm and friendly' });
   // Plain /models leaves speech models out; its lists by output_modalities have them, with their names.
   assert.deepEqual(await llm.listModels(id, 'transcription'), [{ providerId: 'openai/whisper-large-v3-turbo', name: 'OpenAI: Whisper Large V3 Turbo' }, { providerId: 'x-ai/grok-stt-1.0', name: 'SpaceXAI: Grok STT 1.0' }]);
   assert.equal(seen[3].url, 'https://openrouter.ai/api/v1/models?output_modalities=transcription');
@@ -183,6 +211,10 @@ test("OpenRouter's speech abilities: OpenAI-style requests to its audio API with
   const { addListedModel } = await import('../../src/core/llm/providers.js');
   const listed = await addListedModel(k, id, 'chat', { providerId: 'some/new-model' });
   assert.deepEqual(modelOf((await readConfig(k.ws)).models[listed]).providerTools.map((t) => t.id), ['openrouter-web-search']);
+  // A voice added from the speech list keeps the voices OpenRouter lists for it, for its Voice field, and that Grok ignores a style (phone1-voices).
+  const [grok] = await llm.listModels(id, 'voice');
+  const grokId = await addListedModel(k, id, 'voice', grok);
+  assert.deepEqual(modelOf((await readConfig(k.ws)).models[grokId]).tunables, { voices: ['eve', 'ara'], styled: false });
 });
 
 test('catalogFacts: abilities in order, free from zero prices, local, code, the category derived when it is absent', async () => {
@@ -305,10 +337,10 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
   }
 });
 
-test('provider-gemini 2.2.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
+test('provider-gemini 2.3.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.2.0');
+  assert.equal(m.version, '2.3.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");

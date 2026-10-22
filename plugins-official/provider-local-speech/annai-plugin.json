@@ -1,7 +1,7 @@
 {
   "id": "provider-local-speech",
   "name": "Local speech server",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "api": 1,
   "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
   "category": "speech",
@@ -41,7 +41,12 @@
         "kind": "voice",
         "type": "openai-speech",
         "baseUrl": "http://localhost:8880/v1",
-        "note": "Kokoro or Speaches, at its own address. Add a voice model by id.",
+        "note": "Kokoro or Speaches, at its own address. Add a voice model by id, and put one of its voices in the model's Voice (Kokoro's are such as af_heart). They take no Style: it is kept, not sent; remove \"styled\": false from a model's tunables for a server that does.",
+        "modelDefaults": {
+          "tunables": {
+            "styled": false
+          }
+        },
         "tunables": {
           "audioOut": [
             "mp3",

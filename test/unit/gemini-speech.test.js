@@ -42,7 +42,7 @@ test('the plugin registers chat, transcription and voice types (G3)', () => {
   assert.deepEqual([...types.keys()], ['gemini', 'gemini-transcription', 'gemini-speech']);
   assert.deepEqual([hear.name, hear.speech, say.name, say.speech], ['Gemini API transcription', 'in', 'Gemini API voice', 'out']);
   assert.deepEqual(hear.tunables, { audioIn: ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'], language: '' });
-  assert.deepEqual(say.tunables, { voice: 'Kore', format: 'pcm24', stream: true });
+  assert.deepEqual(say.tunables, { voice: 'Sulafat', style: '', format: 'pcm24', stream: true });
   assert.equal(typeof say.readSpeechStream, 'function');
 });
 
@@ -98,7 +98,7 @@ test('speechRequest: full quality is 24 kHz PCM; phone quality is μ-law at 8 kH
     model: 'gemini-3.8-flash-lite-tts', store: false, stream: true,
     input: [{ type: 'user_input', content: [{ type: 'text', text: 'Your train leaves at nine fifteen.' }] }],
     response_format: { type: 'audio', mime_type: 'audio/l16', sample_rate: 24000 },
-    generation_config: { speech_config: [{ voice: 'Kore' }] },
+    generation_config: { speech_config: [{ voice: 'Sulafat' }] },
   });
   assert.equal(`${r.url}${r.body}`.includes(KEY), false);
   const phone = JSON.parse(say.speechRequest({ ...spec(say, 'gemini-3.8-flash-tts', { format: 'mulaw8', voice: 'Leda', stream: false }), text: 'Hi.' }).body);
@@ -106,6 +106,49 @@ test('speechRequest: full quality is 24 kHz PCM; phone quality is μ-law at 8 kH
   assert.deepEqual(phone.generation_config.speech_config, [{ voice: 'Leda' }]);
   assert.equal(phone.stream, true, 'streamed even when the switch is off: the whole clip comes sooner read from a stream (measured 1.1 s against 1.5–1.9 s)');
   assert.deepEqual(JSON.parse(say.speechRequest({ ...spec(say, 'x-tts', { format: 'auto' }), text: 'Hi.' }).body).response_format.mime_type, 'audio/l16', 'a format it has no name for: full quality');
+});
+
+test("voice settings (phone1-voices): the voice always goes, the style as Google's speech_metadata annotation on the text (Gemini 3.8 TTS), folded into the text for the older models", () => {
+  const body = (/** @type {string} */ id, /** @type {any} */ t, text = 'Your train leaves at nine fifteen.') => JSON.parse(say.speechRequest({ ...spec(say, id, t), text }).body);
+  const item = (/** @type {any} */ b) => b.input[0].content[0];
+  // Google's REST example for single-speaker TTS (ai.google.dev/gemini-api/docs/speech-generation, 2026-10-22).
+  assert.deepEqual(item(body('gemini-3.8-flash-lite-tts', { voice: 'Sulafat', style: 'calm, warm and friendly' })), {
+    type: 'text', text: 'Your train leaves at nine fifteen.', annotations: [{ type: 'speech_metadata', style: 'calm, warm and friendly' }],
+  });
+  assert.deepEqual(body('gemini-3.8-flash-tts', { voice: 'Sulafat', style: 'x' }).generation_config, { speech_config: [{ voice: 'Sulafat' }] });
+  // No style: nothing is added, so the request stays as small and as alike as it was.
+  for (const style of ['', '  ', undefined, null]) assert.deepEqual(item(body('gemini-3.8-flash-lite-tts', { style })), { type: 'text', text: 'Your train leaves at nine fifteen.' });
+  assert.equal(item(body('gemini-3.8-flash-lite-tts', { style: ' calm ' })).annotations[0].style, 'calm', 'trimmed');
+  // The older models (2.5 and 3.1) are told in the text, as Google's older guide did ("Say cheerfully: …"); no annotation they might not know.
+  for (const id of ['gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts']) {
+    assert.deepEqual(item(body(id, { style: 'calmly' })), { type: 'text', text: 'Say calmly: Your train leaves at nine fifteen.' }, id);
+  }
+  for (const id of ['gemini-3.8-flash-tts', 'gemini-3.10-flash-tts', 'gemini-4-flash-tts', 'models/gemini-3.8-flash-tts']) assert.ok(item(body(id, { style: 'calmly' })).annotations, id);
+  assert.equal(body('gemini-3.8-flash-lite-tts', { voice: '' }).generation_config.speech_config[0].voice, 'Sulafat', 'an empty voice is the default');
+  assert.equal(body('gemini-3.8-flash-lite-tts', { voice: 'Achird' }).generation_config.speech_config[0].voice, 'Achird');
+});
+
+test("replays the real Gemini calls (2026-10-22, test/fixtures/voices): the request annai builds is the one Google took, its stream reads as 24 kHz PCM, and the older model's refusal of audio/l16 is its own", async () => {
+  const f = (/** @type {string} */ name) => readFile(new URL(`../fixtures/voices/${name}`, import.meta.url), 'utf8');
+  const text = 'Welcome to Kyoto. Your hotel is two blocks from the station, and the evening light on the river is lovely.';
+  assert.deepEqual(JSON.parse(say.speechRequest({ ...spec(say, 'gemini-3.8-flash-lite-tts', { voice: 'Sulafat', style: 'calm, warm and friendly' }), text }).body), JSON.parse(await f('gemini-tts-style-sulafat.request.json')));
+  const pieces = await all(say.readSpeechStream(sse(await f('gemini-tts-style-sulafat.sse')), spec(say, 'gemini-3.8-flash-lite-tts')));
+  assert.equal(pieces.length, 3);
+  assert.deepEqual([...new Set(pieces.map((p) => p.rate))], [24000]);
+  // Gemini 3.1 Flash TTS Preview took the style in the text, but refused audio/l16 (this annai's request for the voice): a refusal, in its words.
+  const folded = JSON.parse(await f('gemini-tts-31-folded.request.json'));
+  const asked = JSON.parse(say.speechRequest({ ...spec(say, 'gemini-3.1-flash-tts-preview', { voice: 'Sulafat', style: 'calm, warm and friendly' }), text }).body);
+  assert.deepEqual({ ...asked, response_format: folded.response_format }, folded, 'the same request, but for the sound format it asked for');
+  assert.equal(folded.input[0].content[0].text, `Say calm, warm and friendly: ${text}`);
+  const refused = await f('gemini-tts-31-l16-refused-400.json');
+  assert.match(JSON.parse(refused).error.message, /AUDIO_L16 is not supported for models\/gemini-3\.1-flash-tts-preview/);
+});
+
+test("the type lists Google's 30 prebuilt voices for the Voice field, Sulafat (warm) among them", () => {
+  assert.equal(say.voices.length, 30);
+  assert.equal(new Set(say.voices).size, 30);
+  for (const v of ['Kore', 'Sulafat', 'Achird', 'Vindemiatrix', 'Zephyr']) assert.ok(say.voices.includes(v), v);
+  assert.equal(say.voices[0], 'Zephyr', "in Google's order");
 });
 
 test('readSpeechStream: each audio delta as 16-bit PCM at its rate, as it comes; μ-law decoded, at the rate Google says it sent', async () => {

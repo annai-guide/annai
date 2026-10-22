@@ -8,7 +8,7 @@ It must be served over HTTPS: a deployed preview, or the dev server through `tai
 - [ ] iPhone, installed app: the same button opens OpenRouter, and annai asks you to paste the code OpenRouter shows. Copy it, paste it, tap Connect: you're signed in.
 - [ ] iPhone, in a Safari tab (not installed): the sign-in comes back to annai by itself.
 - [ ] After either sign-in, a card says what was set up. Models lists OpenRouter, OpenRouter: transcription and OpenRouter: voice. Speech in reads Send audio to the model, Phone dictation, then OpenAI: Whisper Large V3 Turbo; Speech out reads Browser voice, Fish Audio: S2.1 Pro Free (free), then SpaceXAI: Grok Voice TTS 1.0 (Ara).
-- [ ] Without credits: on OpenRouter: voice, open Fish Audio: S2.1 Pro Free and Play a sample. It speaks in Fish Audio's default voice, and the Trace shows the request.
+- [ ] Without credits: on OpenRouter: voice, open Fish Audio: S2.1 Pro Free and Play a sample. It speaks in one calm, warm woman's voice (Laura), the same each time you play it; the page has her Voice (a Fish Audio library id) and the Style, and the Trace shows the request. Empty the Voice and play it a few times: Fish Audio picks another speaker each time. Put her id back (e3cd384158934cc9a01029cd7d278634).
 - [ ] With credits at OpenRouter: on OpenRouter: voice, open the Grok voice and Play a sample; on OpenRouter: transcription, open Whisper and Say something. Without credits, each says the account is out of credit.
 - [ ] iPhone: wait more than 10 minutes before pasting a code: annai says the code works once, for 10 minutes, and a new tap gets a new one.
 

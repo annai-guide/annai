@@ -16,6 +16,11 @@ import { levelsFor } from './levels.js';
  *   annai plays once it won't stutter; readSpeech gives the whole clip as WAV (the stream switch off).
  */
 export const INSTRUCTION = 'Transcribe this speech exactly, in its own language. Output only the words.';
+/** Google's 30 prebuilt voices, in its order (its voice options table, 2026-10-22), for the Voice field. */
+const VOICES = ['Zephyr', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Leda', 'Orus', 'Aoede', 'Callirrhoe', 'Autonoe', 'Enceladus', 'Iapetus', 'Umbriel', 'Algieba', 'Despina', 'Erinome',
+  'Algenib', 'Rasalgethi', 'Laomedeia', 'Achernar', 'Alnilam', 'Schedar', 'Gacrux', 'Pulcherrima', 'Achird', 'Zubenelgenubi', 'Vindemiatrix', 'Sadachbia', 'Sadaltager', 'Sulafat'];
+/** The models whose guide has the style in the text (2.5 and 3.1); from 3.8, it is speech_metadata. */
+const IN_TEXT = /(?:^|-)(?:2\.\d|3\.[0-7])(?:-|$)/;
 /** The voice's qualities, as Google is asked for them. @type {Record<string, { mime_type: string, sample_rate: number }>} */
 const FORMATS = { pcm24: { mime_type: 'audio/l16', sample_rate: 24000 }, mulaw8: { mime_type: 'audio/mulaw', sample_rate: 8000 } };
 /** @param {unknown} x @returns {x is Record<string, any>} */
@@ -169,9 +174,10 @@ export function speechType(annai) {
     type: 'gemini-speech',
     name: 'Gemini API voice',
     speech: 'out',
-    // voice: one of Google's 30 (Kore, as measured); format: pcm24, full quality, or mulaw8, phone quality; stream: play
+    // voice: one of Google's 30; style: how she should sound, in a few words (empty: none is sent); format: pcm24, full quality, or mulaw8, phone quality; stream: play
     // as it comes, once annai's start rule says it won't stutter (G3), else each sentence whole.
-    tunables: { voice: 'Kore', format: 'pcm24', stream: true },
+    tunables: { voice: 'Sulafat', style: '', format: 'pcm24', stream: true },
+    voices: VOICES,
     // Data a minute of speech, as measured on the wire, streamed (2026-10-20): 239 KB for 3.6 s at full quality, 42 KB for 3.15 s at phone quality.
     choices: {
       format: { label: 'Sound', options: { pcm24: 'Full quality (the most data: about 4 MB a minute of speech)', mulaw8: 'Phone quality, 8 kHz (about 0.8 MB a minute)' } },
@@ -181,11 +187,15 @@ export function speechType(annai) {
     speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
       // An update reaches an annai still running its older shell, without G.711 and WAV, until a restart.
       if (!g711 || !wav) throw new Error('Gemini API voice needs a newer annai: restart annai to update it.');
+      const id = idOf(model.providerId);
+      const style = String(t.style ?? '').trim();
+      const sentence = !style ? { type: 'text', text }
+        : IN_TEXT.test(id) ? { type: 'text', text: `Say ${style}: ${text}` } : { type: 'text', text, annotations: [{ type: 'speech_metadata', style }] };
       return post(endpoint, key, {
-        model: idOf(model.providerId), store: false, stream: true,
-        input: [{ type: 'user_input', content: [{ type: 'text', text }] }],
+        model: id, store: false, stream: true,
+        input: [{ type: 'user_input', content: [sentence] }],
         response_format: { type: 'audio', ...(FORMATS[t.format] ?? FORMATS.pcm24) },
-        generation_config: { speech_config: [{ voice: String(t.voice || 'Kore') }] },
+        generation_config: { speech_config: [{ voice: String(t.voice || 'Sulafat') }] },
       });
     },
     /** @param {Response} res */

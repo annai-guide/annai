@@ -139,7 +139,7 @@ An official protocol plugin, like chat-completions or openai-responses, register
 
 **`gemini-speech` (voice):** an Interactions request to a TTS model:
 - `response_format: { type: "audio", mime_type, sample_rate }`;
-- `generation_config.speech_config` with the voice (Google's 30 voices; Kore by default, or the builder's pick for Shiori).
+- `generation_config.speech_config` with the voice (Google's 30 voices; Sulafat, the warm one, by default since phone1-voices, Kore before), and the model's style as the `speech_metadata` annotation on the text (`{ "type": "speech_metadata", "style": "calm, warm and friendly" }`, checked 2026-10-22); the 2.5 and 3.1 models get it in the text (`Say <style>: …`). No style, nothing is added.
 - **Streamed, sentence by sentence** (the user asked; measured 2026-10-19 on the free key with gemini-3.8-flash-lite-tts):
 
   | Sentence | Streamed: first audio | Whole: ready to play |

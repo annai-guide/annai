@@ -441,6 +441,15 @@ Speech travels in the smallest format both the phone and the provider handle (sp
 - **When a provider refuses** a format it was said to take, annai asks again in WAV (a transcription after any bad request; a chat model when the 400 names the audio or its format), and keeps sending that model WAV until it restarts if WAV works. A voice that refuses its format is asked for MP3, then WAV. So keep `classify` from turning such a refusal into another kind.
 - **A failed upload** (network or server) is sent again with the very same bytes: don't change the audio between attempts.
 
+### A voice's voice and style
+
+A voice model has a **voice** and a **style**, saved on its page (spec §10.1) and sent with every request, so every sentence has the same voice. A voice type reads them from its tunables, which the model's values override the ability's:
+
+- **`voice`**: the provider's voice name or id (OpenAI's `marin`, Google's `Sulafat`, a Fish Audio library voice id). Send it whenever it is set. A provider that is sent none may pick a voice for itself, and some pick another speaker for each request (Fish Audio's free voice on OpenRouter does, as the user heard and two calls on 2026-10-22 bore out), so a description gives every voice model one.
+- **`style`**: a few words on how she should sound (`calm, warm and friendly`), trimmed, sent only when it isn't empty, so the request stays small and the same each time. Each protocol sends it its own way: OpenAI's Speech API as `instructions` (the OpenAI-compatible type reads the older tunable name `instructions` too; OpenRouter passes it to Gemini and puts it in square brackets before Fish Audio's text); Gemini's voice as the `speech_metadata` annotation `{ "type": "speech_metadata", "style": … }` on the text of Gemini 3.8 TTS, whose guide has delivery there, and in the text (`Say <style>: …`) for the 2.5 and 3.1 models.
+- **`styled: false`**: this voice can't take a style (OpenAI's `tts-1` and `tts-1-hd`, Kokoro, Speaches, and OpenRouter's vendors other than OpenAI's mini TTS, Gemini and Fish Audio). A type must not send one then, and the model's page says it is kept, not sent. Unknown (not set), a style is sent: a server that has no use for the field ignores it.
+- **`voices`**: voices to suggest in the Voice field, as a list of strings (a model's tunable, such as a model list gives: OpenRouter's `supported_voices` become it), or on the type itself as `voices` (Gemini's 30). The field takes free text too.
+
 ### Streamed voices
 
 A voice type can stream (G3): give `readSpeechStream(res, c)`, an async iterable of `{ pcm, rate }` (16-bit PCM in an `Int16Array`, as the reply arrives), beside `readSpeech`, which stays for a whole clip. Gemini API's voice does, and its `readSpeech` reads the same stream whole into one WAV clip.

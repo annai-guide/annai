@@ -269,6 +269,7 @@ export function safeId(id) {
  * @property {string} name  shown in Settings
  * @property {string} pluginId  set by annai
  * @property {Record<string, any>} [tunables]  defaults for the type's tunables (spec §9.2)
+ * @property {string[]} [voices]  a voice type's own voices, suggested in a model's Voice field (a model's own `voices` tunable, such as a provider's list gives, comes first)
  * @property {boolean} [tail]  true when build() places request.tail; else annai adds it as the last text
  * @property {(c: CallSpec) => { url: string, headers: Record<string, string>, body: any }} [build]  the HTTP request for annai's request
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response

@@ -1,0 +1,26 @@
+{
+  "model": "gemini-3.1-flash-tts-preview",
+  "store": false,
+  "stream": true,
+  "input": [
+    {
+      "type": "user_input",
+      "content": [
+        {
+          "type": "text",
+          "text": "Say calm, warm and friendly: Welcome to Kyoto. Your hotel is two blocks from the station, and the evening light on the river is lovely."
+        }
+      ]
+    }
+  ],
+  "response_format": {
+    "type": "audio"
+  },
+  "generation_config": {
+    "speech_config": [
+      {
+        "voice": "Sulafat"
+      }
+    ]
+  }
+}

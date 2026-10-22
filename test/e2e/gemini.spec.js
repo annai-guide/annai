@@ -121,7 +121,7 @@ test("Gemini's voice and transcription (G3): a sample streams Google's PCM throu
     await expect(voice.getByText('It works: that was this voice.')).toBeVisible({ timeout: 20_000 });
     // The Test is the ability's first model's, whichever of the two TTS models that is.
     expect(['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts']).toContain(voiceBodies()[0].model);
-    expect(voiceBodies()[0]).toMatchObject({ stream: true, store: false, response_format: { type: 'audio', mime_type: 'audio/l16', sample_rate: 24000 }, generation_config: { speech_config: [{ voice: 'Kore' }] } });
+    expect(voiceBodies()[0]).toMatchObject({ stream: true, store: false, response_format: { type: 'audio', mime_type: 'audio/l16', sample_rate: 24000 }, generation_config: { speech_config: [{ voice: 'Sulafat' }] } });
     expect(voiceBodies()[0].input[0].content[0].text).toContain('This is how I sound');
     const first = await streamed();
     expect(first).toBeGreaterThan(0);

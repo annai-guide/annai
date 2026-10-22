@@ -1,0 +1,34 @@
+{
+  "model": "gemini-3.8-flash-lite-tts",
+  "store": false,
+  "stream": true,
+  "input": [
+    {
+      "type": "user_input",
+      "content": [
+        {
+          "type": "text",
+          "text": "Welcome to Kyoto. Your hotel is two blocks from the station, and the evening light on the river is lovely.",
+          "annotations": [
+            {
+              "type": "speech_metadata",
+              "style": "calm, warm and friendly"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "response_format": {
+    "type": "audio",
+    "mime_type": "audio/l16",
+    "sample_rate": 24000
+  },
+  "generation_config": {
+    "speech_config": [
+      {
+        "voice": "Sulafat"
+      }
+    ]
+  }
+}
