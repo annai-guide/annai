@@ -20,7 +20,7 @@
   "provider": {
     "baseUrl": "",
     "key": "optional",
-    "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on. A server that never streams sends each answer whole, so annai sees nothing of it until all of it has come: if long answers stop with \"No output started in time.\", raise the role's \"Wait for the first words\" in Settings → Models, and Settings → Voice → \"Wait for her first words\".",
+    "note": "On a phone, localhost is the phone itself. A server elsewhere on your network needs an https address, because browsers won't let an https page call plain http on the network. One simple way is Tailscale Serve, run where the server is: tailscale serve --https=8443 http://localhost:8080. The server must also allow CORS from annai.guide. A server that never streams sends each answer whole, so annai sees nothing of it until all of it has come: if long answers stop with \"No output started in time.\", raise the role's \"Wait for the first words\" in Settings → Models, and Settings → Voice → \"Wait for her first words\".",
     "abilities": {
       "chat-completions": {
         "kind": "chat",

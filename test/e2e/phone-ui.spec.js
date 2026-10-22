@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startSettled } from './helpers.js';
+import { openApp, waitForServiceWorker, startSettled, pickProvider } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-22).
 
@@ -85,3 +85,18 @@ test('Add: nothing found among tools offers no Custom provider; and "custom" fin
   await page.getByLabel('Search the catalog').fill('custom');
   await expect(page.locator('.found .card .name')).toHaveText('Custom provider');
 });
+
+// "for local llama.cpp etc, the default address is http://localhost:… we require https to work right? ... maybe put a note somewhere
+// explaining this? and suggest maybe look into tailscale serve?" (the user, 2026-10-22)
+for (const provider of ['llama.cpp', 'Ollama', 'Custom provider']) {
+  test(`${provider}'s page says what a phone, https and CORS mean for a server you run, with a tailscale serve example`, async ({ page }) => {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await pickProvider(page, provider);
+    const note = page.getByText(/On a phone, localhost is the phone itself\./);
+    await expect(note).toBeVisible();
+    await expect(note).toContainText('needs an https address, because browsers won\'t let an https page call plain http on the network');
+    await expect(note).toContainText('tailscale serve --https=8443 http://localhost:8080');
+    await expect(note).toContainText('The server must also allow CORS from annai.guide.');
+  });
+}

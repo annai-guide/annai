@@ -1,7 +1,7 @@
 {
   "id": "provider-local-speech",
   "name": "Local speech server",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "api": 1,
   "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
   "category": "speech",
@@ -20,7 +20,6 @@
     "baseUrl": "http://localhost:8000/v1",
     "key": "optional",
     "local": true,
-    "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on.",
     "abilities": {
       "transcription": {
         "kind": "transcription",
