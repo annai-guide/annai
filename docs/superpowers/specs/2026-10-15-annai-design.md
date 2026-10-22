@@ -477,7 +477,7 @@ Every tool can be switched off, except `show`, `ask`, `wait`, `sleep`, `tell_koe
 
   The agent sees a single `fetch` tool. A self-hosted fetch relay is added only if real use shows gaps.
 - **Search** goes to the search role's provider list (§9.6), or to the provider's own search tool, depending on the role's "search via" setting.
-- **PDFs** go to the model as a document when it accepts PDFs. Otherwise a model that reads PDFs tells it in words, as for photos above ("What it says (told by …, as you can't read PDFs)"; the same describers and time limit, its text word for word as far as it goes); with none, the result says so and Shiori asks for a screenshot. We don't add a PDF library, so annai doesn't read a PDF's own text.
+- **PDFs** go to the model as a document when it accepts PDFs. Otherwise a model that reads PDFs tells it in words, as for photos above ("What it says (told by …, as you can't read PDFs)"; the same describers and time limit, its text word for word as far as it goes); with none, the result says so and Shiori asks for a screenshot. Only Kokoro and one Shiori are told a PDF: Koe answers at once, so for a Koe whose model can't read it (a live Koe reads none) the result says at once "You can't read PDFs; ask Kokoro about it." We don't add a PDF library, so annai doesn't read a PDF's own text.
 
 ### 7.3 Importing a booking
 

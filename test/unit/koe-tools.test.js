@@ -108,3 +108,28 @@ test('a photo reaches Koe only when its model takes photos; otherwise a stub, an
     assert.ok(types(k.sent['model-0'][0]).includes('[the user sent a photo]'));
   }
 });
+
+// The fix pass (S4): Koe answers at once, so it never waits on a PDF being told; Kokoro reads it.
+test("Koe reads a PDF its model can't read, typing or live: told at once to ask Kokoro, and no model is asked to tell it", async () => {
+  const k = await agentKit([[sleep]], { koe: { type: [{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, sleep] }, utility: [{ text: 'Hotel booking: check-in 3 PM.' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const read = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'koe');
+  assert.equal(read.data.content, "The PDF /trip/files/booking.pdf.\nYou can't read PDFs; ask Kokoro about it.");
+  assert.equal(read.data.document, undefined);
+  const live = await k.agent.koe.liveCall({ id: 'c1', name: 'read', input: { path: '/trip/files/booking.pdf' } }, 'w1');
+  assert.equal(live.content, "The PDF /trip/files/booking.pdf.\nYou can't read PDFs; ask Kokoro about it.");
+  assert.equal(live.document, undefined);
+  assert.equal((k.sent['model-u'] ?? []).length, 0, 'nobody was asked to tell it');
+});
+
+test('a Koe whose model reads PDFs gets the PDF itself', async () => {
+  const k = await agentKit([[sleep]], { koe: { type: [{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, sleep], input: ['text', 'image', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-koe'][1].messages), /"type":"document"/);
+});
