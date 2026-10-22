@@ -34,8 +34,10 @@ const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 const REACH = ['show', 'ask', 'already_told'];
 /** Where her voice doesn't reach the microphone, so speaking may cut her off (spec §10.4): elsewhere, half-duplex. */
 const DUPLEX = ['headphones', 'car'];
-/** The user's turn ends when the model's transcript of it has stopped growing this long (a detector stuck on a room it misjudged). */
+/** A turn ends once its streamed transcript (heardLive) stops growing this long past the pause, 3 s at least, if the microphone agrees. */
 const STALL_MS = 1500;
+const STALL_MIN_MS = 3000;
+const HEARD_AFTER_MS = 1000;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 
@@ -72,6 +74,9 @@ export class LiveKoe {
   #duplex = false;
   /** @type {any} */
   #stall = null;
+  /** When the user's turn began; the pause that ends a sentence. */
+  #turnAt = 0;
+  #pauseMs = 700;
   /** Waiting for an answer: to a text turn's words, or the user's turn (null). @type {{ timer: any, text: string | null } | null} */
   #due = null;
   /** A silent session was replaced already, with no answer since: the next silence is only traced. */
@@ -263,6 +268,7 @@ export class LiveKoe {
     const p = v?.platform;
     if (this.#input || !this.#s || !p || !v.on || !this.c.visible()) return;
     const { pauseMs } = await v.settings();
+    this.#pauseMs = pauseMs;
     // A close may have come meanwhile.
     if (this.#input || !this.#s || this.state !== 'open' || !this.c.visible()) return;
     this.unmute();
@@ -546,6 +552,7 @@ export class LiveKoe {
     clearTimeout(this.#stall);
     if (edge === 'start') {
       this.#answer(undefined); // the user talks again: no answer is waited for while they do
+      this.#turnAt = Date.now();
       this.#brief = false; // the user talks: the quiet spell holds
       // The user cut in: her voice stops now, and the provider cuts its turn.
       if (this.#sounding) cut = this.#cut();
@@ -562,6 +569,16 @@ export class LiveKoe {
       this.#answer(null);
       this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
     }
+  }
+
+  /** The user's turn ends after ms with no more of its transcript, if the microphone agrees then; else it is asked again. @param {LiveInput} input @param {number} ms */
+  #stalls(input, ms) {
+    clearTimeout(this.#stall);
+    this.#stall = setTimeout(() => {
+      if (input !== this.#input || !input.active) return;
+      if (input.quietMs >= this.#pauseMs) input.cut('transcript');
+      else this.#stalls(input, Math.max(100, this.#pauseMs - input.quietMs));
+    }, ms);
   }
 
   /** @param {Uint8Array} b */
@@ -584,12 +601,7 @@ export class LiveKoe {
     if (e.type === 'heard') {
       const h = (this.#hear ??= hearing());
       h.text += e.text;
-      // While the user's turn goes on, its transcript growing says they speak; stopped for STALL_MS, they have finished.
-      if (this.#input?.active && e.text) {
-        clearTimeout(this.#stall);
-        const input = this.#input;
-        this.#stall = setTimeout(() => input.cut('transcript'), STALL_MS);
-      }
+      if (this.#input?.active && e.text && s.heardLive && Date.now() - this.#turnAt >= HEARD_AFTER_MS) this.#stalls(this.#input, Math.max(STALL_MIN_MS, this.#pauseMs + STALL_MS));
       if (h.answered) this.#flushHeard(Boolean(h.dismissed)); // the last words can come after Koe's turn: added
     } else if (e.type === 'usage') this.#over().then((over) => { if (over) this.close('budget'); }, () => {});
     else if (e.type === 'goaway') {

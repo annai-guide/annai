@@ -120,3 +120,13 @@ test("the floor and the loudest frame of the run, in dB, for the Trace", () => {
   const capped = /** @type {any} */ (detect(cat(quiet(0.5), ...Array.from({ length: 6 }, () => cat(lunch, quiet(0.2), gas, quiet(0.2)))), { maxMs: 5000 }).find((e) => e.type === 'segment'));
   assert.equal(capped.cut, 'cap');
 });
+
+test("a gate that takes the room down to near silence (not zeros) for 60 ms every half second doesn't drag the floor: speech ends at its pause, and the room after is no speech", () => {
+  let n = 7;
+  const r = () => ((n = (n * 1103515245 + 12345) >>> 0) / 2 ** 32) * 2 - 1;
+  const pcm = room(25, lunch);
+  for (let i = 0; i < pcm.length; i++) if (i / RATE > 3 + lunch.length / RATE && (i / RATE) % 0.5 < 0.06) pcm[i] = r() * 1e-4;
+  const events = detect(pcm, { maxMs: 15_000 });
+  assert.deepEqual(events.map((e) => e.type), ['speech', 'segment']);
+  assert.equal(/** @type {any} */ (events[1]).cut, 'pause');
+});

@@ -49,7 +49,9 @@ export function activate(annai) {
     realtime: true,
     // apiVersion: v1alpha has proactive audio; voice: a prebuilt voice's name ('' for Gemini's own); compression: a sliding
     // window, as Gemini bills the whole context every turn.
-    tunables: { apiVersion: 'v1alpha', proactive: true, voice: '', compression: true },
+    // heardLive: its input transcript streams in while the user speaks; with manual turns it came only after activityEnd, whole
+    // (measured 2026-10-22, gemini-3.8-live), so a transcript that stops growing says nothing about a turn going on.
+    tunables: { apiVersion: 'v1alpha', proactive: true, voice: '', compression: true, heardLive: false },
     audio: { in: [{ format: 'pcm16', rate: 16000 }], out: [{ format: 'pcm16', rate: 24000 }] },
     /** @param {any} c */
     open: ({ endpoint, key, tunables }) => ({

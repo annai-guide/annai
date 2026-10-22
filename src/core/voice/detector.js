@@ -22,6 +22,8 @@ const STEADY_FRAMES = 50; // one second
 const STEADY_DB = 3;
 const FLOOR_MIN_DB = -60;
 const SILENT_DB = -90;
+const DIP_DB = 10;
+const DIP_FRAMES = 5;
 
 /** @param {number[]} xs */
 function spread(xs) {
@@ -42,6 +44,13 @@ export class Detector {
   #energy = 0;
   /** Samples of the frame being filled that are digital silence. */
   #zeros = 0;
+  /** Frames in a row far under the floor. */
+  #dips = 0;
+  /** Frames heard, and the last one louder than markDb. */
+  #count = 0;
+  #marked = 0;
+  /** A loudness to watch for, in dB (null: none): sinceMarkMs says how long since a frame was louder. @type {number | null} */
+  markDb = null;
   /** Frames heard while waiting for speech, for the bit before it. @type {Float32Array[]} */
   #before = [];
   /** @type {boolean[]} */
@@ -89,14 +98,30 @@ export class Detector {
     return this.#floor;
   }
 
+  /** The floor put back (to where it was when a turn began, say). */
+  set floorDb(db) {
+    this.#floor = db;
+  }
+
+  /** How long since a frame louder than markDb, in ms (from when it was set). */
+  get sinceMarkMs() {
+    return (this.#count - this.#marked) * FRAME_MS;
+  }
+
+  /** Watches for frames louder than db from now. @param {number | null} db */
+  mark(db) {
+    this.markDb = db;
+    this.#marked = this.#count;
+  }
+
   /** The loudest frame of the speech going on, in dB; null with none. */
   get peakDb() {
     return this.#seg?.peak ?? null;
   }
 
-  /** Forgets any speech going on and the frames before it; the floor too, with floor. @param {{ floor?: boolean }} [o] */
-  reset({ floor = false } = {}) {
-    if (floor) this.#floor = null;
+  /** Forgets any speech going on and the frames before it; floor: the floor to go on from. @param {{ floor?: number | null }} [o] */
+  reset({ floor } = {}) {
+    if (floor !== undefined) this.#floor = floor;
     this.#seg = null;
     this.#before = [];
     this.#recent = [];
@@ -137,6 +162,8 @@ export class Detector {
 
   /** @param {Float32Array} raw @param {number} db @param {DetectorEvent[]} events */
   #step(raw, db, events) {
+    this.#count++;
+    if (this.markDb !== null && db > this.markDb) this.#marked = this.#count;
     if (db < SILENT_DB) {
       this.level = 0;
       const s = this.#seg;
@@ -161,7 +188,7 @@ export class Detector {
         this.#recent = [];
         events.push({ type: 'speech' });
       } else {
-        this.#floor += (db - this.#floor) * (db < this.#floor ? 0.2 : 0.005);
+        this.#floor += (db - this.#floor) * this.#rate(db, 0.005);
       }
       return;
     }
@@ -186,8 +213,15 @@ export class Detector {
     } else {
       s.quiet++;
     }
-    this.#floor += (db - this.#floor) * (db < this.#floor ? 0.2 : 0.002);
+    this.#floor += (db - this.#floor) * this.#rate(db, 0.002);
     if (s.quiet >= this.pauseFrames || s.frames.length >= this.maxFrames) this.#finish(events);
+  }
+
+  /** How fast the floor follows a frame: up slowly, down fast, but a dip of DIP_DB only once it has lasted DIP_FRAMES (a gate, not the room). @param {number} db @param {number} up */
+  #rate(db, up) {
+    const floor = /** @type {number} */ (this.#floor);
+    this.#dips = db < floor - DIP_DB ? this.#dips + 1 : 0;
+    return db >= floor ? up : this.#dips === 0 || this.#dips >= DIP_FRAMES ? 0.2 : 0;
   }
 
   /** @param {DetectorEvent[]} events @param {'pause' | 'cap' | 'end'} [cut] */
