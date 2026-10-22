@@ -24,6 +24,8 @@ const FLOOR_MIN_DB = -60;
 const SILENT_DB = -90;
 const DIP_DB = 10;
 const DIP_FRAMES = 5;
+/** A floor this many frames old (one second) is learned: before, it may have come from speech, and falls freely. */
+const LEARN_FRAMES = 50;
 
 /** @param {number[]} xs */
 function spread(xs) {
@@ -51,6 +53,8 @@ export class Detector {
   #zeroRun;
   /** Frames in a row far under the floor. */
   #dips = 0;
+  /** Frames with sound since the floor was set from one: a young floor (a first frame that was speech) falls freely. */
+  #learned = 0;
   /** Frames heard, and the last one louder than markDb. */
   #count = 0;
   #marked = 0;
@@ -181,7 +185,11 @@ export class Detector {
       if (s.quiet >= this.pauseFrames || s.frames.length >= this.maxFrames) this.#finish(events);
       return;
     }
-    if (this.#floor === null) this.#floor = db;
+    if (this.#floor === null) {
+      this.#floor = db;
+      this.#learned = 0;
+    }
+    this.#learned++;
     const over = db - this.#floor;
     this.level = Math.max(0, Math.min(1, over / 30));
     const s = this.#seg;
@@ -225,11 +233,14 @@ export class Detector {
     if (s.quiet >= this.pauseFrames || s.frames.length >= this.maxFrames) this.#finish(events);
   }
 
-  /** How fast the floor follows a frame: up slowly, down fast, but a dip of DIP_DB only once it has lasted DIP_FRAMES (a gate, not the room). @param {number} db @param {number} up */
+  /**
+   * How fast the floor follows a frame: up slowly, down fast; but once it is learned, a dip of DIP_DB under it only once it has lasted
+   * DIP_FRAMES (a gate, not the room). @param {number} db @param {number} up
+   */
   #rate(db, up) {
     const floor = /** @type {number} */ (this.#floor);
     this.#dips = db < floor - DIP_DB ? this.#dips + 1 : 0;
-    return db >= floor ? up : this.#dips === 0 || this.#dips >= DIP_FRAMES ? 0.2 : 0;
+    return db >= floor ? up : this.#dips === 0 || this.#dips >= DIP_FRAMES || this.#learned < LEARN_FRAMES ? 0.2 : 0;
   }
 
   /** @param {DetectorEvent[]} events @param {'pause' | 'cap' | 'end'} [cut] */

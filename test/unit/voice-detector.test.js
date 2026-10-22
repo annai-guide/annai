@@ -5,6 +5,7 @@ import { clip, quiet, brown, burst, cat, mix, detect, segments, room, RATE } fro
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
+const eat = await clip('where-eat');
 const ms = (/** @type {Float32Array} */ pcm) => (pcm.length / RATE) * 1000;
 
 test('one sentence becomes one segment: the speech, with a little before and after (spec §10.2)', () => {
@@ -139,4 +140,10 @@ test('zero samples here and there (a quiet 16-bit microphone rounds many to 0) a
   const d = new Detector({ sampleRate: RATE });
   d.push(pcm.subarray(0, RATE));
   assert.ok(d.floorDb !== null && d.floorDb > -80, `the room set the floor: ${d.floorDb}`);
+});
+
+test('a floor whose first frame was speech (a microphone that opens on a word) still finds the speech: a young floor falls freely (the dip rule waits for a learned one; Chromium\'s fake microphone in the e2e caught it)', () => {
+  const loud = eat.subarray(Math.round(eat.length * 0.3), Math.round(eat.length * 0.3) + 320); // 20 ms of a word
+  const events = detect(cat(new Float32Array(RATE / 2), loud, eat, quiet(1.5)));
+  assert.deepEqual(events.map((e) => e.type), ['speech', 'segment']);
 });
