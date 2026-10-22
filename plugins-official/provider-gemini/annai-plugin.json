@@ -1,7 +1,7 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "api": 1,
   "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
@@ -239,11 +239,12 @@
       "voice": {
         "kind": "voice",
         "type": "gemini-speech",
-        "note": "Shiori's voice, a sentence at a time, each sentence one request. It streams: she starts about half a second after a sentence is written, and on a weak connection she waits until it won't stutter. Switch streaming off to have each sentence arrive whole, as other voices do. On the free tier Google allows each of these voices only 10 requests a day and 3 a minute: far fewer than a day of replies, so after the first few sentences the next voice in the list speaks. Prices are estimates per character from Google's rate for audio, 25 tokens a second.",
+        "note": "Shiori's voice, a sentence at a time, each sentence one request. It streams: she starts about half a second after a sentence is written, and on a weak connection she waits until it won't stutter. Switch streaming off to have each sentence arrive whole, as other voices do. On the free tier Google allows each of these voices only 10 requests a day and 3 a minute: far fewer than a day of replies, so after the first few sentences the next voice in the list speaks. Prices are estimates per character from Google's rate for audio, 25 tokens a second. Her voice is Sulafat, the warm one of Google's 30 (Achird is friendly, Vindemiatrix gentle, Kore firm), and the Style goes as Google's own speech_metadata style.",
         "models": [
           {
             "providerId": "gemini-3.8-flash-lite-tts",
             "name": "Gemini 3.8 Flash Lite TTS",
+            "tunables": { "voice": "Sulafat", "style": "calm, warm and friendly" },
             "prices": {
               "perMillionChars": 10
             }
@@ -251,6 +252,7 @@
           {
             "providerId": "gemini-3.8-flash-tts",
             "name": "Gemini 3.8 Flash TTS",
+            "tunables": { "voice": "Sulafat", "style": "calm, warm and friendly" },
             "prices": {
               "perMillionChars": 15
             }

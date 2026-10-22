@@ -1,0 +1,6 @@
+{
+  "error": {
+    "message": "Audio MIME type AUDIO_L16 is not supported for models/gemini-3.1-flash-tts-preview",
+    "code": "invalid_request"
+  }
+}

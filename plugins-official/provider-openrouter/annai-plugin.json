@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "api": 1,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -372,13 +372,14 @@
             "mp3"
           ]
         },
-        "note": "Shiori's voice. Each model has voices of its own, listed on its page at openrouter.ai: put one in the model's Voice. Fish Audio's free voice speaks with its default voice. OpenRouter sends MP3 or PCM only.",
+        "note": "Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). Fish Audio's free voice is set to Laura, a voice from Fish Audio's library; with no Voice it picks another speaker for each sentence. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.",
         "models": [
           {
             "providerId": "fish-audio/s2.1-pro-free:free",
             "name": "Fish Audio: S2.1 Pro Free (free)",
             "tunables": {
-              "voice": ""
+              "voice": "e3cd384158934cc9a01029cd7d278634",
+              "style": "calm, warm and friendly"
             },
             "prices": {
               "perMillionChars": 0
@@ -388,7 +389,15 @@
             "providerId": "x-ai/grok-voice-tts-1.0",
             "name": "SpaceXAI: Grok Voice TTS 1.0 (Ara)",
             "tunables": {
-              "voice": "ara"
+              "voice": "ara",
+              "styled": false,
+              "voices": [
+                "eve",
+                "ara",
+                "rex",
+                "sal",
+                "leo"
+              ]
             },
             "prices": {
               "perMillionChars": 15
@@ -398,7 +407,40 @@
             "providerId": "mistralai/voxtral-mini-tts-2603",
             "name": "Mistral: Voxtral Mini TTS (Jane)",
             "tunables": {
-              "voice": "gb_jane_neutral"
+              "voice": "gb_jane_neutral",
+              "styled": false,
+              "voices": [
+                "en_paul_sad",
+                "en_paul_neutral",
+                "en_paul_happy",
+                "en_paul_frustrated",
+                "en_paul_excited",
+                "en_paul_confident",
+                "en_paul_cheerful",
+                "en_paul_angry",
+                "gb_oliver_neutral",
+                "gb_oliver_sad",
+                "gb_oliver_excited",
+                "gb_oliver_curious",
+                "gb_oliver_confident",
+                "gb_oliver_cheerful",
+                "gb_oliver_angry",
+                "gb_jane_sarcasm",
+                "gb_jane_confused",
+                "gb_jane_shameful",
+                "gb_jane_sad",
+                "gb_jane_neutral",
+                "gb_jane_jealousy",
+                "gb_jane_frustrated",
+                "gb_jane_curious",
+                "gb_jane_confident",
+                "fr_marie_sad",
+                "fr_marie_neutral",
+                "fr_marie_happy",
+                "fr_marie_excited",
+                "fr_marie_curious",
+                "fr_marie_angry"
+              ]
             },
             "prices": {
               "perMillionChars": 16
@@ -408,7 +450,64 @@
             "providerId": "hexgrad/kokoro-82m",
             "name": "hexgrad: Kokoro 82M (Heart, English)",
             "tunables": {
-              "voice": "af_heart"
+              "voice": "af_heart",
+              "styled": false,
+              "voices": [
+                "af_alloy",
+                "af_aoede",
+                "af_bella",
+                "af_heart",
+                "af_jessica",
+                "af_kore",
+                "af_nicole",
+                "af_nova",
+                "af_river",
+                "af_sarah",
+                "af_sky",
+                "am_adam",
+                "am_echo",
+                "am_eric",
+                "am_fenrir",
+                "am_liam",
+                "am_michael",
+                "am_onyx",
+                "am_puck",
+                "am_santa",
+                "bf_alice",
+                "bf_emma",
+                "bf_isabella",
+                "bf_lily",
+                "bm_daniel",
+                "bm_fable",
+                "bm_george",
+                "bm_lewis",
+                "ef_dora",
+                "em_alex",
+                "em_santa",
+                "ff_siwis",
+                "hf_alpha",
+                "hf_beta",
+                "hm_omega",
+                "hm_psi",
+                "if_sara",
+                "im_nicola",
+                "jf_alpha",
+                "jf_gongitsune",
+                "jf_nezumi",
+                "jf_tebukuro",
+                "jm_kumo",
+                "pf_dora",
+                "pm_alex",
+                "pm_santa",
+                "zf_xiaobei",
+                "zf_xiaoni",
+                "zf_xiaoxiao",
+                "zf_xiaoyi",
+                "zm_yunjian",
+                "zm_yunxi",
+                "zm_yunxia",
+                "zm_yunyang"
+              ]
             },
             "prices": {
               "perMillionChars": 0.62

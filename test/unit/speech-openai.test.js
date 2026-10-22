@@ -105,13 +105,76 @@ test("a list of the endpoint's own (OpenRouter lists speech models by what they 
   const s = spec(say);
   const endpoint = { ...s.endpoint, baseUrl: 'https://openrouter.ai/api/v1', headers: {}, tunables: { ...say.tunables, listPath: '/models?output_modalities=speech' } };
   assert.deepEqual(say.listRequest({ endpoint, key: 'sk-test' }), { url: 'https://openrouter.ai/api/v1/models?output_modalities=speech', headers: { authorization: 'Bearer sk-test' } });
-  assert.deepEqual(say.readList({ data: [{ id: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0' }, { id: 'tts-1', name: '' }] }),
-    [{ providerId: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0' }, { providerId: 'tts-1' }]);
-  // A voice left empty is not sent: the provider's own default voice speaks (Fish Audio's free voice on OpenRouter).
+  assert.deepEqual(say.readList({ data: [{ id: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0' }, { id: 'tts-1', name: '' }, { id: 'gpt-4o-mini-tts' }] }),
+    [{ providerId: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0', tunables: { styled: false } }, { providerId: 'tts-1', tunables: { styled: false } }, { providerId: 'gpt-4o-mini-tts' }]);
+  // A voice left empty is not sent. Fish Audio's free voice then speaks in a speaker of its own choosing, a different one
+  // each request (measured 2026-10-22), so its description names a voice.
   const fish = { ...s, model: { ...s.model, providerId: 'fish-audio/s2.1-pro-free:free', tunables: { voice: '' } }, tunables: { ...say.tunables, voice: '' } };
   assert.deepEqual(JSON.parse(say.speechRequest({ ...fish, text: 'Hi.' }).body), { model: 'fish-audio/s2.1-pro-free:free', input: 'Hi.', response_format: 'mp3' });
   // OpenRouter's error codes are numbers: its status decides the kind.
   assert.equal(say.classify(402, JSON.stringify({ error: { code: 402, message: 'Insufficient credits' } })), null);
+});
+
+test("voice settings (phone1-voices): the model's voice and style go with every request; style is OpenAI's instructions, and a legacy instructions tunable still works", () => {
+  const mini = (/** @type {any} */ t) => ({ ...spec(say), model: { id: 'm', name: 'Marin', providerId: 'gpt-4o-mini-tts', tunables: {}, extraBody: {} }, tunables: { ...say.tunables, ...t } });
+  const body = (/** @type {any} */ s) => JSON.parse(say.speechRequest({ ...s, text: 'Hi.' }).body);
+  assert.equal(say.tunables.style, '', 'a type default: no style');
+  assert.deepEqual(body(mini({ voice: 'marin', style: 'Calm and warm.' })), { model: 'gpt-4o-mini-tts', input: 'Hi.', voice: 'marin', response_format: 'mp3', instructions: 'Calm and warm.' });
+  assert.equal(body(mini({ voice: 'marin', instructions: 'Old name.' })).instructions, 'Old name.', 'a tunable saved before the Style field');
+  assert.equal(body(mini({ style: 'New.', instructions: 'Old name.' })).instructions, 'New.', 'the style wins');
+  assert.equal('instructions' in body(mini({ style: '   ' })), false, 'a blank style is not sent: the request stays small and the same');
+  assert.equal(body(mini({ style: ' Calm. ' })).instructions, 'Calm.', 'trimmed, so the same words are the same bytes');
+});
+
+test("a voice that can't take a style (styled: false: tts-1, Kokoro, Grok, Mistral) is not sent one; styled unknown (a server of the user's) is sent it", () => {
+  const body = (/** @type {any} */ t) => JSON.parse(say.speechRequest({ ...spec(say), model: { id: 'm', name: 'Nova', providerId: 'tts-1', tunables: {}, extraBody: {} }, tunables: { ...say.tunables, voice: 'nova', ...t }, text: 'Hi.' }).body);
+  assert.equal('instructions' in body({ style: 'Calm.', styled: false }), false);
+  assert.equal(body({ style: 'Calm.' }).instructions, 'Calm.');
+  assert.equal(body({ style: 'Calm.', styled: true }).instructions, 'Calm.');
+  assert.equal(body({ style: 'Calm.', styled: false }).voice, 'nova', 'the voice always goes');
+});
+
+test("a model's extraBody still wins over voice and style (spec §9.2): a user can send what annai doesn't know", () => {
+  const s = { ...spec(say), model: { id: 'm', name: 'x', providerId: 'fish-audio/s2.1-pro-free:free', tunables: {}, extraBody: { voice: 'other', instructions: null } }, tunables: { ...say.tunables, voice: 'abc', style: 'Calm.' } };
+  assert.deepEqual(JSON.parse(say.speechRequest({ ...s, text: 'Hi.' }).body), { model: 'fish-audio/s2.1-pro-free:free', input: 'Hi.', voice: 'other', response_format: 'mp3' });
+});
+
+test("OpenRouter's speech list: each model's supported_voices become its voice suggestions, and a vendor that ignores instructions is marked styled: false (OpenRouter's audio docs: only OpenAI gpt-4o-mini-tts, Gemini and Fish Audio take them)", async () => {
+  const got = say.readList({ data: [
+    { id: 'fish-audio/s2.1-pro-free:free', name: 'Fish', supported_voices: null },
+    { id: 'x-ai/grok-voice-tts-1.0', name: 'Grok', supported_voices: ['eve', 'ara'] },
+    { id: 'google/gemini-3.8-flash-tts', name: 'Gemini', supported_voices: ['Kore', 'Sulafat'] },
+    { id: 'openai/gpt-4o-mini-tts-2025-12-15', name: 'OpenAI' },
+    { id: 'tts-1' }, { id: 'gpt-4o-mini-tts' }, { id: 'kokoro' },
+    { id: 'junk/voices', supported_voices: ['ok', 7, '', 'fine'] },
+  ] });
+  const by = Object.fromEntries(got.map((/** @type {any} */ m) => [m.providerId, m]));
+  // Fish Audio's models have no voices listed and pick a speaker themselves when sent none: a listed one starts with the description's voice and style.
+  const fish = (await official('provider-openrouter')).provider.abilities.voice.models.find((/** @type {any} */ m) => m.providerId === 'fish-audio/s2.1-pro-free:free').tunables;
+  assert.deepEqual(by['fish-audio/s2.1-pro-free:free'], { providerId: 'fish-audio/s2.1-pro-free:free', name: 'Fish', tunables: fish });
+  assert.deepEqual(by['x-ai/grok-voice-tts-1.0'].tunables, { voices: ['eve', 'ara'], styled: false });
+  assert.deepEqual(by['google/gemini-3.8-flash-tts'].tunables, { voices: ['Kore', 'Sulafat'] });
+  assert.equal(by['openai/gpt-4o-mini-tts-2025-12-15'].tunables, undefined);
+  assert.deepEqual(by['tts-1'].tunables, { styled: false });
+  assert.equal(by['gpt-4o-mini-tts'].tunables, undefined);
+  assert.equal(by.kokoro.tunables, undefined, 'a server of the user\'s: unknown, so a style is sent');
+  assert.deepEqual(by['junk/voices'].tunables, { voices: ['ok', 'fine'], styled: false });
+  assert.deepEqual(hear.readList({ data: [{ id: 'x/y', supported_voices: ['a'] }] }), [{ providerId: 'x/y' }], 'transcription lists have no voices');
+});
+
+test('replays the real OpenRouter calls to Fish Audio free (2026-10-22, test/fixtures/voices): the requests annai builds are the ones that were sent, and the clip reads as MP3', async () => {
+  const fx = JSON.parse(await readFile(new URL('../fixtures/voices/openrouter-fish-free.json', import.meta.url), 'utf8'));
+  const LAURA = 'e3cd384158934cc9a01029cd7d278634';
+  const s = (/** @type {any} */ t) => ({ ...spec(say), endpoint: { ...spec(say).endpoint, baseUrl: 'https://openrouter.ai/api/v1', headers: {} }, model: { id: 'm', name: 'Fish', providerId: 'fish-audio/s2.1-pro-free:free', tunables: {}, extraBody: {} }, tunables: { ...say.tunables, ...t } });
+  const built = (/** @type {any} */ t, /** @type {string} */ text) => JSON.parse(say.speechRequest({ ...s(t), text }).body);
+  const { requests: r } = fx;
+  assert.deepEqual(built({ voice: '' }, r.noVoice.input), r.noVoice, 'what the user had before: no voice, and Fish Audio chose one');
+  assert.deepEqual(built({ voice: LAURA }, r.voice.input), r.voice);
+  assert.deepEqual(built({ voice: LAURA, style: 'calm, warm and friendly' }, r.voiceAndStyle.input), r.voiceAndStyle);
+  assert.deepEqual(built({ voice: LAURA, style: 'calm, warm and friendly' }, r.voiceAndStyleOtherText.input), r.voiceAndStyleOtherText);
+  const clip = await say.readSpeech(new Response(Buffer.from(fx.response.clipBase64, 'base64'), { headers: { 'content-type': fx.response.contentType } }), s({}));
+  assert.equal(clip.mediaType, 'audio/mpeg');
+  assert.equal(clip.data.length, 1500);
 });
 
 const root = new URL('../../', import.meta.url);

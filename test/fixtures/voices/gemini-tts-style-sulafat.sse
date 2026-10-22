@@ -1,0 +1,27 @@
+event: interaction.created
+data: {"interaction":{"object":"interaction","model":"gemini-3.8-flash-lite-tts"},"event_type":"interaction.created"}
+
+event: interaction.status_update
+data: {"status":"in_progress","event_type":"interaction.status_update"}
+
+event: step.start
+data: {"index":0,"step":{"type":"model_output"},"event_type":"step.start"}
+
+event: step.delta
+data: {"index":0,"delta":{"mime_type":"audio/l16","data":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAA","channels":1,"sample_rate":24000,"type":"audio"},"event_type":"step.delta"}
+
+event: step.delta
+data: {"index":0,"delta":{"mime_type":"audio/l16","data":"GAATACgAGAATAAYA/f8OABsAFQANABcA8v8aAPX/CgALAAAADwAGAP3/CQDx/wQADgD5/yMAEwAdABAACwAZAA4ADwALABYAHAABABQAGwAFAA0A9/8EAAYAAQAFABAAAwD1/wsADgAPACcAFwAQAAoAAAD6/w8A/P8EAAMABAAJAO///v8TAAYA8//0//f/+P8AAP3/7v/x//v//f/7//r/6v/u//7/8f/2/woA7v8SAPH//v/8/wQA8v/3/+r//f/6/+//8P/x//n/7/8DAAYAAAD+//D/4f8MAOP/AQABAAgA6//0/+n/6P/g//L/8//v//b/8P/2/+n/8//9/wAA8v8MAOP/AAD2//P/5P/5//T/7P8FAPz/5v8JAO3/CQAAAPX/CQAHAPH/","channels":1,"sample_rate":24000,"type":"audio"},"event_type":"step.delta"}
+
+event: step.delta
+data: {"index":0,"delta":{"mime_type":"audio/l16","data":"AwAQACQAFwACAP7/EQADAA0ABAD4//X/BQAdABYAHgAeACAALgAeABIAEAAJAAoAFQAFAB0AHwANAAIAFwAVAPf/BgAXABIAEAAKACUAEwAZABYAJgASAPj/+P8TAA8ACwAMAPP/BQAGAPn/5f8CAAoA9v8LAOv/+//1//n/AQAMAAEAAgAIAAwADAAcAP//8v8MAPn/BQALAAMABAAXAAgAEwAGABwADQAUACUABgADABAAAQANAOj/BwADAP//AADs/wwA9//0//n/8//r////BwD5//r/6v/e/9r/DAD7/+r/5P/9/+3/3v/Z/+//9//b/97/9//u/+f//v/i//n/5P/p/+n/6P/5//b/7v/h/+D/6f/b/9j/5P/o////7f/0//L/6//f/9n/","channels":1,"sample_rate":24000,"type":"audio"},"event_type":"step.delta"}
+
+event: step.stop
+data: {"index":0,"event_type":"step.stop"}
+
+event: interaction.completed
+data: {"interaction":{"status":"completed","usage":{"total_tokens":227,"total_input_tokens":24,"input_tokens_by_modality":[{"modality":"text","tokens":24}],"total_cached_tokens":0,"total_output_tokens":203,"output_tokens_by_modality":[{"modality":"audio","tokens":203}],"total_tool_use_tokens":0,"total_thought_tokens":0},"created":"2026-10-22T20:45:17Z","updated":"2026-10-22T20:45:17Z","service_tier":"standard","object":"interaction","model":"gemini-3.8-flash-lite-tts"},"event_type":"interaction.completed"}
+
+event: done
+data: [DONE]
+

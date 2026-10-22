@@ -112,8 +112,9 @@ export async function renderModel(ctx, id) {
 }
 
 /**
- * A transcription model, a voice, or a live voice model (K4) (spec §9.2, §10): its name, id, voice, prices and Test,
- * each saved as it changes. They have Test, not "Try this model".
+ * A transcription model, a voice, or a live voice model (K4) (spec §9.2, §10): its name, id, voice, style, prices and Test,
+ * each saved as it changes. They have Test, not "Try this model". A voice's voice and style go with every request (§10.1);
+ * Voice suggests the voices its provider lists (the model's `voices` tunable, else its protocol's).
  * @param {any} ctx @param {import('../../core/llm/config.js').ModelRecord} rec @param {'in' | 'out' | 'live'} kind
  * @param {import('../../core/llm/config.js').Endpoint} ep @param {string} back @param {HTMLElement} of its provider and ability
  */
@@ -122,16 +123,19 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
   const base = modelBase(rec);
   const save = fieldSaver(ctx, rec.id);
   const title = h('h1', { class: 'title', text: m.name });
-  const { voice: voiceId, ...otherTunables } = m.tunables;
-  const voice = kind !== 'in' ? h('input', { id: 'model-voice', autocomplete: 'off', autocapitalize: 'off', value: String(voiceId ?? ''), placeholder: String(ep.tunables.voice ?? '') }) : null;
-  /** The tunables with the voice typed in, which has a field of its own. @param {Record<string, any>} t */
-  const withVoice = (t) => {
-    const { voice: _, ...rest } = t;
-    return { ...rest, ...(voice?.value.trim() ? { voice: voice.value.trim() } : {}) };
+  const { voice: voiceId, style: styleNote, voices: own, ...otherTunables } = m.tunables;
+  const names = [].concat(own ?? ctx.llm.types().get(ep.type)?.voices ?? []);
+  const voice = kind !== 'in' ? h('input', { id: 'model-voice', autocomplete: 'off', autocapitalize: 'off', list: 'model-voices', value: String(voiceId ?? ''), placeholder: 'voice' in m.tunables ? '' : String(ep.tunables.voice ?? '') }) : null;
+  const style = kind === 'out' ? h('input', { id: 'model-style', autocomplete: 'off', value: String(styleNote ?? ''), placeholder: 'style' in m.tunables ? '' : String(ep.tunables.style ?? '') }) : null;
+  /** The tunables with the voice and style typed in, which have fields of their own, and the voices kept. One emptied after it was set is '' (none sent), or the default would take its place. @param {Record<string, any>} t @param {Record<string, any>} now */
+  const withFields = (t, now) => {
+    const { voice: _v, style: _s, voices: _l, ...rest } = t;
+    const put = (/** @type {string} */ k, /** @type {HTMLInputElement | null} */ el) => (!el ? {} : el.value.trim() ? { [k]: el.value.trim() } : k in now ? { [k]: '' } : {});
+    return { ...rest, ...(now.voices ? { voices: now.voices } : {}), ...put('voice', voice), ...put('style', style) };
   };
   const tunables = jsonField('Tunables (JSON)', 'model-tunables', otherTunables);
   const showTunables = (/** @type {import('../../core/llm/config.js').Model} */ now) => {
-    const { voice: _, ...rest } = now.tunables;
+    const { voice: _v, style: _s, voices: _l, ...rest } = now.tunables;
     tunables.show(rest);
   };
   return h('div', { class: 'screen' },
@@ -142,9 +146,13 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
     h('section', { class: 'panel', 'aria-label': 'Model' },
       h('p', { class: 'sub', text: 'Each setting is saved as you change it.' }),
       ...nameFields(save, m, base.name, title),
-      voice ? savedField('Voice', voice, () => voice.value.trim(), () => save('tunables', (/** @type {any} */ now) => withVoice(now.tunables))) : null,
+      voice ? savedField('Voice', voice, () => voice.value.trim(), () => save('tunables', (/** @type {any} */ now) => withFields(now.tunables, now.tunables))) : null,
+      h('datalist', { id: 'model-voices' }, names.map((v) => h('option', { value: v }))),
+      voice ? h('p', { class: 'sub', text: 'Sent with every request, so every sentence has this voice. Empty, the provider chooses, and some choose another speaker each time.' }) : null,
+      style ? savedField('Style', style, () => style.value.trim(), () => save('tunables', (/** @type {any} */ now) => withFields(now.tunables, now.tunables))) : null,
+      style ? h('p', { class: 'sub', id: 'model-style-note', text: { ...ep.tunables, ...m.tunables }.styled === false ? "This voice can't take a style: it is kept, not sent." : 'How she should sound, in a few words, such as calm, warm and friendly. A voice with no use for it ignores it.' }) : null,
       modelJson(save, { in: 'Prices, USD (JSON: perMinute, minSeconds)', out: 'Prices, USD (JSON: perMillionChars)', live: 'Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)' }[kind], 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
-      h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => showTunables(await save('tunables', withVoice(t))))),
+      h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => showTunables(await save('tunables', (/** @type {any} */ now) => withFields(t, now.tunables))))),
       modelJson(save, 'Extra request fields (JSON)', 'model-extra', 'extraBody', m.extraBody)),
     kind === 'live' ? testPanel(ctx, rec.id, rec.verified, 'Test', true) : speechTestPanel(ctx, m, kind, rec.verified),
     h('div', { class: 'acts' }, twoStep('Remove model', 'Tap again to remove it', async () => {

@@ -1,0 +1,36 @@
+{
+  "note": "Real calls to OpenRouter /api/v1/audio/speech with fish-audio/s2.1-pro-free:free on 2026-10-22 (6 calls). Keys are never recorded.",
+  "requests": {
+    "noVoice": {
+      "model": "fish-audio/s2.1-pro-free:free",
+      "input": "Welcome to Kyoto. Your hotel is two blocks from the station, and the evening light on the river is lovely.",
+      "response_format": "mp3"
+    },
+    "voice": {
+      "model": "fish-audio/s2.1-pro-free:free",
+      "input": "Welcome to Kyoto. Your hotel is two blocks from the station, and the evening light on the river is lovely.",
+      "response_format": "mp3",
+      "voice": "e3cd384158934cc9a01029cd7d278634"
+    },
+    "voiceAndStyle": {
+      "model": "fish-audio/s2.1-pro-free:free",
+      "input": "Welcome to Kyoto. Your hotel is two blocks from the station, and the evening light on the river is lovely.",
+      "response_format": "mp3",
+      "voice": "e3cd384158934cc9a01029cd7d278634",
+      "instructions": "calm, warm and friendly"
+    },
+    "voiceAndStyleOtherText": {
+      "model": "fish-audio/s2.1-pro-free:free",
+      "input": "In about ten minutes the path turns toward the shrine, and you can rest under the old maple trees.",
+      "response_format": "mp3",
+      "voice": "e3cd384158934cc9a01029cd7d278634",
+      "instructions": "calm, warm and friendly"
+    }
+  },
+  "response": {
+    "status": 200,
+    "contentType": "audio/mpeg",
+    "note": "an MP3 at 128 kbps, 44.1 kHz mono; the clip below is its first 1500 bytes",
+    "clipBase64": "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"
+  }
+}
