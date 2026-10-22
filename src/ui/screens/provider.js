@@ -1,4 +1,4 @@
-import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedRadios, autosave, queueSave, whenGone } from '../dom.js';
+import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
@@ -79,11 +79,12 @@ export async function renderProvider(ctx, id) {
   const key = desc?.key === 'none' || (panel && setupOf(ctx.registry, rec.plugin)?.keyField === false) ? null : h('input', { id: 'provider-key', type: 'password', autocomplete: 'off', placeholder: hasKey ? 'saved (type a new one to replace it)' : 'not set' });
   const headers = jsonField('Extra headers (JSON)', 'provider-headers', p.headers);
   // The address, key and extra headers (often a credential too) are saved together with a button, so a half-typed connection is never used.
+  const saving = h('span', { class: 'saved', role: 'status' });
   const save = h('button', {
     class: 'btn pri', type: 'button',
     onclick: () => {
       const here = location.hash;
-      queueSave(async () => {
+      savingNote(saving, async () => {
         try {
           // Checked as a description's is: a typed address without its scheme would send the key to annai's own site (fix pass).
           const wrong = url.value.trim() ? addressProblem(url.value.trim()) : null;
@@ -149,7 +150,7 @@ export async function renderProvider(ctx, id) {
       }).el : null,
       desc?.freeTier ? h('p', { class: 'sub', text: 'On, its calls show as free in the Trace, and count nothing toward Spend per day.' }) : null,
       headers.el,
-      h('div', { class: 'acts' }, save,
+      h('div', { class: 'acts' }, save, saving,
         hasKey ? twoStep('Remove key', 'Tap again to remove the key', async () => {
           await asking(status, () => ctx.llm.reconnect(id, () => setKey(ctx.store, id, null)));
           await ctx.llm.unbench(id);

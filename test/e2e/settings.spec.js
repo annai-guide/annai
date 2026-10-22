@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, savedBy, tapAdd } from './helpers.js';
 
 // Settings in the order a user reaches for them, Settings → Experimental, and the Jina key's link (the user, 2026-10-18).
 
@@ -177,4 +177,34 @@ test("quiet hours set halfway ask for the other time quietly, and say they need 
   await expect(savedBy(until)).toHaveText('Saved');
   await expect(page.getByRole('alert').filter({ hasText: 'Quiet hours' })).toHaveCount(0);
   await expect(until).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+/** Starts noting every "Saving…" a status line shows (a save can land in less than a frame). @param {import('@playwright/test').Page} page */
+const watchSaving = (page) => page.evaluate(() => {
+  const w = /** @type {any} */ (window);
+  w.sawSaving = [];
+  new MutationObserver(() => {
+    for (const el of document.querySelectorAll('[role=status]')) if (el.textContent === 'Saving…') w.sawSaving.push(el.parentElement?.textContent ?? '');
+  }).observe(document.body, { subtree: true, childList: true, characterData: true });
+});
+
+test('a key field says "Saving…" on its line from the tap until the save lands: Jina\'s key in Settings → Tools, and a provider\'s key on its page (the third emulator pass)', async ({ page }) => {
+  await openApp(page, '#/tools');
+  await watchSaving(page);
+  await page.getByLabel('Jina key').fill('jina_test_key_0123');
+  await page.getByRole('button', { name: 'Save key' }).click();
+  await expect(page.getByLabel('Jina key')).toHaveAttribute('placeholder', 'A key is set');
+  expect(await page.evaluate(() => /** @type {any} */ (window).sawSaving.join('|'))).toContain('Save key');
+  // A provider's own page.
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await tapAdd(page, 'OpenRouter');
+  await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Add by hand' }).click();
+  await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+  await watchSaving(page);
+  await page.getByLabel('API key').fill('sk-or-typed-key-123');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  expect(await page.evaluate(() => /** @type {any} */ (window).sawSaving.join('|'))).toContain('Save');
 });

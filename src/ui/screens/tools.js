@@ -1,4 +1,4 @@
-import { h, field, autosave, savedRadios } from '../dom.js';
+import { h, field, autosave, savedRadios, savingNote } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf, providerOf } from '../../core/llm/config.js';
@@ -52,6 +52,7 @@ export async function renderTools(ctx) {
   const web = app.web ?? {};
   const hasKey = Boolean(await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret('plugin:web:jina')));
   const key = h('input', { id: 'jina-key', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: hasKey ? 'A key is set' : 'jina_…' });
+  const saving = h('span', { class: 'saved', role: 'status' });
   const saveWeb = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { web: c });
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
@@ -67,13 +68,16 @@ export async function renderTools(ctx) {
         : h('p', { class: 'sub' }, "Jina Reader reads sites that don't let web apps read them, and Jina Search searches the web. Some networks need a key. ",
           h('a', { href: JINA_KEYS, target: '_blank', rel: 'noopener noreferrer', text: 'Get a free key from Jina' }), '.'),
       h('div', { class: 'acts' },
-        h('button', { class: 'btn pri', type: 'button', onclick: async () => {
+        h('button', { class: 'btn pri', type: 'button', onclick: () => {
           const v = key.value.trim();
           if (!v) return;
-          await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('plugin:web:jina', v));
-          ctx.notices.toast('Key saved.');
-          ctx.render();
+          return savingNote(saving, async () => {
+            await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('plugin:web:jina', v));
+            ctx.notices.toast('Key saved.');
+            ctx.render();
+          });
         } }, 'Save key'),
+        saving,
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.deleteSecret('plugin:web:jina')); ctx.render(); } }, 'Remove key') : null)),
     h('section', { class: 'panel', 'aria-label': 'MCP servers' },
       h('h2', { class: 'section', text: 'MCP servers' }),
