@@ -348,15 +348,17 @@ test('Back closes a question as No, where the browser has no CloseWatcher (Chrom
 
 // Chrome 113 on Android swallowed the first Back for a modal <dialog> (the second emulator re-check), so where it can't use
 // CloseWatcher the question is not modal: annai's own backdrop, the page behind inert, the focus kept in the question.
-test('where there is no CloseWatcher, the question is not a modal dialog: the page behind is inert, Tab stays in the question, Escape and Back close it as No', async ({ page }) => {
+test('on Android with no CloseWatcher, the question is not a modal dialog: the page behind is inert, Tab stays in the question, Escape and Back close it as No', async ({ page }) => {
   await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
   await openApp(page);
+  test.skip(await page.evaluate(() => !/Android/.test(navigator.userAgent)), 'an iPhone keeps the modal, with its history entry: the first test above');
   await startTrip(page, 'Big Sur');
   const trip = page.url();
   const question = page.getByRole('dialog', { name: 'Big Sur' });
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await expect(question).toBeVisible();
   expect(await question.evaluate((d) => d.matches(':modal'))).toBe(false);
+  await expect(question).toHaveAttribute('aria-modal', 'true');
   expect(await page.evaluate(() => [...document.body.children].filter((el) => !el.matches('dialog.ask, .ask-backdrop')).every((el) => /** @type {HTMLElement} */ (el).inert))).toBe(true);
   await expect(page.locator('.ask-backdrop')).toBeVisible();
   const focused = () => page.evaluate(() => document.activeElement?.textContent);
