@@ -3,8 +3,10 @@
  * plugin (src/plugins/voice-browser/) and by fakes in tests: the core never touches the DOM (§3).
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {{ close(): void, take?(): Promise<Uint8Array | null>, again?(): void }} OpenMic  take: the file since the last cut; again: it, thrown away
- * @typedef {{ open(o: { onFrames: (pcm: Float32Array, sampleRate: number) => void, onError: (e: Error) => void, record?: string }): Promise<OpenMic> }} Mic
- *   the microphone: open only while listening (§10.2); record: a MediaRecorder type to record alongside
+ * @typedef {{ open(o: { onFrames: (pcm: Float32Array, sampleRate: number) => void, onError: (e: Error) => void, record?: string }): Promise<OpenMic>,
+ *   inUse?(): { label: string, deviceId: string } | null }} Mic
+ *   the microphone: open only while listening (§10.2); record: a MediaRecorder type to record alongside; inUse: the input its open
+ *   stream takes, by its track's label and deviceId (§10.5); null while closed
  * @typedef {{ unlock(): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }>, plays?(): string[],
  *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream }} Player
  *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now; play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound;
@@ -26,7 +28,7 @@
  *   phone for the language now, nothing to download (§11.7); open's local: do so
  * @typedef {'play-and-record' | 'playback'} SessionType  the audio session type (§10.1): playback while she speaks and after, play-and-record while listening
  * @typedef {{ player: Player, synth: Synth, mic: Mic, dictation: Dictation, session(type: SessionType): void, encoder?: Encoder,
- *   devices?(): Promise<{ kind: string, label: string }[]>, onDeviceChange?(fn: () => void): void }} VoicePlatform
+ *   devices?(): Promise<{ kind: string, label: string, deviceId?: string }[]>, onDeviceChange?(fn: () => void): void }} VoicePlatform
  *   devices: the audio devices, by name, and onDeviceChange when they change (§10.5)
  */
 

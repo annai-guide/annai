@@ -24,11 +24,14 @@ export function voiceMode({ setting, activity, route, lastChoices }) {
 /** Names that are a car. */
 const CAR = /\b(car|carplay|android auto|hands-?free|uconnect|sync|bmw|audi|mercedes|toyota|honda|ford|kia|hyundai|lexus|nissan|mazda|subaru|volvo|tesla|vw|volkswagen|jeep|chevrolet|chevy|gmc|porsche|mini|skoda|renault|peugeot|citroen|fiat)\b/i;
 /** Names that are the phone's (or computer's) own. */
-const OWN = /\b(iphone|ipad|built-in|internal|speakerphone|earpiece|default|communications)\b/i;
+const OWN = /\b(iphone|ipad|built-in|internal|speaker|speakerphone|receiver|earpiece|default|communications)\b/i;
+/** Names that are worn: headphones, earbuds, a headset. */
+const WORN = /\b(airpods|earpods|beats|head(phones?|set)|ear(buds?|phones?)|buds|wired)\b/i;
 
 /**
- * What audio the phone is using, from the names of its audio devices (spec §10.5). Browsers name
- * devices only after the microphone was allowed: without names, annai can't tell.
+ * What audio the phone is using, from the names of its audio devices (spec §10.5): the one input in use, while the microphone is
+ * open, else those present. A name nobody listed is unknown, never headphones (the iPhone trace, 2026-10-22: "headphones" on the
+ * phone's own speaker). Browsers name devices only after the microphone was allowed: without names, annai can't tell.
  * @param {{ kind: string, label: string }[]} devices @returns {Route}
  */
 export function routeOf(devices) {
@@ -36,7 +39,8 @@ export function routeOf(devices) {
   if (!named.length) return 'unknown';
   const others = named.filter((d) => !OWN.test(d.label));
   if (others.some((d) => CAR.test(d.label))) return 'car';
-  return others.length ? 'headphones' : 'speaker';
+  if (others.some((d) => WORN.test(d.label))) return 'headphones';
+  return others.length ? 'unknown' : 'speaker';
 }
 
 /** The chip's words: "Voice auto · off", "Voice on · car audio", "Voice on", "Voice off". @param {VoiceMode} m */

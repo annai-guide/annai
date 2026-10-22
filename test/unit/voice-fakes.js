@@ -9,7 +9,7 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 /**
- * @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string, devices?: { kind: string, label: string }[],
+ * @param {{ playMs?: number, blocked?: boolean, dictation?: boolean, micFails?: string, devices?: { kind: string, label: string, deviceId?: string }[],
  *   encoder?: { makes: string[], records?: { type: string, format: string }[], fails?: string[] }, plays?: string[] }} [o]
  *   encoder: an encoder that makes these formats (a file is its format and length in samples, as text), records these with MediaRecorder,
  *   and fails these; plays: what the player plays
@@ -43,14 +43,16 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     sessions,
     get opens() { return opens; },
     session(/** @type {string} */ t) { sessions.push(t); },
-    /** @type {{ kind: string, label: string }[]} */
+    /** @type {{ kind: string, label: string, deviceId?: string }[]} */
     deviceList: devices,
+    /** The input an open microphone takes (its track's label and deviceId); null: the newest audio input present, as a phone picks it. @type {{ label: string, deviceId: string } | null} */
+    input: /** @type {{ label: string, deviceId: string } | null} */ (null),
     /** @type {(() => void)[]} */
     deviceChanges: [],
     async devices() { return platform.deviceList; },
     /** @param {() => void} fn */
     onDeviceChange(fn) { platform.deviceChanges.push(fn); },
-    /** Plugs in or unplugs audio devices. @param {{ kind: string, label: string }[]} list */
+    /** Plugs in or unplugs audio devices. @param {{ kind: string, label: string, deviceId?: string }[]} list */
     setDevices(list) {
       platform.deviceList = list;
       for (const fn of platform.deviceChanges) fn();
@@ -139,6 +141,12 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       },
     },
     mic: {
+      /** The input in use while open. */
+      inUse() {
+        if (!frames) return null;
+        const last = platform.deviceList.filter((d) => d.kind === 'audioinput').at(-1);
+        return platform.input ?? (last ? { label: last.label, deviceId: last.deviceId ?? '' } : null);
+      },
       /** @param {{ onFrames: (pcm: Float32Array, rate: number) => void, onError: (e: Error) => void, record?: string }} o */
       async open({ onFrames, record }) {
         if (micFails) throw Object.assign(new Error('Permission denied'), { name: micFails });

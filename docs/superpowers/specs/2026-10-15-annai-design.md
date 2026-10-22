@@ -742,6 +742,8 @@ The setting is always one tap away. **Auto:**
 
 Where the browser can't detect headphones, Auto falls back to the user's last explicit choice in that situation.
 
+What is connected comes from the audio devices' names: while the microphone is open, from the one input it takes (its track's name, else the device its deviceId names), else from those present. The phone's own names (iPhone, built-in, default, speaker, speakerphone, receiver, earpiece) are the speaker; a car's, the car; worn ones (AirPods, headphones, headset, earbuds, Beats), headphones; any other name is unknown, never headphones (the iPhone trace of 2026-10-22: Auto said "headphones" on the phone's own speaker, from AirPods in their case). Each decision goes in this device's own Trace, with the names, and nowhere else: never into a backup or to a model.
+
 With a realtime model as Koe (§10.8), the mode decides whether a live session speaks and, at a tap, listens: voice off closes one, and a session for typing shows Koe's words.
 
 ### 10.6 Audio formats
