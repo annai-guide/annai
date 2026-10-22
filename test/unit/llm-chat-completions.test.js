@@ -190,16 +190,17 @@ test("classify: the protocol names no provider's own limits: OpenRouter's free-m
   assert.equal(type.classify(402, daily), null);
 });
 
-test("list: OpenRouter's model list becomes models with windows, inputs, tools and prices per million tokens", async () => {
+test("list: OpenRouter's model list becomes models with windows, inputs (its \"file\" as PDFs), tools and prices per million tokens", async () => {
   const { url, headers } = type.listRequest({ endpoint: spec().endpoint, key: 'sk-or-test' });
   assert.equal(url, 'https://openrouter.ai/api/v1/models');
   assert.equal(headers.authorization, 'Bearer sk-or-test');
   const models = type.readList(JSON.parse(await fixture('models-openrouter.json')));
   assert.deepEqual(models[0], {
-    providerId: 'anthropic/claude-haiku-5.5', name: 'Anthropic: Claude Haiku 5.5', contextWindow: 1000000, maxOutput: 128000, input: ['text', 'image'], tools: true,
+    providerId: 'anthropic/claude-haiku-5.5', name: 'Anthropic: Claude Haiku 5.5', contextWindow: 1000000, maxOutput: 128000, input: ['text', 'image', 'pdf'], tools: true,
     prices: { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125, cacheWrite1h: 0.2, tiers: [{ above: 99999, input: 0.5, output: 2.5, cacheRead: 0.05, cacheWrite: 0.625, cacheWrite1h: 1 }] },
   });
   assert.deepEqual(models[1].prices, { input: 0, output: 0 });
+  assert.deepEqual(models[1].input, ['text', 'image'], 'video is not one of annai\'s inputs');
   assert.deepEqual(type.readList({ data: [{ id: 'gpt-x', object: 'model' }] }), [{ providerId: 'gpt-x' }]);
 });
 

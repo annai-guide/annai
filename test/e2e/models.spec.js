@@ -43,6 +43,10 @@ test('a model is edited on its own page', async ({ page }) => {
   await page.getByLabel('Context window (tokens)').fill('32000');
   await page.getByLabel('Takes photos').check();
   await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
+  // Beside it, the spec's Takes PDFs (§9.6): a model that reads them gets a PDF itself.
+  await expect(page.getByLabel('Takes PDFs')).not.toBeChecked();
+  await page.getByLabel('Takes PDFs').check();
+  await expect(savedBy(page.getByLabel('Takes PDFs'))).toHaveText('Saved');
   await expect(page.getByRole('heading', { name: 'Fast one', level: 1 })).toBeVisible();
   await page.getByRole('link', { name: '← Endpoint A' }).click();
   await expect(page.getByRole('link', { name: /^Fast one/ })).toContainText('32K context');

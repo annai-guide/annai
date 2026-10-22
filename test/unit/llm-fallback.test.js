@@ -180,6 +180,29 @@ test('a model that takes no photos gets older ones as words, and is passed over 
   await assert.rejects(call(t, { request: asked }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
 });
 
+test('a model that reads no PDFs gets an older one as a note, and is passed over only for a PDF in the newest message (the second emulator pass)', async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const spy = /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) { seen.push(c.request); yield { type: 'text', text: 'Fine.' }; yield { type: 'stop', reason: 'end' }; } });
+  const s = setup([[{ error: 'credit', status: 402 }], []], { types: [['spy', spy]], endpointTypes: ['scripted', 'spy'], models: [{ input: ['text', 'pdf'] }, { input: ['text'] }] });
+  const pdf = { type: 'document', mediaType: 'application/pdf', data: 'AAAA', name: 'booking.pdf' };
+  const older = { messages: [
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 't1', name: 'read', input: { path: '/trip/files/booking.pdf' } }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'The PDF.' }, pdf] },
+    { role: 'assistant', parts: [{ type: 'text', text: 'Read it.' }] },
+    { role: 'user', parts: [{ type: 'text', text: "What's around here?" }] },
+  ] };
+  const r = await call(s, { request: older });
+  assert.equal(r.reply.text, 'Fine.');
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'ok']);
+  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: '[a PDF: booking.pdf]' });
+  assert.equal(older.messages[1].parts[1], pdf, "the request itself isn't changed: the next model may read PDFs");
+  // The newest message holds the PDF: a model that can't read it can't answer it.
+  const t = setup([[{ text: 'never' }]], { models: [{ input: ['text', 'image'] }] });
+  const fresh = { messages: [older.messages[0], older.messages[1]] };
+  await assert.rejects(call(t, { request: fresh }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-documents' && /PDFs/.test(e.message + failedText(e.attempts)));
+});
+
 test('a model that refuses a required tool call is asked again without it, and not asked with it again this session (review A1)', async () => {
   /** @type {any[]} */
   const seen = [];

@@ -70,7 +70,10 @@ export async function renderModel(ctx, id) {
   if (speech) return renderSpeechModel(ctx, rec, speech, ep, back, of);
   const save = fieldSaver(ctx, id);
   const title = h('h1', { class: 'title', text: m.name });
-  const images = savedCheck('Takes photos', m.input.includes('image'), (on) => save('input', (/** @type {any} */ now) => [...new Set([...now.input.filter((/** @type {string} */ x) => x !== 'image'), ...(on ? ['image'] : [])])]));
+  /** A switch for one kind of input. @param {string} label @param {string} kind */
+  const takes = (label, kind) => savedCheck(label, m.input.includes(kind), (on) => save('input', (/** @type {any} */ now) => [...new Set([...now.input.filter((/** @type {string} */ x) => x !== kind), ...(on ? [kind] : [])])]));
+  const images = takes('Takes photos', 'image');
+  const pdfs = takes('Takes PDFs', 'pdf');
   const tools = savedCheck('Calls tools', m.tools !== false, (on) => save('tools', on));
   const window = h('input', { id: 'model-window', inputmode: 'numeric', value: m.contextWindow ?? '' });
   const max = h('input', { id: 'model-max', inputmode: 'numeric', value: m.maxOutput ?? '' });
@@ -88,7 +91,7 @@ export async function renderModel(ctx, id) {
     h('section', { class: 'panel', 'aria-label': 'Model' },
       h('p', { class: 'sub', text: 'Each setting is saved as you change it.' }),
       ...nameFields(save, m, base.name, title),
-      h('div', { class: 'checks' }, images.el, tools.el),
+      h('div', { class: 'checks' }, images.el, pdfs.el, tools.el),
       h('div', { class: 'row' },
         savedField('Context window (tokens)', window, () => tokens(window, 'The context window'), (v) => save('contextWindow', v)),
         savedField('Maximum output (tokens)', max, () => tokens(max, 'The maximum output'), (v) => save('maxOutput', v))),

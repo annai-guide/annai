@@ -60,14 +60,15 @@ test("fetch: then the model's own fetch tool; else a plain error that says what 
   await assert.rejects(run('fetch', { url: 'https://closed.test/a' }, reader401), (/** @type {any} */ e) => /doesn't let web apps read it/.test(e.message) && /Jina key/.test(e.message));
 });
 
-test('fetch: long text in pieces; PDFs and photos only for models that take them; a 404 is an answer', async () => {
+test('fetch: long text in pieces; a PDF is returned as a document (the loop words it for a model that reads none), photos only for models that take them; a 404 is an answer', async () => {
   const { run } = await setup();
   const long = await run('fetch', { url: 'https://open.test/long' }, () => new Response('x'.repeat(35_000), { headers: { 'content-type': 'text/plain' } }));
   assert.match(long, /fetch again with from: 30000$/);
   const rest = await run('fetch', { url: 'https://open.test/long', from: 30_000 }, () => new Response('x'.repeat(35_000), { headers: { 'content-type': 'text/plain' } }));
   assert.match(rest, /\n\nx{5000}$/);
   const pdf = () => new Response(new Uint8Array([37, 80, 68, 70]), { headers: { 'content-type': 'application/pdf' } });
-  assert.match(await run('fetch', { url: 'https://open.test/m.pdf' }, pdf), /can't read PDFs/);
+  // A model that reads no PDFs gets the document too: the loop has one that can tell it in words (the second emulator pass).
+  assert.equal((await run('fetch', { url: 'https://open.test/m.pdf' }, pdf)).document.name, 'm.pdf');
   const doc = await run('fetch', { url: 'https://open.test/m.pdf' }, pdf, { model: { input: ['text', 'pdf'] } });
   assert.deepEqual(doc.document, { mediaType: 'application/pdf', data: btoa('%PDF'), name: 'm.pdf' });
   await assert.rejects(run('fetch', { url: 'https://open.test/gone' }, () => new Response('nope', { status: 404 })), /answered 404/);

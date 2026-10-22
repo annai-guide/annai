@@ -1,7 +1,7 @@
 {
   "id": "chat-completions",
   "name": "Chat Completions",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "api": 1,
   "entry": "index.js",
   "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",

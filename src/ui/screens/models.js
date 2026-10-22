@@ -164,7 +164,7 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, l
     h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
     live ? h('p', { class: 'sub', text: "With voice off, a text model here answers before a live voice, whose sound nobody would hear." }) : null,
-    role === 'utility' ? h('p', { class: 'sub', text: "A model that can't see photos gets each one it reads described by a model here that can, else by Main's." }) : null,
+    role === 'utility' ? h('p', { class: 'sub', text: "A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's." }) : null,
     // The catalog, on providers that can hear you, or speak (spec §16.2).
     speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KINDS[role][0]}&from=models`, 'aria-label': `Add a provider for ${role}` }, 'Add a provider')) : null,
     h('div', { class: 'row' },

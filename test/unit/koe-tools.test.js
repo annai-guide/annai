@@ -10,14 +10,14 @@ const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 /** Kokoro's timers, as live mode's would be. @type {any[]} */
 const WATCH = ['watch_set', 'watch_list', 'watch_cancel'].map((name) => ({ name, pluginId: 'core', group: 'Time', description: `${name} (a stand-in)`, input: { type: 'object', properties: {} }, run: async () => `${name} ran` }));
 
-test("Koe's tools are exactly: speak, show, ask, wait, sleep, watch_set, watch_list, watch_cancel, recall, list, read, nearby, guide, write, edit, patch, tell_kokoro", async () => {
+test("Koe's tools are exactly: speak, show, ask, wait, sleep, watch_set, watch_list, watch_cancel, recall, list, read, nearby, guide, write, edit, patch, tell_kokoro, already_told", async () => {
   const k = await agentKit([[sleep]], { koe: { type: [sleep] } });
   await k.host.addBuiltin(new URL('../../src/plugins/places/index.js', import.meta.url).href);
   k.agent.addLoopTools(WATCH);
   k.agent.send('Hi');
   await k.agent.idle();
   assert.deepEqual(k.sent['model-koe'][0].tools.map((/** @type {any} */ t) => t.name), [
-    'speak', 'show', 'ask', 'wait', 'sleep', 'watch_set', 'watch_list', 'watch_cancel', 'recall', 'list', 'read', 'nearby', 'guide', 'write', 'edit', 'patch', 'tell_kokoro',
+    'speak', 'show', 'ask', 'wait', 'sleep', 'watch_set', 'watch_list', 'watch_cancel', 'recall', 'list', 'read', 'nearby', 'guide', 'write', 'edit', 'patch', 'tell_kokoro', 'already_told',
   ]);
   const write = k.sent['model-koe'][0].tools.find((/** @type {any} */ t) => t.name === 'write');
   assert.match(write.description, /Koe: only light changes/);
@@ -107,4 +107,29 @@ test('a photo reaches Koe only when its model takes photos; otherwise a stub, an
     assert.ok(types(k.sent['model-0'][0]).includes('image'), 'Kokoro sees it');
     assert.ok(types(k.sent['model-0'][0]).includes('[the user sent a photo]'));
   }
+});
+
+// The fix pass (S4): Koe answers at once, so it never waits on a PDF being told; Kokoro reads it.
+test("Koe reads a PDF its model can't read, typing or live: told at once to ask Kokoro, and no model is asked to tell it", async () => {
+  const k = await agentKit([[sleep]], { koe: { type: [{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, sleep] }, utility: [{ text: 'Hotel booking: check-in 3 PM.' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const read = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'koe');
+  assert.equal(read.data.content, "The PDF /trip/files/booking.pdf.\nYou can't read PDFs; ask Kokoro about it.");
+  assert.equal(read.data.document, undefined);
+  const live = await k.agent.koe.liveCall({ id: 'c1', name: 'read', input: { path: '/trip/files/booking.pdf' } }, 'w1');
+  assert.equal(live.content, "The PDF /trip/files/booking.pdf.\nYou can't read PDFs; ask Kokoro about it.");
+  assert.equal(live.document, undefined);
+  assert.equal((k.sent['model-u'] ?? []).length, 0, 'nobody was asked to tell it');
+});
+
+test('a Koe whose model reads PDFs gets the PDF itself', async () => {
+  const k = await agentKit([[sleep]], { koe: { type: [{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, sleep], input: ['text', 'image', 'pdf'] } });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-koe'][1].messages), /"type":"document"/);
 });

@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "api": 1,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -67,7 +67,8 @@
             "maxOutput": 128000,
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "tools": true,
             "images": {
@@ -129,7 +130,8 @@
             "maxOutput": 128000,
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "tools": true,
             "images": {
@@ -206,7 +208,8 @@
             "maxOutput": 128000,
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "tools": true,
             "images": {

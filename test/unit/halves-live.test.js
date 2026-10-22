@@ -389,3 +389,217 @@ test("annai's own reminders while a live session's voice plays are shown, never 
     await k.done();
   }
 });
+
+// The fix pass (M2): a live Koe owes Kokoro's notes for the user as a text Koe does: one cue, then annai shows them (spec §6.8).
+/**
+ * The user asks, Koe answers, and then Kokoro's note comes. @param {any} k @param {string} text @param {any} [why]
+ * @param {{ name: string, input: any }} [call]
+ */
+const noted = async (k, text, why = 'tool', call) => {
+  k.agent.send('Is Nepenthe open tonight?');
+  await soon(async () => (await k.events(['out.speak'])).length === 1);
+  await k.agent.idle();
+  await k.agent.channel.send('kokoro', text, 'append', why, undefined, call);
+};
+const CUE = /^\[annai\] "Kokoro's note/;
+/** Time for a turn that would come, to come. */
+const settled = async (/** @type {any} */ k) => {
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 150));
+  await k.agent.idle();
+};
+
+test("a live Koe's turn after Kokoro's note says nothing: it is asked once more, in the text cue's words, and then says it; annai shows nothing", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}, { said: "It's open until ten tonight.", audio: tone(0.2) }]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    await settled(k);
+    const sent = texts(k);
+    assert.equal(sent.length, 3, JSON.stringify(sent));
+    assert.match(sent[1], /^<from_kokoro/);
+    assert.match(sent[2], CUE);
+    assert.deepEqual(await k.events(['reminder']), []);
+    assert.deepEqual(k.notices, []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe stays silent on Kokoro's note, asked once more too: annai shows it as Shiori's answer, once", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['reminder'])).length === 1);
+    await settled(k);
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text, e.data.unsaid]), [["Shiori's answer", 'Nepenthe is open until 10 PM tonight.', true]]);
+    assert.equal(texts(k).filter((t) => CUE.test(t)).length, 1, 'one cue');
+    assert.equal(texts(k).length, 3);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a live Koe silent on "Kokoro couldn\'t check": asked once more, and nothing is shown (plan decision 21)', async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}]);
+  try {
+    await noted(k, "Kokoro couldn't check: The key was rejected. Tell the user you couldn't check, and offer to try again.", 'kokoro-failed');
+    await soon(async () => texts(k).length === 3);
+    await settled(k);
+    assert.match(texts(k)[2], CUE);
+    assert.deepEqual(await k.events(['reminder']), []);
+    assert.deepEqual(k.notices, []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe silent on Kokoro's gated card: annai shows the card itself", async () => {
+  const card = { title: 'Nepenthe', text: 'Open 11:30–22:00 today.' };
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}]);
+  try {
+    await noted(k, 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', 'gated:show', { name: 'show', input: { card } });
+    await soon(async () => (await k.events(['out.show'])).length === 1);
+    await settled(k);
+    assert.deepEqual((await k.events(['out.show']))[0].data.card, card);
+    assert.deepEqual(await k.events(['reminder']), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe that shows a card after Kokoro's note has passed it on: no cue", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { tool: { name: 'show', args: { card: { title: 'Nepenthe', text: 'Open till 10 tonight.' } } } }, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['out.show'])).length === 1);
+    await settled(k);
+    assert.equal(texts(k).length, 2, JSON.stringify(texts(k)));
+    assert.deepEqual(await k.events(['reminder']), []);
+  } finally {
+    await k.done();
+  }
+});
+
+// The fix pass (S1): a live Koe settles a note it has already said with already_told, as a text Koe does.
+test("a live Koe that settles Kokoro's note with already_told: no cue, nothing shown, and the tool's answer adds no speech", async () => {
+  const k = await liveKit([{ said: "It's open until ten tonight.", audio: tone(0.2) }, { tool: { name: 'already_told', args: {} } }, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['tool.result'])).some((/** @type {any} */ e) => e.data.name === 'already_told'));
+    await settled(k);
+    assert.equal(texts(k).length, 2, JSON.stringify(texts(k)));
+    assert.deepEqual(await k.events(['reminder']), []);
+    const answer = got(k, 'toolResponse').at(-1).toolResponse.functionResponses[0];
+    assert.equal(answer.scheduling, 'SILENT');
+  } finally {
+    await k.done();
+  }
+});
+
+// The second fix pass (L1): a note is never lost to a close, a drop, a GoAway or Koe moving to text; it is passed on or shown once.
+/** What annai showed for Koe. @param {any} k */
+const answers = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text]);
+/** What the stand-in got, in order: setup, or a text turn's words. @param {any} k */
+const order = (k) => k.server.received().filter((/** @type {any} */ m) => m.setup || m.clientContent).map((/** @type {any} */ m) => (m.setup ? 'setup' : m.clientContent.turns[0].parts[0].text));
+const SHOWN = [["Shiori's answer", 'Nepenthe is open until 10 PM tonight.']];
+
+test('L1: the connection drops right after the cue: the resumed session hears the note again, and annai shows it once when Koe stays silent', async () => {
+  const k = await liveKit([
+    { said: 'Let me check.', audio: tone(0.2) },
+    {}, // silent on the note
+    { audio: tone(3), saidAfter: "It's open until ten." }, // the cue's answer, cut by the drop before a word of it
+    {}, {}, // the resumed session: silent on the note, then on the cue
+  ], { pace: 1 });
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => texts(k).some((t) => CUE.test(t)));
+    await new Promise((r) => setTimeout(r, 200));
+    k.server.close(1011, 'Internal error encountered.');
+    await until(() => k.server.connections().length === 2);
+    await soon(async () => (await answers(k)).length === 1, 5000);
+    await settled(k);
+    assert.deepEqual(await answers(k), SHOWN);
+    const resumed = order(k).slice(order(k).lastIndexOf('setup'));
+    assert.match(resumed[1], /^<from_kokoro/, 'the note went in again');
+  } finally {
+    await k.done();
+  }
+});
+
+test('L1: a GoAway on the silent turn after the note: the new connection hears the note, and annai shows it once when Koe stays silent', async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { handle: 'h-2', goAway: 10 }, {}, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await until(() => k.server.connections().length === 2);
+    await soon(async () => (await answers(k)).length === 1, 5000);
+    await settled(k);
+    assert.deepEqual(await answers(k), SHOWN);
+    const resumed = order(k).slice(order(k).lastIndexOf('setup'));
+    assert.match(resumed[1], /^<from_kokoro/, 'the note went to the new connection');
+  } finally {
+    await k.done();
+  }
+});
+
+test('L1: Koe moves to its text model between the note and the cue: the text Koe owes the note, and passes it on', async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { audio: tone(2) }], { pace: 1, koe: { type: { rules: [
+    { match: 'a note from Kokoro', reply: { toolCalls: [{ name: 'speak', input: { text: "It's open until ten tonight." } }, { name: 'sleep', input: {} }] } },
+    { match: '.', reply: sleep },
+  ] } } });
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => texts(k).length === 2);
+    k.llm.bench.bench('m-live', 60_000);
+    await k.agent.split();
+    assert.equal(k.agent.koeState, 'text');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => !e.data.live && e.data.text === "It's open until ten tonight."));
+    await settled(k);
+    assert.deepEqual(await answers(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+// The second fix pass (L3): a note no session could take goes to the text Koe alone, never again into a later session.
+test('L3: no live session could open for the note: the text Koe has it, and a later session never gets it again; shown once', async () => {
+  const k = await liveKit([{ said: "You're welcome.", audio: tone(0.2) }], { koe: { type: [sleep] } });
+  try {
+    const live = k.llm.live;
+    k.llm.live = async () => { k.llm.live = live; throw new Error('no connection'); };
+    await k.agent.channel.send('kokoro', 'Say: Nepenthe is open until 10 PM tonight.', 'append', 'tool');
+    await soon(async () => (await answers(k)).length === 1, 5000);
+    await k.agent.idle();
+    k.llm.bench.clear('m-live');
+    assert.equal(await k.agent.split(), true);
+    assert.equal(k.agent.koeState, 'live');
+    k.agent.send('Thanks');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.live));
+    await settled(k);
+    assert.deepEqual(await answers(k), SHOWN);
+    assert.ok(!texts(k).some((t) => t.startsWith('<from_kokoro')), 'the note never went into the session');
+  } finally {
+    await k.done();
+  }
+});
+
+// The second fix pass (L2): a live show or ask that annai refuses passes nothing on.
+for (const [what, tool] of /** @type {const} */ ([
+  ['show of a card of a kind no plugin draws', { name: 'show', args: { card: { type: 'ferries', title: 'Nepenthe' } } }],
+  ['ask with no options', { name: 'ask', args: { question: 'Shall I book?', options: [] } }],
+])) {
+  test(`L2: after Kokoro's note, a live Koe's ${what} is refused: Koe gets the cue, then annai shows the note`, async () => {
+    const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { tool }, {}]);
+    try {
+      await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+      await soon(async () => (await answers(k)).length === 1, 5000);
+      await settled(k);
+      assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === tool.name)?.data.ok, false);
+      assert.equal(texts(k).filter((t) => CUE.test(t)).length, 1);
+      assert.deepEqual(await answers(k), SHOWN);
+      assert.deepEqual(await k.events(['out.show', 'out.ask']), []);
+    } finally {
+      await k.done();
+    }
+  });
+}

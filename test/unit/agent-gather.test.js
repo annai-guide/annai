@@ -44,6 +44,51 @@ test('behind Koe, a photo on its own waits longer for the words that follow it',
   assert.match(JSON.stringify(k.sent['model-0'][0].messages), /What is this\?/);
 });
 
+test("behind Koe, words sent while the camera's photo is still being made wait for it: Kokoro starts a photo's window after the photo, with both in one turn (the re-check: the photo came 5 s after the check mark)", async () => {
+  const k = await halves();
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.photoComing(true); // the camera came back; the photo is being made
+  k.agent.send('Is this place good for lunch?');
+  await pause(500); // far past the quiet for words, and a photo's window
+  assert.equal(k.sent['model-0'], undefined, 'Kokoro is held for the photo');
+  const readyAt = Date.now();
+  k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
+  k.agent.photoComing(false);
+  const started = await kokoroAt(k);
+  assert.ok(started - readyAt >= 250, `Kokoro started ${started - readyAt} ms after the photo: its window counts from there`);
+  await k.agent.idle();
+  assert.equal(k.sent['model-0'].length, 1, 'one turn for both');
+  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /Is this place good for lunch\?/);
+  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /"type":"image"/);
+});
+
+test("two quick camera photos: the first one's photo being made lets go of the hold only for itself, not for the second (the fix pass)", async () => {
+  const k = await halves();
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.photoComing(true); // the first photo
+  k.agent.photoComing(true); // the second, taken at once
+  k.agent.send('Which of these is better?');
+  k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
+  k.agent.photoComing(false); // the first is ready
+  await pause(500);
+  assert.equal(k.sent['model-0'], undefined, 'Kokoro is still held for the second');
+  k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
+  k.agent.photoComing(false);
+  await kokoroAt(k);
+  await k.agent.idle();
+  assert.equal(k.sent['model-0'].length, 1, 'one turn for all');
+});
+
+test('a photo that never comes does not hold Kokoro past the 20 s cap, and the hook lets go of itself', async () => {
+  const k = await halves();
+  k.agent.photoComing(true);
+  const sent = Date.now();
+  k.agent.send('Is this place good for lunch?');
+  const started = await kokoroAt(k);
+  assert.ok(started - sent >= 1900 && started - sent < 2600, `held ${started - sent} ms`);
+  await k.agent.idle();
+});
+
 test('behind Koe, a heard segment resets the quiet', async () => {
   const k = await halves();
   k.agent.send('Where can we');
