@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, settled } from './dom.js';
 import { relTime } from './format.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
 import { saveModel } from '../core/llm/config.js';
@@ -32,6 +32,7 @@ export function speechTestPanel(ctx, model, kind, verified, title = 'Test') {
     class: 'btn', type: 'button',
     onclick: async () => {
       run.disabled = true;
+      await settled();
       try {
         if (kind === 'out') {
           status.textContent = 'Playing a sample…';

@@ -1,4 +1,4 @@
-import { h, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
+import { h, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf, abilityOf, providerOf, KOE_ROLE } from '../../core/llm/config.js';
@@ -55,6 +55,7 @@ export async function renderVoice(ctx) {
     onclick: async () => {
       sayButton.disabled = true;
       sayStatus.textContent = 'Speaking…';
+      await settled(); // the speed or pause just typed is saved first
       try {
         const r = await voice.say(SAMPLE);
         sayStatus.textContent = r.failed === 'blocked' ? "This browser didn't let annai play sound yet. Tap anywhere on the page, then try again."
@@ -92,6 +93,7 @@ export async function renderVoice(ctx) {
     onclick: async () => {
       micButton.disabled = true;
       micStatus.textContent = 'Say something…';
+      await settled();
       const off = voice.onLevel((/** @type {number} */ x, /** @type {string} */ who) => { if (who === 'you') meter.value = x; });
       try {
         const seg = await voice.listenOnce({ seconds: 15, onSpeech: () => { micStatus.textContent = 'Hearing you…'; } });

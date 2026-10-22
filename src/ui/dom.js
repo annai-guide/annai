@@ -181,6 +181,9 @@ export function queueSave(fn) {
   return run;
 }
 
+/** Resolves once the saves queued so far have landed: an action that reads settings (a Test) waits for what a field's change started, so it never runs on the old value. */
+export const settled = () => queueSave(async () => {});
+
 /**
  * A setting saved as it changes (spec §16.1): on `change`, so a text field saves once committed
  * or left, never per keystroke. read() throws in plain words for a value that isn't valid: nothing
