@@ -7,7 +7,7 @@ import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
 import { ME } from '../../core/scopes.js';
 
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'reminder', 'note', 'halves'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves'];
 /** Wakes that are lines of their own: the user's, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'note', 'cue', 'halves'];
 const HALVES_KEY = 'annai.showHalves';
@@ -188,6 +188,7 @@ export async function renderTalk(ctx) {
       const why = others.map((/** @type {any} */ r) => r.text).join('; ');
       return others.length ? h('li', { class: 'system-line', text: `Shiori woke: ${why.length > 160 ? `${why.slice(0, 160)}…` : why}` }) : null;
     }
+    if (e.type === 'paused') return h('li', { class: 'system-line', text: String(d.text ?? '') });
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
     // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it).
     if (e.type === 'error' && (d.quiet || d.aside)) return null;

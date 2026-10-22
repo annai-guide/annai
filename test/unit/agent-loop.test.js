@@ -642,6 +642,32 @@ test('opening another conversation while Shiori works: she stops, and a message 
   assert.match(userTexts(k.requests[1]), /second, typed while she thought/);
 });
 
+test('a turn cut by opening another conversation leaves a line in the one left, and a toast; she still picks it up when the user comes back (the third emulator pass)', async () => {
+  const k = await agentKit([[{ delayMs: 60, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back in Big Sur.')]]);
+  const A = k.trip;
+  const B = await createTrip(k.ws, { title: 'Kyoto' });
+  /** @type {any[]} */
+  const notices = [];
+  k.agent.on('notice', (n) => notices.push(n));
+  k.agent.send('first');
+  await new Promise((r) => setTimeout(r, 15));
+  await k.agent.open(B);
+  await k.agent.idle();
+  const left = await eventsIn(k, A, ['paused']);
+  assert.equal(left.length, 1);
+  assert.equal(left[0].data.text, 'Shiori was in the middle of something. She picks it up when you come back.');
+  assert.equal(left[0].data.wake, undefined, 'not a turn that ended: the conversation is still owed an answer');
+  assert.deepEqual(notices.map((n) => [n.toast, n.title]), [[true, 'Shiori was in the middle of something. She picks it up when you come back.']]);
+  assert.equal((await eventsIn(k, B, ['paused'])).length, 0, 'the one opened is not told');
+  await k.agent.open(A);
+  await k.agent.idle();
+  assert.deepEqual((await eventsIn(k, A, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Back in Big Sur.']);
+  // Stopping her yourself, and opening a conversation with nothing running, say nothing of it.
+  await k.agent.open(B);
+  assert.equal((await eventsIn(k, B, ['paused'])).length, 0);
+  assert.equal((await eventsIn(k, A, ['paused'])).length, 1);
+});
+
 test("opening a conversation leaves the last one's housekeeping behind: no compaction of the new one for the old one's size", async () => {
   const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
   /** @type {any[]} */

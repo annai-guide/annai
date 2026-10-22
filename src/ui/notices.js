@@ -110,10 +110,15 @@ let lone = 0;
   /**
    * Cards of one kind (the same title and tone) fold into one card, "Reminder (3)", that shows each when opened, with one
    * Dismiss all, and each can still be dismissed alone.
-   * @param {{ title: string, body?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[] }} n
+   * @param {{ title: string, body?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[], toast?: boolean }} n
+   * toast: said briefly, as a toast, with no card to dismiss
    * @returns {() => void} dismiss
    */
-  function card({ title, body, tone = 'info', actions = [] }) {
+  function card({ title, body, tone = 'info', actions = [], toast: brief }) {
+    if (brief) {
+      toast(title);
+      return () => {};
+    }
     // A card with anything to do but Dismiss (Try again, Open Trace, Install) is never folded away.
     const kind = actions.length ? `${kindOf(title, tone)}\n${++lone}` : kindOf(title, tone);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
