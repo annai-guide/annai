@@ -26,7 +26,7 @@ test('task: a helper on the utility model, with only the tools it was given, ret
 });
 
 test(`task: a helper that never finishes stops after ${TASK_STEPS} steps`, async () => {
-  const k = await agentKit([[{ toolCalls: [{ name: 'task', input: { prompt: 'Loop' } }] }, sleep]], { utility: [{ toolCalls: [{ name: 'list', input: { path: '/me/' } }] }] });
+  const k = await agentKit([[{ toolCalls: [{ name: 'task', input: { prompt: 'Loop' } }] }, sleep]], { utility: Array.from({ length: TASK_STEPS + 5 }, (_, i) => ({ toolCalls: [{ name: 'list', input: { path: `/me/${i}/` } }] })) });
   k.agent.send('Go');
   await k.agent.idle();
   assert.equal(k.requests.filter((r) => r.messages[0].parts[0].text === 'Loop').length, TASK_STEPS);
@@ -136,4 +136,42 @@ test("task: a helper's photo goes to it as an image when its model sees photos",
   k.agent.send('Look at the menu');
   await k.agent.idle();
   assert.equal(helperRequests(k)[1].messages.at(-1).parts.some((/** @type {any} */ p) => p.type === 'image'), true);
+});
+
+test('task (fix pass): a telling that fails is not sent again in the task, and three identical calls with identical results end the helper', async () => {
+  // Main reads PDFs but answers a telling with nothing (its next scripted reply is a sleep), so every telling fails; the helper keeps reading the same PDF.
+  const k = await helperKit([delegate, sleep], [helperReads, helperReads, helperReads, helperReads, helperReads, { text: 'never' }], { mainInput: ['text', 'pdf'] });
+  k.agent.send('What does the booking say?');
+  await k.agent.idle();
+  const sent = k.requests.filter((/** @type {any} */ r) => JSON.stringify(r.messages).includes('"type":"document"')).length;
+  assert.equal(sent, 1, 'sent once; the same PDF is not sent again in this task');
+  const result = (await k.events(['tool.result'])).find((e) => e.data.name === 'task');
+  assert.match(result.data.content, /^The helper stopped: it made the same call three times with the same result\./);
+  assert.equal(helperRequests(k).length, 3);
+  const reads = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read' && e.data.task);
+  assert.match(reads[0].data.content, /It couldn't be described/);
+  assert.equal(reads[2].data.content, reads[0].data.content);
+});
+
+test("task (fix pass): a photo or PDF whose bytes are gone is said so in the result; a photo goes with its path", async () => {
+  const { toBase64 } = await import('../../src/core/bytes.js');
+  const gone = { toolCalls: [{ name: 'gone', input: {} }, { name: 'here', input: {} }] };
+  const k = await agentKit([[{ toolCalls: [{ name: 'task', input: { prompt: 'Look at both', tools: ['gone', 'here'] } }] }, sleep]], { utility: [gone, { text: 'Done.' }] });
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'image', 'pdf'] } });
+  k.registry.add('test', 'tool', { name: 'gone', description: 'A photo and a PDF no longer stored.', input: { type: 'object' }, run: async () => ({
+    content: 'Two files.', images: [{ mediaType: 'image/png', hash: 'f'.repeat(64), path: '/trip/files/old.png' }],
+    document: { mediaType: 'application/pdf', hash: 'e'.repeat(64), name: 'old.pdf', path: '/trip/files/old.pdf' },
+  }) });
+  k.registry.add('test', 'tool', { name: 'here', description: 'A photo.', input: { type: 'object' }, run: async () => ({
+    content: 'A photo.', images: [{ mediaType: 'image/png', data: toBase64(new TextEncoder().encode('png')), path: '/trip/files/new.png' }],
+  }) });
+  k.agent.send('Go');
+  await k.agent.idle();
+  const last = k.requests.filter((/** @type {any} */ r) => r.messages[0].parts[0].text === 'Look at both')[1].messages.at(-1).parts;
+  const results = last.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => p.content);
+  assert.match(results[0], /\nThe photo \/trip\/files\/old\.png couldn't be read: its file is no longer stored\.\nThe PDF \/trip\/files\/old\.pdf couldn't be read: its file is no longer stored\.$/);
+  assert.equal(last.filter((/** @type {any} */ p) => p.type === 'image').length, 1, 'only the photo that is stored');
+  assert.equal(last.find((/** @type {any} */ p) => p.type === 'image').path, '/trip/files/new.png');
 });

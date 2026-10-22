@@ -276,6 +276,20 @@ test('opening another conversation stops both halves at once, so neither writes 
   assert.equal(late.length, 0, 'both calls were stopped');
 });
 
+test('a turn cut by opening another conversation is said once in the one left, by Kokoro, though both halves are cut (fix pass)', async () => {
+  const slow = { rules: [{ match: '.', reply: { delayMs: 400, toolCalls: [{ name: 'sleep', input: {} }] } }] };
+  const k = await agentKit([slow], { koe: { type: slow } });
+  const left = k.trip;
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  k.agent.send('Hi');
+  await until(() => k.agent.koe.busy && k.agent.kokoro.busy && k.requests.length >= 2);
+  await k.agent.open(other);
+  await k.agent.idle();
+  const said = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(left, { types: ['paused'] })));
+  assert.equal(said.length, 1);
+});
+
 test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a tap goes to the half that talks", async () => {
   const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [
     { match: 'the user wrote', reply: { toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, then: sleep },
