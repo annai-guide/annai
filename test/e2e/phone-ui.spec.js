@@ -3,45 +3,133 @@ import { openApp, waitForServiceWorker, startSettled, pickProvider, addProvider 
 
 // The screens' side of the user's iPhone findings (2026-10-22).
 
+/** What the dock looks like to the eye: hidden is see-through and lets taps through, but stays in the page and its accessibility tree. @param {import('@playwright/test').Page} page */
+const shown = (page) => page.locator('nav.dock').evaluate((el) => getComputedStyle(el).opacity === '1' && getComputedStyle(el).pointerEvents !== 'none');
+/** A plain link, a checkbox and a button fixed where the dock is (under it, while it shows). @param {import('@playwright/test').Page} page */
+async function underTheDock(page) {
+  await page.evaluate(() => {
+    const at = (/** @type {HTMLElement} */ el, /** @type {string} */ left) => {
+      el.style.cssText = `position: fixed; left: ${left}; bottom: 12px; width: 120px; height: 44px; z-index: 1`;
+      document.querySelector('main')?.append(el);
+    };
+    const link = document.createElement('a');
+    link.id = 'under-link';
+    link.href = '#under';
+    link.textContent = 'A link under the dock';
+    link.addEventListener('click', (e) => { e.preventDefault(); link.dataset.clicked = '1'; });
+    at(link, '8px');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.id = 'under-box';
+    at(box, '150px');
+    const button = document.createElement('button');
+    button.id = 'under-dock';
+    button.textContent = 'Under the dock';
+    button.addEventListener('click', () => { button.dataset.clicked = '1'; });
+    at(button, '230px');
+  });
+}
+
 test('the dock hides while a field outside it has focus, comes back when focus leaves, and its own box still types', async ({ page }) => {
   await openApp(page, '#/models');
   await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
   const dock = page.locator('nav.dock');
   await expect(dock).toBeVisible();
+  expect(await shown(page)).toBe(true);
   const before = await dock.boundingBox();
   const field = page.getByLabel(/Summarize at/);
   await field.focus();
-  await expect(dock).toBeHidden();
-  // Hidden by visibility, not removed: its box stays, so the page doesn't move under the keyboard.
+  await expect.poll(() => shown(page)).toBe(false);
+  // Only looked away from: its box stays, so the page doesn't move under the keyboard, and it stays in the accessibility tree,
+  // so what it announces (the captions) still comes.
   expect(await dock.boundingBox()).toEqual(before);
+  await expect(page.getByRole('navigation', { name: 'Shiori' })).toBeAttached();
   await field.blur();
-  await expect(dock).toBeVisible();
+  await expect.poll(() => shown(page)).toBe(true);
   // The dock's own box: the dock stays while it is typed in.
   await page.getByRole('button', { name: 'Type' }).click();
   const box = page.getByLabel('Message to Shiori');
   await expect(box).toBeFocused();
   await box.fill('hello');
-  await expect(dock).toBeVisible();
+  expect(await shown(page)).toBe(true);
   await expect(box).toHaveValue('hello');
 });
 
 test('a button under the dock still takes a click while a field has focus: the dock comes back after the press, not at it', async ({ page }) => {
   await openApp(page, '#/models');
   await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
-  // A button where the dock is (under it, while it shows): pressing it lets go of the field.
-  await page.evaluate(() => {
-    const b = document.createElement('button');
-    b.id = 'under-dock';
-    b.textContent = 'Under the dock';
-    b.style.cssText = 'position: fixed; left: 8px; right: 8px; bottom: 8px; height: 40px; z-index: 1';
-    b.addEventListener('click', () => { b.dataset.clicked = '1'; });
-    document.querySelector('main')?.append(b);
-  });
+  await underTheDock(page);
   await page.getByLabel(/Summarize at/).focus();
-  await expect(page.locator('nav.dock')).toBeHidden();
+  await expect.poll(() => shown(page)).toBe(false);
   await page.locator('#under-dock').click();
   await expect(page.locator('#under-dock')).toHaveAttribute('data-clicked', '1');
-  await expect(page.locator('nav.dock')).toBeVisible();
+  await expect.poll(() => shown(page)).toBe(true);
+});
+
+// On a touch screen the events of a tap are pointerup, mousedown (which lets go of the field), mouseup and click: the dock must not
+// come back between them, or the tap lands on it (the review of 2026-10-22).
+test('a tap on a link, a checkbox or a button under the dock, while a field has focus, lands on it; then the dock is back', async ({ page }) => {
+  await openApp(page, '#/models');
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  await underTheDock(page);
+  /** @type {[string, () => Promise<void>][]} */
+  const taps = [['#under-link', () => expect(page.locator('#under-link')).toHaveAttribute('data-clicked', '1')],
+    ['#under-box', () => expect(page.locator('#under-box')).toBeChecked()],
+    ['#under-dock', () => expect(page.locator('#under-dock')).toHaveAttribute('data-clicked', '1')]];
+  for (const [id, done] of taps) {
+    await page.getByLabel(/Summarize at/).focus();
+    await expect.poll(() => shown(page)).toBe(false);
+    await page.locator(id).tap();
+    await done();
+    await expect.poll(() => shown(page)).toBe(true);
+  }
+});
+
+test('with a press that sends no click, the dock comes back soon after it ends', async ({ page }) => {
+  await openApp(page, '#/models');
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  await page.getByLabel(/Summarize at/).focus();
+  await expect.poll(() => shown(page)).toBe(false);
+  // A press on bare page: it lets go of the field, and no click names a target that needs the dock to wait (a drag away sends none).
+  await page.mouse.move(200, 300);
+  await page.mouse.down();
+  await page.mouse.move(260, 360);
+  await page.mouse.up();
+  await expect.poll(() => shown(page), { timeout: 3000 }).toBe(true);
+});
+
+// Android's Back hides the keyboard and keeps the focus: the dock follows the keyboard, not the focus (the review of 2026-10-22).
+test('the dock comes back when the keyboard goes while the field keeps focus, and hides again when it returns', async ({ page }) => {
+  await page.addInitScript(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    Object.defineProperty(vv, 'height', { get: () => /** @type {any} */ (window).fakeVvHeight ?? innerHeight });
+  });
+  await openApp(page, '#/models');
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  const resize = (/** @type {number | null} */ h) => page.evaluate((h) => { /** @type {any} */ (window).fakeVvHeight = h ?? undefined; visualViewport?.dispatchEvent(new Event('resize')); }, h);
+  await page.getByLabel(/Summarize at/).focus();
+  await expect.poll(() => shown(page)).toBe(false);
+  await resize(300); // the keyboard comes up
+  expect(await shown(page)).toBe(false);
+  await resize(null); // the keyboard goes: Back, and the field keeps its focus
+  await expect.poll(() => shown(page)).toBe(true);
+  await expect(page.getByLabel(/Summarize at/)).toBeFocused();
+  await resize(300);
+  await expect.poll(() => shown(page)).toBe(false);
+});
+
+// A mouse and a hardware keyboard have no keyboard that covers the dock: every click into a field would hide it for nothing.
+test('with a mouse (no coarse pointer) the dock stays while a field has focus', async ({ page }) => {
+  await page.addInitScript(() => {
+    const real = window.matchMedia.bind(window);
+    window.matchMedia = (q) => (q.includes('pointer: coarse') ? real('(pointer: none) and (pointer: fine)') : real(q));
+  });
+  await openApp(page, '#/models');
+  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+  await page.getByLabel(/Summarize at/).focus();
+  await page.waitForTimeout(300);
+  expect(await shown(page)).toBe(true);
 });
 
 // "In the add, at model providers, if user type in something returns nothing, maybe we should put the 'another address' there ...

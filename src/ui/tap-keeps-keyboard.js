@@ -1,6 +1,9 @@
 /** Input types that take no typing, so no keyboard. */
 const NOT_TEXT = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'range', 'color', 'image']);
 
+/** Whether focus on this element brings up a keyboard: a text box, a text area or an editable element. @param {EventTarget | null} el */
+export const takesTyping = (el) => el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !NOT_TEXT.has(el.type)) || (el instanceof HTMLElement && el.isContentEditable);
+
 /**
  * A finger's tap on a screen's button, while a field is being typed in, no longer lets the keyboard go down before the click
  * lands. The second emulator re-check: after typing a key, the first tap on Save only focused it (the keyboard going down laid
@@ -14,7 +17,7 @@ export function tapKeepsKeyboard(doc = document) {
   /** The field being typed in and the button, when the target is a screen's button. @param {Event} e */
   const typingFor = (e) => {
     const a = doc.activeElement;
-    const typing = a instanceof HTMLTextAreaElement || (a instanceof HTMLInputElement && !NOT_TEXT.has(a.type)) ? a : null;
+    const typing = takesTyping(a) ? /** @type {HTMLElement} */ (a) : null;
     const button = e.target instanceof Element ? e.target.closest('main button, main a.btn') : null;
     return touch && typing && button && !button.contains(typing) ? { typing, button } : null;
   };
