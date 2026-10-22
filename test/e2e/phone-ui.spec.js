@@ -140,3 +140,37 @@ test("a card whose text is longer than the box gets More, which opens it to its 
   await card.getByRole('button', { name: 'Dismiss' }).click();
   await expect(card).toHaveCount(0);
 });
+
+// "The caption box looks exactly like the input box (when the input box is not focused), so maybe make some distinction?" (the user, 2026-10-22)
+for (const scheme of ['light', 'dark']) {
+  test(`the Captions chip opens a caption box that looks nothing like the text box, in ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: /** @type {'light' | 'dark'} */ (scheme) });
+    await page.addInitScript(() => {
+      if (typeof MediaDevices !== 'undefined') MediaDevices.prototype.enumerateDevices = async () => /** @type {any} */ ([{ kind: 'audioinput', label: 'AirPods Pro', deviceId: '1', groupId: '1' }]);
+    });
+    await openApp(page, '#/trips');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on · headphones');
+    // The chip is Captions, and is off the dock's words "Show what she's saying".
+    const chip = page.getByRole('button', { name: 'Captions', exact: true });
+    await expect(page.getByRole('button', { name: "Show what she's saying" })).toHaveCount(0);
+    await chip.click();
+    const caption = page.locator('.dock .caption');
+    await expect(caption).toBeVisible();
+    await page.getByRole('button', { name: 'Type' }).click();
+    const box = page.getByLabel('Message to Shiori');
+    await expect(box).toBeVisible();
+    await page.locator('main').click({ position: { x: 5, y: 5 }, force: true }); // the box is not focused
+    const look = (/** @type {import('@playwright/test').Locator} */ l) => l.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { background: s.backgroundColor, border: `${s.borderTopWidth} ${s.borderLeftWidth} ${s.borderLeftColor}`, style: s.fontStyle };
+    });
+    const a = await look(caption);
+    const b = await look(box);
+    expect(a.background).not.toBe(b.background);
+    expect(a.border).not.toBe(b.border);
+    expect(a.style).toBe('italic');
+    expect(b.style).toBe('normal');
+    // Its tail: the bubble points at her.
+    expect(await caption.evaluate((el) => getComputedStyle(el, '::after').content)).toBe('""');
+  });
+}

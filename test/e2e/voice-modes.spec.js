@@ -93,7 +93,7 @@ test('spoken words stay hidden unless asked: folded in the conversation, and sho
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();
     const caption = page.locator('.dock .caption');
     await expect(caption).toBeHidden();
-    await page.getByRole('button', { name: "Show what she's saying" }).click();
+    await page.getByRole('button', { name: 'Captions' }).click();
     await expect(caption).toHaveText('Nepenthe is 25 minutes south.');
   } finally {
     await server.stop();

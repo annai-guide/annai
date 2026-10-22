@@ -131,7 +131,9 @@ html.typing-elsewhere .dock:not(.seat) { visibility: hidden; }
 .live-wrap { position: static; }
 .live-menu { flex-direction: column; align-items: stretch; width: min(260px, calc(100vw - 24px)); max-height: 60vh; overflow-y: auto; }
 .live-menu .sub { margin: 4px 6px 0; }
-.caption { max-width: 560px; margin: 0 auto 6px; padding: 8px 12px; border-radius: 12px; background: var(--sheet); border: 1px solid var(--line); white-space: pre-line; overflow-wrap: anywhere; }
+.caption { position: relative; max-width: 560px; margin: 0 auto 12px; padding: 8px 14px; border-radius: 16px; background: var(--ai-wash); border: 0; border-left: 4px solid var(--ai); font-style: italic; white-space: pre-line; overflow-wrap: anywhere; }
+/* A speech bubble's tail, toward Shiori below it: nothing an input has. */
+.caption::after { content: ''; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 8px; margin-left: -8px; background: var(--ai-wash); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .dock.voice .seat.dock { width: 92px; height: 92px; }
 .dock.voice .ib { width: 56px; height: 56px; }
 .dock.voice .talk { font-size: 13px; font-weight: 700; color: var(--ink); }
