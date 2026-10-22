@@ -10,8 +10,8 @@ const RECAP = '# A morning on Highway 1\n\n## Friday, November 27\n\nThe fog lif
 async function models(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Writer', url: `${origin}/u`, key: 'sk-test-u', model: 'u-model' });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Writer', url: `${origin}/u`, key: 'sk-test-u', model: 'u-model' });
   // Each role's list is drawn again once a model joins it: wait for that before the next.
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
@@ -26,7 +26,7 @@ test('the recap: written by the utility model from the trip in words, shown safe
   const llm = await startModelServer({ '/b/v1/messages': sse(anthropicToolReply([sleep])), '/u/v1/messages': sse(anthropicToolReply([], RECAP)) });
   try {
     await models(page, llm.origin);
-    // Another address's look at each address is answered 404 and 400 by design, which a browser logs as failed loads.
+    // Custom provider's look at each address is answered 404 and 400 by design, which a browser logs as failed loads.
     errors.splice(0, errors.length, ...errors.filter((e) => !/^Failed to load resource: the server responded with a status of 40[045] /.test(e)));
     await page.goto('/#/trips');
     const trip = await startTrip(page, 'Big Sur');

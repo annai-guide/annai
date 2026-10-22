@@ -9,7 +9,7 @@ const chat = { baseUrl: 'https://api.example/v1', key: 'required', abilities: { 
 const CATALOG = [
   entry({ id: 'provider-openai', name: 'OpenAI', provider: chat }),
   entry({ id: 'provider-openrouter', name: 'OpenRouter', provider: chat }),
-  entry({ id: 'provider-another-address', name: 'Another address', provider: { ...chat, baseUrl: '' } }),
+  entry({ id: 'provider-another-address', name: 'Custom provider', provider: { ...chat, baseUrl: '' } }),
   entry({ id: 'storage-s3', name: 'S3-compatible storage', entry: 'index.js', provides: { 'storage-type': ['s3'] } }),
   entry({ id: 'remote-trace', name: 'Remote trace (for developers)', entry: 'index.js', category: 'developer' }),
   entry({ id: 'chat-completions', name: 'Chat Completions', entry: 'index.js', provides: { 'endpoint-type': ['chat-completions'] } }),

@@ -24,6 +24,24 @@ export function createNotices() {
       settle = setTimeout(() => el.classList.remove('landed'), 400);
     }
   };
+  /**
+   * A card whose text is more than three lines shows three and a More, after the text, which opens it to its full height, and a
+   * Less, which closes it (the user, 2026-10-22: a sign-in card stopped mid-sentence). Open, the box's cap is lifted; the buttons
+   * stay at the card's foot, Dismiss in reach. Looked at once the card is drawn (one in a closed stack, when it opens) and when
+   * the screen changes size: clamp the text, and see whether any of it is hidden.
+   * @type {WeakMap<HTMLElement, () => void>}
+   */
+  const fitters = new WeakMap();
+  /** @param {HTMLElement} node @param {HTMLElement} more */
+  const fit = (node, more) => () => {
+    const p = node.querySelector('p');
+    if (!p || !node.offsetHeight || node.classList.contains('open')) return;
+    node.classList.add('clamp');
+    const long = p.scrollHeight > p.clientHeight + 1;
+    node.classList.toggle('clamp', long);
+    more.hidden = !long;
+  };
+  addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
   const kindOf = (title, tone) => `${tone}\n${title}`;
   /** The lone card of a kind, while there is only one. @type {Map<string, HTMLElement>} */
@@ -45,6 +63,7 @@ let lone = 0;
       show.textContent = open ? 'Hide' : 'Show';
       show.setAttribute('aria-expanded', String(open));
       recount(stack);
+      if (open) for (const m of stack.members) fitters.get(m)?.();
     } }, 'Show');
     const all = h('button', { class: 'btn ghost', type: 'button', onclick: () => keep(() => { for (const m of [...stack.members]) leave(kind, m); }) }, 'Dismiss all');
     const el = h('section', { class: 'notice notice-stack' }, count, said, h('div', { class: 'acts' }, show, all), list);
@@ -121,14 +140,23 @@ let lone = 0;
     }
     // A card with anything to do but Dismiss (Try again, Open Trace, Install) is never folded away.
     const kind = actions.length ? `${kindOf(title, tone)}\n${++lone}` : kindOf(title, tone);
+    const more = h('button', { class: 'btn ghost more', type: 'button', hidden: true, 'aria-expanded': 'false', onclick: () => keep(() => {
+      const open = node.classList.toggle('open');
+      more.textContent = open ? 'Less' : 'More';
+      more.setAttribute('aria-expanded', String(open));
+      el.classList.toggle('opened', Boolean(el.querySelector('.notice.open')));
+    }) }, 'More');
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title }),
       body ? h('p', { text: body }) : null,
+      body ? more : null,
       h('div', { class: 'acts' },
         ...actions.map((a) => h('button', { class: a.primary ? 'btn pri' : 'btn', type: 'button', onclick: () => { a.run(); dismiss(); } }, a.label)),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => dismiss() }, 'Dismiss')));
-    const dismiss = () => { if (node.isConnected) keep(() => leave(kind, node)); };
+    fitters.set(node, fit(node, more));
+    const dismiss = () => { if (node.isConnected) keep(() => { leave(kind, node); el.classList.toggle('opened', Boolean(el.querySelector('.notice.open'))); }); };
     keep(() => place(kind, title, node));
+    fitters.get(node)?.();
     return dismiss;
   }
   /** @param {string} text */

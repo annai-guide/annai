@@ -149,13 +149,14 @@
     },
     {
       "id": "provider-another-address",
-      "name": "Another address",
-      "version": "2.1.1",
+      "name": "Custom provider",
+      "version": "2.1.2",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
         "OpenAI-compatible",
         "router",
+        "custom",
         "proxy",
         "self-hosted"
       ],
@@ -168,14 +169,14 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24590,
+      "size": 24514,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "574f9c0f1fe30570b197144e08e747865f3e138abfe20b98d4505e8d34c224ee",
-        "index.js": "57103a29dfcdc650394871578e449f2aecd69b70e35adec4b71caeb3dfbba5ce",
-        "probe.js": "79c45207562253ab47bbdfe97da275fb0b175fc56c00d610f6ccb052dc5a1d79"
+        "annai-plugin.json": "cff3a9bd96d765100a49c1919a4bd7039e376a8187b7f9ffa6c3e1695e082643",
+        "index.js": "f17b0e95caa9396f8394859b06515a3c4f27705852bf2535106d3d5962b3f0c9",
+        "probe.js": "3dd2da5ad8350f8d6eb43c003658f7dcf90deb6811116a358f94e6f2f64c4150"
       }
     },
     {
@@ -289,7 +290,7 @@
     {
       "id": "provider-llamacpp",
       "name": "llama.cpp",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "description": "Models on a llama.cpp server you run (llama-server), or one built on it such as Unsloth Studio or KoboldCpp. Their thinking is switched off for quick decisions.",
       "category": "providers",
       "keywords": [
@@ -303,7 +304,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4623,
+      "size": 4408,
       "requires": [
         {
           "id": "chat-completions",
@@ -312,14 +313,14 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "f26d9c6c7d784b7d7e5abc1b900aa3f78e9e848945ca3df6814c5762c8923ccb",
+        "annai-plugin.json": "8d1e22f376f3efac33f87e67e178153138a29f7eb57dbbd8f895fbaff4f8a6fb",
         "index.js": "a21970b031a674e97b6e9e1d573ae6a360519989015ead689fe86f13229c32a7"
       }
     },
     {
       "id": "provider-lmstudio",
       "name": "LM Studio",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Models on LM Studio's server.",
       "category": "providers",
       "keywords": [],
@@ -329,7 +330,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 3436,
+      "size": 3221,
       "requires": [
         {
           "id": "chat-completions",
@@ -338,14 +339,14 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "796effa145a97d0edc9482aa861e48e18d61d18efd769123c2699e0b4ed415b4",
+        "annai-plugin.json": "4f8bedb66e0a00b78ad0694d3e84ad7de4641b82430634c36bd813932f88ca38",
         "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451"
       }
     },
     {
       "id": "provider-local-speech",
       "name": "Local speech server",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
       "category": "speech",
       "keywords": [
@@ -360,7 +361,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1805,
+      "size": 1676,
       "requires": [
         {
           "id": "speech-openai",
@@ -369,7 +370,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "545e7364f4e4f38bc45e58584ca92b05141e70ca3a8a4f6eb140bcdacd62546c"
+        "annai-plugin.json": "e74999f055de0bdf742380a68812a28433347c8c751ae34b3543986c7902e9a1"
       }
     },
     {
@@ -400,7 +401,7 @@
     {
       "id": "provider-ollama",
       "name": "Ollama",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Models on Ollama, with their thinking switched off for quick decisions.",
       "category": "providers",
       "keywords": [],
@@ -410,7 +411,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4394,
+      "size": 4179,
       "requires": [
         {
           "id": "chat-completions",
@@ -419,7 +420,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "877a05b72ea616b983dfb42ab2a6e2aad3f5f519e250421e0fef87fe58518422",
+        "annai-plugin.json": "68d7913ac22c2d02686839b70e59dad4f1497fcebd9b64bd3cc6c5418f0a0e9d",
         "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb"
       }
     },
@@ -516,7 +517,7 @@
     {
       "id": "provider-sglang",
       "name": "SGLang",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Models on an SGLang server you run, with their thinking switched through the chat template.",
       "category": "providers",
       "keywords": [],
@@ -526,7 +527,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 2058,
+      "size": 1843,
       "requires": [
         {
           "id": "chat-completions",
@@ -535,13 +536,13 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "cc436e9b80287680fd8159324d9e596cbf30173304c34386c341baf9af3c77c4"
+        "annai-plugin.json": "c06469647d3412ec6d91b3249cb80adf2de8848aff6d7f63876c8806b0e0b648"
       }
     },
     {
       "id": "provider-vllm",
       "name": "vLLM",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Models on a vLLM server you run, with their thinking switched through the chat template, and Whisper models for transcription.",
       "category": "providers",
       "keywords": [],
@@ -552,7 +553,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 2564,
+      "size": 2349,
       "requires": [
         {
           "id": "chat-completions",
@@ -561,13 +562,13 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "69a1eff6ba80e026c4d199f9bc80f71f3a45f45123d2eba33aafb31fb5d95842"
+        "annai-plugin.json": "ff09a697526fcbd75e3eea088d766a8f2069f65536c31f4cdb8e6a84d8b89f40"
       }
     },
     {
       "id": "remote-trace",
       "name": "Remote trace (for developers)",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
       "category": "developer",
       "keywords": [],
@@ -575,11 +576,11 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19395,
+      "size": 19397,
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "89a4b8619a9a6e43e9e8f22d01ea488744fdbeb76dc33d54fc4590e4b19c58b4",
+        "annai-plugin.json": "e6fb7304137f12bee527a185b59324ad263364e476f32ef013dd8ccc137181b1",
         "index.js": "f92387d45592c957b3a1f914eacb42512d4d59158b79fb5f184d00897126282d"
       }
     },

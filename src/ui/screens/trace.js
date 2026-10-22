@@ -13,9 +13,9 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Web: ['net.request', 'pack.download'],
   Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session'],
   Housekeeping: ['compaction'],
-  // Live is what live mode did; its location points (about one a second on a drive) are a kind of their own,
+  // On the road is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
-  Live: ['trigger.fired', 'state', 'reminder'],
+  'On the road': ['trigger.fired', 'state', 'reminder'],
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
   Plugins: ['plugin.install', 'plugin.update', 'plugin.reset', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
@@ -125,7 +125,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'location') return `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
   if (e.type === 'trigger.fired') return `${d.watch} · ${cut(d.text)}${d.late ? ` · late by ${d.late} min` : ''}${d.offline ? ' · no connection' : ''}`;
   if (e.type === 'reminder') return `${d.aloud ? 'said aloud' : 'shown'} · ${cut(d.text)}`;
-  if (e.type === 'state') return d.live ? `live mode ${d.live}` : d.voice ? `voice ${d.voice}${d.why ? ` (${d.why})` : ''}` : '';
+  if (e.type === 'state') return d.live ? `on the road ${d.live}` : d.voice ? `voice ${d.voice}${d.why ? ` (${d.why})` : ''}` : '';
   if (e.type === 'push.sync') return `${d.relay} · ${d.sent ?? 0} sent, ${d.calledOff ?? 0} called off · ${d.waiting ?? 0} waiting${d.error ? ` · ${cut(d.error)}` : ''}`;
   if (e.type === 'push.shown') return `notification shown · ${d.watch}`;
   if (e.type === 'push.opened') return `notification opened · ${d.watch}`;

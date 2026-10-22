@@ -331,7 +331,7 @@ export class Live {
       return true;
     });
     if (changed && on) {
-      await this.agent.wake({ kind: 'live', text: 'The user turned live mode on: annai now follows where they are with GPS, and your location watches run. If they may drive or ride, load the driving-companion skill.' });
+      await this.agent.wake({ kind: 'live', text: 'The user started On the road (the mode that follows where they are): annai now follows where they are with GPS, and your location watches run. If they may drive or ride, load the driving-companion skill.' });
     }
   }
 
@@ -428,7 +428,7 @@ export class Live {
   watchText(w) {
     const type = this.types().get(w.when.type);
     const parts = [`Set ${w.id}: ${this.#describe(type, w)}${w.repeat ? ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
-    if (type?.gps && !this.on) parts.push('Live mode is off, so it waits until the user turns it on.');
+    if (type?.gps && !this.on) parts.push('On the road is off, so it waits until the user starts it.');
     const here = this.nowInfo();
     parts.push(`Now: ${here.activity}; ${here.place}.`);
     return parts.join(' ');
@@ -565,7 +565,7 @@ export class Live {
 
   /** The now block's place and activity (spec §6.3). Nothing is sent anywhere to name a place (choice 14). */
   nowInfo() {
-    if (!this.on) return { place: 'unknown (live mode is off, so annai has no GPS)', activity: 'unknown (live mode is off)' };
+    if (!this.on) return { place: 'unknown (the user is not On the road, so annai has no GPS)', activity: 'unknown (the user is not On the road)' };
     const activity = this.#activityText();
     const f = this.fix;
     if (!f) {

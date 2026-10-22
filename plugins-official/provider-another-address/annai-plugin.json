@@ -1,7 +1,7 @@
 {
   "id": "provider-another-address",
-  "name": "Another address",
-  "version": "2.1.1",
+  "name": "Custom provider",
+  "version": "2.1.2",
   "catchAll": true,
   "api": 1,
   "entry": "index.js",
@@ -13,13 +13,15 @@
   "keywords": [
     "OpenAI-compatible",
     "router",
+    "custom",
     "proxy",
     "self-hosted"
   ],
   "provider": {
     "baseUrl": "",
     "key": "optional",
-    "note": "On a phone, the server needs an HTTPS address, such as a tunnel: localhost only reaches the device annai runs on. A server that never streams sends each answer whole, so annai sees nothing of it until all of it has come: if long answers stop with \"No output started in time.\", raise the role's \"Wait for the first words\" in Settings → Models, and Settings → Voice → \"Wait for her first words\".",
+    "serverNote": true,
+    "note": "A server that never streams sends each answer whole, so annai sees nothing of it until all of it has come: if long answers stop with \"No output started in time.\", raise the role's \"Wait for the first words\" in Settings → Models, and Settings → Voice → \"Wait for her first words\".",
     "abilities": {
       "chat-completions": {
         "kind": "chat",

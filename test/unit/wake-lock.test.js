@@ -90,29 +90,29 @@ test('the screen is kept on per situation: chosen for driving, not for walking; 
 });
 
 test('the live chip says how things stand, in a few words', () => {
-  assert.equal(liveText({ on: false, gps: 'off', activity: 'unknown', fix: null }), 'Live off');
-  assert.equal(liveText({ on: true, gps: 'waiting', activity: 'unknown', fix: null }), 'Live · finding you');
-  assert.equal(liveText({ on: true, gps: 'unavailable', activity: 'unknown', fix: null }), 'Live · no GPS');
-  assert.equal(liveText({ on: true, gps: 'denied', activity: 'unknown', fix: null }), 'Live · no location');
+  assert.equal(liveText({ on: false, gps: 'off', activity: 'unknown', fix: null }), 'Off the road');
+  assert.equal(liveText({ on: true, gps: 'waiting', activity: 'unknown', fix: null }), 'On the road · finding you');
+  assert.equal(liveText({ on: true, gps: 'unavailable', activity: 'unknown', fix: null }), 'On the road · no GPS');
+  assert.equal(liveText({ on: true, gps: 'denied', activity: 'unknown', fix: null }), 'On the road · no location');
   const now = Date.now();
-  assert.equal(liveText({ on: true, gps: 'denied', activity: 'unknown', fix: { lat: 1, lng: 2, at: now - 3_600_000, source: 'manual' } }), 'Live on'); // a place the user set
-  assert.equal(liveText({ on: true, gps: 'ok', activity: 'moving-fast', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'Live · moving fast');
-  assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'Live · stopped');
+  assert.equal(liveText({ on: true, gps: 'denied', activity: 'unknown', fix: { lat: 1, lng: 2, at: now - 3_600_000, source: 'manual' } }), 'On the road'); // a place the user set
+  assert.equal(liveText({ on: true, gps: 'ok', activity: 'moving-fast', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'On the road · moving fast');
+  assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'On the road · stopped');
   assert.equal(whileText('moving-fast'), 'while driving or riding');
   assert.equal(whileText('walking'), 'while walking');
   assert.equal(whileText('still'), 'while stopped');
-  assert.equal(whileText('unknown'), 'in live mode');
+  assert.equal(whileText('unknown'), 'while on the road');
 });
 
 test('a GPS position from before the GPS was lost, or too old, is not shown as where you are (B1)', () => {
   const now = Date.now();
   const old = { lat: 36.3715, lng: -121.9017, at: now - 60_000, source: 'gps' };
-  assert.equal(liveText({ on: true, gps: 'denied', activity: 'still', fix: old }), 'Live · no location');
-  assert.equal(liveText({ on: true, gps: 'unavailable', activity: 'moving-fast', fix: old }), 'Live · no GPS');
-  assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { ...old, at: now - 11 * 60_000 } }), 'Live · finding you');
+  assert.equal(liveText({ on: true, gps: 'denied', activity: 'still', fix: old }), 'On the road · no location');
+  assert.equal(liveText({ on: true, gps: 'unavailable', activity: 'moving-fast', fix: old }), 'On the road · no GPS');
+  assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { ...old, at: now - 11 * 60_000 } }), 'On the road · finding you');
   const live = (/** @type {any} */ o) => ({ on: true, activity: 'still', near: () => ({ name: 'Bixby Creek Bridge', m: 10 }), ...o });
-  assert.equal(whereWords(live({ gps: 'denied', fix: old }), 'en-US'), "Location isn't allowed for annai. Tap Live below to say where you are.");
-  assert.equal(whereWords(live({ gps: 'unavailable', fix: old }), 'en-US'), 'No GPS signal right now. Tap Live below to say where you are.');
+  assert.equal(whereWords(live({ gps: 'denied', fix: old }), 'en-US'), "Location isn't allowed for annai. Tap On the road below to say where you are.");
+  assert.equal(whereWords(live({ gps: 'unavailable', fix: old }), 'en-US'), 'No GPS signal right now. Tap On the road below to say where you are.');
   assert.equal(whereWords(live({ gps: 'ok', fix: { ...old, at: now - 11 * 60_000 } }), 'en-US'), 'Finding where you are…');
   assert.equal(whereWords(live({ gps: 'ok', fix: { ...old, at: now } }), 'en-US'), 'At Bixby Creek Bridge');
   assert.equal(whereWords(live({ gps: 'denied', fix: { ...old, source: 'manual' } }), 'en-US'), 'At Bixby Creek Bridge');

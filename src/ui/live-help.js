@@ -19,7 +19,7 @@ export function gpsProblem(where, installed = false) {
       : "Allow location for this site in your browser's site settings.";
   return {
     title: "annai can't see where you are",
-    body: `Location isn't allowed, so live mode has only its time reminders. ${steps} Then turn live mode off and on again. Or tell annai where you are: Live → Where are you?`,
+    body: `Location isn't allowed, so On the road has only its time reminders. ${steps} Then stop on the road and start it again. Or tell annai where you are: On the road → Where are you?`,
   };
 }
 

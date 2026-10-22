@@ -55,7 +55,7 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   await expect(page.getByText('1. GPT-6.1 Sol')).toBeVisible();
   await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI: GPT-4o mini TTS (Marin)']);
   // Remove: everything it brought goes.
-  await page.getByRole('link', { name: /^OpenAI/ }).click();
+  await page.locator('a.card', { hasText: 'OpenAI' }).click(); // the provider's card; the models in roles link too
   await expect(page.getByText('Removes its key, its models and their places in roles, and the OpenAI plugin, with OpenAI Responses and OpenAI-compatible speech, which nothing else needs.')).toBeVisible();
   const remove = page.getByRole('button', { name: 'Remove provider' });
   await remove.click();
@@ -188,7 +188,7 @@ test('moving over: endpoints from before providers, with their keys, are removed
 test("fix pass: an address typed without https:// isn't saved, on the provider and on an ability, and the words say what to type", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await add(page, 'Another address');
+  await add(page, 'Custom provider');
   await page.getByLabel('Address', { exact: true }).fill('llm.example.com/v1');
   await page.getByLabel('API key').fill('sk-test-typed-address-1');
   await page.getByRole('button', { name: 'Save' }).click();
@@ -206,7 +206,7 @@ test("fix pass: an address typed without https:// isn't saved, on the provider a
   const own = voice.getByLabel('Its own address');
   await own.fill('http://192.168.1.5:8880/v1');
   await own.blur();
-  await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\./);
+  await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. Browsers block plain http .* needs one\. Tailscale Serve can give it: tailscale serve --bg --https=8443 http:\/\/localhost:8880\. The server must also allow CORS from annai\.guide\./);
 });
 
 test("Add on a provider whose plugin the user turned off says so in words, with no plugin id in them (the emulator pass: \"provider-openrouter:\")", async ({ page }) => {

@@ -119,7 +119,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 - [ ] **m3 #7**: Microphone denied (Chrome's site setting): the message says what happened and gives the Android steps. How: screen. Then C.
 - [ ] **m3 #15**: A text-only main model and only "Send audio to the model" in Speech in: tapping Shiori shows a card that says what to add. How: screen.
 - [ ] **m3 #22**: Fresh install, microphone not allowed yet: the chip says "Voice auto · off"; On, then Auto: "Voice on · your last choice". How: clear site data; screen. Then C.
-- [ ] **m3 #30**: While she speaks, "Show what she's saying" puts her words above the dock. How: screen.
+- [ ] **m3 #30**: While she speaks, "Captions" puts her words above the dock. How: screen.
 
 ### A9. Bookings and planning
 

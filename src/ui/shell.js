@@ -28,6 +28,7 @@ import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
+import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
@@ -75,6 +76,7 @@ export function startShell(root, core) {
   addEventListener('resize', showMore);
   document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
   tapKeepsKeyboard();
+  dockHidesWhileTyping();
   drawTabs();
 
   // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on (the user,
@@ -268,10 +270,11 @@ export function startShell(root, core) {
     swipedTo = last?.y ?? null;
     location.hash = last?.hash ?? tab;
   });
-  /** What a redraw now would lose: a field being typed in, a key typed and not saved, or an error shown. */
+  /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown, or a list being dragged. */
   const typing = () => {
     const a = document.activeElement;
     if (a && main.contains(a) && a.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])')) return true;
+    if (main.querySelector('.role-item.dragging')) return true; // a list being dragged
     return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
       || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty)'));
   };

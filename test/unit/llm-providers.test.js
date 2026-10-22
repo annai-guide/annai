@@ -220,7 +220,7 @@ test("a model added by id or from a list starts with its ability's modelDefaults
   await assert.rejects(addModelById(ctx, claude, 'voice', 'x'), /ability/);
 });
 
-test('Another address: abilities start off; an ability added on with its own address keeps it', async () => {
+test('Custom provider: abilities start off; an ability added on with its own address keeps it', async () => {
   const ctx = await setup();
   const id = await addProvider(ctx, ANOTHER_SRC, { name: 'maiGo', baseUrl: 'https://router.example/v1', key: 'sk-m', abilities: { 'chat-completions': { on: true }, voice: { on: true, baseUrl: 'https://voice.example/v1' } } });
   const p = providerOf((await readConfig(ctx.ws)).providers[id]);
@@ -231,7 +231,7 @@ test('Another address: abilities start off; an ability added on with its own add
   const second = await addProvider(ctx, ANOTHER_SRC, {});
   const plain = providerOf((await readConfig(ctx.ws)).providers[second]);
   assert.ok(Object.values(plain.abilities).every((a) => !a.on));
-  assert.equal(plain.name, 'Another address');
+  assert.equal(plain.name, 'Custom provider');
 });
 
 test('speech lists: a transcription model after "Send audio", a voice ahead of the browser voice; behind puts them last; a stand-in added back goes last', () => {

@@ -8,7 +8,7 @@ const sleep = { name: 'sleep', input: {} };
 async function mainModel(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   // The role's list is drawn again once a model joins it: wait for that before anything else on the screen.
@@ -32,10 +32,10 @@ test('Simulate a trip at ten times real time: the chip says so, it pauses and st
     await page.getByRole('button', { name: 'Pause' }).click();
     await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
     await page.locator('.live-chip').click();
-    await page.getByRole('group', { name: 'Live mode' }).getByRole('button', { name: 'Stop the simulation' }).click();
+    await page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Stop the simulation' }).click();
     await expect(page.getByText('You stopped the simulation.')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Replay it' })).toBeVisible();
-    await expect(page.locator('.live-chip')).toHaveText('Live off');
+    await expect(page.locator('.live-chip')).toHaveText('Off the road');
   } finally {
     await llm.stop();
   }
@@ -60,7 +60,7 @@ test('the Big Sur trip, simulated through the app, is replayed and recapped, and
   });
   try {
     await mainModel(page, llm.origin);
-    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Writer', url: `${llm.origin}/u`, key: 'sk-test-u', model: 'u-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Writer', url: `${llm.origin}/u`, key: 'sk-test-u', model: 'u-model' });
     await page.getByLabel('Add a model to utility').selectOption({ label: 'u-model' });
     await page.getByRole('button', { name: 'Add to utility' }).click();
     await expect(page.getByLabel('Add a model to utility').locator('option', { hasText: 'u-model' })).toHaveCount(0);

@@ -36,7 +36,7 @@ function body(n, ctx) {
   if (n === 2) {
     return [h('ul', { class: 'can' },
       can('Plans and bookings.', 'Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.'),
-      can('Live mode.', "Reminders at the right time and place: when to leave, when you've arrived, when you're running late."),
+      can('On the road.', "annai follows where you are with GPS, and reminds you at the right time and place: when to leave, when you've arrived, when you're running late."),
       can('Voice.', 'Talk with Shiori hands-free, in the car or on a trail.'),
       can('Offline places.', "OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal."),
       can('Photos.', 'Show Shiori what you see, and ask about it.'),
