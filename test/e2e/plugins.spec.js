@@ -75,7 +75,8 @@ test("a plugin that never finishes starting doesn't keep annai from opening", as
   }, files);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible({ timeout: 5_000 });
-  await expect(page.getByText(`The plugin "hang" didn't start`)).toBeVisible({ timeout: 15_000 });
+  // By its name, never its id (the second emulator re-check).
+  await expect(page.getByText(`The plugin "Never starts" didn't start`)).toBeVisible({ timeout: 15_000 });
 });
 
 test('reinstalling a plugin that is running asks for a restart, which runs the new version', async ({ page }) => {

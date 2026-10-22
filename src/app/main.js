@@ -17,7 +17,7 @@ import { createLlm } from '../core/llm/service.js';
 import { moveOver } from '../core/llm/move-over.js';
 import { finishReturn } from '../ui/provider-setup.js';
 import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
-import { disabledCard } from '../ui/plugin-cards.js';
+import { disabledCard, reloadCard, startCards, NEEDS_RELOAD } from '../ui/plugin-cards.js';
 import { Updates, DAILY } from '../ui/updates.js';
 import { Halves } from '../core/agent/halves.js';
 import { codec } from '../ui/photo-codec.js';
@@ -41,8 +41,14 @@ import { PushMirror } from '../core/push/mirror.js';
 import { browserSource, takeNews, onPushMessage, closeNotifications } from '../ui/push.js';
 import { shouldWelcome } from '../ui/welcome.js';
 import { screenToResume } from '../ui/resume.js';
+import { controllerReady as taken, pluginsMayLoad } from './claim.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
+// Whether the user has done anything on this page: annai never reloads itself over it (claim.js). Where the browser
+// doesn't say (Safari before 16.4), any tap or key since the page loaded counts.
+let acted = false;
+for (const type of ['pointerdown', 'keydown']) addEventListener(type, () => { acted = true; }, { capture: true, once: true });
+const used = () => /** @type {any} */ (navigator).userActivation?.hasBeenActive ?? acted;
 /** @type {{ store: import('../core/types.js').Store } | null} */
 let running = null;
 
@@ -92,7 +98,17 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/sensors/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
   let pluginsStarted = () => {};
-  const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: controllerReady });
+  // On a page no service worker took (claim.js), plugins can't load: what needs one says so, and one card offers a reload.
+  let gaveUp = false;
+  const whyNoPlugins = () => (gaveUp && !navigator.serviceWorker?.controller ? NEEDS_RELOAD : undefined);
+  let offerReload = (/** @type {string[]} */ _names) => {};
+  const canLoad = async () => {
+    if (whyNoPlugins() || !(await controllerReady())) {
+      offerReload([]);
+      throw new Error(NEEDS_RELOAD);
+    }
+  };
+  const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: canLoad, whyNoPlugins });
   // Speaking and hearing (spec §10): the speech lists, through this device's player and microphone.
   const voice = new Voice({ llm, ws, registry, store, locale: navigator.language, where: platform() });
   voice.refresh().catch(() => {});
@@ -154,7 +170,7 @@ async function boot() {
   const backups = createBackups({
     store, ws, registry, app: VERSION, label: device.label, noun: device.noun, online: () => navigator.onLine !== false,
     ensure: async (type, o = {}) => {
-      await controllerReady();
+      await canLoad();
       await ensureProvided(plugins, 'storage-type', type, { keepOff: o.keepOff });
     },
   });
@@ -173,6 +189,10 @@ async function boot() {
   updates.voice = voice;
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });
   updates.notices = shell.notices;
+  offerReload = (names) => {
+    offerReload = () => {};
+    shell.notices.card(reloadCard(names, () => location.reload()));
+  };
   updates.changed = (waits) => { if (/^#\/updates\b/.test(location.hash) || (waits && /^#\/(settings|plugins)\b/.test(location.hash))) shell.redraw(); };
   pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: 'Notifications', run: () => { location.hash = '#/notifications'; } }] });
   if (moved) {
@@ -231,10 +251,16 @@ async function boot() {
   if (isStandalone()) requestPersist();
   registerServiceWorker(store, shell, updates);
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
-  // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost.
-  pluginsMayLoad().then(() => startPlugins(plugins, shell)).finally(() => {
+  // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost. A page no worker takes
+  // may reload by itself; else none is tried, and one card names them, with Reload now.
+  pluginsMayLoad({ sw: navigator.serviceWorker, session: () => sessionStorage, reload: () => location.reload(), used }).then(async (may) => {
+    const unloaded = may ? await startPlugins(plugins, shell) : Object.values(await plugins.installed().catch(() => ({}))).filter((s) => s.enabled).map((s) => s.name);
+    gaveUp = !may || unloaded.length > 0;
+    if (unloaded.length) offerReload(unloaded);
+  }).finally(() => {
     pluginsStarted();
-    controllerReady().then(() => updates.start()).catch(() => {});
+    // Not waited for again where no worker took the page.
+    (gaveUp ? Promise.resolve() : controllerReady()).then(() => updates.start()).catch(() => {});
     // The link catalog is kept for offline use: fetched now, so it is there before the first offline moment (spec §7.2).
     loadLinks({ ws }).catch(() => {});
     // Automatic backups start once installed plugins have: a place's kind comes from its plugin.
@@ -244,7 +270,7 @@ async function boot() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updates.auto().catch(() => {}); });
   setInterval(() => updates.auto().catch(() => {}), DAILY);
   // A sign-in comes back to annai's address, for the plugin that started it (decision 16).
-  finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, go: (/** @type {string} */ hash) => { location.hash = hash; } })
+  finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, held: whyNoPlugins, go: (/** @type {string} */ hash) => { location.hash = hash; } })
     .then((was) => { if (was) shell.render(); });
 }
 
@@ -282,46 +308,21 @@ async function offerPersonalityUpdates({ ws, agent, presets, notices }) {
   }
 }
 
-/** @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, render: () => unknown }} shell */
+/**
+ * Cards for the plugins that didn't start, by name; returns those that couldn't load on a page no worker controls, for the reload card.
+ * @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, render: () => unknown }} shell
+ */
 async function startPlugins(plugins, shell) {
   const failures = await plugins.startInstalled();
-  for (const f of failures) {
-    const why = String(/** @type {any} */ (f.error)?.message ?? f.error);
-    shell.notices.card(f.disabled
-      ? { tone: 'warn', title: `The plugin "${f.id}" was turned off`, body: `It didn't start the last few times annai opened: ${why} You can turn it back on in Settings → Plugins.` }
-      : { tone: 'warn', title: `The plugin "${f.id}" didn't start`, body: `${why} You can turn it off in Settings → Plugins.` });
-  }
+  const state = /** @type {Record<string, any>} */ (await plugins.installed().catch(() => ({})));
+  const { cards, unloaded } = startCards(failures, { name: (id) => state[id]?.name ?? id, taken: !navigator.serviceWorker || Boolean(navigator.serviceWorker.controller) });
+  for (const c of cards) shell.notices.card(c);
   if (location.hash.startsWith('#/plugins')) shell.render(); // show which plugins are now running
+  return unloaded;
 }
 
-/**
- * Settles once a service worker controls this page (or after 15 s), because installed plugin
- * files load through it (spec §5.3). On a first visit that takes a moment. A page loaded past an
- * active worker (a hard reload, or Android Chrome's for dark mode) asks it to take the page.
- */
-function controllerReady(timeoutMs = 15_000) {
-  if (!('serviceWorker' in navigator) || navigator.serviceWorker.controller) return Promise.resolve();
-  const sw = navigator.serviceWorker;
-  return new Promise((resolve) => {
-    const done = () => {
-      clearTimeout(t);
-      resolve(undefined);
-    };
-    const t = setTimeout(done, timeoutMs);
-    sw.addEventListener('controllerchange', done, { once: true });
-    sw.getRegistration().then((reg) => reg?.active?.postMessage('claim')).catch(() => {});
-  });
-}
-
-/** Installed plugins start once an active worker controls the page: a failed import stays failed (spec §5.3). At most 15 s. */
-async function pluginsMayLoad(timeoutMs = 15_000) {
-  if (!('serviceWorker' in navigator) || navigator.serviceWorker.controller) return;
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let t;
-  const reg = await Promise.race([navigator.serviceWorker.getRegistration().catch(() => undefined), new Promise((r) => { t = setTimeout(r, timeoutMs); })]);
-  clearTimeout(t);
-  if (/** @type {ServiceWorkerRegistration | undefined} */ (reg)?.active) await controllerReady(timeoutMs);
-}
+/** Whether a service worker controls this page, within 15 s: installed plugin files load through it (spec §5.3). */
+const controllerReady = () => taken(navigator.serviceWorker);
 
 /** @param {any} store @param {ReturnType<typeof startShell>} shell @param {Updates} updates */
 async function registerServiceWorker(store, shell, updates) {
