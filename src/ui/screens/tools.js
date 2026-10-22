@@ -52,7 +52,7 @@ export async function renderTools(ctx) {
   const web = app.web ?? {};
   const hasKey = Boolean(await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret('plugin:web:jina')));
   const key = h('input', { id: 'jina-key', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: hasKey ? 'A key is set' : 'jina_…' });
-  const saving = h('span', { class: 'saved', role: 'status' });
+  const saving = h('span', { class: 'sub', role: 'status' });
   const saveWeb = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { web: c });
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),

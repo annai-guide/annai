@@ -179,32 +179,55 @@ test("quiet hours set halfway ask for the other time quietly, and say they need 
   await expect(until).not.toHaveAttribute('aria-invalid', 'true');
 });
 
-/** Starts noting every "Saving…" a status line shows (a save can land in less than a frame). @param {import('@playwright/test').Page} page */
-const watchSaving = (page) => page.evaluate(() => {
+/** Holds the save queue until `release()`: a save tapped now stays "Saving…" for as long as the test likes. @param {import('@playwright/test').Page} page */
+const holdSaves = (page) => page.evaluate(async () => {
   const w = /** @type {any} */ (window);
-  w.sawSaving = [];
-  new MutationObserver(() => {
-    for (const el of document.querySelectorAll('[role=status]')) if (el.textContent === 'Saving…') w.sawSaving.push(el.parentElement?.textContent ?? '');
-  }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  const load = (/** @type {string} */ url) => import(url);
+  const { queueSave } = await load('/src/ui/dom.js');
+  const held = new Promise((r) => { w.release = r; });
+  queueSave(() => held);
 });
 
-test('a key field says "Saving…" on its line from the tap until the save lands: Jina\'s key in Settings → Tools, and a provider\'s key on its page (the third emulator pass)', async ({ page }) => {
+/**
+ * Taps Save with the queue held: "Saving…" is on screen, beside the button on its line (not at the top of the page, under the bar),
+ * until the queue is let go.
+ * @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} save
+ */
+async function savingBesideIt(page, save) {
+  await holdSaves(page);
+  await save.click();
+  const line = page.locator('.acts', { has: save });
+  const note = line.getByText('Saving…');
+  await expect(note).toBeVisible();
+  const [n, b] = [await note.boundingBox(), await save.boundingBox()];
+  expect(Math.abs((n?.y ?? -999) - (b?.y ?? 999)), 'on the button\'s line').toBeLessThan(30);
+  expect(n?.x).toBeGreaterThan((b?.x ?? 0) + (b?.width ?? 0) - 1);
+  expect(n?.y).toBeGreaterThan(60); // under the top bar, not at the top of the page
+  await page.evaluate(() => /** @type {any} */ (window).release());
+  await expect(note).toHaveCount(0);
+}
+
+test('a key field says "Saving…" beside its Save button, on screen, until the save lands: Jina\'s key, a plugin\'s secret setting and a provider\'s key (the third emulator pass)', async ({ page }) => {
   await openApp(page, '#/tools');
-  await watchSaving(page);
   await page.getByLabel('Jina key').fill('jina_test_key_0123');
-  await page.getByRole('button', { name: 'Save key' }).click();
+  await savingBesideIt(page, page.getByRole('button', { name: 'Save key' }));
   await expect(page.getByLabel('Jina key')).toHaveAttribute('placeholder', 'A key is set');
-  expect(await page.evaluate(() => /** @type {any} */ (window).sawSaving.join('|'))).toContain('Save key');
+  // A plugin's secret: Remote trace has a token.
+  await page.goto('/#/add');
+  await waitForServiceWorker(page);
+  await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
+  await expect(page.getByText('Installed Remote trace (for developers).')).toBeVisible();
+  await page.getByRole('link', { name: 'Open Remote trace (for developers)' }).click();
+  await page.getByLabel('Token').fill('e2e-token-0123456789');
+  await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }));
+  await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
   // A provider's own page.
   await openApp(page, '#/models');
-  await waitForServiceWorker(page);
   await tapAdd(page, 'OpenRouter');
   await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Add by hand' }).click();
   await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
-  await watchSaving(page);
   await page.getByLabel('API key').fill('sk-or-typed-key-123');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }));
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-  expect(await page.evaluate(() => /** @type {any} */ (window).sawSaving.join('|'))).toContain('Save');
 });
