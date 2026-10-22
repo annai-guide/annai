@@ -111,7 +111,7 @@ function rolesSection(ctx, cfg) {
   const list = async (role, change) => {
     const here = location.hash;
     await queueSave(() => edit(role, (r) => ({ ...r, models: change(r.models) })));
-    if (location.hash === here) ctx.render();
+    if (location.hash === here) await ctx.render();
   };
   /** A speech list can take its own stand-ins and the models of its kind: transcription, or voices. @param {string} role */
   const speechChoices = (role) => [
@@ -122,7 +122,7 @@ function rolesSection(ctx, cfg) {
     h('h2', { class: 'section', text: 'Roles' }),
     h('p', { class: 'sub', text: "Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe." }),
     ...CHAT_ORDER.map((role) => roleBlock(role, cfg.roles, models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')), nameOf, list, edit,
-      { live: cfg.roles[role]?.models.some((id) => kind(id) === 'realtime') })),
+      { live: cfg.roles[role]?.models.some((id) => kind(id) === 'realtime'), known: new Set(Object.keys(cfg.models)) })),
     h('p', { class: 'sub', text: 'The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.' }),
     ...SPEECH_ROLES.map((role) => roleBlock(role, cfg.roles, speechChoices(role), nameOf, list, edit, { speech: true })));
 }
@@ -131,9 +131,9 @@ function rolesSection(ctx, cfg) {
  * One role: its list, which buttons change, and its reasoning level and wait, which save as they change.
  * @param {string} role @param {import('../../core/llm/config.js').Roles} roles @param {{ id: string, name: string }[]} choices what can be added
  * @param {(id: string) => string} nameOf @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list
- * @param {(role: string, change: (r: any) => any) => Promise<void>} edit @param {{ speech?: boolean, live?: boolean }} [o] live: its list holds a realtime model
+ * @param {(role: string, change: (r: any) => any) => Promise<void>} edit @param {{ speech?: boolean, live?: boolean, known?: Set<string> }} [o] live: its list holds a realtime model; known: the models that have a page
  */
-function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, live = false } = {}) {
+function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, live = false, known = new Set() } = {}) {
   const r = roles[role];
   const koe = role === 'koe';
   const called = koe ? 'Koe' : role; // Koe by name, the rest by id
@@ -144,10 +144,7 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, l
     if (i >= 0 && next[i + by]) [next[i], next[i + by]] = [next[i + by], next[i]];
     return next;
   });
-  const items = r.models.map((id, i) => h('li', { class: 'role-item' },
-    h('span', { text: `${i + 1}. ${nameOf(id)}${STAND_IN_NOTES[id] ? ` (${STAND_IN_NOTES[id]})` : ''}` }),
-    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} up`, disabled: i === 0, onclick: () => move(id, -1) }, '↑'),
-    h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Move ${nameOf(id)} down`, disabled: i === r.models.length - 1, onclick: () => move(id, 1) }, '↓'),
+  const items = r.models.map((id, i) => reorderable(role, id, i, r.models.length, nameOf(id), known.has(id), STAND_IN_NOTES[id], move, list,
     h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remove ${nameOf(id)} from ${called}`, onclick: () => list(role, (ids) => ids.filter((x) => x !== id)) }, '✕')));
   const others = choices.filter((m) => !r.models.includes(m.id));
   const pick = h('select', { id: `role-${role}-add` }, ...others.map((m) => h('option', { value: m.id, text: m.name })));
@@ -179,4 +176,88 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, l
       level ? savedField(`Reasoning for ${called}`, level, () => level.value, (v) => edit(role, (x) => ({ ...x, level: v }))) : null,
       savedField(waitLabel, wait, () => numberIn(wait, 1, 600, 'Wait from 1 to 600 seconds; leave it empty for the usual.', { whole: true }),
         (n) => edit(role, ({ firstOutputSeconds: _, ...x }) => (n === null ? x : { ...x, firstOutputSeconds: n })))));
+}
+
+/**
+ * One entry of a role's list: its model's name, a link to the model's page where there is one (the user, 2026-10-22), a handle to
+ * drag it by, and the remove button. Dragging uses pointer events, so a finger works as a mouse does (HTML5 drag and drop doesn't on
+ * iOS); the handle also takes the arrow keys, and a tap on it shows Move up and Move down, so nothing needs a drag.
+ * @param {string} role @param {string} id @param {number} i @param {number} n @param {string} name @param {boolean} page @param {string | undefined} note
+ * @param {(id: string, by: number) => Promise<void>} move @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list @param {Node} remove
+ */
+function reorderable(role, id, i, n, name, page, note, move, list, remove) {
+  const num = document.createTextNode(`${i + 1}. `);
+  const label = h('span', {}, num, page ? h('a', { href: `#/models/model?id=${encodeURIComponent(id)}`, text: name }) : name, note ? ` (${note})` : '');
+  const grip = h('button', {
+    class: 'btn ghost grip', type: 'button', 'aria-label': `Reorder ${name}`, 'aria-expanded': 'false', 'aria-haspopup': 'true', 'data-grip': `${role}\n${id}`,
+    title: 'Drag to reorder. Arrow keys move it; a tap shows Move up and Move down.',
+  }, '⠿');
+  const menu = h('div', { class: 'reorder-menu', role: 'group', 'aria-label': `Move ${name}`, hidden: true },
+    h('button', { class: 'btn', type: 'button', disabled: i === 0, onclick: () => again(move(id, -1)) }, 'Move up'),
+    h('button', { class: 'btn', type: 'button', disabled: i === n - 1, onclick: () => again(move(id, 1)) }, 'Move down'));
+  const li = h('li', { class: 'role-item', 'data-id': id }, label, grip, remove, menu);
+  /** Once the list is drawn again, the handle takes the focus back, so arrow keys go on. @param {Promise<void>} moved */
+  const again = (moved) => moved.then(() => {
+    for (const g of document.querySelectorAll('.grip')) if (g instanceof HTMLElement && g.dataset.grip === `${role}\n${id}`) g.focus();
+  });
+  grip.addEventListener('click', () => {
+    if (dragged) return;
+    menu.hidden = !menu.hidden;
+    grip.setAttribute('aria-expanded', String(!menu.hidden));
+  });
+  grip.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) {
+      menu.hidden = true;
+      grip.setAttribute('aria-expanded', 'false');
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      again(move(id, e.key === 'ArrowUp' ? -1 : 1));
+    }
+  });
+  // Drag: the entry follows the pointer and the others make room, by the DOM's own order; the list is saved as it ends.
+  let dragged = false;
+  /** @type {{ y: number, top: number, order: Element[] } | null} */
+  let drag = null;
+  grip.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    grip.setPointerCapture(e.pointerId);
+    drag = { y: e.clientY, top: li.getBoundingClientRect().top, order: [.../** @type {HTMLElement} */ (li.parentElement).children] };
+  });
+  grip.addEventListener('pointermove', (e) => {
+    if (!drag || !li.parentElement) return;
+    if (!dragged && Math.abs(e.clientY - drag.y) < 4) return;
+    if (!dragged) {
+      dragged = true;
+      li.classList.add('dragging');
+      menu.hidden = true;
+    }
+    li.style.transform = '';
+    for (;;) {
+      const before = li.previousElementSibling;
+      const after = li.nextElementSibling;
+      const at = (/** @type {Element} */ x) => { const b = x.getBoundingClientRect(); return b.top + b.height / 2; };
+      const wantTop = e.clientY - (drag.y - drag.top);
+      const mid = wantTop + li.getBoundingClientRect().height / 2;
+      if (before && mid < at(before)) before.before(li);
+      else if (after && mid > at(after)) after.after(li);
+      else break;
+    }
+    li.style.transform = `translateY(${e.clientY - (drag.y - drag.top) - li.getBoundingClientRect().top}px)`;
+    [...li.parentElement.children].forEach((x, k) => { const t = x.firstElementChild?.firstChild; if (t) t.textContent = `${k + 1}. `; });
+  });
+  /** @param {boolean} save */
+  const drop = (save) => {
+    const d = drag;
+    drag = null;
+    if (!d || !dragged) return;
+    li.classList.remove('dragging');
+    li.style.transform = '';
+    const order = [...(li.parentElement?.children ?? [])].map((x) => /** @type {HTMLElement} */ (x).dataset.id ?? '');
+    setTimeout(() => { dragged = false; }, 0); // the click that ends a drag opens nothing
+    if (save && order.join() !== d.order.map((x) => /** @type {HTMLElement} */ (x).dataset.id).join()) list(role, (ids) => [...order.filter((x) => ids.includes(x)), ...ids.filter((x) => !order.includes(x))]);
+    else li.parentElement?.replaceChildren(...d.order);
+  };
+  grip.addEventListener('pointerup', () => drop(true));
+  grip.addEventListener('pointercancel', () => drop(false));
+  return li;
 }
