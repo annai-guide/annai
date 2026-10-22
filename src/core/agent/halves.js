@@ -265,6 +265,7 @@ export class Halves {
       timeZone: () => this.kokoro.timeZone(), secondMs: c.secondMs,
       asked: () => this.#asked && this.kokoro.busy,
       unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
+      owed: (notes) => this.#handOn(notes),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.#ready = this.#refresh({ tell: false }).catch(() => {});
@@ -388,7 +389,8 @@ export class Halves {
     // A live session closes when voice goes off, or Koe's pathway leaves its model: its microphone never stays open otherwise.
     const model = this.live.modelId;
     const voiceOff = this.#voiceWas && !voiceOn;
-    if (this.live.state !== 'closed' && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) this.live.close(voiceOff ? 'voice off' : 'pathway');
+    // One closed with Kokoro's notes waiting for the page lets go of them too (they are handed on).
+    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) this.live.close(voiceOff ? 'voice off' : 'pathway');
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
     if (this.state.name !== was) this.#emit('state', this.state);
@@ -426,9 +428,26 @@ export class Halves {
     if (await fn()) return;
     await this.#refresh();
     if (this.koeState === 'text') return this.koe.enqueue(w);
-    if (this.koeState !== 'down') return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
+    if (this.koeState !== 'down') {
+      // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
+      if (isForUser(w)) await this.#backstop([w]);
+      return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
+    }
     this.#notice({ tone: 'warn', title: "Koe's live voice couldn't start", body: 'Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.' });
     this.#talkDirectly(w.fallbacks);
+  }
+
+  /**
+   * Kokoro's notes for the user a live session closed on before Koe passed them on (L1: a close, a drop it didn't come back from,
+   * Koe moving to text): the text Koe owes them as its own (§6.8); while Koe stays live with no session, or is down, annai shows them.
+   * @param {Wake[]} notes
+   */
+  #handOn(notes) {
+    this.#route(async () => {
+      await this.#refresh();
+      if (this.koeState === 'text') for (const w of notes) this.koe.enqueue(w);
+      else await this.#backstop(notes);
+    });
   }
 
   /**

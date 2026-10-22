@@ -496,3 +496,89 @@ test("a live Koe that settles Kokoro's note with already_told: no cue, nothing s
     await k.done();
   }
 });
+
+// The second fix pass (L1): a note is never lost to a close, a drop, a GoAway or Koe moving to text; it is passed on or shown once.
+/** What annai showed for Koe. @param {any} k */
+const answers = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text]);
+/** What the stand-in got, in order: setup, or a text turn's words. @param {any} k */
+const order = (k) => k.server.received().filter((/** @type {any} */ m) => m.setup || m.clientContent).map((/** @type {any} */ m) => (m.setup ? 'setup' : m.clientContent.turns[0].parts[0].text));
+const SHOWN = [["Shiori's answer", 'Nepenthe is open until 10 PM tonight.']];
+
+test('L1: the connection drops right after the cue: the resumed session hears the note again, and annai shows it once when Koe stays silent', async () => {
+  const k = await liveKit([
+    { said: 'Let me check.', audio: tone(0.2) },
+    {}, // silent on the note
+    { audio: tone(3), saidAfter: "It's open until ten." }, // the cue's answer, cut by the drop before a word of it
+    {}, {}, // the resumed session: silent on the note, then on the cue
+  ], { pace: 1 });
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => texts(k).some((t) => CUE.test(t)));
+    await new Promise((r) => setTimeout(r, 200));
+    k.server.close(1011, 'Internal error encountered.');
+    await until(() => k.server.connections().length === 2);
+    await soon(async () => (await answers(k)).length === 1, 5000);
+    await settled(k);
+    assert.deepEqual(await answers(k), SHOWN);
+    const resumed = order(k).slice(order(k).lastIndexOf('setup'));
+    assert.match(resumed[1], /^<from_kokoro/, 'the note went in again');
+  } finally {
+    await k.done();
+  }
+});
+
+test('L1: a GoAway on the silent turn after the note: the new connection hears the note, and annai shows it once when Koe stays silent', async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { handle: 'h-2', goAway: 10 }, {}, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await until(() => k.server.connections().length === 2);
+    await soon(async () => (await answers(k)).length === 1, 5000);
+    await settled(k);
+    assert.deepEqual(await answers(k), SHOWN);
+    const resumed = order(k).slice(order(k).lastIndexOf('setup'));
+    assert.match(resumed[1], /^<from_kokoro/, 'the note went to the new connection');
+  } finally {
+    await k.done();
+  }
+});
+
+test('L1: Koe moves to its text model between the note and the cue: the text Koe owes the note, and passes it on', async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { audio: tone(2) }], { pace: 1, koe: { type: { rules: [
+    { match: 'a note from Kokoro', reply: { toolCalls: [{ name: 'speak', input: { text: "It's open until ten tonight." } }, { name: 'sleep', input: {} }] } },
+    { match: '.', reply: sleep },
+  ] } } });
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => texts(k).length === 2);
+    k.llm.bench.bench('m-live', 60_000);
+    await k.agent.split();
+    assert.equal(k.agent.koeState, 'text');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => !e.data.live && e.data.text === "It's open until ten tonight."));
+    await settled(k);
+    assert.deepEqual(await answers(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+// The second fix pass (L3): a note no session could take goes to the text Koe alone, never again into a later session.
+test('L3: no live session could open for the note: the text Koe has it, and a later session never gets it again; shown once', async () => {
+  const k = await liveKit([{ said: "You're welcome.", audio: tone(0.2) }], { koe: { type: [sleep] } });
+  try {
+    const live = k.llm.live;
+    k.llm.live = async () => { k.llm.live = live; throw new Error('no connection'); };
+    await k.agent.channel.send('kokoro', 'Say: Nepenthe is open until 10 PM tonight.', 'append', 'tool');
+    await soon(async () => (await answers(k)).length === 1, 5000);
+    await k.agent.idle();
+    k.llm.bench.clear('m-live');
+    assert.equal(await k.agent.split(), true);
+    assert.equal(k.agent.koeState, 'live');
+    k.agent.send('Thanks');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.live));
+    await settled(k);
+    assert.deepEqual(await answers(k), SHOWN);
+    assert.ok(!texts(k).some((t) => t.startsWith('<from_kokoro')), 'the note never went into the session');
+  } finally {
+    await k.done();
+  }
+});

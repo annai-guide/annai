@@ -20,12 +20,15 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void }} LiveHost
- *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never passed on
+ *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void }} LiveHost
+ *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
+ *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on
  */
 
 /** Tool answers that add no speech (decision 10). */
 const SILENT = ['tell_kokoro', 'show', 'ask', 'already_told'];
+/** The ask once more, as a text Koe's (§6.8), in annai's words. */
+const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 /** Tools that pass a note on to the user, as words do, or settle it as passed on. */
 const REACH = ['show', 'ask', 'already_told'];
 
@@ -66,10 +69,13 @@ export class LiveKoe {
   #sounding = null;
   /** @type {Turn | null} */
   #trail = null;
-  /** What waits for Koe's turn and voice to end, or for the page to be in view: Kokoro's notes, wrapped, and triggers. @type {string[]} */
+  /** What waits for Koe's turn and voice to end, or for the page to be in view: Kokoro's other notes, wrapped, and triggers. @type {string[]} */
   #notes = [];
-  /** Kokoro's notes for the user (§6.8): waiting to go in, gone in and not passed on, and whether Koe was asked once more. @type {{ waiting: Wake[], sent: Wake[], cued: boolean }} */
-  #owed = { waiting: [], sent: [], cued: false };
+  /**
+   * Kokoro's notes for the user (§6.8): waiting to go in, gone in and not passed on, whether Koe was asked once more, and whether
+   * that ask waits to go in. @type {{ waiting: Wake[], sent: Wake[], cued: boolean, cue: boolean }}
+   */
+  #owed = { waiting: [], sent: [], cued: false, cue: false };
   /** @type {any} */
   #quiet = null;
   #quietMs = 30_000;
@@ -102,6 +108,11 @@ export class LiveKoe {
   /** @param {LiveHost} c */
   constructor(c) {
     this.c = c;
+  }
+
+  /** Kokoro's notes for the user wait for it, or went in and aren't passed on yet. */
+  get owing() {
+    return this.#owed.waiting.length > 0 || this.#owed.sent.length > 0;
   }
 
   /** Opening or reconnecting, Koe's turn or voice, a tool, or the user speaking. */
@@ -245,8 +256,11 @@ export class LiveKoe {
     if (forget) {
       this.#handle = undefined;
       this.#notes = [];
-      this.#owed = { waiting: [], sent: [], cued: false };
+      this.#owed = { waiting: [], sent: [], cued: false, cue: false };
     }
+    this.#again();
+    // Kokoro's notes it owes: a page out of view has them go in once back (shown()); any other close hands them on (Halves).
+    if (why !== 'away' && this.#owed.waiting.length) this.c.owed(this.#owed.waiting.splice(0));
     const was = this.state;
     this.state = 'closed';
     // A microphone is always let go, whatever came before; the user's words it cut off are kept, marked.
@@ -322,37 +336,53 @@ export class LiveKoe {
 
   /** A wake Koe answers (a trigger, the recap asked aloud), as annai's text turn; not said, its reminders are annai's (Halves). @param {import('../agent/loop.js').Wake} w */
   wake(w) {
-    return this.#say(`[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`, w.kind, false);
+    return this.#say(`[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`, w.kind);
   }
 
   /**
-   * A note from Kokoro (decision 14): append after Koe's turn and voice; immediate at once, cutting Koe off. @param {string} text
-   * @param {'append' | 'immediate'} mode @param {Wake | null} [owed] a note for the user, which Koe owes them
+   * A note from Kokoro (decision 14): append after Koe's turn and voice; immediate at once, cutting Koe off. One no session could
+   * take is let go here: Halves hands it on (false). @param {string} text @param {'append' | 'immediate'} mode
+   * @param {Wake | null} [owed] a note for the user, which Koe owes them
    */
   note(text, mode, owed = null) {
-    if (owed) this.#owed.waiting.push(owed);
     const note = wrapNote(text, this.c.nonce);
-    if (mode !== 'immediate' || !this.c.visible()) return this.#say(note, 'note', true);
+    if (mode !== 'immediate' || !this.c.visible()) {
+      if (owed) this.#owed.waiting.push(owed);
+      else this.#notes.push(note);
+      return this.#go('note', () => {
+        if (owed) this.#owed.waiting = this.#owed.waiting.filter((w) => w !== owed);
+        else this.#notes = this.#notes.filter((x) => x !== note);
+      });
+    }
     return this.open('note', { mic: Boolean(this.c.voice?.unlocked) }).then((ok) => {
       if (ok) {
-        this.#going();
+        if (owed) this.#went([owed]);
         this.#text(note, this.#cut());
       }
       return ok;
     });
   }
 
-  /** Kokoro's notes for the user go in: Koe's next turns are watched for them. */
-  #going() {
-    if (!this.#owed.waiting.length) return;
-    this.#owed.sent.push(...this.#owed.waiting.splice(0));
-    this.#owed.cued = false;
+  /** Kokoro's notes for the user went in: Koe's next turns are watched for them. @param {Wake[]} notes */
+  #went(notes) {
+    this.#owed.sent.push(...notes);
+    this.#owed.cued = this.#owed.cue = false;
   }
 
   /** Koe reached the user since its notes went in (a real word, a card, a question): they are passed on. */
   #passed() {
     this.#owed.sent = [];
-    this.#owed.cued = false;
+    this.#owed.cued = this.#owed.cue = false;
+  }
+
+  /**
+   * The connection Koe's notes went into is gone (a drop, a GoAway, a close): what it may never have heard goes in again, and a
+   * word on the next connection counts only once they have.
+   */
+  #again() {
+    const o = this.#owed;
+    o.waiting.unshift(...o.sent.splice(0));
+    o.cued = o.cue = false;
   }
 
   /**
@@ -364,34 +394,38 @@ export class LiveKoe {
     const o = this.#owed;
     if (!o.sent.length || t?.goesOn) return;
     if (!o.cued) {
-      o.cued = true;
-      this.#notes.push(`[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`);
+      o.cued = o.cue = true;
       return;
     }
     this.c.unsaid(o.sent.splice(0));
     o.cued = false;
   }
 
-  /**
-   * Words said once Koe's turn and voice end, opening a session that listens after where sound was unlocked; out of view,
-   * they wait (shown()). Not said, a note waits for the next session, other words go. @param {string} text @param {string} why
-   * @param {boolean} keep @returns {Promise<boolean>} whether they will be said
-   */
-  async #say(text, why, keep) {
+  /** Words said once Koe's turn and voice end (#go). @param {string} text @param {string} why @returns {Promise<boolean>} */
+  #say(text, why) {
     this.#notes.push(text);
+    return this.#go(why, () => { this.#notes = this.#notes.filter((x) => x !== text); });
+  }
+
+  /**
+   * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked;
+   * out of view, it waits (shown()). With no session, it is let go here (undo), and Halves hands it on (L3: never twice).
+   * @param {string} why @param {() => void} undo @returns {Promise<boolean>} whether it will be said
+   */
+  async #go(why, undo) {
     if (!this.c.visible()) return true;
     if (this.state === 'closed') this.#brief = true; // nobody asked to talk: it listens for an answer, not the quiet spell
     if ((await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open') {
       this.#idle();
       return true;
     }
-    if (!keep) this.#notes = this.#notes.filter((x) => x !== text);
+    undo();
     return false;
   }
 
   /** The page is back in view: what waited is said, in a session without the microphone, which a tap opens (security review). */
   async shown() {
-    if (this.#notes.length && (await this.open('shown'))) this.#idle();
+    if ((this.#notes.length || this.#owed.waiting.length) && (await this.open('shown'))) this.#idle();
   }
 
   /** @param {(s: LiveSession) => void} fn */
@@ -599,18 +633,24 @@ export class LiveKoe {
     }
   }
 
-  /** Between turns: what waits goes in, together; a session told to go (GoAway) reconnects with its handle. */
+  /**
+   * Between turns: what waits goes in, together, Kokoro's notes and the ask once more among it; a session told to go (GoAway)
+   * reconnects with its handle first, as what goes into it now would be answered there and lost.
+   */
   #idle() {
     if (this.busy || !this.#s) return;
-    if (this.#notes.length) {
-      this.#going();
-      this.#text(this.#notes.splice(0).join('\n'));
-    }
-    else if (this.#rotate) this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
+    if (this.#rotate) return void this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
+    const o = this.#owed;
+    const text = [...this.#notes.splice(0), ...o.waiting.map((w) => wrapNote(String(w.note ?? ''), this.c.nonce)), ...(o.cue ? [CUE] : [])];
+    if (!text.length) return;
+    o.cue = false;
+    if (o.waiting.length) this.#went(o.waiting.splice(0));
+    this.#text(text.join('\n'));
   }
 
   /** A new connection with the handle, the conversation going on. @param {string} why @returns {Promise<boolean>} */
   async #reconnect(why) {
+    this.#again();
     const old = (this.#old = this.#s);
     const gen = this.#gen;
     this.#rotate = false;
