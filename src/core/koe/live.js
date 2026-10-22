@@ -14,7 +14,8 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean,
- *   tools: boolean, cut: boolean, logged: boolean, goesOn: boolean }} Turn  one of Koe's; held: its sound until a real word; goesOn: it called a tool it speaks after
+ *   tools: boolean, cut: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean }} Turn  one of Koe's; held: its sound until a real word;
+ *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
@@ -39,7 +40,7 @@ export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
-const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, tools: false, cut: false, logged: false, goesOn: false });
+const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, tools: false, cut: false, logged: false, goesOn: false, calls: 0, done: false });
 /** @returns {Hearing} */
 const hearing = () => ({ id: newId('h'), text: '', at: Date.now(), ms: 0, pcm: [], logged: null });
 
@@ -532,7 +533,8 @@ export class LiveKoe {
     else if (t?.spoken) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
     this.#answered(!t?.spoken && !t?.tools);
-    this.#settle(t);
+    if (t) t.done = true;
+    if (!t?.calls) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
     this.#idle();
   }
 
@@ -612,13 +614,15 @@ export class LiveKoe {
    */
   async #tool(s, t, e) {
     t.tools = true;
-    if (REACH.includes(e.name)) this.#passed();
-    else if (!SILENT.includes(e.name)) t.goesOn = true;
+    if (!REACH.includes(e.name) && !SILENT.includes(e.name)) t.goesOn = true;
+    t.calls++;
     this.#tools++;
     try {
       await this.#answered(false);
       // Always answered: the model waits for it.
-      const out = await this.c.koe.liveCall(e, this.#wake).catch((err) => ({ content: `Error: ${err?.message ?? err}` }));
+      const out = await this.c.koe.liveCall(e, this.#wake).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
+      // A card or question annai showed passes Kokoro's notes on; one it refused passes nothing on.
+      if (REACH.includes(e.name) && !out.isError) this.#passed();
       const silent = SILENT.includes(e.name);
       const answer = (/** @type {LiveSession} */ x) => x.answer(e.id, e.name, theirs(out.content), { silent });
       // To its session, or to the one that resumed it with the handle, which carries the call; a fresh one never saw it.
@@ -626,7 +630,9 @@ export class LiveKoe {
       else if (this.state === 'open' && this.#handle) this.#send(answer);
       if (silent && this.#t === t && !t.bytes && !t.said) this.#t = null; // a turn of a call alone, answered silently, is over
     } finally {
+      t.calls--;
       this.#tools--;
+      if (t.done && !t.calls) this.#settle(t);
       this.#poke();
       this.#changed();
       this.#idle(); // what waited for the call goes in now
