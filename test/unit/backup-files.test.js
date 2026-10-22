@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { openArchive, NeedsPassphraseError } from '../../src/core/archive.js';
+import { peekArchive, NeedsPassphraseError } from '../../src/core/archive.js';
 import { SYS } from '../../src/core/scopes.js';
 import { backupFileName, parseBackupFileName, TargetError } from '../../src/core/storage-types.js';
 import { memoryFilePlace, device, everything } from './backup-kit.js';
@@ -38,7 +38,7 @@ test('a whole-file backup is the archive file, named for this device, and comes 
   assert.equal(result.id, name);
   assert.deepEqual([parseBackupFileName(name)?.label, parseBackupFileName(name)?.encrypted], ['iPhone', false]);
   assert.equal((await d.backups.get(id))?.last?.id, name);
-  const opened = await openArchive(await d.backups.download(id, name));
+  const opened = await peekArchive(await d.backups.download(id, name));
   assert.ok(opened.manifest.scopes.some((s) => s.record.id === d.trip));
 });
 
@@ -56,12 +56,12 @@ test('encrypted with the passphrase annai keeps for the place; API keys only whe
   assert.match(first.id, /\.annai$/);
   assert.deepEqual((await d.backups.remote(id)).map((b) => b.encrypted), [true], 'the listing says which backups are encrypted');
   const blob = await d.backups.download(id, first.id);
-  await assert.rejects(openArchive(blob), NeedsPassphraseError);
-  assert.equal((await openArchive(blob, 'pine needle')).manifest.secrets, undefined);
+  await assert.rejects(peekArchive(blob), NeedsPassphraseError);
+  assert.equal((await peekArchive(blob, 'pine needle')).manifest.secrets, undefined);
   await d.backups.update(id, { keys: true });
   await later();
   const second = await d.backups.backUp(id);
-  const withKeys = await openArchive(await d.backups.download(id, second.id), 'pine needle');
+  const withKeys = await peekArchive(await d.backups.download(id, second.id), 'pine needle');
   assert.equal(typeof withKeys.manifest.secrets, 'string');
   // The model's key travels; the backup place's own sign-in never does (its screen says so).
   const ids = JSON.parse(new TextDecoder().decode(await withKeys.zip.read(/** @type {string} */ (withKeys.manifest.secrets)))).map((/** @type {any} */ x) => x.id);
@@ -70,8 +70,8 @@ test('encrypted with the passphrase annai keeps for the place; API keys only whe
   await d.backups.update(id, { passphrase: 'cedar bark' });
   await later();
   const third = await d.backups.backUp(id);
-  await openArchive(await d.backups.download(id, first.id), 'pine needle');
-  await openArchive(await d.backups.download(id, third.id), 'cedar bark');
+  await peekArchive(await d.backups.download(id, first.id), 'pine needle');
+  await peekArchive(await d.backups.download(id, third.id), 'cedar bark');
   // Unticking encryption unticks the keys too.
   await d.backups.update(id, { encrypt: false });
   assert.deepEqual([(await d.backups.get(id))?.encrypt, (await d.backups.get(id))?.keys], [false, false]);

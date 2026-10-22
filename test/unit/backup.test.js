@@ -7,7 +7,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, removeTrip, backupState, SYS } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
-import { openArchive, importArchive } from '../../src/core/archive.js';
+import { peekArchive, importArchive } from '../../src/core/archive.js';
 import { TargetError } from '../../src/core/storage-types.js';
 import { addTarget } from '../../src/core/backup-targets.js';
 import { createBackups, retryDelay } from '../../src/core/backup.js';
@@ -33,7 +33,7 @@ test('a backup of everything goes to the place, and the trips it holds count as 
   const t = await d.backups.get(id);
   assert.deepEqual([t?.last?.id, t?.last?.at, t?.hold], ['b1', 1_000_000, null]);
   assert.ok((t?.last?.seqs[d.trip] ?? 0) > 0);
-  const opened = await openArchive(place.kept[0].blob);
+  const opened = await peekArchive(place.kept[0].blob);
   assert.equal(opened.manifest.kind, 'everything');
   assert.ok(opened.manifest.scopes.some((s) => s.record.id === d.trip));
   const [logged] = await d.store.tx(['events'], 'readonly', (tx) => tx.listEvents(SYS, { types: ['backup'] }));
@@ -81,7 +81,7 @@ test('single writer: a newer backup from another device pauses this one until th
   const hold = /** @type {any} */ ((await phone.backups.get(a))?.hold);
   assert.equal(hold.kind, 'newer');
   const blob = await phone.backups.download(a, hold.remote.id);
-  await importArchive(phone.store, await openArchive(blob), {});
+  await importArchive(phone.store, await peekArchive(blob), {});
   await phone.backups.accept(a, hold.remote);
   assert.deepEqual([(await phone.backups.get(a))?.last?.id, (await phone.backups.get(a))?.hold], ['b2', null]);
   await phone.backups.backUp(a);
