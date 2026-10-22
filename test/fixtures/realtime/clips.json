@@ -1,0 +1,75 @@
+{
+  "model": "gemini-2.5-flash-preview-tts",
+  "clips": {
+    "lunch": {
+      "words": "Where should we stop for lunch?",
+      "voice": "Kore",
+      "seconds": 1.78,
+      "bytes": 57004,
+      "sha256": "18bb845bfd064e9b"
+    },
+    "bixby": {
+      "words": "How far is it to Bixby Bridge?",
+      "voice": "Puck",
+      "seconds": 2.6,
+      "bytes": 83244,
+      "sha256": "175e0721078ac8dd"
+    },
+    "gas": {
+      "words": "Is there a gas station anywhere near here?",
+      "voice": "Charon",
+      "seconds": 2.34,
+      "bytes": 74924,
+      "sha256": "02d94bac8f06324b"
+    },
+    "beach": {
+      "words": "What's a good beach to stop at on the way?",
+      "voice": "Aoede",
+      "seconds": 2.12,
+      "bytes": 67884,
+      "sha256": "1823f5b36d3e11cb"
+    },
+    "sunset": {
+      "words": "What time does the sun set today?",
+      "voice": "Fenrir",
+      "seconds": 1.9,
+      "bytes": 60844,
+      "sha256": "f6c84b6ac8998d41"
+    },
+    "hike": {
+      "words": "Tell me about a short hike near here with a nice view.",
+      "voice": "Leda",
+      "seconds": 2.92,
+      "bytes": 93484,
+      "sha256": "64bfba350fd820b6"
+    },
+    "restroom": {
+      "words": "Is there a restroom coming up soon?",
+      "voice": "Orus",
+      "seconds": 1.96,
+      "bytes": 62764,
+      "sha256": "b73784552cc4ecc1"
+    },
+    "yes": {
+      "words": "Yes.",
+      "voice": "Kore",
+      "seconds": 0.84,
+      "bytes": 26924,
+      "sha256": "d460bee7a7643351"
+    },
+    "pause": {
+      "words": "Um, I'd like to find a place for dinner tonight, somewhere with a view of the ocean.",
+      "voice": "Puck",
+      "seconds": 6.84,
+      "bytes": 218924,
+      "sha256": "28e277a287e30aaa"
+    },
+    "long": {
+      "words": "We're driving south on Highway 1 and the kids are getting hungry, so could you tell me about a couple of good places to eat in the next hour, ideally with outdoor seating, and whether either of them needs a reservation on a Saturday?",
+      "voice": "Kore",
+      "seconds": 12.66,
+      "bytes": 405164,
+      "sha256": "3898e759ec3a7dbd"
+    }
+  }
+}
