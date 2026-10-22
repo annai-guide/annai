@@ -186,6 +186,8 @@ test('Shiori sets, lists and cancels watches with her Time tools (spec §7.2)', 
   const set = k.requests[0].tools.find((/** @type {any} */ t) => t.name === 'watch_set');
   assert.deepEqual(set.input.properties.when.properties.type.enum, ['time', 'every', 'enter', 'leave', 'dwell', 'arrived', 'moved', 'activity']);
   assert.match(set.description, /fallback \(required\)/);
+  assert.match(set.description, /need On the road \(GPS\)/);
+  assert.doesNotMatch(set.description, /live mode/i, 'the mode is called On the road wherever Shiori is told');
   assert.ok(k.requests[0].tools.some((/** @type {any} */ t) => t.name === 'watch_list') && k.requests[0].tools.some((/** @type {any} */ t) => t.name === 'watch_cancel'));
 });
 
