@@ -112,7 +112,7 @@ test('while Koe plays, a start needs 6 dB more over the floor', async () => {
   /** A voice-like tone over the hiss: a in amplitude, rising and falling four times a second. @param {number} a */
   const voice = (a) => hiss(1).map((x, i) => x + a * (0.75 + 0.25 * Math.sin((2 * Math.PI * 4 * i) / RATE)) * Math.sin((2 * Math.PI * 1000 * i) / RATE));
   const starts = async (/** @type {number} */ a, /** @type {boolean} */ playing) => {
-    const r = rig({ speaking: () => playing });
+    const r = rig({ speaking: () => playing, duplex: () => true });
     await r.input.start();
     r.feed(cat(hiss(2), voice(a)), RATE);
     r.input.stop();
@@ -121,10 +121,61 @@ test('while Koe plays, a start needs 6 dB more over the floor', async () => {
   assert.equal(await starts(0.002, false), true, 'about 12 dB over the hiss starts speech');
   assert.equal(await starts(0.002, true), false, 'but not while Koe plays');
   assert.equal(await starts(0.008, true), true, 'a louder voice cuts in while Koe plays');
-  const off = rig({ speaking: () => true, bargeInDb: Infinity });
+  const off = rig({ speaking: () => true });
   await off.input.start();
   off.feed(cat(hiss(2), voice(0.05)), RATE);
-  assert.ok(!off.sent.includes('start'), 'with cutting in by voice off, nothing starts while Koe plays');
+  assert.ok(!off.sent.includes('start'), 'half-duplex (the phone speaker, or cutting in by voice off): nothing starts while Koe plays, however loud');
+});
+
+/**
+ * Koe's voice from the phone's speaker, heard by its microphone (the iPhone trace, 2026-10-22: she cut herself off after a word or
+ * two, ✂, every turn): 1 s of quiet, her voice (a speech clip) at gainDb re the clip as recorded while speaking() is true, 280 ms of
+ * it after it stops, then quiet, and then, if given, the user's own words. Fed in the worklet's batches at 16 kHz.
+ * @param {number} gainDb @param {{ after?: Float32Array, duplex?: boolean, tailMs?: number }} [o]
+ */
+async function echo(gainDb, { after, duplex = false, tailMs } = {}) {
+  let playing = false;
+  const r = rig({ speaking: () => playing, duplex: () => duplex, ...(tailMs === undefined ? {} : { tailMs }) });
+  await r.input.start();
+  const her = lunch.map((x) => x * 10 ** (gainDb / 20));
+  // Her last 280 ms, heard after the player said it ended: the speaker's latency and the room's echo.
+  const tail = her.slice(-Math.round(RATE * 0.28) - RATE / 2, -RATE / 2);
+  const parts = /** @type {[Float32Array, boolean][]} */ ([[quiet(1), false], [her, true], [tail, false], [quiet(1), false], ...(after ? [[cat(after, quiet(1.5)), false]] : [])]);
+  for (const [pcm, on] of /** @type {[Float32Array, boolean][]} */ (parts)) {
+    playing = on;
+    r.feed(pcm, RATE);
+  }
+  return r;
+}
+
+test('half-duplex: her own voice from the speaker, at -40 to 0 dB re speech, starts no turn while she plays nor in the 300 ms after', async () => {
+  for (const g of [-40, -30, -20, -10, -6, 0]) {
+    const r = await echo(g);
+    // (Counted, not compared: a diff of the audio sent takes minutes to print.)
+    assert.equal(r.sent.length, 0, `echo at ${g} dB: ${r.sent.filter((x) => typeof x === 'string').join(', ')} and ${Math.round(msOf(r.sent))} ms of sound left the phone`);
+    r.input.stop();
+  }
+  const r = await echo(0, { tailMs: 0 });
+  assert.equal(r.sent[0], 'start', 'with no time after her voice, its echo would start one');
+});
+
+test('half-duplex: the user speaking after her voice ends starts a turn, and nothing heard while she played goes with it (its pre-roll is dropped)', async () => {
+  const r = await echo(0, { after: gas });
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  const ms = msOf(r.sent);
+  const said = (gas.length / RATE) * 1000;
+  assert.ok(ms > said && ms < said + 1400, `${ms} ms sent for ${said} ms of speech: none of her ${Math.round((lunch.length / RATE) * 1000)} ms`);
+  r.input.stop();
+});
+
+test('full duplex (headphones or the car, with cutting in by voice on): the user speaking over her starts a turn', async () => {
+  let playing = true;
+  const r = rig({ speaking: () => playing, duplex: () => true });
+  await r.input.start();
+  r.feed(cat(quiet(1), lunch, quiet(1)), RATE);
+  assert.equal(r.sent[0], 'start', 'the user cut in');
+  playing = false;
+  r.input.stop();
 });
 
 test('a click or a door slam leaves nothing: no activity and no audio, so no billed turn (review)', async () => {

@@ -28,6 +28,11 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   const platform = {
     /** How much faster than real time a live stream plays here. */
     streamSpeed: 20,
+    /**
+     * The phone's speaker heard by its own microphone: a live stream's sound, this many dB re as played, comes back into an open
+     * microphone as it plays (at 16 kHz); null: none, as with headphones. @type {number | null}
+     */
+    echoDb: /** @type {number | null} */ (null),
     /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
     voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
     /** Whether dictation recognizes speech on the phone. */
@@ -94,7 +99,13 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
           push(/** @type {Int16Array} */ pcm) {
             if (s.playedMs !== null) return;
             started ||= Date.now();
+            const at = s.ms;
             s.ms += (pcm.length / rate) * 1000;
+            if (platform.echoDb === null) return;
+            const gain = 10 ** (platform.echoDb / 20) / 0x8000;
+            const back = Float32Array.from({ length: Math.floor((pcm.length * 16_000) / rate) }, (_, i) => pcm[Math.floor((i * rate) / 16_000)] * gain);
+            // Heard when it plays: never before the player has it.
+            setTimeout(() => { if (s.playedMs === null) platform.mic.feed(back, 16_000); }, Math.max(0, started + at / platform.streamSpeed - Date.now()));
           },
           end() { s.ended = true; log.push('stream end'); },
           stop() { s.stopped = true; log.push('stream stop'); return finish(); },

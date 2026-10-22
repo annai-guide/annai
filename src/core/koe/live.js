@@ -32,6 +32,8 @@ const SILENT = ['tell_kokoro', 'show', 'ask', 'already_told'];
 const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 /** Tools that pass a note on to the user, as words do, or settle it as passed on. */
 const REACH = ['show', 'ask', 'already_told'];
+/** Where her voice doesn't reach the microphone, so speaking may cut her off (spec §10.4): elsewhere, half-duplex. */
+const DUPLEX = ['headphones', 'car'];
 
 /** A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped. @param {string} text */
 export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
@@ -62,6 +64,8 @@ export class LiveKoe {
   #watched = false;
   /** @type {LiveInput | null} */
   #input = null;
+  /** Speaking may cut her off now: "Cut her off by speaking" is on, and the microphone in use is headphones' or the car's. */
+  #duplex = false;
   /** Sends waiting for the session to be ready (a tap's first words, a reconnect). @type {((s: LiveSession) => void)[]} */
   #waiting = [];
   /** @type {Hearing | null} */
@@ -211,6 +215,16 @@ export class LiveKoe {
     const was = this.voiced;
     this.voiced = Boolean(v?.on && v.unlocked && this.c.visible() && v.platform?.player.stream);
     if (this.voiced && !was) this.c.release();
+    if (this.#input) this.#route(); // the audio may have changed (Halves asks on every change of the voice)
+  }
+
+  /** Whether speaking may cut her off, from the microphone in use (§10.4): read after it opens, and when the audio changes. */
+  async #route() {
+    const v = this.c.voice;
+    const input = this.#input;
+    if (!v) return;
+    const duplex = await Promise.all([v.settings(), v.route()]).then(([{ bargeIn }, route]) => bargeIn && DUPLEX.includes(route), () => false);
+    if (this.#input === input) this.#duplex = duplex;
   }
 
   /** The microphone opens on the open session; what is said streams live, only while someone speaks. */
@@ -223,20 +237,21 @@ export class LiveKoe {
     const v = this.c.voice;
     const p = v?.platform;
     if (this.#input || !this.#s || !p || !v.on || !this.c.visible()) return;
-    const { pauseMs, bargeIn } = await v.settings();
+    const { pauseMs } = await v.settings();
     // A close may have come meanwhile.
     if (this.#input || !this.#s || this.state !== 'open' || !this.c.visible()) return;
     this.unmute();
     this.c.release();
     this.#inRate = this.#s.audioIn.rate; // what is said is kept at it too
+    this.#duplex = false; // half-duplex until the microphone in use says otherwise
     this.#input = new LiveInput({
-      mic: p.mic, rate: this.#inRate, pauseMs, bargeInDb: bargeIn ? 6 : Infinity, speaking: () => Boolean(this.#sounding),
+      mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding), duplex: () => this.#duplex,
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
     });
     this.listening = true;
     p.session('play-and-record');
     this.#changed();
-    await this.#input.start().catch((e) => this.#deaf(e));
+    await this.#input.start().then(() => this.#route(), (e) => this.#deaf(e));
     this.#poke();
   }
 

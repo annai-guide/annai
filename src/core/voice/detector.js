@@ -73,6 +73,14 @@ export class Detector {
     return (this.#seg?.speech ?? 0) * FRAME_MS;
   }
 
+  /** Forgets any speech going on and the frames before it, keeping the floor: what came meanwhile was never the room's (Koe's own voice, §10.8). */
+  reset() {
+    this.#seg = null;
+    this.#before = [];
+    this.#recent = [];
+    this.level = 0;
+  }
+
   /** @param {Float32Array} pcm @returns {DetectorEvent[]} */
   push(pcm) {
     /** @type {DetectorEvent[]} */
