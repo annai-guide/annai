@@ -53,6 +53,7 @@ export async function renderVoice(ctx) {
   const sayButton = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
+      voice.unlock(); // inside the tap, before any await: an iPhone plays sound only from a tap (spec §10.1)
       sayButton.disabled = true;
       sayStatus.textContent = 'Speaking…';
       await settled(); // the speed or pause just typed is saved first
