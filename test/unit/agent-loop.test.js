@@ -914,6 +914,42 @@ test("show keeps only http(s) links, a photo and a booking inside the trip (or /
   ]);
 });
 
+test("show and ask take only so much (the second fix pass): a title of 200 characters, a text of 4,000, 6 links and 6 choices of 100 characters, a URL of 2,000; a question of 500 and options of 100, else ask is refused", async () => {
+  const long = (/** @type {number} */ n) => 'x'.repeat(n);
+  const links = [{ label: long(150), url: 'https://e.example/0' }, ...Array.from({ length: 6 }, (_, i) => ({ label: `L${i + 1}`, url: `https://e.example/${i + 1}` }))];
+  const card = { title: long(300), text: long(5000), place: { name: long(300), address: 'Big Sur' }, links: [{ label: 'far', url: `https://e.example/${long(2100)}` }, ...links], choice: [long(150), ...Array.from({ length: 7 }, (_, i) => `C${i}`)] };
+  const k = await agentKit([[{ toolCalls: [
+    { name: 'show', input: { card } },
+    { name: 'ask', input: { question: long(600), options: ['Yes'] } },
+    { name: 'ask', input: { question: 'Which?', options: ['Yes', long(150)] } },
+    { name: 'sleep', input: {} },
+  ] }]]);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const [shown] = await k.events(['out.show']);
+  const c = shown.data.card;
+  assert.deepEqual([c.title.length, c.text.length, c.place.name.length, c.title.at(-1)], [200, 4000, 200, '…']);
+  assert.equal(c.place.address, 'Big Sur');
+  assert.deepEqual(c.links.map((/** @type {any} */ l) => l.url), Array.from({ length: 6 }, (_, i) => `https://e.example/${i}`), 'the URL too long for a browser left out, then 6');
+  assert.equal(c.links[0].label.length, 100);
+  assert.deepEqual(c.choice, ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']);
+  const asks = (await k.events(['tool.result'])).filter((e) => e.data.name === 'ask');
+  assert.deepEqual(asks.map((e) => e.data.ok), [false, false]);
+  assert.match(asks[0].data.content, /500 characters/);
+  assert.match(asks[1].data.content, /100 characters/);
+  assert.equal((await k.events(['out.ask'])).length, 0);
+});
+
+test('show refuses a card with nothing to show, once what can\'t be shown is left out (the second fix pass)', async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'show', input: { card: { links: [{ label: 'Run', url: 'javascript:alert(1)' }] } } }, { name: 'sleep', input: {} }] }]]);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const [r] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'show');
+  assert.equal(r.data.ok, false);
+  assert.match(r.data.content, /nothing to show/);
+  assert.equal((await k.events(['out.show'])).length, 0);
+});
+
 test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shiori's turn goes on", async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'snap', input: {} }] }, say('That picture was broken.')]]);
   k.registry.add('test', 'tool', { name: 'snap', description: 'A picture.', input: { type: 'object' }, run: async () => ({ content: 'A picture.', images: [{ mediaType: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=' }] }) });

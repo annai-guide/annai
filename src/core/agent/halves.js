@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk } from './loop.js';
+import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -753,26 +753,25 @@ export class Halves {
   /**
    * Kokoro's notes for the user that Koe never passed on, asked once more (spec §6.8): annai shows what Kokoro meant the user to
    * have, a note it told Koe or a gated speak as "Shiori's answer", a gated card or question as itself, checked as show and ask
-   * check Shiori's own (a tap on its buttons comes to Koe as the user's choice); one they would refuse, as its words. "Kokoro
-   * couldn't check" and a final text were words for Koe: it was asked once more, and that is all (plan decision 21: no card).
-   * @param {Wake[]} notes
+   * check Shiori's own (a tap on its buttons comes to Koe as the user's choice); one they would refuse, as its words, or with none
+   * only a Trace line, never a card that says nothing. "Kokoro couldn't check" and a final text were words for Koe: it was asked
+   * once more, and that is all (plan decision 21: no card). @param {Wake[]} notes
    */
   async #backstop(notes) {
     this.#unsaid = [];
     for (const w of notes) {
       const i = w.call?.input ?? {};
-      /** @type {string} what is shown as words */
-      let words = w.why === 'tool' || w.why === 'gated:speak' ? forUserText(w.note) : '';
-      if (w.why === 'gated:show') {
-        const ok = checkCard(i.card, this.registry);
-        if (!('error' in ok)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: ok.card } });
-        else words = [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ');
-      } else if (w.why === 'gated:ask') {
-        const ok = checkAsk(i);
-        if (!('error' in ok)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ok.question, options: ok.options } });
-        else if (typeof i.question === 'string') words = `${i.question}${Array.isArray(i.options) ? ` (${i.options.map(String).join(', ')})` : ''}`;
-      }
-      if (words) await this.kokoro.remind([{ watch: '', text: words, title: "Shiori's answer" }], undefined, { unsaid: true });
+      const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
+      const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
+      if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card } });
+      else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options } });
+      else if (card || ask) {
+        // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
+        const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
+          : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
+        if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
+        else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
+      } else if (w.why === 'tool' || w.why === 'gated:speak') await this.kokoro.remind([{ watch: '', text: forUserText(w.note), title: "Shiori's answer" }], undefined, { unsaid: true });
     }
   }
 
