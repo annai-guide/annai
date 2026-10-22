@@ -567,6 +567,7 @@ export class Halves {
    */
   hush(why) {
     this.live.close(why, { forget: why === 'erase' });
+    if (why === 'erase') for (const a of [this.kokoro, this.koe]) a.forgetTold();
     this.typing(false); // the page went: nobody types into it (review A3)
   }
 
