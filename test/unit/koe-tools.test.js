@@ -10,14 +10,14 @@ const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 /** Kokoro's timers, as live mode's would be. @type {any[]} */
 const WATCH = ['watch_set', 'watch_list', 'watch_cancel'].map((name) => ({ name, pluginId: 'core', group: 'Time', description: `${name} (a stand-in)`, input: { type: 'object', properties: {} }, run: async () => `${name} ran` }));
 
-test("Koe's tools are exactly: speak, show, ask, wait, sleep, watch_set, watch_list, watch_cancel, recall, list, read, nearby, guide, write, edit, patch, tell_kokoro", async () => {
+test("Koe's tools are exactly: speak, show, ask, wait, sleep, watch_set, watch_list, watch_cancel, recall, list, read, nearby, guide, write, edit, patch, tell_kokoro, already_told", async () => {
   const k = await agentKit([[sleep]], { koe: { type: [sleep] } });
   await k.host.addBuiltin(new URL('../../src/plugins/places/index.js', import.meta.url).href);
   k.agent.addLoopTools(WATCH);
   k.agent.send('Hi');
   await k.agent.idle();
   assert.deepEqual(k.sent['model-koe'][0].tools.map((/** @type {any} */ t) => t.name), [
-    'speak', 'show', 'ask', 'wait', 'sleep', 'watch_set', 'watch_list', 'watch_cancel', 'recall', 'list', 'read', 'nearby', 'guide', 'write', 'edit', 'patch', 'tell_kokoro',
+    'speak', 'show', 'ask', 'wait', 'sleep', 'watch_set', 'watch_list', 'watch_cancel', 'recall', 'list', 'read', 'nearby', 'guide', 'write', 'edit', 'patch', 'tell_kokoro', 'already_told',
   ]);
   const write = k.sent['model-koe'][0].tools.find((/** @type {any} */ t) => t.name === 'write');
   assert.match(write.description, /Koe: only light changes/);

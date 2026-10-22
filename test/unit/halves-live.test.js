@@ -480,3 +480,19 @@ test("a live Koe that shows a card after Kokoro's note has passed it on: no cue"
     await k.done();
   }
 });
+
+// The fix pass (S1): a live Koe settles a note it has already said with already_told, as a text Koe does.
+test("a live Koe that settles Kokoro's note with already_told: no cue, nothing shown, and the tool's answer adds no speech", async () => {
+  const k = await liveKit([{ said: "It's open until ten tonight.", audio: tone(0.2) }, { tool: { name: 'already_told', args: {} } }, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['tool.result'])).some((/** @type {any} */ e) => e.data.name === 'already_told'));
+    await settled(k);
+    assert.equal(texts(k).length, 2, JSON.stringify(texts(k)));
+    assert.deepEqual(await k.events(['reminder']), []);
+    const answer = got(k, 'toolResponse').at(-1).toolResponse.functionResponses[0];
+    assert.equal(answer.scheduling, 'SILENT');
+  } finally {
+    await k.done();
+  }
+});

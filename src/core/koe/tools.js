@@ -6,6 +6,13 @@ const LIGHT = ['write', 'edit', 'patch'];
 const OFFLINE = ['nearby', 'guide'];
 const MOVABLE = ['start', 'end', 'notes', 'priority'];
 export const BIGGER = "That's a bigger change: ask Kokoro with tell_kokoro.";
+/** Koe settles a note of Kokoro's it has told the user already (§6.8), text or live: annai doesn't show it for Koe. */
+export const ALREADY_TOLD = Object.freeze({
+  name: 'already_told', pluginId: 'core', group: 'Talk',
+  description: "Kokoro's latest note adds nothing to what you have already told the user: call this instead of saying it again, so annai doesn't show it for you.",
+  input: { type: 'object', properties: {} },
+  run: async () => 'Noted: the user has it already.',
+});
 const NOTE = /^\/trip\/notes\/(?!\.\.?$)[^/]+$/;
 const ITEM = /^\/trip\/plan\/(?!\.\.?\.json$)[^/]+\.json$/;
 

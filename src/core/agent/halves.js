@@ -8,7 +8,7 @@ import { chatCandidates, koePath, splitOn, AllFailedError, COOLDOWN_MS } from '.
 import { LiveKoe } from '../koe/live.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
-import { koeTools } from '../koe/tools.js';
+import { koeTools, ALREADY_TOLD } from '../koe/tools.js';
 import { compactView } from '../koe/context.js';
 import { modelOf, KOE_ROLE } from '../llm/config.js';
 
@@ -240,7 +240,7 @@ export class Halves {
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
     // Koe's quick tools are Shiori's own, by name: Kokoro's (timers, recall), else the plugins'.
     const find = (/** @type {string} */ name) => this.kokoro.loopTools().find((t) => t.name === name) ?? c.registry.entries('tool').find((e) => e.item?.name === name)?.item;
-    this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel, () => (this.#stopHeld ? STOP_HELD : null))]);
+    this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel, () => (this.#stopHeld ? STOP_HELD : null)), ALREADY_TOLD]);
     for (const a of [this.kokoro, this.koe]) {
       a.on('event', (x) => this.#emit('event', x));
       a.on('notice', (n) => this.#notice(n));

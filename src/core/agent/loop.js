@@ -102,8 +102,8 @@ export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
-/** What Koe is asked when Kokoro's note for the user ended its turn unsaid. */
-export const NOTE_UNSAID = "Kokoro's note is for the user, and it hasn't reached them. Only speak, show and ask reach them; anything else you write is your private notes, which they never see. Say what the note says, in your own words.";
+/** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
+export const NOTE_UNSAID = "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, in your own words; if you have already told them all of it, call already_told.";
 /** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
 export const UNANSWERED = "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
@@ -1530,6 +1530,8 @@ export class Agent {
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
+      // Koe has told the user what Kokoro's notes say already: they are settled, and annai doesn't show them.
+      if (ordered.some((/** @type {any} */ c) => c.name === 'already_told')) notes = [];
       // The user wrote inside Koe's wait: its answer is owed, whatever Koe asked of Kokoro meanwhile.
       if (this.#facts.wrote) {
         this.#facts.wrote = false;
