@@ -81,14 +81,21 @@ export async function costs(store, scope) {
   return { total, byWake };
 }
 
+/** With no Steps per wake set, a turn nobody is watching stops after this many model calls: no one is there to tap Stop on a wake a web page talked into calling tools forever (spec §6.6). */
+export const UNWATCHED_STEPS = 50;
+
 /**
- * Whether a budget ends the turn before the next model call.
- * @param {{ budgets: Budgets, steps: number, spent: number }} c
+ * Whether a budget ends the turn before the next model call. watched: the user started the turn or joined it (isWatched); only
+ * a turn nobody watches has annai's own step limit, and only while Steps per wake is empty.
+ * @param {{ budgets: Budgets, steps: number, spent: number, watched?: boolean }} c
  * @returns {{ which: 'steps' | 'spend', title: string, body: string } | null}
  */
-export function budgetStop({ budgets, steps, spent }) {
+export function budgetStop({ budgets, steps, spent, watched = true }) {
   if (budgets.stepsPerWake && steps >= budgets.stepsPerWake) {
     return { which: 'steps', title: 'Shiori stopped: step limit', body: `She took the ${budgets.stepsPerWake} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.` };
+  }
+  if (!budgets.stepsPerWake && !watched && steps >= UNWATCHED_STEPS) {
+    return { which: 'steps', title: 'Shiori stopped: step limit', body: `She took ${UNWATCHED_STEPS} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.` };
   }
   if (budgets.spendPerDay && spent >= budgets.spendPerDay) {
     return { which: 'spend', title: "Shiori stopped: today's budget is spent", body: `Today's model calls cost $${spent.toFixed(2)} of the $${budgets.spendPerDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };

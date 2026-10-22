@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
+import { Agent, GATHER, isTheirs, isWatched, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -620,7 +620,7 @@ export class Halves {
     const typing = this.kokoro.typingNow || this.kokoro.photoNow;
     if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
     // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them (review A3).
-    if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
+    if (!wakes.some(isWatched)) return 0;
     if (typing || speaking) return Infinity;
     return Math.max(0, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
   }

@@ -145,6 +145,13 @@ export const WRITE_TRIES = 3;
  */
 export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.kind === 'heard' && w.gate !== 'chatter') || Boolean(w.again);
 
+/**
+ * A wake that means the user is there to tap Stop (budgets.js UNWATCHED_STEPS): one they started (isTheirs), and for Kokoro behind
+ * Koe, what comes from their conversation through Koe: Koe's note to it, and "Koe answered the user" (input). Not a review, a
+ * reminder, a plugin, a catch-up or housekeeping. @param {Wake} w
+ */
+export const isWatched = (w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || Boolean(w.input);
+
 /** The card types running plugins add (spec §16.4). @param {import('../registry.js').Registry} registry @returns {any[]} */
 const cardTypes = (registry) => registry.list('ui:card-type').filter((t) => typeof t?.type === 'string');
 /** A link the screen may open: http(s) only. @param {any} l */
@@ -1383,6 +1390,8 @@ export class Agent {
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
     /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
     let theirs = wakes.some(isTheirs);
+    /** Someone is watching: a wake from the user began the turn or joined it (isWatched); it stays so, whatever reaches them. */
+    let watched = wakes.some(isWatched);
     let reached = this.#reached;
     /** What had reached the user when the turn began: a tool call is asked for only until something more has (review A4). */
     const begun = this.#reached;
@@ -1408,6 +1417,7 @@ export class Agent {
     /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
     const join = (more) => {
       theirs ||= more.some(isTheirs);
+      watched ||= more.some(isWatched);
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
     };
@@ -1449,7 +1459,7 @@ export class Agent {
     let forced = 0;
     for (;;) {
       if (abort.signal.aborted) break;
-      const over = budgetStop({ budgets: settings.budgets, steps, spent });
+      const over = budgetStop({ budgets: settings.budgets, steps, spent, watched });
       if (over) {
         await this.#notice({ tone: 'warn', title: over.title, body: over.body });
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'budget', which: over.which, wake: wakeId, message: over.body } });
