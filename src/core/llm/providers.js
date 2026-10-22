@@ -1,4 +1,4 @@
-import { readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLE } from './config.js';
+import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLE } from './config.js';
 import { ROLE_KINDS } from './provider-desc.js';
 
 /**
@@ -12,9 +12,9 @@ import { ROLE_KINDS } from './provider-desc.js';
  * @typedef {import('./config.js').ModelRecord} ModelRecord
  * @typedef {import('./config.js').ProviderValues} ProviderValues
  * @typedef {{ key?: string | null, roles?: 'recommended' | 'free' | null, name?: string, baseUrl?: string,
- *   abilities?: Record<string, { on: boolean, baseUrl?: string }>, filled?: string[] }} AddOptions
+ *   abilities?: Record<string, { on: boolean, baseUrl?: string }>, filled?: string[], costs?: Record<string, string>, free?: boolean }} AddOptions
  *   roles: the suggestion for chat roles still empty (by default "free": nothing that costs money goes in a role by itself, §9.8);
- *   abilities: on or off, and an address of their own; filled: gets the roles the add changed
+ *   abilities: on or off, and an address of their own; filled: gets the roles the add changed; free: the key is on the provider's free tier, so its models cost nothing; costs: gets, for each of them filled with a model that costs money, that model's name
  */
 
 /** A provider's template layer: notes, keyUrl and models stay in the description. @param {ProviderSource} src @returns {ProviderValues} */
@@ -94,6 +94,15 @@ function suggested(roles, pick, suggestion, o) {
   return next;
 }
 
+/** Whether a model costs nothing: its provider's key is on the free tier, or its prices are all zero. @param {import('./config.js').ModelConfig} cfg @param {string} id */
+function free(cfg, id) {
+  const m = cfg.models[id];
+  if (!m) return false;
+  if (providerOf(cfg.providers[m.provider]).free) return true;
+  const prices = modelOf(m).prices;
+  return Boolean(prices) && Object.keys(prices ?? {}).length > 0 && Object.values(prices ?? {}).every((v) => v === 0);
+}
+
 /** A provider's model for a role: the first switched-on ability of the role's kind with that id. @param {import('./config.js').ModelConfig} cfg @param {string} providerId
  */
 function picker(cfg, providerId) {
@@ -117,7 +126,7 @@ function picker(cfg, providerId) {
  * suggestion's when the chosen one has none, so "free" still brings a voice. @param {{ ws: Workspace, store: Store }} c @param {ProviderSource} src @param {AddOptions} [o]
  * @returns {Promise<string>} the provider's id
  */
-export async function addProvider({ ws, store }, src, { key = null, roles = 'free', name, baseUrl, abilities = {}, filled } = {}) {
+export async function addProvider({ ws, store }, src, { key = null, roles = 'free', name, baseUrl, abilities = {}, filled, costs, free: onFree } = {}) {
   const cfg = await readConfig(ws);
   const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
   const values = providerValues(src);
@@ -125,6 +134,7 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'fre
   const user = {};
   if (name) user.name = name;
   if (baseUrl) user.baseUrl = baseUrl;
+  if (onFree) user.free = true;
   for (const [id, a] of Object.entries(abilities)) {
     if (!values.abilities?.[id]) continue;
     const mine = { ...(a.on !== values.abilities[id].on ? { on: a.on } : {}), ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}) };
@@ -142,6 +152,20 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'fre
     const speechIn = (/** @type {Record<string, string[]> | undefined} */ s) => Object.keys(s ?? {}).some((r) => SPEECH_ROLES.includes(r));
     let next = suggested(cfg.roles, pick, all[roles], { onlyEmpty: true, behind: true, speech: true, chat: true });
     if (!speechIn(all[roles]) && roles !== 'recommended') next = suggested(next, pick, all.recommended, { onlyEmpty: true, behind: true, speech: true, chat: false });
+    if (roles === 'free') {
+      // Still empty: nothing here is free. An empty role that would fall back to a free Main stays empty; any other, Main
+      // above all, gets the provider's recommended model, so Shiori can answer, and the page says it costs money (spec §9.8).
+      for (const role of CHAT_ROLES) {
+        if (next[role]?.models.length) continue;
+        const main = next.main?.models[0];
+        if (role !== 'main' && main && free(after, main)) continue;
+        const got = suggested(next, pick, { [role]: all.recommended?.[role] ?? [] }, { onlyEmpty: true, behind: true, speech: false, chat: true });
+        const id = got[role]?.models[0];
+        if (!id || next[role]?.models.length === got[role].models.length) continue;
+        next = got;
+        if (costs && !free(after, id)) costs[role] = modelOf(after.models[id]).name;
+      }
+    }
     await saveRoles(ws, next);
     filled?.push(...Object.keys(next).filter((r) => JSON.stringify(next[r]?.models) !== JSON.stringify(cfg.roles[r]?.models)));
   }

@@ -18,9 +18,6 @@ async function geminiTrip(page, url, trip = 'Kyoto') {
   await page.getByLabel('API key').fill(KEY);
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-  // Adding fills no chat role with a model that costs money (spec §9.8): the recommended models are the user's own tap.
-  await page.getByRole('button', { name: 'Use the recommended models' }).click();
-  await expect(page.locator('.toast', { hasText: 'Roles updated.' })).toBeVisible({ timeout: 30_000 });
   await page.goto('/#/trips');
   return startTrip(page, trip);
 }

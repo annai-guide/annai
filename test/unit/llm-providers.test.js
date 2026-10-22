@@ -41,8 +41,8 @@ test('adding a provider: abilities and their models, one key, no paid chat model
   assert.deepEqual(Object.keys(p.abilities), ['chat', 'chat-completions', 'transcription', 'voice']);
   assert.equal(p.abilities['chat-completions'].on, false);
   assert.equal(await getKey(ctx.store, id), 'sk-o');
-  assert.deepEqual(names(cfg, 'main'), [], 'OpenAI has no free model: an empty chat role stays empty, whatever it recommends');
-  assert.deepEqual(names(cfg, 'utility'), []);
+  assert.deepEqual(names(cfg, 'main'), ['GPT-6.1 Sol'], 'OpenAI has no free model, so as the first provider it fills Main, which must not stay empty');
+  assert.deepEqual(names(cfg, 'utility'), ['GPT-6 Luna']);
   assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)']); // behind, never ahead (anti-goal)
   assert.deepEqual(names(cfg, 'speech-in'), ['send-audio', 'dictation', 'OpenAI: GPT Transcribe']);
   const voice = Object.values(cfg.models).find((m) => m.ability === 'voice');
@@ -71,12 +71,30 @@ test('adding a provider fills an empty chat role only with a model that costs no
   // The user's own tap is what puts the paid ones in.
   await useSuggestion(ctx, id, ROUTER_SRC, 'recommended');
   assert.deepEqual(names(await readConfig(ctx.ws), 'main'), ['Big']);
-  // A provider with no free model fills no chat role.
+  // A provider with nothing free, added first, fills Main (and the roles that would fall back to a paid Main) with what it recommends, and says it costs money.
   const none = await setup();
   const kinds = /** @type {string[]} */ ([]);
-  await addProvider(none, ANTHROPIC_SRC, { key: 'sk-ant', filled: kinds });
-  assert.deepEqual(kinds, [], 'nothing free to fill');
-  assert.deepEqual(names(await readConfig(none.ws), 'main'), []);
+  const costs = /** @type {Record<string, string>} */ ({});
+  await addProvider(none, OPENAI_SRC, { key: 'sk-o', filled: kinds, costs });
+  assert.ok(kinds.includes('main'), kinds.join());
+  assert.ok(costs.main, 'it names the model that costs money');
+  assert.deepEqual(names(await readConfig(none.ws), 'main'), [costs.main]);
+  // Added after a free Main: its empty Utility would fall back to something free, so it stays empty; nothing it fills costs.
+  const after = await setup();
+  await addProvider(after, ROUTER_SRC, { key: 'sk-r' });
+  const more = /** @type {string[]} */ ([]);
+  await addProvider(after, OPENAI_SRC, { key: 'sk-o', filled: more });
+  const cfg2 = await readConfig(after.ws);
+  assert.deepEqual(names(cfg2, 'main'), ['Small (free)']);
+  assert.deepEqual(names(cfg2, 'utility'), ['Small (free)'], 'filled by the free router, not by a paid model');
+  assert.ok(!more.includes('main') && !more.includes('utility'), more.join());
+  // On a key marked free (Gemini's free tier), the recommended models cost nothing: Main is filled, and nothing is said to cost money.
+  const gem = await setup();
+  const paidWords = /** @type {Record<string, string>} */ ({});
+  const gf = /** @type {string[]} */ ([]);
+  await addProvider(gem, OPENAI_SRC, { key: 'sk-g', free: true, filled: gf, costs: paidWords });
+  assert.deepEqual(names(await readConfig(gem.ws), 'main'), ['GPT-6.1 Sol']);
+  assert.deepEqual(paidWords, {}, 'a free key: no model costs money');
 });
 
 test('two providers from one plugin: two keys, models named apart; removing one keeps the other whole (Review Focus 1)', async () => {
@@ -86,7 +104,7 @@ test('two providers from one plugin: two keys, models named apart; removing one 
   let cfg = await readConfig(ctx.ws);
   assert.ok(modelNames(cfg).includes('GPT-6 Luna (2)'), modelNames(cfg).join());
   assert.deepEqual([providerOf(cfg.providers[a]).name, providerOf(cfg.providers[b]).name], ['OpenAI (work)', 'OpenAI (home)']);
-  assert.deepEqual(names(cfg, 'main'), [], 'neither fills a chat role');
+  assert.deepEqual(names(cfg, 'main'), ['GPT-6.1 Sol'], "the second fills no role the first has filled");
   assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)', 'OpenAI: GPT-4o mini TTS (Marin) (2)']);
   await removeProviderRecords(ctx.ws, ctx.store, a);
   cfg = await readConfig(ctx.ws);

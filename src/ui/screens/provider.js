@@ -191,9 +191,11 @@ export async function renderNewProvider(ctx, pluginId) {
       try {
         /** @type {string[]} */
         const filled = [];
-        const added = await ctx.llm.addProvider(pluginId, { official: (await ctx.plugins.installed())[pluginId]?.source === 'official', filled });
+        /** @type {Record<string, string>} */
+        const costs = {};
+        const added = await ctx.llm.addProvider(pluginId, { official: (await ctx.plugins.installed())[pluginId]?.source === 'official', filled, costs });
         open(added);
-        sayFilled(ctx, pluginId, filled);
+        sayFilled(ctx, pluginId, filled, costs);
       } catch (e) {
         status.textContent = messageOf(e);
         byHand.disabled = false;

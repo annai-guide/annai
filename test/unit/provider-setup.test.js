@@ -391,10 +391,12 @@ test("review M1: a provider record's missing plugin is installed from the provid
   assert.equal((await k.host.installed())['remote-trace-like'], undefined, 'installed, it gave no provider, so it went again');
 });
 
-test('the page says which roles an add filled: the chat roles with free models, the speech lists behind the free entries, and where to tap when nothing was free', async () => {
+test('the page says which roles an add filled: free models, those that cost money by name, the speech lists behind the free entries', async () => {
   const { filledWords } = await import('../../src/ui/provider-setup.js');
-  assert.equal(filledWords('OpenRouter', ['utility', 'decide', 'speech-out'], true), "Utility and Quick decision now use OpenRouter's free models. Its speech out models went behind the free entries.");
-  assert.equal(filledWords('OpenRouter', ['main'], true), "Main now uses OpenRouter's free models.");
-  assert.equal(filledWords('OpenAI', ['speech-in', 'speech-out'], true), 'OpenAI has no free models, so no chat role was filled. "Use the recommended models" on its page fills them. Its speech in and speech out models went behind the free entries.');
-  assert.equal(filledWords('Local', [], false), '', 'a provider with no chat suggestion and nothing filled says nothing');
+  assert.equal(filledWords('OpenRouter', ['utility', 'decide', 'speech-out']), "Utility and Quick decision now use OpenRouter's free models. Its speech out models went behind the free entries.");
+  assert.equal(filledWords('OpenRouter', ['main']), "Main now uses OpenRouter's free models.");
+  assert.equal(filledWords('OpenAI', ['main', 'utility', 'speech-in'], { main: 'GPT-6.1 Sol', utility: 'GPT-6 Luna' }),
+    'Main GPT-6.1 Sol and Utility GPT-6 Luna cost money: OpenAI has no free model to start with, and Shiori needs one to answer. Its speech in models went behind the free entries.');
+  assert.match(filledWords('Google Gemini', ['main'], { main: 'Gemini 3.8 Flash' }, true), /^Main Gemini 3\.8 Flash costs money: .* If your key is on the free tier, switch that on, on this page/);
+  assert.equal(filledWords('Local', []), '');
 });
