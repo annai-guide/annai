@@ -1,4 +1,5 @@
 import { toInput, toolSchema } from './steps.js';
+import { fromGemini } from './schema.js';
 import { levelsFor, thinks } from './levels.js';
 import { blockedMessages } from './blocked.js';
 
@@ -50,7 +51,7 @@ export function chatType(annai) {
     /** @param {any} c */
     build: (c) => build(c, (m) => blocked.has(m)),
     /** @param {Response} res @param {any} c */
-    read: (res, c) => read(res, { sse, ProviderError, left: () => blocked.add(c?.request?.messages ?? []), keep: c?.keep === true }),
+    read: (res, c) => read(res, { sse, ProviderError, left: () => blocked.add(c?.request?.messages ?? []), keep: c?.keep === true, tools: c?.request?.tools ?? [] }),
     classify,
     retryAfter,
     /**
@@ -101,7 +102,7 @@ function build({ endpoint, model, key, request, keep, kept }, leave) {
   if (request.tools?.length) body.tools = request.tools.map(toolSchema);
   body.generation_config = config;
   if (kept) body.previous_interaction_id = kept.id;
-  body.input = toInput(request.messages, { model: model.providerId, tail: request.tail, leave, from: kept?.from ?? 0 });
+  body.input = toInput(request.messages, { model: model.providerId, tail: request.tail, leave, from: kept?.from ?? 0, tools: request.tools ?? [] });
   return { url: join(endpoint.baseUrl, '/v1beta/interactions'), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body };
 }
 
@@ -250,6 +251,8 @@ function parseArgs(args, started) {
 class Steps {
   /** @type {Map<number, any>} */
   #open = new Map();
+  /** Each offered tool's input schema, by name: a call's free-form objects come as JSON text (schema.js). @type {Map<string, any>} */
+  #inputs;
   /** Google's own tools' steps, by index. @type {Map<number, Record<string, any>>} */
   #server = new Map();
   called = false;
@@ -262,6 +265,11 @@ class Steps {
   links = [];
   /** @type {string[]} */
   suggestions = [];
+
+  /** @param {{ name: string, input: any }[]} tools those the request offered */
+  constructor(tools) {
+    this.#inputs = new Map(tools.map((t) => [t.name, t.input]));
+  }
 
   /** @param {number} index @param {any} step @returns {any[]} */
   start(index, step) {
@@ -349,7 +357,9 @@ class Steps {
     }
     if (s?.type === 'function_call') {
       this.called = true;
-      return [{ type: 'tool_call', id: String(s.id ?? ''), name: String(s.name ?? ''), input: parseArgs(s.args, s.arguments), ...(s.signature ? { extra: { signature: s.signature } } : {}) }];
+      const name = String(s.name ?? '');
+      const args = parseArgs(s.args, s.arguments);
+      return [{ type: 'tool_call', id: String(s.id ?? ''), name, input: this.#inputs.has(name) ? fromGemini(this.#inputs.get(name), args) : args, ...(s.signature ? { extra: { signature: s.signature } } : {}) }];
     }
     return [];
   }
@@ -358,9 +368,10 @@ class Steps {
 /**
  * The events of a streamed interaction, or of a whole one from a server that ignores stream: only
  * application/json, and only when it isn't a stream after all.
- * @param {Response} res @param {{ sse: any, ProviderError: any, left: () => boolean, keep: boolean }} h left: leaves the request's
+ * @param {Response} res @param {{ sse: any, ProviderError: any, left: () => boolean, keep: boolean, tools: any[] }} h left: leaves the request's
  *   last user message out from now on, after a safety block (blocked.js); false when it has none. keep: Google keeps
- *   this turn, so its interaction is named first, as a `kept` event
+ *   this turn, so its interaction is named first, as a `kept` event. tools: those the request offered, whose calls' JSON text
+ *   for a free-form object comes back as the object (schema.js)
  */
 async function* read(res, h) {
   let body = res.body;
@@ -380,7 +391,7 @@ async function* read(res, h) {
     }
     body = new Response(text).body;
   }
-  const steps = new Steps();
+  const steps = new Steps(h.tools);
   for await (const { event, data } of h.sse(/** @type {ReadableStream<Uint8Array>} */ (body))) {
     if (data === '[DONE]') break;
     /** @type {any} */
@@ -448,7 +459,7 @@ function* readWhole(text, h) {
   }
   if (!isObject(r) || (!Array.isArray(r.steps) && r.status !== 'failed')) throw new h.ProviderError('server', 'Gemini answered with a whole reply that had no answer in it.');
   if (h.keep && typeof r.id === 'string' && r.id) yield { type: 'kept', id: r.id };
-  const steps = new Steps();
+  const steps = new Steps(h.tools);
   for (const [i, step] of (r.steps ?? []).entries()) {
     if (!isObject(step)) continue;
     const { summary, signature, content, ...rest } = step;

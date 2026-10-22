@@ -39,3 +39,27 @@ export const modelOf = (over = {}) => ({
 });
 /** A spec for one call. @param {any} type @param {any} [over] */
 export const spec = (type, over = {}) => ({ endpoint: endpointOf(type), model: modelOf(), key: KEY, tunables: { ...type.tunables }, request: { messages: [] }, ...over });
+
+/**
+ * A trip in a memory workspace with annai's record formats and Shiori's file tools (write, patch, …), as she has them,
+ * to run calls Gemini made. @returns {Promise<{ ws: any, trip: string, tools: Record<string, any>, run: (name: string, input: any) => Promise<any> }>}
+ */
+export async function tripFiles() {
+  const { Registry } = await import('../../src/core/registry.js');
+  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { makeSchemaFor } = await import('../../src/core/schema.js');
+  const { kindOf, ensureBaseScopes, createTrip } = await import('../../src/core/scopes.js');
+  const { PluginHost } = await import('../../src/core/plugins.js');
+  const registry = new Registry();
+  const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  const host = new PluginHost({ registry, workspace: ws, importModule: (/** @type {string} */ u) => import(u) });
+  await host.addBuiltin(new URL('../../src/plugins/core-schemas/index.js', import.meta.url).href);
+  await host.addBuiltin(new URL('../../src/plugins/files/index.js', import.meta.url).href);
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  /** @type {Record<string, any>} */
+  const tools = Object.fromEntries(registry.entries('tool').map((/** @type {any} */ e) => [e.item.name, e.item]));
+  const run = (/** @type {string} */ name, /** @type {any} */ input) => tools[name].run(input, { scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
+  return { ws, trip, tools, run };
+}

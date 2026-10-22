@@ -88,17 +88,18 @@ Each stored turn is tagged with the trip it belongs to (calls already carry thei
 An official protocol plugin, like chat-completions or openai-responses, registering three types. All requests go to `{baseUrl}/v1beta/…` with the key in `x-goog-api-key`.
 
 **`gemini` (chat)** builds an Interactions request:
-- `model`, `system_instruction`, `tools` (`{ type: "function", name, description, parameters }`), `generation_config` (`max_output_tokens`, `thinking_level`, `thinking_summaries: "auto"`, `tool_choice`), `store` (the switch below: `true` by default), `stream: true`.
+- `model`, `system_instruction`, `tools` (`{ type: "function", name, description, parameters }`, `parameters` as below), `generation_config` (`max_output_tokens`, `thinking_level`, `thinking_summaries: "auto"`, `tool_choice`), `store` (the switch below: `true` by default), `stream: true`.
 - **`input`** is the whole conversation as steps (or, continuing a stored turn, only what's new after it, with `previous_interaction_id`):
   - `user_input` with content parts (`text`, `image`, `audio`, `document`, as `data` + `mime_type`, or `uri` for an uploaded file);
-  - the model's own steps (`thought`, `model_output`, `function_call`) **exactly as they came back**, signatures included;
+  - the model's own steps (`thought`, `model_output`, `function_call`) **exactly as they came back**, signatures included (a call's free-form objects as JSON text, as above);
   - `function_result` for each tool result (`call_id`, `name`, `result`, `is_error`).
+- **A tool's schema as Gemini fills it** (Gemini API 0.6, schema.js). `parameters` takes JSON Schema, and Gemini fills the call by it, closed: measured on 2026-10-22 (Flash Lite, and Flash for keys), an object with no properties is filled only as `{}` (`type: "object"`, `type: ["string", "object"]` and an anyOf of the two alike; Shiori wrote a booking as `content: {}` three times), and an open one (`additionalProperties: true`) takes only keys like names (a merge patch's `"notes+"` came back `"notes__append"`, `"Content-Type"` as `"Content"`). So each free-form object below the top (no properties: `patch`'s `changes`, `search_link`'s `params`, an MCP tool's) goes as a string whose description says to give the object as JSON text, nested, in lists, `anyOf` and `$defs` too; one that may also be text (`write`'s `content`) goes as text, which the tool takes as it is, a .json record's too. On the way back, text that parses to an object becomes the object; any other goes to the tool as it came, for it to refuse in words (`patch` refuses anything but an object). A call that goes back to Gemini carries its free-form objects as JSON text again (Google takes it with the call's signature, checked). Other protocols send the schema as it is: Anthropic and OpenAI Responses (`strict: false`) don't close objects, and Chat Completions sends no `strict`; Gemini Live's `parametersJsonSchema` filled both as asked (checked).
 - **annai's request parts map onto these.** The `tail` (now block) goes last in the final user input, declared `tail: true`. `toolChoice` → `tool_choice` allowed_tools `mode: "any"`.
 - **Reading the stream** (`event:` / `data:` SSE, ending `[DONE]`):
   - `step.delta` `text` → text;
   - `thought_summary` → `reasoning_delta` (progress shows, so a thinking model never looks stalled);
   - `thought_signature` → kept with its step;
-  - `function_call` steps with their `arguments_delta` pieces joined → tool calls;
+  - `function_call` steps with their `arguments_delta` pieces joined → tool calls, free-form objects given as JSON text back as objects;
   - `interaction.completed` → usage and stop (`requires_action` = tool calls);
   - `error` → a ProviderError.
   - A whole JSON reply (a server that ignores `stream`) is read as the same events, as the other protocols do.

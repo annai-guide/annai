@@ -1,10 +1,13 @@
 /**
  * annai's messages as Gemini Interactions input steps: what the user said as `user_input` content,
- * the model's own steps (thought, output, calls) exactly as they came back, signatures included,
- * and tool results as `function_result` steps. Pure: no network, no annai.
+ * the model's own steps (thought, output, calls) as they came back, signatures included (a call's free-form
+ * objects as JSON text again, as Gemini fills them: schema.js), and tool results as `function_result` steps.
+ * Pure: no network, no annai.
  * @typedef {Record<string, any>} Step
  * @typedef {Record<string, any>} Content
  */
+
+import { forGemini, toGeminiArgs } from './schema.js';
 
 /**
  * The signature Google's docs give for a call no Gemini model wrote. Gemini 3 refuses a call in the
@@ -37,9 +40,9 @@ export function toContent(part) {
   return null;
 }
 
-/** A tool annai offers, as a function tool. @param {{ name: string, description: string, input: Record<string, any> }} t */
+/** A tool annai offers, as a function tool, its schema as Gemini fills it (schema.js). @param {{ name: string, description: string, input: Record<string, any> }} t */
 export function toolSchema(t) {
-  return { type: 'function', name: t.name, description: t.description, parameters: t.input };
+  return { type: 'function', name: t.name, description: t.description, parameters: forGemini(t.input) };
 }
 
 /**
@@ -49,10 +52,13 @@ export function toolSchema(t) {
  * user_input, or in one of its own after tool results. A user message Google's safety filter blocked
  * (leave) is left out: its tool results say so, and the rest of it goes nowhere. from: the first message
  * to send, after a turn Google keeps (the steps before it are on its side); the steps are worked out on
- * the whole conversation all the same, so a result is named by its call and the current turn is Gemini's.
- * @param {any[]} messages @param {{ model: string, tail?: string, leave?: (m: any) => boolean, from?: number }} o @returns {Step[]}
+ * the whole conversation all the same, so a result is named by its call and the current turn is Gemini's. tools: those offered,
+ * whose free-form objects in a call go back as the JSON text Gemini gives them (schema.js).
+ * @param {any[]} messages @param {{ model: string, tail?: string, leave?: (m: any) => boolean, from?: number, tools?: { name: string, input: any }[] }} o @returns {Step[]}
  */
-export function toInput(messages, { model, tail, leave, from = 0 }) {
+export function toInput(messages, { model, tail, leave, from = 0, tools = [] }) {
+  /** Each offered tool's input schema, by name: a call goes back as Gemini fills it (schema.js). */
+  const inputs = new Map(tools.map((t) => [t.name, t.input]));
   /** @type {Map<string, string>} */
   const names = new Map();
   for (const m of messages) for (const p of m.parts) if (p.type === 'tool_call') names.set(p.id, p.name);
@@ -67,7 +73,7 @@ export function toInput(messages, { model, tail, leave, from = 0 }) {
       steps.push(...userSteps(m.parts, names, leave?.(m) ?? false));
       continue;
     }
-    const own = assistantSteps(m.parts, model);
+    const own = assistantSteps(m.parts, model, inputs);
     steps.push(...own);
     replies.push(own.filter((s) => s.type === 'function_call'));
   }
@@ -97,8 +103,8 @@ function userSteps(parts, names, left) {
   return out;
 }
 
-/** @param {any[]} parts @param {string} model the model the request goes to @returns {Step[]} */
-function assistantSteps(parts, model) {
+/** @param {any[]} parts @param {string} model the model the request goes to @param {Map<string, any>} inputs @returns {Step[]} */
+function assistantSteps(parts, model, inputs) {
   const signed = (/** @type {any} */ p) => p.model === model && isObject(p.extra) && typeof p.extra.signature === 'string';
   /** @type {Step[]} */
   const out = [];
@@ -112,7 +118,8 @@ function assistantSteps(parts, model) {
       if (p.signature && p.model === model) out.push({ type: 'thought', signature: p.signature, ...(p.text ? { summary: [{ type: 'text', text: p.text }] } : {}) });
     } else if (p.type === 'tool_call') {
       // A call whose arguments were cut short kept them as text; the API takes an object.
-      out.push({ type: 'function_call', id: p.id, name: p.name, arguments: isObject(p.input) ? p.input : {}, ...(signed(p) ? { signature: p.extra.signature } : {}) });
+      const input = isObject(p.input) ? p.input : {};
+      out.push({ type: 'function_call', id: p.id, name: p.name, arguments: inputs.has(p.name) ? toGeminiArgs(inputs.get(p.name), input) : input, ...(signed(p) ? { signature: p.extra.signature } : {}) });
     } else if (p.type === 'provider' && p.model === model) {
       out.push(p.block);
     }

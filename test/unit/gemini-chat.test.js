@@ -372,3 +372,42 @@ test("a grounded turn's search steps go back to the model that made them even wh
   await callOnce({ type, endpoint: endpointOf(type), model: modelOf({ providerId: 'gemini-3.6-flash', providerTools: [SEARCH] }), key: KEY, request: { messages }, fetch: answer });
   assert.deepEqual(body.input.map((/** @type {any} */ s) => s.type), ['user_input', 'model_output', 'user_input'], 'another model gets the words alone');
 });
+
+test("a call's free-form objects, which Gemini gives as JSON text (schema.js), reach the tool as objects, streamed or whole; text that isn't one stays text", async () => {
+  const PATCH = { name: 'patch', description: 'Merge patch.', input: { type: 'object', properties: { path: { type: 'string' }, changes: { type: 'object' } }, required: ['path', 'changes'] } };
+  const built = type.build(spec(type, { request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }], tools: [PATCH] } }));
+  assert.equal(built.body.tools[0].parameters.properties.changes.type, 'string');
+  const args = (/** @type {string} */ changes) => JSON.stringify({ path: '/trip/b.json', changes });
+  const stream = (/** @type {string} */ a) => [
+    { event_type: 'step.start', index: 0, step: { type: 'function_call', id: 'call_1', name: 'patch', arguments: {} } },
+    { event_type: 'step.delta', index: 0, delta: { type: 'arguments_delta', arguments: a } },
+    { event_type: 'step.stop', index: 0 },
+    { event_type: 'interaction.completed', interaction: { status: 'requires_action' } },
+  ].map((e) => `event: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
+  const calls = async (/** @type {Response} */ res, /** @type {any[]} */ tools = [PATCH]) => {
+    const out = [];
+    for await (const e of type.read(res, spec(type, { request: { messages: [], tools } }))) if (e.type === 'tool_call') out.push(e.input);
+    return out;
+  };
+  const sse = (/** @type {string} */ body) => new Response(body, { headers: { 'content-type': 'text/event-stream' } });
+  assert.deepEqual(await calls(sse(stream(args('{"notes+":["late"],"end":null}')))), [{ path: '/trip/b.json', changes: { 'notes+': ['late'], end: null } }]);
+  assert.deepEqual(await calls(sse(stream(args('not json')))), [{ path: '/trip/b.json', changes: 'not json' }]);
+  // A tool the request didn't offer, or arguments cut short, are as they came.
+  assert.deepEqual(await calls(sse(stream(args('{"a":1}'))), []), [{ path: '/trip/b.json', changes: '{"a":1}' }]);
+  assert.deepEqual(await calls(sse(stream('{"path": "/trip/b.j'))), ['{"path": "/trip/b.j']);
+  const whole = { id: 'v1_x', status: 'requires_action', steps: [{ type: 'function_call', id: 'call_2', name: 'patch', arguments: { path: '/trip/b.json', changes: '{"title":"Inn"}' } }] };
+  assert.deepEqual(await calls(new Response(JSON.stringify(whole), { headers: { 'content-type': 'application/json' } })), [{ path: '/trip/b.json', changes: { title: 'Inn' } }]);
+});
+
+test("a call that goes back to Gemini (a fallback's, or its own when Google doesn't keep the turn) carries its free-form objects as JSON text, as Gemini's schema has them", () => {
+  const WRITE = { name: 'write', description: 'Write.', input: { type: 'object', properties: { path: { type: 'string' }, content: { type: ['string', 'object'] } }, required: ['path', 'content'] } };
+  const messages = [
+    { role: 'user', parts: [{ type: 'text', text: 'Save it' }] },
+    { role: 'assistant', parts: [{ type: 'tool_call', id: 'c1', name: 'write', input: { path: '/trip/bookings/x.json', content: { id: 'x', kind: 'lodging' } }, extra: { signature: 'CS' }, model: 'gemini-3.5-flash-lite' }] },
+    { role: 'user', parts: [{ type: 'tool_result', id: 'c1', content: 'Wrote it.' }] },
+  ];
+  const built = type.build(spec(type, { request: { messages, tools: [WRITE] } }));
+  assert.deepEqual(built.body.input[1], { type: 'function_call', id: 'c1', name: 'write', arguments: { path: '/trip/bookings/x.json', content: '{"id":"x","kind":"lodging"}' }, signature: 'CS' });
+  // A tool no longer offered goes back as it was.
+  assert.deepEqual(type.build(spec(type, { request: { messages } })).body.input[1].arguments, { path: '/trip/bookings/x.json', content: { id: 'x', kind: 'lodging' } });
+});
