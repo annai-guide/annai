@@ -337,7 +337,7 @@ test('review S1: scrolled down, a card coming or going keeps the screen where it
   await raiseCard(page);
   await expect(page.locator('.notice')).toHaveCount(1);
   expect(Math.abs(await at() - was)).toBeLessThanOrEqual(1);
-  await page.evaluate(() => /** @type {HTMLButtonElement} */ (document.querySelector('.notice .btn.ghost')).click()); // Dismiss, from up there
+  await page.evaluate(() => /** @type {HTMLButtonElement} */ ([...document.querySelectorAll('.notice .btn.ghost')].find((b) => b.textContent === 'Dismiss')).click()); // Dismiss, from up there
   await expect(page.locator('.notice')).toHaveCount(0);
   expect(Math.abs(await at() - was)).toBeLessThanOrEqual(1);
 });
@@ -356,7 +356,7 @@ test("one card taller than the box a quarter of the screen high keeps its Dismis
   const dismiss = card.getByRole('button', { name: 'Dismiss' });
   /** Whether the button lies wholly inside the box as it is seen now. */
   const inSight = () => page.evaluate(() => {
-    const b = /** @type {HTMLElement} */ (document.querySelector('.notice .btn.ghost')).getBoundingClientRect();
+    const b = /** @type {HTMLElement} */ ([...document.querySelectorAll('.notice .btn.ghost')].find((x) => x.textContent === 'Dismiss')).getBoundingClientRect();
     const r = /** @type {HTMLElement} */ (document.querySelector('.notices')).getBoundingClientRect();
     return b.top >= r.top - 0.5 && b.bottom <= r.bottom + 0.5 && b.height > 20;
   });
