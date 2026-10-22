@@ -1,5 +1,7 @@
 import { h } from './dom.js';
 
+/** @typedef {{ el: HTMLElement, list: HTMLElement, count: HTMLElement, members: Set<HTMLElement>, said: HTMLElement, show: HTMLElement, all: HTMLElement }} Stack */
+
 /**
  * System cards and toasts. These are never in Shiori's voice (spec §16.1). Cards of one kind fold into one. Cards (el) sit in the page at its top,
  * under the top bar, and scroll away with it, so they never cover a screen's buttons; toasts float above the dock.
@@ -26,27 +28,40 @@ export function createNotices() {
   const kindOf = (title, tone) => `${tone}\n${title}`;
   /** The lone card of a kind, while there is only one. @type {Map<string, HTMLElement>} */
   const singles = new Map();
-  /** Cards of one kind, folded into one (the user, 2026-10-21: "stack them"). @type {Map<string, { el: HTMLElement, list: HTMLElement, count: HTMLElement, members: Set<HTMLElement> }>} */
+let stacked = 0;
+let lone = 0;
+  /** Cards of one kind, folded into one (the user, 2026-10-21: "stack them"). @type {Map<string, Stack>} */
   const stacks = new Map();
   /** @param {string} kind @param {string} title */
   function makeStack(kind, title) {
-    const list = h('div', { class: 'stack-list', hidden: true });
+    const id = `stack-${++stacked}`;
+    const list = h('div', { class: 'stack-list', id, hidden: true });
     const count = h('strong', {});
-    const show = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false', onclick: () => {
+    // What joins a stack is announced here by its own words, as a card in the page would be.
+    const said = h('span', { class: 'visually-hidden', role: 'status' });
+    const show = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false', 'aria-controls': id, onclick: () => {
       const open = list.hidden;
       list.hidden = !open;
       show.textContent = open ? 'Hide' : 'Show';
       show.setAttribute('aria-expanded', String(open));
+      recount(stack);
     } }, 'Show');
     const all = h('button', { class: 'btn ghost', type: 'button', onclick: () => keep(() => { for (const m of [...stack.members]) leave(kind, m); }) }, 'Dismiss all');
-    const el = h('section', { class: 'notice notice-stack' }, count, h('div', { class: 'acts' }, show, all), list);
-    /** @type {{ el: HTMLElement, list: HTMLElement, count: HTMLElement, members: Set<HTMLElement> }} */
-    const stack = { el, list, count, members: new Set() };
+    const el = h('section', { class: 'notice notice-stack' }, count, said, h('div', { class: 'acts' }, show, all), list);
+    /** @type {Stack} */
+    const stack = { el, list, count, members: new Set(), said, show, all };
     stack.count.dataset.title = title;
     return stack;
   }
-  /** @param {{ list: HTMLElement, count: HTMLElement, members: Set<HTMLElement> }} st */
-  const recount = (st) => { st.count.textContent = `${st.count.dataset.title} (${st.members.size})`; };
+  /** @param {Stack} st */
+  const recount = (st) => {
+    const title = st.count.dataset.title;
+    const n = st.members.size;
+    st.count.textContent = `${title} (${n})`;
+    st.el.setAttribute('aria-label', `${title}, ${n} cards`);
+    st.show.setAttribute('aria-label', `${st.list.hidden ? 'Show' : 'Hide'} the ${n} cards: ${title}`);
+    st.all.setAttribute('aria-label', `Dismiss all ${n} cards: ${title}`);
+  };
   /** A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node */
   function place(kind, title, node) {
     const stack = stacks.get(kind);
@@ -55,6 +70,7 @@ export function createNotices() {
       stack.members.add(node);
       stack.list.append(node);
       recount(stack);
+      stack.said.textContent = node.textContent;
     } else if (lone) {
       const made = makeStack(kind, title);
       stacks.set(kind, made);
@@ -65,6 +81,7 @@ export function createNotices() {
         made.list.append(m);
       }
       recount(made);
+      made.said.textContent = node.textContent;
     } else {
       singles.set(kind, node);
       el.append(node);
@@ -97,7 +114,8 @@ export function createNotices() {
    * @returns {() => void} dismiss
    */
   function card({ title, body, tone = 'info', actions = [] }) {
-    const kind = kindOf(title, tone);
+    // A card with anything to do but Dismiss (Try again, Open Trace, Install) is never folded away.
+    const kind = actions.length ? `${kindOf(title, tone)}\n${++lone}` : kindOf(title, tone);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title }),
       body ? h('p', { text: body }) : null,
