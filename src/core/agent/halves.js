@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs, isWatched, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
+import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -64,13 +64,14 @@ export class Channel {
   /**
    * append reaches the other half before its next model call, or starts its turn; immediate also cuts its call.
    * @param {Side} from @param {string} text @param {'append' | 'immediate'} mode @param {NoteWhy} why @param {string} [wake]
-   * @param {{ name: string, input: any }} [call] the gated call of Kokoro's it stands for @returns {Promise<'sent'>}
+   * @param {{ name: string, input: any }} [call] the gated call of Kokoro's it stands for
+   * @param {boolean} [watched] Koe's turn that sends it is one the user is watching (isWatched): a note of Koe's is the user's only then @returns {Promise<'sent'>}
    */
-  async send(from, text, mode, why, wake, call) {
+  async send(from, text, mode, why, wake, call, watched = false) {
     const to = from === 'koe' ? 'kokoro' : 'koe';
     const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text]] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }
@@ -90,7 +91,7 @@ export function channelTool(from, channel, refuse = () => null) {
       const text = String(i.text ?? '').trim();
       const no = text ? refuse() : `Error: ${name} needs the text to pass on.`;
       if (no) return { content: no, isError: true };
-      return channel.send(from, text, i.mode === 'immediate' ? 'immediate' : 'append', 'tool', call.wake);
+      return channel.send(from, text, i.mode === 'immediate' ? 'immediate' : 'append', 'tool', call.wake, undefined, Boolean(call.watched));
     },
   };
 }
@@ -620,7 +621,7 @@ export class Halves {
     const typing = this.kokoro.typingNow || this.kokoro.photoNow;
     if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
     // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them (review A3).
-    if (!wakes.some(isWatched)) return 0;
+    if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
     if (typing || speaking) return Infinity;
     return Math.max(0, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
   }
@@ -698,6 +699,9 @@ export class Halves {
     return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: '[a photo; Kokoro sees it]' } : p)) }));
   }
 
+  /** The user is watching Koe's turn (or its live session) that is answering now. */
+  #koeWatched() { return this.koeState === 'live' ? this.live.watched : this.koe.watched; }
+
   /** Its next call reads every line so far. @param {Wake} w */
   #wakeKokoro(w) {
     this.#cue = this.#owed = false;
@@ -730,7 +734,7 @@ export class Halves {
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
-    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true });
+    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true, watched: this.#koeWatched() });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
     if (typed || answered || !LINES.includes(e.type) || !this.#works()) return;
     const now = this.clock();

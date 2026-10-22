@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { inQuiet, quietEnds, spentToday, costs, UNWATCHED_STEPS } from '../../src/core/agent/budgets.js';
+import { isWatched } from '../../src/core/agent/loop.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
@@ -190,7 +191,7 @@ const kokoroOf = (/** @type {any} */ k) => k.sent['model-0'] ?? [];
 
 test("Kokoro's turn woken by Koe's note runs past 50", async () => {
   const k = await agentKit([calls(60, { toolCalls: [{ name: 'sleep', input: {} }] })], { koe: { type: KOE } });
-  await k.agent.channel.send('koe', 'Is Nepenthe open tonight?', 'append', 'tool');
+  await k.agent.channel.send('koe', 'Is Nepenthe open tonight?', 'append', 'tool', undefined, undefined, true); // from a Koe turn the user watches
   await k.agent.idle();
   assert.equal(kokoroOf(k).length, 61);
   assert.deepEqual(stepCard(k), []);
@@ -198,7 +199,7 @@ test("Kokoro's turn woken by Koe's note runs past 50", async () => {
 
 test('Kokoro woken by "Koe answered the user" runs past 50 too', async () => {
   const k = await agentKit([calls(60, { toolCalls: [{ name: 'sleep', input: {} }] })], { koe: { type: KOE } });
-  k.agent.kokoro.enqueue({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true });
+  k.agent.kokoro.enqueue({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true, watched: true });
   await k.agent.idle();
   assert.equal(kokoroOf(k).length, 61);
   assert.deepEqual(stepCard(k), []);
@@ -210,4 +211,71 @@ test("Kokoro's 3-minute review cue stops at 50, with the card", async () => {
   await k.agent.idle();
   assert.equal(kokoroOf(k).length, UNWATCHED_STEPS);
   assert.equal(stepCard(k).length, 1);
+});
+
+// Koe's note, and its "answered the user" cue, are watched only when the Koe turn that made them was (it carries `watched`).
+const TELL = { toolCalls: [{ name: 'tell_kokoro', input: { text: 'Is Nepenthe open tonight?' } }, { name: 'sleep', input: {} }] };
+const ASKS = { rules: [{ match: '.', reply: TELL }] };
+const sleeps = { toolCalls: [{ name: 'sleep', input: {} }] };
+
+test('isWatched: a note of Koe\'s or its "answered the user" cue is watched only with the mark of a watched Koe turn', () => {
+  assert.equal(isWatched({ kind: 'note', from: 'koe', text: 'n', watched: true }), true);
+  assert.equal(isWatched({ kind: 'note', from: 'koe', text: 'n', watched: false }), false);
+  assert.equal(isWatched({ kind: 'note', from: 'koe', text: 'n' }), false);
+  assert.equal(isWatched({ kind: 'note', from: 'kokoro', text: 'n', watched: true }), false, 'Kokoro\'s notes are never the user\'s');
+  assert.equal(isWatched({ kind: 'cue', text: 'Koe answered the user', input: true, watched: true }), true);
+  assert.equal(isWatched({ kind: 'cue', text: 'Koe answered the user', input: true, watched: false }), false);
+  assert.equal(isWatched({ kind: 'cue', text: 'Koe answered the user', input: true }), false);
+  assert.equal(isWatched({ kind: 'cue', text: 'a review' }), false);
+});
+
+test('a trigger wakes Koe, Koe tells Kokoro: Kokoro\'s turn is not watched, and stops at 50', async () => {
+  const k = await agentKit([calls(60, sleeps)], { koe: { type: ASKS } });
+  await k.agent.koe.open(k.trip);
+  k.agent.koe.enqueue({ kind: 'trigger', text: 'Your watch w-1 fired: the time came.', fallbacks: [] }); // Koe alone: Kokoro is woken only by its note
+  await until(() => (k.sent['model-koe'] ?? []).length > 0);
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].length, 1, 'Koe took the wake');
+  assert.equal(kokoroOf(k).length, UNWATCHED_STEPS);
+  assert.equal(stepCard(k).length, 1);
+});
+
+test('a message of the user\'s wakes Koe, Koe tells Kokoro: Kokoro\'s turn is watched, and runs past 50', async () => {
+  const k = await agentKit([calls(60, sleeps)], { koe: { type: ASKS } });
+  await k.agent.koe.open(k.trip);
+  k.agent.koe.enqueue({ kind: 'user', text: 'Is Nepenthe open tonight?' });
+  await until(() => (k.sent['model-koe'] ?? []).length > 0);
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].length, 1, 'Koe took the message');
+  assert.equal(kokoroOf(k).length, 61);
+  assert.deepEqual(stepCard(k), []);
+});
+
+test('an unwatched Kokoro turn tells Koe, Koe (woken by that note) tells it back: Kokoro does not get an unlimited turn, and stops at 50 overall', async () => {
+  const tellKoe = { toolCalls: [{ name: 'tell_koe', input: { text: 'Nepenthe is open till 10.' } }] };
+  const k = await agentKit([[tellKoe, ...calls(60, sleeps)]], { koe: { type: { rules: [{ match: 'note from Kokoro', reply: TELL }, { match: '.', reply: sleeps }] } } });
+  k.agent.kokoro.enqueue({ kind: 'cue', text: 'a review: 3 minutes or more of conversation since you last looked.', logged: true });
+  await k.agent.idle();
+  assert.ok(k.sent['model-koe'].length >= 1, 'Koe answered the note');
+  assert.equal(kokoroOf(k).length, UNWATCHED_STEPS);
+  assert.equal(stepCard(k).length, 1);
+});
+
+// The user turning live mode on is their own act; live mode's sensing wakes (a watch that fired, a catch-up) are not.
+test('a live wake (the user turned live mode on) is watched: it runs past 50', async () => {
+  const k = await agentKit([calls(60)]);
+  k.agent.wake({ kind: 'live', text: 'The user turned live mode on.' });
+  await k.agent.idle();
+  assert.equal(k.requests.length, 61);
+  assert.deepEqual(stepCard(k), []);
+});
+
+test("live mode's sensing wakes (a catch-up, a watch that fired) are not: they stop at 50", async () => {
+  for (const kind of /** @type {const} */ (['catch-up', 'trigger'])) {
+    const k = await agentKit([calls(60)]);
+    k.agent.wake({ kind, text: 'You arrived somewhere.', fallbacks: [] });
+    await k.agent.idle();
+    assert.equal(k.requests.length, UNWATCHED_STEPS, kind);
+    assert.equal(stepCard(k).length, 1, kind);
+  }
 });

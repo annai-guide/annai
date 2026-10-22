@@ -186,6 +186,23 @@ test('tell_kokoro is answered "sent", with scheduling SILENT, while Kokoro is st
   }
 });
 
+test("a live session is watched once the user speaks or types in it, so Koe's note to Kokoro is the user's; not before, and not after it closes (budgets.js UNWATCHED_STEPS)", async () => {
+  const k = await liveKit([{ heard: 'Is Nepenthe open now?', said: "I'm checking.", audio: tone(0.3), tool: { name: 'tell_kokoro', args: { text: 'Is Nepenthe open now?' } } }]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    assert.equal(k.agent.live.watched, false, 'open, and the user has not spoken');
+    await say(k, 'where-eat');
+    await until(() => answers(k).length === 1);
+    assert.equal(k.agent.live.watched, true);
+    await k.agent.idle();
+    k.agent.live.close('quiet');
+    assert.equal(k.agent.live.watched, false);
+  } finally {
+    await k.done();
+  }
+});
+
 test('a read answers with its result, and Koe goes on talking after it (no SILENT)', async () => {
   const k = await liveKit([{ said: 'Let me look.', audio: tone(0.2), tool: { name: 'list', args: { path: '/trip/' } } }]);
   try {
