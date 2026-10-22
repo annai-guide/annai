@@ -21,7 +21,7 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     await pickProvider(page, 'llama.cpp');
     // Its default address, and the words for a phone.
     await expect(page.getByLabel('Address', { exact: true })).toHaveValue('http://localhost:9931/v1');
-    await expect(page.getByText(/From a phone, the server needs an HTTPS address/)).toBeVisible();
+    await expect(page.getByText(/On a phone, localhost is the phone itself\./)).toBeVisible();
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByLabel('API key').fill(key);
     await page.getByRole('button', { name: 'Save' }).click();
@@ -101,7 +101,7 @@ test('an address on your network over plain http is refused in words that say ho
   await expect(page.getByText(/OLLAMA_ORIGINS=https:\/\/annai\.guide/)).toBeVisible();
   await page.getByLabel('Address', { exact: true }).fill('http://192.168.1.20:11434/v1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText(/A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\./)).toBeVisible();
+  await expect(page.getByText(/a server on another computer needs an https address, such as tailscale serve --https=8443 http:\/\/localhost:8080, and must allow CORS from annai\.guide/)).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Address', { exact: true }), 'nothing was saved').toHaveValue('http://localhost:11434/v1');
 });

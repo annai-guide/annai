@@ -56,9 +56,9 @@ test('fix pass: an address typed on a provider\'s page is checked by the same ru
   assert.match(String(addressProblem('ftp://example.com')), /must start with https/);
 });
 
-test('a server you run, at a plain http:// address on another computer, is told how to reach it: HTTPS in front of it; the rule stays', () => {
+test('a server you run, at a plain http:// address on another computer, is told how to reach it: an https address, with a tailscale serve example, and CORS; the rule stays', () => {
   for (const lan of ['http://192.168.1.5:9931/v1', 'http://gpu-box.local:11434/v1', 'http://10.0.0.7:8000/v1']) {
-    assert.match(String(addressProblem(lan)), /must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\.$/, lan);
+    assert.match(String(addressProblem(lan)), /must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. Browsers won't let an https page call plain http on your network: a server on another computer needs an https address, such as tailscale serve --https=8443 http:\/\/localhost:8080, and must allow CORS from annai\.guide\.$/, lan);
   }
   assert.doesNotMatch(String(addressProblem('ftp://example.com')), /another computer/);
   assert.doesNotMatch(String(addressProblem('https://')), /another computer/);
@@ -73,4 +73,13 @@ test('freeTier in a description is true, false, the name of who doesn\'t charge,
   // A note for models from before the provider's list gave windows, shown only while one of them is there.
   assert.deepEqual(checkProviderDesc(withAbility(OPENAI_LIKE, 'native', { kind: 'chat', type: 'gemini', noWindowNote: 'Add it again with Fetch model list.' })), []);
   assert.match(checkProviderDesc(withAbility(OPENAI_LIKE, 'native', { kind: 'chat', type: 'gemini', noWindowNote: 3 })).join(), /noWindowNote/);
+});
+
+test('the note every local server\'s page shows says what a phone, https and CORS mean, with one tailscale serve example; the refusal gives the same example', async () => {
+  const { LOCAL_NOTE } = await import('../../src/core/llm/provider-desc.js');
+  assert.match(LOCAL_NOTE, /^On a phone, localhost is the phone itself\. A server elsewhere on your network needs an https address, because browsers won't let an https page call plain http on the network\./);
+  const example = /tailscale serve --https=8443 http:\/\/localhost:8080/;
+  assert.match(LOCAL_NOTE, example);
+  assert.match(LOCAL_NOTE, /must also allow CORS from annai\.guide\.$/);
+  assert.match(String(addressProblem('http://192.168.1.5:8080/v1')), example);
 });

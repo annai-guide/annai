@@ -6,7 +6,8 @@ import { officialPlugins } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
-import { addressProblem } from '../../core/llm/provider-desc.js';
+import { addressProblem, LOCAL_NOTE } from '../../core/llm/provider-desc.js';
+import { platform } from '../platform.js';
 import { andList } from '../format.js';
 import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
 import { OFFICIAL_NAMES } from '../../core/official-names.js';
@@ -148,6 +149,8 @@ export async function renderProvider(ctx, id) {
       desc?.note || desc?.keyUrl
         ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, 'Get a key') : null)
         : null,
+      // A server you run: on a phone, where its default address can't work, the note is a warning (the user, 2026-10-22).
+      desc?.local ? h('p', { class: platform() === 'desktop' ? 'sub' : 'sub warn', 'data-note': 'local-server', text: LOCAL_NOTE }) : null,
       desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName ?? p.name), p.free, async (on) => {
         await ctx.llm.setFree(id, on);
         for (const s of document.querySelectorAll('section.panel')) s.dispatchEvent(new Event('redraw')); // its tools' switches follow (G4)

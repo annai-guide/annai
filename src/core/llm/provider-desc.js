@@ -99,6 +99,11 @@ export function checkProviderDesc(desc) {
   return errors;
 }
 
+/** The one example the notes and the refusal give for reaching a server on your network (item 4, the user, 2026-10-22). */
+const SERVE = 'tailscale serve --https=8443 http://localhost:8080';
+/** What every local server's page says: a phone's localhost, why a LAN address needs https, one way to get one, and CORS. */
+export const LOCAL_NOTE = `On a phone, localhost is the phone itself. A server elsewhere on your network needs an https address, because browsers won't let an https page call plain http on the network. One simple way is Tailscale Serve, run where the server is: ${SERVE}. The server must also allow CORS from annai.guide.`;
+
 /**
  * Why an address can't be one a key is sent to, in words, or null: it must parse, and be https, or http
  * only for localhost and 127.0.0.1, as annai's security policy allows (spec §15, connect-src). The
@@ -114,7 +119,7 @@ export function addressProblem(url) {
   }
   if ((u.protocol === 'https:' && u.hostname) || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
   // A server on the user's network: say how to reach it.
-  return `An address must start with https:// (http:// only for localhost or 127.0.0.1).${u.protocol === 'http:' ? ' A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel.' : ''}`;
+  return `An address must start with https:// (http:// only for localhost or 127.0.0.1).${u.protocol === 'http:' ? ` Browsers won't let an https page call plain http on your network: a server on another computer needs an https address, such as ${SERVE}, and must allow CORS from annai.guide.` : ''}`;
 }
 
 /** An address's origin (scheme, host and port); one that doesn't parse is kept as it is, never dropped. @param {string} url */

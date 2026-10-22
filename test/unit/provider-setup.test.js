@@ -316,7 +316,7 @@ test("ui.add gives a provider an address only where its description sends keys, 
   const key = async () => { asked++; return 'sk-x'; };
   await assert.rejects(ui.add({ baseUrl: 'https://elsewhere.test/v1', key }), /Acme can't add a provider at https:\/\/elsewhere\.test: it sends keys only to https:\/\/acme\.test\./);
   await assert.rejects(ui.add({ abilities: { chat: { on: true, baseUrl: 'https://elsewhere.test/v1' } }, key }), /elsewhere\.test/);
-  await assert.rejects(ui.add({ baseUrl: 'http://192.168.1.5/v1', key }), /A server on another computer needs HTTPS/);
+  await assert.rejects(ui.add({ baseUrl: 'http://192.168.1.5/v1', key }), /a server on another computer needs an https address, such as tailscale serve/);
   assert.equal(asked, 0, 'no key asked for');
   assert.deepEqual(Object.keys((await readConfig(k.ws)).providers), []);
   const id = await ui.add({ baseUrl: 'https://acme.test/v2' });

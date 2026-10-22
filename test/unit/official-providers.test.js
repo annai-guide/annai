@@ -83,7 +83,7 @@ test("today's 22 templates are all somewhere: models, prices, notes and roles ke
   assert.match(or.provider.abilities.voice.note ?? '', /put one in the model's Voice/);
   assert.match((await official('provider-openai')).provider.abilities.chat.note ?? '', /call tools only through Responses/);
   assert.match((await official('provider-gemini')).provider.note ?? '', /Gemini's own API/);
-  assert.match((await official('provider-local-speech')).provider.note ?? '', /needs an HTTPS address/);
+  assert.equal((await official('provider-local-speech')).provider.local, true, 'its page shows the shared note for local servers');
   assert.match((await official('provider-another-address')).provider.abilities.responses.note ?? '', /"phase": false/);
   // The roles each suggested, OpenRouter's speech in its recommended set.
   assert.deepEqual(or.provider.roles, {

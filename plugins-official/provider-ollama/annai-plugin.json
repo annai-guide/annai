@@ -1,7 +1,7 @@
 {
   "id": "provider-ollama",
   "name": "Ollama",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "api": 1,
   "entry": "index.js",
   "description": "Models on Ollama, with their thinking switched off for quick decisions.",
@@ -16,7 +16,7 @@
     "baseUrl": "http://localhost:11434/v1",
     "key": "none",
     "local": true,
-    "note": "Ollama lets in only pages on its own computer: start it with OLLAMA_ORIGINS=https://annai.guide so annai's page may call it. It listens on port 11434. From a phone, the server needs an HTTPS address: put HTTPS in front of it, such as Tailscale Serve or a tunnel. localhost only reaches the device annai runs on, and browsers block plain http:// to another computer.",
+    "note": "Ollama lets in only pages on its own computer: start it with OLLAMA_ORIGINS=https://annai.guide so annai's page may call it. It listens on port 11434.",
     "abilities": {
       "chat": {
         "kind": "chat",
