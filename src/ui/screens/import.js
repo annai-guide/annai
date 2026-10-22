@@ -177,7 +177,7 @@ function preview(ctx, body, opened, desc, from, fresh) {
 
 /**
  * The imported settings and plugins are used from the next start: the sentence, and the button that does it. A restart loads the
- * page again at its address, and this screen has nothing left to open then, so annai starts on Trips, where what came in is
+ * page again at its address, and this screen has nothing left to open then, so annai goes to Trips first, and starts there, where what came in is
  * (the third emulator pass). @param {any} ctx
  */
 function restartPanel(ctx) {
@@ -186,7 +186,7 @@ function restartPanel(ctx) {
     onclick: () => {
       b.disabled = true;
       b.textContent = 'Restarting…';
-      history.replaceState(history.state, '', '#/trips');
+      ctx.go('#/trips');
       restartAnnai(ctx);
     },
   }, 'Restart annai');

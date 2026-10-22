@@ -1,11 +1,11 @@
 import { tunePersonality } from './personalities.js';
-import { toolList, definitions, runTool, toolSwitches, TALK } from './tools.js';
+import { toolList, definitions, runTool, toolSwitches, TALK, Stuck } from './tools.js';
 import { record, storedTexts, blobBytes } from './log.js';
 import { photoStub } from './compaction.js';
 import { tracedFetch } from './net.js';
 import { newId } from '../scopes.js';
 import { isTextType } from '../paths.js';
-import { text, toBase64, fromBase64 } from '../bytes.js';
+import { text, toBase64 } from '../bytes.js';
 import { modelOf } from '../llm/config.js';
 
 /** The most model calls a helper may make. */
@@ -45,6 +45,10 @@ export function selfTools(agent) {
         const messages = [{ role: 'user', parts: [{ type: 'text', text: i.prompt }] }];
         agent.working(i.prompt.length > 40 ? `${i.prompt.slice(0, 40)}…` : i.prompt);
         let said = '';
+        // Three identical calls with identical results end it (§6.6), and a telling that failed is not sent again in this task.
+        const stuck = new Stuck();
+        /** @type {Map<string, string>} */
+        const failed = new Map();
         try {
           for (let step = 0; step < TASK_STEPS; step++) {
             const r = await agent.llm.call({
@@ -67,9 +71,11 @@ export function selfTools(agent) {
                 : { output: { content: `Error: the helper has no tool called ${c.name}.`, isError: true }, ms: 0 };
               const { ms } = ran;
               // A photo or PDF reaches it as one, or in words from a model that can, as it does for Shiori (never as a bare stub).
-              const output = await agent.describe(ran.output, call.wake, call.signal, model ?? { input: ['text'] });
+              const output = await agent.describe(ran.output, call.wake, call.signal, model ?? { input: ['text'] }, failed);
               await record(agent.store, agent.scope, { now: agent.now(), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: call.wake, task: taskId }, texts: [['content', output.content]] });
-              results.push({ type: 'tool_result', id: c.id, content: output.content, ...(output.isError ? { isError: true } : {}) }, ...(await mediaParts(agent.store, output)));
+              const media = await mediaParts(agent.store, output);
+              results.push({ type: 'tool_result', id: c.id, content: media.lost.length ? `${output.content}\n${media.lost.join('\n')}` : output.content, ...(output.isError ? { isError: true } : {}) }, ...media.parts);
+              if (stuck.see(c.name, c.input ?? {}, output.content)) return `The helper stopped: it made the same call three times with the same result.${said ? ` What it had: ${said}` : ''}`;
             }
             messages.push({ role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results });
           }
@@ -98,18 +104,27 @@ export function selfTools(agent) {
 }
 
 /**
- * The photos and PDF a tool returned, as parts for a model that takes them. @param {import('../types.js').Store} store
- * @param {import('./tools.js').ToolOutput} output @returns {Promise<import('../llm/contract.js').Part[]>}
+ * The photos and PDF a tool returned, as parts for a model that takes them, and a line for each whose bytes are no longer stored
+ * (the helper is told, not left with a result that looks whole). @param {import('../types.js').Store} store
+ * @param {import('./tools.js').ToolOutput} output @returns {Promise<{ parts: import('../llm/contract.js').Part[], lost: string[] }>}
  */
 async function mediaParts(store, output) {
   /** @type {import('../llm/contract.js').Part[]} */
   const parts = [];
+  /** @type {string[]} */
+  const lost = [];
   for (const m of [...(output.images ?? []), ...(output.document ? [output.document] : [])]) {
     const data = m.data ?? (m.hash ? await blobBytes(store, m.hash).then((b) => (b ? toBase64(b) : '')) : '');
-    if (!data) continue;
-    parts.push(m === output.document ? { type: 'document', mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: 'image', mediaType: m.mediaType, data });
+    const isDoc = m === output.document;
+    if (!data) {
+      lost.push(`The ${isDoc ? 'PDF' : 'photo'}${m.path ? ` ${m.path}` : ''} couldn't be read: its file is no longer stored.`);
+      continue;
+    }
+    parts.push(isDoc
+      ? { type: 'document', mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) }
+      : { type: 'image', mediaType: m.mediaType, data, ...(m.path ? { path: m.path } : {}), ...(m.region ? { region: m.region } : {}) });
   }
-  return parts;
+  return { parts, lost };
 }
 
 /**

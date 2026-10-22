@@ -523,8 +523,9 @@ export class Agent {
    * starts, so what the user types meanwhile goes to the conversation being opened. Tool calls
    * left open by a crash get results, and a catch-up wake runs (spec §6.7).
    * @param {string | null} trip
+   * @param {{ quiet?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up
    */
-  open(trip) {
+  open(trip, o = {}) {
     this.#closeEar();
     this.voice?.speaker.stop();
     this.#target = trip;
@@ -532,7 +533,7 @@ export class Agent {
     this.#opens++;
     this.poke(); // a turn still gathering the user's messages doesn't start (review A2)
     const generation = ++this.#generation;
-    if (this.#turning && trip !== this.trip) this.#cutByOpen = true;
+    if (this.#turning && trip !== this.trip && !o.quiet) this.#cutByOpen = true;
     if (this.#busy) this.#halt();
     this.#clearTimer();
     this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).finally(() => {
@@ -1376,13 +1377,15 @@ export class Agent {
   }
 
   /**
-   * A turn cut by opening another conversation says so in the one left, and in a toast: she was in the middle of something, and
+   * A turn cut by opening another conversation, and left undone, says so in the one left and in a toast: she was in the middle of something, and
    * the turn is taken up when the user comes back (the stop itself is as it was). Not an error with a wake, which would end the turn.
    * @param {AbortController} abort
    */
   async #paused(abort) {
     if (!abort.signal.aborted || !this.#cutByOpen || this.#userStop || this.#leaving) return;
     this.#cutByOpen = false;
+    // Only a turn the cut left undone, which this half takes up again (Koe's is Kokoro's to say): one that had finished is not paused.
+    if (this.#half.name === 'koe' || !this.transcript.unanswered) return;
     const text = 'Shiori was in the middle of something. She picks it up when you come back.';
     await this.#log({ type: 'paused', actor: 'system', data: { text } });
     await this.#notice({ tone: 'info', title: text, body: '', toast: true });
@@ -1968,8 +1971,9 @@ export class Agent {
    * cheaper model); the crop when a part was asked for, as that is what the tool returned. It stops with the turn, and within
    * DESCRIBE_S; either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
    * @param {AbortSignal} signal @param {{ input?: string[] }} [model] the model the result is for
+   * @param {Map<string, string>} [failed] a helper's tellings that failed, by what was sent: not sent again in its task
    */
-  async #described(output, wakeId, signal, model) {
+  async #described(output, wakeId, signal, model, failed) {
     const cfg = await this.llm.config();
     const roles = [...(cfg.roles?.utility?.models?.length ? ['utility'] : []), 'main'];
     /** @type {string[]} */
@@ -1984,8 +1988,11 @@ export class Agent {
       const bytes = m.data ? null : await blobBytes(this.store, m.hash ?? '');
       // A PDF told already in this conversation is told from those words, not sent again (the fix pass): keyed by the bytes told,
       // their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
-      const told = !pdf ? '' : m.data ? `${this.scope}\n${await sha256Hex(fromBase64(m.data))}` : bytes ? `${this.scope}\n${m.hash}` : '';
+      const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';
+      const told = pdf && key ? `${this.scope}\n${key}` : '';
       if (told && this.#toldPdfs.has(told)) return void said.push(/** @type {string} */ (this.#toldPdfs.get(told)));
+      const tried = key ? `${kind}\n${key}` : '';
+      if (failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
       const data = m.data ?? (bytes ? toBase64(bytes) : '');
       const part = pdf ? { type: /** @type {const} */ ('document'), mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data };
       let why = '';
@@ -1994,6 +2001,7 @@ export class Agent {
       const end = () => stop.abort();
       const late = setTimeout(end, (pdf ? DESCRIBE_PDF_S : DESCRIBE_S) * this.secondMs);
       signal.addEventListener('abort', end, { once: true });
+      if (signal.aborted) end(); // stopped while the bytes were read
       try {
         for (const role of roles) {
           if (stop.signal.aborted) break;
@@ -2012,7 +2020,9 @@ export class Agent {
       }
       if (stop.signal.aborted && !/^What it (shows|says)/.test(why)) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${pdf ? DESCRIBE_PDF_S : DESCRIBE_S} seconds).`;
       if (told && why.startsWith('What it says')) this.#toldPdfs.set(told, why);
-      said.push(why || "It couldn't be described.");
+      if (!why) why = "It couldn't be described.";
+      if (failed && tried && why.startsWith("It couldn't be described")) failed.set(tried, why);
+      said.push(why);
     };
     if (!model || !model.input?.includes('image')) for (const m of output.images ?? []) await tell('image', m);
     if (output.document && !model?.input?.includes('pdf')) await tell('pdf', output.document);
@@ -2023,11 +2033,11 @@ export class Agent {
   /**
    * A tool's photos and PDF for a model the loop doesn't run, a helper's (the task tool, the third emulator pass): what that model
    * can't take comes back in words, the same as for her own. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
-   * @param {AbortSignal} signal @param {{ input?: string[] }} model
+   * @param {AbortSignal} signal @param {{ input?: string[] }} model @param {Map<string, string>} [failed] the task's failed tellings
    */
-  describe(output, wakeId, signal, model) {
+  describe(output, wakeId, signal, model, failed) {
     const blind = (output.images?.length && !model.input?.includes('image')) || (output.document && !model.input?.includes('pdf'));
-    return blind ? this.#described(output, wakeId, signal, model) : Promise.resolve(output);
+    return blind ? this.#described(output, wakeId, signal, model, failed) : Promise.resolve(output);
   }
 
   /** The output tools (spec §7.1). @returns {LoopTool[]} */

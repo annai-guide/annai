@@ -500,15 +500,15 @@ export class Halves {
     this.koe.open(this.kokoro.target).catch((e) => console.warn('Koe could not open the conversation', e));
   }
 
-  /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip */
-  open(trip) {
+  /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip @param {{ quiet?: boolean }} [o] */
+  open(trip, o) {
     this.#stopped = { on: false, seq: Infinity }; // a Stop belongs to the conversation it was in
     this.#stopHeld = false;
     if (trip !== this.kokoro.target) this.live.close('switch', { forget: true });
-    const opening = this.kokoro.open(trip);
+    const opening = this.kokoro.open(trip, o);
     if (this.#koeTrip !== undefined) {
       this.#koeTrip = trip;
-      return Promise.all([opening, this.koe.open(trip)]).then(() => {});
+      return Promise.all([opening, this.koe.open(trip, o)]).then(() => {});
     }
     this.#route(async () => {
       await this.#refresh();

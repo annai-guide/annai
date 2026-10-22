@@ -93,7 +93,7 @@ async function askAndRemove(ctx, id, scope) {
     // Shiori leaves the trip first, so nothing more is written into it once it is gone (spec §4.9).
     if (ctx.agent && (ctx.agent.trip === id || ctx.agent.target === id)) {
       await updateAppSettings(ctx.ws, { activeTrip: null });
-      await ctx.agent.open(null);
+      await ctx.agent.open(null, { quiet: true });
     }
     // Its offline pack's download has ended, its last file written, before the trip goes.
     if (ctx.pack?.running?.scope === id) await ctx.pack.stop();

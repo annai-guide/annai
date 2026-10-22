@@ -657,14 +657,14 @@ test('the "didn\'t answer" cards of two conversations name their own: the trip, 
 });
 
 test('a turn cut by opening another conversation leaves a line in the one left, and a toast; she still picks it up when the user comes back (the third emulator pass)', async () => {
-  const k = await agentKit([[{ delayMs: 60, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back in Big Sur.')]]);
+  const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back in Big Sur.')]]);
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
   /** @type {any[]} */
   const notices = [];
   k.agent.on('notice', (n) => notices.push(n));
   k.agent.send('first');
-  await new Promise((r) => setTimeout(r, 15));
+  await until(() => k.requests.length === 1); // her model call is under way
   await k.agent.open(B);
   await k.agent.idle();
   const left = await eventsIn(k, A, ['paused']);
@@ -676,10 +676,49 @@ test('a turn cut by opening another conversation leaves a line in the one left, 
   await k.agent.open(A);
   await k.agent.idle();
   assert.deepEqual((await eventsIn(k, A, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Back in Big Sur.']);
-  // Stopping her yourself, and opening a conversation with nothing running, say nothing of it.
+  // Opening with nothing running says nothing.
   await k.agent.open(B);
   assert.equal((await eventsIn(k, B, ['paused'])).length, 0);
   assert.equal((await eventsIn(k, A, ['paused'])).length, 1);
+});
+
+test('no paused line when the turn was not left undone, or the cut is not one that gets taken up: finished after she spoke, her own Stop, the page leaving, a trip being removed (fix pass)', async () => {
+  const slow = { delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+  const notices = (/** @type {any} */ k) => { /** @type {any[]} */ const n = []; k.agent.on('notice', (/** @type {any} */ x) => n.push(x)); return n; };
+  // She has spoken and slept: the last model call is done, and opening another conversation right then cuts nothing.
+  const done = await agentKit([[say('All set.')]]);
+  const B = await createTrip(done.ws, { title: 'Kyoto' });
+  const n1 = notices(done);
+  done.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.speak') done.agent.open(B); });
+  done.agent.send('Hi');
+  await done.agent.idle();
+  assert.equal((await eventsIn(done, done.trip, ['out.speak'])).length, 1);
+  assert.equal((await eventsIn(done, done.trip, ['paused'])).length, 0);
+  assert.equal(n1.filter((n) => n.toast).length, 0);
+  // Her own Stop, and then another conversation.
+  const stopped = await agentKit([[slow, say('x')]]);
+  const B2 = await createTrip(stopped.ws, { title: 'Kyoto' });
+  stopped.agent.send('Hi');
+  await until(() => stopped.requests.length === 1);
+  stopped.agent.interrupt();
+  await stopped.agent.open(B2);
+  assert.equal((await eventsIn(stopped, stopped.trip, ['paused'])).length, 0);
+  // The page going away.
+  const leaving = await agentKit([[slow, say('x')]]);
+  const B3 = await createTrip(leaving.ws, { title: 'Kyoto' });
+  leaving.agent.send('Hi');
+  await until(() => leaving.requests.length === 1);
+  leaving.agent.leaving(true);
+  await leaving.agent.open(B3);
+  assert.equal((await eventsIn(leaving, leaving.trip, ['paused'])).length, 0);
+  // The trip is being removed: nothing to come back to.
+  const removed = await agentKit([[slow, say('x')]]);
+  const n4 = notices(removed);
+  removed.agent.send('Hi');
+  await until(() => removed.requests.length === 1);
+  await removed.agent.open(null, { quiet: true });
+  assert.equal((await eventsIn(removed, removed.trip, ['paused'])).length, 0);
+  assert.equal(n4.filter((n) => n.toast).length, 0);
 });
 
 test("opening a conversation leaves the last one's housekeeping behind: no compaction of the new one for the old one's size", async () => {
@@ -1041,4 +1080,32 @@ test('the cache lasts an hour unless the user chose five minutes; a model withou
   await k.agent.idle();
   assert.equal(k.requests.at(-1).cacheTtl, '5m');
   assert.equal(k.agent.cacheState()?.ttlMs, 5 * 60_000);
+});
+
+test('a tool result with a photo and a PDF, for a model that reads PDFs but sees no photos: the photo in words, the PDF as it is (fix pass)', async () => {
+  const { toBase64 } = await import('../../src/core/bytes.js');
+  const k = await agentKit([[{ toolCalls: [{ name: 'claim', input: {} }] }, say('Seen.')]], { models: [{ input: ['text', 'pdf'] }] });
+  k.registry.add('test', 'tool', { name: 'claim', description: 'Both.', input: { type: 'object' }, run: async () => ({
+    content: 'Two files.', images: [{ mediaType: 'image/png', data: toBase64(new TextEncoder().encode('png')) }],
+    document: { mediaType: 'application/pdf', data: toBase64(new TextEncoder().encode('%PDF-1.4 booking')), name: 'booking.pdf' },
+  }) });
+  k.agent.send('Look');
+  await k.agent.idle();
+  const second = JSON.stringify(k.sent['model-0'][1].messages);
+  assert.match(second, /No model here can see photos/);
+  assert.match(second, /"type":"document"/, 'the PDF is kept');
+  assert.doesNotMatch(second, /"type":"image"/);
+});
+
+test('describing is never started once the turn is stopped: an already-stopped signal sends nothing to a model (fix pass)', async () => {
+  const { toBase64 } = await import('../../src/core/bytes.js');
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[say('x')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'never' }] });
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
+  const stopped = new AbortController();
+  stopped.abort();
+  const out = await k.agent.describe({ content: 'A PDF.', document: { mediaType: 'application/pdf', data: toBase64(new TextEncoder().encode('%PDF-1.4 booking')) } }, 'w1', stopped.signal, { input: ['text'] });
+  assert.equal((k.sent['model-u'] ?? []).length, 0);
+  assert.match(out.content, /It wasn't described: /);
 });
