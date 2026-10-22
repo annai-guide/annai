@@ -251,3 +251,25 @@ test("Koe's instructions say a note it has already said is settled with already_
   const { ALWAYS_ON } = await import('../../src/core/agent/tools.js');
   assert.ok(ALWAYS_ON.includes('already_told'));
 });
+
+// The fix pass (S3): forcing is bounded by more than the 25 steps.
+test("Koe owes a note and keeps asking Kokoro instead: the cue comes after its first such step, two steps more at most, then annai shows the note (probe P5b)", async () => {
+  const more = Array.from({ length: 40 }, (_, j) => calls(['tell_kokoro', { text: `More ${j}` }]));
+  const k = await agentKit([kokoro('Say: it is open.')], { koe: { type: [CHECK, ...more] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const koe = k.sent['model-koe'];
+  assert.equal(koe.length, 4, 'the step that owed, then two more after the cue');
+  assert.match(JSON.stringify(koe[2].messages.at(-1)), /Kokoro's note hasn't reached the user/);
+  assert.deepEqual(await backstop(k), [["Shiori's answer", 'It is open.']]);
+  assert.ok(!k.notices.some((/** @type {any} */ n) => /step limit/.test(n.title)));
+});
+
+test('Koe looks something up after the note, then says it: the cue comes once, and nothing is shown', async () => {
+  const k = await agentKit([kokoro()], { koe: { type: [CHECK, calls(['recall', { query: 'sunset spots' }]), RELAY] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].length, 3);
+  assert.deepEqual((await said(k)).at(-1), 'Sunset is at 6:23, though it is overcast.');
+  assert.deepEqual(await backstop(k), []);
+});

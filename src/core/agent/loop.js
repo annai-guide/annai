@@ -104,6 +104,8 @@ const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
 export const NOTE_UNSAID = "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, in your own words; if you have already told them all of it, call already_told.";
+/** How many steps Koe takes after the cue while it still owes the user, before annai's backstop. */
+const AFTER_CUE = 2;
 /** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
 export const UNANSWERED = "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
@@ -1361,9 +1363,19 @@ export class Agent {
     join(wakes);
     let nudged = false;
     let silent = false;
+    /** Steps since the cue that still owed the user (Koe's). */
+    let after = 0;
+    /** She is asked once more, in the same turn: what is owed, in words. */
+    const cue = async () => {
+      nudged = true;
+      this.#facts.finalText = '';
+      const cues = [...(notes.length ? [NOTE_UNSAID] : []), ...(unanswered() ? [UNANSWERED] : [])];
+      await this.#logWakes(cues.map((text) => ({ kind: /** @type {const} */ ('cue'), text })), wakeId, true);
+      reasons.push(...cues);
+    };
     /**
-     * A turn that ends owing the user (spec §7.1): she is asked once more, in the same turn; true when she is. A second silent
-     * end is a card for their own words, and annai's backstop for Kokoro's notes. Not for the half behind Koe.
+     * A turn that ends owing the user (spec §7.1): she is asked once more; true when she is. A second silent end is a card for
+     * their own words, and annai's backstop for Kokoro's notes. Not for the half behind Koe.
      */
     const nudge = async () => {
       settle();
@@ -1372,11 +1384,7 @@ export class Agent {
         silent = true;
         return false;
       }
-      nudged = true;
-      this.#facts.finalText = '';
-      const cues = [...(notes.length ? [NOTE_UNSAID] : []), ...(unanswered() ? [UNANSWERED] : [])];
-      await this.#logWakes(cues.map((text) => ({ kind: /** @type {const} */ ('cue'), text })), wakeId, true);
-      reasons.push(...cues);
+      await cue();
       return true;
     };
     const stuck = new Stuck();
@@ -1399,6 +1407,7 @@ export class Agent {
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
       settle();
+      const owing = owes();
       const { tools, via, providerTools, shows } = await this.#toolsNow();
       const { role } = this.#half;
       const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
@@ -1542,6 +1551,16 @@ export class Agent {
         await this.#notice({ tone: 'warn', title: 'Shiori stopped repeating herself', body: 'She called the same tool three times with the same result, so this turn ended. Ask again in other words.' });
         await this.#log({ type: 'error', actor: 'system', data: { kind: 'stuck', wake: wakeId, message: 'Three identical tool calls in a row with identical results.' } });
         break;
+      }
+      // A step that began owing the user and went on without reaching them: the cue comes now, not only when Koe ends, and two
+      // steps more at most follow it before annai's backstop (the fix pass: a Koe that kept asking Kokoro was forced 25 times).
+      if (owing && !sleeping && !endTurn && !abort.signal.aborted && this.#half.voice()) {
+        settle();
+        if (owes() && !nudged) await cue();
+        else if (owes() && ++after >= AFTER_CUE) {
+          silent = true;
+          break;
+        }
       }
       if (abort.signal.aborted || ((sleeping || endTurn) && !(await nudge()))) break;
       await this.#writeChatter(wakeId);
