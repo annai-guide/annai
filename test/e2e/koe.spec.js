@@ -13,7 +13,7 @@ test('Models shows one Koe list right after Main, taking chat models (the user, 
   ]);
   await expect(roles.getByText('Empty: Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toHaveCount(1);
   await expect(page.getByLabel('Wait for the first words (seconds)').nth(1)).toHaveAttribute('placeholder', '8');
-  await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Fast', url: 'https://fast.example.test/v1', key: 'sk-fast', model: 'fast-model', look: false });
+  await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Fast', url: 'https://fast.example.test/v1', key: 'sk-fast', model: 'fast-model', look: false });
   await page.getByLabel('Add a model to Koe').selectOption({ label: 'fast-model' });
   await page.getByRole('button', { name: 'Add to Koe' }).click();
   await expect(roles.locator('.role').nth(1).getByText('1. fast-model')).toBeVisible();

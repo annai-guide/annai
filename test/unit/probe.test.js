@@ -15,7 +15,7 @@ import { setupUi } from '../../src/ui/provider-setup.js';
 import { setupOf } from '../../src/core/llm/setup.js';
 import { PluginHost } from '../../src/core/plugins.js';
 
-// Another address looks for what a server offers, at no cost (milestone 5 of providers as plugins,
+// Custom provider looks for what a server offers, at no cost (milestone 5 of providers as plugins,
 // decision 18): its model list, and an empty request to each path annai knows, read against a control
 // request to a path that can't exist. Stand-ins answer as each server does, reached as a page at annai's
 // address reaches them (a browser's CORS rules); reach is the check a browser makes without those rules.
@@ -264,7 +264,7 @@ test('at most four requests are out at once, each given its time from when it is
 test('an address annai takes keys to, alone, is checked before anything is sent: https, or http only for this device', async () => {
   let sent = 0;
   const counting = io({ fetch: async () => { sent += 1; return new Response('{}'); } });
-  await assert.rejects(probe('http://192.168.1.20:8080/v1', KEY, counting), /HTTPS in front of it/);
+  await assert.rejects(probe('http://192.168.1.20:8080/v1', KEY, counting), /needs one\. Tailscale Serve can give it: tailscale serve --bg --https=8443 http:\/\/localhost:8080/);
   await assert.rejects(probe('llm.example.com/v1', KEY, counting), /isn't a web address/);
   // A key pasted into the address field isn't shown back.
   await assert.rejects(probe(KEY, null, counting), (/** @type {any} */ e) => /isn't a web address/.test(e.message) && !e.message.includes(KEY));
@@ -341,7 +341,7 @@ test('Add with these turns on what was found, Messages at the root address, and 
   const d = await device();
   const s = await startFakeServer({ flavour: 'llamacpp', key: KEY });
   try {
-    // Add on Another address: its plugin, and nothing else, for its own Add flow.
+    // Add on Custom provider: its plugin, and nothing else, for its own Add flow.
     assert.equal(await d.llm.startAdd('provider-another-address', { official: true, roles: 'recommended' }), null);
     assert.deepEqual(Object.keys(await d.host.installed()), ['provider-another-address']);
     const setup = /** @type {any} */ (setupOf(d.registry, 'provider-another-address'));

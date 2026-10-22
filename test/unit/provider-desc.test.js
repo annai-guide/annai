@@ -56,13 +56,19 @@ test('fix pass: an address typed on a provider\'s page is checked by the same ru
   assert.match(String(addressProblem('ftp://example.com')), /must start with https/);
 });
 
-test('a server you run, at a plain http:// address on another computer, is told how to reach it: HTTPS in front of it; the rule stays', () => {
-  for (const lan of ['http://192.168.1.5:9931/v1', 'http://gpu-box.local:11434/v1', 'http://10.0.0.7:8000/v1']) {
-    assert.match(String(addressProblem(lan)), /must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\.$/, lan);
+test('a server you run, at a plain http:// address on another computer, is told how to reach it: an https address, a Tailscale Serve command with its own port, and CORS; the rule stays', () => {
+  /** @type {[string, number][]} */
+  const lans = [['http://192.168.1.5:9931/v1', 9931], ['http://gpu-box.local:11434/v1', 11434], ['http://10.0.0.7:8000/v1', 8000], ['http://10.0.0.7/v1', 80]];
+  for (const [lan, port] of lans) {
+    const said = String(addressProblem(lan));
+    assert.match(said, /^An address must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one\. /, lan);
+    assert.ok(said.endsWith(`Tailscale Serve can give it: tailscale serve --bg --https=8443 http://localhost:${port}. The server must also allow CORS from annai.guide.`), lan);
+    assert.doesNotMatch(said, /needs an address like|is an address/, 'a command is not called an address');
   }
   assert.doesNotMatch(String(addressProblem('ftp://example.com')), /another computer/);
   assert.doesNotMatch(String(addressProblem('https://')), /another computer/);
 });
+
 
 test('freeTier in a description is true, false, the name of who doesn\'t charge, or absent: a provider whose keys may be on a free tier', () => {
   assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, freeTier: true }), []);
@@ -73,4 +79,21 @@ test('freeTier in a description is true, false, the name of who doesn\'t charge,
   // A note for models from before the provider's list gave windows, shown only while one of them is there.
   assert.deepEqual(checkProviderDesc(withAbility(OPENAI_LIKE, 'native', { kind: 'chat', type: 'gemini', noWindowNote: 'Add it again with Fetch model list.' })), []);
   assert.match(checkProviderDesc(withAbility(OPENAI_LIKE, 'native', { kind: 'chat', type: 'gemini', noWindowNote: 3 })).join(), /noWindowNote/);
+});
+
+test("the note every local server's page shows: a phone's localhost, https only, a Tailscale Serve command with that server's own port and the address to type, the tailnet, CORS, and Chrome's permission", async () => {
+  const { localNote } = await import('../../src/core/llm/provider-desc.js');
+  const { readFile } = await import('node:fs/promises');
+  const note = localNote('http://localhost:9931/v1');
+  assert.match(note, /^On a phone, localhost is the phone itself\. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page\. /);
+  assert.match(note, /with the phone on your tailnet: run tailscale serve --bg --https=8443 http:\/\/localhost:9931 where the server is, then give annai https:\/\/<machine>\.<tailnet>\.ts\.net:8443\/v1\. /);
+  assert.match(note, /The server must also allow CORS from annai\.guide\. Chrome 142 and later may ask you to allow local network access\.$/);
+  // Each page's own port: from its description's address.
+  /** @type {[string, number][]} */
+  const servers = [['provider-llamacpp', 9931], ['provider-ollama', 11434], ['provider-lmstudio', 1234], ['provider-vllm', 8000], ['provider-sglang', 30000], ['provider-local-speech', 8000]];
+  for (const [id, port] of servers) {
+    const m = JSON.parse(await readFile(new URL(`../../plugins-official/${id}/annai-plugin.json`, import.meta.url), 'utf8'));
+    assert.match(localNote(m.provider.baseUrl), new RegExp(`http://localhost:${port} where the server is`), String(id));
+  }
+  assert.match(localNote(''), /http:\/\/localhost:8080 where the server is/, 'a provider with no address of its own: a usual port');
 });

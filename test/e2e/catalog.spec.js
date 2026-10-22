@@ -29,8 +29,8 @@ test('Models → Add a provider opens the catalog on model providers; "unsloth" 
   await expect(page.getByRole('region', { name: 'Backup places' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add OpenAI', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Install Remote trace (for developers)' })).toHaveCount(0);
-  // Another address, the catch-all, comes after the providers annai knows.
-  await expect(page.getByRole('region', { name: 'Model providers' }).locator('.card').last()).toContainText('Another address');
+  // Custom provider, the catch-all, comes after the providers annai knows.
+  await expect(page.getByRole('region', { name: 'Model providers' }).locator('.card').last()).toContainText('Custom provider');
 
   await page.getByLabel('Search the catalog').fill('unsloth');
   await expect(cards(page)).toHaveCount(1);

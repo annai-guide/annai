@@ -11,7 +11,7 @@ const plus = (t, min) => new Date(t + min * 60_000).toISOString().replace(/\.\d+
 async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
+  await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
@@ -21,7 +21,7 @@ async function setUp(page, origin) {
 /** Turns live mode on from the chip. @param {any} page */
 async function liveOn(page) {
   await page.locator('.live-chip').click();
-  await page.getByRole('group', { name: 'Live mode' }).getByRole('button', { name: 'Turn live mode on' }).click();
+  await page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Start on the road' }).click();
 }
 
 /** The page as if the phone locked (true) or unlocked (false). @param {any} page @param {boolean} hidden */
@@ -49,7 +49,7 @@ test('a watch Shiori sets fires on arriving; she is told where you are; the trac
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
     await liveOn(page);
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1);
-    expect(JSON.stringify(llm.bodies('/b/v1/messages')[0])).toContain('The user turned live mode on');
+    expect(JSON.stringify(llm.bodies('/b/v1/messages')[0])).toContain('The user started On the road');
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
     await context.setGeolocation({ latitude: BIXBY.lat, longitude: BIXBY.lng, accuracy: 10 });
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(2);
@@ -59,7 +59,7 @@ test('a watch Shiori sets fires on arriving; she is told where you are; the trac
     await page.goto('/#/talk');
     await expect(page.locator('.convo .shiori p').last()).toHaveText('Bixby Bridge is on your right.');
     await page.goto('/#/trace');
-    await filterTrace(page, { kind: 'Live' });
+    await filterTrace(page, { kind: 'On the road' });
     await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' }).first()).toBeVisible();
     await filterTrace(page, { kind: 'Location' });
     await expect(page.locator('ol.trace .k', { hasText: 'location' }).first()).toBeVisible();
@@ -132,13 +132,13 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   await liveOn(page);
   const card = page.locator('.notice', { hasText: "annai can't see where you are" });
   await expect(card).toContainText(/On (iPhone|Android):/);
-  await expect(page.locator('.live-chip')).toHaveText('Live · no location');
+  await expect(page.locator('.live-chip')).toHaveText('On the road · no location');
   await page.locator('.live-chip').click();
-  await page.getByRole('group', { name: 'Live mode' }).getByRole('button', { name: 'Bixby Creek Bridge' }).click();
+  await page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Bixby Creek Bridge' }).click();
   await expect(page.locator('.now-place')).toHaveText('At Bixby Creek Bridge');
   // annai starts again with location still refused: the card isn't shown again.
   await page.reload();
-  await expect(page.locator('.live-chip')).toHaveText('Live · no location');
+  await expect(page.locator('.live-chip')).toHaveText('On the road · no location');
   await expect(page.locator('.notice', { hasText: "annai can't see where you are" })).toHaveCount(0);
 });
 
@@ -189,12 +189,12 @@ test("Trace → Live shows the firings, reminders and switches however many loca
     store.close();
   }, trip);
   await page.goto('/#/trace');
-  await filterTrace(page, { kind: 'Live' });
+  await filterTrace(page, { kind: 'On the road' });
   await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' })).toHaveCount(1);
   await expect(page.locator('ol.trace .k', { hasText: /^location$/ })).toHaveCount(0);
   await filterTrace(page, { kind: 'Location' });
   await expect(page.locator('ol.trace .k', { hasText: /^location$/ })).toHaveCount(300);
-  await filterTrace(page, { kind: 'Live', type: 'trigger' });
+  await filterTrace(page, { kind: 'On the road', type: 'trigger' });
   await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' })).toHaveCount(1);
 });
 
@@ -207,7 +207,7 @@ test('the live menu fits a narrow phone, says it pops up, closes on a tap elsewh
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   const chip = page.locator('.live-chip');
-  const menu = page.getByRole('group', { name: 'Live mode' });
+  const menu = page.getByRole('group', { name: 'On the road' });
   await expect(chip).toHaveAttribute('aria-haspopup', 'true');
   await chip.click();
   await expect(menu).toBeVisible();
@@ -218,7 +218,7 @@ test('the live menu fits a narrow phone, says it pops up, closes on a tap elsewh
   await expect(chip).toHaveAttribute('aria-expanded', 'false');
   // With no location, the menu reads the plan's places as it opens: a second tap meanwhile closes it.
   await liveOn(page);
-  await expect(chip).toHaveText('Live · no location');
+  await expect(chip).toHaveText('On the road · no location');
   await chip.dblclick();
   await expect(menu).toBeHidden();
   await chip.click();

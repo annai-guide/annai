@@ -21,7 +21,7 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     await pickProvider(page, 'llama.cpp');
     // Its default address, and the words for a phone.
     await expect(page.getByLabel('Address', { exact: true })).toHaveValue('http://localhost:9931/v1');
-    await expect(page.getByText(/From a phone, the server needs an HTTPS address/)).toBeVisible();
+    await expect(page.getByText(/On a phone, localhost is the phone itself\./)).toBeVisible();
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByLabel('API key').fill(key);
     await page.getByRole('button', { name: 'Save' }).click();
@@ -62,7 +62,7 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
   }
 });
 
-test("a router that never streams, through Another address's Chat Completions: Test passes, and Try this model answers", async ({ page }) => {
+test("a router that never streams, through Custom provider's Chat Completions: Test passes, and Try this model answers", async ({ page }) => {
   const s = await startFakeServer({
     flavour: 'whole', key: 'sk-test-router-0123',
     replies: [{ text: 'OK' }, { calls: [{ name: 'report_color', input: { color: 'red' } }] }, { text: 'Here you are: Nepenthe is open till 10.' }],
@@ -74,7 +74,7 @@ test("a router that never streams, through Another address's Chat Completions: T
     await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add llama.cpp', exact: true })).toHaveCount(1);
     await page.getByRole('link', { name: '← Models' }).click();
-    await addProvider(page, 'Another address', { ability: 'Chat Completions', name: 'Router', url: `${s.origin}/v1`, key: 'sk-test-router-0123', model: 'router-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Router', url: `${s.origin}/v1`, key: 'sk-test-router-0123', model: 'router-model' });
     await page.getByRole('link', { name: /Router/ }).click();
     await expect(page.getByText(/never streams.*Wait for the first words/)).toBeVisible();
     await page.getByRole('button', { name: 'Test', exact: true }).click();
@@ -86,7 +86,7 @@ test("a router that never streams, through Another address's Chat Completions: T
     await tryIt.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(tryIt.locator('.talk-text').last()).toHaveText('Here you are: Nepenthe is open till 10.');
     await expect(tryIt.getByText(/^\d+ tokens · /)).toBeVisible();
-    // Each request with a model (not Another address's empty look at what the server offers).
+    // Each request with a model (not Custom provider's empty look at what the server offers).
     expect(s.requests.filter((r) => r.method === 'POST' && r.body?.model).every((r) => r.body.stream === true), 'a stream is still asked for').toBe(true);
   } finally {
     await s.stop();
@@ -101,7 +101,7 @@ test('an address on your network over plain http is refused in words that say ho
   await expect(page.getByText(/OLLAMA_ORIGINS=https:\/\/annai\.guide/)).toBeVisible();
   await page.getByLabel('Address', { exact: true }).fill('http://192.168.1.20:11434/v1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText(/A server on another computer needs HTTPS in front of it, such as Tailscale Serve or a tunnel\./)).toBeVisible();
+  await expect(page.getByText(/needs one\. Tailscale Serve can give it: tailscale serve --bg --https=8443 http:\/\/localhost:11434\. The server must also allow CORS from annai\.guide/)).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Address', { exact: true }), 'nothing was saved').toHaveValue('http://localhost:11434/v1');
 });

@@ -148,6 +148,10 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .notice-stack .notice { box-shadow: none; }
 /* A card taller than the box scrolls inside it, and its buttons stay at the bottom edge of what is seen, Dismiss always in reach. */
 .notice .acts { position: sticky; bottom: 0; background: var(--sheet); padding-top: 4px; }
+/* A card longer than the box shows its first lines until More opens it (notices.js); open, the box's cap is lifted. */
+.notice.clamp:not(.open) p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.notices.opened { max-height: none; }
+.notice .more { align-self: flex-start; min-height: 36px; padding: 4px 10px; }
 .toast { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .blocking { max-width: 560px; margin: 15vh auto 0; padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
 
@@ -166,8 +170,12 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .role { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 .role-name { font-size: 15px; font-weight: 700; margin: 0; }
 .role-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
-.role-item { display: flex; align-items: center; gap: 2px; }
-.role-item span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.role-item { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.role-item > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* The handle of a role's entry: dragged by a finger, so the page doesn't scroll under it; a lifted entry floats over the others. */
+.grip { touch-action: none; cursor: grab; }
+.role-item.dragging { position: relative; z-index: 2; background: var(--sheet); box-shadow: 0 6px 18px -8px var(--shadow); border-radius: 12px; }
+.reorder-menu { flex-basis: 100%; display: flex; gap: 6px; padding: 4px 0 6px; }
 .where { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .where .sub { margin: 2px 0 0; }
 textarea.mono { font-family: var(--f-mono); font-size: 13px; }

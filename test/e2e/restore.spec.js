@@ -4,7 +4,7 @@ import { startModelServer, anthropicToolReply, modelSetUp, buildAndSave, pastWel
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
 // The emulator pass (m9 #20, shot 310): a restore brought the providers back with the settings, but none of the
-// plugins they need, and Another address could then be installed from nowhere.
+// plugins they need, and Custom provider could then be installed from nowhere.
 test('a restore brings the providers back with the plugins they use, in one step, and Shiori answers', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'Welcome back to Big Sur.' } }, { name: 'sleep', input: {} }]))] });
   try {
@@ -20,7 +20,7 @@ test('a restore brings the providers back with the plugins they use, in one step
     await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
     await page.getByLabel('Replace my settings').check();
     await page.getByRole('button', { name: 'Import' }).click();
-    await expect(page.getByText(/^Installed what your providers use: .*Another address/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/^Installed what your providers use: .*Custom provider/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/^Installed what your providers use: .*Anthropic Messages/)).toBeVisible();
 
     // The sentence asking to restart comes with the button that does it (the second emulator re-check).
@@ -37,7 +37,7 @@ test('a restore brings the providers back with the plugins they use, in one step
 
     await page.goto('/#/plugins');
     await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
-    await expect(page.locator('.card', { hasText: 'Another address' }).getByText('On', { exact: true })).toBeVisible();
+    await expect(page.locator('.card', { hasText: 'Custom provider' }).getByText('On', { exact: true })).toBeVisible();
     // As the import asks: annai has restarted, and the provider is there with its plugin.
     await page.goto('/#/trips');
     await page.getByRole('link', { name: /Big Sur/ }).click();

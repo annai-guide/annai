@@ -152,7 +152,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addProvider(page, 'Another address', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');

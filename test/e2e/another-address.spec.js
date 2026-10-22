@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { openApp, waitForServiceWorker, tapAdd } from './helpers.js';
 import { startFakeServer } from '../fakes/model-server.js';
 
-// "Another address" looks for itself (milestone 5 of providers as plugins): its own Add flow asks a server for
+// "Custom provider" looks for itself (milestone 5 of providers as plugins): its own Add flow asks a server for
 // its model list and sends an empty request to each path annai knows, at no cost, then adds it with what it found.
 // Stand-ins answer as each server does, on ports of their own (WebKit can't route a page's own requests).
 
@@ -16,8 +16,8 @@ test('a router that never streams, with a key: the list, Chat Completions and Re
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await tapAdd(page, 'Another address');
-    await expect(page.getByRole('heading', { level: 1, name: 'Another address' })).toBeVisible({ timeout: 30_000 });
+    await tapAdd(page, 'Custom provider');
+    await expect(page.getByRole('heading', { level: 1, name: 'Custom provider' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole('link', { name: '← Add' })).toBeVisible();
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByLabel('API key (optional)').fill(KEY);
@@ -56,7 +56,7 @@ test("a server that doesn't allow web apps is said to be blocked, in words, and 
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await tapAdd(page, 'Another address');
+    await tapAdd(page, 'Custom provider');
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
     await expect(page.getByText(/doesn't allow web apps like annai to call it \(no CORS headers\)/)).toBeVisible({ timeout: 30_000 });
@@ -72,7 +72,7 @@ test('a server behind a key on every path, looked at without the key: no telling
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await tapAdd(page, 'Another address');
+    await tapAdd(page, 'Custom provider');
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
     await expect(found(page).nth(1)).toHaveText('? Chat Completions: it asks for a key before it says what it has: give the key, then look again.', { timeout: 30_000 });
@@ -120,10 +120,10 @@ const installedIds = (page) => page.evaluate(async () => {
   return Object.keys(state ?? {}).sort();
 });
 
-test("leaving Another address's Add flow without adding takes its plugin away again; a provider whose plugin draws no Add flow there still has Add by hand", async ({ page }) => {
+test("leaving Custom provider's Add flow without adding takes its plugin away again; a provider whose plugin draws no Add flow there still has Add by hand", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
-  await tapAdd(page, 'Another address');
+  await tapAdd(page, 'Custom provider');
   await expect(page.getByRole('button', { name: 'Look for what it offers' })).toBeVisible({ timeout: 30_000 });
   expect(await installedIds(page)).toContain('provider-another-address');
   await page.getByRole('link', { name: '← Add' }).click();
@@ -148,7 +148,7 @@ test('a fetched list marks a model another provider already has, as adding it by
     await waitForServiceWorker(page);
     const host = new URL(s.origin).host;
     for (const n of [1, 2]) {
-      await tapAdd(page, 'Another address');
+      await tapAdd(page, 'Custom provider');
       await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
       await page.getByLabel('API key (optional)').fill(KEY);
       await page.getByRole('button', { name: 'Look for what it offers' }).click();

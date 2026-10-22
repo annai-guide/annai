@@ -139,7 +139,7 @@ test("a streamed reply's reasoning shows as reasoning_delta and ends as one reas
   }
 });
 
-test("Ollama's and LM Studio's notes say how to let annai's address in; vLLM's and SGLang's say which flags tool calls need; each says a phone needs HTTPS in front", async () => {
+test("Ollama's and LM Studio's notes say how to let annai's address in; vLLM's and SGLang's say which flags tool calls need; each is a local server, so its page adds the shared note on a phone, https and CORS", async () => {
   const note = async (/** @type {string} */ id) => {
     const d = (await official(id)).provider;
     return [d.note, ...Object.values(d.abilities).map((a) => a.note)].filter(Boolean).join(' ');
@@ -155,7 +155,7 @@ test("Ollama's and LM Studio's notes say how to let annai's address in; vLLM's a
   for (const id of LOCAL) {
     const m = JSON.parse(await readFile(new URL(`plugins-official/${id}/annai-plugin.json`, root), 'utf8'));
     assert.equal(m.provider.local, true, id);
-    assert.match(await note(id), /HTTPS/, id);
+    assert.doesNotMatch(await note(id), /HTTPS|localhost only reaches/, `${id}: the page's shared note says it, not each plugin`);
   }
   // What Ollama's CORS does to annai's page unless told, as Test and Fetch model list would meet it.
   const k = await kit();
@@ -168,11 +168,11 @@ test("Ollama's and LM Studio's notes say how to let annai's address in; vLLM's a
   }
 });
 
-test("vLLM's transcription starts off, and brings its protocol when turned on; Another address says what to do for a server that never streams", async () => {
+test("vLLM's transcription starts off, and brings its protocol when turned on; Custom provider says what to do for a server that never streams", async () => {
   const v = (await official('provider-vllm')).provider.abilities;
   assert.deepEqual([v.chat.on, v.transcription.on, v.transcription.kind, v.transcription.type], [undefined, false, 'transcription', 'openai-transcription']);
   const another = JSON.parse(await readFile(new URL('plugins-official/provider-another-address/annai-plugin.json', root), 'utf8'));
-  assert.equal(another.version, '2.1.1', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1');
+  assert.equal(another.version, '2.1.2', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1; named Custom provider in 2.1.2');
   assert.equal(another.catchAll, true);
   assert.match(another.provider.note, /Wait for the first words/);
   assert.match(another.provider.note, /never streams/);

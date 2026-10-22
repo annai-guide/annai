@@ -1,5 +1,5 @@
 /**
- * Another address's provider plugin with code (spec §9.8; docs/plugins.md, "Model providers with code"): its
+ * Custom provider's provider plugin with code (spec §9.8; docs/plugins.md, "Model providers with code"): its
  * own Add flow looks for what an address offers, at no cost (probe.js), then adds a provider with what was
  * found switched on, so annai installs only the protocol plugins those need. A provider made from it has
  * annai's standard page, where each ability has its switch.
