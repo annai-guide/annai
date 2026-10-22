@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 65399,
+      "size": 59523,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -73,7 +73,7 @@
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
-        "schema.js": "3d902de6226246b2ebb740574be8db9044d4558c1cbc4b79b6da88a755c310bc",
+        "schema.js": "e78e8adbc1a5e52ed300371a54842f219acd261b2fe80b0f06fd2f69a05d375e",
         "speech.js": "bbf5485f6dd7f3ac8b80ec39918b2a0fb495189c68156113cc14d328ce0e8454",
         "steps.js": "dbcf97565b97807d0ad44a159a327526cb5fa7804032424a42b2f4519b5576d2"
       }
