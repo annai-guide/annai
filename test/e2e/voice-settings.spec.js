@@ -107,7 +107,7 @@ test("an OpenAI-compatible voice's page: the voice and the style go as voice and
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Speech stand-in', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'tts-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Speech stand-in', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'tts-model' });
     await page.getByRole('link', { name: /^Speech stand-in/ }).click();
     await page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^tts-model/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'tts-model' })).toBeVisible();
@@ -227,7 +227,7 @@ test("a model's Tunables (JSON) never loses a key that has no field on its page,
   try {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
-    await addProvider(page, 'Another address', { ability: 'Transcription', name: 'Ears stand-in', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
+    await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears stand-in', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
     await page.getByRole('link', { name: /^Ears stand-in/ }).click();
     await page.getByRole('region', { name: 'Transcription', exact: true }).getByRole('link', { name: /^ears/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'ears' })).toBeVisible();
@@ -243,7 +243,7 @@ test("a model's Tunables (JSON) never loses a key that has no field on its page,
     expect(JSON.parse(await page.getByLabel('Tunables (JSON)').inputValue())).toMatchObject(keys);
     // A voice has a field for the voice and the style, not for the voices: they are in the JSON, editable, and the field's list follows them.
     await page.goto('/#/models');
-    await addProvider(page, 'Another address', { ability: 'Voice', name: 'Speech stand-in', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'tts-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Speech stand-in', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'tts-model' });
     await page.getByRole('link', { name: /^Speech stand-in/ }).click();
     await page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^tts-model/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'tts-model' })).toBeVisible();
