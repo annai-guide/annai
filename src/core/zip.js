@@ -274,7 +274,8 @@ export class ZipReader {
     const e = this.#entries.get(name);
     if (!e) throw new ZipError(`the archive has no entry called ${name}`);
     if (e.flags & 1) throw new ZipError(`${name} is encrypted with zip encryption, which annai does not read`);
-    const head = await this.#range(e.local, e.local + 30);
+    // A large entry's header is read alone: a window of the file is for a run of small entries.
+    const head = e.csize > WINDOW ? await bytesOf(this.#file.slice(e.local, e.local + 30)) : await this.#range(e.local, e.local + 30);
     const hv = view(head);
     if (head.length < 30 || hv.getUint32(0, true) !== LOCAL) throw new ZipError(`the entry ${name} is damaged`);
     const start = e.local + 30 + hv.getUint16(26, true) + hv.getUint16(28, true);

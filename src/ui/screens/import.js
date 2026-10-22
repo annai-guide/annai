@@ -131,11 +131,17 @@ function preview(ctx, body, opened, desc, from, fresh) {
     onclick: async () => {
       go.disabled = true;
       status.textContent = 'Reading…';
+      let said = 0;
       try {
         const result = await importArchive(ctx.store, opened, {
           trips, me: me?.input.checked ? 'replace' : 'keep', settings: settings?.input.checked ? 'replace' : 'keep',
           plugins: plugins?.input.checked ? 'replace' : 'keep', secrets: keys?.input.checked ?? false,
-          onProgress: (done, total) => { status.textContent = `Reading ${Math.min(done + 1, total)} of ${total}…`; },
+          // A live region: said at most once a second, so a screen reader doesn't chatter through hundreds of entries.
+          onProgress: (done, total) => {
+            if (Date.now() - said < 1000 && done < total) return;
+            said = Date.now();
+            status.textContent = `Reading ${Math.min(done + 1, total)} of ${total}…`;
+          },
         });
         // This device has taken in that backup: its next backup there builds on it (spec §12.4).
         if (from) await ctx.backups?.accept(from.target, from.remote).catch(() => {});
