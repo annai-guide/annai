@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startSettled, pickProvider } from './helpers.js';
+import { openApp, waitForServiceWorker, startSettled, pickProvider, addProvider } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-22).
 
@@ -174,3 +174,83 @@ for (const scheme of ['light', 'dark']) {
     expect(await caption.evaluate((el) => getComputedStyle(el, '::after').content)).toBe('""');
   });
 }
+
+// Roles: "if the user click on the model name, they can enter the model settings page"; "instead of the up down button, make it
+// possible to drag a model to reorder it" (the user, 2026-10-22).
+/** A main list of three models, a1, a2 and a3. @param {import('@playwright/test').Page} page */
+async function threeModels(page) {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  for (const m of ['a1', 'a2', 'a3']) {
+    await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: `Endpoint ${m}`, url: `https://${m}.example.test/v1`, key: `sk-test-${m}`, model: m, look: false });
+    await page.getByLabel('Add a model to main').selectOption({ label: m });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await expect(page.getByText(new RegExp(`\\d\\. ${m}$`))).toBeVisible();
+  }
+  const main = page.locator('.role', { has: page.getByRole('heading', { name: 'Main: talks with you' }) });
+  const order = () => main.locator('.role-item > span').allTextContents();
+  await expect.poll(order).toEqual(['1. a1', '2. a2', '3. a3']);
+  return { main, order };
+}
+
+test('Roles: a model\'s name links to its page; the up and down buttons are gone', async ({ page }) => {
+  const { main } = await threeModels(page);
+  await expect(main.getByRole('button', { name: /Move a1 (up|down)/ })).toHaveCount(0);
+  await main.getByRole('link', { name: 'a2' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'a2' })).toBeVisible();
+  await expect(page.getByLabel('Provider model id')).toHaveValue('a2');
+});
+
+test('Roles: the handle takes the arrow keys, and a tap on it offers Move up and Move down', async ({ page }) => {
+  const { main, order } = await threeModels(page);
+  const grip = (/** @type {string} */ m) => main.getByRole('button', { name: `Reorder ${m}`, exact: true });
+  await grip('a1').focus();
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(order).toEqual(['1. a2', '2. a1', '3. a3']);
+  await expect(grip('a1')).toBeFocused(); // keys go on
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(order).toEqual(['1. a2', '2. a1', '3. a3']);
+  // A menu, for a screen reader and a finger that doesn't drag.
+  await grip('a3').click();
+  const menu = main.getByRole('group', { name: 'Move a3' });
+  await expect(menu.getByRole('button', { name: 'Move down' })).toBeDisabled();
+  await menu.getByRole('button', { name: 'Move up' }).click();
+  await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+  await page.reload();
+  await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+});
+
+test('Roles: dragging the handle with a mouse reorders, and the order is kept', async ({ page }) => {
+  const { main, order } = await threeModels(page);
+  const centre = async (/** @type {import('@playwright/test').Locator} */ l) => { const b = /** @type {any} */ (await l.boundingBox()); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+  const from = await centre(main.getByRole('button', { name: 'Reorder a1', exact: true }));
+  const to = await centre(main.getByRole('button', { name: 'Reorder a3', exact: true }));
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x, (from.y + to.y) / 2, { steps: 4 });
+  await page.mouse.move(to.x, to.y + 8, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+  // A drag opens no menu.
+  await expect(main.getByRole('group', { name: /^Move / })).toHaveCount(0);
+  await page.reload();
+  await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+});
+
+test('Roles: dragging the handle with a finger reorders, and the page does not scroll under it', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'touch events are sent through the DevTools protocol, Chromium only');
+  const { main, order } = await threeModels(page);
+  const cdp = await page.context().newCDPSession(page);
+  const centre = async (/** @type {import('@playwright/test').Locator} */ l) => { const b = /** @type {any} */ (await l.boundingBox()); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+  const from = await centre(main.getByRole('button', { name: 'Reorder a3', exact: true }));
+  const to = await centre(main.getByRole('button', { name: 'Reorder a1', exact: true }));
+  const touch = (/** @type {'touchStart' | 'touchMove' | 'touchEnd'} */ type, /** @type {number} */ y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: from.x, y }] });
+  const scrolled = await page.evaluate(() => scrollY);
+  await touch('touchStart', from.y);
+  for (let k = 1; k <= 6; k++) await touch('touchMove', from.y + ((to.y - 6 - from.y) * k) / 6);
+  await touch('touchEnd', to.y);
+  await expect.poll(order).toEqual(['1. a3', '2. a1', '3. a2']);
+  expect(await page.evaluate(() => scrollY)).toBe(scrolled);
+});
