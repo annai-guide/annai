@@ -86,7 +86,7 @@ You need Gemini's Live voice switched on (K4), **Gemini 3.8 Live** first in Sett
 - [ ] **A tunnel.** Drive through a tunnel or a dead spot mid-answer: when the signal comes back, Koe carries on (the session resumes), or the next model in Koe's list (gemini-3.5-flash-lite) finishes the answer through Shiori's usual voice. Nothing you said is missing from the Conversation; a cut line ends in ✂.
 - [ ] **A locked screen.** While a session is open, lock the phone: it closes (the chip isn't "Listening live" when you unlock). Tap Shiori: a session opens and remembers what you were talking about.
 - [ ] **Out of view.** While a session is open, switch to another app: it closes, and the microphone indicator (the orange dot) goes. Coming back, nothing listens until you tap.
-- [ ] **Typing to it.** Remove gemini-3.5-flash-lite from Koe for this one (with voice off, a text model in Koe answers before Live). Voice off, type a question: Koe's answer appears as a bubble; nothing plays, and the microphone indicator never shows. Put flash-lite back after Live.
+- [ ] **Typing to it.** Voice on, sound unlocked by a tap earlier, type a question without tapping Shiori: a session opens without the microphone, and Koe's answer is said aloud and shows as a bubble; the microphone indicator never shows. (Until 2026-10-22, voice off typed through a muted session; now Koe types through Koe · Classic.)
 - [ ] **Data and cost.** Trace → Kind **Models**, Type contains `live.session`: each session's lines, "live session closed · Gemini 3.8 Live · … · quiet · … KB in, … KB out · $…". Write down the data for a minute of talk. Settings → Models → Spend per day counts the sessions.
 - [ ] **Erase** (last, on a test install): with a session open, Settings → Erase: the microphone indicator goes at once.
 
@@ -106,10 +106,22 @@ You need an OpenAI API key (platform.openai.com/api-keys) with a little credit: 
 
 ## One Koe list, thinking at low (2026-10-19)
 
-Koe's two lists, "for talking" and "for typing", are one list now, like Main, and Koe thinks at "low" unless you set another level. Before you start, open Settings → Updates: if it offers Google Gemini 1.5.0 or OpenAI 1.2.0, update them.
+Replaced on 2026-10-22 by Koe's two lists, Realtime and Classic (the section after this one): skip it. Koe's two lists, "for talking" and "for typing", were one list then, like Main, and Koe thinks at "low" unless you set another level. Before you start, open Settings → Updates: if it offers Google Gemini 1.5.0 or OpenAI 1.2.0, update them.
 
 - [ ] **One row.** Settings → Models: right after Main, one row, "Koe: answers you at once, typed or spoken", and no "Koe for talking" or "Koe for typing". Its "Reasoning for Koe" shows low (a level set on the old lists isn't carried over); a "Wait for the first words" you had set is kept, the talking list's first.
 - [ ] **Your lists moved over.** If you had models in both old lists, the Koe row holds them all, each once: what was in "Koe for talking" first, then "Koe for typing".
 - [ ] **The list's order decides; voice off prefers text.** Under the Koe row: "With voice off, a text model here answers before a live voice, whose sound nobody would hear." Gemini 3.8 Live first and gemini-3.5-flash-lite after it: voice on, a tap gives **Listening live**. Voice off, type a question: flash-lite answers as a bubble, the chip never says "· live", and Trace → Type contains `live.session` shows no new session. Remove flash-lite from Koe, voice still off: a typed question is answered as a bubble from a live session ("· live"), and nothing plays. Put flash-lite back above Live: voice on, a tap never says Listening live, and Koe talks through Shiori's usual voice.
 - [ ] **The recommended models.** Google Gemini's page → **Use the recommended models**: Gemini 3.8 Live goes into Koe.
 - [ ] **A photo to Live.** Gemini 3.8 Live first in Koe, voice on: take a photo of something and ask "What's this?". Koe talks about the photo itself (before Google Gemini 1.5.0, Live never got photos, and only Kokoro saw them).
+
+## Koe's two lists, Realtime and Classic (2026-10-22)
+
+The one Koe list is two again, with a switch on the voice chip (the user: "Two lists + a switch", named "Realtime / Classic"). Before you start, open Settings → Updates: if it offers Google Gemini 2.4.0, update it.
+
+- [ ] **Your list moved over.** Settings → Models: right after Main, "Koe · Realtime: hears you and speaks in one stream" and "Koe · Classic: a chat model, with Speech in and Speech out", each with a line on when Koe uses it. Gemini 3.8 Live is in Realtime, gemini-3.5-flash-lite in Classic, each list in the order the one list had. Classic's Reasoning and Wait are what Koe's were; Realtime shows neither.
+- [ ] **The chip says which.** Voice on: the chip reads **Voice on · Realtime** if Live was first in your old list, else **Voice on · Classic**. Voice auto with car audio: **Voice on · car audio · Realtime**. Does it fit on one line on the iPhone? Write down where it wraps.
+- [ ] **The switch.** Tap the chip: under Auto, On and Off, **Koe** with Realtime and Classic, the one in use pressed. Tap Classic: the chip says **Voice on · Classic** at once; a tap on Shiori talks through Shiori's usual voice, never **Listening live**. Tap Realtime: a tap gives **Listening live**. Close annai and open it again: the choice is kept.
+- [ ] **Realtime unavailable.** Realtime chosen, switch off Live voice on Google Gemini's page: the chip says **Voice on · Classic (Realtime unavailable)**, and its menu says Classic talks until Realtime can. Switch Live voice back on: **Voice on · Realtime**, with nothing else tapped.
+- [ ] **No Realtime model.** Remove Gemini 3.8 Live from Koe · Realtime: **Voice on · Classic (no Realtime model)**. Put it back.
+- [ ] **Voice off types through Classic.** Realtime chosen, voice off: the chip says only **Voice off**. Type a question: flash-lite answers as a bubble, and Trace → Type contains `live.session` shows no new session.
+- [ ] **The recommended models.** On a fresh install (or after emptying both Koe lists and choosing Classic), Google Gemini's page → **Use the recommended models**: Live voice is switched on, Gemini 3.8 Live goes into Koe · Realtime, gemini-3.5-flash-lite into Koe · Classic, and the chip says **Realtime** with voice on.
