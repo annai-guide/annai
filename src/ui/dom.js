@@ -184,11 +184,15 @@ export function queueSave(fn) {
 /**
  * A Save button's work, with "Saving…" on its line from the tap until the save lands (a key can take seconds: a provider is asked to
  * delete what it keeps first, or the device is slow); the work may put its own words there (Saved), or an error elsewhere.
- * @template T @param {HTMLElement} note @param {() => Promise<T>} work @returns {Promise<T>}
+ * shown: what follows, out of the queue, before "Saving…" goes: the screen drawn again with the field saved, then the toast.
+ * @template T @param {HTMLElement} note @param {() => Promise<T>} work @param {(result: T) => unknown} [shown] @returns {Promise<T>}
  */
-export function savingNote(note, work) {
+export function savingNote(note, work, shown) {
   note.textContent = 'Saving…';
-  return queueSave(work).finally(() => { if (note.textContent === 'Saving…') note.textContent = ''; });
+  return queueSave(work).then(async (r) => {
+    await shown?.(r);
+    return r;
+  }).finally(() => { if (note.textContent === 'Saving…') note.textContent = ''; });
 }
 
 /** Resolves once the saves queued so far have landed: an action that reads settings (a Test) waits for what a field's change started, so it never runs on the old value. */

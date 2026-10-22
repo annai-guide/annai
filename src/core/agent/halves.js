@@ -287,8 +287,8 @@ export class Halves {
   /** The half that talks with the user now. */
   get talking() { return this.koeState === 'text' ? this.koe : this.kokoro; }
   get state() { return this.koeState === 'live' ? this.live.view : this.talking.state; }
-  /** The dock's sign. */
-  get kokoroWorking() { return this.#works() && this.kokoro.busy; }
+  /** The dock's sign: never for a turn still stopping in the conversation being left. */
+  get kokoroWorking() { return this.#works() && this.kokoro.busy && !this.kokoro.switching; }
   #visible() { return globalThis.document?.visibilityState !== 'hidden'; }
   /** Koe talks with the user: through the loop, or live. */
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
@@ -506,6 +506,8 @@ export class Halves {
     this.#stopHeld = false;
     if (trip !== this.kokoro.target) this.live.close('switch', { forget: true });
     const opening = this.kokoro.open(trip, o);
+    this.#emitHalves(); // the left one's turn isn't this one's sign
+    opening.finally(() => this.#emitHalves()).catch(() => {});
     if (this.#koeTrip !== undefined) {
       this.#koeTrip = trip;
       return Promise.all([opening, this.koe.open(trip, o)]).then(() => {});

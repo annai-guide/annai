@@ -71,10 +71,9 @@ export async function renderTools(ctx) {
         h('button', { class: 'btn pri', type: 'button', onclick: () => {
           const v = key.value.trim();
           if (!v) return;
-          return savingNote(saving, async () => {
-            await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('plugin:web:jina', v));
+          return savingNote(saving, () => ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('plugin:web:jina', v)), async () => {
+            await ctx.render();
             ctx.notices.toast('Key saved.');
-            ctx.render();
           });
         } }, 'Save key'),
         saving,

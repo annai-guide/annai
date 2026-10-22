@@ -961,6 +961,11 @@ export class Agent {
     await new Promise((resolve) => { this.#idle.push(() => resolve(undefined)); });
   }
 
+  /** An open is under way: a turn still stopping belongs to the conversation being left. */
+  get switching() {
+    return this.#opens > 0;
+  }
+
   /** Whether she is busy: a turn or housekeeping runs, wakes wait, or a wake's budgets are being checked. */
   get busy() {
     return this.#busy || this.#queue.length > 0 || this.#checking > 0;
