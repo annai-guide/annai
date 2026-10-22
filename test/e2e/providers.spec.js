@@ -206,7 +206,7 @@ test("fix pass: an address typed without https:// isn't saved, on the provider a
   const own = voice.getByLabel('Its own address');
   await own.fill('http://192.168.1.5:8880/v1');
   await own.blur();
-  await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. Browsers won't let an https page call plain http on your network: a server on another computer needs an https address, such as tailscale serve --https=8443 http:\/\/localhost:8080, and must allow CORS from annai\.guide\./);
+  await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. Browsers block plain http .* needs one\. Tailscale Serve can give it: tailscale serve --bg --https=8443 http:\/\/localhost:8880\. The server must also allow CORS from annai\.guide\./);
 });
 
 test("Add on a provider whose plugin the user turned off says so in words, with no plugin id in them (the emulator pass: \"provider-openrouter:\")", async ({ page }) => {
