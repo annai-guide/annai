@@ -7,7 +7,7 @@ import { Workspace } from '../../../src/core/workspace.js';
 import { makeSchemaFor } from '../../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, importArchive, PRESETS } from '../../../src/core/archive.js';
+import { exportArchive, peekArchive, importArchive, PRESETS } from '../../../src/core/archive.js';
 
 /** @param {any} test @param {any} assert */
 export default function (test, assert) {
@@ -42,7 +42,7 @@ export default function (test, assert) {
     await a.write(trip, '/notes/day1.md', 'two', { author: 'user' });
     await a.write(trip, '/files/photo.jpg', crypto.getRandomValues(new Uint8Array(30000)), { author: 'user' });
     const { blob } = await exportArchive(sa, { kind: 'trip', scopes: [trip], include: PRESETS.backup, passphrase: 'p', iterations: 100_000, app: '0.1.0' });
-    const r = await importArchive(sb, await openArchive(blob, 'p'));
+    const r = await importArchive(sb, await peekArchive(blob, 'p'));
     const copy = r.trips[0];
     assert.equal(await b.readText(copy, '/notes/day1.md'), 'two');
     assert.equal((await b.history(copy, '/notes/day1.md')).length, 2);

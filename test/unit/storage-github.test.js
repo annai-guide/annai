@@ -9,7 +9,7 @@ import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, importArchive, PRESETS } from '../../src/core/archive.js';
+import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { utf8, text } from '../../src/core/bytes.js';
 import { startGitHub } from '../fakes/github.js';
 
@@ -127,7 +127,7 @@ test('the next backup uploads only what changed, on top of the last; it comes ba
     const fresh = createMemoryStore();
     const ws = new Workspace(fresh, { schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
     await ensureBaseScopes(ws);
-    const { trips: [id] } = await importArchive(fresh, await openArchive(blob), { me: 'replace' });
+    const { trips: [id] } = await importArchive(fresh, await peekArchive(blob), { me: 'replace' });
     assert.equal(await ws.readText(id, '/notes/bixby.md'), 'Bixby Bridge, 1932, at dawn');
     assert.equal((await ws.history(id, '/notes/bixby.md')).length, 2);
     assert.deepEqual((await ws.read(id, '/files/gate.jpg'))?.bytes, (await d.ws.read(d.trip, '/files/gate.jpg'))?.bytes);
@@ -363,7 +363,7 @@ test('opening a backup reads its files six at a time, and the archive keeps the 
     assert.equal(most, 6);
     const names = [...made.manifest.files, ...made.manifest.blobs, ...made.manifest.extras].map((x) => x.name).filter((n) => n !== 'annai-archive.json');
     assert.deepEqual((await ZipReader.open(blob)).names().filter((n) => n !== 'annai-archive.json'), [...new Set(names)]);
-    await openArchive(blob);
+    await peekArchive(blob);
   } finally {
     await gh.stop();
   }

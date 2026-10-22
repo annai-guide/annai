@@ -5,7 +5,7 @@ import { Workspace, NotFoundError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, SYS_DEVICE, FORMAT } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, openArchive, importArchive, PRESETS, MANIFEST_NAME } from '../../src/core/archive.js';
+import { exportArchive, peekArchive, importArchive, PRESETS, MANIFEST_NAME } from '../../src/core/archive.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8, text } from '../../src/core/bytes.js';
@@ -55,7 +55,7 @@ test("an archive that holds another device's own scope never brings it in", asyn
   await zip.add(MANIFEST_NAME, utf8(JSON.stringify(manifest)));
 
   const b = await device();
-  await importArchive(b.store, await openArchive(zip.finish()), { me: 'replace', settings: 'replace', plugins: 'replace' });
+  await importArchive(b.store, await peekArchive(zip.finish()), { me: 'replace', settings: 'replace', plugins: 'replace' });
   assert.equal(await b.store.tx(['scopes'], 'readonly', (t) => t.getScope(SYS_DEVICE)), undefined);
   assert.deepEqual(await listTargets(b.ws), []);
   assert.notEqual(await deviceId(b.ws), 'someone-else');
@@ -97,7 +97,7 @@ test("an archive's API keys never bring in a backup place's sign-in, even one an
   await zip.add('system/secrets.json', body);
   await zip.add(MANIFEST_NAME, utf8(JSON.stringify(manifest)));
   const b = await device();
-  const result = await importArchive(b.store, await openArchive(zip.finish()), { secrets: true });
+  const result = await importArchive(b.store, await peekArchive(zip.finish()), { secrets: true });
   assert.equal(result.secrets, 1);
   assert.deepEqual(await b.store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), ['endpoint:y']);
   assert.equal(BACKUP_SECRET_PREFIX, 'backup:');
