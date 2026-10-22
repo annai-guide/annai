@@ -1832,6 +1832,11 @@ export class Agent {
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
       };
       ({ output, ms } = await runTool(tool, input, call));
+      // Koe answers at once (the fix pass): a PDF its model can't read (a live one reads none) is Kokoro's to read, not told for it.
+      if (output.document && this.#half.name === 'koe' && !o.model?.input?.includes('pdf')) {
+        const { document, ...rest } = output;
+        output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
+      }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model);
     }
