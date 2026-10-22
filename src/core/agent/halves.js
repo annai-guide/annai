@@ -609,6 +609,7 @@ export class Halves {
   stopKokoro() {
     this.#stopped = { on: true, seq: Infinity };
     this.#stopHeld = true;
+    this.#cue = this.#owed = false; // what was heard before it wakes Kokoro no more, answered or not
     // Still gathering the user's messages (GATHER): its turn never starts, and a waiting Koe hears so.
     const started = this.kokoro.turning;
     const scope = this.kokoro.target ?? ME;
@@ -698,9 +699,10 @@ export class Halves {
       this.#stopped.on = this.#stopHeld = false;
     }
     if (e.type.startsWith('out.')) this.#up('koe'); // a live Koe that spoke works
-    // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails.
+    // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails
+    // (refused while the user's Stop holds, it didn't fail: the user stopped Kokoro).
     const out = e.type.startsWith('out.') && this.#cue;
-    const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed;
+    const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed && !this.#stopHeld;
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
