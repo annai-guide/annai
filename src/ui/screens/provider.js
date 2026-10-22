@@ -97,11 +97,15 @@ export async function renderProvider(ctx, id) {
           // A new key or address: what the provider keeps is deleted first, with the old one (G2).
           if (url.value.trim() !== p.baseUrl || (typed && typed !== await ctx.llm.keyFor(id))) await asking(status, () => ctx.llm.reconnect(id, write));
           else await write();
-          ctx.notices.toast('Saved');
-          if (location.hash === here) ctx.render(); // not on a screen opened meanwhile
+          return true;
         } catch (err) {
           status.textContent = messageOf(err);
+          return false;
         }
+      }, async (saved) => {
+        if (!saved) return;
+        if (location.hash === here) await ctx.render(); // not on a screen opened meanwhile
+        ctx.notices.toast('Saved');
       });
     },
   }, 'Save');

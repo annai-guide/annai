@@ -290,6 +290,24 @@ test('a turn cut by opening another conversation is said once in the one left, b
   assert.equal(said.length, 1);
 });
 
+test("opening another trip while Kokoro works clears the dock's sign at once: the turn still stopping is the left trip's (the emulator's re-check: 1 to 4 s of \"Kokoro is working\" in the new trip)", async () => {
+  const slow = { rules: [{ match: '.', reply: { delayMs: 400, toolCalls: [{ name: 'sleep', input: {} }] } }] };
+  const k = await agentKit([slow], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  /** @type {boolean[]} */
+  const signs = [];
+  k.agent.on('halves', (/** @type {any} */ x) => signs.push(x.kokoroWorking));
+  k.agent.send('Hi');
+  await until(() => k.agent.kokoroWorking && (k.sent['model-0'] ?? []).length > 0);
+  const opening = k.agent.open(other);
+  assert.equal(k.agent.kokoroWorking, false, 'no sign in the trip opened');
+  assert.equal(signs.at(-1), false, 'the dock is told so');
+  await opening;
+  await k.agent.idle();
+  assert.equal(k.agent.kokoroWorking, false);
+});
+
 test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a tap goes to the half that talks", async () => {
   const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [
     { match: 'the user wrote', reply: { toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, then: sleep },

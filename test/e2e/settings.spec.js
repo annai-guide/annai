@@ -190,10 +190,10 @@ const holdSaves = (page) => page.evaluate(async () => {
 
 /**
  * Taps Save with the queue held: "Saving…" is on screen, beside the button on its line (not at the top of the page, under the bar),
- * until the queue is let go.
- * @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} save
+ * until the queue is let go; with field, until the field shows the key saved, and the toast no sooner.
+ * @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} save @param {{ label: string, saved: RegExp }} [field]
  */
-async function savingBesideIt(page, save) {
+async function savingBesideIt(page, save, field) {
   await holdSaves(page);
   await save.click();
   const line = page.locator('.acts', { has: save });
@@ -203,14 +203,34 @@ async function savingBesideIt(page, save) {
   expect(Math.abs((n?.y ?? -999) - (b?.y ?? 999)), 'on the button\'s line').toBeLessThan(30);
   expect(n?.x).toBeGreaterThan((b?.x ?? 0) + (b?.width ?? 0) - 1);
   expect(n?.y).toBeGreaterThan(60); // under the top bar, not at the top of the page
+  // What the key's field says the moment "Saving…" goes, and as the toast first shows (the re-check: it went 2 to 3 s
+  // before the field showed the key saved, with "Saved" in between).
+  if (field) {
+    await page.evaluate((label) => {
+      const w = /** @type {any} */ (window);
+      const placeholder = () => [...document.querySelectorAll('label.field')].find((l) => l.querySelector('.field-label')?.textContent === label)?.querySelector('input')?.placeholder ?? null;
+      w.seen = {};
+      const look = () => {
+        if (!w.seen.gone && ![...document.querySelectorAll('.sub')].some((e) => e.textContent === 'Saving…')) w.seen.gone = placeholder();
+        if (!w.seen.toast && document.querySelector('.toast')) w.seen.toast = placeholder();
+      };
+      new MutationObserver(look).observe(document.body, { childList: true, subtree: true, characterData: true });
+    }, field.label);
+  }
   await page.evaluate(() => /** @type {any} */ (window).release());
   await expect(note).toHaveCount(0);
+  if (field) {
+    await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).seen.toast ?? null)).not.toBeNull();
+    const seen = await page.evaluate(() => /** @type {any} */ (window).seen);
+    expect(seen.gone, '"Saving…" lasts until the field shows the key saved').toMatch(field.saved);
+    expect(seen.toast, 'the toast comes with the field saved').toMatch(field.saved);
+  }
 }
 
 test('a key field says "Saving…" beside its Save button, on screen, until the save lands: Jina\'s key, a plugin\'s secret setting and a provider\'s key (the third emulator pass)', async ({ page }) => {
   await openApp(page, '#/tools');
   await page.getByLabel('Jina key').fill('jina_test_key_0123');
-  await savingBesideIt(page, page.getByRole('button', { name: 'Save key' }));
+  await savingBesideIt(page, page.getByRole('button', { name: 'Save key' }), { label: 'Jina key', saved: /^A key is set$/ });
   await expect(page.getByLabel('Jina key')).toHaveAttribute('placeholder', 'A key is set');
   // A plugin's secret: Remote trace has a token.
   await page.goto('/#/add');
@@ -228,6 +248,6 @@ test('a key field says "Saving…" beside its Save button, on screen, until the 
   await page.getByRole('button', { name: 'Add by hand' }).click();
   await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel('API key').fill('sk-or-typed-key-123');
-  await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }));
+  await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }), { label: 'API key', saved: /^saved/ });
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
 });
