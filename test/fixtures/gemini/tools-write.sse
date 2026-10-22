@@ -1,0 +1,30 @@
+event: interaction.created
+data: {"interaction":{"object":"interaction","model":"gemini-3.5-flash-lite"},"event_type":"interaction.created"}
+
+event: interaction.status_update
+data: {"status":"in_progress","event_type":"interaction.status_update"}
+
+event: step.start
+data: {"index":0,"step":{"type":"thought"},"event_type":"step.start"}
+
+event: step.delta
+data: {"index":0,"delta":{"signature":"EmAKXgFpFH0TqJEDmZp7tx03wdHZ4VXQ26YFooDPDCEDv3f3h6H4E8nQxZZvFX+I4mJvjAB/YGcG73mBXSZNpYaJD2zxkp4Qbz+wpc1rGai4PAJBzY8NzmLSVIPOsBFGSTU=","type":"thought_signature"},"event_type":"step.delta"}
+
+event: step.stop
+data: {"index":0,"event_type":"step.stop"}
+
+event: step.start
+data: {"index":1,"step":{"id":"call_317005","signature":"AWkUfROokQOZmnu3HTfB0dnhVdDbpgWigM8MIQO/d/eHofgTydDFlm8Vf4jiYm+MAH9gZwbveYFdJk2lhokPbPGSnhBvP7ClzWsZqLg8AkHNjw3OYtJUg86wEUZJNQ==","type":"function_call","name":"write","arguments":{}},"event_type":"step.start"}
+
+event: step.delta
+data: {"index":1,"delta":{"arguments":"{\"content\":\"{\\n  \\\"id\\\": \\\"post-ranch-inn\\\",\\n  \\\"kind\\\": \\\"lodging\\\",\\n  \\\"status\\\": \\\"unverified\\\",\\n  \\\"source\\\": \\\"/me/inbox/post-ranch.eml\\\",\\n  \\\"title\\\": \\\"Post Ranch Inn\\\",\\n  \\\"start\\\": {\\n    \\\"at\\\": \\\"2026-11-03T15:00:00-08:00\\\",\\n    \\\"tz\\\": \\\"America/Los_Angeles\\\"\\n  },\\n  \\\"end\\\": {\\n    \\\"at\\\": \\\"2026-11-05T11:00:00-08:00\\\",\\n    \\\"tz\\\": \\\"America/Los_Angeles\\\"\\n  },\\n  \\\"confirmation\\\": \\\"PRI-4471\\\"\\n}\",\"path\":\"/trip/bookings/post-ranch-inn.json\"}","type":"arguments_delta"},"event_type":"step.delta"}
+
+event: step.stop
+data: {"index":1,"event_type":"step.stop"}
+
+event: interaction.completed
+data: {"interaction":{"status":"requires_action","usage":{"total_tokens":885,"total_input_tokens":670,"input_tokens_by_modality":[{"modality":"text","tokens":670}],"total_cached_tokens":0,"total_output_tokens":215,"total_tool_use_tokens":0,"total_thought_tokens":0},"created":"2026-10-22T09:39:45Z","updated":"2026-10-22T09:39:45Z","service_tier":"standard","object":"interaction","model":"gemini-3.5-flash-lite"},"event_type":"interaction.completed"}
+
+event: done
+data: [DONE]
+

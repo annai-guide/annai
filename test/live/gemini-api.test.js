@@ -2,11 +2,12 @@
 //   GEMINI_KEY="$(sed -n 1p /root/annai-test-keys/gemini)" node --test test/live/gemini-api.test.js
 // Google Search (G4) needs a key on a paid project, as GEMINI_PAID_KEY: a free key's request with it is refused at once.
 //   GEMINI_PAID_KEY="$(sed -n 2p /root/annai-test-keys/gemini)" node --test --test-name-pattern="Google Search" test/live/gemini-api.test.js
+// GEMINI_RECORD=1 keeps the write-and-patch test's two streamed answers as test/fixtures/gemini/tools-*.sse (no key in them).
 // It pauses 13 s between calls to one model (a free key's flash allows 5 a minute; flash-lite more), and skips, saying
 // so, when the free day is used up. What Google changes in the Interactions API shows up here first.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { callOnce } from '../../src/core/llm/call.js';
 import { toBase64 } from '../../src/core/bytes.js';
 import { levelsFor } from '../../plugins-official/gemini-api/levels.js';
@@ -17,7 +18,7 @@ import { Kept, keyPrint } from '../../src/core/llm/kept.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
-import { loadGemini, loadTypes, endpointOf, modelOf } from '../unit/gemini-kit.js';
+import { loadGemini, loadTypes, endpointOf, modelOf, tripFiles } from '../unit/gemini-kit.js';
 import { speechCall } from '../../src/core/llm/speech.js';
 import { pcm16, encodeWav } from '../../src/core/voice/pcm.js';
 
@@ -40,10 +41,19 @@ const fetching = (url, init) => {
   return fetch(url, init);
 };
 
+/** Each answer's text, as it came, when GEMINI_RECORD asks for it. @type {string[]} */
+const answers = [];
+/** @type {import('../../src/core/llm/call.js').Fetch} */
+const recording = async (url, init) => {
+  const res = await fetching(url, init);
+  answers.push(await res.clone().text());
+  return res;
+};
+
 /** One call, or a polite skip when the free day is used up. @param {any} t @param {any} request @param {string} [level] */
 async function call(t, request, level = 'low') {
   try {
-    return await callOnce({ type, endpoint, model, key: KEY, request, level, fetch: fetching, firstOutputMs: 60_000 });
+    return await callOnce({ type, endpoint, model, key: KEY, request, level, fetch: recording, firstOutputMs: 60_000 });
   } catch (e) {
     if (/** @type {any} */ (e)?.kind === 'rate' && /** @type {any} */ (e).retryAfter > 10 * 60_000) t.skip(`the free day is used up for ${MODEL}: ${/** @type {any} */ (e).message}`);
     throw e;
@@ -74,6 +84,43 @@ test('two turns with a tool call: turn 2 carries both signatures back, and the a
   assert.equal(second.stop, 'end');
   assert.match(second.text, /18/);
   assert.ok(second.usage.input > 0 && second.usage.output > 0);
+});
+
+test("Shiori's write and patch: a booking written as a real record, then changed by a merge patch whose keys a JSON object can't name on Gemini (\"notes+\"); turn 2 sends the call back as Gemini wrote it", { skip }, async (t) => {
+  await pause();
+  const { ws, trip, tools, run } = await tripFiles();
+  const offered = ['read', 'write', 'patch'].map((n) => ({ name: n, description: tools[n].description, input: tools[n].input }));
+  const system = 'You are Shiori, a travel guide. A booking is a JSON record in /trip/bookings/: { id, kind (flight, lodging, car, rail, event, restaurant or other), status: "unverified", source (the path it came from), title, start and end as { at (ISO date-time with offset), tz (IANA) }, confirmation }.';
+  const ask = { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'Save my Post Ranch Inn booking from /me/inbox/post-ranch.eml as /trip/bookings/post-ranch-inn.json: Big Sur, check-in 3 November 2026 at 15:00, check-out 5 November at 11:00, Pacific time, confirmation PRI-4471.' }] };
+  const first = await call(t, { system, tools: offered, toolChoice: 'write', tail: NOW, messages: [ask] });
+  if (!first) return;
+  const write = /** @type {any} */ (first.parts.find((p) => p.type === 'tool_call'));
+  assert.equal(write?.name, 'write');
+  assert.equal(sent.at(-1).tools.find((/** @type {any} */ x) => x.name === 'write').parameters.properties.content.type, 'string');
+  const wrote = await run('write', write.input);
+  const booking = await ws.readJSON(trip, '/bookings/post-ranch-inn.json');
+  assert.equal(booking.kind, 'lodging');
+  assert.equal(booking.confirmation, 'PRI-4471');
+  assert.match(booking.start.at, /^2026-11-03T15:00/);
+  await pause();
+  const second = await call(t, { system, tools: offered, toolChoice: 'patch', tail: NOW, messages: [
+    ask,
+    { role: 'assistant', parts: first.parts },
+    { role: 'user', parts: [{ type: 'tool_result', id: write.id, content: wrote }, { type: 'text', text: 'They changed the confirmation to PRI-9000. Also add "late arrival" to the booking\'s notes list (key "notes+" appends). One patch.' }] },
+  ] });
+  if (!second) return;
+  const back = sent.at(-1).input.find((/** @type {any} */ s) => s.type === 'function_call');
+  assert.equal(typeof back.arguments.content, 'string', 'the call goes back as Gemini wrote it, and Google takes it with its signature');
+  const patch = /** @type {any} */ (second.parts.find((p) => p.type === 'tool_call'));
+  assert.equal(patch?.name, 'patch');
+  assert.equal(typeof patch.input.changes, 'object', 'the merge patch reaches the tool as an object');
+  await run('patch', patch.input);
+  const changed = await ws.readJSON(trip, '/bookings/post-ranch-inn.json');
+  assert.equal(changed.confirmation, 'PRI-9000');
+  assert.deepEqual(changed.notes, ['late arrival']);
+  if (process.env.GEMINI_RECORD) {
+    for (const [i, name] of ['tools-write.sse', 'tools-patch.sse'].entries()) await writeFile(new URL(`../fixtures/gemini/${name}`, import.meta.url), answers.at(i - 2) ?? '');
+  }
 });
 
 test("a call another model wrote, answered with a photo, with the now block: Gemini takes it (the stand-in signature) and sees the photo", { skip }, async (t) => {

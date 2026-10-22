@@ -183,6 +183,8 @@ export function activate(annai) {
       run: async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
+        // A merge patch that isn't an object would replace the whole file with it.
+        if (typeof i.changes !== 'object' || i.changes === null || Array.isArray(i.changes)) throw new Error(`changes must be an object, the keys to change, so ${i.path} wasn't changed.`);
         recordPlace(scope, path);
         const r = rule(scope, path);
         await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });

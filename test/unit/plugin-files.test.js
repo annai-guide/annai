@@ -62,6 +62,15 @@ test("a failed write, edit or patch says plainly that the file wasn't changed (e
   assert.equal(await ws.readText(trip, '/plan/drive.json'), before);
 });
 
+test("patch takes only an object: anything else (JSON text that isn't one, from a model that gives objects as text) changes nothing, where a merge patch would replace the whole file with it", async () => {
+  const { ws, run } = await setup();
+  await run('write', { path: '/me/notes.json', content: { a: 1 } });
+  for (const changes of ['{"a": 2', 'text', ['a'], 3, null]) {
+    await assert.rejects(run('patch', { path: '/me/notes.json', changes }), /^Error: changes must be an object, the keys to change, so \/me\/notes\.json wasn't changed\./);
+  }
+  assert.deepEqual(await ws.readJSON(ME, '/notes.json'), { a: 1 });
+});
+
 test('list and search answer in TSV with the paths Shiori uses', async () => {
   const { run } = await setup();
   await run('write', { path: '/trip/notes/a.md', content: 'Bixby Bridge at sunset\nthen dinner' });
