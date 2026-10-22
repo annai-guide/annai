@@ -386,6 +386,34 @@ test("a back link has a tap area 44 px tall, and the screen's layout is where it
   }
 });
 
+test('cards of one kind fold into one card that shows each when opened, with one Dismiss all, and each can be dismissed alone (the user, 2026-10-21: "stack them")', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 });
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await raiseCard(page);
+  await expect(page.locator('.notices .notice-stack')).toHaveCount(0); // one card is a card
+  await raiseCard(page);
+  const stack = page.locator('.notices .notice-stack');
+  await expect(stack).toHaveCount(1);
+  await expect(stack.getByText('Open a trip first (2)')).toBeVisible();
+  await raiseCard(page);
+  await expect(stack.getByText('Open a trip first (3)')).toBeVisible();
+  await expect(stack.locator('.stack-list')).toBeHidden();
+  await stack.getByRole('button', { name: 'Show' }).click();
+  await expect(stack.locator('.stack-list .notice')).toHaveCount(3);
+  // One alone: the stack counts down, and at one it is the card again.
+  await stack.locator('.stack-list .notice').first().getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await expect(stack.getByText('Open a trip first (2)')).toBeVisible();
+  await stack.locator('.stack-list .notice').first().getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await expect(page.locator('.notices .notice-stack')).toHaveCount(0);
+  await expect(page.locator('.notices .notice')).toHaveCount(1);
+  // Dismiss all.
+  await raiseCard(page);
+  await raiseCard(page);
+  await page.locator('.notices .notice-stack').getByRole('button', { name: 'Dismiss all' }).click();
+  await expect(page.locator('.notices .notice')).toHaveCount(0);
+});
+
 test('review S2: a card that lands while the screen is at its top moves it down, and for a moment a tap on what slid under the finger does nothing', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 760 });
   await page.clock.install();
@@ -412,7 +440,8 @@ test('review S1: three cards take at most a quarter of a 320 × 544 screen, and 
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   for (let i = 0; i < 3; i++) await raiseCard(page);
-  await expect(page.locator('.notice')).toHaveCount(3);
+  await page.locator('.notice-stack').getByRole('button', { name: 'Show' }).click(); // the three fold into one card; opened, each shows
+  await expect(page.locator('.notice')).toHaveCount(4);
   const box = await page.evaluate(() => { const n = /** @type {HTMLElement} */ (document.querySelector('.notices')); return { h: n.offsetHeight, scroll: n.scrollHeight }; });
   expect(box.h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
   expect(box.scroll).toBeGreaterThan(box.h);

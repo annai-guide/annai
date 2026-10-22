@@ -142,6 +142,10 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .notice-risk { border-color: var(--risk); }
 .notice-ok { border-color: var(--ok); }
 .notice p { white-space: pre-line; }
+/* Cards of one kind folded into one: opened, each is a card of its own inside. */
+.notice-stack .stack-list { display: flex; flex-direction: column; gap: 8px; }
+.notice-stack .stack-list[hidden] { display: none; }
+.notice-stack .notice { box-shadow: none; }
 /* A card taller than the box scrolls inside it, and its buttons stay at the bottom edge of what is seen, Dismiss always in reach. */
 .notice .acts { position: sticky; bottom: 0; background: var(--sheet); padding-top: 4px; }
 .toast { background: var(--ink); color: var(--paper); border-color: var(--ink); }
