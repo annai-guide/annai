@@ -389,3 +389,94 @@ test("annai's own reminders while a live session's voice plays are shown, never 
     await k.done();
   }
 });
+
+// The fix pass (M2): a live Koe owes Kokoro's notes for the user as a text Koe does: one cue, then annai shows them (spec §6.8).
+/**
+ * The user asks, Koe answers, and then Kokoro's note comes. @param {any} k @param {string} text @param {any} [why]
+ * @param {{ name: string, input: any }} [call]
+ */
+const noted = async (k, text, why = 'tool', call) => {
+  k.agent.send('Is Nepenthe open tonight?');
+  await soon(async () => (await k.events(['out.speak'])).length === 1);
+  await k.agent.idle();
+  await k.agent.channel.send('kokoro', text, 'append', why, undefined, call);
+};
+const CUE = /^\[annai\] "Kokoro's note/;
+/** Time for a turn that would come, to come. */
+const settled = async (/** @type {any} */ k) => {
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 150));
+  await k.agent.idle();
+};
+
+test("a live Koe's turn after Kokoro's note says nothing: it is asked once more, in the text cue's words, and then says it; annai shows nothing", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}, { said: "It's open until ten tonight.", audio: tone(0.2) }]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    await settled(k);
+    const sent = texts(k);
+    assert.equal(sent.length, 3, JSON.stringify(sent));
+    assert.match(sent[1], /^<from_kokoro/);
+    assert.match(sent[2], CUE);
+    assert.deepEqual(await k.events(['reminder']), []);
+    assert.deepEqual(k.notices, []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe stays silent on Kokoro's note, asked once more too: annai shows it as Shiori's answer, once", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['reminder'])).length === 1);
+    await settled(k);
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text, e.data.unsaid]), [["Shiori's answer", 'Nepenthe is open until 10 PM tonight.', true]]);
+    assert.equal(texts(k).filter((t) => CUE.test(t)).length, 1, 'one cue');
+    assert.equal(texts(k).length, 3);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a live Koe silent on "Kokoro couldn\'t check": asked once more, and nothing is shown (plan decision 21)', async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}]);
+  try {
+    await noted(k, "Kokoro couldn't check: The key was rejected. Tell the user you couldn't check, and offer to try again.", 'kokoro-failed');
+    await soon(async () => texts(k).length === 3);
+    await settled(k);
+    assert.match(texts(k)[2], CUE);
+    assert.deepEqual(await k.events(['reminder']), []);
+    assert.deepEqual(k.notices, []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe silent on Kokoro's gated card: annai shows the card itself", async () => {
+  const card = { title: 'Nepenthe', text: 'Open 11:30–22:00 today.' };
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}]);
+  try {
+    await noted(k, 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', 'gated:show', { name: 'show', input: { card } });
+    await soon(async () => (await k.events(['out.show'])).length === 1);
+    await settled(k);
+    assert.deepEqual((await k.events(['out.show']))[0].data.card, card);
+    assert.deepEqual(await k.events(['reminder']), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe that shows a card after Kokoro's note has passed it on: no cue", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { tool: { name: 'show', args: { card: { title: 'Nepenthe', text: 'Open till 10 tonight.' } } } }, {}]);
+  try {
+    await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
+    await soon(async () => (await k.events(['out.show'])).length === 1);
+    await settled(k);
+    assert.equal(texts(k).length, 2, JSON.stringify(texts(k)));
+    assert.deepEqual(await k.events(['reminder']), []);
+  } finally {
+    await k.done();
+  }
+});
