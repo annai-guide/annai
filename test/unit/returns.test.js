@@ -15,8 +15,9 @@ function memoryStorage() {
 /**
  * annai's start as finishReturn sees it, with a plugin that may take returns.
  * @param {((params: URLSearchParams, ui: any) => Promise<void>) | null} returned
+ * @param {Promise<unknown>} [ready] when plugins are up; never, on a page that reloads first
  */
-function app(returned) {
+function app(returned, ready = Promise.resolve()) {
   const registry = new Registry();
   /** @type {any[]} */
   const failures = [];
@@ -31,16 +32,23 @@ function app(returned) {
   const ctx = {
     registry, store: null, go: () => {},
     plugins: { installed: async () => ({ 'provider-acme': { name: 'Acme' } }) },
-    llm: { ready: Promise.resolve(), providers: () => [], config: async () => ({ providers: {} }) },
+    llm: { ready, providers: () => [], config: async () => ({ providers: {} }) },
     notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} },
     render: () => drawn.push('drawn'),
   };
   /** @param {string} search @param {any} storage @param {number} [now] */
-  const start = (search, storage, now = 2000) => finishReturn(ctx, {
-    location: { search, pathname: '/', hash: '#/trips' },
-    history: /** @type {any} */ ({ replaceState: (/** @type {any} */ _s, /** @type {any} */ _t, /** @type {string} */ to) => addresses.push(to) }),
-    storage, now,
-  });
+  const start = (search, storage, now = 2000) => {
+    const location = { search, pathname: '/', hash: '#/trips' };
+    return finishReturn(ctx, {
+      location,
+      history: /** @type {any} */ ({ replaceState: (/** @type {any} */ _s, /** @type {any} */ _t, /** @type {string} */ to) => {
+        addresses.push(to);
+        const u = new URL(to, 'https://annai.guide');
+        Object.assign(location, { search: u.search, hash: u.hash });
+      } }),
+      storage, now,
+    });
+  };
   return { ctx, cards, drawn, addresses, failures, start };
 }
 
@@ -61,7 +69,7 @@ test('a return goes to the plugin that expected it, once, within 15 minutes; the
   });
   expectReturn('provider-acme', { storage, now: 1000 });
   assert.equal(await a.start('?code=abc&state=xyz', storage), true);
-  assert.deepEqual(a.addresses, ['/#/models']);
+  assert.deepEqual(a.addresses, ['/?code=abc&state=xyz#/models', '/#/models'], 'Models at once; the query goes once plugins are up');
   assert.deepEqual(a.drawn, ['drawn', 'returned'], 'Models drawn at once (saying whose sign-in is being finished), before the plugin takes it');
   assert.deepEqual(calls, [['abc', 'xyz', 'function', 'function']]);
   assert.deepEqual(a.cards, []);
@@ -110,4 +118,32 @@ test("a ?code= nobody expected, or one past 15 minutes, goes to no plugin, is re
   expectReturn('provider-acme', { storage, now: 1000 });
   assert.equal(await gone.start('?code=abc', storage), true);
   assert.match(gone.cards[0].body, /Acme isn't running/);
+  // Plugins can't load on this page (no service worker took it, §5.3): the card says so in those words, and the note
+  // and the query stay, so the reload finishes it.
+  const held = app(null);
+  /** @type {any} */ (held.ctx).held = () => "annai needs a reload: it opened without its offline service, so its plugins can't start.";
+  expectReturn('provider-acme', { storage, now: 1000 });
+  await held.start('?code=abc', storage);
+  assert.deepEqual(held.cards.map((c) => [c.title, c.body]), [["Signing in with Acme didn't finish", "annai needs a reload: it opened without its offline service, so its plugins can't start."]]);
+  assert.deepEqual(held.addresses, ['/?code=abc#/models']);
+  assert.notEqual(storage.getItem('annai.return'), null);
+});
+
+test('a return keeps its note and its query until plugins are up, so a page that reloads first (one no service worker took, spec §5.3) finishes it', async () => {
+  const storage = memoryStorage();
+  expectReturn('provider-acme', { storage, now: 1000 });
+  /** @type {(string | null)[]} */
+  const codes = [];
+  const first = app(async (params) => { codes.push(params.get('code')); }, new Promise(() => {}));
+  void first.start('?code=abc', storage);
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(first.addresses, ['/?code=abc#/models'], 'Models shows at once, the query kept');
+  assert.notEqual(storage.getItem('annai.return'), null, 'the note kept');
+  // The page after the reload: plugins up, the sign-in finished; then the note and the query go.
+  const again = app(async (params) => { codes.push(params.get('code')); });
+  assert.equal(await again.start('?code=abc', storage), true);
+  assert.deepEqual(codes, ['abc']);
+  assert.equal(storage.getItem('annai.return'), null);
+  assert.deepEqual(again.addresses, ['/?code=abc#/models', '/#/models']);
+  assert.deepEqual(again.cards, []);
 });

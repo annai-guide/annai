@@ -267,7 +267,7 @@ const PLUGINS = () => ({
   'proto-a': PROTO('proto-a', 'type-a', '0.3.0', { list: true }), 'proto-b': PROTO('proto-b', 'type-b', '0.2.0'), 'proto-c': PROTO('proto-c', 'type-c', '0.1.0'),
   'proto-v': PROTO('proto-v', 'type-v', '0.1.0', { speech: 'out' }), 'provider-x': PX(), 'provider-y': PY,
 });
-/** The model service on a host with a stand-in catalog. @param {{ probe?: (url: string) => Promise<boolean>, fetch?: any }} [o] */
+/** The model service on a host with a stand-in catalog. @param {{ probe?: (url: string) => Promise<boolean>, fetch?: any, whyNoPlugins?: () => string | undefined }} [o] */
 async function serviceKit(o = {}) {
   const k = await hostKit();
   const s = await site(PLUGINS());
@@ -281,7 +281,7 @@ async function serviceKit(o = {}) {
     }
     return s.fetch(url);
   };
-  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: get, probe: o.probe });
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: get, probe: o.probe, whyNoPlugins: o.whyNoPlugins });
   return { ...k, s, llm, reached };
 }
 const HI = /** @type {any} */ ({ messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] });
@@ -315,6 +315,24 @@ test("the free-tier switch is the provider's, kept in the user's layer: on, ever
   assert.equal(r.cost, 0);
   await k.llm.setFree(id, false);
   assert.equal('free' in (await k.llm.config()).providers[id].user, false);
+});
+
+test("on a page plugins can't load on (no service worker took it, spec §5.3), a missing protocol is said in those words, in a turn's card and a voice's error", async () => {
+  const words = "annai needs a reload: it opened without its offline service, so its plugins can't start.";
+  let held = false;
+  const k = await serviceKit({ whyNoPlugins: () => (held ? words : undefined) });
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  await k.llm.addProvider('provider-y', {});
+  const cfg = await k.llm.config();
+  await saveRoles(k.ws, { ...cfg.roles, main: { models: Object.values(cfg.models).filter((m) => m.ability === 'chat').map((m) => m.id), level: 'off' } });
+  await k.host.uninstall('proto-a');
+  await k.host.uninstall('proto-v');
+  const voice = /** @type {any} */ (Object.values(cfg.models).find((m) => m.ability === 'voice'));
+  await assert.rejects(k.llm.synthesize({ modelId: voice.id, text: 'Hello.' }), (/** @type {any} */ e) => e.kind === 'type-missing' && /Settings → Models/.test(e.message));
+  held = true;
+  const r = await k.llm.call({ request: HI });
+  assert.deepEqual(r.attempts.map((a) => [a.outcome, a.error]), [['type-missing', words], ['ok', undefined]]);
+  await assert.rejects(k.llm.synthesize({ modelId: voice.id, text: 'Hello.' }), (/** @type {any} */ e) => e.kind === 'type-missing' && e.message === words);
 });
 
 test('a call never installs a protocol plugin: a model whose type is missing is skipped as type-missing, and the next one answers (anti-goal 1)', async () => {

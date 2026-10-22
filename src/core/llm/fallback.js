@@ -260,8 +260,9 @@ const heardIds = (was, now) => (was === now ? now : {
  *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
- *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace }} c
- *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback)
+ *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string }} c
+ *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
+ *   model's protocol plugin can't be running, when annai knows (no service worker took the page, spec §5.3)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
@@ -320,7 +321,7 @@ export async function callRole(c) {
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
     const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
-      const why = skip === 'benched' ? bench.why(id) : undefined;
+      const why = skip === 'benched' ? bench.why(id) : skip === 'type-missing' ? c.missing : undefined;
       attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}) });
       continue;
     }

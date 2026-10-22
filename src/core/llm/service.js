@@ -24,15 +24,16 @@ import { openLive, testLive } from '../realtime/open.js';
  * with fallback, traced.
  * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, plugins: import('../plugins.js').PluginHost,
  *   fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, ready?: Promise<unknown>, pluginsCanLoad?: () => Promise<unknown>,
- *   probe?: (url: string) => Promise<boolean>, openSocket?: (url: string, protocols: string[]) => any }} c
+ *   probe?: (url: string) => Promise<boolean>, openSocket?: (url: string, protocols: string[]) => any, whyNoPlugins?: () => string | undefined }} c
  *   ready: settles once the installed plugins have started; pluginsCanLoad: settles when a plugin's files can be loaded
- *   (in browsers, once a service worker controls the page); probe: whether a server answers at an address at all, asked
+ *   (in browsers, once a service worker controls the page), else throws why; whyNoPlugins: why plugins can't load on this
+ *   page, if they can't, said for a missing protocol (spec §5.3); probe: whether a server answers at an address at all, asked
  *   in no-cors mode, which a browser lets through to any server, to tell "blocks web apps" from "down" (spec §9.8);
  *   openSocket: makes a live session's WebSocket (tests)
  */
 export function createLlm({
   store, ws, plugins, fetch: get = (url, init) => fetch(url, init), base = '', ready = Promise.resolve(), pluginsCanLoad = () => Promise.resolve(),
-  probe = (/** @type {string} */ url) => get(url, { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false), openSocket,
+  probe = (/** @type {string} */ url) => get(url, { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false), openSocket, whyNoPlugins = () => undefined,
 }) {
   const bench = new Bench();
   /** Tunables a live model had to open with instead (decision 11: v1beta without proactive audio), until annai restarts. @type {Map<string, Record<string, any>>} */
@@ -134,7 +135,7 @@ export function createLlm({
     if (install) await ensure(ability.type);
     else await ready;
     const type = types().get(ability.type);
-    if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`);
+    if (!type) throw new ProviderError('type-missing', whyNoPlugins() ?? `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`);
     return { rec, .../** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(pRec, rec.ability, type)), model: modelOf(rec) };
   };
   /**
@@ -443,7 +444,7 @@ export function createLlm({
     async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, repairImages, speech, firstOutputMs }) {
       await ready;
       const run = callRole({
-        role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench,
+        role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench, missing: whyNoPlugins(),
         fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope, tally: ws,
       });
       if (!record?.keepParts) return run;
