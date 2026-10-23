@@ -16,8 +16,9 @@ import { anySignal } from '../signals.js';
  * Under one lock a turn is kept only if it still may be (alive, as things are now), else its call deletes it at once,
  * with its own key; a removal changes that state first, then queues. A turn is deleted only with its key and address (key).
  * @typedef {import('./contract.js').Message} Message
- * @typedef {{ id: string, endpoint: string, scope: string, key: string, chain: string, ends: number, n: number, prefix: string, reply: string, until: number }} KeptTurn
- *   chain: its first turn's id, continued until ends; n: messages sent, prefix: their fingerprint; until: when it expires
+ * @typedef {{ id: string, endpoint: string, scope: string, key: string, chain: string, ends: number, n: number, prefix: string, reply: string, until: number, model?: string }} KeptTurn
+ *   chain: its first turn's id, continued until ends; n: messages sent, prefix: their fingerprint; until: when it expires;
+ *   model: the model that made it, for a provider whose turns only that model continues (OpenAI's)
  * @typedef {{ id: string, endpoint: string, key: string, until: number }} Deletion
  * @typedef {{ turns: KeptTurn[], forget: Deletion[] }} KeptFile
  * @typedef {{ scope?: string, endpoint?: string, provider?: string | string[] }} Which  none: all
@@ -136,17 +137,18 @@ export class Kept {
 
   /**
    * The kept turn a request continues: the longest whose messages begin it, then its reply, then something new, same
-   * trip, endpoint and key, its chain still continued. @param {string} endpointId @param {Message[]} messages as sent
-   * @param {{ scope: string, key: string }} o @returns {Promise<{ id: string, from: number } | null>} from: the first to send
+   * trip, endpoint and key, its chain still continued; and its model, where the provider's turns are its model's alone.
+   * @param {string} endpointId @param {Message[]} messages as sent
+   * @param {{ scope: string, key: string, model?: string }} o @returns {Promise<{ id: string, from: number } | null>} from: the first to send
    */
-  match(endpointId, messages, { scope, key }) {
+  match(endpointId, messages, { scope, key, model }) {
     return this.#change((f, now) => {
       /** @type {ReturnType<typeof prints> | null} */
       let p = null;
       /** @type {KeptTurn | null} */
       let best = null;
       for (const t of f.turns) {
-        if (t.endpoint !== endpointId || t.scope !== scope || t.key !== key || t.n + 1 >= messages.length || t.ends <= now) continue;
+        if (t.endpoint !== endpointId || t.scope !== scope || t.key !== key || t.model !== model || t.n + 1 >= messages.length || t.ends <= now) continue;
         p ??= prints(messages);
         if (p.prefix[t.n] !== t.prefix || p.each[t.n] !== t.reply) continue;
         if (!best || t.n > best.n || (t.n === best.n && t.until > best.until)) best = t;
@@ -158,14 +160,14 @@ export class Kept {
   /**
    * A turn the provider kept, in the chain it continued (after). 'now': its call deletes it instead (it failed or was
    * refused, it may not be kept now, or its chain went). @param {{ id: string, endpoint: string, scope: string, key: string, days: number,
-   *   messages?: Message[], reply?: Message, hours?: number, after?: string }} t @returns {Promise<'kept' | 'now'>}
+   *   messages?: Message[], reply?: Message, hours?: number, after?: string, model?: string }} t @returns {Promise<'kept' | 'now'>}
    */
-  record({ id, endpoint, scope, key, days, messages, reply, hours = 0, after }) {
+  record({ id, endpoint, scope, key, days, messages, reply, hours = 0, after, model }) {
     return this.#change(async (f, now) => {
       const prev = after ? f.turns.find((t) => t.id === after) : undefined;
       if (!messages || !reply || (after && !prev) || !(await this.alive({ endpoint, scope, key }))) return 'now';
       f.turns = f.turns.filter((t) => t.id !== id);
-      f.turns.push({ id, endpoint, scope, key, chain: prev?.chain ?? id, ends: prev?.ends ?? now + hours * HOUR, n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), until: now + days * 24 * HOUR });
+      f.turns.push({ id, endpoint, scope, key, chain: prev?.chain ?? id, ends: prev?.ends ?? now + hours * HOUR, n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), until: now + days * 24 * HOUR, ...(model ? { model } : {}) });
       return 'kept';
     });
   }

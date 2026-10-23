@@ -1,7 +1,7 @@
 {
   "id": "provider-another-address",
   "name": "Custom provider",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "catchAll": true,
   "api": 1,
   "entry": "index.js",
@@ -34,7 +34,8 @@
         "type": "openai-responses",
         "name": "OpenAI Responses",
         "on": false,
-        "note": "For servers that speak OpenAI's Responses API. If one refuses requests, try \"phase\": false, \"nowRole\": \"user\" or \"encryptedReasoning\": false in the tunables. Give a reasoning model its Reasoning levels on its page; without them it thinks without showing progress, and may run past the time limit."
+        "tunables": { "keep": false },
+        "note": "For servers that speak OpenAI's Responses API. Keeping the conversation on the server, so each turn sends only what is new, is off here until you turn it on: a server that ignores previous_response_id would answer without the conversation. If one refuses requests, try \"phase\": false, \"nowRole\": \"user\" or \"encryptedReasoning\": false in the tunables. Give a reasoning model its Reasoning levels on its page; without them it thinks without showing progress, and may run past the time limit."
       },
       "messages": {
         "kind": "chat",

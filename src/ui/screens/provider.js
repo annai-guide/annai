@@ -365,7 +365,7 @@ async function abilityBody(view, abilityId) {
     addressWarn,
     uploads?.el ?? null,
     keep?.el ?? null,
-    keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to ${type.keeps.days} days on a paid one. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.` }) : null,
+    keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: ${type.keeps.uniform ? `${type.keeps.days} days` : `a day on a free key, up to ${type.keeps.days} days on a paid one`}. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.` }) : null,
     waiting ? h('p', { class: 'sub', text: `${waiting} deletion${waiting === 1 ? '' : 's'} waiting: ${keyless ? `annai can't send ${waiting === 1 ? 'it' : 'them'} without this provider's key` : `annai sends ${waiting === 1 ? 'it' : 'them'} when it can reach ${who}`}.` }) : null,
     ...choices.map((c) => c.el),
     ...tools,

@@ -1,6 +1,8 @@
 /**
  * The OpenAI Responses endpoint type (spec §9.1): annai's request in, a streamed `POST /responses`
- * out. Nothing is kept on the server (`store: false`): the whole conversation goes each time.
+ * out. A conversation's own turn is kept on OpenAI's side when annai asks (`store: true`), and the next one then sends
+ * only what is new after it (`previous_response_id`; docs/plugins.md "Kept turns"). Every other call keeps nothing
+ * (`store: false`), and a conversation sent whole carries its reasoning as encrypted items.
  * Reasoning comes back as encrypted items. Each is kept as a signed reasoning part, the item itself
  * as its signature, and sent back unchanged to the model that wrote it. A web search the model
  * made is a provider part, sent back the same way (spec §9.5). A server that never streams answers with
@@ -14,6 +16,7 @@ const TUNABLES = Object.freeze({
   encryptedReasoning: true, // asks models with reasoning levels for their reasoning as encrypted items, to send back (OpenAI sends them anyway); false for one that refuses it
   imageDetail: null, // e.g. "low", "high" or "original"; unset, the server chooses ("auto")
   uploads: true, // photos go to the files API once, then by id (spec §4.8)
+  keep: true, // OpenAI keeps the conversation between turns (30 days), so each sends only what is new; false for servers that ignore previous_response_id
 });
 // Responses refuses a smaller max_output_tokens (plan choice 14).
 const MIN_OUTPUT = 16;
@@ -25,6 +28,8 @@ const CODES = /** @type {Record<string, string>} */ ({
   server_is_overloaded: 'overloaded',
   server_error: 'server', vector_store_timeout: 'server',
   invalid_api_key: 'auth',
+  // A kept turn OpenAI no longer has (30 days, or deleted): annai sends the conversation whole, once.
+  previous_response_not_found: 'forgotten',
   model_not_found: 'not-found',
   image_file_not_found: 'upload',
   // Blocked by policy: not a bad key, and not worth sending again.
@@ -40,11 +45,16 @@ export function activate(annai) {
     name: 'OpenAI Responses',
     tunables: TUNABLES,
     tail: true,
+    // OpenAI keeps a stored response 30 days, whatever the key. A chain is continued 46 hours after its first turn: a photo annai
+    // uploaded expires after 48, and a turn that points at one may fail after it, and a stored response whose earlier ones went is not trusted.
+    keeps: { name: 'OpenAI', days: 30, hours: 46, uniform: true, perModel: true },
     /** @param {any} c */
     build: (c) => build(c),
-    /** @param {Response} res */
-    read: (res) => read(res, sse, ProviderError, errorFromResponse),
+    /** @param {Response} res @param {any} c */
+    read: (res, c) => read(res, sse, ProviderError, errorFromResponse, c?.keep === true),
     classify,
+    /** OpenAI's delete call for one kept response (200 with `deleted: true`; a response already gone is a 404, which annai counts as done). @param {{ endpoint: any, key: string | null, id: string }} c */
+    forgetRequest: ({ endpoint, key, id }) => ({ url: join(endpoint.baseUrl, `/responses/${encodeURIComponent(id)}`), headers: auth(endpoint, key), method: /** @type {const} */ ('DELETE') }),
     /** A photo to the files API, for vision, expiring as asked (spec §4.8). @param {any} c */
     uploadRequest: ({ endpoint, key, bytes, mediaType, name, expiresInSeconds }) => {
       const body = new FormData();
@@ -72,14 +82,16 @@ function auth(endpoint, key) {
   return { ...(key ? { authorization: `Bearer ${key}` } : {}), ...(endpoint.headers ?? {}) };
 }
 
-/** @param {any} c */
-function build({ endpoint, model, key, tunables: t, request }) {
+/** @param {any} c keep: OpenAI keeps this turn; kept: the turn it continues, and the first message after it */
+function build({ endpoint, model, key, tunables: t, request, keep, kept }) {
   /** @type {any[]} */
-  const input = request.messages.flatMap((/** @type {any} */ m) => wire(m, model.providerId, t));
+  const input = request.messages.slice(kept?.from ?? 0).flatMap((/** @type {any} */ m) => wire(m, model.providerId, t));
   // The now block, last, in a message of its own (plan choice 5).
   if (request.tail) input.push({ role: t.nowRole || 'developer', content: request.tail });
   /** @type {Record<string, any>} */
-  const body = { model: model.providerId, input, stream: true, store: false };
+  const body = { model: model.providerId, input, stream: true, store: keep === true };
+  // The turn it continues (OpenAI doesn't carry `instructions` over from it, so they go every time).
+  if (kept) body.previous_response_id = kept.id;
   if (request.system) body.instructions = request.system;
   // Only a model with reasoning levels takes a reasoning field or the include for it; each level's patch adds its effort (spec §9.3).
   const thinks = Object.keys(model.reasoning ?? {}).length > 0;
@@ -157,8 +169,9 @@ function replayable(signature) {
  * The events of a streamed response. Text, reasoning summaries and a call's arguments arrive as
  * they stream; each output item is given whole when it is done.
  * @param {Response} res @param {any} sse @param {any} ProviderError @param {any} errorFromResponse
+ * @param {boolean} keep OpenAI keeps this turn, so its response is named first, as a `kept` event
  */
-async function* read(res, sse, ProviderError, errorFromResponse) {
+async function* read(res, sse, ProviderError, errorFromResponse, keep) {
   let body = res.body;
   // One whole response object, from a server that ignores stream: true: only application/json, not NDJSON or problem+json.
   if (/^application\/json\s*(;|$)/i.test(res.headers.get('content-type') ?? '')) {
@@ -173,7 +186,7 @@ async function* read(res, sse, ProviderError, errorFromResponse) {
     }
     // A stream sent as JSON is still a stream.
     if (!/^\s*(data:|event:|:)/.test(text)) {
-      yield* readWhole(text, ProviderError, errorFromResponse);
+      yield* readWhole(text, ProviderError, errorFromResponse, keep);
       return;
     }
     body = new Response(text).body;
@@ -195,6 +208,7 @@ async function* read(res, sse, ProviderError, errorFromResponse) {
   /** @type {any} */
   let done = null;
   let incomplete = false;
+  let named = false;
   for await (const { event, data } of sse(/** @type {ReadableStream<Uint8Array>} */ (body))) {
     if (data === '[DONE]') break;
     /** @type {any} */
@@ -205,7 +219,10 @@ async function* read(res, sse, ProviderError, errorFromResponse) {
       continue;
     }
     const type = e.type ?? event;
-    if (type === 'response.output_text.delta') {
+    if (keep && !named && e.response?.id && (type === 'response.created' || type === 'response.in_progress')) {
+      named = true;
+      yield { type: 'kept', id: String(e.response.id) };
+    } else if (type === 'response.output_text.delta') {
       const lp = Array.isArray(e.logprobs) ? e.logprobs[0] : null;
       if (lp && !sentLogprobs) {
         sentLogprobs = true;
@@ -260,9 +277,9 @@ async function* read(res, sse, ProviderError, errorFromResponse) {
  * The events of one whole response object (a server that ignores stream: true), in a stream's order:
  * each output item's own, then usage and the stop reason. An error in its place is that error, as an
  * HTTP error's would be.
- * @param {string} text @param {any} ProviderError @param {any} errorFromResponse
+ * @param {string} text @param {any} ProviderError @param {any} errorFromResponse @param {boolean} keep
  */
-function* readWhole(text, ProviderError, errorFromResponse) {
+function* readWhole(text, ProviderError, errorFromResponse, keep) {
   /** @type {any} */
   let r;
   try {
@@ -276,6 +293,7 @@ function* readWhole(text, ProviderError, errorFromResponse) {
   }
   if (r?.status === 'failed') throw new ProviderError(streamKind(r.error?.code, r.error?.message), String(r.error?.message ?? 'The response failed.'));
   if (!Array.isArray(r?.output)) throw new ProviderError('server', 'The endpoint answered with a whole reply that had no answer in it.');
+  if (keep && typeof r.id === 'string' && r.id) yield { type: 'kept', id: r.id };
   let searches = 0;
   let called = false;
   let refused = false;
@@ -364,6 +382,8 @@ function usageOf(u) {
 function kindOf(code, message) {
   const c = String(code ?? '');
   if (CODES[c]) return CODES[c];
+  // The words alone, as a 400 sends them (reports differ on its code): the earlier turn is gone.
+  if (/previous response with id\b.*\bnot found/i.test(String(message ?? ''))) return 'forgotten';
   if (/image/.test(c)) return 'image';
   // An uploaded photo that expired or is unknown: upload it again (spec §9.9).
   const m = String(message ?? '');

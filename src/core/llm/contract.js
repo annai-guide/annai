@@ -284,8 +284,8 @@ export function safeId(id) {
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]
  *   a photo upload to the provider's files API (spec §4.8)
  * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
- * @property {{ name?: string, days: number, hours: number }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
- *   who, for the switch's words; the longest it keeps one; how long a chain is continued
+ * @property {{ name?: string, days: number, hours: number, uniform?: boolean, perModel?: boolean }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
+ *   who, for the switch's words; the longest it keeps one (uniform: on any key, not just a paid one); how long a chain is continued; perModel: only the model that made a turn continues it
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string>, method: 'DELETE' }} [forgetRequest]
  *   its delete call for one kept turn
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
