@@ -1155,6 +1155,68 @@ export class Agent {
     return true;
   }
 
+  /**
+   * "Summarize now" on the Conversation screen (spec §6.5, §16.2): housekeeping when the user asks, as it would run: warm while the cache
+   * is, else cold, whatever the size, with the last exchange kept. The earlier words stay in the log, and recall brings them back.
+   * @returns {Promise<'done' | 'nothing' | 'busy' | 'failed'>} nothing: too little to summarize; busy: she is working or a conversation is opening
+   */
+  async summarizeNow() {
+    if (this.#busy || this.#opens) return 'busy';
+    this.#clearTimer();
+    this.#busy = true;
+    const warm = Boolean(this.cacheState()?.warm);
+    try {
+      return (await this.compact(warm ? 'warm' : 'cold', { forced: true })) ? 'done' : 'nothing';
+    } catch (e) {
+      await this.#notice({ tone: 'info', title: "Shiori couldn't summarize the conversation", body: this.#explain(e, warm ? 'main' : 'utility') });
+      return 'failed';
+    } finally {
+      this.#busy = false;
+      this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.#settle();
+      if (this.#queue.length) this.#drain();
+    }
+  }
+
+  /**
+   * "Start fresh" on the Conversation screen (spec §6.5, §16.2): from this point she starts a new context. A compaction event of mode
+   * "fresh" covers everything so far and has no summary, so the context holds none of the earlier lines (only a note that they exist);
+   * they stay in the log, shown, searched and recalled. Her turn, if one runs, is stopped first; what was heard and not yet written
+   * down is written first, as housekeeping does. @returns {Promise<boolean>} false: nothing to start fresh from
+   */
+  async startFresh() {
+    if (this.#opens) return false;
+    if (this.#busy) {
+      this.interrupt();
+      await this.#whenFree();
+    }
+    this.#clearTimer();
+    this.#busy = true;
+    try {
+      const unwritten = this.transcript.unwritten();
+      if (unwritten.length) await this.#writeDown('fresh', unwritten, { final: true });
+      let started = false;
+      await this.#serially(async () => {
+        const [last] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { reverse: true, limit: 1 }));
+        const fresh = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true }))).find((e) => e.data?.mode === 'fresh');
+        const [said] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], reverse: true, limit: 1, ...(fresh ? { after: fresh.seq } : {}) }));
+        if (!last || !said) return; // no line since the last fresh start, or none at all
+        const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: last.seq, mode: 'fresh' } });
+        await this.reread();
+        await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
+        started = true;
+      });
+      this.#snapshot = null;
+      this.#due = false;
+      return started;
+    } finally {
+      this.#busy = false;
+      this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.#settle();
+      if (this.#queue.length) this.#drain();
+    }
+  }
+
   /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings @param {string} language */
   async #warmSummary(marker, settings, language) {
     const { tools, providerTools, shows } = await this.#toolsNow();
