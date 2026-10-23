@@ -364,3 +364,89 @@ test('cut(): a turn the model has stopped transcribing ends now (traced so), and
   assert.equal(r.sent.length, n);
   r.input.stop();
 });
+
+// realtime-fix2 review M1: her voice's wait after the user's turn (live.js mayPlay) must never hold forever, nor cut more answers in
+// noise than playing at once did (main), and holds only in half-duplex.
+const { mayPlay, HOLD_MS } = await import('../../src/core/koe/live.js');
+
+test('mayPlay: speech begun holds her; else the wait after the turn, a quiet microphone, and at most 1 s more; never with full duplex or in a noisy room', () => {
+  const quietNow = { hearing: false, stillMs: 500, noisy: false };
+  const loudNow = { hearing: false, stillMs: 20, noisy: false };
+  const at = (sinceEndMs, sinceWordMs = sinceEndMs) => ({ duplex: false, sinceEndMs, sinceWordMs });
+  assert.equal(mayPlay(null, at(0)), true, 'no microphone');
+  assert.equal(mayPlay(quietNow, { ...at(100), duplex: true }), true, 'headphones or the car: no wait');
+  assert.equal(mayPlay({ ...loudNow, noisy: true }, at(100)), true, 'a noisy room: at once, as before the wait');
+  assert.equal(mayPlay(quietNow, at(HOLD_MS - 50)), false);
+  assert.equal(mayPlay(quietNow, at(HOLD_MS)), true);
+  assert.equal(mayPlay(loudNow, at(HOLD_MS + 500)), false, 'a word may be beginning');
+  assert.equal(mayPlay(loudNow, at(HOLD_MS + 1000)), true, 'the cap: 1 s past the wait, whatever stillMs says');
+  assert.equal(mayPlay(loudNow, at(HOLD_MS + 3000, 900)), false, 'her first word came late: 1 s from it');
+  assert.equal(mayPlay(loudNow, at(HOLD_MS + 3000, 1000)), true);
+  assert.equal(mayPlay({ ...loudNow, hearing: true }, at(60_000)), false, 'speech begun holds her: it is bounded by the turn');
+});
+
+/** A room whose noise wanders hard from frame to frame (a car's road, wind, people): it makes turns of its own. @param {number} seconds @param {number} seed */
+function rough(seconds, seed) {
+  const rnd = (s) => () => ((s = (s * 1103515245 + 12345) >>> 0) / 2 ** 32) * 2 - 1;
+  const r = rnd(seed);
+  const g = rnd(seed + 1000);
+  const out = new Float32Array(Math.round(seconds * RATE));
+  let w = 0;
+  for (let i = 0; i < out.length; i++) {
+    if (i % 320 === 0) w = 0.8 * w + 3 * g();
+    out[i] = r() * 0.01 * 10 ** (w / 20);
+  }
+  return out;
+}
+
+/**
+ * One user turn in a room, then her answer's first word 0.9 s after the turn's end (the realtime check's median): when her voice
+ * starts, by mayPlay (or at once, as main), and whether a turn began before it, which cuts her. @param {Float32Array} pcm @param {boolean} hold
+ */
+function answer(pcm, hold) {
+  /** @type {((pcm: Float32Array, rate: number) => void) | null} */
+  let frames = null;
+  let clock = 0;
+  /** @type {[string, number][]} */
+  const sent = [];
+  const input = new LiveInput({ mic: { async open(c) { frames = c.onFrames; return { close() {} }; } }, send: { activity: (e) => sent.push([e, clock]), audio: () => {} } });
+  return input.start().then(() => {
+    let end = null;
+    let played = null;
+    for (let i = 0; i < pcm.length && played === null; i += 320) {
+      clock = (i / RATE) * 1000;
+      /** @type {any} */ (frames)(pcm.subarray(i, i + 320), RATE);
+      end ??= sent.find(([e, at]) => e === 'end' && at > 3000)?.[1] ?? null;
+      if (end === null || clock < end + 900) continue;
+      if (sent.some(([e, at]) => e === 'start' && at > end)) return { end, cut: true };
+      if (!hold || mayPlay(input, { duplex: false, sinceEndMs: clock - end, sinceWordMs: clock - end - 900 })) played = clock;
+    }
+    return { end, cut: false, waited: played === null || end === null ? null : played - end - 900 };
+  });
+}
+
+test('in a room whose noise makes turns of its own, the wait cuts no more of her answers than playing at once did', async () => {
+  let main = 0;
+  let held = 0;
+  let n = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const pcm = rough(10, seed);
+    pcm.set(lunch.map((x, j) => x + pcm[3 * RATE + j]), 3 * RATE);
+    const [a, b] = await Promise.all([answer(pcm, false), answer(pcm, true)]);
+    if (a.end === null) continue;
+    n++;
+    main += Number(a.cut);
+    held += Number(b.cut);
+  }
+  assert.ok(n >= 30, `${n} rooms with a turn`);
+  assert.ok(held <= main, `cut: ${held} of ${n} with the wait, ${main} of ${n} at once`);
+});
+
+test('in a quiet room the wait holds her for a user going on after a thinking pause, and lets her go 1.2 s after the turn when they don\'t', async () => {
+  const pause = cat(quiet(3), lunch, quiet(1.6), gas, quiet(2)); // they go on 0.9 s after the turn's end
+  const r = await answer(pause, true);
+  assert.equal(r.cut, true, 'their going on started a turn before she played');
+  const done = await answer(cat(quiet(3), lunch, quiet(4)), true);
+  assert.equal(done.cut, false);
+  assert.ok(done.waited !== null && done.waited >= HOLD_MS - 900 && done.waited <= HOLD_MS - 900 + 40, `waited ${done.waited} ms past her first word`);
+});

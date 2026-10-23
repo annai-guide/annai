@@ -21,6 +21,8 @@ import { Detector } from '../voice/detector.js';
 const GO_ON_MS = 60;
 /** Speech in her voice's tail with no quiet this long since she stopped was going on as she did: begun over her. */
 const GAP_MS = 80;
+/** Since a turn's end, this many frames over the floor outside speech, or a run thrown away, make the room noisy (a word's start is 4 at most). */
+const NOISY_FRAMES = 6;
 
 export class LiveInput {
   /** Speech is being sent now. */
@@ -49,6 +51,9 @@ export class LiveInput {
   #sent = 0;
   /** A tap stopped her voice: speech going on now is the user's. */
   #tapped = false;
+  /** Runs thrown away before they were sent, and the detector's blips and those runs when the last turn ended. */
+  #thrown = 0;
+  #mark = 0;
 
   /**
    * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void, audioIn?: { rate: number } },
@@ -102,6 +107,11 @@ export class LiveInput {
   /** Speech has begun: held until it is surely speech, or being sent. */
   get hearing() {
     return this.active || this.#held;
+  }
+
+  /** Noise since the last turn ended: frames over the floor that never became speech, or runs thrown away. */
+  get noisy() {
+    return (this.#detector?.blips ?? 0) + this.#thrown - this.#mark >= NOISY_FRAMES;
   }
 
   /** How long nothing has been over the floor (its keep margin), in ms: a word begun is louder before it is surely speech. */
@@ -185,7 +195,10 @@ export class LiveInput {
         this.#end(e.type === 'discard' ? 'noise' : e.cut === 'end' ? 'close' : e.cut, e.type === 'segment' ? e.peakDb : null);
         // At the cap the floor has crept up with the speech: back to where it was, so what follows is heard as speech.
         if (e.type === 'segment' && e.cut === 'cap' && this.#startFloor !== null && this.#detector) this.#detector.floorDb = this.#startFloor;
-      } else this.#held = false; // thrown away before it was sent: nothing at all
+      } else {
+        if (e.type === 'discard') this.#thrown += NOISY_FRAMES;
+        this.#held = false; // thrown away before it was sent: nothing at all
+      }
     }
   }
 
@@ -229,6 +242,7 @@ export class LiveInput {
   /** @param {TurnEnd} why @param {number | null} [peak] the run's, once the detector has let go of it */
   #end(why, peak = this.#detector?.peakDb ?? null) {
     this.#flush();
+    this.#mark = (this.#detector?.blips ?? 0) + this.#thrown;
     this.active = false;
     this.send.activity('end');
     const db = (/** @type {number | null} */ x) => (x === null ? null : Math.round(x * 10) / 10);
