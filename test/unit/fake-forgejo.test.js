@@ -231,7 +231,9 @@ test("answerNext given a function: it changes the stand-in's own answer to that 
     fj.answerNext('GET', '/media/annai-archive.json', (own) => ({ status: 200, raw: Buffer.from(`${String(own.raw)}!`) }));
     assert.deepEqual([(await call('GET', '/repos/me/backup/media/annai-archive.json')).status, (await call('GET', '/repos/me/backup/media/annai-archive.json')).text], [200, '{"a":1}'], 'taken once: the second request is the stand-in\'s own');
     fj.answerNext('GET', '/media/annai-archive.json', () => { throw new Error('the test\'s own mistake'); });
-    const broken = await Promise.race([call('GET', '/repos/me/backup/media/annai-archive.json'), new Promise((r) => setTimeout(r, 5000, 'hung'))]);
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let giveUp;
+    const broken = await Promise.race([call('GET', '/repos/me/backup/media/annai-archive.json'), new Promise((r) => { giveUp = setTimeout(r, 5000, 'hung'); })]).finally(() => clearTimeout(giveUp));
     assert.notEqual(broken, 'hung', 'the request was answered');
     assert.equal(/** @type {any} */ (broken).status, 500);
     assert.match(/** @type {any} */ (broken).text, /the test's own mistake/);
