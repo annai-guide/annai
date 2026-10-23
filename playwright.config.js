@@ -7,7 +7,9 @@ export default defineConfig({
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
-  use: { baseURL: 'http://127.0.0.1:8790', trace: 'retain-on-failure', acceptDownloads: true, actionTimeout: 15_000 },
+  use: { baseURL: 'http://127.0.0.1:8790', trace: 'retain-on-failure', acceptDownloads: true, actionTimeout: 15_000,
+    // The interface is English whatever the machine is set to, so the locators by role, text and label hold (localization design, "Tests").
+    locale: 'en-US' },
   webServer: {
     command: 'node scripts/serve.mjs --port 8790',
     url: 'http://127.0.0.1:8790/_headers',
