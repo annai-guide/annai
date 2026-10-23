@@ -472,6 +472,22 @@ test("Shiori's turns ask the model to call a tool (she reaches the user only thr
   assert.equal(search.requests[0].toolRequired, undefined, "its search answers in words, shown as written (G4): nothing is forced");
 });
 
+test("warm housekeeping asks to borrow the conversation's kept chain (it continues it and deletes its own response); cold housekeeping and turns don't", async () => {
+  const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
+  /** @type {any[]} */
+  const calls = [];
+  const was = k.llm.call;
+  k.llm.call = (/** @type {any} */ c) => { calls.push(c); return was(c); };
+  for (const m of ['first', 'second', 'third', 'fourth']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('warm'), true);
+  assert.equal(await k.agent.compact('cold', { forced: true }), true);
+  assert.deepEqual(calls.filter((c) => c.borrow).map((c) => c.record?.tag), ['compaction'], 'only the warm summary');
+  assert.equal(calls.filter((c) => c.record?.tag === 'compaction').length, 2);
+});
+
 test('a tool call is asked for only until she has reached the user in the turn: after that she may end in words (review A4)', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Big Sur: the coast.' } }] }, { text: 'Done.' }]]);
   k.agent.send('What is Big Sur known for?');

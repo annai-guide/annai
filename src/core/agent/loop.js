@@ -1174,7 +1174,7 @@ export class Agent {
     let messages = await this.#sendable();
     for (let step = 0; step < 4; step++) {
       const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
-      const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
+      const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
       const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       if (!calls.length) return r.reply.text.trim() || null;
       /** @type {import('../llm/contract.js').Part[]} */

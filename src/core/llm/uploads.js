@@ -9,7 +9,7 @@ import { SYS_SETTINGS } from '../scopes.js';
 
 export const UPLOAD_TTL_S = 172_800;
 const PATH = '/llm/uploads.json';
-const MARGIN_MS = 3_600_000;
+export const MARGIN_MS = 3_600_000;
 
 export class Uploads {
   /** @type {Record<string, Record<string, { id: string, expiresAt: number }>> | null} */
@@ -28,6 +28,10 @@ export class Uploads {
   async get(endpointId, hash, now = Date.now()) {
     const e = (await this.#load())[endpointId]?.[hash];
     return e && e.expiresAt - MARGIN_MS > now ? e.id : null;
+  }
+  /** When a photo's upload expires, or 0. @param {string} endpointId @param {string} hash */
+  async expires(endpointId, hash) {
+    return (await this.#load())[endpointId]?.[hash]?.expiresAt ?? 0;
   }
   /** @param {string} endpointId @param {string} hash @param {string} id @param {number} expiresAt */
   async set(endpointId, hash, id, expiresAt, now = Date.now()) {

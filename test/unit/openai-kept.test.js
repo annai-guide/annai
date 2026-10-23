@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { Kept } from '../../src/core/llm/kept.js';
+import { Kept, keyPrint, keeperOf } from '../../src/core/llm/kept.js';
+import { Uploads } from '../../src/core/llm/uploads.js';
+import { sha256Hex } from '../../src/core/hash.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
@@ -35,20 +37,21 @@ const text = (/** @type {string} */ t) => ({ type: 'text', text: t });
 const m1 = msg('user', text('Where can we eat?'));
 
 /** An OpenAI provider at the stand-in's address, its models in main and utility. @param {string} url @param {Record<string, any>} [tunables] @param {string} [providerId] */
-const config = (url, tunables = {}, providerId = MODEL) => /** @type {any} */ ({
-  providers: { 'pv-o': { id: 'pv-o', plugin: 'provider-openai', template: null, user: { name: 'OpenAI', baseUrl: url, abilities: { chat: { kind: 'chat', type: 'openai-responses', tunables } } }, created: 0 } },
+const config = (url, tunables = { keep: true }, providerId = MODEL, headers = {}) => /** @type {any} */ ({
+  providers: { 'pv-o': { id: 'pv-o', plugin: 'provider-openai', template: null, user: { name: 'OpenAI', baseUrl: url, headers, abilities: { chat: { kind: 'chat', type: 'openai-responses', tunables } } }, created: 0 } },
   models: { 'm-o': { id: 'm-o', provider: 'pv-o', ability: 'chat', template: null, user: { providerId, input: ['text', 'image'] }, created: 0 }, 'm-p': { id: 'm-p', provider: 'pv-o', ability: 'chat', template: null, user: { providerId: 'gpt-6-sol', input: ['text'] }, created: 0 } },
   roles: { main: { models: ['m-o'], level: 'off' }, utility: { models: ['m-o'], level: 'off' } },
 });
 
-/** A Kept on memory storage, with calls through callRole. @param {any[]} replies @param {Record<string, any>} [tunables] @param {{ notFoundStatus?: number }} [o] */
-async function callKit(replies, tunables = {}, o = {}) {
-  const s = await startOpenAIServer({ key: KEY, replies, ...o });
+/** A Kept on memory storage, with calls through callRole. @param {any[]} replies @param {Record<string, any>} [tunables] @param {{ notFoundStatus?: number, zdr?: boolean, headers?: Record<string, string>, anyKey?: boolean }} [o] */
+async function callKit(replies, tunables = { keep: true }, o = {}) {
+  const { headers, anyKey, ...server } = o;
+  const s = await startOpenAIServer({ ...(anyKey ? {} : { key: KEY }), replies, ...server });
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
-  const kept = new Kept({ ws });
-  const cfg = config(s.url, tunables);
+  const kept = new Kept({ ws, now: () => Date.now() });
+  const cfg = config(s.url, tunables, MODEL, headers);
   /** @param {any[]} messages @param {Record<string, any>} [o] */
   const call = (messages, o = {}) => callRole({
     role: 'main', config: cfg, types: new Map([['openai-responses', type]]), bench: new Bench(), keyFor: async () => KEY, kept, scope: 'trip-a',
@@ -98,8 +101,8 @@ test('a mismatch sends everything: an edited or forgotten message, a Start fresh
     const more = msg('user', text('Is it open?'));
     await c.call([msg('user', text('Where can we drink?')), ...h.slice(1), more]); // the first message edited
     await c.call([...h.slice(1), more]); // the first message forgotten
-    await c.call([more]); // Start fresh, or a compaction that put a summary in place of the past
-    await c.call([msg('user', text('Summary: they asked about food.')), more]); // a compaction
+    await c.call([msg('user', text('[annai: a new conversation] Today is a new day in Kyoto.')), more]); // Start fresh: the note is message 0
+    await c.call([msg('user', text('Summary: they asked about food.')), more]); // a compaction: the summary replaces the past
     const bodies = c.s.bodies();
     for (const b of bodies.slice(1)) assert.equal(b.previous_response_id, undefined, 'whole');
     assert.equal(bodies[1].input.length, 4, 'the edit: all of it, and the now block');
@@ -120,7 +123,7 @@ test('a mismatch sends everything: an edited or forgotten message, a Start fresh
 
 for (const status of [400, 404]) {
   test(`"not found" (${status}): OpenAI no longer has the response, so the same model is asked once more, whole, and starts a new chain`, async () => {
-    const c = await callKit([{ text: 'Ichiran.' }, { text: 'Yes, until 23:00.' }], {}, { notFoundStatus: status });
+    const c = await callKit([{ text: 'Ichiran.' }, { text: 'Yes, until 23:00.' }], { keep: true }, { notFoundStatus: status });
     try {
       const r = await c.call([m1]);
       c.s.expire(); // 30 days passed, or it was deleted
@@ -230,13 +233,15 @@ test('10 turns: the requests grow with the conversation sent whole, and stay the
     }
   };
   const before = await run({ keep: false });
-  const after = await run({});
+  const after = await run({ keep: true });
   const sum = (/** @type {number[]} */ a) => a.reduce((x, y) => x + y, 0);
   assert.ok(sum(after) < sum(before) / 2, `${sum(after)} against ${sum(before)}`);
   assert.ok(after[9] < after[0] * 1.2, 'the last request is the size of the first');
   assert.ok(before[9] > before[0] * 3, 'sent whole, it grows');
-  await mkdir(new URL('../../.superpowers/evidence/backlog-openai-kept/', import.meta.url), { recursive: true });
-  await writeFile(new URL('../../.superpowers/evidence/backlog-openai-kept/request-sizes.json', import.meta.url), JSON.stringify({ unit: 'request body bytes, 10 turns against the stand-in', whole: before, kept: after, total: { whole: sum(before), kept: sum(after) } }, null, 2));
+  if (process.env.ANNAI_EVIDENCE_DIR) {
+    await mkdir(process.env.ANNAI_EVIDENCE_DIR, { recursive: true });
+    await writeFile(`${process.env.ANNAI_EVIDENCE_DIR}/request-sizes.json`, JSON.stringify({ unit: 'request body bytes, 10 turns against the stand-in', whole: before, kept: after, total: { whole: sum(before), kept: sum(after) } }, null, 2));
+  }
 });
 
 // ---- Deletions, through the service with provider-openai ----
@@ -291,7 +296,7 @@ test("through the service: turns are chained per trip, counted as OpenAI keeps t
     await c.talk(c.tripA, 3);
     await c.talk(c.tripB, 1);
     assert.deepEqual(c.s.bodies().map((b) => b.previous_response_id), [undefined, 'resp_stand-in-1', 'resp_stand-in-2', undefined]);
-    assert.deepEqual(await c.llm.keptCount({ scope: c.tripA }), { turns: 3, waiting: 0, days: 30, who: ['OpenAI'] });
+    assert.deepEqual(await c.llm.keptCount({ scope: c.tripA }), { turns: 3, waiting: 0, days: 35, who: ['OpenAI'] });
     const { removeTrip } = await import('../../src/core/scopes.js');
     await removeTrip(c.store, c.tripA);
     assert.deepEqual(await c.llm.forgetScope(c.tripA), { queued: 3 });
@@ -382,12 +387,383 @@ test('a response deleted by OpenAI already (30 days) is a 404 on delete: done, n
   }
 });
 
-test('the custom provider offers the Responses protocol with keeping off until the user turns it on: a server that ignores previous_response_id would answer without the conversation', async () => {
-  const d = JSON.parse(await readFile(new URL('../../plugins-official/provider-another-address/annai-plugin.json', import.meta.url), 'utf8'));
-  assert.equal(d.provider.abilities.responses.tunables.keep, false);
+test("OpenAI's retention is 'at least 30 days': each response is tracked 35 days, and a chain is continued 29 days from its first turn", async () => {
+  assert.deepEqual(type.keeps, { name: 'OpenAI', provider: 'provider-openai', days: 35, hours: 29 * 24, holds: 'at least 30 days', note: type.keeps.note, perModel: true });
+  assert.match(type.keeps.note, /dashboard/);
+  const c = await callKit([{ text: 'A' }]);
+  try {
+    await c.call([m1]);
+    const t = (await c.file()).turns[0];
+    assert.ok(Math.abs(t.until - (Date.now() + 35 * DAY)) < 10_000);
+    assert.ok(Math.abs(t.ends - (Date.now() + 29 * DAY)) < 10_000);
+  } finally {
+    await c.s.close();
+  }
+});
+
+// ---- The fix pass: the review's probes, and what followed ----
+
+test('the default is off: OpenAI\'s own chat ability turns it on, and a custom Responses record of any version keeps nothing until switched on', async () => {
+  assert.equal(type.tunables.keep, false);
   const o = JSON.parse(await readFile(new URL('../../plugins-official/provider-openai/annai-plugin.json', import.meta.url), 'utf8'));
-  assert.equal(o.provider.abilities.chat.tunables?.keep, undefined, "OpenAI's own: on, the type's default");
-  assert.equal(type.tunables.keep, true);
-  assert.deepEqual(type.keeps, { name: 'OpenAI', days: 30, hours: 46, uniform: true, perModel: true });
-  assert.ok(type.keeps.hours * 3600_000 < 2 * DAY, 'a chain ends before the photos it points at expire');
+  assert.equal(o.provider.abilities.chat.tunables.keep, true);
+  // An older record, with no keep in it: off.
+  const old = await callKit([{ text: 'A' }], {});
+  try {
+    const r = await old.call([m1]);
+    await old.call([...said([m1], r), msg('user', text('More?'))]);
+    assert.deepEqual(old.s.bodies().map((b) => [b.store, b.previous_response_id]), [[false, undefined], [false, undefined]]);
+  } finally {
+    await old.s.close();
+  }
+  // The custom provider, as its description makes it, with Responses switched on: off until the user switches keeping on.
+  const d = JSON.parse(await readFile(new URL('../../plugins-official/provider-another-address/annai-plugin.json', import.meta.url), 'utf8'));
+  const s = await startOpenAIServer({ key: KEY, replies: [{ text: 'A' }] });
+  try {
+    const cfg = /** @type {any} */ ({
+      providers: { 'pv-c': { id: 'pv-c', plugin: 'provider-another-address', template: { values: d.provider }, user: { name: 'My server', baseUrl: s.url, abilities: { responses: { on: true } } }, created: 0 } },
+      models: { 'm-c': { id: 'm-c', provider: 'pv-c', ability: 'responses', template: null, user: { providerId: MODEL, input: ['text'] }, created: 0 } },
+      roles: { main: { models: ['m-c'], level: 'off' } },
+    });
+    const store = createMemoryStore();
+    const ws = new Workspace(store);
+    await ensureBaseScopes(ws);
+    const kept = new Kept({ ws });
+    const call = (/** @type {any[]} */ messages, /** @type {any} */ over = cfg) => callRole({ role: 'main', config: over, types: new Map([['openai-responses', type]]), bench: new Bench(), keyFor: async () => KEY, kept, scope: 'trip-a', record: { keepParts: true }, request: { messages, tail: 'now' } });
+    const r = await call([m1]);
+    await call([...said([m1], r), msg('user', text('More?'))]);
+    assert.deepEqual(s.bodies().map((b) => [b.store, b.previous_response_id]), [[false, undefined], [false, undefined]]);
+    const on = structuredClone(cfg);
+    on.providers['pv-c'].user.abilities.responses.tunables = { keep: true };
+    await call([...said([m1], r), msg('user', text('Again?'))], on);
+    await call([...said([...said([m1], r), msg('user', text('Again?'))], r), msg('user', text('And?'))], on);
+    assert.deepEqual(s.bodies().slice(2).map((b) => [b.store, b.previous_response_id]), [[true, undefined], [true, 'resp_stand-in-3']]);
+  } finally {
+    await s.close();
+  }
+});
+
+test('warm housekeeping borrows the live chain: it carries previous_response_id and only what is new, its response is deleted, and the next real turn goes on from the last real one', async () => {
+  const c = await callKit([{ text: 'A' }, { text: 'B' }, { text: 'Summary.' }, { text: 'C' }]);
+  try {
+    let m = [msg('user', text('q0'))];
+    for (let i = 1; i <= 2; i++) {
+      const r = await c.call(m);
+      m = [...said(m, r), msg('user', text(`q${i}`))];
+    }
+    const housekeeping = { record: { tag: 'compaction' }, borrow: true, request: { messages: m, system: 'You are Shiori.', tail: '[annai: housekeeping] Summarize.', tools: [TOOL] } };
+    const h = await c.call(m, housekeeping);
+    assert.equal(h.reply.text, 'Summary.');
+    const hb = c.s.bodies()[2];
+    assert.deepEqual([hb.store, hb.previous_response_id], [true, 'resp_stand-in-2']);
+    assert.deepEqual(hb.input, [{ role: 'user', content: [{ type: 'input_text', text: 'q2' }] }, { role: 'developer', content: '[annai: housekeeping] Summarize.' }], 'only the new message and the summary request');
+    assert.deepEqual(c.s.deleted(), ['resp_stand-in-3'], 'its response is deleted at once');
+    assert.deepEqual(c.s.stored(), ['resp_stand-in-1', 'resp_stand-in-2']);
+    assert.deepEqual((await c.file()).turns.map((/** @type {any} */ t) => t.id), ['resp_stand-in-1', 'resp_stand-in-2'], 'recorded nothing');
+    // The real turn goes on from the last real one, not from the housekeeping.
+    await c.call(m);
+    assert.equal(c.s.bodies()[3].previous_response_id, 'resp_stand-in-2');
+    assert.deepEqual((await c.requests()).filter((q) => q.kind === 'forget').length, 1, 'the deletion is in the trace');
+  } finally {
+    await c.s.close();
+  }
+  // No live chain (a fresh conversation, or another model): the whole conversation, stored nowhere.
+  const fresh = await callKit([{ text: 'Summary.' }]);
+  try {
+    await fresh.call([msg('user', text('q0'))], { record: { tag: 'compaction' }, borrow: true });
+    const cfg = /** @type {any} */ ({ ...fresh.cfg, roles: { ...fresh.cfg.roles, main: { models: ['m-p'], level: 'off' } } });
+    await fresh.call([msg('user', text('q0'))], { record: {}, config: cfg });
+    assert.deepEqual(fresh.s.bodies().map((b) => [b.store, b.previous_response_id]), [[false, undefined], [false, undefined]]);
+    assert.deepEqual(fresh.s.seen.filter((x) => x.method === 'DELETE'), []);
+  } finally {
+    await fresh.s.close();
+  }
+});
+
+test('warm housekeeping after a chain of three turns shares the whole stored prefix: the cache is not broken (P7)', async () => {
+  const c = await callKit([{ text: 'A' }]);
+  try {
+    let m = [msg('user', text('q0'))];
+    for (let i = 1; i <= 3; i++) {
+      const r = await c.call(m);
+      m = [...said(m, r), msg('user', text(`q${i}`))];
+    }
+    await c.call(m, { record: { tag: 'compaction' }, borrow: true, request: { messages: m, system: 'You are Shiori.', tail: '[annai: housekeeping] Summarize.', tools: [] } });
+    const b = c.s.bodies().at(-1);
+    assert.equal(b.previous_response_id, 'resp_stand-in-3');
+    assert.equal(b.input.length, 2);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('P2: a chained call refused for a photo whose upload is gone is sent whole once, the chain it continued is queued for deletion, and the next turn goes on', async () => {
+  const gone = { error: { status: 400, body: { error: { message: 'Error while downloading file-abc: file not found.', type: 'invalid_request_error', param: 'input', code: 'image_file_not_found' } } } };
+  const c = await callKit([(b) => (b.previous_response_id === 'resp_stand-in-1' ? gone : { text: 'A' })]);
+  const uploads = { isOff: () => true, forget: async () => {}, get: async () => null };
+  try {
+    const r = await c.call([m1], { uploads });
+    const m2 = [...said([m1], r), msg('user', text('q1'))];
+    const again = await c.call(m2, { uploads });
+    assert.equal(again.reply.text, 'A');
+    assert.deepEqual(again.attempts.map((a) => a.outcome), ['upload', 'ok']);
+    assert.deepEqual(c.s.bodies().map((b) => b.previous_response_id), [undefined, 'resp_stand-in-1', undefined]);
+    assert.deepEqual((await c.file()).forget.map((/** @type {any} */ d) => d.id), ['resp_stand-in-1'], 'the old chain is queued for deletion');
+    await c.call([...said(m2, again), msg('user', text('q2'))], { uploads });
+    assert.equal(c.s.bodies().at(-1).previous_response_id, 'resp_stand-in-2', 'the new chain goes on');
+  } finally {
+    await c.s.close();
+  }
+});
+
+/** A files endpoint for the stand-in: every upload expires in 48 hours. @param {{ n: number }} count */
+const filesFetch = (count) => (/** @type {any} */ url, /** @type {any} */ init) => {
+  if (String(url).endsWith('/files')) {
+    count.n++;
+    return Promise.resolve(new Response(JSON.stringify({ id: `file-${count.n}`, object: 'file', expires_at: Math.floor(Date.now() / 1000) + 172800 }), { status: 200, headers: { 'content-type': 'application/json' } }));
+  }
+  return globalThis.fetch(url, init);
+};
+const PHOTO = (/** @type {string} */ h) => ({ type: 'image', mediaType: 'image/png', data: Buffer.from(`a photo ${h}`).toString('base64'), hash: h.repeat(64).slice(0, 64) });
+
+test('a chain ends before the earliest photo it points at expires, and the end is carried down the chain', async () => {
+  const c = await callKit([{ text: 'A' }]);
+  const uploads = new Uploads(c.ws);
+  const count = { n: 0 };
+  const fetch = filesFetch(count);
+  try {
+    const m = [msg('user', text('what is this?'), PHOTO('a'))];
+    const r = await c.call(m, { fetch, uploads });
+    const expires = Date.now() + 172_800_000;
+    const first = (await c.file()).turns[0];
+    assert.ok(Math.abs(first.ends - (expires - 3_600_000)) < 5000, 'an hour before the photo expires');
+    const m2 = [...said(m, r), msg('user', text('and the price?'))];
+    const r2 = await c.call(m2, { fetch, uploads });
+    const second = (await c.file()).turns.find((/** @type {any} */ t) => t.id === 'resp_stand-in-2');
+    assert.equal(second.ends, first.ends, 'carried');
+    // Past it, the conversation goes whole.
+    const late = Date.now;
+    Date.now = () => late() + 47.5 * 3_600_000;
+    try {
+      await c.call([...said(m2, r2), msg('user', text('and the hours?'))], { fetch, uploads });
+    } finally {
+      Date.now = late;
+    }
+    assert.equal(c.s.bodies().at(-1).previous_response_id, undefined);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('P8: a chained turn uploads nothing for photos it does not send; a new photo in what it sends is uploaded', async () => {
+  const c = await callKit([{ text: 'A' }]);
+  const uploads = new Uploads(c.ws);
+  const count = { n: 0 };
+  const fetch = filesFetch(count);
+  try {
+    const m = [msg('user', text('what is this?'), PHOTO('a'))];
+    const r = await c.call(m, { fetch, uploads });
+    assert.equal(count.n, 1);
+    await uploads.forget('pv-o/chat'); // its upload is about to expire: it would be uploaded again
+    const m2 = [...said(m, r), msg('user', text('and the price?'))];
+    const r2 = await c.call(m2, { fetch, uploads });
+    assert.equal(count.n, 1, 'the earlier photo is not sent, so not uploaded');
+    assert.ok(!JSON.stringify(c.s.bodies().at(-1).input).includes('input_image'));
+    const m3 = [...said(m2, r2), msg('user', text('this one?'), PHOTO('b'))];
+    await c.call(m3, { fetch, uploads });
+    assert.equal(count.n, 2);
+    assert.match(JSON.stringify(c.s.bodies().at(-1).input), /"file_id":"file-2"/);
+    // Whole (an edit), every photo is sent, so every photo is uploaded.
+    await c.call([msg('user', text('edited'), PHOTO('a')), ...m3.slice(1)], { fetch, uploads });
+    assert.equal(c.s.bodies().at(-1).previous_response_id, undefined);
+    assert.ok(count.n >= 3);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('P1: an organization with Zero Data Retention: the response says it is not stored, so nothing is chained, nothing fails, nothing is deleted', async () => {
+  const c = await callKit([{ text: 'A' }], { keep: true }, { zdr: true });
+  try {
+    let m = [msg('user', text('q0'))];
+    for (let i = 1; i <= 3; i++) {
+      const r = await c.call(m);
+      m = [...said(m, r), msg('user', text(`q${i}`))];
+    }
+    assert.deepEqual((await c.requests()).map((q) => q.outcome), ['ok', 'ok', 'ok']);
+    assert.ok(c.s.bodies().every((b) => b.previous_response_id === undefined));
+    assert.deepEqual(c.s.seen.filter((x) => x.method === 'DELETE'), []);
+    assert.deepEqual(await c.kept.count(), { turns: 0, waiting: 0, until: 0, endpoints: [] });
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('P3: the response id is written down as soon as OpenAI names it, and replaced when the turn ends', async () => {
+  const c = await callKit([{ text: 'A', delayMs: 400 }]);
+  try {
+    const p = c.call([m1]);
+    await new Promise((r) => setTimeout(r, 200));
+    const mid = await c.file();
+    assert.deepEqual(mid.pending.map((/** @type {any} */ x) => [x.id, x.endpoint, x.scope]), [['resp_stand-in-1', 'pv-o/chat', 'trip-a']]);
+    assert.ok(!JSON.stringify(mid).includes(KEY));
+    await p;
+    const end = await c.file();
+    assert.deepEqual(end.pending, []);
+    assert.deepEqual(end.turns.map((/** @type {any} */ t) => t.id), ['resp_stand-in-1']);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('P3: a pending response older than a call can last is queued for deletion at the next drain; a recent one is left', async () => {
+  const c = await serviceKit();
+  try {
+    const { ensureDeviceScope } = await import('../../src/core/scopes.js');
+    const make = async () => (await (await fetch(`${c.s.url}/responses`, { method: 'POST', headers: { authorization: `Bearer ${KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: MODEL, input: 'x', store: true }) })).json()).id;
+    const [old, recent] = [await make(), await make()];
+    const print = await keyPrint(KEY, c.s.url);
+    await ensureDeviceScope(c.store, Date.now());
+    const entry = (/** @type {string} */ id, /** @type {number} */ at) => ({ id, endpoint: `${c.id}/chat`, scope: c.tripA, key: print, until: Date.now() + 35 * DAY, at });
+    await c.ws.write(SYS_DEVICE, '/llm/kept.json', { turns: [], forget: [], pending: [entry(old, Date.now() - 3_600_000), entry(recent, Date.now() - 5_000)] }, { author: 'system' });
+    // annai starts again: a new service reads the file.
+    const { createLlm } = await import('../../src/core/llm/service.js');
+    const llm2 = createLlm({ store: c.store, ws: c.ws, plugins: c.host, fetch: c.fetch });
+    await llm2.drainKept();
+    assert.deepEqual(c.s.deleted(), [old]);
+    assert.deepEqual(c.s.stored(), [recent]);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('P6: a server that drops previous_response_id is noticed from what it echoes: the turn is sent whole, the stray response deleted, and keeping stays off for that endpoint', async () => {
+  const c = await callKit([(b) => ({ text: `saw ${b.input.filter((/** @type {any} */ x) => x.role === 'user').length} user message(s)` })]);
+  const fetch = (/** @type {any} */ url, /** @type {any} */ init) => {
+    if (init?.method !== 'POST' || !init.body) return globalThis.fetch(url, init);
+    const { previous_response_id: _, ...rest } = JSON.parse(init.body);
+    return globalThis.fetch(url, { ...init, body: JSON.stringify(rest) });
+  };
+  try {
+    let m = [msg('user', text('q0'))];
+    let r = await c.call(m, { fetch });
+    m = [...said(m, r), msg('user', text('q1'))];
+    r = await c.call(m, { fetch });
+    assert.equal(r.reply.text, 'saw 2 user message(s)', 'the conversation was sent whole');
+    assert.deepEqual(r.attempts.map((a) => a.outcome), ['forgotten', 'ok']);
+    const noticed = (await c.requests()).find((q) => q.outcome === 'forgotten');
+    assert.match(noticed.error, /ignored the conversation/i);
+    assert.deepEqual(c.s.deleted(), ['resp_stand-in-2'], 'the response that had no conversation behind it');
+    // From now on, until annai starts again: whole, and stored nowhere.
+    m = [...said(m, r), msg('user', text('q2'))];
+    await c.call(m, { fetch });
+    assert.deepEqual([c.s.bodies().at(-1).store, c.s.bodies().at(-1).previous_response_id], [false, undefined]);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test("a stream with no response.created: the id is learned from response.completed, so the turn can be continued and deleted", async () => {
+  const c = await callKit([{ text: 'A' }]);
+  const fetch = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    const res = await globalThis.fetch(url, init);
+    if (init?.method !== 'POST') return res;
+    const blocks = (await res.text()).split('\n\n').filter((b) => !/^event: response\.(created|in_progress)/.test(b));
+    return new Response(blocks.join('\n\n'), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  };
+  try {
+    const r = await c.call([m1], { fetch });
+    await c.call([...said([m1], r), msg('user', text('More?'))], { fetch });
+    assert.equal(c.s.bodies()[1].previous_response_id, 'resp_stand-in-1');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('a whole reply that failed still names its response first, so the call can delete it', async () => {
+  const events = [];
+  /** @type {any} */
+  let error = null;
+  try {
+    for await (const e of type.read(new Response(JSON.stringify({ id: 'resp_failed', object: 'response', status: 'failed', error: { code: 'server_error', message: 'boom' }, output: [] }), { headers: { 'content-type': 'application/json' } }), { keep: true })) events.push(e);
+  } catch (e) {
+    error = e;
+  }
+  assert.deepEqual(events, [{ type: 'kept', id: 'resp_failed' }]);
+  assert.equal(error?.kind, 'server');
+});
+
+test('a keyless endpoint keeps nothing: it could not delete what it stored', async () => {
+  const c = await callKit([{ text: 'A' }], { keep: true }, { anyKey: true });
+  try {
+    const r = await c.call([m1], { keyFor: async () => null });
+    await c.call([...said([m1], r), msg('user', text('More?'))], { keyFor: async () => null });
+    assert.deepEqual(c.s.bodies().map((b) => [b.store, b.previous_response_id]), [[false, undefined], [false, undefined]]);
+    assert.deepEqual(c.s.seen.filter((x) => x.method === 'DELETE'), []);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test("the provider's own name and words, unless it is OpenAI's own provider; OpenAI's note about its dashboard", () => {
+  assert.deepEqual(keeperOf(type.keeps, 'provider-openai', 'OpenAI'), { name: 'OpenAI', holds: 'at least 30 days', note: type.keeps.note });
+  assert.deepEqual(keeperOf(type.keeps, 'provider-another-address', 'My server'), { name: 'My server', holds: 'as long as that server keeps them', note: '' });
+  assert.deepEqual(keeperOf({ name: 'Google', days: 55, hours: 23 }, 'provider-gemini', 'Google Gemini'), { name: 'Google', holds: null, note: '' });
+  assert.deepEqual(keeperOf(undefined, 'x', 'Y'), { name: 'Y', holds: null, note: '' });
+});
+
+test("P4: a missing response's id, which OpenAI repeats in its error, is not in the trace", async () => {
+  const c = await callKit([{ text: 'A' }]);
+  try {
+    const r = await c.call([m1]);
+    c.s.expire();
+    await c.call([...said([m1], r), msg('user', text('q1'))]);
+    const turns = (await c.store.tx(['events'], 'readonly', (t) => t.listEvents('trip-a', { types: ['model.turn'] }))).map((e) => e.data);
+    const traced = JSON.stringify([await c.requests(), turns]);
+    assert.ok(!traced.includes('resp_stand-in-1'));
+    assert.ok(traced.includes('forgotten'), 'but what happened is');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('the key print covers the extra headers: another project or organization keeps nothing of the first\'s', async () => {
+  const plain = (await sha256Hex('https://x.test/v1\nsk-1')).slice(0, 16);
+  assert.equal(await keyPrint('sk-1', 'https://x.test/v1/'), plain, 'as before without headers');
+  assert.equal(await keyPrint('sk-1', 'https://x.test/v1/', {}), plain);
+  const a = await keyPrint('sk-1', 'https://x.test/v1', { 'OpenAI-Project': 'proj_a' });
+  assert.notEqual(a, plain);
+  assert.notEqual(a, await keyPrint('sk-1', 'https://x.test/v1', { 'OpenAI-Project': 'proj_b' }));
+  assert.equal(a, await keyPrint('sk-1', 'https://x.test/v1', { 'openai-project': 'proj_a' }), 'a header name is any case');
+  const c = await callKit([{ text: 'A' }], { keep: true }, { headers: { 'OpenAI-Project': 'proj_a' } });
+  try {
+    const r = await c.call([m1]);
+    const next = [...said([m1], r), msg('user', text('More?'))];
+    await c.call(next);
+    assert.equal(c.s.bodies()[1].previous_response_id, 'resp_stand-in-1', 'the same project');
+    await c.call(next, { config: config(c.s.url, { keep: true }, MODEL, { 'OpenAI-Project': 'proj_b' }) });
+    assert.equal(c.s.bodies()[2].previous_response_id, undefined, 'another project: whole');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('reasoning: a reasoning turn is stored with its encrypted item; the chained turn after it sends none; a whole send carries it back', async () => {
+  const c = await callKit([{ reasoning: { summary: '**Looking**', encrypted: 'gAAAAABenc' }, text: 'A' }, { text: 'B' }]);
+  try {
+    const r = await c.call([m1]);
+    assert.ok(r.reply.parts.some((/** @type {any} */ p) => p.type === 'reasoning' && p.signature));
+    const m2 = [...said([m1], r), msg('user', text('More?'))];
+    await c.call(m2);
+    const [, b2] = c.s.bodies();
+    assert.equal(b2.previous_response_id, 'resp_stand-in-1');
+    assert.ok(!JSON.stringify(b2.input).includes('reasoning'), 'OpenAI holds it');
+    await c.call([msg('user', text('Where else?')), ...m2.slice(1)]); // an edit: whole
+    const b3 = c.s.bodies()[2];
+    assert.equal(b3.previous_response_id, undefined);
+    assert.ok(b3.input.some((/** @type {any} */ x) => x.type === 'reasoning' && x.encrypted_content === 'gAAAAABenc'));
+    assert.equal(b3.store, true);
+  } finally {
+    await c.s.close();
+  }
 });

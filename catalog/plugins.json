@@ -127,7 +127,7 @@
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "description": "Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.",
       "category": "developer",
       "keywords": [],
@@ -135,7 +135,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 23823,
+      "size": 25359,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -143,14 +143,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "28285f595e121be67acfc998651e31c0c1fbcb391435156d3b11868a073dabc5",
-        "index.js": "7a56a2af02da3bbc934a24b8411dbd390141598f880ae141ae5ecb7438587d87"
+        "annai-plugin.json": "92c441de3ece0777108a32ca597031d7fc3ad0a55ccdc5db907cef9eaa7ad5ec",
+        "index.js": "c49734a05133c85c73475be80f7953193f91b81647dd3abdde1065e27a44701f"
       }
     },
     {
       "id": "provider-another-address",
       "name": "Custom provider",
-      "version": "2.1.3",
+      "version": "2.1.4",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -169,12 +169,12 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24746,
+      "size": 24707,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "bfced18f02ddd74b7b9b71acdc16ab9d56f73c81257a8512e9781290848268d7",
+        "annai-plugin.json": "85d6c758abb98336da5d3c7c2c1f556186dd0501edc30393f7c6e644f7ee581c",
         "index.js": "f17b0e95caa9396f8394859b06515a3c4f27705852bf2535106d3d5962b3f0c9",
         "probe.js": "3dd2da5ad8350f8d6eb43c003658f7dcf90deb6811116a358f94e6f2f64c4150"
       }
@@ -427,7 +427,7 @@
     {
       "id": "provider-openai",
       "name": "OpenAI",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
       "category": "providers",
       "keywords": [],
@@ -440,7 +440,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 13257,
+      "size": 13295,
       "requires": [
         {
           "id": "openai-responses",
@@ -453,7 +453,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "feec19e5007ea9363b086563c7476fcdd519f0c34f5330cb5ac5d1899783e267"
+        "annai-plugin.json": "d86189f4d64b3a6a87b48d6490e054a24c056b8401120edbd42465c38ce1c4e4"
       }
     },
     {

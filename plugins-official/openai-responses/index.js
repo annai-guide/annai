@@ -16,7 +16,7 @@ const TUNABLES = Object.freeze({
   encryptedReasoning: true, // asks models with reasoning levels for their reasoning as encrypted items, to send back (OpenAI sends them anyway); false for one that refuses it
   imageDetail: null, // e.g. "low", "high" or "original"; unset, the server chooses ("auto")
   uploads: true, // photos go to the files API once, then by id (spec §4.8)
-  keep: true, // OpenAI keeps the conversation between turns (30 days), so each sends only what is new; false for servers that ignore previous_response_id
+  keep: false, // OpenAI's own provider turns it on (provider-openai): keeping the conversation between turns, so each sends only what is new, needs a server that honors store and previous_response_id
 });
 // Responses refuses a smaller max_output_tokens (plan choice 14).
 const MIN_OUTPUT = 16;
@@ -45,13 +45,14 @@ export function activate(annai) {
     name: 'OpenAI Responses',
     tunables: TUNABLES,
     tail: true,
-    // OpenAI keeps a stored response 30 days, whatever the key. A chain is continued 46 hours after its first turn: a photo annai
-    // uploaded expires after 48, and a turn that points at one may fail after it, and a stored response whose earlier ones went is not trusted.
-    keeps: { name: 'OpenAI', days: 30, hours: 46, uniform: true, perModel: true },
+    // OpenAI keeps a stored response at least 30 days, whatever the key, so annai tracks each 35 (its deletion waits that long) and
+    // continues a chain 29 days after its first turn (a day short of 30, as an earlier response going would break the chain);
+    // a chain with a photo in it ends sooner, before the photo's upload expires (call.js).
+    keeps: { name: 'OpenAI', provider: 'provider-openai', days: 35, hours: 29 * 24, holds: 'at least 30 days', note: "OpenAI also shows stored responses in your organization's dashboard logs, to its other members.", perModel: true },
     /** @param {any} c */
     build: (c) => build(c),
     /** @param {Response} res @param {any} c */
-    read: (res, c) => read(res, sse, ProviderError, errorFromResponse, c?.keep === true),
+    read: (res, c) => read(res, sse, ProviderError, errorFromResponse, c?.keep === true, c?.kept?.id ?? null),
     classify,
     /** OpenAI's delete call for one kept response (200 with `deleted: true`; a response already gone is a 404, which annai counts as done). @param {{ endpoint: any, key: string | null, id: string }} c */
     forgetRequest: ({ endpoint, key, id }) => ({ url: join(endpoint.baseUrl, `/responses/${encodeURIComponent(id)}`), headers: auth(endpoint, key), method: /** @type {const} */ ('DELETE') }),
@@ -166,12 +167,33 @@ function replayable(signature) {
 }
 
 /**
+ * Names a response once, from the first object that carries it: a `kept` event when the call keeps it and the server did
+ * (an organization with Zero Data Retention answers `store: false`), then a check that the server continued the response it
+ * was told to: one that echoes none, or another, ignored it (a proxy that drops the field), and answered without the
+ * conversation. That is a turn forgotten, sent whole, and keeping stays off for the server until annai starts again.
+ * @param {any} ProviderError @param {boolean} keep @param {string | null} chained
+ */
+function namer(ProviderError, keep, chained) {
+  let named = false;
+  return function* (/** @type {any} */ r) {
+    if (named || !r || typeof r.id !== 'string' || !r.id) return;
+    named = true;
+    if (keep && r.store !== false) yield { type: 'kept', id: r.id };
+    if (chained && r.previous_response_id !== undefined && r.previous_response_id !== chained) {
+      throw new ProviderError('forgotten', 'The server ignored the conversation it was asked to continue, so annai sends it the whole conversation, and keeps nothing there until annai starts again.', { noChain: true });
+    }
+  };
+}
+
+/**
  * The events of a streamed response. Text, reasoning summaries and a call's arguments arrive as
  * they stream; each output item is given whole when it is done.
  * @param {Response} res @param {any} sse @param {any} ProviderError @param {any} errorFromResponse
  * @param {boolean} keep OpenAI keeps this turn, so its response is named first, as a `kept` event
+ * @param {string | null} chained the response this one continues
  */
-async function* read(res, sse, ProviderError, errorFromResponse, keep) {
+async function* read(res, sse, ProviderError, errorFromResponse, keep, chained) {
+  const name = namer(ProviderError, keep, chained);
   let body = res.body;
   // One whole response object, from a server that ignores stream: true: only application/json, not NDJSON or problem+json.
   if (/^application\/json\s*(;|$)/i.test(res.headers.get('content-type') ?? '')) {
@@ -186,7 +208,7 @@ async function* read(res, sse, ProviderError, errorFromResponse, keep) {
     }
     // A stream sent as JSON is still a stream.
     if (!/^\s*(data:|event:|:)/.test(text)) {
-      yield* readWhole(text, ProviderError, errorFromResponse, keep);
+      yield* readWhole(text, ProviderError, errorFromResponse, name);
       return;
     }
     body = new Response(text).body;
@@ -208,7 +230,6 @@ async function* read(res, sse, ProviderError, errorFromResponse, keep) {
   /** @type {any} */
   let done = null;
   let incomplete = false;
-  let named = false;
   for await (const { event, data } of sse(/** @type {ReadableStream<Uint8Array>} */ (body))) {
     if (data === '[DONE]') break;
     /** @type {any} */
@@ -219,10 +240,9 @@ async function* read(res, sse, ProviderError, errorFromResponse, keep) {
       continue;
     }
     const type = e.type ?? event;
-    if (keep && !named && e.response?.id && (type === 'response.created' || type === 'response.in_progress')) {
-      named = true;
-      yield { type: 'kept', id: String(e.response.id) };
-    } else if (type === 'response.output_text.delta') {
+    // Whichever event first carries the response names it (created, normally; a proxy may drop that one).
+    yield* name(e.response);
+    if (type === 'response.output_text.delta') {
       const lp = Array.isArray(e.logprobs) ? e.logprobs[0] : null;
       if (lp && !sentLogprobs) {
         sentLogprobs = true;
@@ -277,9 +297,9 @@ async function* read(res, sse, ProviderError, errorFromResponse, keep) {
  * The events of one whole response object (a server that ignores stream: true), in a stream's order:
  * each output item's own, then usage and the stop reason. An error in its place is that error, as an
  * HTTP error's would be.
- * @param {string} text @param {any} ProviderError @param {any} errorFromResponse @param {boolean} keep
+ * @param {string} text @param {any} ProviderError @param {any} errorFromResponse @param {ReturnType<typeof namer>} name
  */
-function* readWhole(text, ProviderError, errorFromResponse, keep) {
+function* readWhole(text, ProviderError, errorFromResponse, name) {
   /** @type {any} */
   let r;
   try {
@@ -287,13 +307,14 @@ function* readWhole(text, ProviderError, errorFromResponse, keep) {
   } catch {
     throw new ProviderError('server', "The endpoint answered with a whole reply annai can't read, rather than a stream.");
   }
+  // Named first, even a failed response: the call deletes what it kept.
+  yield* name(r);
   if (isObject(r?.error) && !Array.isArray(r.output)) {
     const e = errorFromResponse(typeof r.error.code === 'number' ? r.error.code : 500, JSON.stringify({ error: r.error }));
     throw new ProviderError(classify(e.status ?? 500, JSON.stringify({ error: r.error })) ?? e.kind, e.message, { status: e.status });
   }
   if (r?.status === 'failed') throw new ProviderError(streamKind(r.error?.code, r.error?.message), String(r.error?.message ?? 'The response failed.'));
   if (!Array.isArray(r?.output)) throw new ProviderError('server', 'The endpoint answered with a whole reply that had no answer in it.');
-  if (keep && typeof r.id === 'string' && r.id) yield { type: 'kept', id: r.id };
   let searches = 0;
   let called = false;
   let refused = false;
