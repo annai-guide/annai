@@ -20,7 +20,7 @@ export const KOE_CORE = [
 
 /** Koe's instructions in a live session (K5): it speaks itself, so it has no speak, wait or sleep (plan decision 29). */
 export const KOE_LIVE = [
-  `${KOE} in a live voice conversation. ${BEHIND}`, `- ${ANSWER.replace('Answer', 'Answer aloud')} show puts a card on the screen; ask shows buttons, and the user's tap comes as their next turn.`, STABLE,
+  `${KOE} in a live voice conversation. ${BEHIND}`, `- ${ANSWER.replace('Answer', 'Answer aloud')} Speak before any tool call, even if only a short acknowledgement; look in the trip's files (list, read) after. show puts a card on the screen; ask shows buttons, and the user's tap comes as their next turn.`, STABLE,
   `${CHANGES}first say aloud, briefly, that you're checking, then call tell_kokoro with the question, in the same turn: never leave the user in silence.`, NOTE('these instructions end with'),
   `${SILENT}.`, TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is a tap on ask's buttons; in the conversation so far, [said to the user] is what Shiori said without you.",
 ].join('\n');
