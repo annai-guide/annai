@@ -360,8 +360,8 @@ export async function saveProvider(ws, rec, models = []) {
   await ws.writeMany(SYS_SETTINGS, [{ path: providerPath(rec.id), content: rec }, ...models.map((m) => ({ path: modelPath(m.id), content: m }))], { author: 'user' });
 }
 
-/** Saves a model. Its provider must exist with its ability, and no other model may have its name. @param {Workspace} ws @param {ModelRecord} rec */
-export async function saveModel(ws, rec) {
+/** What makes a model record unsaveable: its provider must exist with its ability, and no other model may have its name. @param {Workspace} ws @param {ModelRecord} rec */
+async function checkModel(ws, rec) {
   const path = modelPath(rec.id);
   check(MODEL_SCHEMA, rec, path);
   const cfg = await readConfig(ws);
@@ -375,16 +375,35 @@ export async function saveModel(ws, rec) {
       throw new ValidationError(path, [`$.name: "${name}" is already used by another model`]);
     }
   }
-  await ws.write(SYS_SETTINGS, path, rec, { author: 'user' });
+}
+
+/** Saves a model. Its provider must exist with its ability, and no other model may have its name. @param {Workspace} ws @param {ModelRecord} rec */
+export async function saveModel(ws, rec) {
+  await checkModel(ws, rec);
+  await ws.write(SYS_SETTINGS, modelPath(rec.id), rec, { author: 'user' });
 }
 
 /**
- * Records what a Test found on a model: only `verified`, merged in under the model's file lock, so a field the user saved while
- * the Test ran (it can take seconds) is not written back as it was. A model removed meanwhile stays removed.
+ * Changes a model as it is stored: fn gets the record and gives the new one, read and written in the file's lock, so what is
+ * recorded between (a Test's result, a field saved from another page) is not lost. Checked as saveModel checks.
+ * @param {Workspace} ws @param {string} id @param {(rec: ModelRecord) => ModelRecord} fn @returns {Promise<ModelRecord>} the record as saved
+ */
+export function updateModel(ws, id, fn) {
+  return ws.update(SYS_SETTINGS, modelPath(id), async (/** @type {ModelRecord} */ rec) => {
+    const next = fn(rec);
+    await checkModel(ws, next);
+    return next;
+  }, { author: 'user' });
+}
+
+/**
+ * Records what a Test found on a model: only `verified`, changed in the model's file lock, so a field the user saved while the Test
+ * ran (it can take seconds) is not written back as it was. What it names replaces what was there under that name (a level no longer
+ * tried is no longer listed). A model removed meanwhile stays removed.
  * @param {Workspace} ws @param {string} id @param {Record<string, any>} verified
  */
 export async function markVerified(ws, id, verified) {
-  await ws.patch(SYS_SETTINGS, modelPath(id), { verified }, { author: 'user' }).catch((/** @type {unknown} */ e) => {
+  await ws.update(SYS_SETTINGS, modelPath(id), (/** @type {ModelRecord} */ rec) => ({ ...rec, verified: { ...(rec.verified ?? {}), ...verified } }), { author: 'user' }).catch((/** @type {unknown} */ e) => {
     if (!(e instanceof NotFoundError)) throw e;
   });
 }

@@ -3,7 +3,7 @@ import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
-import { modelOf, providerOf, saveModel } from '../llm/config.js';
+import { modelOf, providerOf, updateModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
@@ -1919,7 +1919,7 @@ export class Agent {
       const names = images.formats.map((x) => x.replace('image/', '').toUpperCase()).join(' or ');
       return this.#cantSend(`This model takes photos only as ${names}, which this browser can't make. A plugin that adds ${names} would fix it (Settings → Plugins).`, wakeId);
     }
-    await saveModel(this.ws, { ...rec, user: { ...(rec.user ?? {}), images } });
+    await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images } }));
     // Too many photos: the oldest go as stubs, and no photo is made again.
     if (learned.maxCount && !learned.maxBytes && !learned.maxEdge && !learned.formats?.length) {
       return { ...request, messages: limitImages(request.messages, images.maxCount) };

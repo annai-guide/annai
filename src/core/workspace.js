@@ -122,6 +122,23 @@ export class Workspace {
     });
   }
 
+  /**
+   * Changes a JSON file in the path's lock: fn gets what is stored and gives the new content, so nothing written between the read
+   * and the write is lost (a Test's result recorded while a field is saved, say). A file that is not there is not found.
+   * @param {string} scope @param {string} path @param {(current: any) => any | Promise<any>} fn @param {WriteOptions} opts
+   * @returns {Promise<any>} the new content
+   */
+  async update(scope, path, fn, opts) {
+    const p = normPath(path);
+    return this.#locked(scope, p, async () => {
+      const current = await this.readJSON(scope, p);
+      if (current === undefined) throw new NotFoundError(p);
+      const next = await fn(current);
+      await this.#write(scope, p, next, opts);
+      return next;
+    });
+  }
+
   /** @param {string} scope @param {string} path @param {WriteOptions} opts */
   async delete(scope, path, opts) {
     const p = normPath(path);

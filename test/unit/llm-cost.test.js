@@ -341,3 +341,12 @@ test('pricesProblem also flags a base name annai does not know and a bad tier', 
   assert.match(String(pricesProblem({ tiers: [{ above: 100, input: -5 }] })), /input is not a price/);
   assert.match(String(pricesProblem({ schedule: [{ from: '2027-01-01', tiers: [{ above: 'x' }] }] })), /tier.*above/);
 });
+
+test("one save that changes a base price and the same price in a schedule entry keeps both: the entry's new value is the user's word for its date", async () => {
+  const { edit, effective } = await priceBox();
+  await edit((b) => { b.schedule[0].output = 9; }); // a schedule of the user's own
+  await edit((b) => { b.input = 0.4; b.schedule[0].input = 2; });
+  const prices = /** @type {any} */ (await effective());
+  assert.equal(prices.input, 0.4, 'before the date');
+  assert.deepEqual(pricesAtOf(prices), { input: 2, output: 9, cacheRead: 0.15 }, 'from the date the entry says 2');
+});
