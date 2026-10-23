@@ -9,7 +9,7 @@ import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName } from '..
  */
 export function languagesSection(ctx, app) {
   const first = languageSettings(app, navigator.language);
-  let ids = first.spoken.map((l) => l.id);
+  let ids = first.spoken.map((l) => l.id).filter((id) => LANGUAGES.some((l) => l.id === id)); // a browser language annai has no codes for is no pick
   let chosen = first.explicit;
   const name = (/** @type {string} */ id) => LANGUAGES.find((l) => l.id === id)?.name ?? id;
   const own = (/** @type {string} */ id) => { const l = LANGUAGES.find((x) => x.id === id); return l && nativeName(l) !== l.name ? nativeName(l) : ''; };

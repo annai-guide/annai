@@ -1,5 +1,5 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
-import { languageOf, named } from '../languages.js';
+import { languageOf, listedFor, named } from '../languages.js';
 
 export { languageOf };
 
@@ -91,7 +91,7 @@ export function summaryLanguage(said, languages) {
   if (languages?.answer) return `${languages.answer.name}, the language Shiori answers in`;
   if (languages?.explicit) {
     const guess = last ? languageOf(last) || languageOf(lines.join('\n')) : '';
-    const wrote = languages.spoken.find((l) => guess === l.name || (guess === 'Chinese' && /^(zh|yue)$/.test(l.id)));
+    const wrote = guess ? listedFor(guess, languages.spoken) : null;
     return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
   }
   if (!last) return "English, the app's language (the user hasn't written anything yet)";

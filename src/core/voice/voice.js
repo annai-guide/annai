@@ -14,7 +14,7 @@ import { pickFormat, pickOut, CODEC_ORDER } from './formats.js';
 import { listen } from './listening.js';
 import { micProblem } from './mic.js';
 import { browserVoiceFor } from './where.js';
-import { languageSettings, modelLanguages, speakerLine, speechLocale } from '../languages.js';
+import { languageSettings, modelLanguages, speakerLine, speechLocale, dictationLocale } from '../languages.js';
 import { record as logEvent } from '../agent/log.js';
 import { encodeWav } from './pcm.js';
 import { sha256Hex } from '../hash.js';
@@ -139,10 +139,15 @@ export class Voice {
     return languageSettings(await readAppSettings(this.ws), this.locale);
   }
 
-  /** Whether phone dictation recognizes speech on this phone, for this language, now (spec §11.7). @returns {Promise<boolean>} */
+  /** The language phone dictation listens in: the first the user speaks (it takes one), whatever Shiori answers in. */
+  async dictationLocale() {
+    return dictationLocale(await this.languages());
+  }
+
+  /** Whether phone dictation recognizes speech on this phone, for the language it listens in, now (spec §11.7). @returns {Promise<boolean>} */
   async dictationLocal() {
     try {
-      return Boolean(await this.platform?.dictation.local?.(this.locale));
+      return Boolean(await this.platform?.dictation.local?.(await this.dictationLocale()));
     } catch {
       return false;
     }
@@ -540,7 +545,7 @@ export class Voice {
     try {
       const session = await listen({
         // Web Speech takes one language: the first the user speaks (Settings → Shiori), else the browser's own.
-        platform, kind, pauseMs, lang: speechLocale(await this.languages()), now: this.now, onSpeech, onQuiet, onError, local, recording,
+        platform, kind, pauseMs, lang: await this.dictationLocale(), now: this.now, onSpeech, onQuiet, onError, local, recording,
         onLevel: (x) => this.#level(x, 'you'),
         onSegment: (h) => {
           this.memory.keep(h, scope);
@@ -610,7 +615,7 @@ export class Voice {
           // The sound goes as each model it reaches takes it, and only as sound.
           const out = await this.llm.call({
             role, prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
-            request: { system: `${WRITE_DOWN} ${speakerLine(await this.languages())}`, messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
+            request: { system: [WRITE_DOWN, speakerLine(await this.languages())].filter(Boolean).join(' '), messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
           });
           who = out.modelId ?? hearer;
           return String(out.reply.text ?? '').trim();

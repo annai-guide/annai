@@ -1,6 +1,7 @@
 import { TALK_TAG, KOE_TAG, record, storedTexts, blobBytes } from './log.js';
 import { toBase64 } from '../bytes.js';
 import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
+import { strayNote } from '../languages.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -178,7 +179,7 @@ export class Transcript {
     } else if (e.type === 'heard') {
       // What the microphone heard (spec §10.3); its words come with it (dictation) or later (heard.text).
       /** @type {Part} */
-      const speech = { type: 'speech', id: d.id, ...(typeof d.text === 'string' ? { text: d.text } : {}), ...(d.clip ? { clip: d.clip } : {}) };
+      const speech = { type: 'speech', id: d.id, ...(typeof d.text === 'string' ? { text: d.strayLanguage ? `${d.text}${strayNote(d.strayLanguage)}` : d.text } : {}), ...(d.clip ? { clip: d.clip } : {}) };
       // Heard by this half: an answer is part of its call's result. Heard by the other: a line (Kokoro hears all).
       const own = this.half === 'one' || this.#mine(d);
       if (d.answer && own) {
@@ -195,7 +196,8 @@ export class Transcript {
       }
     } else if (e.type === 'heard.text') {
       // A segment's words, written down later: every place it is sent now sends them (spec §10.3).
-      const text = koe ? theirs(String(d.text ?? '')) : String(d.text ?? '');
+      const words = koe ? theirs(String(d.text ?? '')) : String(d.text ?? '');
+      const text = d.strayLanguage ? `${words}${strayNote(d.strayLanguage)}` : words;
       const had = this.#heard.get(d.of);
       if (had?.type === 'speech') this.#heard.set(d.of, { ...had, text });
       /** @type {Map<Part, Part>} */

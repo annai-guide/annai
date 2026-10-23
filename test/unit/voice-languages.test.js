@@ -49,7 +49,7 @@ test('a transcription model is given what the user speaks, once they have chosen
   assert.equal(k.llm.uploads[1].languages.answer, null);
 });
 
-test('phone dictation listens in the first language listed (it takes one tag); with none chosen, in the browser\'s own', async () => {
+test('phone dictation listens in the first language listed (it takes one tag), whatever Shiori answers in; with none chosen, in the browser\'s own', async () => {
   const k = await kit(undefined, 'en-GB');
   const open = async () => {
     const s = await k.voice.open({ kind: 'dictation', onSegment: () => {}, onError: (e) => assert.fail(e) });
@@ -61,6 +61,23 @@ test('phone dictation listens in the first language listed (it takes one tag); w
   assert.equal(await open(), 'ja-JP');
   await updateAppSettings(k.ws, { languages: { spoken: ['zh', 'ja'] } });
   assert.equal(await open(), 'zh-CN');
+  // A fixed answer language is for her voice, not for your ears (review item 1).
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'], answer: 'ja' } });
+  assert.equal(await open(), 'en-US');
+  assert.equal(k.platform.dictationOpened.length, 4);
+});
+
+test('"on this phone only" is asked about the language dictation will listen in, not the browser\'s (Step S5)', async () => {
+  const k = await kit(undefined, 'en-GB');
+  await k.voice.dictationLocal();
+  assert.equal(k.platform.dictationAsked.at(-1), 'en-GB');
+  await updateAppSettings(k.ws, { languages: { spoken: ['ja', 'en'] } });
+  await k.voice.dictationLocal();
+  assert.equal(k.platform.dictationAsked.at(-1), 'ja-JP');
+  const s = await k.voice.open({ kind: 'dictation', onSegment: () => {}, onError: (e) => assert.fail(e) });
+  s.stop();
+  assert.equal(k.platform.dictationAsked.at(-1), 'ja-JP', 'and opening a session asks about the same one');
+  assert.equal(k.platform.dictationOpened.at(-1).lang, 'ja-JP');
 });
 
 test('the browser voice says each sentence in the language it is written in, among those listed; a fixed answer language wins', async () => {
@@ -75,14 +92,17 @@ test('the browser voice says each sentence in the language it is written in, amo
   assert.equal(k.platform.said.at(-1).lang, 'ja-JP');
 });
 
-test('the model that writes down what it heard is told the languages, and not to translate', async () => {
+test('the model that writes down what it heard is told the languages, and not to translate, once the user has chosen them; before that it gets no hint (review item 13)', async () => {
   const k = await kit({ main: [{ id: 'm1', input: ['text', 'audio'] }], speechIn: ['send-audio', 'dictation'], reply: 'tacos please' });
+  const h0 = await hear(k);
+  await k.voice.writeDown(h0.id, { scope: 'trip-1', wake: 'w-1', hearer: 'm1' });
+  assert.equal(k.llm.systems.at(-1), WRITE_DOWN, 'nothing chosen: the browser\'s language is no evidence of what is spoken');
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   const h = await hear(k);
   await k.voice.writeDown(h.id, { scope: 'trip-1', wake: 'w-1', hearer: 'm1' });
   assert.equal(k.llm.systems.at(-1), `${WRITE_DOWN} The speaker uses English or Japanese: write each in the language spoken and never translate.`);
-  const plain = await kit({ main: [{ id: 'm1', input: ['text', 'audio'] }], speechIn: ['send-audio', 'dictation'], reply: 'tacos please' });
-  const h2 = await hear(plain);
-  await plain.voice.writeDown(h2.id, { scope: 'trip-1', wake: 'w-1', hearer: 'm1' });
-  assert.equal(plain.llm.systems.at(-1), `${WRITE_DOWN} The speaker uses English: write it in the language spoken and never translate.`);
+  await updateAppSettings(k.ws, { languages: { spoken: ['en'] } });
+  const h2 = await hear(k);
+  await k.voice.writeDown(h2.id, { scope: 'trip-1', wake: 'w-1', hearer: 'm1' });
+  assert.equal(k.llm.systems.at(-1), `${WRITE_DOWN} The speaker uses English: write it in the language spoken and never translate.`);
 });
