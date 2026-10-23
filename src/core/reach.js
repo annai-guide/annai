@@ -10,11 +10,14 @@ import { blobsOf, isName } from './events.js';
  * @typedef {import('./types.js').Store} Store @typedef {import('./types.js').BlobRecord} BlobRecord
  */
 
-/** Whether a scope reaches a hash, in a transaction over files and events. @param {import('./types.js').Tx} t @param {string} scope @param {unknown} hash */
-export async function reachable(t, scope, hash) {
+/**
+ * Whether a scope reaches a hash, in a transaction over files and events. @param {import('./types.js').Tx} t @param {string} scope @param {unknown} hash
+ * @param {{ me?: boolean }} [o] me false: the scope's own names alone, not the user's own files beside a trip's (a restored version)
+ */
+export async function reachable(t, scope, hash, { me = true } = {}) {
   if (!isName(hash)) return false;
   const h = /** @type {string} */ (hash);
-  return (await t.blobNamedIn(h, scope)) || (kindOf(scope) === 'trip' && t.blobNamedIn(h, ME, { events: false }));
+  return (await t.blobNamedIn(h, scope)) || (me && kindOf(scope) === 'trip' && t.blobNamedIn(h, ME, { events: false }));
 }
 
 /**

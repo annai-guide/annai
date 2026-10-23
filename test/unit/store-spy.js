@@ -15,3 +15,15 @@ export function noteQueries(store) {
   })));
   return queries;
 }
+
+/** Notes the stores each transaction a store runs opens. @param {any} store @returns {string[][]} */
+export function noteStores(store) {
+  /** @type {string[][]} */
+  const opened = [];
+  const tx = store.tx.bind(store);
+  store.tx = (/** @type {string[]} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => {
+    opened.push([...names]);
+    return tx(names, mode, fn);
+  };
+  return opened;
+}

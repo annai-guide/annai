@@ -1953,7 +1953,7 @@ export class Agent {
         output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
-      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model);
+      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope);
     }
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
@@ -2005,8 +2005,9 @@ export class Agent {
    * DESCRIBE_S; either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
    * @param {AbortSignal} signal @param {{ input?: string[] }} [model] the model the result is for
    * @param {Map<string, string>} [failed] a helper's tellings that failed, by what was sent: not sent again in its task
+   * @param {string} [scope] the conversation the tool ran for, its photos read for it
    */
-  async #described(output, wakeId, signal, model, failed) {
+  async #described(output, wakeId, signal, model, failed, scope = this.scope) {
     const cfg = await this.llm.config();
     const roles = [...(cfg.roles?.utility?.models?.length ? ['utility'] : []), 'main'];
     /** @type {string[]} */
@@ -2018,11 +2019,11 @@ export class Agent {
         said.push(pdf ? "No model here can read PDFs, so what it says can't be told." : "No model here can see photos, so what it shows can't be told.");
         return;
       }
-      const bytes = m.data ? null : await blobBytes(this.store, this.scope, m.hash ?? '');
+      const bytes = m.data ? null : await blobBytes(this.store, scope, m.hash ?? '');
       // A PDF told already in this conversation is told from those words, not sent again (the fix pass): keyed by the bytes told,
       // their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
       const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';
-      const told = pdf && key ? `${this.scope}\n${key}` : '';
+      const told = pdf && key ? `${scope}\n${key}` : '';
       if (told && this.#toldPdfs.has(told)) return void said.push(/** @type {string} */ (this.#toldPdfs.get(told)));
       const tried = key ? `${kind}\n${key}` : '';
       if (failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
