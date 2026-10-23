@@ -84,7 +84,7 @@ export class LiveKoe {
   /** When the user's turn began; the pause that ends a sentence. */
   #turnAt = 0;
   #pauseMs = 700;
-  /** Waiting for an answer: to a text turn's words, or the user's turn (null). @type {{ timer: any, text: string | null } | null} */
+  /** Waiting for an answer: to a text turn's words, or the user's turn (null); tools: tool calls came, and nothing else yet. @type {{ timer: any, text: string | null, tools: boolean } | null} */
   #due = null;
   /** A silent session was replaced already, with no answer since: the next silence is only traced. */
   #rescued = false;
@@ -558,7 +558,7 @@ export class LiveKoe {
   /** Waits for the answer to a text turn (its words) or the user's turn (null); undefined: stops. @param {string | null | undefined} text */
   #answer(text) {
     clearTimeout(this.#due?.timer);
-    this.#due = text === undefined || this.state === 'closed' ? null : { text, timer: null };
+    this.#due = text === undefined || this.state === 'closed' ? null : { text, timer: null, tools: false };
     this.#arm();
   }
 
@@ -646,7 +646,7 @@ export class LiveKoe {
   #on(s, e) {
     if (s !== this.#s) return; // a connection being left
     if (e.type !== 'usage' && e.type !== 'resume') this.#poke();
-    if (['audio', 'said', 'tool', 'turn'].includes(e.type)) {
+    if (this.#answers(e)) {
       this.#answer(undefined); // it answers
       this.#rescued = false;
     }
@@ -681,6 +681,19 @@ export class LiveKoe {
       if (!t.spoken && realWord(t.said)) this.#speak(t);
     }
     this.#changed();
+  }
+
+  /**
+   * Whether it answers: a text turn, anything; the user's, sound or a word, or an empty turn (not meant for Shiori), never tool
+   * calls alone (already_told left a "yes" in silence: the realtime check, 2026-10-22). @param {import('../llm/contract.js').LiveEvent} e
+   */
+  #answers(e) {
+    const due = this.#due;
+    if (e.type === 'audio' || (e.type === 'said' && realWord(e.text))) return true;
+    if (e.type !== 'tool' && e.type !== 'turn') return false;
+    if (due?.text !== null) return true;
+    if (e.type === 'tool') due.tools = true;
+    return e.type === 'turn' && !due.tools;
   }
 
   /** Koe's first real word: what was heard is written, and its voice starts (decision 11). @param {Turn} t */
