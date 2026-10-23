@@ -291,17 +291,27 @@ export async function addProvider(page, provider, { ability = 'Chat', name, url,
 }
 
 /**
+ * Goes to a screen of the app by its hash, in the page, as a tap on a link does; the next action waits for what it needs on that screen.
+ * Not page.goto, which for an address that differs from the page's only by its hash waits on the browser's navigation events:
+ * in WebKit it timed out at 90 s on the Add screen, twice (providers.spec.js, 2026-10-23; not reproduced on a slow container).
+ * @param {import('@playwright/test').Page} page @param {string} hash
+ */
+export async function goToHash(page, hash) {
+  await page.evaluate((h) => { location.hash = h; }, hash);
+}
+
+/**
  * Installing from a file starts at the Add screen: picks the file there, and the install screen opens.
  * @param {import('@playwright/test').Page} page @param {{ name: string, mimeType: string, buffer: Buffer }} file
  */
 export async function pickFile(page, file) {
-  await page.goto('/#/add');
+  await goToHash(page, '#/add');
   await page.getByLabel('Install from a file').setInputFiles(file);
 }
 
 /** Installing from an address starts at the Add screen: Get it, and the install screen opens. @param {import('@playwright/test').Page} page @param {string} url */
 export async function pickAddress(page, url) {
-  await page.goto('/#/add');
+  await goToHash(page, '#/add');
   await page.getByLabel('Address of a plugin or skill').fill(url);
   await page.getByRole('button', { name: 'Get it' }).click();
 }
@@ -404,6 +414,17 @@ export async function fakeMicrophone(page, clips, { loopback = false } = {}) {
       const source = ctx.createBufferSource();
       source.buffer = await ctx.decodeAudioData(bytes.buffer);
       const out = ctx.createMediaStreamDestination();
+      // A faint hiss under everything, as a real microphone has: the detector learns its floor from the first frames with sound in them,
+      // and a floor learned from the first frame of speech (the digital silence before it having gone unheard, as it does on a slow
+      // machine) hears no speech in the speech.
+      const hiss = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const noise = hiss.getChannelData(0);
+      for (let i = 0; i < noise.length; i++) noise[i] = (Math.random() * 2 - 1) * 0.0005;
+      const rustle = ctx.createBufferSource();
+      rustle.buffer = hiss;
+      rustle.loop = true;
+      rustle.connect(out);
+      rustle.start();
       source.connect(out);
       source.start(ctx.currentTime + 0.4);
       if (loop) {

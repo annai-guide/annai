@@ -2091,6 +2091,7 @@ export class Agent {
     let ms = 0;
     // Kokoro's output tools while Koe talks (plan decision 15).
     const gated = tool && !o.signal.aborted && this.#half.gate ? await this.#half.gate({ id: c.id, name: c.name, input, wake: o.wakeId }) : null;
+    const toldBefore = this.#facts.told;
     if (c.name === 'tell_koe' || c.name === 'tell_kokoro' || gated?.told) this.#facts.told = true;
     if (o.signal.aborted) output = { content: STOPPED, isError: true };
     else if (gated) output = { content: gated.content, ...(gated.isError ? { isError: true } : {}) };
@@ -2114,6 +2115,9 @@ export class Agent {
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope);
     }
+    // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
+    // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
+    if (c.name === 'tell_koe' && output.isError) this.#facts.told = toldBefore;
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
     const media = async (/** @type {any} */ m) => {

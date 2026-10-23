@@ -23,7 +23,10 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
     // A voice goes ahead of the browser voice, which stays last.
     await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. tts-test', "2. Browser voice (the browser's own; some voices go online)"]);
     await page.getByRole('link', { name: /Stand-in voice/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Stand-in voice' })).toBeVisible();
     await page.getByRole('link', { name: /^tts-test/ }).click();
+    // The provider's page has a Play a sample too: the model's page first, or the press tests the page being left (CI, 2026-10-19).
+    await expect(page.getByRole('heading', { level: 1, name: 'tts-test' })).toBeVisible();
     await page.getByRole('button', { name: 'Play a sample' }).click();
     await expect(page.getByText('It works: that was this voice.')).toBeVisible();
     const [body] = speech.bodies('/v1/audio/speech');
@@ -44,7 +47,9 @@ test("a transcription model's Test: you say something and it writes it down, sen
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Stand-in ears', url: `${asr.origin}/v1`, key: 'sk-asr-test', model: 'asr-test' });
     await page.getByRole('link', { name: /Stand-in ears/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Stand-in ears' })).toBeVisible();
     await page.getByRole('link', { name: /^asr-test/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'asr-test' })).toBeVisible();
     await page.getByRole('button', { name: 'Say something' }).click();
     await expect(page.getByText('It heard: "Where should we stop for lunch?"')).toBeVisible({ timeout: 20_000 });
     const [body] = asr.bodies('/v1/audio/transcriptions');

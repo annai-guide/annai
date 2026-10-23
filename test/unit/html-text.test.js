@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { htmlToText } from '../../src/core/html-text.js';
+import { cpuMs } from './cpu.js';
 
 test('readable text from a page: no scripts, styles or comments; the main part; blocks on their own lines; links kept', () => {
   const html = `<!doctype html><html><head><title>Nepenthe &amp; Café</title><style>p{}</style><script>alert(1)</script></head>
@@ -17,7 +18,7 @@ test('a page without main or article keeps its body', () => {
 });
 
 test('a hostile or huge page is read in linear time: unclosed links, scripts and comments, many tags', () => {
-  const started = Date.now();
+  const started = cpuMs();
   const nasty = [
     '<a href="x">'.repeat(100_000),
     '<script>'.repeat(50_000),
@@ -27,7 +28,7 @@ test('a hostile or huge page is read in linear time: unclosed links, scripts and
     `<main><p>Kept</p></main>${'<p>'.repeat(200_000)}`,
   ];
   for (const html of nasty) htmlToText(html, 'https://x.test/');
-  assert.ok(Date.now() - started < 1500, `took ${Date.now() - started} ms`);
+  assert.ok(cpuMs() - started < 1500, `took ${Math.round(cpuMs() - started)} ms of CPU`);
   assert.equal(htmlToText('<p>a</p><script>never closed <p>b</p>').text, 'a');
   assert.equal(htmlToText('<p>One</p><!-- never closed <p>Two</p>').text, 'One');
 });

@@ -96,12 +96,17 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await addGitHub(page, gh);
     await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
     await expect(page.getByText(/^An? (iPhone|Android phone|computer) backed up to me\/annai-backup/)).toBeVisible();
+    const mark = gh.log.length;
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
     await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel('Replace my profile and memory with the ones in this file')).toBeChecked();
     await expect(page.getByLabel('Replace my settings')).toBeChecked();
     await page.getByRole('button', { name: 'Import' }).click();
     await expect(page.getByText("annai's next backup to that place builds on this one.")).toBeVisible();
+    // The backup it imported is the commit it read first, from the stand-in's own log: not the newest at the wipe, which a backup still
+    // going out from the old phone as it was erased could have replaced.
+    const imported = gh.log.slice(mark).map((l) => (l.method === 'GET' ? /\/git\/commits\/([0-9a-f]{40})$/.exec(l.path)?.[1] : undefined)).find(Boolean);
+    expect(imported, 'the import read a backup commit').toBeDefined();
     await page.getByRole('link', { name: 'Open Big Sur' }).click();
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932, at dawn');
@@ -110,10 +115,10 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
     await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
-    // The restored phone builds on that backup: its next one goes on top, with no warning.
-    await expect.poll(() => gh.commits(REPO).length, { timeout: 30_000 }).toBe(4);
-    const [restored, before] = gh.commits(REPO);
-    expect(restored.parents).toEqual([before.sha]);
+    // The restored phone builds on that backup: its next one goes on top, with no warning. (How many it makes while the test looks at the
+    // photo depends on how slowly it goes: on a slow machine the backup of what the restore changed can come in two, so its count is not
+    // asserted; the one that must stand on the backup that was restored is the first, and it is polled for itself.)
+    await expect.poll(() => gh.commits(REPO).find((c) => c.parents[0] === imported)?.parents, { timeout: 30_000, message: 'a backup made after the restore, on top of the one imported' }).toEqual([imported]);
   } finally {
     await gh.stop();
   }
