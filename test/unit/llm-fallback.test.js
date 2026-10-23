@@ -429,3 +429,24 @@ test("Koe fix pass 10: a rest past 10 minutes (a provider's day limit) is said p
   const s = setup([[{ error: 'rate', retryAfter: 60_000, message: 'Slow down.' }], [{ text: 'B.' }]]);
   assert.equal((await call(s)).attempts[0].error, 'Slow down.');
 });
+
+test("scripted rules: a request after the model's own tool results is a follow-up (its rule's `then`) even when words were added after the results in the same message, such as what Koe said; a new wake's reason makes it a new request", async () => {
+  const type = scriptedType();
+  const endpoint = { id: 'e-1', tunables: { rules: [{ match: 'the user wrote', reply: { toolCalls: [{ name: 'list', input: {} }] }, then: { text: 'Done.' } }] } };
+  /** @param {any} request */
+  const run = async (request) => {
+    /** @type {any[]} */
+    const out = [];
+    for await (const ev of type.run({ endpoint, request })) out.push(ev);
+    return out;
+  };
+  const results = { type: 'tool_result', id: 'scripted_0_0', content: 'ok' };
+  const user = [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }];
+  await run({ messages: user, tail: 'woke for: the user wrote\n' });
+  const said = { type: 'text', text: '[Koe said] "I\'m checking."' };
+  const after = (/** @type {any[]} */ parts, /** @type {string} */ tail) => run({ messages: [...user, { role: 'assistant', parts: [] }, { role: 'user', parts }], tail });
+  assert.equal((await after([results], 'connection: online\n')).map((e) => e.text ?? '').join(''), 'Done.', 'results last');
+  assert.equal((await after([results, said], 'connection: online\n')).map((e) => e.text ?? '').join(''), 'Done.', 'a note after the results, no new wake');
+  const fresh = await after([results, said], 'woke for: the weather changed\nconnection: online\n');
+  assert.ok(!fresh.some((e) => e.text === 'Done.'), 'a new wake is matched on its own: no rule here, so she sleeps');
+});
