@@ -41,8 +41,12 @@ test('the Node runner: the same relay over HTTP, its key in a file only its owne
 });
 
 test('over HTTP, on real timers, a reminder reaches the push service at its time', async () => {
+  const jwk = await newVapidJwk();
   const service = await startPushService();
-  const r = await startRelay({ jwk: await newVapidJwk(), extraPushOrigins: [service.origin] });
+  const r = await startRelay({ jwk, extraPushOrigins: [service.origin] }).catch(async (e) => {
+    await service.stop();
+    throw e;
+  });
   try {
     const sub = await service.subscribe(r.key);
     const payload = await encryptPush(sub, utf8('Now.'), { pad: 3072 });

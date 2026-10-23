@@ -14,10 +14,18 @@ export const tone = (seconds = 0.6) => new Uint8Array(Int16Array.from({ length: 
  */
 export async function liveKit(turns, o = {}) {
   const server = await startRealtimeServer({ flavour: o.live?.type === 'openai-realtime' ? 'openai' : 'gemini', turns, pace: o.pace ?? 0.05, ...o.server });
-  const k = await agentKit(o.kokoro ?? [{ rules: [{ match: '.', reply: sleep }] }], {
-    live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], ...o.voice },
-  });
-  await k.agent.idle();
+  /** @type {Awaited<ReturnType<typeof agentKit>>} */
+  let k;
+  try {
+    k = await agentKit(o.kokoro ?? [{ rules: [{ match: '.', reply: sleep }] }], {
+      live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], ...o.voice },
+    });
+    await k.agent.idle();
+  } catch (e) {
+    // A kit that can't be built lets go of its server, or the open socket keeps the run from ending.
+    await server.stop();
+    throw e;
+  }
   return { ...k, server, done: async () => { k.agent.hush('away'); await server.stop(); } };
 }
 /** @param {any} k @param {string} [state] the live.session entries, or those in one state */

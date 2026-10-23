@@ -24,7 +24,10 @@ test("item 1 (probe K2): a typed message when no live session can open: Kokoro i
     { match: 'the user wrote', reply: { delayMs: 150, ...speak('Kokoro here: tacos ahead.') } },
     { match: "Koe can't speak", reply: speak('Kokoro, directly: tacos ahead.') },
     { match: '.', reply: sleep },
-  ] }], { live: { origin: server.origin }, voice: { speechIn: ['m-hear'] } });
+  ] }], { live: { origin: server.origin }, voice: { speechIn: ['m-hear'] } }).catch(async (e) => {
+    await server.stop();
+    throw e;
+  });
   try {
     await k.agent.idle();
     assert.equal(k.agent.koeState, 'live');
