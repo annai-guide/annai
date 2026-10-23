@@ -74,6 +74,15 @@ function makeTx(d, mode, allowed) {
       }
       return false;
     },
+    async blobNamedIn(hash, scope, { events = true } = {}) {
+      if (typeof hash !== 'string' || !hash) return false;
+      for (const f of use('files').values()) if (f.scope === scope && f.hash === hash) return true;
+      if (!events) return false;
+      for (const e of use('events').values()) {
+        if (e.scope === scope && ((e.refs ?? []).includes(hash) || e.data?.old === hash || e.data?.new === hash)) return true;
+      }
+      return false;
+    },
     async listBlobs() { return [...use('blobs').values()].map((b) => ({ hash: b.hash, size: b.size })); },
     async scopesWithData() {
       return [...new Set([...use('files').values(), ...use('events').values()].map((x) => x.scope))].sort();

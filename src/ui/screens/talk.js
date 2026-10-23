@@ -1,7 +1,8 @@
 import { h, whenGone, checkbox } from '../dom.js';
 import { renderCard, cardWho } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
-import { storedTexts, blobBytes } from '../../core/agent/log.js';
+import { storedTexts } from '../../core/agent/log.js';
+import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
@@ -112,11 +113,11 @@ export async function renderTalk(ctx) {
     .map((/** @type {any} */ e) => [e.data?.old, e.data]));
   /** @type {string[]} the photos' addresses, whose memory goes with the screen */
   const urls = [];
-  /** The photos the user sent, as Shiori was sent them; a tap opens one full size. @param {any} images */
+  /** The photos the user sent, as Shiori was sent them, read for this conversation (reach.js); a tap opens one full size. @param {any} images */
   const sentPhotos = async (images) => {
     const out = [];
     for (const im of Array.isArray(images) ? images : []) {
-      const bytes = await blobBytes(ctx.store, latestCopy(String(im?.hash ?? ''), replaced));
+      const bytes = await blobBytes(ctx.store, scope, latestCopy(String(im?.hash ?? ''), replaced), { via: 'the conversation' });
       if (!bytes) continue;
       const url = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (bytes)], { type: String(im.mediaType ?? 'image/webp') }));
       urls.push(url);

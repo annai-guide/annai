@@ -2,6 +2,7 @@ import { h, field } from '../dom.js';
 import { formatCost, bytes, withArticle } from '../format.js';
 import { costs } from '../../core/agent/budgets.js';
 import { toolSwitchList } from './tools.js';
+import { readBlob } from '../../core/reach.js';
 
 /** What each kind of entry is, for the Kind filter. */
 const KINDS = /** @type {Record<string, string[] | null>} */ ({
@@ -17,7 +18,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   // so they never crowd the firings out of the newest 300 (B5).
   'On the road': ['trigger.fired', 'state', 'reminder'],
   Location: ['location'],
-  Errors: ['error', 'plugin.error', 'plugin.disabled'],
+  Errors: ['error', 'plugin.error', 'plugin.disabled', 'content.refused'],
   Plugins: ['plugin.install', 'plugin.update', 'plugin.reset', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
   Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
   Notifications: ['push.sync', 'push.shown', 'push.opened'],
@@ -120,6 +121,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   // A deletion of a turn the provider kept (G2).
   if (e.type === 'net.request' && d.kind === 'forget') return `kept turn ${d.outcome === 'ok' ? 'deleted' : 'not deleted yet'} · ${d.endpoint} · ${d.status || 'no answer'} · ${d.ms ?? '?'} ms`;
   if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
+  // Another trip's content, asked for here by its hash (reach.js): not given.
+  if (e.type === 'content.refused') return `${d.via ? `${d.via} · ` : ''}asked for content that isn't ${e.scope?.startsWith('trip-') ? "this trip's" : 'here'}, and got none`;
   if (e.type === 'paused') return 'a turn cut off by opening another conversation';
   if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
   if (e.type === 'location') return `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
@@ -193,7 +196,8 @@ function storedText(ctx, e) {
       /** @type {string[]} */
       const texts = [];
       for (const [i, hash] of e.refs.entries()) {
-        const b = await ctx.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(hash));
+        // The entry's own names, read for its scope (reach.js).
+        const b = await readBlob(ctx.store, e.scope, hash, { named: e });
         // A kept voice clip plays here, as it was kept (spec §10.2); its address goes with the player.
         if (b?.type.startsWith('audio/')) {
           const src = URL.createObjectURL(new Blob([b.data], { type: b.type }));

@@ -46,21 +46,24 @@ export function sizeLine(s, c) {
 export class PhotoCopies {
   /** @type {Map<string, Copy>} */
   #made = new Map();
-  /** @param {{ codec: import('./photos.js').Codec & { encode(source: Blob, opts: any): Promise<{ bytes: Uint8Array, type: string, width: number, height: number }> }, read: (hash: string) => Promise<Uint8Array | null> }} c */
+  /**
+   * @param {{ codec: import('./photos.js').Codec & { encode(source: Blob, opts: any): Promise<{ bytes: Uint8Array, type: string, width: number, height: number }> }, read: (hash: string, scope?: string) => Promise<Uint8Array | null> }} c
+   *   read: stored bytes by hash, for the scope a copy is made for (reach.js): a copy made for one trip is reused in another only if that one reaches it too
+   */
   constructor({ codec, read }) {
     this.codec = codec;
     this.read = read;
   }
 
-  /** @param {Source} source @param {Limits} limits @param {Crop} [crop] @returns {Promise<Copy>} */
-  async copy(source, limits, crop) {
+  /** @param {Source} source @param {Limits} limits @param {Crop} [crop] @param {string} [scope] whose photo it is, read for that scope @returns {Promise<Copy>} */
+  async copy(source, limits, crop, scope) {
     if (!crop && fits(source, limits)) return { hash: source.hash, mediaType: source.type, width: source.width ?? null, height: source.height ?? null, made: false };
     const key = JSON.stringify([source.hash, limits.formats, limits.quality, limits.maxEdge, limits.maxBytes, crop ?? null]);
     const had = this.#made.get(key);
     // A copy made before is reused only while its bytes are stored: a repair or a removed trip may have freed them.
-    if (had && (await this.read(had.hash))) return { ...had, data: undefined };
+    if (had && (await this.read(had.hash, scope))) return { ...had, data: undefined };
     this.#made.delete(key);
-    const bytes = await this.read(source.hash);
+    const bytes = await this.read(source.hash, scope);
     if (!bytes) throw new Error('That photo is no longer stored.');
     const out = await this.codec.encode(new Blob([/** @type {BlobPart} */ (bytes)], { type: source.type }), {
       formats: limits.formats, quality: limits.quality, maxEdge: limits.maxEdge, maxBytes: limits.maxBytes, maxPixels: MAX_CANVAS_PIXELS, ...(crop ? { crop } : {}),

@@ -353,8 +353,8 @@ test("item 14 (K6): a kept clip of what was said live is at the session's own ra
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['heard'])).length === 1);
     const [heard] = await k.events(['heard']);
-    const { blobBytes } = await import('../../src/core/agent/log.js');
-    const clip = new TextDecoder().decode(/** @type {Uint8Array} */ (await blobBytes(k.store, heard.data.clip)));
+    const { blobBytes } = await import('../../src/core/reach.js');
+    const clip = new TextDecoder().decode(/** @type {Uint8Array} */ (await blobBytes(k.store, heard.scope, heard.data.clip)));
     assert.match(clip, /^ogg<\d+@8000>$/, clip);
   } finally {
     await k.done();

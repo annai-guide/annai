@@ -542,7 +542,8 @@ export async function importArchive(store, opened, choices = {}) {
   /** @type {string[]} */
   const added = [];
   try {
-    // Which of them this device holds already is asked once, not once per entry.
+    // Which of them this device holds already is asked once, not once per entry. Those are checked too, not stored
+    // again: an archive names only content it carries (reach.js), never another trip's by its hash.
     const held = await store.tx(['blobs'], 'readonly', async (t) => {
       /** @type {Set<string>} */
       const have = new Set();
@@ -552,8 +553,8 @@ export async function importArchive(store, opened, choices = {}) {
     let done = 0;
     for (const [hash, c] of content) {
       choices.onProgress?.(done++, content.size);
-      if (held.has(hash)) continue;
       const bytes = c.bytes ?? (await readChecked(zip, c.name, hash));
+      if (held.has(hash)) continue;
       await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
       added.push(hash);
     }
@@ -579,7 +580,9 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
     for (const h of hashes) {
       if (!(await t.hasBlob(h))) throw new ArchiveError("Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.");
     }
+    const carried = new Set(hashes);
     for (const p of plan) {
+      const foreign = await foreignNames(t, p, carried);
       if (p.mode === 'replace') {
         const copies = (await t.listScopes()).filter((l) => l.kind === 'trip' && l.status === 'active' && l.tripId && l.tripId === p.rec.tripId);
         for (const old of copies) {
@@ -602,8 +605,10 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
           created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}), ...(f.meta ? { meta: f.meta } : {}),
         });
       }
-      for (const e of p.events) await t.putEvent({ ...e, scope: p.target });
+      for (const e of p.events) await t.putEvent({ ...withoutNames(e, foreign), scope: p.target });
       await t.appendEvent(p.target, { ts: now, type: 'import', actor: 'user', data: { created: manifest.created, app: manifest.app, kind: manifest.kind } });
+      const [first] = foreign;
+      if (first) await t.appendEvent(p.target, { ts: now, type: 'content.refused', actor: 'system', data: { content: `${first.slice(0, 12)}…`, via: 'import', ...(foreign.size > 1 ? { count: foreign.size } : {}) } });
       if (p.rec.kind === 'trip') result.trips.push(p.target);
       else if (p.target === ME) result.me = true;
       else if (p.target === SYS_SETTINGS) result.settings = true;
@@ -619,6 +624,34 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
       result.secrets++;
     }
   });
+}
+
+/**
+ * What an archive's log may not name (spec §12.3): content it doesn't carry that this device holds, unless the scope it
+ * replaces in place named it. Content nobody here holds stays named, as it was. Run before a replaced scope goes.
+ * @param {import('./types.js').Tx} t @param {{ target: string, mode: 'new'|'replace'|'system', events: EventRecord[] }} p @param {Set<string>} carried
+ * @returns {Promise<Set<string>>}
+ */
+async function foreignNames(t, p, carried) {
+  /** @type {Set<string>} */
+  const out = new Set();
+  const seen = new Set(carried);
+  for (const h of p.events.flatMap(blobsOf)) {
+    if (!h || seen.has(h)) continue;
+    seen.add(h);
+    if ((await t.hasBlob(h)) && !(p.mode === 'system' && (await t.blobNamedIn(h, p.target)))) out.add(h);
+  }
+  return out;
+}
+
+/** A log entry without the names it may not keep: a ref left empty (in line with data.stored), a version null. @param {EventRecord} e @param {Set<string>} foreign @returns {EventRecord} */
+function withoutNames(e, foreign) {
+  const drop = (/** @type {unknown} */ h) => typeof h === 'string' && foreign.has(h);
+  if (!blobsOf(e).some(drop)) return e;
+  const data = e.data && (drop(e.data.old) || drop(e.data.new))
+    ? { ...e.data, ...(drop(e.data.old) ? { old: null } : {}), ...(drop(e.data.new) ? { new: null } : {}) }
+    : e.data;
+  return { ...e, ...(data ? { data } : {}), ...(e.refs ? { refs: e.refs.map((h) => (drop(h) ? '' : h)) } : {}) };
 }
 
 /**

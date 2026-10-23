@@ -54,7 +54,11 @@ test('a photo in a result follows its tool result, and the event keeps the fileâ
   const store = createMemoryStore();
   const bytes = utf8('webp');
   const hash = await sha256Hex(bytes);
-  await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: 'image/webp', size: 4, data: /** @type {ArrayBuffer} */ (bytes.buffer) }));
+  // The trip's own photo: a file of its scope names it, so its log can point at it by its hash (reach.js).
+  await store.tx(['blobs', 'files'], 'readwrite', async (t) => {
+    await t.putBlob({ hash, type: 'image/webp', size: 4, data: /** @type {ArrayBuffer} */ (bytes.buffer) });
+    await t.putFile({ scope: SCOPE, path: '/files/a.webp', hash, size: 4, type: 'image/webp', author: 'user', created: 1, modified: 1 });
+  });
   const t = new Transcript();
   t.apply({ seq: 1, type: 'model.turn', data: { tag: TALK_TAG } }, { texts: { parts: JSON.stringify([{ type: 'tool_call', id: 'r1', name: 'read', input: { path: '/trip/files/a.webp' } }]) }, images: [] });
   const ev = await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 'r1', name: 'read', ok: true, ms: 1, images: [{ hash, mediaType: 'image/webp', path: '/trip/files/a.webp' }] }, texts: [['content', 'The photo /trip/files/a.webp']], blobs: [{ hash, type: 'image/webp' }] });

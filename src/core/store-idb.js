@@ -185,6 +185,28 @@ function makeTx(t) {
       }
       return false;
     },
+    blobNamedIn: async (hash, scope, { events = true } = {}) => {
+      if (typeof hash !== 'string' || !hash) return false;
+      // One hash's index entries are in primary-key order ([scope, path] or [scope, seq]): a key cursor jumps to the scope's first.
+      const named = (/** @type {IDBIndex} */ index) => new Promise((res, rej) => {
+        const r = index.openKeyCursor(IDBKeyRange.only(hash));
+        let jumped = false;
+        r.onsuccess = () => {
+          const at = /** @type {any} */ (r.result?.primaryKey)?.[0];
+          if (at === undefined || at === scope || jumped || at > scope) res(at === scope);
+          else {
+            jumped = true;
+            /** @type {IDBCursor} */ (r.result).continuePrimaryKey(hash, [scope]);
+          }
+        };
+        r.onerror = () => rej(r.error);
+      });
+      if (await named(os('files').index('hash'))) return true;
+      if (!events) return false;
+      const ev = os('events');
+      for (const name of ['refs', 'old', 'new']) if (await named(ev.index(name))) return true;
+      return false;
+    },
     listBlobs: () => new Promise((res, rej) => {
       /** @type {{ hash: string, size: number }[]} */
       const out = [];
