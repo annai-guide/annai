@@ -92,26 +92,101 @@ test("a change to Koe's lists in Settings → Models applies at once, with no vo
     await soon(async () => k.agent.koeState === 'text');
     await k.agent.idle();
     assert.deepEqual([k.agent.way.mode, k.agent.way.using, k.agent.way.why], ['realtime', 'classic', 'none'], 'the choice stays Realtime');
-    assert.deepEqual(seen.at(-1), { mode: 'realtime', using: 'classic', why: 'none', koe: true }, "the chip hears of it");
+    assert.deepEqual(seen.at(-1), { mode: 'realtime', using: 'classic', why: 'none', koe: true, split: true, path: 'text' }, "the chip hears of it");
   } finally {
     await k.done();
   }
 });
 
-test("Realtime resting: Classic answers and the way says Realtime is unavailable; once its model can answer again, Realtime is back by itself, since it is the user's choice", async () => {
+test("Realtime resting: Classic answers and the way says Realtime is resting; once its model can answer again, Realtime is back by itself, since it is the user's choice", async () => {
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
     k.llm.bench.bench('m-live', 300);
     assert.equal(await k.agent.split(), true);
-    assert.deepEqual([k.agent.koeState, k.agent.way.using, k.agent.way.why], ['text', 'classic', 'unavailable']);
+    assert.deepEqual([k.agent.koeState, k.agent.way.using, k.agent.way.why], ['text', 'classic', 'resting']);
     await soon(async () => k.agent.koeState === 'live', 3000);
     assert.equal(k.agent.way.using, 'realtime');
-    // Classic chosen meanwhile: a model coming back changes nothing.
+  } finally {
+    await k.done();
+  }
+});
+
+test("Classic chosen while Realtime rests: when its model can answer again, Koe stays Classic, whatever asks again", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-live', 200);
     await k.agent.chooseKoe('classic');
-    k.llm.bench.bench('m-live', 100);
-    await new Promise((r) => setTimeout(r, 300));
-    await k.agent.idle();
     assert.equal(k.agent.koeState, 'text');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(k.llm.bench.until('m-live') <= Date.now(), true, 'its model can answer again');
+    assert.equal(await k.agent.split(), true); // a refresh, as a message or a voice change makes
+    assert.deepEqual([k.agent.koeState, k.agent.way.mode, k.agent.way.using], ['text', 'classic', 'classic']);
+  } finally {
+    await k.done();
+  }
+});
+
+test("Realtime coming back while Classic is mid-reply: the reply plays whole, and the next turn is Realtime's (one voice at a time, as Kokoro's turn is let end)", async () => {
+  const k = await liveKit([{ said: 'Realtime here.', audio: tone(0.2) }], {
+    voice: { playMs: 300 },
+    koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'The first stop is Bixby Bridge. The second is Pfeiffer Beach. The third is McWay Falls.' } }, { name: 'sleep', input: {} }] } }] } },
+  });
+  try {
+    await k.voice.unlock();
+    k.llm.bench.bench('m-live', 250);
+    assert.equal(await k.agent.split(), true);
+    assert.equal(k.agent.koeState, 'text');
+    k.agent.send('Where do we stop?');
+    await until(() => k.platform.log.some((/** @type {string} */ x) => x.startsWith('play ')), 2000);
+    await new Promise((r) => setTimeout(r, 400)); // the rest ends mid-reply
+    assert.equal(k.agent.koeState, 'text', 'Classic keeps the voice to its turn\'s end');
+    await k.agent.idle();
+    await soon(async () => k.agent.koeState === 'live', 3000);
+    const plays = k.platform.log.filter((/** @type {string} */ x) => x.startsWith('play '));
+    assert.equal(plays.length, 3, JSON.stringify(k.platform.log));
+    assert.ok(!k.platform.log.some((/** @type {string} */ x) => x.startsWith('stop ')), 'nothing cut');
+    k.agent.send('And then?');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.live));
+    assert.equal(k.server.connections().length, 1, "the next turn is Realtime's");
+  } finally {
+    await k.done();
+  }
+});
+
+test("the Realtime-back timer goes with the page (away, erase) and comes back with it; another conversation opened asks again there", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-live', 200);
+    assert.equal(await k.agent.split(), true);
+    k.agent.hush('away');
+    await new Promise((r) => setTimeout(r, 400));
+    await k.agent.idle();
+    assert.equal(k.agent.koeState, 'text', 'no refresh for a page out of view');
+    k.agent.shown();
+    await soon(async () => k.agent.koeState === 'live', 2000);
+    k.llm.bench.bench('m-live', 200);
+    assert.equal(await k.agent.split(), true);
+    k.agent.hush('erase');
+    await new Promise((r) => setTimeout(r, 400));
+    await k.agent.idle();
+    assert.equal(k.agent.koeState, 'text', 'none after Erase');
+  } finally {
+    await k.done();
+  }
+});
+
+test("many writes under /llm/ at once (a provider saved with its models) make one refresh, not one each", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    const { newProvider, newModel, saveProvider } = await import('../../src/core/llm/config.js');
+    await k.agent.idle();
+    let n = 0;
+    const real = k.voice.refresh.bind(k.voice);
+    k.voice.refresh = async () => { n++; return real(); };
+    const p = newProvider('provider-test', { user: { name: 'Three', abilities: { chat: { kind: 'chat', type: 'scripted' } } } });
+    await saveProvider(k.ws, p, ['a', 'b', 'c'].map((id) => newModel(p.id, 'chat', { user: { providerId: id } })));
+    await k.agent.idle();
+    assert.equal(n, 1);
   } finally {
     await k.done();
   }
@@ -123,7 +198,7 @@ test("Realtime chosen, its model resting, Classic empty: Koe is down and Kokoro 
     assert.equal(k.agent.koeState, 'live');
     k.llm.bench.bench('m-live', 60_000);
     assert.equal(await k.agent.split(), true);
-    assert.deepEqual([k.agent.koeState, k.agent.way.why], ['down', 'unavailable']);
+    assert.deepEqual([k.agent.koeState, k.agent.way.why, k.agent.way.path], ['down', 'resting', null], 'the chip says Realtime is resting, never Classic');
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
     await k.agent.idle();

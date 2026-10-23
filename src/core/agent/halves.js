@@ -157,6 +157,12 @@ export class Halves {
   #way = null;
   /** A refresh for when a resting realtime model can answer again, so the chosen Realtime comes back. @type {ReturnType<typeof setTimeout> | undefined} */
   #back;
+  /** The page went with that refresh waiting: it asks again when the page is back. */
+  #backAway = false;
+  /** Realtime can talk, but waits for Classic's turn with the voice to end (one voice at a time): Koe's ended asks again. */
+  #koeLater = false;
+  /** A refresh for writes under /llm/ is waiting to run: more writes meanwhile (a provider and its models) join it. */
+  #llmChanged = false;
   #lastCard = { key: '', at: 0 };
   /** The open conversation's next reminder, for Koe's view (set by the app). @type {(() => Promise<{ due: number, text: string } | null>) | null} */
   next = null;
@@ -240,6 +246,7 @@ export class Halves {
           return this.#koeFailed() && (both ?? true);
         },
         ended: (t) => {
+          if (this.#koeLater) this.#route(() => this.#refresh());
           if (!t.ok) return;
           this.#unsaid = [];
           this.#up('koe');
@@ -283,7 +290,16 @@ export class Halves {
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     // A change to the models, Koe's lists or its mode (Settings → Models, the voice chip) applies at once, not at the next voice change.
-    this.ws.onChange((/** @type {{ scope: string, path: string }} */ x) => { if (x.scope === SYS_SETTINGS && /^\/llm\/(roles\.json$|models\/|providers\/)/.test(x.path)) this.#route(() => this.#refresh()); });
+    // Writes that come together (a provider saved with its models) make one refresh, which reads them all.
+    this.ws.onChange((/** @type {{ scope: string, path: string }} */ x) => {
+      if (x.scope !== SYS_SETTINGS || !/^\/llm\/(roles\.json$|models\/|providers\/)/.test(x.path) || this.#llmChanged) return;
+      this.#llmChanged = true;
+      this.#route(async () => {
+        await new Promise((r) => setTimeout(r, 0)); // the rest of the writes' changes come in meanwhile
+        this.#llmChanged = false;
+        await this.#refresh();
+      });
+    });
     this.#ready = this.#refresh({ tell: false }).catch(() => {});
   }
 
@@ -365,7 +381,7 @@ export class Halves {
   #emitHalves() {
     const w = this.#way;
     const now = { koe: this.koeState, kokoroWorking: this.kokoroWorking, live: this.live.listening ? 'listening' : this.live.state === 'open' ? 'open' : null,
-      way: w ? { mode: w.mode, using: w.using, why: w.why, koe: w.koe } : null };
+      way: w ? { mode: w.mode, using: w.using, why: w.why, koe: w.koe, split: w.split, path: this.koeState === 'down' ? null : w.path?.kind ?? null } : null };
     const key = JSON.stringify(now);
     if (key === this.#lastHalves) return;
     this.#lastHalves = key;
@@ -405,12 +421,14 @@ export class Halves {
     const way = koeWay(cfg, { voiceOn, types: this.llm.types?.() ?? new Map(), until, now: Date.now() });
     this.#way = way;
     this.#split = way.split;
-    const path = way.path;
+    // One voice at a time: a Classic turn going (speaking, listening, waiting) ends whole before Realtime takes over (S1).
+    this.#koeLater = way.path?.kind === 'live' && this.koeState === 'text' && (this.koe.turning || this.koe.voicing);
+    const path = this.#koeLater ? { kind: /** @type {const} */ ('text') } : way.path;
     // The chosen Realtime resting: it is used again once a model of its list can answer.
-    clearTimeout(this.#back);
-    const back = way.why === 'unavailable' ? Math.min(...(cfg.roles[KOE_REALTIME]?.models ?? []).map(until).filter((t) => t > Date.now())) : Infinity;
+    this.#stopBack();
+    const back = way.why === 'resting' ? Math.min(...(cfg.roles[KOE_REALTIME]?.models ?? []).map(until).filter((t) => t > Date.now())) : Infinity;
     if (Number.isFinite(back)) {
-      this.#back = setTimeout(() => this.#route(() => this.#refresh()), back - Date.now() + 50);
+      this.#back = setTimeout(() => { this.#back = undefined; this.#route(() => this.#refresh()); }, back - Date.now() + 50);
       /** @type {any} */ (this.#back).unref?.();
     }
     // A text Koe whose list failed whole rests a while.
@@ -547,6 +565,11 @@ export class Halves {
     if (trip !== this.kokoro.target) {
       this.live.close('switch', { forget: true });
       this.#retell = [];
+      // Realtime coming back is worked out again in the conversation opened.
+      if (this.#back !== undefined) {
+        this.#stopBack();
+        this.#route(() => this.#refresh());
+      }
     }
     const opening = this.kokoro.open(trip, o);
     this.#emitHalves(); // the left one's turn isn't this one's sign
@@ -632,6 +655,8 @@ export class Halves {
    * Erase forgets its handle too. @param {'away' | 'erase'} why
    */
   hush(why) {
+    this.#backAway ||= this.#back !== undefined && why === 'away';
+    this.#stopBack();
     this.live.close(why, { forget: why === 'erase' });
     if (why === 'erase') {
       for (const a of [this.kokoro, this.koe]) a.forgetTold();
@@ -643,6 +668,17 @@ export class Halves {
   /** The page is back in view: what waited for it is said; the microphone opens only at a tap. */
   shown() {
     if (this.koeState === 'live') this.#route(() => this.live.shown());
+    // The page went while the chosen Realtime rested: ask again now.
+    if (this.#backAway) {
+      this.#backAway = false;
+      this.#route(() => this.#refresh());
+    }
+  }
+
+  /** The refresh for Realtime coming back is let go (a refresh sets it again, the page back asks again). */
+  #stopBack() {
+    clearTimeout(this.#back);
+    this.#back = undefined;
   }
   /** The typing box holds text, or not: Kokoro waits while the user types (GATHER). @param {boolean} on */
   typing(on) {

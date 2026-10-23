@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_SETTINGS } from '../../src/core/scopes.js';
-import { readConfig, saveRoles, saveKoeMode, removeModel, modelOf, KOE_REALTIME, KOE_CLASSIC, KOE_ROLES, CHAT_ROLES } from '../../src/core/llm/config.js';
+import { readConfig, saveRoles, saveKoeMode, removeModel, removeProviderRecords, splitOldKoe, modelOf, KOE_REALTIME, KOE_CLASSIC, KOE_ROLES, CHAT_ROLES } from '../../src/core/llm/config.js';
+import { koeWords } from '../../src/core/voice/mode.js';
 import { candidates, chatCandidates, koeWay } from '../../src/core/llm/fallback.js';
 import { ROLE_KINDS, checkProviderDesc } from '../../src/core/llm/provider-desc.js';
 import { ROLE_LEVELS } from '../../src/core/llm/reasoning.js';
@@ -154,7 +155,7 @@ test("Koe's way, for every mode, voice, list and model health: Realtime runs onl
             continue;
           }
           assert.equal(way.using, 'classic', at);
-          assert.equal(way.why, mode === 'classic' ? '' : !voiceOn ? 'voice off' : r === 'none' ? 'none' : 'unavailable', at);
+          assert.equal(way.why, mode === 'classic' ? '' : !voiceOn ? 'voice off' : r === 'none' ? 'none' : 'resting', at);
           // Classic empty: Shiori is one, unless Realtime is wanted and has a model (then it is down, as a live voice that can't start was).
           assert.equal(way.split, c !== 'none' || (wants && r !== 'none'), `${at}: split`);
           assert.deepEqual(way.path, c === 'ok' ? { kind: 'text' } : null, `${at}: path`);
@@ -170,13 +171,14 @@ test("Koe's way passes over a model it can't call: an ability off, its protocol 
   const cfg = geminiCfg(['live'], ['fast'], 'realtime');
   const off = structuredClone(cfg);
   off.providers.pv.user.abilities.live.on = false;
-  assert.deepEqual([koeWay(off, on).using, koeWay(off, on).why], ['classic', 'unavailable'], 'Live voice switched off');
-  assert.deepEqual([koeWay(cfg, { ...on, types: new Map([['chat-completions', {}]]) }).why], ['unavailable'], 'its protocol not running');
+  assert.deepEqual([koeWay(off, on).using, koeWay(off, on).why], ['classic', 'off'], 'Live voice switched off: off, not resting (nothing to wait for)');
+  assert.deepEqual([koeWay(cfg, { ...on, types: new Map([['chat-completions', {}]]) }).why], ['off'], 'its protocol not running');
+  assert.equal(koeWay(off, { ...on, until: () => 5000 }).why, 'off', 'off and resting: off says what to do');
   const chatOff = structuredClone(cfg);
   chatOff.providers.pv.user.abilities.chat.on = false;
   assert.equal(koeWay({ ...chatOff, koeMode: 'classic' }, on).path, null, 'Classic, its chat ability off: Koe is down');
   // A model of the wrong kind in a list (a file edited by hand) is passed over.
-  assert.deepEqual(koeWay(geminiCfg(['fast'], ['live'], 'realtime'), on), { mode: 'realtime', using: 'classic', why: 'unavailable', koe: true, split: true, path: null });
+  assert.deepEqual(koeWay(geminiCfg(['fast'], ['live'], 'realtime'), on), { mode: 'realtime', using: 'classic', why: 'off', koe: true, split: true, path: null });
   // A text Koe's models: Classic's chat models (to hear, to upload to), those of an ability switched on.
   assert.deepEqual(chatCandidates(cfg, KOE_CLASSIC), ['fast']);
   assert.deepEqual(chatCandidates(chatOff, KOE_CLASSIC), []);
@@ -215,7 +217,7 @@ test('adding a provider never fills Koe; "Use the recommended models" fills Real
   src.provider.roles = { recommended: { main: ['big'], [KOE_REALTIME]: ['live-1'], [KOE_CLASSIC]: ['small:free'] } };
   assert.deepEqual(checkProviderDesc(src.provider), []);
   assert.deepEqual(checkProviderDesc({ ...src.provider, roles: { recommended: { [KOE_REALTIME]: ['big'] } } }), [`$.roles.recommended.${KOE_REALTIME}: big isn't a realtime model of this provider`]);
-  assert.deepEqual(checkProviderDesc({ ...src.provider, roles: { recommended: { koe2: ['big'] } } }), ['$.roles.recommended.koe2: there is no such role']);
+  assert.deepEqual(checkProviderDesc({ ...src.provider, roles: { recommended: { koe2: ['big'] } } }), [], "a role this annai doesn't know (a later one, or renamed) is skipped, never a reason to refuse the description");
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
@@ -250,7 +252,7 @@ test("Use the recommended models with Live voice switched off: nothing goes into
 
 test("an older description that recommends the one Koe list: its realtime models go into Realtime, its chat models into Classic; the names from before 2026-10-19 are ignored", async () => {
   const src = withLive();
-  src.provider.roles = { recommended: { main: ['big'], koe: ['live-1', 'small:free'], 'koe-talk': ['big'], 'koe-type': ['big'] } };
+  src.provider.roles = { recommended: { main: ['big'], koe: ['live-1', 'small:free'], 'koe-talk': ['big'], 'koe-type': ['big'], 'koe-later': ['big'] } };
   assert.deepEqual(checkProviderDesc(src.provider), [], 'an older description still checks');
   assert.deepEqual(checkProviderDesc({ ...src.provider, roles: { recommended: { koe: ['free-voice'] } } }), ["$.roles.recommended.koe: free-voice isn't a chat or realtime model of this provider"]);
   const store = createMemoryStore();
@@ -262,5 +264,61 @@ test("an older description that recommends the one Koe list: its realtime models
   const name = (/** @type {string} */ role) => cfg.roles[role].models.map((m) => modelOf(cfg.models[m]).name);
   assert.deepEqual([name(KOE_REALTIME), name(KOE_CLASSIC), cfg.koeMode], [['Live One'], ['Small (free)'], 'realtime']);
   const file = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
-  assert.ok(!('koe' in file) && !('koe-talk' in file) && !('koe-type' in file));
+  assert.ok(!('koe' in file) && !('koe-talk' in file) && !('koe-type' in file) && !('koe-later' in file), 'an unknown role is skipped');
+});
+
+test("the split is written once, at start-up (splitOldKoe): the mode an old list implied stays when the Live ability changes later; a file with nothing old is left alone", async () => {
+  const { ws, pid, big, small, live } = await setup();
+  await ws.write(SYS_SETTINGS, '/llm/roles.json', { koe: { models: [live, small], level: 'medium' }, main: { models: [big], level: 'medium' } }, { author: 'user' });
+  assert.equal(await splitOldKoe(ws), true);
+  const file = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
+  assert.deepEqual([file['koe-mode'], file[KOE_REALTIME].models, file[KOE_CLASSIC].models, 'koe' in file], ['realtime', [live], [small], false]);
+  // Live switched off afterwards: still the mode the old list implied, not one worked out again.
+  const rec = (await readConfig(ws)).providers[pid];
+  await ws.write(SYS_SETTINGS, `/llm/providers/${pid}.json`, { ...rec, user: { ...rec.user, abilities: { live: { on: false } } } }, { author: 'user' });
+  assert.equal((await readConfig(ws)).koeMode, 'realtime');
+  assert.equal(await splitOldKoe(ws), false, 'nothing old: nothing written');
+  await ws.write(SYS_SETTINGS, '/llm/roles.json', { 'koe-talk': { models: [small], level: 'off' } }, { author: 'user' });
+  assert.equal(await splitOldKoe(ws), true, 'the lists from before 2026-10-19 too');
+  assert.ok(!('koe-talk' in (await ws.readJSON(SYS_SETTINGS, '/llm/roles.json'))));
+});
+
+test("an old list left beside the two new ones: its ids not in either list join them by kind, at the end; none is dropped or doubled", async () => {
+  const { ws, big, small, live } = await setup();
+  await ws.write(SYS_SETTINGS, '/llm/roles.json', {
+    [KOE_REALTIME]: { models: [], level: 'off' }, [KOE_CLASSIC]: { models: [small], level: 'low' }, 'koe-mode': 'classic',
+    koe: { models: [live, small, big], level: 'medium' },
+  }, { author: 'user' });
+  const cfg = await readConfig(ws);
+  assert.deepEqual([cfg.roles[KOE_REALTIME].models, cfg.roles[KOE_CLASSIC].models, cfg.roles[KOE_CLASSIC].level, cfg.koeMode], [[live], [small, big], 'low', 'classic'], "the new lists' own settings stay");
+});
+
+test("removing a provider keeps the chosen mode", async () => {
+  const { ws, store, pid, small, live } = await setup();
+  await saveRoles(ws, { ...(await readConfig(ws)).roles, [KOE_REALTIME]: { models: [live], level: 'off' }, [KOE_CLASSIC]: { models: [small], level: 'low' } });
+  await saveKoeMode(ws, 'classic');
+  await removeProviderRecords(ws, store, pid);
+  const file = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
+  assert.deepEqual([file['koe-mode'], file[KOE_REALTIME].models, file[KOE_CLASSIC].models], ['classic', [], []]);
+  assert.equal((await readConfig(ws)).koeMode, 'classic');
+});
+
+test("the voice chip's words for Koe: the list that talks, why Classic stands in, Koe down, and Classic chosen but empty; nothing with voice off, no Koe model, or a way still from voice off", () => {
+  /** @param {any} w */
+  const way = (w) => ({ mode: 'realtime', using: 'classic', why: '', koe: true, split: true, path: 'text', ...w });
+  assert.deepEqual(koeWords(way({ using: 'realtime', path: 'live' }), true), { text: ' · Realtime', note: '' });
+  assert.deepEqual(koeWords(way({ mode: 'classic' }), true), { text: ' · Classic', note: '' });
+  assert.deepEqual(koeWords(way({ why: 'resting' }), true), { text: ' · Classic', reason: '(Realtime resting)', note: "Realtime is resting after a failure. Classic talks until it can." });
+  assert.deepEqual(koeWords(way({ why: 'off' }), true), { text: ' · Classic', reason: '(Realtime off)', note: "Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile." });
+  assert.deepEqual(koeWords(way({ why: 'none' }), true), { text: ' · Classic', reason: '(no Realtime model)', note: 'Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.' });
+  // Koe down: Realtime wanted, nothing in Classic that can answer: never "Classic".
+  assert.deepEqual(koeWords(way({ why: 'resting', path: null }), true), { text: ' · Realtime resting', note: 'Shiori answers directly until it can.' });
+  assert.deepEqual(koeWords(way({ why: 'off', path: null }), true), { text: ' · Realtime off', note: 'Shiori answers directly until it can.' });
+  assert.deepEqual(koeWords(way({ mode: 'classic', path: null }), true), { text: ' · Classic unavailable', note: "Koe · Classic can't answer now. Shiori answers directly until it can." });
+  // Classic chosen with nothing in it: Shiori is one half.
+  assert.deepEqual(koeWords(way({ mode: 'classic', split: false, path: null }), true), { text: ' · Classic', reason: '(no model)', note: 'Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.' });
+  assert.deepEqual(koeWords(way({ using: 'realtime' }), false), { text: '', note: '' }, 'voice off: as before');
+  assert.deepEqual(koeWords(way({ koe: false }), true), { text: '', note: '' });
+  assert.deepEqual(koeWords(way({ why: 'voice off' }), true), { text: '', note: '' }, 'voice just came on: nothing until Koe has worked out its way');
+  assert.deepEqual(koeWords(null, true), { text: '', note: '' });
 });

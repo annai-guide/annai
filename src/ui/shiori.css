@@ -127,6 +127,7 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .voice-menu-row { display: flex; gap: 6px; align-items: center; }
 .voice-menu-label { font-size: 13px; color: var(--ink-2); padding: 0 4px; }
 .voice-menu-note { margin: 0; max-width: 16em; font-size: 13px; color: var(--ink-2); }
+.voice-chip-why { white-space: nowrap; }
 .voice-menu .btn { min-height: 44px; min-width: 64px; }
 .voice-menu .btn[aria-pressed='true'] { background: var(--ai-wash); color: var(--ai); border-color: var(--ai); }
 .live-chip.on { border-color: var(--ai); color: var(--ai); }
