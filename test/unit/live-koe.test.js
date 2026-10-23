@@ -325,9 +325,9 @@ test('a thinking pause: her answer waits while the microphone may still hear the
     k.platform.streamSpeed = 1;
     k.agent.tap();
     await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
-    // A 1.5 s pause, as the realtime check's: it ends the turn at 700 ms, and they go on 800 ms later, before her answer has waited out
+    // A 1.7 s pause, as the realtime check's: it ends the turn at 700 ms, and they go on 1 s later, before her answer has waited out
     // the quiet after it (her answer comes at once here; Gemini's first came 0.79 s after a turn's end in the check).
-    await talk(k, cat(quiet(0.5), await clip('where-lunch'), quiet(1.5), await clip('gas-station'), quiet(1.2)));
+    await talk(k, cat(quiet(0.5), await clip('where-lunch'), quiet(1.7), await clip('gas-station'), quiet(1.2)));
     await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
     const starts = got(k, 'realtimeInput').filter((/** @type {any} */ m) => m.realtimeInput.activityStart);
     assert.equal(starts.length, 2, 'the second half is sent');
@@ -338,7 +338,7 @@ test('a thinking pause: her answer waits while the microphone may still hear the
   }
 });
 
-test('the user quiet after their turn: her answer plays once the microphone has been quiet 1 s since the turn ended, and from its first word when that is later', async () => {
+test('the user quiet after their turn: her answer plays once the microphone has been quiet 1.2 s since the turn ended, and from its first word when that is later', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone(0.5) }], { pace: 1 });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
@@ -350,7 +350,7 @@ test('the user quiet after their turn: her answer plays once the microphone has 
     const ended = Date.now();
     await soon(async () => k.platform.streams.length === 1, 3000);
     const played = Date.now();
-    assert.ok(played - ended >= 950, `played ${played - ended} ms after the turn ended`);
+    assert.ok(played - ended >= 1150, `played ${played - ended} ms after the turn ended`);
     await talking;
     await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
     assert.equal((await k.events(['out.speak']))[0].data.text, "There's a taco stand ahead.");

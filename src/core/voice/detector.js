@@ -127,6 +127,11 @@ export class Detector {
     this.#marked = this.#count;
   }
 
+  /** How long nothing has been keepDb over the floor, in ms (Infinity before a frame). */
+  get stillMs() {
+    return this.#count ? this.#still * FRAME_MS : Infinity;
+  }
+
   /** The longest quiet since reset(), in ms: speech that went on through it is one run, begun before. */
   get gapMs() {
     return this.#gap * FRAME_MS;

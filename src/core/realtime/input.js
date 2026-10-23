@@ -104,6 +104,11 @@ export class LiveInput {
     return this.active || this.#held;
   }
 
+  /** How long nothing has been over the floor (its keep margin), in ms: a word begun is louder before it is surely speech. */
+  get stillMs() {
+    return this.#detector?.stillMs ?? Infinity;
+  }
+
   /** How long the turn going on has had no frame keepDb over the floor it began on, in ms: a detector whose floor fell may still call it speech. */
   get quietMs() {
     return this.active ? this.#detector?.sinceMarkMs ?? 0 : 0;

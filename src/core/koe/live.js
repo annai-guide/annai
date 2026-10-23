@@ -41,10 +41,10 @@ const STALL_MIN_MS = 3000;
 const HEARD_AFTER_MS = 1000;
 /**
  * After the user's turn ends, her answer's voice waits until the microphone has been quiet this long since: a thinking pause
- * ended it, and they may go on. The realtime check (2026-10-22): a 1.5 s pause goes on 0.8 s after the turn's end, Gemini's first
- * sound came 0.75 to 1.4 s after it (0.9 s, the median), so 500 ms let one in over the user.
+ * ended it, and they may go on. The realtime check (2026-10-22): its pause clip's 1.74 s gap goes on about 1.05 s after the turn's
+ * end, and Gemini's first sound came 0.75 to 1.4 s after it (0.9 s, the median): 500 ms and 1 s let one in over the user.
  */
-const HOLD_MS = 1000;
+const HOLD_MS = 1200;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 
@@ -731,9 +731,10 @@ export class LiveKoe {
     this.#later();
   }
 
-  /** Whether her voice may start: no speech begun, and HOLD_MS quiet since the user's turn ended. */
+  /** Whether her voice may start: no speech begun, the microphone quiet now (a word's first frames), and HOLD_MS since the user's turn ended. */
   #mayPlay() {
-    return !this.#input || (!this.#input.hearing && Date.now() - this.#endedAt >= HOLD_MS);
+    const i = this.#input;
+    return !i || (!i.hearing && i.stillMs >= 100 && Date.now() - this.#endedAt >= HOLD_MS);
   }
 
   /** Her waiting voice starts once it may; speech the user began meanwhile starts their turn, which cuts it (#activity). */
