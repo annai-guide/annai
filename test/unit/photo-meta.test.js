@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { sniffImageType, sniffMediaType, readPhotoMeta, displaySize, stripMetadata } from '../../src/core/photo-meta.js';
+import { cpuMs } from './cpu.js';
 
 /** @param {string} name */
 const fixture = async (name) => new Uint8Array(await readFile(new URL(`../fixtures/photos/${name}`, import.meta.url)));
@@ -161,9 +162,9 @@ test('a HEIF item table built to make the reader loop is read in no time', () =>
   const iloc = fullBox('iloc', 1, be(0, 1), be(0, 1), be(3000, 2), ...items);
   const iinf = fullBox('iinf', 0, be(1, 2), fullBox('infe', 2, be(1, 2), be(0, 2), ascii4('Exif'), be(0, 1)));
   const file = cat(box('ftyp', ascii4('heic'), be(0, 4), ascii4('mif1')), fullBox('meta', 0, iinf, iloc));
-  const started = performance.now();
+  const started = cpuMs();
   assert.equal(readPhotoMeta(file).type, 'image/heic');
-  assert.ok(performance.now() - started < 250, `took ${Math.round(performance.now() - started)} ms`);
+  assert.ok(cpuMs() - started < 250, `took ${Math.round(cpuMs() - started)} ms of CPU`); // a few ms here; the loop it guards against is 196 million steps
 });
 
 test('the brands of a HEIF file are read from its first bytes only', () => {
