@@ -289,7 +289,7 @@ test("its address is the ability's own, wss: for https, the model in the query; 
   assert.deepEqual(TYPE.open({ endpoint: endpoint('http://127.0.0.1:9000/v1/'), key: null, tunables: TYPE.tunables, model: model({ providerId: 'my model' }) }),
     { url: 'ws://127.0.0.1:9000/v1/realtime?model=my%20model', protocols: ['realtime'] });
   assert.deepEqual(TYPE.audio, { in: [{ format: 'pcmu', rate: 8000 }, { format: 'pcma', rate: 8000 }, { format: 'pcm16', rate: 24000 }], out: [{ format: 'pcm16', rate: 24000 }, { format: 'pcmu', rate: 8000 }, { format: 'pcma', rate: 8000 }] });
-  assert.deepEqual(TYPE.tunables, { input: 'pcmu', output: 'pcm16', voice: 'marin', transcription: 'gpt-transcribe', noiseReduction: 'far_field', renewMinutes: 55 });
+  assert.deepEqual(TYPE.tunables, { input: 'pcmu', output: 'pcm16', voice: 'marin', transcription: 'gpt-transcribe', languageHints: true, noiseReduction: 'far_field', renewMinutes: 55 });
 });
 
 test('usage: text, audio and image apart, cached ones apart, the cached audio and images as cacheReadAudio and cacheReadImage; a report without details is all text', () => {

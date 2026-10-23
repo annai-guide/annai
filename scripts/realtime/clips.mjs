@@ -12,9 +12,10 @@ export const TTS_MODEL = 'gemini-2.5-flash-preview-tts';
 const TTS_RATE = 24_000;
 
 /**
- * name → what is said. kind: question, yes (a quick answer), pause (a sentence with a thinking pause: parts are speech and
- * seconds of silence), long (a long question), silence (no sound: seconds). voice: one of Gemini's prebuilt voices.
- * @typedef {{ kind: 'question' | 'yes' | 'pause' | 'long' | 'silence', text?: string, parts?: (string | number)[], voice?: string, seconds?: number }} ClipDef
+ * name → what is said. kind: question, yes (a quick answer), reply (a short English reply, for the languages check), sentence (one in
+ * another language), pause (a sentence with a thinking pause: parts are speech and seconds of silence), long (a long question),
+ * silence (no sound: seconds). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
+ * @typedef {{ kind: 'question' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' }} ClipDef
  * @type {Record<string, ClipDef>}
  */
 export const CLIPS = {
@@ -31,6 +32,14 @@ export const CLIPS = {
     kind: 'long', voice: 'Kore',
     text: "We're driving south on Highway 1 and the kids are getting hungry, so could you tell me about a couple of good places to eat in the next hour, ideally with outdoor seating, and whether either of them needs a reservation on a Saturday?",
   },
+  // The short replies the user's trace of 2026-10-22 had Gemini Live hear as "¿Qué?", "Ja, Studios testen.", "chưa" and "parco" and answer in
+  // Spanish, and a sentence in each of his other languages (the user, 2026-10-23: English, Chinese and Japanese).
+  sure: { kind: 'reply', text: 'Sure.', voice: 'Puck' },
+  what: { kind: 'reply', text: 'What?', voice: 'Kore' },
+  alright: { kind: 'reply', text: 'Alright.', voice: 'Leda' },
+  no: { kind: 'reply', text: 'No.', voice: 'Aoede' },
+  ja: { kind: 'sentence', text: 'この近くに、おいしいラーメン屋さんはありますか。', voice: 'Kore', lang: 'ja' },
+  zh: { kind: 'sentence', text: '附近有什么好吃的餐馆吗？', voice: 'Puck', lang: 'zh' },
   silence: { kind: 'silence', seconds: 8 },
 };
 
@@ -136,7 +145,7 @@ export async function makeClips({ keys, only, force = false, model = TTS_MODEL, 
   /** Lists a file in clips.json (words, voice, length, size, hash: no key), written at once so a stop later keeps it. @param {string} name @param {Uint8Array} wav */
   const list = async (name, wav) => {
     const def = CLIPS[name];
-    manifest.clips[name] = { words: wordsOf(def), voice: def.voice, seconds: Math.round(((wav.length - 44) / 2 / SEND_RATE) * 100) / 100, bytes: wav.length, sha256: createHash('sha256').update(wav).digest('hex').slice(0, 16) };
+    manifest.clips[name] = { words: wordsOf(def), voice: def.voice, ...(def.lang ? { lang: def.lang } : {}), seconds: Math.round(((wav.length - 44) / 2 / SEND_RATE) * 100) / 100, bytes: wav.length, sha256: createHash('sha256').update(wav).digest('hex').slice(0, 16) };
     keys.assertClean(JSON.stringify(manifest), 'clips.json');
     await writeFile(new URL('clips.json', DIR), `${JSON.stringify(manifest, null, 2)}\n`);
   };
@@ -171,7 +180,7 @@ export async function makeClips({ keys, only, force = false, model = TTS_MODEL, 
 
 /**
  * Every clip as samples at 16 kHz: speech from its file, silence as zeros.
- * @returns {Promise<Record<string, { kind: string, words: string, pcm: Float32Array, seconds: number }>>}
+ * @returns {Promise<Record<string, { kind: string, words: string, pcm: Float32Array, seconds: number, lang: string }>>}
  */
 export async function loadClips() {
   /** @type {Record<string, any>} */
@@ -179,7 +188,7 @@ export async function loadClips() {
   for (const [name, def] of Object.entries(CLIPS)) {
     const pcm = def.kind === 'silence' ? new Float32Array(Math.round((def.seconds ?? 8) * SEND_RATE))
       : decodeWav(new Uint8Array(await readFile(new URL(`${name}.wav`, DIR)))).pcm;
-    out[name] = { kind: def.kind, words: wordsOf(def), pcm, seconds: pcm.length / SEND_RATE };
+    out[name] = { kind: def.kind, words: wordsOf(def), pcm, seconds: pcm.length / SEND_RATE, lang: def.lang ?? 'en' };
   }
   return out;
 }

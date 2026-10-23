@@ -22,8 +22,9 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * @param {{ type: EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null,
  *   audio?: { data: Uint8Array, mediaType: string, seconds?: number }, text?: string, fetch?: (url: string, init: RequestInit) => Promise<Response>,
  *   signal?: AbortSignal, timeoutMs?: number, trace?: ReturnType<typeof import('./trace.js').modelTrace>, registry?: import('../registry.js').Registry,
- *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
- *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it)
+ *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
+ *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it); languages: what the user speaks, for a
+ *   transcription's language hint (phase 2): a voice is given none, no voice API takes one
  * @returns {Promise<{ text?: string, clip?: Clip, stream?: SpeechStream, cost: number | undefined, ms: number }>} text from an 'in' type, a clip or a stream from an 'out' type
  */
 export async function speechCall(c) {
@@ -41,7 +42,7 @@ export async function speechCall(c) {
   /** @type {{ data: Uint8Array, mediaType: string } | undefined} */
   let clip = c.audio;
   const built = hearing
-    ? /** @type {NonNullable<EndpointType['transcribeRequest']>} */ (type.transcribeRequest)({ ...spec, audio: /** @type {{ data: Uint8Array, mediaType: string }} */ (c.audio) })
+    ? /** @type {NonNullable<EndpointType['transcribeRequest']>} */ (type.transcribeRequest)({ ...spec, audio: /** @type {{ data: Uint8Array, mediaType: string }} */ (c.audio), ...(c.languages ? { languages: c.languages } : {}) })
     : /** @type {NonNullable<EndpointType['speechRequest']>} */ (type.speechRequest)({ ...spec, text });
   const cost = endpoint.free ? 0 : hearing ? speechCost(model.prices, { seconds: c.audio?.seconds }) : speechCost(model.prices, { chars: text.length + (type.extraChars?.(spec) ?? 0) });
   const started = now();

@@ -14,6 +14,7 @@ import { pickFormat, pickOut, CODEC_ORDER } from './formats.js';
 import { listen } from './listening.js';
 import { micProblem } from './mic.js';
 import { browserVoiceFor } from './where.js';
+import { languageSettings, modelLanguages, speakerLine, speechLocale, dictationLocale } from '../languages.js';
 import { record as logEvent } from '../agent/log.js';
 import { encodeWav } from './pcm.js';
 import { sha256Hex } from '../hash.js';
@@ -63,6 +64,8 @@ export class Voice {
   voicePlays = new Map();
   /** The voices that answered a 400 naming instructions: asked without their style from then on (until annai restarts). @type {Set<string>} */
   unstyled = new Set();
+  /** The transcription models that answered a 400 naming language: asked without the user's languages from then on (until annai restarts). @type {Set<string>} */
+  unhinted = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'auto', on: false, why: 'not sure' };
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
@@ -102,10 +105,13 @@ export class Voice {
       // A stream the page couldn't play (an iPhone's audio suspended): whole clips until a tap unlocks sound again.
       onBlocked: () => { this.#unlocked = false; },
       bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
-      browserOptions: async () => {
-        const s = voiceSettings(await readAppSettings(this.ws));
-        const system = this.browserVoice(s.browserVoice);
-        return { voice: system?.id, rate: s.rate, lang: this.locale, system };
+      browserOptions: async (text) => {
+        const app = await readAppSettings(this.ws);
+        const s = voiceSettings(app);
+        // The sentence's own language among those listed (a fixed answer language wins): a voice chosen by hand still speaks as it does.
+        const lang = speechLocale(languageSettings(app, this.locale), text);
+        const system = this.browserVoice(s.browserVoice, lang);
+        return { voice: system?.id, rate: s.rate, lang, system };
       },
       onLevel: (x) => this.#level(x, 'her'),
       onVoice: (entry, system) => {
@@ -119,20 +125,44 @@ export class Voice {
 
   /**
    * The browser voice she speaks with (spec §10.1, §11.7): the one chosen; else one on this phone
-   * for the language; else the browser's default. @param {string} [chosen] @returns {import('./platform.js').SystemVoice | null}
+   * for the language; else the browser's default. @param {string} [chosen] @param {string} [lang] the language (the browser's by default)
+   * @returns {import('./platform.js').SystemVoice | null}
    */
-  browserVoice(chosen = '') {
+  browserVoice(chosen = '', lang = this.locale) {
     try {
-      return browserVoiceFor(this.platform?.synth.voices() ?? [], { chosen, lang: this.locale });
+      return browserVoiceFor(this.platform?.synth.voices() ?? [], { chosen, lang });
     } catch {
       return null;
     }
   }
 
-  /** Whether phone dictation recognizes speech on this phone, for this language, now (spec §11.7). @returns {Promise<boolean>} */
+  /** What the user speaks (Settings → Shiori), the browser's language until they choose. */
+  async languages() {
+    return languageSettings(await readAppSettings(this.ws), this.locale);
+  }
+
+  /**
+   * How Shiori sounds, in the words of the first Gemini voice in her voices' list: its style, the description's default or the user's own,
+   * in plain words; '' once the user has cleared it, for a voice that takes none, or with no Gemini voice. Koe live is told it, so it sounds
+   * as she does in Classic.
+   */
+  async speakingStyle() {
+    const cfg = await this.llm.config();
+    const id = (cfg.roles['speech-out']?.models ?? []).find((/** @type {string} */ i) => abilityOf(cfg, i)?.type === 'gemini-speech');
+    if (!id) return '';
+    const t = tunablesOf(cfg, this.llm.types(), id);
+    return t.styled === false ? '' : String(t.style ?? '').replace(/\s+/g, ' ').trim().slice(0, 200).replace(/[\s.,;:!?]+$/, '');
+  }
+
+  /** The language phone dictation listens in: the first the user speaks (it takes one), whatever Shiori answers in. */
+  async dictationLocale() {
+    return dictationLocale(await this.languages());
+  }
+
+  /** Whether phone dictation recognizes speech on this phone, for the language it listens in, now (spec §11.7). @returns {Promise<boolean>} */
   async dictationLocal() {
     try {
-      return Boolean(await this.platform?.dictation.local?.(this.locale));
+      return Boolean(await this.platform?.dictation.local?.(await this.dictationLocale()));
     } catch {
       return false;
     }
@@ -371,11 +401,18 @@ export class Voice {
     if (!audio) throw new ProviderError('bad-request', `${modelOf(cfg.models[id]).name} takes no audio format this phone makes (${accepts.join(', ')}).`);
     for (let retry = 0; ; retry++) {
       try {
-        const text = String((await this.llm.transcribe({ modelId: id, audio: { ...audio, seconds: kept.audio?.seconds }, scope, wake, signal })).text ?? '');
+        const hints = modelLanguages(await this.languages());
+        const languages = this.unhinted.has(id) ? { ...hints, spoken: [] } : hints;
+        const text = String((await this.llm.transcribe({ modelId: id, audio: { ...audio, seconds: kept.audio?.seconds }, scope, wake, signal, languages })).text ?? '');
         if (plain) this.wavOnly.add(id);
         return text;
       } catch (e) {
         const kind = e instanceof ProviderError ? e.kind : '';
+        // A 400 naming the language field: asked again without the user's languages, and not hinted again (as a refused style is dropped).
+        if (kind === 'bad-request' && /language/i.test(/** @type {Error} */ (e).message) && !this.unhinted.has(id) && modelLanguages(await this.languages()).spoken.length) {
+          this.unhinted.add(id);
+          return this.#hear(id, kept, scope, wake, signal, plain);
+        }
         if (kind === 'bad-request' && audio.format !== 'wav' && audioIn(cfg, this.llm.types(), id).includes('wav')) return this.#hear(id, kept, scope, wake, signal, true);
         if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length || signal?.aborted) throw e;
         await new Promise((r) => setTimeout(r, this.retryMs[retry]));
@@ -528,7 +565,8 @@ export class Voice {
     platform.session('play-and-record');
     try {
       const session = await listen({
-        platform, kind, pauseMs, lang: this.locale, now: this.now, onSpeech, onQuiet, onError, local, recording,
+        // Web Speech takes one language: the first the user speaks (Settings → Shiori), else the browser's own.
+        platform, kind, pauseMs, lang: await this.dictationLocale(), now: this.now, onSpeech, onQuiet, onError, local, recording,
         onLevel: (x) => this.#level(x, 'you'),
         onSegment: (h) => {
           this.memory.keep(h, scope);
@@ -598,7 +636,7 @@ export class Voice {
           // The sound goes as each model it reaches takes it, and only as sound.
           const out = await this.llm.call({
             role, prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
-            request: { system: WRITE_DOWN, messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
+            request: { system: [WRITE_DOWN, speakerLine(await this.languages())].filter(Boolean).join(' '), messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
           });
           who = out.modelId ?? hearer;
           return String(out.reply.text ?? '').trim();

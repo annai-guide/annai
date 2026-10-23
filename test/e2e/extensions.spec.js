@@ -205,7 +205,8 @@ test('a package without code brings a skill and a personality; Settings → Shio
     await expect(page.getByText('Trail kit 1.0.0', { exact: true })).toBeVisible();
     await page.goto('/#/shiori');
     await expect(page.getByText('ranger (from Trail kit)')).toBeVisible();
-    await page.getByRole('button', { name: 'Add' }).click();
+    // The Personality section's Add (the Languages section has its own).
+    await page.getByRole('region', { name: 'Personality', exact: true }).getByRole('button', { name: 'Add' }).click();
     await expect(page.getByRole('radio', { name: 'ranger' })).toBeVisible();
   } finally {
     await llm.stop();

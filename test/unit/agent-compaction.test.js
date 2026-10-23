@@ -5,6 +5,7 @@ import { compactionNeed, cutAt, renderForSummary, coldSystem, summaryLanguage } 
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
 import { saveModel } from '../../src/core/llm/config.js';
+import { record } from '../../src/core/agent/log.js';
 
 const say = (/** @type {string} */ text, /** @type {any} */ extra = {}) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }], ...extra });
 
@@ -204,4 +205,75 @@ test('the summary is asked for in a language named: the one the user wrote in la
   assert.match(k.requests.at(-1).system, /as plain text, in English, the language the user wrote in last\.$/);
   const { instruction } = await import('../../src/core/agent/compaction.js');
   assert.match(instruction('event 12', 'Spanish, the language the user wrote in last'), /as plain text, in Spanish, the language the user wrote in last\.$/);
+});
+
+test('with the languages setting the summary is written in the language it names, not guessed from the text (phase 2); with none it is guessed as before', async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const three = languageSettings({ languages: { spoken: ['en', 'zh', 'ja'] } }, 'en-US');
+  // A listed language the user wrote in last is it.
+  assert.equal(summaryLanguage('今日の夕食はどこにしますか', three), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage('Where should we eat?', three), 'English, the language the user wrote in last');
+  // A short or unplaceable message, or one in a language not listed, is the first listed language: the guess is never taken for the user's.
+  assert.equal(summaryLanguage('OK', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
+  assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
+  assert.equal(summaryLanguage('', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
+  // A fixed answer language is the summary's.
+  const fixed = languageSettings({ languages: { spoken: ['en', 'ja'], answer: 'ja' } }, 'en-US');
+  assert.equal(summaryLanguage('Where should we eat?', fixed), 'Japanese, the language Shiori answers in');
+  // Nothing chosen (the browser's language is only a default): the guess, as before.
+  const none = languageSettings({}, 'en-US');
+  assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?', none), 'Spanish, the language the user wrote in last');
+  assert.equal(summaryLanguage('', none), "English, the app's language (the user hasn't written anything yet)");
+});
+
+test('housekeeping reads the setting: a fixed answer language is the summary\'s, whatever the last message looks like (phase 2)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'ja' } });
+  for (const m of ['Where should we eat tonight?', 'And tomorrow?', 'We are vegetarian, by the way.', 'Is it far?', 'Thanks, that is all for today.']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language Shiori answers in\.$/);
+});
+
+test('kanji alone is Japanese for the summary when Japanese is listed and Chinese is not; the matcher is the stray flag\'s (review item 5)', async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const ja = languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US');
+  assert.equal(summaryLanguage('大丈夫', ja), 'Japanese, the language the user wrote in last');
+  const both = languageSettings({ languages: { spoken: ['en', 'ja', 'zh'] } }, 'en-US');
+  assert.equal(summaryLanguage('我们今晚去哪里吃饭', both), 'Chinese (Mandarin), the language the user wrote in last');
+  assert.equal(summaryLanguage('今日の夕食はどこにしますか', both), 'Japanese, the language the user wrote in last');
+  const zh = languageSettings({ languages: { spoken: ['en', 'zh'] } }, 'en-US');
+  assert.equal(summaryLanguage('今日の夕食はどこにしますか', zh), 'English, the first language the user speaks (English and Chinese (Mandarin))', 'kana is Japanese, which is not listed');
+});
+
+test('what the user said aloud counts for the summary\'s language, not only what they typed (review item 5, Step S7)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  for (const m of ['ok', 'ok again', 'fine', 'go on', 'thanks']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  // A voice-only user: what they said is a heard line, with its words; the last of what the user said is Japanese.
+  await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'sp1', ms: 1200, source: 'dictation', text: '今日の夕食はどこにしますか' } });
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language the user wrote in last\.$/);
+});
+
+test('chatter the gate set aside (a dismissed heard line, and the words written for it) does not set the summary\'s language (review follow-up 4)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  for (const m of ['ok', 'ok ok', 'fine', 'hmm', 'go']) { // none of them places a language
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  // People talking among themselves in Japanese: heard, "not meant for you", its words written later.
+  await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'ch1', ms: 1200, source: 'mic', dismissed: true, gate: 'chatter' } });
+  await record(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'ch1', text: '今日の夕食はどこにしますか', by: 'm-hear' } });
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in English, the first language the user speaks \(English and Japanese\)\.$/);
 });

@@ -127,3 +127,13 @@ The one Koe list is two again, with a switch on the voice chip (the user: "Two l
 - [ ] **No Realtime model.** Remove Gemini 3.8 Live from Koe · Realtime: **Voice on · Classic (no Realtime model)**. Put it back.
 - [ ] **Voice off types through Classic.** Realtime chosen, voice off: the chip says only **Voice off**. Type a question: flash-lite answers as a bubble, and Trace → Type contains `live.session` shows no new session.
 - [ ] **The recommended models.** On a fresh install (or after emptying both Koe lists and choosing Classic), Google Gemini's page → **Use the recommended models**: Live voice is switched on, Gemini 3.8 Live goes into Koe · Realtime, gemini-3.5-flash-lite into Koe · Classic, and the chip says **Realtime** with voice on.
+
+## The languages you speak (phase 2, 2026-10-23)
+
+The field failure was on a phone: in realtime mode Gemini Live heard short English replies as other languages ("¿Qué?", "chưa") and answered in Spanish. The harness's clean speech in a quiet room did not reproduce it, so this is the check that can. Before you start, open Settings → Updates and update Google Gemini and Gemini Live.
+
+- [ ] **Short replies on the phone's speaker.** Settings → Shiori → Languages: pick English first (and Chinese and Japanese, if you speak them). Voice on, Realtime, the phone's own speaker and microphone, in a room as it usually is, a car if you can. Tap Shiori, ask something she answers with a question, and reply with one word each time: "Yes.", "Sure.", "What?", "No.", "Okay." Twenty replies if you can bear it. She should stay in English every time, and ask you to repeat when she can't make one out.
+- [ ] **The Trace.** Trace → Type contains `heard`: every line is what you said. A line with `strayLanguage` is one annai took for another language and flagged (never dropped, and never a reason to change language): note which words and in what room. Trace → the live session's setup is not shown, but Settings → Shiori shows what is set: confirm the Languages section lists what you picked.
+- [ ] **A real change of language.** With English, Chinese and Japanese listed, say a whole sentence in Japanese, then in Chinese, then in English. Each is answered in kind.
+- [ ] **A fixed answer language.** Shiori answers in: Japanese. Speak English: she answers in Japanese. Remove Japanese from the list: Shiori answers in goes back to "The language you speak to her", and she answers in English.
+- [ ] **Dictation.** Voice on, Classic, phone dictation first in Speech in: it listens in the first language listed, whatever Shiori answers in. Put Japanese first and dictate a Japanese sentence.

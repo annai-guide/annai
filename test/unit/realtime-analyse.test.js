@@ -272,3 +272,94 @@ test('a clean run has no warnings, and says nothing of them', () => {
   assert.equal(a.checks.find((c) => c.name === 'whole sentences heard')?.ok, true);
   assert.doesNotMatch(summary([{ rec: clean(), a }], { sessions: 1, lines: [] }), /warning/);
 });
+
+// Phase 2: the languages check. A scenario that sets the languages (rec.languages) expects each answer in the language its clip was spoken in.
+const LANGS = { ...CLIPS, sure: { kind: 'reply', words: 'Sure.', lang: 'en' }, ja: { kind: 'sentence', words: 'この近くに、おいしいラーメン屋さんはありますか。', lang: 'ja' }, zh: { kind: 'sentence', words: '附近有什么好吃的餐馆吗？', lang: 'zh' } };
+/** A rec with one clip played, a turn for it, what Gemini heard and what she said. @param {string} name @param {string} heard @param {string} said @param {Record<string, any>} [over] */
+function spoke(name, heard, said, over = {}) {
+  return clean({
+    plays: [{ name, at: 1000, end: 2780, gainDb: 0 }],
+    frames: [
+      f(100, 'out', 'setup'), f(500, 'in', 'setupComplete'),
+      f(1450, 'out', 'activityStart'), f(1500, 'out', 'audio', { bytes: 3200 }), f(3200, 'out', 'activityEnd'),
+      f(3900, 'in', 'heard', { text: heard }), f(4100, 'in', 'audio', { bytes: 9600 }), f(4200, 'in', 'said', { text: said }), f(7000, 'in', 'turnComplete'),
+    ],
+    languages: { spoken: ['en', 'zh', 'ja'], answer: 'follow', applied: true },
+    ...over,
+  });
+}
+const check = (/** @type {any} */ a) => a.checks.find((/** @type {any} */ c) => c.name === 'language kept');
+
+test('language kept: a short English reply heard as English and answered in English passes; no scenario that sets no languages has the check', () => {
+  const a = analyse(spoke('sure', 'Sure.', 'Great, I will look into that.'), LANGS);
+  assert.equal(check(a)?.ok, true);
+  assert.equal(a.pass, true);
+  assert.equal(a.clips[0].heardLang, '');
+  assert.equal(check(run(clean())), undefined, 'the older scenarios are not held to it');
+});
+
+test('language kept: the short reply answered in Spanish, as the trace of 2026-10-22 had it, fails, and what Gemini heard is noted', () => {
+  const a = analyse(spoke('sure', '¿Qué?', 'Lo siento, ¿qué quieres decir? No te he entendido bien.'), LANGS);
+  assert.equal(check(a)?.ok, false);
+  assert.match(check(a)?.detail ?? '', /sure answered in Spanish/);
+  assert.equal(a.pass, false);
+  assert.equal(a.clips[0].heardLang, 'Spanish');
+  assert.ok(a.notes.some((n) => /Gemini heard "¿Qué\?" for "Sure\." \(Spanish\)/.test(n)), a.notes.join(' | '));
+});
+
+test('language kept: a Japanese sentence answered in Japanese passes, answered in English or Chinese fails; a Chinese sentence answered in Chinese passes, in Japanese fails', () => {
+  const ok = (/** @type {string} */ name, /** @type {string} */ heard, /** @type {string} */ said) => check(analyse(spoke(name, heard, said), LANGS));
+  assert.equal(ok('ja', 'この近くにおいしいラーメン屋さんはありますか', '駅の近くに人気のお店がありますよ。').ok, true);
+  assert.match(ok('ja', 'この近くにおいしいラーメン屋さんはありますか', 'There is a popular place near the station.').detail, /ja answered in English/);
+  assert.match(ok('ja', 'この近くにおいしいラーメン屋さんはありますか', '车站附近有一家很受欢迎的店。').detail, /ja answered in Chinese/);
+  assert.equal(ok('zh', '附近有什么好吃的餐馆吗', '车站附近有一家很受欢迎的店。').ok, true);
+  assert.match(ok('zh', '附近有什么好吃的餐馆吗', '駅の近くに人気のお店がありますよ。').detail, /zh answered in Japanese/);
+});
+
+test('language kept: an answer too short to place passes; no transcript of her words is a note, not a failure', () => {
+  assert.equal(check(analyse(spoke('sure', 'Sure.', 'Mm.'), LANGS))?.ok, true);
+  const none = analyse(spoke('sure', 'Sure.', ''), LANGS);
+  assert.equal(check(none)?.ok, true);
+  assert.ok(none.notes.some((n) => /sure: no transcript of what she said/.test(n)), none.notes.join(' | '));
+});
+
+test('wordRecall reads Japanese and Chinese by character, as they have no spaces between words', () => {
+  assert.equal(wordRecall('この近くにおいしいラーメン屋さんはありますか。', 'この近くにおいしいラーメン屋さんはありますか'), 1);
+  assert.ok(wordRecall('この近くにおいしいラーメン屋さんはありますか。', 'どこにありますか') < 0.5);
+  assert.equal(wordRecall('附近有什么好吃的餐馆吗？', '附近有什么好吃的餐馆吗'), 1);
+});
+
+test('the notes carry what annai did with the languages: the setup frame\'s hints, a heard line it flagged as stray, and a build with no setting', () => {
+  const r = spoke('sure', '¿Qué?', 'Sorry, could you say that again?');
+  r.frames[0] = f(100, 'out', 'setup', { text: 'languageCodes en,zh-Hans,ja; the instructions have a Languages section' });
+  r.trace.push({ at: 3950, type: 'heard', actor: 'user', data: { text: '¿Qué?', strayLanguage: 'Spanish' } });
+  const a = analyse(r, LANGS);
+  assert.ok(a.notes.some((n) => n === 'setup: languageCodes en,zh-Hans,ja; the instructions have a Languages section'), a.notes.join(' | '));
+  assert.ok(a.notes.some((n) => /annai flagged the heard line "¿Qué\?" as Spanish/.test(n)), a.notes.join(' | '));
+  const old = analyse(spoke('sure', 'Sure.', 'Great.', { languages: { spoken: ['en'], answer: 'follow', applied: false, why: 'this build of annai has no languages setting' } }), LANGS);
+  assert.ok(old.notes.some((n) => /languages setting not applied: this build of annai has no languages setting/.test(n)), old.notes.join(' | '));
+  assert.match(detail(r, a), /languages set: en, zh, ja; she answers in: follow\n/);
+});
+
+test('detail names the language each clip was heard and answered in, when it is not the clip\'s', () => {
+  const r = spoke('sure', '¿Qué?', 'Lo siento, ¿qué quieres decir? No te he entendido bien.');
+  assert.match(detail(r, analyse(r, LANGS)), /heard: "¿Qué\?".*\[heard as Spanish\].*\[answered in Spanish\]/);
+});
+
+test('the timeline shows the words of a heard line annai wrote, and marks one it flagged as stray', () => {
+  const r = clean();
+  r.trace.push({ at: 3950, type: 'heard', actor: 'user', data: { text: '¿Qué?', strayLanguage: 'Spanish' } }, { at: 4000, type: 'heard', actor: 'user', data: { text: 'Yes.' } });
+  const text = timeline(r, run(r));
+  assert.match(text, /trace\s+heard "¿Qué\?" STRAY\(Spanish\)/);
+  assert.match(text, /trace\s+heard "Yes\."\n/);
+});
+
+test('the harness reads a language as annai does: Vietnamese by its marks (â ê ô đ too), a Spanish mark, kanji with kana (review item 4)', async () => {
+  const { seenLanguage } = await import('../../scripts/realtime/analyse.mjs');
+  assert.equal(seenLanguage('không'), 'Vietnamese');
+  assert.equal(seenLanguage('Tôi không biết'), 'Vietnamese');
+  assert.equal(seenLanguage('¿Qué?'), 'Spanish');
+  assert.equal(seenLanguage('今日の夕食'), 'Japanese');
+  assert.equal(seenLanguage('Bună'), '');
+  assert.equal(seenLanguage('Great, I will look into that.'), 'English');
+});

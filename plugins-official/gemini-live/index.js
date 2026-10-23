@@ -10,6 +10,12 @@
  * - proactive audio (staying quiet to chatter) is a v1alpha field: v1beta refuses it with 1007 "Unknown name", and
  *   annai opens once more on v1beta without it (decision 11);
  * - errors are closes: 1007 for a bad field and for "API key not valid", 1008 for an unknown model;
+ * - languages (phase 2; Google's Live guide and API reference, read 2026-10-22): native audio output models "automatically choose the
+ *   appropriate language and don't support explicitly setting the language code", so no speechConfig.languageCode is sent (it takes one code
+ *   anyway); they may be told in the system instruction which languages to speak, and annai always does (the instructions it is given hold the
+ *   languages section). Input transcription takes `languageCodes`, several BCP-47 hints ("If omitted or empty, defaults to automatic language
+ *   detection"), in the guide's own codes (en, ja, zh-Hans), and only when every language listed has one (Cantonese has none); a session that
+ *   refuses the field opens again without it, and again if it then refuses the proactive audio (two reopens at most);
  * - usage comes once a turn, with turnComplete, by modality; thinking is counted apart from the response;
  * - a turn cut off ends with `interrupted`, then a turnComplete (and its usage) of its own; on resuming, Gemini first
  *   finishes the answer it was giving when the connection went.
@@ -47,11 +53,12 @@ export function activate(annai) {
     type: 'gemini-live',
     name: 'Gemini Live',
     realtime: true,
-    // apiVersion: v1alpha has proactive audio; voice: a prebuilt voice's name ('' for Gemini's own); compression: a sliding
+    // apiVersion: v1alpha has proactive audio; voice: a prebuilt voice's name (Sulafat, the voice of Classic too, so Koe sounds the same in both; '' for Gemini's own); compression: a sliding
     // window, as Gemini bills the whole context every turn.
+    // languageHints: the languages the user speaks, given to input transcription as hints (off: automatic detection).
     // heardLive: its input transcript streams in while the user speaks; with manual turns it came only after activityEnd, whole
     // (measured 2026-10-22, gemini-3.8-live), so a transcript that stops growing says nothing about a turn going on.
-    tunables: { apiVersion: 'v1alpha', proactive: true, voice: '', compression: true, heardLive: false },
+    tunables: { apiVersion: 'v1alpha', proactive: true, voice: 'Sulafat', compression: true, languageHints: true, heardLive: false },
     audio: { in: [{ format: 'pcm16', rate: 16000 }], out: [{ format: 'pcm16', rate: 24000 }] },
     /** @param {any} c */
     open: ({ endpoint, key, tunables }) => ({
@@ -90,6 +97,10 @@ export function activate(annai) {
         if (m.sessionResumptionUpdate?.resumable && m.sessionResumptionUpdate.newHandle) emit({ type: 'resume', handle: m.sessionResumptionUpdate.newHandle });
         if (m.goAway) emit({ type: 'goaway', ms: ms(m.goAway.timeLeft) });
       });
+      // The user's languages as Gemini Live names them, once each, in order. Only when it names every one: a list missing a language
+      // (Cantonese, whose zh-Hant is not its own) would bias the transcript against it.
+      const codes = (setup.languages?.spoken ?? []).map((/** @type {any} */ l) => l?.live);
+      const hints = t.languageHints === false || codes.some((/** @type {unknown} */ c) => !c) ? [] : [...new Set(codes)];
       send({
         setup: {
           model: `models/${model.providerId}`,
@@ -97,7 +108,7 @@ export function activate(annai) {
           systemInstruction: { parts: [{ text: [setup.instructions, setup.context].filter(Boolean).join('\n\n') }] },
           ...(setup.tools.length ? { tools: [{ functionDeclarations: setup.tools.map((/** @type {any} */ x) => ({ name: x.name, description: x.description, parametersJsonSchema: x.input })) }] } : {}),
           realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
-          inputAudioTranscription: {},
+          inputAudioTranscription: hints.length ? { languageCodes: hints } : {},
           outputAudioTranscription: {},
           sessionResumption: setup.resume ? { handle: setup.resume } : {},
           ...(t.compression ? { contextWindowCompression: { slidingWindow: {} } } : {}),
@@ -119,6 +130,11 @@ export function activate(annai) {
     // 1007 is a bad field or a bad key: the words tell them apart.
     classifyClose: (/** @type {number} */ code, /** @type {string} */ reason) => (/api key|permission/i.test(reason) ? 'auth' : code === 1007 ? 'bad-request' : null),
     /** @param {number} code @param {string} reason @param {any} t */
-    reopen: (code, reason, t) => (code === 1007 && /proactivity/i.test(reason) && t.proactive ? { ...t, apiVersion: 'v1beta', proactive: false } : null),
+    reopen: (code, reason, t) => {
+      if (code !== 1007) return null;
+      // One field a try, twice in all: the hints, then the proactive audio (a model refusing both used to die on the second).
+      if (/language_?codes/i.test(reason) && t.languageHints !== false) return { ...t, languageHints: false };
+      return /proactivity/i.test(reason) && t.proactive ? { ...t, apiVersion: 'v1beta', proactive: false } : null;
+    },
   });
 }

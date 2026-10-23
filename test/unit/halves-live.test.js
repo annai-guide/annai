@@ -901,3 +901,28 @@ test("Kokoro's note that comes while the user is still speaking goes in as soon 
     await k.done();
   }
 });
+
+test('a live session is told the Gemini voice\'s speaking style as one stable line, only while it is set (nit: Koe sounds as Classic does)', async () => {
+  const { newProvider, newModel, saveProvider, saveRoles, readConfig } = await import('../../src/core/llm/config.js');
+  const k = await liveKit([]);
+  try {
+    const p = newProvider('provider-gemini', { user: { name: 'Gemini Voice', abilities: { voice: { kind: 'voice', type: 'gemini-speech' } } } });
+    const m = newModel(p.id, 'voice', { user: { providerId: 'gemini-3.8-flash-lite-tts', tunables: { style: 'young, cheerful and lively, yet calm and gentle' } } });
+    await saveProvider(k.ws, p, [m]);
+    await saveRoles(k.ws, { ...(await readConfig(k.ws)).roles, 'speech-out': { models: [m.id], level: 'off' } });
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const text = (/** @type {number} */ n) => got(k, 'setup')[n].setup.systemInstruction.parts[0].text;
+    assert.match(text(0), /\n\n# Voice\nYour speaking style: young, cheerful and lively, yet calm and gentle\.\n\n/);
+    assert.equal(text(0).split('# Voice').length, 2, 'once');
+    k.agent.hush('away');
+    await soon(async () => k.agent.live.state === 'closed');
+    m.user.tunables = { style: '' };
+    await saveProvider(k.ws, p, [m]);
+    k.agent.tap();
+    await soon(async () => got(k, 'setup').length === 2);
+    assert.doesNotMatch(text(1), /# Voice/, 'a cleared style: no line');
+  } finally {
+    await k.done();
+  }
+});
