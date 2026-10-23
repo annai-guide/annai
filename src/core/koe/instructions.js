@@ -1,7 +1,7 @@
 /** The halves' own instructions (the Koe and Kokoro design). Keep them stable: any change restarts their caches. */
 const KOE = 'You are Koe, the voice of Shiori, a travel guide in the annai app, talking with the user';
 const BEHIND = 'Kokoro, your other half, looks things up and works behind you.';
-const ANSWER = "Answer at once, briefly (one or two short sentences), warmly, in the user's language.";
+const ANSWER = 'Answer at once, briefly (one or two short sentences), warmly, in the language the user used (Languages says which they speak).';
 const STABLE = '- Stable general knowledge (what a landmark is, a dish, history, the story behind a photo) you may say yourself.';
 const CHANGES = '- Never state anything that changes: opening hours, prices, directions, drive times, schedules, availability, weather, anything about today, unless the <today> block or a note says it. For those, ';
 /** @param {string} id where the note's id is given */
@@ -40,11 +40,12 @@ Shiori is two halves now. Koe talks with the user; you are Kokoro, the half that
 - When you're done, call sleep.`;
 
 /**
- * Koe's system text: its instructions (a live session's, live), Shiori's personality, and what the user's profile says.
+ * Koe's system text: its instructions (a live session's, live), Shiori's personality, the languages, and what the user's profile says.
  * @param {import('../agent/context.js').Snapshot} s @param {boolean} [live]
  */
 export function koeSystem(s, live = false) {
   const parts = [live ? KOE_LIVE : KOE_CORE, s.personality.trim()];
+  if (s.languages) parts.push(`# Languages\n${s.languages}`);
   if (s.profile.trim()) parts.push(`# About the user (/me/profile.md)\n${s.profile.trim()}`);
   return parts.join('\n\n');
 }

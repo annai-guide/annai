@@ -34,10 +34,11 @@ import { createHash } from 'node:crypto';
  *   words come this many ms after its sound, before its end (a late first word); andThen: the next turn follows this one's end at once, as
  *   Gemini goes on by itself after a tool call
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
- *   pace?: number, chunkBytes?: number, expired?: boolean }} Options
+ *   pace?: number, chunkBytes?: number, expired?: boolean, noLanguageCodes?: boolean }} Options
  *   key: the one key it takes (none: any); models: the ids it knows (none: any); closeWith: how it closes each session at its setup (openai: its session.update);
  *   pace: how long a turn stays open, as a share of its audio's real time (1, as Gemini; 0: at once); openai: how long generating it takes; chunkBytes: audio per message;
- *   expired: Gemini refuses every resumption handle as it does one it no longer keeps (1008, measured in the user's trace, 2026-10-22)
+ *   expired: Gemini refuses every resumption handle as it does one it no longer keeps (1008, measured in the user's trace, 2026-10-22);
+ *   noLanguageCodes: a setup with inputAudioTranscription.languageCodes is refused with 1007 "Unknown name", as a model that doesn't know the field would
  */
 
 /** Gemini Live's path, by API version. @param {string} version */
@@ -156,7 +157,7 @@ export async function startRealtimeServer(o) {
     open.add(conn);
     socket.on('close', () => open.delete(conn));
     socket.on('error', () => {});
-    const c = { conn, received, turns, turnAt, counter, early, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '', expired: Boolean(o.expired) };
+    const c = { conn, received, turns, turnAt, counter, early, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '', expired: Boolean(o.expired), noLanguageCodes: Boolean(o.noLanguageCodes) };
     const session = isOpenai ? openaiSession(c) : geminiSession(c);
     /** @type {Buffer} */
     let buf = Buffer.alloc(0);
@@ -221,12 +222,12 @@ export async function startRealtimeServer(o) {
 
 /**
  * @typedef {{ conn: ReturnType<typeof link>, received: any[], turns: Turn[], turnAt: () => Turn | undefined, counter: { next: number, calls: number, ids: number }, early: Set<Turn>,
- *   key?: string, given: string | null, models?: string[], closeWith?: { code: number, reason: string }, pace: number, chunkBytes: number, url: URL, version: string, expired?: boolean }} Ctx
+ *   key?: string, given: string | null, models?: string[], closeWith?: { code: number, reason: string }, pace: number, chunkBytes: number, url: URL, version: string, expired?: boolean, noLanguageCodes?: boolean }} Ctx
  */
 
 /** Gemini Live, as measured. @param {Ctx} c @returns {{ handle(m: any): void, stop(): void }} */
 function geminiSession(c) {
-  const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version, expired } = c;
+  const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version, expired, noLanguageCodes } = c;
   const send = conn.send;
   let ready = false;
   /** The turn being played: its timers, and what cuts it off. @type {{ timers: NodeJS.Timeout[], turn: Turn } | null} */
@@ -288,6 +289,7 @@ function geminiSession(c) {
           return conn.close(1008, `${s.model} is not found for API version ${version}, or is not supported for bidiGenerateContent. Call ModelService.ListModels to see the list of available models and their supported methods.`);
         }
         if (version === 'v1beta' && s.proactivity) return conn.close(1007, 'Invalid JSON payload received. Unknown name "proactivity" at \'setup\': Cannot find field.');
+        if (noLanguageCodes && s.inputAudioTranscription?.languageCodes) return conn.close(1007, 'Invalid JSON payload received. Unknown name "languageCodes" at \'setup.input_audio_transcription\': Cannot find field.');
         if (expired && s.sessionResumption?.handle) return conn.close(1008, 'BidiGenerateContent session not found or expired');
         ready = true;
         send({ setupComplete: {} });

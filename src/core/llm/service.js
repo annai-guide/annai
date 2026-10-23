@@ -552,10 +552,11 @@ export function createLlm({
     },
     /**
      * Speech to text with one transcription model (spec §10.2), traced in scope.
-     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string }} c
+     * languages: what the user speaks (phase 2), for the model's language hint.
+     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string, languages?: import('./contract.js').Languages }} c
      */
-    async transcribe({ modelId, audio, scope = SYS, signal, wake }) {
-      return speechCall({ ...(await speechOf(modelId, 'in', scope)), audio, fetch: get, signal, registry: plugins.registry, wake });
+    async transcribe({ modelId, audio, scope = SYS, signal, wake, languages }) {
+      return speechCall({ ...(await speechOf(modelId, 'in', scope)), audio, fetch: get, signal, registry: plugins.registry, wake, ...(languages ? { languages } : {}) });
     },
     /**
      * A voice clip of one text from one voice (spec §10.1), traced in scope. plays: what the device plays, for a format of 'auto';

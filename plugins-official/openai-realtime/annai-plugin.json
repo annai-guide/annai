@@ -1,7 +1,7 @@
 {
   "id": "openai-realtime",
   "name": "OpenAI Realtime",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "api": 1,
   "entry": "index.js",
   "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.",

@@ -1,7 +1,7 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "api": 1,
   "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
@@ -244,7 +244,7 @@
           {
             "providerId": "gemini-3.8-flash-lite-tts",
             "name": "Gemini 3.8 Flash Lite TTS",
-            "tunables": { "style": "calm, warm and friendly" },
+            "tunables": { "style": "young, cheerful and lively, yet calm and gentle" },
             "prices": {
               "perMillionChars": 10
             }
@@ -252,7 +252,7 @@
           {
             "providerId": "gemini-3.8-flash-tts",
             "name": "Gemini 3.8 Flash TTS",
-            "tunables": { "style": "calm, warm and friendly" },
+            "tunables": { "style": "young, cheerful and lively, yet calm and gentle" },
             "prices": {
               "perMillionChars": 15
             }
@@ -265,7 +265,7 @@
         "name": "Live voice",
         "on": false,
         "baseUrl": "https://generativelanguage.googleapis.com",
-        "note": "A conversation in one stream, voice both ways, for Koe (Gemini Live). While a session is open, what you say goes to Google as audio. Free on AI Studio's free tier.",
+        "note": "A conversation in one stream, voice both ways, for Koe (Gemini Live). While a session is open, what you say goes to Google as audio. Free on AI Studio's free tier. Koe speaks with Sulafat here too, the voice of Classic, so she sounds the same in both.",
         "models": [
           {
             "providerId": "gemini-3.8-live",

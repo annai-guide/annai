@@ -207,6 +207,15 @@ test('settings are kept unless the user chooses to replace them', async () => {
   assert.equal((await b.ws.list(SYS_SETTINGS)).length, 1);
 });
 
+test('the languages you speak are in the settings a backup carries (phase 2)', async () => {
+  const a = await device();
+  await updateAppSettings(a.ws, { languages: { spoken: ['en', 'zh', 'ja'], answer: 'follow' } });
+  const { blob } = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  const b = await device();
+  await importArchive(b.store, await peekArchive(await bytesOf(blob)), { settings: 'replace' });
+  assert.deepEqual((await readAppSettings(b.ws)).languages, { spoken: ['en', 'zh', 'ja'], answer: 'follow' });
+});
+
 test('imported plugins arrive switched off, so running their code is always an explicit choice', async () => {
   const a = await device();
   await a.ws.write('sys:plugins', '/hello/index.js', 'export function activate() {}', { author: 'system' });

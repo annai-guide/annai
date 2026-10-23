@@ -37,6 +37,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     echoDb: /** @type {number | null} */ (null),
     /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
     voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
+    /** What the browser voice was asked to say, and in what language. @type {{ text: string, lang?: string, voice?: string }[]} */
+    said: [],
     /** Whether dictation recognizes speech on the phone. */
     dictationLocal: false,
     /** What each dictation was opened with. @type {any[]} */
@@ -136,9 +138,10 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     synth: {
       available: () => true,
       voices: () => platform.voiceList,
-      /** @param {string} text @param {{ signal: AbortSignal }} o */
-      say(text, { signal }) {
+      /** @param {string} text @param {{ signal: AbortSignal, lang?: string, voice?: string }} o */
+      say(text, { signal, lang, voice }) {
         log.push(`browser ${text}`);
+        platform.said.push({ text, lang, voice });
         return new Promise((resolve) => {
           const t = setTimeout(() => resolve({ ended: true, charIndex: text.length }), playMs);
           signal.addEventListener('abort', () => { clearTimeout(t); resolve({ ended: false, charIndex: text.indexOf(' ') + 1 }); }, { once: true });
@@ -253,12 +256,15 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
   for (const id of asr) cfg.models[id] = { id, provider: 'pi', ability: 'transcription', template: null, user: { providerId: id }, created: 0 };
   for (const [id, formats] of Object.entries(audioIn)) cfg.models[id].user.tunables = { audioIn: formats };
   let heard = 0;
-  /** What each transcription upload carried. @type {{ modelId: string, mediaType: string, data: Uint8Array, signal?: AbortSignal }[]} */
+  /** What each transcription upload carried. @type {{ modelId: string, mediaType: string, data: Uint8Array, signal?: AbortSignal, languages?: any }[]} */
   const uploads = [];
+  /** The system text of each call a model answered. @type {string[]} */
+  const systems = [];
   return {
     bench,
     calls,
     uploads,
+    systems,
     types: () => new Map([['chat', {}], ['say', { speech: 'out' }], ['hear', { speech: 'in', tunables: { audioIn: ['webm', 'mp4', 'mp3', 'wav'] } }]]),
     config: async () => cfg,
     /** @param {{ modelId: string, text: string }} c */
@@ -266,10 +272,10 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
       calls.push(`say ${modelId} ${text}`);
       return { clip: { data: enc.encode(`${modelId}:${text}`), mediaType: 'audio/mpeg' } };
     },
-    /** @param {{ modelId: string, audio: any, scope?: string, wake?: string, signal?: AbortSignal }} c */
-    async transcribe({ modelId, audio, scope, wake, signal }) {
+    /** @param {{ modelId: string, audio: any, scope?: string, wake?: string, signal?: AbortSignal, languages?: any }} c */
+    async transcribe({ modelId, audio, scope, wake, signal, languages }) {
       calls.push(['hear', modelId, audio.mediaType, scope, wake].filter(Boolean).join(' '));
-      uploads.push({ modelId, mediaType: audio.mediaType, data: audio.data, signal });
+      uploads.push({ modelId, mediaType: audio.mediaType, data: audio.data, signal, languages });
       if (failing.includes(modelId)) throw new ProviderError('server', `${modelId} is down`);
       // whisper.cpp's server: any refusal comes back as "Invalid request" (its error handler replaces the body); '*' refuses every file.
       if (refuses[modelId] === audio.mediaType || refuses[modelId] === '*') throw new ProviderError('bad-request', 'Invalid request');
@@ -283,6 +289,7 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
     async call(c) {
       const to = main.find((m) => m.id === c.prefer) ?? main[0];
       const request = c.speech ? await c.speech({ id: to.id, name: to.id, input: to.input }, c.request) : c.request;
+      systems.push(request.system);
       calls.push(`call ${c.role} ${c.prefer ?? ''} ${c.record?.tag ?? ''} ${request.messages[0].parts.map((/** @type {any} */ p) => p.type).join(',')}`);
       return { reply: { text: reply, parts: [{ type: 'text', text: reply }] }, modelId: c.prefer ?? main[0].id };
     },

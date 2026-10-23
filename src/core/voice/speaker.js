@@ -21,7 +21,7 @@ import { anySignal } from '../signals.js';
  *   failed: no voice could speak ('no-voice'), or the page may not play sound yet ('blocked', an iPhone before the first tap)
  * @typedef {{ entries: () => Promise<VoiceEntry[]>, synthesize: (entry: VoiceEntry, text: string, signal: AbortSignal) => Promise<Clip | SpeechStream>,
  *   platform: () => VoicePlatform | null, bench: (id: string, error: unknown) => void,
- *   browserOptions?: () => Promise<{ voice?: string, rate?: number, lang?: string, system?: import('./platform.js').SystemVoice | null }>, onLevel?: (x: number) => void, locale?: string,
+ *   browserOptions?: (text: string) => Promise<{ voice?: string, rate?: number, lang?: string, system?: import('./platform.js').SystemVoice | null }>, onLevel?: (x: number) => void, locale?: string,
  *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void, now?: () => number, onBlocked?: () => void, stallMs?: number }} SpeakerDeps
  *   browserOptions' system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone);
  *   synthesize: a clip, or a stream; now: the clock a stream's arrivals are timed by (ms); onBlocked: the page may not play sound now, so a tap
@@ -327,7 +327,7 @@ export class Utterance {
       tried.add(entry.id);
       try {
         if (entry.kind === 'browser') {
-          const { system = null, ...o } = (await this.#deps.browserOptions?.()) ?? {};
+          const { system = null, ...o } = (await this.#deps.browserOptions?.(text)) ?? {};
           this.#spoke(entry, system);
           const r = await platform.synth.say(text, { ...o, signal: this.#abort.signal, onLevel: this.#deps.onLevel });
           return { ended: r.ended, at: r.ended ? text.length : r.charIndex };

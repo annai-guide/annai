@@ -126,3 +126,36 @@ test('a skill installed or removed shows at her next wake, warm cache or not; ea
   const same = await take();
   assert.equal(nextSnapshot(same, await take(), { cold: false }), same); // nothing changed: the snapshot it had
 });
+
+test('the languages (phase 2): one section, in the system text of Shiori, Kokoro, Koe and a live session, after the personality and before the profile; a change comes at the next wake', async () => {
+  const { koeSystem, KOE_CORE, KOE_LIVE } = await import('../../src/core/koe/instructions.js');
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const { languagesText, languageSettings } = await import('../../src/core/languages.js');
+  const { ws, trip, registry } = await setup();
+  await ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
+  // Nothing chosen: the browser's language.
+  const first = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'ja-JP' });
+  assert.equal(first.languages, languagesText(languageSettings({}, 'ja-JP')));
+  assert.match(first.languages, /^The user speaks Japanese\. Answer in the language they used\./);
+  await updateAppSettings(ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+  const snap = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'ja-JP' });
+  const line = "The user speaks English, Chinese (Mandarin) and Japanese; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.";
+  assert.equal(snap.languages, line);
+  const section = `# Languages\n${line}`;
+  for (const text of [systemText(snap), systemText(snap, 'a half\'s part'), koeSystem(snap), koeSystem(snap, true)]) {
+    const at = [text.indexOf('Warm and brief.'), text.indexOf(section), text.indexOf('# About the user')];
+    assert.ok(at.every((i, k) => i > 0 && (k === 0 || i > at[k - 1])), `personality, languages, profile in order: ${at}`);
+    assert.equal(text.split('# Languages').length, 2, 'once');
+  }
+  assert.ok(KOE_CORE.includes('# Languages') === false && KOE_LIVE.includes('# Languages') === false, 'the stable instructions hold no section: it comes with the snapshot');
+  // The broad line OpenAI warns about is gone from every instruction.
+  for (const text of [CORE, KOE_CORE, KOE_LIVE]) assert.doesNotMatch(text, /in the user's language/);
+  assert.match(CORE, /Reply in the language the user used \(Languages says which they speak\)/);
+  // A snapshot without the field (an older one) has no section and no crash.
+  const { languages: _l, ...older } = snap;
+  assert.doesNotMatch(systemText(/** @type {any} */ (older)), /# Languages/);
+  // A change shows at the next wake, whatever the cache.
+  await updateAppSettings(ws, { languages: { answer: 'ja' } });
+  const warm = nextSnapshot(snap, await takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'ja-JP' }), { cold: false });
+  assert.match(warm.languages, /Always answer in Japanese/);
+});

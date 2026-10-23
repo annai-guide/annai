@@ -33,7 +33,7 @@ test('sound sent to a model that takes audio is written down by that model, afte
   const k = await agentKit([[say('Tacos are close.'), { text: 'where should we eat' }]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
   assert.equal(k.requests[0].messages[0].parts[1].type, 'audio');
-  assert.equal(k.requests[1].system, WRITE_DOWN);
+  assert.equal(k.requests[1].system, `${WRITE_DOWN} The speaker uses English: write it in the language spoken and never translate.`);
   assert.deepEqual(k.requests[1].messages[0].parts.map((/** @type {any} */ p) => p.type), ['audio']);
   const [written] = await k.events(['heard.text']);
   assert.deepEqual([written.data.text, written.data.by], ['where should we eat', 'model-0']);
@@ -163,7 +163,7 @@ test('phone dictation that hears a noise and no words: the silence limit starts 
 test('a write-down that fails keeps the sound: nothing is written as not transcribed, and the next turn that works writes the words (spec §10.3)', async () => {
   const k = await agentKit([[say('Tacos are close.'), { error: 'bad-request', status: 400 }, say('Still tacos.'), { text: 'where should we eat' }]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
-  assert.equal(k.requests[1].system, WRITE_DOWN);
+  assert.equal(k.requests[1].system, `${WRITE_DOWN} The speaker uses English: write it in the language spoken and never translate.`);
   assert.equal((await k.events(['heard.text'])).length, 0, 'nothing is written while the sound is at hand');
   assert.equal(k.voice.memory.size, 1);
   k.agent.send('And again?');

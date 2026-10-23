@@ -67,7 +67,7 @@ test('setup: instructions, tools as parametersJsonSchema, manual activity, both 
     session.close();
     await session.closed;
     // A handle resumes; with no tools and no voice, neither is sent; compression can be turned off.
-    const again = open(s, { setup: { resume: 'h-7', tools: [] }, tunables: { compression: false, proactive: false } });
+    const again = open(s, { setup: { resume: 'h-7', tools: [] }, tunables: { compression: false, proactive: false, voice: '' } });
     await again.session.ready;
     const second = s.received().at(-1).setup;
     assert.deepEqual(second.sessionResumption, { handle: 'h-7' });
@@ -195,7 +195,7 @@ test("its address is the ability's own, as wss: for https and ws: for a server o
   assert.equal(TYPE.open({ endpoint: endpoint('http://127.0.0.1:9000/'), key: 'a b', tunables: { ...TYPE.tunables, apiVersion: 'v1beta' }, model: model() }).url,
     'ws://127.0.0.1:9000/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=a%20b');
   assert.deepEqual(TYPE.audio, { in: [{ format: 'pcm16', rate: 16000 }], out: [{ format: 'pcm16', rate: 24000 }] });
-  assert.deepEqual(TYPE.tunables, { apiVersion: 'v1alpha', proactive: true, voice: '', compression: true, heardLive: false });
+  assert.deepEqual(TYPE.tunables, { apiVersion: 'v1alpha', proactive: true, voice: 'Sulafat', compression: true, languageHints: true, heardLive: false }, 'Sulafat: the voice of Classic too, so Koe sounds the same in both (the user, 2026-10-23)');
 });
 
 test("gemini-live is a protocol in annai's catalog: a keyed name, so a third party's never takes it, and its key, from annai's (Milestone 6)", async () => {
@@ -204,7 +204,7 @@ test("gemini-live is a protocol in annai's catalog: a keyed name, so a third par
   const catalog = JSON.parse(await readFile(new URL('../../catalog/plugins.json', import.meta.url), 'utf8')).plugins;
   const entry = catalog.find((/** @type {any} */ p) => p.id === 'gemini-live');
   assert.deepEqual(entry.provides, { 'endpoint-type': ['gemini-live'] });
-  assert.equal(entry.version, '0.1.0');
+  assert.equal(entry.version, '0.2.0');
   assert.ok(KEYED.has('endpoint-type'));
   const r = new Registry();
   const ranks = /** @type {Record<string, any[]>} */ ({ 'gemini-live': [1, 10, 'gemini-live'], other: [2, 5, 'other'] });
@@ -237,4 +237,22 @@ test('a frame that is not JSON is skipped with a note in the trace, never a cras
   deliver(JSON.stringify({ serverContent: { outputTranscription: { text: 'Still here.' } } }));
   assert.deepEqual(events, [{ type: 'said', text: 'Still here.', final: false }]);
   assert.deepEqual(notes, [['sys', 'live.skipped', { bytes: 24 }], ['sys', 'live.skipped', { bytes: 17 }]]);
+});
+
+test("by default a session asks for Sulafat, Shiori's voice in Classic too, so Koe sounds the same in both; a voice of the user's own wins (the user, 2026-10-23)", async () => {
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [] });
+  try {
+    const a = open(s);
+    await a.session.ready;
+    assert.deepEqual(s.received()[0].setup.generationConfig.speechConfig, { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Sulafat' } } });
+    a.session.close();
+    await a.session.closed;
+    const b = open(s, { tunables: { voice: 'Achird' } });
+    await b.session.ready;
+    assert.equal(s.received().at(-1).setup.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, 'Achird');
+    b.session.close();
+    await b.session.closed;
+  } finally {
+    await s.stop();
+  }
 });
