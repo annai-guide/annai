@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "api": 1,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -54,7 +54,8 @@
                   }
                 ]
               },
-              "usageKey": "web_search_requests"
+              "usageKey": "web_search_requests",
+              "pricePerCall": 0.007
             }
           ]
         },
@@ -94,7 +95,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -157,7 +159,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -235,7 +238,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -285,7 +289,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -315,7 +320,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
