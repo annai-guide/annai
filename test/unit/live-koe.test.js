@@ -227,6 +227,10 @@ test("a quick reply as her sound ends, while her turn's end is still to come, is
     const sent = got(k, 'realtimeInput').filter((/** @type {any} */ m) => m.realtimeInput.audio).reduce((n, /** @type {any} */ m) => n + Buffer.from(m.realtimeInput.audio.data, 'base64').length, 0);
     const ms = (sent / 2 / 16_000) * 1000;
     assert.ok(ms >= (gas.length / 16_000) * 1000, `${Math.round(ms)} ms sent for ${Math.round((gas.length / 16_000) * 1000)} ms said`);
+    // Review N2: all of her line had played, so it is whole, not marked cut.
+    await soon(async () => (await k.events(['out.speak'])).length >= 1);
+    const [line] = await k.events(['out.speak']);
+    assert.deepEqual([line.data.text, line.data.cut], ['Where are you now?', undefined]);
   } finally {
     await k.done();
   }
@@ -396,6 +400,69 @@ test('with headphones (cutting in by voice on), her answer never waits: the user
     await soon(async () => k.platform.streams.length === 1, 3000);
     assert.ok(Date.now() - ended < 400, `played ${Date.now() - ended} ms after the turn ended`);
     await talking;
+  } finally {
+    await k.done();
+  }
+});
+
+/** A session whose answer to the user's turn has come and waits (the 1.2 s after their turn). @param {any[]} [turns] */
+async function held(turns = [{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone(0.5) }]) {
+  const k = await liveKit(turns, { pace: 1 });
+  await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+  k.platform.streamSpeed = 1;
+  k.agent.tap();
+  await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+  const talking = talk(k, cat(quiet(0.5), await clip('where-eat'), quiet(0.8)));
+  await soon(async () => (await k.events(['heard'])).length === 1, 6000);
+  await talking;
+  assert.equal(k.platform.streams.length, 0, 'it waits');
+  assert.equal(k.agent.live.view.name, 'thinking');
+  return k;
+}
+
+// realtime-fix2 review S1: an answer waiting to be said is never lost to a close.
+test('Auto turning voice off while her answer waits: it plays at once, whole, since the microphone has closed', async () => {
+  const k = await held();
+  try {
+    k.agent.live.closeSoon('voice off');
+    assert.equal(k.agent.live.listening, false);
+    await soon(async () => k.platform.streams.length === 1, 500);
+    await soon(async () => k.agent.live.state === 'closed', 3000);
+    const [line] = await k.events(['out.speak']);
+    assert.deepEqual([line.data.text, line.data.voice, line.data.cut], ["There's a taco stand ahead.", true, undefined]);
+  } finally {
+    await k.done();
+  }
+});
+
+for (const [why, end] of /** @type {const} */ ([
+  ['voice off', (/** @type {any} */ k) => k.agent.live.close('voice off')],
+  ['a tap', (/** @type {any} */ k) => k.agent.tap()],
+  ['another conversation', (/** @type {any} */ k) => k.agent.live.close('switch', { forget: true })],
+  ['a drop', (/** @type {any} */ k) => k.server.close(1011, 'Internal error.')],
+])) {
+  test(`${why} while her answer waits: its words are written as her answer, shown, not spoken`, async () => {
+    const k = await held();
+    try {
+      end(k);
+      await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
+      const [line] = await k.events(['out.speak']);
+      assert.ok(String(line.data.text).startsWith("There's a taco stand"), line.data.text);
+      assert.equal(line.data.voice, undefined, 'never played');
+      assert.equal(k.platform.streams.length, 0);
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// Review N1: a second turn of hers coming while the first waits is said after it, never in its place.
+test('a turn of hers that comes while another waits to be said plays after it, both whole, one at a time', async () => {
+  const k = await held([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone(0.4), andThen: true }, { said: 'It opens at noon.', audio: tone(0.3) }]);
+  try {
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 6000);
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.text, e.data.cut]), [["There's a taco stand ahead.", undefined], ['It opens at noon.', undefined]]);
+    assert.equal(k.platform.streams.length, 2);
   } finally {
     await k.done();
   }

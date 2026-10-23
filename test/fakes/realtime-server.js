@@ -22,7 +22,7 @@ import { createHash } from 'node:crypto';
  * Unit tests reach it with Node's WebSocket, and end-to-end tests from the page, at ws://127.0.0.1:<port> (WebKit
  * can't stand in for a page's own requests).
  * @typedef {{ heard?: string, said?: string, audio?: Uint8Array, tool?: { name: string, args: any }, goAway?: number, handle?: string,
- *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string, heardAfter?: string, heardFirst?: boolean, saidAfter?: string, silent?: boolean, heardAt?: number, saidAt?: number }} Turn
+ *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string, heardAfter?: string, heardFirst?: boolean, saidAfter?: string, silent?: boolean, heardAt?: number, saidAt?: number, andThen?: boolean }} Turn
  *   one answer, played when a clientContent turn or an activityEnd comes (openai: a response.create); turns are given in order,
  *   and the last repeats. audio: 24 kHz 16-bit PCM (openai: in the session's output format); tool: a call it makes after its words;
  *   goAway, handle: Gemini's, seconds left, sent after the turn; usage: Gemini's usageMetadata, or OpenAI's response usage;
@@ -31,7 +31,8 @@ import { createHash } from 'node:crypto';
  *   heard is sent as the user starts speaking, not with the answer; saidAfter: the last words said, sent after turnComplete; silent: it never
  *   answers at all, not even turnComplete (Gemini on the user's iPhone, 2026-10-22, in a session resumed after a close with no activityEnd);
  *   heardAt: heard is sent this many ms after the user starts speaking, as Gemini's streams in (once, whatever connection); saidAt: its
- *   words come this many ms after its sound, before its end (a late first word)
+ *   words come this many ms after its sound, before its end (a late first word); andThen: the next turn follows this one's end at once, as
+ *   Gemini goes on by itself after a tool call
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
  *   pace?: number, chunkBytes?: number, expired?: boolean }} Options
  *   key: the one key it takes (none: any); models: the ids it knows (none: any); closeWith: how it closes each session at its setup (openai: its session.update);
@@ -261,6 +262,7 @@ function geminiSession(c) {
       if (turn.saidAfter) send({ serverContent: { outputTranscription: { text: turn.saidAfter } } });
       if (turn.handle) send({ sessionResumptionUpdate: { newHandle: turn.handle, resumable: true } });
       if (turn.goAway !== undefined) send({ goAway: { timeLeft: `${turn.goAway}s` } });
+      if (turn.andThen) play();
     };
     if (ms <= 0) done();
     else playing = { turn, timers: [setTimeout(done, ms), ...late] };
