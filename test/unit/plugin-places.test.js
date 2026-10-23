@@ -58,11 +58,31 @@ test('geocode and reverse through Nominatim, one request a second at most', asyn
   const { run, asked } = await setup();
   NOMINATIM_GAP.ms = 60;
   const found = await run('geocode', { query: 'Nepenthe, Big Sur' }, () => [{ display_name: 'Nepenthe, Highway 1, Big Sur, CA', lat: '36.2203', lon: '-121.7612', category: 'amenity', type: 'restaurant' }]);
-  assert.equal(found, 'name\tlat\tlng\ttype\nNepenthe, Highway 1, Big Sur, CA\t36.2203\t-121.7612\tamenity/restaurant');
+  assert.equal(found, 'name\tlat\tlng\ttype\twebsite\topening_hours\nNepenthe, Highway 1, Big Sur, CA\t36.2203\t-121.7612\tamenity/restaurant\t\t');
   const where = await run('reverse', McWay, () => ({ name: 'McWay Falls', display_name: 'McWay Falls, Big Sur, CA', category: 'natural', type: 'waterfall' }));
   assert.deepEqual(JSON.parse(where), { name: 'McWay Falls', address: 'McWay Falls, Big Sur, CA', type: 'natural/waterfall' });
   assert.ok(asked[1].at - asked[0].at >= 55);
-  assert.match(asked[0].url, /^https:\/\/nominatim\.openstreetmap\.org\/search\?q=Nepenthe%2C%20Big%20Sur&format=jsonv2&limit=5$/);
+  assert.match(asked[0].url, /^https:\/\/nominatim\.openstreetmap\.org\/search\?q=Nepenthe%2C%20Big%20Sur&format=jsonv2&limit=5&extratags=1$/);
+  assert.match(asked[1].url, /\/reverse\?.*&extratags=1$/);
+});
+
+test('geocode, reverse and nearby give a place\'s website and opening hours where OpenStreetMap has them, so "is it open" needs no search', async () => {
+  const { run } = await setup();
+  NOMINATIM_GAP.ms = 1;
+  // Nominatim's extratags, as recorded: the website under website (or contact:website), hours under opening_hours.
+  const found = await run('geocode', { query: 'Big Sur Roadhouse' }, () => [
+    { display_name: 'Big Sur Roadhouse, Highway 1', lat: '36.2', lon: '-121.7', category: 'amenity', type: 'restaurant', extratags: { website: 'https://glenoaksbigsur.com/big-sur-roadhouse/', opening_hours: 'Mo-Su 08:00-14:30' } },
+    { display_name: 'Nepenthe, Highway 1', lat: '36.22', lon: '-121.76', category: 'amenity', type: 'restaurant', extratags: { 'contact:website': 'http://www.nepenthebigsur.com' } }]);
+  const rows = found.split('\n').slice(1).map((r) => r.split('\t'));
+  assert.deepEqual(rows[0].slice(4), ['https://glenoaksbigsur.com/big-sur-roadhouse/', 'Mo-Su 08:00-14:30']);
+  assert.deepEqual(rows[1].slice(4), ['http://www.nepenthebigsur.com', '']);
+  const where = JSON.parse(await run('reverse', McWay, () => ({ name: 'Roadhouse', display_name: 'Roadhouse, Big Sur', category: 'amenity', type: 'restaurant', extratags: { website: 'https://r.test/', opening_hours: 'Mo-Su 08:00-14:30' } })));
+  assert.deepEqual([where.website, where.opening_hours], ['https://r.test/', 'Mo-Su 08:00-14:30']);
+  const out = await run('nearby', { ...McWay, kinds: ['food'] }, (url) => (url.includes('overpass')
+    ? { elements: [{ type: 'node', lat: 36.1585, lon: -121.6722, tags: { name: 'Roadhouse', amenity: 'restaurant', website: 'https://r.test/', opening_hours: 'Mo-Su 08:00-14:30' } }, { type: 'node', lat: 36.159, lon: -121.673, tags: { name: 'Cafe', amenity: 'cafe', opening_hours: 'Tu-Su 09:00-15:00' } }] }
+    : { query: { geosearch: [] } }));
+  const notes = out.split('\n').slice(1).map((r) => r.split('\t')[6]);
+  assert.deepEqual(notes, ['https://r.test/ · hours Mo-Su 08:00-14:30', 'hours Tu-Su 09:00-15:00']);
 });
 
 test("weather: the place's time zone, the day, and its hours as TSV", async () => {
