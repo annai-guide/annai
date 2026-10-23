@@ -430,7 +430,7 @@ test("Koe fix pass 10: a rest past 10 minutes (a provider's day limit) is said p
   assert.equal((await call(s)).attempts[0].error, 'Slow down.');
 });
 
-test("scripted rules: a request after the model's own tool results is a follow-up (its rule's `then`) even when words were added after the results in the same message, such as what Koe said; a new wake's reason makes it a new request", async () => {
+test("scripted rules: the request after the model's own tool results is a follow-up (its rule's `then`), whatever came with the results: words the other half said, or a wake that joined the turn with its reason in the tail", async () => {
   const type = scriptedType();
   const endpoint = { id: 'e-1', tunables: { rules: [{ match: 'the user wrote', reply: { toolCalls: [{ name: 'list', input: {} }] }, then: { text: 'Done.' } }] } };
   /** @param {any} request */
@@ -445,8 +445,13 @@ test("scripted rules: a request after the model's own tool results is a follow-u
   await run({ messages: user, tail: 'woke for: the user wrote\n' });
   const said = { type: 'text', text: '[Koe said] "I\'m checking."' };
   const after = (/** @type {any[]} */ parts, /** @type {string} */ tail) => run({ messages: [...user, { role: 'assistant', parts: [] }, { role: 'user', parts }], tail });
-  assert.equal((await after([results], 'connection: online\n')).map((e) => e.text ?? '').join(''), 'Done.', 'results last');
-  assert.equal((await after([results, said], 'connection: online\n')).map((e) => e.text ?? '').join(''), 'Done.', 'a note after the results, no new wake');
-  const fresh = await after([results, said], 'woke for: the weather changed\nconnection: online\n');
-  assert.ok(!fresh.some((e) => e.text === 'Done.'), 'a new wake is matched on its own: no rule here, so she sleeps');
+  const words = async (/** @type {any[]} */ parts, /** @type {string} */ tail) => (await after(parts, tail)).map((e) => e.text ?? '').join('');
+  assert.equal(await words([results], 'connection: online\n'), 'Done.', 'results last');
+  assert.equal(await words([results, said], 'connection: online\n'), 'Done.', 'a note after the results, no wake');
+  assert.equal(await words([results, said], 'woke for: the weather changed\nconnection: online\n'), 'Done.', 'a wake that joined the turn, and no rule for it');
+  /** @type {any[]} */ (endpoint.tunables.rules).push({ match: 'weather', reply: { text: 'Rain.' } });
+  await run({ messages: user, tail: 'woke for: the user wrote\n' });
+  assert.equal(await words([results, said], 'woke for: the weather changed\nconnection: online\n'), 'Rain.', 'a wake that joined the turn, and a rule for it');
+  // Without results it is a new request, matched by what woke her: no rule here, so she sleeps.
+  assert.equal(await words([said], 'woke for: a bell rang\n'), '');
 });
