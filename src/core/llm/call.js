@@ -340,6 +340,30 @@ export function asProviderError(e, signal, type, registry) {
 
 const EXT = /** @type {Record<string, string>} */ ({ 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif' });
 
+/** Photos' hashes by their data, kept across calls (a conversation sends each again every turn), the latest up to PHOTO_CHARS of data. */
+const photoHashes = new Map();
+let photoChars = 0;
+const PHOTO_CHARS = 24 * 2 ** 20;
+
+/** The hash of a photo's bytes, by its base64 data: worked out once while it is sent again and again. @param {string} data */
+export async function photoHash(data) {
+  const had = photoHashes.get(data);
+  if (had) {
+    photoHashes.delete(data);
+    photoHashes.set(data, had); // the latest go last
+    return /** @type {string} */ (had);
+  }
+  const hash = await sha256Hex(fromBase64(data));
+  photoHashes.set(data, hash);
+  photoChars += data.length;
+  for (const k of photoHashes.keys()) {
+    if (photoChars <= PHOTO_CHARS || k === data) break;
+    photoHashes.delete(k);
+    photoChars -= k.length;
+  }
+  return hash;
+}
+
 /**
  * Photos go by id to an endpoint that stores files (spec §4.8): each is uploaded once, named
  * annai-…, expiring after 48 hours. A failed upload sends the bytes, and stops uploading there
@@ -354,7 +378,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   const ids = new Map();
   /** @type {Map<string, string>} each photo's hash, by its data: the bytes' own, never the hash a part claims (review, 1) */
   const hashes = new Map();
-  const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await sha256Hex(fromBase64(data))).get(data);
+  const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await photoHash(data)).get(data);
   for (const m of request.messages) {
     for (const p of m.parts) {
       if (p.type !== 'image' || !p.hash || !p.data || uploads.isOff(endpoint.id)) continue;

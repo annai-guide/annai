@@ -336,6 +336,17 @@ test("uploads are known by the hash of the bytes sent, never by the hash a part 
   assert.equal(sent.at(-1), 'file_1');
 });
 
+test("a photo's hash is its bytes' own, worked out once while the same data is sent again (verification, 4)", async () => {
+  const { photoHash } = await import('../../src/core/llm/call.js');
+  const { sha256Hex } = await import('../../src/core/hash.js');
+  const { fromBase64 } = await import('../../src/core/bytes.js');
+  const data = 'a2lvdG8gcGhvdG8=';
+  const want = await sha256Hex(fromBase64(data));
+  assert.equal(await photoHash(data), want);
+  assert.equal(await photoHash(data), want);
+  assert.notEqual(await photoHash('b3RoZXI='), want);
+});
+
 test('uploads: each photo is uploaded once and sent by id; a failed upload sends the bytes and stops uploading', async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');

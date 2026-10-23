@@ -227,7 +227,11 @@ export async function exportArchive(store, opts) {
   for (const hash of historic) {
     if (current.has(hash)) continue;
     const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-    if (!rec || (opts.share && (sniffMediaType(new Uint8Array(rec.data)) !== null || /^(image|video)\//.test(rec.type)))) continue; // a Share leaves out older versions of images and videos
+    // A record without its bytes (an older annai stored one so) is not stored content.
+    if (!(rec?.data instanceof ArrayBuffer)) continue;
+    // A Share leaves out older versions of images and videos; Photos unticked, older photos too.
+    if (opts.share && (sniffMediaType(new Uint8Array(rec.data)) !== null || /^(image|video)\//.test(rec.type))) continue;
+    if (!opts.include.photos && (sniffImageType(new Uint8Array(rec.data)) !== null || rec.type.startsWith('image/'))) continue;
     const name = `blobs/${hash}`;
     await zip.add(name, new Uint8Array(rec.data), { compress: !isCompressedType(rec.type), mtime: now });
     manifest.blobs.push({ name, hash, type: rec.type, size: rec.size });
@@ -322,7 +326,7 @@ async function sharePhoto(f, bytes, share) {
 /** @param {Store} store @param {string} hash @param {string} path */
 async function readBlob(store, hash, path) {
   const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-  if (!rec) throw new ArchiveError(`The content of ${path} is missing from storage, so it can't be exported.`);
+  if (!(rec?.data instanceof ArrayBuffer)) throw new ArchiveError(`The content of ${path} is missing from storage, so it can't be exported.`);
   return new Uint8Array(rec.data);
 }
 
@@ -532,16 +536,17 @@ export async function importArchive(store, opened, choices = {}) {
   // until the last step nothing is visible; if any step fails, the ones stored here go again.
   // What comes: the files of the scopes taken, and what their logs name that the archive carries, an older version or a
   // file of a scope not taken (an export holds each content once); nothing nothing taken names (spec §4.9).
-  /** @type {Map<string, { name: string, type: string, bytes?: Uint8Array, plans: Set<number> }>} */
+  /** @type {Map<string, Content>} */
   const content = new Map();
-  const add = (/** @type {string} */ hash, /** @type {{ name: string, type: string, bytes?: Uint8Array }} */ c, /** @type {number} */ i) => {
-    if (!content.has(hash)) content.set(hash, { ...c, plans: new Set() });
-    content.get(hash)?.plans.add(i);
+  /** @param {string} hash @param {{ name: string, type: string, bytes?: Uint8Array }} c @param {Use} use */
+  const add = (hash, c, use) => {
+    if (!content.has(hash)) content.set(hash, { ...c, uses: [] });
+    content.get(hash)?.uses.push(use);
   };
   plan.forEach((p, i) => {
     for (const f of p.files) {
       const o = overrides.get(f.name);
-      add(o?.hash ?? f.hash, { name: f.name, type: f.type, bytes: o?.bytes }, i);
+      add(o?.hash ?? f.hash, { name: f.name, type: f.type, bytes: o?.bytes }, { i, path: f.path });
     }
   });
   /** @type {Map<string, { name: string, type: string }>} */
@@ -550,7 +555,7 @@ export async function importArchive(store, opened, choices = {}) {
   plan.forEach((p, i) => {
     for (const h of p.events.flatMap(blobsOf)) {
       const c = carriers.get(h);
-      if (c) add(h, c, i);
+      if (c) add(h, c, { i });
     }
   });
   /** @type {string[]} */
@@ -558,7 +563,7 @@ export async function importArchive(store, opened, choices = {}) {
   try {
     // Content this device holds is checked, not stored again: an archive names only content it carries (reach.js),
     // never another trip's by its hash. Asked once, not once per entry; an entry of another size is refused unread,
-    // and what each scope it would come to replaces names already (its own content) isn't read at all.
+    // and what what it replaces vouches for (vouched) isn't read at all. Each content's size is its own, never the manifest's.
     const { held, own } = await store.tx(['scopes', 'files', 'events', 'blobs'], 'readonly', async (t) => {
       /** @type {string[][]} */
       const replaced = [];
@@ -568,23 +573,27 @@ export async function importArchive(store, opened, choices = {}) {
         if (!(await t.hasBlob(hash))) continue;
         out.held.add(hash);
         if (!c.bytes && !(await t.blobSized(hash, zip.size(c.name)))) throw new ArchiveError(`This file is damaged: ${c.name} was changed.`);
-        let theirs = true;
-        for (const i of c.plans) if (!(await namedIn(t, hash, replaced[i]))) theirs = false;
-        if (theirs) out.own.add(hash);
+        if (!c.bytes && (await vouched(t, hash, c.uses, replaced))) out.own.add(hash);
       }
       return out;
     });
+    /** @type {Map<string, number>} */
+    const sizes = new Map();
     let done = 0;
     for (const [hash, c] of content) {
       choices.onProgress?.(done++, content.size);
-      if (own.has(hash)) continue;
+      if (own.has(hash)) {
+        sizes.set(hash, zip.size(c.name)); // the held content's, as blobSized found
+        continue;
+      }
       const bytes = c.bytes ?? (await readChecked(zip, c.name, hash));
+      sizes.set(hash, bytes.byteLength);
       if (held.has(hash)) continue;
       await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
       added.push(hash);
     }
     choices.onProgress?.(content.size, content.size);
-    await commitImport(store, { manifest, plan, overrides, secrets, now, result, hashes: [...content.keys()] });
+    await commitImport(store, { manifest, plan, overrides, secrets, now, result, content, own, sizes });
   } catch (e) {
     await removeUnused(store, added).catch(() => {});
     throw e;
@@ -593,19 +602,33 @@ export async function importArchive(store, opened, choices = {}) {
 }
 
 /**
+ * @typedef {{ i: number, path?: string }} Use  a part of the import (by plan index) that names the content: as its file at path, or in its log
+ * @typedef {{ name: string, type: string, bytes?: Uint8Array, uses: Use[] }} Content
+ */
+
+/**
  * The last step of an import, in one transaction: scopes, files, history and keys appear together or not at all.
  * @param {Store} store
  * @param {{ manifest: Manifest, plan: { rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[],
- *   overrides: Map<string, { bytes: Uint8Array, hash: string }>, secrets: { id: string, value: any }[], now: number, hashes: string[],
+ *   overrides: Map<string, { bytes: Uint8Array, hash: string }>, secrets: { id: string, value: any }[], now: number,
+ *   content: Map<string, Content>, own: Set<string>, sizes: Map<string, number>,
  *   result: { trips: string[], archived: string[], me: boolean, settings: boolean, plugins: boolean, secrets: number, keptSecrets: string[] } }} job
+ *   own: content not read, as what it replaces vouched for it; sizes: each content's own size
  */
-async function commitImport(store, { manifest, plan, overrides, secrets, now, result, hashes }) {
+async function commitImport(store, { manifest, plan, overrides, secrets, now, result, content, own, sizes }) {
   await store.tx(['blobs', 'files', 'events', 'scopes', 'secrets'], 'readwrite', async (t) => {
     // Content stored earlier, or found already here, may have gone since: a trip removed meanwhile (spec §4.9).
-    for (const h of hashes) {
+    for (const h of content.keys()) {
       if (!(await t.hasBlob(h))) throw new ArchiveError("Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.");
     }
-    const carried = new Set(hashes);
+    // What wasn't read must still be vouched for: what it replaces may have changed meanwhile.
+    /** @type {string[][]} */
+    const replacing = [];
+    for (const p of plan) replacing.push(await replacedBy(t, p));
+    for (const h of own) {
+      if (!(await vouched(t, h, /** @type {Content} */ (content.get(h)).uses, replacing))) throw new ArchiveError('What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.');
+    }
+    const carried = new Set(content.keys());
     for (const p of plan) {
       const replaced = await replacedBy(t, p);
       const uncarried = await uncarriedNames(t, p, carried, replaced);
@@ -623,9 +646,8 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
       const { backup: _b, ...rec } = p.rec; // this device hasn't backed it up
       await t.putScope({ ...rec, id: p.target, kind, status: 'active', updated: now });
       for (const f of p.files) {
-        const o = overrides.get(f.name);
-        const hash = o?.hash ?? f.hash;
-        const size = o?.bytes.byteLength ?? f.size;
+        const hash = overrides.get(f.name)?.hash ?? f.hash;
+        const size = /** @type {number} */ (sizes.get(hash));
         await t.putFile({
           scope: p.target, path: f.path, hash, size, type: f.type, author: f.author,
           created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}), ...(f.meta ? { meta: f.meta } : {}),
@@ -658,6 +680,25 @@ async function replacedBy(t, p) {
   if (p.mode === 'system') return [p.target];
   if (p.mode !== 'replace') return [];
   return (await t.listScopes()).filter((l) => l.kind === 'trip' && l.status === 'active' && l.tripId && l.tripId === p.rec.tripId).map((l) => l.id);
+}
+
+/**
+ * Whether what an import replaces vouches for content it then needn't read (spec §12.3): each file of it is the current
+ * file at that path in a scope it replaces, and each log naming it is a part whose replaced scope names it. An older
+ * version a replaced copy kept, or a deleted file of "me", is never made a current file unread.
+ * @param {import('./types.js').Tx} t @param {string} hash @param {Use[]} uses @param {string[][]} replaced by plan index
+ */
+async function vouched(t, hash, uses, replaced) {
+  for (const u of uses) {
+    if (u.path === undefined ? !(await namedIn(t, hash, replaced[u.i])) : !(await fileIn(t, hash, u.path, replaced[u.i]))) return false;
+  }
+  return true;
+}
+
+/** Whether one of the scopes has a current file at path with that content. @param {import('./types.js').Tx} t @param {string} hash @param {string} path @param {string[]} scopes */
+async function fileIn(t, hash, path, scopes) {
+  for (const s of scopes) if ((await t.getFile(s, path))?.hash === hash) return true;
+  return false;
 }
 
 /** Whether one of the scopes names a hash. @param {import('./types.js').Tx} t @param {string} hash @param {string[]} scopes */

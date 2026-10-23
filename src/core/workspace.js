@@ -16,6 +16,7 @@ export { StorageFullError } from './errors.js';
  *   value about to be stored, read as the format check reads it; what it returns is stored, and what it throws stops the write
  * @typedef {{ op: 'write'|'delete', scope: string, path: string, entry?: FileEntry }} Change
  * @typedef {{ hash: string, type: string, size: number, bytes?: Uint8Array }} Version
+ * @typedef {{ seq: number, ts: number, actor: string, type: string, old: string | null, new: string | null, was?: { old?: string, new?: string } }} HistoryEntry
  */
 
 export class ValidationError extends Error {
@@ -208,19 +209,20 @@ export class Workspace {
   }
 
   /**
-   * Every file's history in a scope, by path, oldest first: one read of the log, by type.
+   * Every file's history in a scope, by path, oldest first: one read of the log, by type. was: versions an import
+   * didn't carry (spec §12.3), which old and new no longer name.
    * @param {string} scope
-   * @returns {Promise<Map<string, { seq: number, ts: number, actor: string, type: string, old: string | null, new: string | null }[]>>}
+   * @returns {Promise<Map<string, HistoryEntry[]>>}
    */
   async histories(scope) {
     const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['file.write', 'file.delete'] }));
-    /** @type {Map<string, { seq: number, ts: number, actor: string, type: string, old: string | null, new: string | null }[]>} */
+    /** @type {Map<string, HistoryEntry[]>} */
     const by = new Map();
     for (const e of events) {
       const p = e.data?.path;
       if (typeof p !== 'string') continue;
       if (!by.has(p)) by.set(p, []);
-      by.get(p)?.push({ seq: e.seq, ts: e.ts, actor: e.actor, type: e.type, old: e.data.old ?? null, new: e.data.new ?? null });
+      by.get(p)?.push({ seq: e.seq, ts: e.ts, actor: e.actor, type: e.type, old: e.data.old ?? null, new: e.data.new ?? null, ...(e.data.was ? { was: e.data.was } : {}) });
     }
     return by;
   }
@@ -321,9 +323,7 @@ async function putVersion(t, scope, path, version, opts, now) {
   const old = await t.getFile(scope, path);
   if (old && old.hash === version.hash && old.type === version.type) return null;
   await touchScope(t, scope, now);
-  if (version.bytes && !(await t.hasBlob(version.hash))) {
-    await t.putBlob({ hash: version.hash, type: version.type, size: version.size, data: ownBuffer(version.bytes) });
-  }
+  if (version.bytes) await keepBlob(t, version.hash, version.type, version.bytes);
   /** @type {FileEntry} */
   const next = {
     scope, path, hash: version.hash, size: version.size, type: version.type, author: opts.author,
@@ -335,6 +335,17 @@ async function putVersion(t, scope, path, version, opts, now) {
     data: { path, old: old?.hash ?? null, new: version.hash, size: version.size, type: version.type },
   });
   return next;
+}
+
+/**
+ * Stores bytes under their hash in transaction t, unless that content is stored whole already. A record without its bytes
+ * (an older annai kept a string or an ArrayBuffer given to a log entry so) is written again with them.
+ * @param {Tx} t @param {string} hash @param {string} type @param {Uint8Array} bytes
+ */
+export async function keepBlob(t, hash, type, bytes) {
+  const had = await t.getBlob(hash);
+  if (had?.data instanceof ArrayBuffer && had.data.byteLength === bytes.byteLength) return;
+  await t.putBlob({ hash, type, size: bytes.byteLength, data: ownBuffer(bytes) });
 }
 
 /** @param {Tx} t @param {string} scope @param {string} path @param {string} author @param {number} now */

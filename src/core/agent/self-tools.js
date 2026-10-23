@@ -72,9 +72,9 @@ export function selfTools(agent) {
                 : { output: { content: `Error: the helper has no tool called ${c.name}.`, isError: true }, ms: 0 };
               const { ms } = ran;
               // A photo or PDF reaches it as one, or in words from a model that can, as it does for Shiori (never as a bare stub).
-              const output = await agent.describe(ran.output, call.wake, call.signal, model ?? { input: ['text'] }, failed);
+              const output = await agent.describe(ran.output, call.wake, call.signal, model ?? { input: ['text'] }, failed, call.scope ?? agent.scope);
               await record(agent.store, agent.scope, { now: agent.now(), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: call.wake, task: taskId }, texts: [['content', output.content]] });
-              const media = await mediaParts(agent.store, agent.scope, output);
+              const media = await mediaParts(agent.store, call.scope ?? agent.scope, output);
               results.push({ type: 'tool_result', id: c.id, content: media.lost.length ? `${output.content}\n${media.lost.join('\n')}` : output.content, ...(output.isError ? { isError: true } : {}) }, ...media.parts);
               if (stuck.see(c.name, c.input ?? {}, output.content)) return `The helper stopped: it made the same call three times with the same result.${said ? ` What it had: ${said}` : ''}`;
             }
