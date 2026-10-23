@@ -9,6 +9,8 @@ The 13 device checklists in this folder (`device-checklist-m1.md` … `device-ch
 
 Camera, microphone and voice items that work at a desk are in B (Android) and C (iPhone), and that includes the silent switch. D keeps the ones that need a real place, road noise or a car.
 
+Later lists stand on their own, outside this plan's sections and its coverage table: `device-checklist-providers.md`, `device-checklist-gemini.md`, `device-checklist-koe.md`, and [`device-checklist-phase2.md`](device-checklist-phase2.md), phase 2 as released (build 86c07916891b: pops in her realtime voice, languages, screens, free search, the font check) plus the car, the lock screen, sharing into annai and Android's Doze. Its quickest checks come first; its car items (C1–C9) go with D4.
+
 ## How to read this
 
 - "m5 #12" means the 12th checkbox in `device-checklist-m5.md`, counted from the top. The checklists don't number their items.
@@ -504,6 +506,7 @@ In the car:
 - [ ] **m3 #29**: Interrupt her, and talk to a passenger instead of her, as in m3 #10 and #12, with road noise.
 - [ ] **m3 #24**: If the car has CarPlay or Android Auto: Maps on the car's screen, annai on the phone: the exchange still works, directions keep speaking; note what the car shows while she speaks.
 - [ ] **m3 #26**: Steering-wheel play/pause and next track (or a headset's buttons), with voice on and after she has spoken once: does it tap Shiori (stop her, or start listening)? Note what each button does on each phone.
+- [ ] phase2 C1–C9 (not counted here): the same drive in Realtime, from `device-checklist-phase2.md`: the car recognized, her voice and the car's microphone, music during and after, pops through the car, the car connecting and disconnecting mid-reply, and what CarPlay and Android Auto show.
 - [ ] m7 #13 (counted in A): With voice On over Bluetooth, "Hear Shiori tell it" (the D2 trip's recap): she listens after each part.
 
 After (home Wi-Fi):
