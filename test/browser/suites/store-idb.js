@@ -1,5 +1,6 @@
 import { storeContract } from '../../contract/store-contract.js';
 import { createIdbStore, eraseDatabase, openDatabase, DB_VERSION } from '../../../src/core/store-idb.js';
+import { storedTexts } from '../../../src/core/agent/log.js';
 
 /** @param {any} test @param {any} assert */
 export default function (test, assert) {
@@ -12,6 +13,17 @@ export default function (test, assert) {
   storeContract(test, assert, fresh);
 
   const rec = { scope: 'trip-1', path: '/a.md', hash: 'h1', size: 1, type: 'text/plain', author: 'user', created: 1, modified: 1 };
+
+  test("idb: an entry that says it stored texts but names none reads as none, not a DataError that stops its conversation loading (Step, 9)", async () => {
+    const s = await fresh();
+    const [bare, empty] = await s.tx(['events'], 'readwrite', async (t) => [
+      await t.appendEvent('trip-1', { ts: 1, type: 'msg.user', actor: 'user', data: { stored: ['text'] } }),
+      await t.appendEvent('trip-1', { ts: 2, type: 'msg.user', actor: 'user', data: { stored: ['text'] }, refs: [''] }),
+    ]);
+    assert.deepEqual(await storedTexts(s, bare), {});
+    assert.deepEqual(await storedTexts(s, empty), {});
+    s.close();
+  });
 
   test('idb: data survives closing and reopening', async () => {
     const name = `annai-test-persist-${Date.now()}`;

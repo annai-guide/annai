@@ -149,9 +149,11 @@ test('creating a trip on a full device says storage is full and leaves nothing b
 /** Every stored blob, hash → size. @param {Store} store */
 const storedBlobs = async (store) => new Map((await store.tx(['blobs'], 'readonly', (t) => t.listBlobs())).map((b) => [b.hash, b.size]));
 
-test('blobsOf lists the content an event points at', () => {
-  assert.deepEqual(blobsOf({ data: { path: '/a', old: 'h1', new: 'h2' }, refs: ['h3'] }), ['h1', 'h2', 'h3']);
+test('blobsOf lists the content an event points at: its fingerprints, never other words in data.old and data.new', () => {
+  const [h1, h2, h3] = ['1', '2', '3'].map((c) => c.repeat(64));
+  assert.deepEqual(blobsOf({ data: { path: '/a', old: h1, new: h2 }, refs: [h3] }), [h1, h2, h3]);
   assert.deepEqual(blobsOf({ data: { old: null, new: 7 } }), []);
+  assert.deepEqual(blobsOf({ data: { old: 'Tokyo', new: 'h2' }, refs: ['', 'a'.repeat(64).toUpperCase()] }), []);
   assert.deepEqual(blobsOf({}), []);
 });
 
@@ -207,7 +209,8 @@ test('removeTrip also frees content nothing refers to, and keeps what any log po
   await store.tx(['blobs'], 'readwrite', async (t) => {
     for (const hash of [orphan, traced]) await t.putBlob({ hash, type: 'application/octet-stream', size: 4, data: new Uint8Array(4).buffer });
   });
-  await logEvent(store, SYS, { type: 'net.request', refs: [traced] });
+  // As the trace writes it: the body is stored, and named in the same transaction (logEvent names nothing).
+  await store.tx(['events'], 'readwrite', (t) => t.appendEvent(SYS, { ts: 1, type: 'net.request', actor: 'system', refs: [traced] }));
   await removeTrip(store, id);
   const left = await storedBlobs(store);
   assert.equal(left.has(orphan), false);

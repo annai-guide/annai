@@ -1,6 +1,6 @@
 import { sha256Hex } from '../hash.js';
 import { utf8, text, ownBuffer } from '../bytes.js';
-import { blobsOf } from '../events.js';
+import { blobsOf, isName } from '../events.js';
 import { reachable, refused } from '../reach.js';
 
 /**
@@ -48,7 +48,10 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
   /** @type {string[]} */
   const blobRefs = [];
   for (const b of blobs) {
-    const hash = b.hash ?? (b.bytes ? await sha256Hex(b.bytes) : '');
+    // Bytes are kept under their own hash, never one given beside them (that would name, or overwrite, other content).
+    const hash = b.bytes ? await sha256Hex(b.bytes) : b.hash ?? '';
+    if (b.bytes && b.hash && b.hash !== hash) throw new Error(`The content given as ${b.hash.slice(0, 12)}… has another fingerprint.`);
+    if (!b.bytes && hash && !isName(hash)) throw new Error(`The content ${hash.slice(0, 12)}… is not stored.`);
     if (!hash) continue;
     blobRefs.push(hash);
     if (b.bytes) keep.push({ hash, bytes: b.bytes, type: b.type });
@@ -57,7 +60,7 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
   const refs = [...textRefs, ...blobRefs];
   const ev = { ts: now, type, actor, data: out, ...(refs.length ? { refs } : {}) };
   const brought = new Set(keep.map((k) => k.hash));
-  const named = blobsOf(ev).filter((h) => h && !brought.has(h));
+  const named = blobsOf(ev).filter((h) => !brought.has(h));
   /** @type {string | null} another scope's content this entry tried to name */
   let denied = null;
   try {
@@ -92,7 +95,8 @@ export async function storedTexts(store, e) {
     /** @type {Record<string, string>} */
     const out = {};
     for (const [i, name] of names.entries()) {
-      const b = await t.getBlob(e.refs?.[i]);
+      const h = e.refs?.[i];
+      const b = isName(h) ? await t.getBlob(h) : undefined; // an entry that names none, or a name an import left empty
       if (b) out[name] = text(new Uint8Array(b.data));
     }
     return out;
