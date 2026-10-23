@@ -37,9 +37,12 @@ export function languagesSection(ctx, app) {
     const mine = ++version;
     note.textContent = said;
     return queueSave(async () => {
+      // What this write sends, taken before it waits: the screen goes on changing meanwhile, and is not what was kept. Until the user
+      // has chosen a list, only the answer is saved: the browser's language shown is not their pick.
+      const sent = { ids, chosen, answerId };
       try {
-        await updateAppSettings(ctx.ws, { languages: { spoken: ids, answer: answerId } });
-        stored = { ids, chosen: true, answerId };
+        await updateAppSettings(ctx.ws, { languages: sent.chosen ? { spoken: sent.ids, answer: sent.answerId } : { answer: sent.answerId } });
+        stored = sent;
         error.hidden = true;
         if (mine === version) note.textContent = `${said}. ${W.saved}`;
       } catch (e) {
@@ -71,7 +74,7 @@ export function languagesSection(ctx, app) {
       const own = nativeName(l);
       const button = (/** @type {string} */ act, /** @type {string} */ label, /** @type {string} */ text, /** @type {() => unknown} */ run, disabled = false) =>
         h('button', { class: 'btn', type: 'button', 'aria-label': label, dataset: { lang: id, act }, disabled, onclick: run }, text);
-      return h('li', {},
+      return h('li', { tabindex: '-1', dataset: { lang: id } },
         h('span', { class: 'lang-name' }, l.name, own !== l.name ? [' ', h('span', { class: 'sub', text: own })] : null, ' '),
         i ? button('up', W.moveUpLabel(l.name), W.moveUpText, () => change(swap(i - 1), W.moved(l.name, i), { id, act: i > 1 ? 'up' : 'down' })) : null,
         i < ids.length - 1 ? button('down', W.moveDownLabel(l.name), W.moveDownText, () => change(swap(i), W.moved(l.name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
@@ -87,7 +90,9 @@ export function languagesSection(ctx, app) {
     answer.value = offered.includes(answerId) ? answerId : 'follow';
     if (focus === 'add') add.focus({ preventScroll: true });
     else if (focus) {
-      const to = list.querySelector(`button[data-lang="${focus.id}"][data-act="${focus.act}"]`) ?? list.querySelector(`button[data-lang="${focus.id}"]`);
+      // The button asked for, else any other of that language's that works, else the item itself (the last language has no working button).
+      const buttons = [...list.querySelectorAll(`button[data-lang="${focus.id}"]`)].filter((b) => !(/** @type {HTMLButtonElement} */ (b).disabled));
+      const to = buttons.find((b) => /** @type {HTMLElement} */ (b).dataset.act === focus.act) ?? buttons[0] ?? list.querySelector(`li[data-lang="${focus.id}"]`);
       /** @type {HTMLElement | null} */ (to)?.focus({ preventScroll: true });
     }
   };
