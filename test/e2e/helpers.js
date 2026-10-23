@@ -92,23 +92,25 @@ export function savedBy(control) {
 /**
  * Commits a field (leaving it) and waits for its "Saved". A "Saved" from an earlier save stays up 4 s, and WebKit may send the change a
  * moment after blur() returns, so reading the note's text can mistake that one for this save's (the next step then ran before the save,
- * and read what was there before it). It counts the times the note becomes "Saved", and waits for one more.
+ * and read what was there before it). It counts the times the note becomes "Saved" and waits for one more. The note is found again
+ * after the blur, each time: if the screen is drawn again meanwhile the new note counts from nothing, and "Saved" on it is this save's.
  * @param {import('@playwright/test').Locator} control
  */
 export async function leaveSaved(control) {
-  const note = await savedBy(control).elementHandle({ timeout: 10_000 });
-  if (!note) throw new Error('This field has no note to say it was saved.');
-  /** @type {() => Promise<number>} */
-  const saves = () => note.evaluate((/** @type {any} */ el) => {
-    if (!el.savesSeen) {
+  const note = savedBy(control);
+  // Counts the times the element says Saved, from when it is first looked at: the count so far, or (given a count) whether it has gone past it.
+  // An element seen for the first time after the blur is a new one, and it is this save's if it says Saved.
+  const watch = (/** @type {any} */ el, /** @type {number | null} */ before) => {
+    const first = el.savesSeen === undefined;
+    if (first) {
       el.savesSeen = 0;
       new MutationObserver(() => { if (el.textContent === 'Saved') el.savesSeen += 1; }).observe(el, { childList: true, characterData: true, subtree: true });
     }
-    return el.savesSeen;
-  });
-  const before = await saves();
+    return before === null ? el.savesSeen : first ? el.textContent === 'Saved' : el.savesSeen > before;
+  };
+  const before = await note.evaluate(watch, null, { timeout: 10_000 });
   await control.blur();
-  await expect.poll(saves, { timeout: 10_000, message: 'the field says Saved' }).toBeGreaterThan(before);
+  await expect.poll(() => note.evaluate(watch, before), { timeout: 10_000, message: 'the field says Saved' }).toBe(true);
 }
 
 /** @param {import('@playwright/test').Page} page */
