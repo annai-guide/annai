@@ -127,10 +127,14 @@ test('removing the language Shiori answers in resets her to follow you, in the s
   await expect(page.getByLabel('Shiori answers in')).toHaveValue('follow');
 });
 
-test('two languages added before the first write lands are both kept; a write that fails puts the list back (Step S2)', async ({ page }) => {
+/**
+ * The section on a page of its own, over a store whose writes take 600 ms (what a slow phone does) and can be made to fail:
+ * window.__writes holds what was written, window.__fail fails every write, window.__failAt the nth one.
+ * @param {import('@playwright/test').Page} page
+ */
+async function mountProbe(page) {
   await page.goto('/#/trips');
   await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
-  // The section on a page of its own, over a store whose writes take 600 ms: what a slow phone does.
   await page.evaluate(async () => {
     const load = (/** @type {string} */ url) => import(url);
     const { languagesSection } = await load('/src/ui/languages.js');
@@ -139,10 +143,13 @@ test('two languages added before the first write lands are both kept; a write th
     const w = /** @type {any} */ (window);
     w.__writes = writes;
     w.__fail = false;
+    w.__failAt = 0;
+    let calls = 0;
     const ws = {
       async patch(/** @type {string} */ _scope, /** @type {string} */ _path, /** @type {any} */ changes) {
+        const n = ++calls;
         await new Promise((r) => setTimeout(r, 600));
-        if (w.__fail) throw new Error('The disk is full.');
+        if (w.__fail || w.__failAt === n) throw new Error('The disk is full.');
         writes.push(JSON.parse(JSON.stringify(changes)));
       },
     };
@@ -151,21 +158,70 @@ test('two languages added before the first write lands are both kept; a write th
     document.body.append(el);
   });
   const probe = page.locator('#probe');
-  const list = probe.getByRole('list', { name: 'Languages you speak' });
-  await probe.getByLabel('Add a language').selectOption('zh');
-  await probe.getByRole('button', { name: 'Add', exact: true }).click();
-  await probe.getByLabel('Add a language').selectOption('ja');
-  await probe.getByRole('button', { name: 'Add', exact: true }).click();
+  return {
+    probe, list: probe.getByRole('list', { name: 'Languages you speak' }),
+    add: async (/** @type {string} */ id) => {
+      await probe.getByLabel('Add a language').selectOption(id);
+      await probe.getByRole('button', { name: 'Add', exact: true }).click();
+    },
+    writes: () => page.evaluate(() => /** @type {any} */ (window).__writes),
+  };
+}
+
+test('two languages added before the first write lands are both kept; a write that fails puts the list back (Step S2)', async ({ page }) => {
+  const { probe, list, add, writes } = await mountProbe(page);
+  await add('zh');
+  await add('ja');
   await expect(list.getByRole('listitem')).toHaveText([/^English/, /^Chinese \(Mandarin\)/, /^Japanese/]);
-  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).__writes.length), { timeout: 15_000 }).toBe(2);
-  const writes = await page.evaluate(() => /** @type {any} */ (window).__writes);
-  expect(writes.at(-1)).toEqual({ languages: { spoken: ['en', 'zh', 'ja'], answer: 'follow' } });
+  await expect.poll(async () => (await writes()).length, { timeout: 15_000 }).toBe(2);
+  expect((await writes()).at(-1)).toEqual({ languages: { spoken: ['en', 'zh', 'ja'], answer: 'follow' } });
   // A write that fails, with nothing after it: the list goes back to what was kept, and the error is said.
   await page.evaluate(() => { /** @type {any} */ (window).__fail = true; });
-  await probe.getByLabel('Add a language').selectOption('ko');
-  await probe.getByRole('button', { name: 'Add', exact: true }).click();
+  await add('ko');
   await expect(probe.getByRole('alert')).toHaveText('The disk is full.', { timeout: 15_000 });
   await expect(list.getByRole('listitem')).toHaveText([/^English/, /^Chinese \(Mandarin\)/, /^Japanese/]);
+});
+
+test('a write that fails while an earlier one was still going puts the list back to what the earlier one sent, not to the change that failed (review follow-up 2)', async ({ page }) => {
+  const { probe, list, add, writes } = await mountProbe(page);
+  await page.evaluate(() => { /** @type {any} */ (window).__failAt = 2; });
+  await add('zh'); // its write takes 600 ms...
+  await add('ja'); // ...and this one is made in the meantime, and fails
+  await expect(list.getByRole('listitem')).toHaveText([/^English/, /^Chinese \(Mandarin\)/, /^Japanese/]);
+  await expect(probe.getByRole('alert')).toHaveText('The disk is full.', { timeout: 15_000 });
+  await expect(list.getByRole('listitem')).toHaveText([/^English/, /^Chinese \(Mandarin\)/]);
+  expect(await writes()).toEqual([{ languages: { spoken: ['en', 'zh'], answer: 'follow' } }]);
+});
+
+test('choosing the answer language before choosing any saves only the answer: the list stays the browser\'s, not the user\'s (review follow-up 1)', async ({ page }) => {
+  const { panel } = await openLanguages(page);
+  await expect(panel).toContainText('None picked');
+  const answer = panel.getByLabel('Shiori answers in');
+  await answer.selectOption('en');
+  await expect(panel.getByRole('status')).toHaveText('Shiori answers in English. Saved');
+  await expect.poll(() => saved(page)).toEqual({ answer: 'en' });
+  await expect(panel).toContainText('None picked');
+  await page.reload();
+  const again = page.getByRole('region', { name: 'Languages', exact: true });
+  await expect(again).toContainText('None picked');
+  await expect(again.getByLabel('Shiori answers in')).toHaveValue('en');
+  await expect(again.getByRole('list', { name: 'Languages you speak' }).getByRole('listitem')).toHaveCount(1);
+  // The first language added starts the user's own list, with the answer kept.
+  await again.getByLabel('Add a language').selectOption('ja');
+  await again.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect.poll(() => saved(page)).toEqual({ spoken: ['en', 'ja'], answer: 'en' });
+});
+
+test('removing a language down to one leaves focus on that language\'s item, not on a disabled button that drops it to the page (review follow-up 6)', async ({ page }) => {
+  const { panel, list, add, addButton } = await openLanguages(page);
+  await add.selectOption('ja');
+  await addButton.click();
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await panel.getByRole('button', { name: 'Remove English' }).press('Enter');
+  await expect(panel.getByRole('status')).toHaveText('English removed. Saved');
+  await expect(list.getByRole('listitem')).toHaveText([/^Japanese/]);
+  await expect(list.getByRole('listitem')).toBeFocused();
+  await expect(panel.getByRole('button', { name: 'Remove Japanese' })).toBeDisabled();
 });
 
 test('the languages are told to the model: Shiori\'s system text holds them, and a change shows at her next turn (review: a later request, not only the first)', async ({ page }) => {
