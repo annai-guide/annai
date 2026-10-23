@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NO_USAGE, mergeUsage, addUsage, costOf, addCost, speechCost, pricesProblem } from '../../src/core/llm/cost.js';
+import { NO_USAGE, mergeUsage, addUsage, costOf, addCost, speechCost, pricesProblem, pricesAt } from '../../src/core/llm/cost.js';
 import { LEVELS, ROLE_LEVELS, nearestLevel, levelPatch } from '../../src/core/llm/reasoning.js';
 
 /** @param {number | undefined} a @param {number} b */
@@ -272,4 +272,72 @@ test("a model is free by the prices in force today: free that a past schedule ma
     const cfg = cfgFor(String(from));
     assert.equal(free(cfg, Object.keys(cfg.models)[0]), was, String(from));
   }
+});
+
+// ---- Verification findings on prices: malformed schedules, a deleted schedule's stored form, an edited schedule against typed prices ----
+
+/** The Prices box on a scheduled model: its text is the prices in effect, and each edit saves the box. */
+async function priceBox() {
+  const { fieldSaver, pricesInto } = await import('../../src/ui/screens/model.js');
+  const { modelOf, readConfig } = await import('../../src/core/llm/config.js');
+  const { ws, rec } = await scheduledModel();
+  const ctx = { ws, llm: { config: () => readConfig(ws), bench: { clear() {} } } };
+  const save = fieldSaver(/** @type {any} */ (ctx), rec.id);
+  const stored = async () => (await readConfig(ws)).models[rec.id];
+  const box = async () => JSON.parse(JSON.stringify(modelOf(await stored()).prices ?? {}));
+  /** @param {(b: any) => void} change */
+  const edit = async (change) => {
+    const b = await box();
+    change(b);
+    await save('prices', pricesInto(b));
+  };
+  return { ws, rec, save, stored, box, edit, effective: async () => modelOf(await stored()).prices };
+}
+const AFTER = Date.parse('2027-01-02T00:00:00Z');
+
+test('a malformed schedule is ignored, never thrown at: not a list, entries that are not objects, entries without a real date', async () => {
+  const { catalogFacts } = await import('../../src/core/catalog-facts.js');
+  for (const schedule of ['later', {}, 5, [null, 5, 'a', [], { from: 'soon', input: 9 }, { input: 9 }]]) {
+    assert.deepEqual(pricesAt(/** @type {any} */ ({ input: 1, schedule }), AFTER), { input: 1 }, JSON.stringify(schedule));
+  }
+  assert.deepEqual(pricesAt(/** @type {any} */ ({ input: 1, schedule: [null, { from: '2027-01-01', input: 2 }] }), AFTER), { input: 2 });
+  const facts = catalogFacts({ id: 'x', name: 'X', version: '1.0.0', api: 1, provider: { abilities: { a: { kind: 'chat', models: [{ providerId: 'p', prices: { input: 0, schedule: [null, 'x'] } }] } } } });
+  assert.equal(facts.free, true);
+});
+
+test('deleting the schedule in the Prices box stores an empty list, which older builds accept; null on the user layer still reads as removed', async () => {
+  const { modelOf } = await import('../../src/core/llm/config.js');
+  const { rec, edit, stored, effective } = await priceBox();
+  await edit((b) => { delete b.schedule; });
+  assert.deepEqual((await stored()).user.prices, { schedule: [] });
+  assert.equal(/** @type {any} */ (await effective()).schedule, undefined, 'no schedule in effect, and none shown');
+  assert.equal(/** @type {any} */ (modelOf({ ...rec, user: { prices: { schedule: null } } }).prices).schedule, undefined);
+});
+
+test("a price the user typed wins over a schedule the user edited too: the user's entries lose the fields the user typed", async () => {
+  const { edit, effective } = await priceBox();
+  await edit((b) => { b.schedule[0].output = 9; });
+  await edit((b) => { b.input = 0.4; });
+  const prices = /** @type {any} */ (await effective());
+  assert.deepEqual(pricesAtOf(prices), { input: 0.4, output: 9, cacheRead: 0.15 }, 'input stays 0.4; output and cacheRead follow the edited schedule');
+});
+
+/** @param {any} prices */
+const pricesAtOf = (prices) => pricesAt(prices, AFTER);
+
+test('the box emptied and a price typed again shows no schedule of nothing', async () => {
+  const { edit, save, effective, box } = await priceBox();
+  await save('prices', null);
+  await edit((b) => { b.input = 1; });
+  assert.deepEqual(await box(), { input: 1 });
+  assert.equal(/** @type {any} */ (await effective()).schedule, undefined);
+});
+
+test('pricesProblem also flags a base name annai does not know and a bad tier', () => {
+  assert.match(String(pricesProblem({ inptu: 3 })), /inptu.*isn't a price/);
+  assert.equal(pricesProblem({ input: 1, tiers: [{ above: 200000, input: 2 }] }), null);
+  assert.match(String(pricesProblem({ tiers: 'big' })), /tiers.*list/);
+  assert.match(String(pricesProblem({ tiers: [{ above: 'x', input: 2 }] })), /tier.*above/);
+  assert.match(String(pricesProblem({ tiers: [{ above: 100, input: -5 }] })), /input is not a price/);
+  assert.match(String(pricesProblem({ schedule: [{ from: '2027-01-01', tiers: [{ above: 'x' }] }] })), /tier.*above/);
 });

@@ -20,31 +20,46 @@ function dayStart(day) {
 }
 
 /**
- * What is wrong with a model's prices, in plain words, or null: a price is a number, not negative; a schedule is a list of entries, each
- * with a real `from` date, once, and only prices annai knows. Checked where prices are typed or a description is read, not where
- * they are stored: a record that fails there is dropped, which an older build would do to a model it could still use.
+ * What is wrong with a model's prices, in plain words, or null: a price is a number, not negative, and only prices annai knows are
+ * named; tiers are a list of {above, prices}; a schedule is a list of entries, each with a real `from` date, once. Checked where
+ * prices are typed or a description is read, not where they are stored: a record that fails there is dropped, which an older build
+ * would do to a model it could still use.
  * @param {any} prices @returns {string | null}
  */
 export function pricesProblem(prices) {
-  if (!prices || typeof prices !== 'object' || Array.isArray(prices)) return 'Prices are an object, like {"input": 1, "output": 4}.';
+  const object = (/** @type {any} */ x) => Boolean(x) && typeof x === 'object' && !Array.isArray(x);
+  if (!object(prices)) return 'Prices are an object, like {"input": 1, "output": 4}.';
   /** @param {any} set @param {string} where */
   const bad = (set, where) => {
     const k = PRICE_NAMES.find((n) => set[n] !== undefined && !(typeof set[n] === 'number' && set[n] >= 0 && Number.isFinite(set[n])));
     return k ? `${where}${k} is not a price: it is a number, not below 0.` : null;
   };
-  const own = bad(prices, '');
+  /** @param {any} tiers */
+  const tiersProblem = (tiers) => {
+    if (tiers === undefined) return null;
+    if (!Array.isArray(tiers)) return '"tiers" is a list: [{"above": 200000, "input": 2}].';
+    for (const t of tiers) {
+      if (!object(t) || !(typeof t.above === 'number' && t.above >= 0 && Number.isFinite(t.above))) return 'A tier\'s "above" is a number of tokens: [{"above": 200000, "input": 2}].';
+      const wrong = bad(t, 'In a tier, ');
+      if (wrong) return wrong;
+    }
+    return null;
+  };
+  const unknownBase = Object.keys(prices).find((k) => k !== 'tiers' && k !== 'schedule' && !PRICE_NAMES.includes(k));
+  if (unknownBase) return `"${unknownBase}" isn't a price annai knows.`;
+  const own = bad(prices, '') ?? tiersProblem(prices.tiers);
   if (own) return own;
   if (prices.schedule === undefined) return null;
   if (!Array.isArray(prices.schedule)) return 'The schedule is a list: [{"from": "2027-01-01", "input": 2}].';
   /** @type {Set<string>} */
   const seen = new Set();
   for (const e of prices.schedule) {
-    if (!e || typeof e !== 'object' || dayStart(e.from) !== dayStart(e.from)) return `A schedule's "from" ${e && typeof e === 'object' && 'from' in e ? `${JSON.stringify(e.from)} is not a date: write it like 2027-01-01` : 'is missing: each entry starts on a date like 2027-01-01'}.`;
+    if (!object(e) || dayStart(e.from) !== dayStart(e.from)) return `A schedule's "from" ${object(e) && 'from' in e ? `${JSON.stringify(e.from)} is not a date: write it like 2027-01-01` : 'is missing: each entry starts on a date like 2027-01-01'}.`;
     if (seen.has(e.from)) return `The schedule has ${e.from} twice: put what changes that day in one entry.`;
     seen.add(e.from);
     const unknown = Object.keys(e).find((k) => k !== 'from' && k !== 'tiers' && !PRICE_NAMES.includes(k));
     if (unknown) return `The schedule names "${unknown}", which isn't a price annai knows.`;
-    const wrong = bad(e, 'In the schedule, ');
+    const wrong = bad(e, 'In the schedule, ') ?? tiersProblem(e.tiers);
     if (wrong) return wrong;
   }
   return null;
@@ -52,12 +67,13 @@ export function pricesProblem(prices) {
 
 /**
  * The prices in force at a time: the base, with the fields of each schedule entry that has started laid over it, in date order.
- * An entry whose date is not a real date never applies.
+ * A schedule that is not a list, and an entry that is no object or whose date is not a real date, never apply.
  * @param {Prices} prices @param {number} at ms since 1970 @returns {PriceFields}
  */
 export function pricesAt(prices, at) {
   const { schedule, ...base } = prices;
-  const started = (schedule ?? [])
+  const started = (Array.isArray(schedule) ? schedule : [])
+    .filter((e) => e && typeof e === 'object' && !Array.isArray(e))
     .map(({ from, ...entry }) => ({ start: dayStart(from), entry }))
     .filter((e) => e.start <= at)
     .sort((a, b) => a.start - b.start);

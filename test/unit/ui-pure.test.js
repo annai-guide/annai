@@ -626,6 +626,9 @@ test("the price line says a change that is coming: from its date, the price then
   const doubling = { input: 0.75, output: 3.75, schedule: [{ from: '2027-01-01', input: 1.5, output: 7.5 }] };
   assert.equal(priceLine(doubling, Date.parse('2026-10-23T00:00:00Z')), '$0.75 in, $3.75 out per million tokens (from 2027-01-01: $1.5 in, $7.5 out)');
   assert.equal(priceLine(doubling, Date.parse('2027-01-01T00:00:00Z')), '$1.5 in, $7.5 out per million tokens', 'no hint once it is in force');
+  // A change that leaves what the line says as it is has no hint, and a schedule that is no list none either.
+  assert.equal(priceLine({ input: 1, output: 4, schedule: [{ from: '2027-01-01', cacheRead: 0.1 }] }, Date.parse('2026-10-23T00:00:00Z')), '$1 in, $4 out per million tokens');
+  assert.equal(priceLine(/** @type {any} */ ({ input: 1, output: 4, schedule: 'later' }), Date.parse('2026-10-23T00:00:00Z')), '$1 in, $4 out per million tokens');
   const voice = { perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] };
   assert.equal(priceLine(voice, Date.parse('2026-10-23T00:00:00Z')), '$15 per million characters (from 2027-01-01: $30)');
 });

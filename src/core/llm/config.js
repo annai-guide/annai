@@ -253,12 +253,16 @@ export function modelBase(rec) {
 /** The model as calls see it; it is named by its provider id until the user names it. @param {ModelRecord} rec @returns {Model} */
 export function modelOf(rec) {
   const v = { ...MODEL_DEFAULTS, ...mergePatch(modelBase(rec), rec.user ?? {}) };
-  // A price the user set stays theirs: the description's schedule no longer changes that field (a typed input price must not
-  // become Google's from its date). A schedule of the user's own, or null, is theirs to say.
-  const own = rec.user?.prices;
-  if (own && typeof own === 'object' && !('schedule' in own) && Array.isArray(v.prices?.schedule)) {
-    const set = Object.keys(own);
-    v.prices = { ...v.prices, schedule: v.prices.schedule.map((/** @type {any} */ e) => Object.fromEntries(Object.entries(e).filter(([k]) => k === 'from' || !set.includes(k)))).filter((/** @type {any} */ e) => Object.keys(e).length > 1) };
+  // A price the user set stays theirs: the description's schedule does not change that field from its date (a typed input price must
+  // not become Google's on 2027-01-01). A schedule of the user's own was made with those prices (the Prices box takes the fields
+  // typed out of it as they are typed). A schedule left with no entry, or emptied (`[]`, or null, which older builds read as the
+  // schedule removed), is no schedule.
+  if (v.prices && Array.isArray(v.prices.schedule)) {
+    const own = rec.user?.prices;
+    const set = own && typeof own === 'object' && !('schedule' in own) ? Object.keys(own) : [];
+    const entries = (set.length ? v.prices.schedule.map((/** @type {any} */ e) => (e && typeof e === 'object' ? Object.fromEntries(Object.entries(e).filter(([k]) => k === 'from' || !set.includes(k))) : e)).filter((/** @type {any} */ e) => !e || typeof e !== 'object' || Object.keys(e).length > 1) : v.prices.schedule);
+    const { schedule: _, ...rest } = v.prices;
+    v.prices = entries.length ? { ...rest, schedule: entries } : rest;
   }
   return { id: rec.id, provider: rec.provider, ability: rec.ability, ...v, name: v.name || v.providerId };
 }
