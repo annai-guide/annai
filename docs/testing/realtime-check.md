@@ -10,10 +10,11 @@ It is **opt-in and never part of `npm run check` or CI**: it needs a Gemini key 
 
 ## What it does
 
-1. **The clips** (`test/fixtures/realtime/`, 16 kHz mono WAV, 1.1 MB in all, committed, no key in them): seven short travel
+1. **The clips** (`test/fixtures/realtime/`, 16 kHz mono WAV, committed, no key in them): seven short travel
    questions, a quick "yes", a sentence with a 1.5 s thinking pause inside it, a long question (about 13 s), and silence (only time;
-   no file). `clips.json` lists each one's words, voice and length. They were made by Gemini TTS (`gemini-2.5-flash-preview-tts`, one
-   call for each spoken part, 11 in all); later runs make no TTS calls.
+   no file); and, for the languages check (phase 2), four more short English replies ("Sure.", "What?", "Alright.", "No.") and a
+   sentence in Japanese and one in Chinese. `clips.json` lists each one's words, voice, language and length. They were made by
+   Gemini TTS (`gemini-2.5-flash-preview-tts`, one call for each spoken part, 17 in all); later runs make no TTS calls. (The preview TTS refuses some short texts in some voices with "Model tried to generate text", a 400 that is not retried: "Okay." and "Alright." in Charon failed; "Alright." in Leda worked.)
 2. **The microphone** is an injected `getUserMedia`: a stream from an AudioContext, where the harness plays the clips at chosen
    times over a constant room noise (-60 dBFS, brown). To annai it is a microphone: a live audio track with a name (the audio
    route annai reads is from that name: "iPhone Microphone" is the phone's speaker, "AirPods Pro" headphones), frames into its own
@@ -85,6 +86,8 @@ with no network, after the analysis changed.
 | barge-in | headphones | the user speaks over her answer: she should be cut, and the new question answered |
 | talk-over | phone speaker | the same on the speaker, where annai hears nothing while she speaks, by design, and lets go of what was begun over her (no turn); then a question |
 | echo-late (only by name) | phone speaker | two questions, her voice back at -6 dB, 400 ms late (a slow speaker, a car) |
+| short-replies (only by name) | phone speaker | the languages setting English; a question, then five short replies ("Yes.", "Sure.", "What?", "Alright.", "No."), each after her answer: every answer should come back in English, and what Gemini heard should be English (the user, 2026-10-23: short replies were heard as "¿Qué?" and answered in Spanish) |
+| multilingual (only by name) | phone speaker | the languages setting English, Chinese and Japanese; a Japanese sentence, a Chinese one and an English one, each after her answer: each should be answered in kind |
 
 ## What the report says, and when it passes
 
@@ -101,7 +104,9 @@ A scenario **passes** when:
    note, "rescued", not an error: the user was answered, late; a second silence in a row stays an error);
 5. barge-in only: **she is cut by the user**.
 
-A sixth check, **whole sentences heard**, is a *warning* (`WARN`, "PASS (2 warnings)"): it fails when a question's turns carried less than
+**Language kept** (a check of the two languages scenarios only): the scenario sets the languages setting through Settings → Shiori → Languages (the browser's English is the list's first; the others are added; a language is picked in the list and committed with Add; a list of English alone is made the user's own by adding a language and removing it again, since the browser's language by itself is only a default and no model is given it as a hint; a build with no such section is left alone and the report says "NOT applied"), and every answer must be in the language its clip was spoken in. Her words are read by their script (kana: Japanese; Chinese characters: Chinese) or by the commonest small words of English, Spanish, French, German, Italian, Portuguese and Dutch, and by a Spanish ¿ ¡ ñ or a Vietnamese vowel; an answer too short to place passes, and one German or Italian answer of a few words may not be placed. The two scenarios are only by name (`--only short-replies,multilingual`), one session each. A note names each transcript Gemini wrote in another language ("Gemini heard "¿Qué?" for "Sure." (Spanish)"), the setup's language hints (`languageCodes ...`, and whether the instructions have a Languages section; never the instructions), and each `heard` line annai flagged as stray (`strayLanguage`: a transcript of fewer than 3 words in a language not listed).
+
+A last check, **whole sentences heard**, is a *warning* (`WARN`, "PASS (2 warnings)"): it fails when a question's turns carried less than
 three quarters of its sound or Gemini's transcript has less than 60% of its words. It is what a sentence cut at a thinking pause longer
 than annai waits for (her voice waits 1.2 s after the turn's end for the user to go on), or a question's tail sent alone, shows; it does
 not fail the scenario, and it is for people to read.

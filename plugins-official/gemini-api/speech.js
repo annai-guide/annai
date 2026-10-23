@@ -14,8 +14,19 @@ import { levelsFor } from './levels.js';
  *   always streams: as it comes, a sentence's first audio is in about 0.6 s, and even read whole it is ready
  *   sooner than a whole reply (1.1 s against 1.5–1.9 s). readSpeechStream gives the PCM as it comes, which
  *   annai plays once it won't stutter; readSpeech gives the whole clip as WAV (the stream switch off).
+ * - Languages (phase 2; Google's transcription and speech guides, read 2026-10-22): the transcription model takes
+ *   transcription_config.language_codes, several BCP-47 tags in Google's own list (en-US, ja-JP, cmn-Hans-CN; none at all when a language
+ *   listed has no tag), "If omitted or empty, the model automatically detects the language and handles code-switching"; any other model is told
+ *   in the prompt which languages the speaker uses. The voice is given none: "The TTS models detect the input language automatically."
  */
 export const INSTRUCTION = 'Transcribe this speech exactly, in its own language. Output only the words.';
+/** The same, for a speaker whose languages are known (phase 2): named, so a short word is not taken for another. @param {{ spoken?: { name?: string }[] } | undefined} languages */
+export function instructionFor(languages) {
+  const names = (languages?.spoken ?? []).map((l) => String(l?.name ?? '')).filter(Boolean);
+  if (!names.length) return INSTRUCTION;
+  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names.at(-1)}` : names[0];
+  return `Transcribe this speech exactly, in its own language. The speaker uses ${list}: write ${names.length > 1 ? 'each' : 'it'} in the language spoken and never translate. Output only the words.`;
+}
 /** Google's 30 prebuilt voices, in its order (its voice options table, 2026-10-22), for the Voice field. */
 const VOICES = ['Zephyr', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Leda', 'Orus', 'Aoede', 'Callirrhoe', 'Autonoe', 'Enceladus', 'Iapetus', 'Umbriel', 'Algieba', 'Despina', 'Erinome',
   'Algenib', 'Rasalgethi', 'Laomedeia', 'Achernar', 'Alnilam', 'Schedar', 'Gacrux', 'Pulcherrima', 'Achird', 'Zubenelgenubi', 'Vindemiatrix', 'Sadachbia', 'Sadaltager', 'Sulafat'];
@@ -79,19 +90,23 @@ export function transcriptionType(annai) {
     type: 'gemini-transcription',
     name: 'Gemini API transcription',
     speech: 'in',
-    // language: for Google's transcription model, the languages to expect (BCP-47, comma-separated, such as "ja-JP"); empty: it tells.
+    // language: for Google's transcription model, the languages to expect (BCP-47, comma-separated, such as "ja-JP"); empty: the languages
+    // the user speaks (Settings → Shiori), else it tells.
     tunables: { audioIn: TUNABLES.audioIn, language: '' },
     /** @param {any} c */
-    transcribeRequest: ({ endpoint, model, key, tunables: t, audio }) => {
+    transcribeRequest: ({ endpoint, model, key, tunables: t, audio, languages }) => {
       const id = idOf(model.providerId);
       const sound = toContent({ type: 'audio', mediaType: audio.mediaType, data: base64.encode(audio.data) });
       if (/transcribe/.test(id)) {
-        const language_codes = String(t.language ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+        const own = String(t.language ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+        // All the languages listed, or none: a list missing one (Tamil has no tag) would bias the transcript against it.
+        const tags = (languages?.spoken ?? []).map((/** @type {any} */ l) => l?.google);
+        const language_codes = own.length ? own : tags.some((/** @type {unknown} */ c) => !c) ? [] : [...new Set(tags)];
         return post(endpoint, key, { model: id, store: false, input: [{ type: 'user_input', content: [sound] }], generation_config: { transcription_config: { language_codes } } });
       }
       return post(endpoint, key, {
         model: id, store: false,
-        input: [{ type: 'user_input', content: [{ type: 'text', text: INSTRUCTION }, sound] }],
+        input: [{ type: 'user_input', content: [{ type: 'text', text: instructionFor(languages) }, sound] }],
         generation_config: { temperature: 0, ...lowest(id) },
       });
     },

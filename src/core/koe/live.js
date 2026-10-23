@@ -8,6 +8,7 @@ import { spentToday, budgetStop } from '../agent/budgets.js';
 import { definitions } from '../agent/tools.js';
 import { modelOf } from '../llm/config.js';
 import { COOLDOWN_MS } from '../llm/fallback.js';
+import { strayLanguage } from '../languages.js';
 
 /**
  * Koe live (the Koe and Kokoro design, "Realtime sessions"; spec §10.8): Koe as a realtime voice model, a session at a time,
@@ -20,7 +21,7 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  *   heard or written
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
- *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
+ *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string, languages?: import('../llm/contract.js').Languages, known?: import('../languages.js').LanguageSettings }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace }} LiveHost
@@ -97,6 +98,8 @@ export class LiveKoe {
   /** The resume handle, in memory only (decision 28). @type {string | undefined} */
   #handle;
   #wake = '';
+  /** What the user speaks, the browser's language where they chose none (phase 2): a very short transcript in another language is flagged against it. @type {import('../languages.js').LanguageSettings | null} */
+  #languages = null;
   /** The user is in this session (they typed, or spoke, or turned it on), so what Koe tells Kokoro is watched (isWatched); a session a trigger opened is not, until they do. */
   #watched = false;
   /** @type {LiveInput | null} */
@@ -282,10 +285,11 @@ export class LiveKoe {
 
   /** One connection, ready, its events handled while it is the session's. @param {string} id @param {string | undefined} resume @param {string} why @returns {Promise<LiveSession>} */
   async #connect(id, resume, why) {
-    const { instructions, context } = await this.c.setup();
+    const { instructions, context, languages, known } = await this.c.setup();
+    this.#languages = known ?? null;
     const tools = definitions(await this.c.koe.liveTools());
     this.#wake = newId('w');
-    const s = await this.c.llm.live(id, { instructions, context, tools, ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake });
+    const s = await this.c.llm.live(id, { instructions, context, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake });
     s.on((e) => this.#on(s, e));
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
@@ -934,7 +938,9 @@ export class LiveKoe {
     return this.#write(async () => {
       if (!first) return { type: 'heard.text', actor: 'system', data: { of: h.id, wake: this.#wake, text, by: this.modelId } };
       const clip = await this.#clip(h);
-      return { type: 'heard', actor: 'user', blobs: clip.blobs, data: { id: h.id, wake: this.#wake, ms: h.ms, source: 'live', text, ...(dismissed ? { dismissed: true, gate: 'chatter' } : {}), ...clip.data } };
+      // A word or two plainly in a language the user doesn't speak is Gemini mishearing a short reply ("¿Qué?" for "What?"): flagged, never a change of language.
+      const stray = this.#languages ? strayLanguage(text, this.#languages) : '';
+      return { type: 'heard', actor: 'user', blobs: clip.blobs, data: { id: h.id, wake: this.#wake, ms: h.ms, source: 'live', text, ...(dismissed ? { dismissed: true, gate: 'chatter' } : {}), ...(stray ? { strayLanguage: stray } : {}), ...clip.data } };
     });
   }
 

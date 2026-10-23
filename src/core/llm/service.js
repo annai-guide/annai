@@ -544,7 +544,14 @@ export function createLlm({
         type, endpoint, model, key, tunables, setup, trace,
         registry: plugins.registry, wake, ...(openSocket ? { socket: openSocket } : {}),
       });
-      session.ready.then(() => { if (session.tunables !== tunables) liveTunables.set(modelId, session.tunables); }, () => {});
+      // What a refusal taught the protocol (its language hints, its proactive audio) is remembered for the model, even when the session it
+      // reopened then fails for another reason: the next one need not pay a refused socket again. Only the keys the refusal changed are
+      // kept, never a copy of all of them, so what the user edits on the model meanwhile still reaches the next session.
+      const learned = () => {
+        const taught = Object.fromEntries(Object.entries(session.tunables).filter(([k, v]) => tunables[k] !== v));
+        if (Object.keys(taught).length) liveTunables.set(modelId, { ...liveTunables.get(modelId), ...taught });
+      };
+      session.ready.then(learned, learned);
       session.closed.then(({ kind }) => {
         if (kind === 'auth' || kind === 'rate' || kind === 'server' || (kind === 'not-found' && !setup.resume)) bench.bench(modelId, COOLDOWN_MS);
       });
@@ -552,10 +559,11 @@ export function createLlm({
     },
     /**
      * Speech to text with one transcription model (spec §10.2), traced in scope.
-     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string }} c
+     * languages: what the user speaks (phase 2), for the model's language hint.
+     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string, languages?: import('./contract.js').Languages }} c
      */
-    async transcribe({ modelId, audio, scope = SYS, signal, wake }) {
-      return speechCall({ ...(await speechOf(modelId, 'in', scope)), audio, fetch: get, signal, registry: plugins.registry, wake });
+    async transcribe({ modelId, audio, scope = SYS, signal, wake, languages }) {
+      return speechCall({ ...(await speechOf(modelId, 'in', scope)), audio, fetch: get, signal, registry: plugins.registry, wake, ...(languages ? { languages } : {}) });
     },
     /**
      * A voice clip of one text from one voice (spec §10.1), traced in scope. plays: what the device plays, for a format of 'auto';

@@ -10,6 +10,11 @@
  * (OpenRouter's audio docs; for Fish Audio they become a [bracketed] direction at the start of the text) and
  * the others ignore. `styled: false` says a voice ignores it, so none is sent; unknown (a server of the user's),
  * it is sent. `voices` suggests what the Voice field may hold; a speech list fills it from OpenRouter's supported_voices.
+ * Languages (phase 2; OpenAI's speech-to-text guide and OpenRouter's STT page, read 2026-10-22): a transcription takes `language`, one
+ * ISO-639-1 code (OpenRouter: "Auto-detected if omitted"; its `prompt` "is accepted but ignored"), or, for gpt-transcribe, `languages`
+ * (several; "Don't send both"). The user speaks several as often as one, so: one language listed, it is sent; several, none (the
+ * model detects: giving only the first would force a Chinese sentence into English, and a prompt naming them is one Whisper may
+ * echo back on silence); a `language` set by hand on the model's page wins. No voice API takes a language: they follow the text.
  */
 const MEDIA = /** @type {Record<string, string>} */ ({ mp3: 'audio/mpeg', opus: 'audio/ogg', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav', pcm: 'audio/L16' });
 const EXT = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/aac': 'aac', 'audio/flac': 'flac' });
@@ -75,12 +80,15 @@ export function activate(annai) {
       speech: 'in',
       tunables: { path: '/audio/transcriptions', listPath: '/models', language: '', prompt: '', audioIn: ['webm', 'mp4', 'mp3', 'wav'] },
       /** @param {any} c */
-      transcribeRequest: ({ endpoint, model, key, tunables: t, audio }) => {
+      transcribeRequest: ({ endpoint, model, key, tunables: t, audio, languages }) => {
         const form = new FormData();
         form.append('file', new Blob([audio.data], { type: audio.mediaType }), `speech.${EXT[audio.mediaType] ?? 'wav'}`);
         form.append('model', model.providerId);
         form.append('response_format', 'json');
+        const codes = [...new Set((languages?.spoken ?? []).map((/** @type {any} */ l) => l?.iso).filter(Boolean))];
         if (t.language) form.append('language', String(t.language));
+        else if (/(?:^|\/)gpt-(?:live-)?transcribe(?:-|$)/.test(model.providerId)) for (const c of codes) form.append('languages[]', c);
+        else if (codes.length === 1 && /^[a-z]{2}$/.test(codes[0])) form.append('language', codes[0]); // ISO-639-1 only: no `yue`
         if (t.prompt) form.append('prompt', String(t.prompt));
         return { url: join(endpoint.baseUrl, t.path), headers: auth(endpoint, key), body: form };
       },
