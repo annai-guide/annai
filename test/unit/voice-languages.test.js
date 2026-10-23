@@ -106,3 +106,41 @@ test('the model that writes down what it heard is told the languages, and not to
   await k.voice.writeDown(h2.id, { scope: 'trip-1', wake: 'w-1', hearer: 'm1' });
   assert.equal(k.llm.systems.at(-1), `${WRITE_DOWN} The speaker uses English: write it in the language spoken and never translate.`);
 });
+
+test('a transcription model that refuses the language hint (a 400 naming language) is asked again without it, once, and not hinted again until annai restarts (review item 10)', async () => {
+  const { ProviderError } = await import('../../src/core/llm/contract.js');
+  const k = await kit({ asr: ['t1', 't2'] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  const real = k.llm.transcribe.bind(k.llm);
+  /** @type {number[]} */
+  const asked = [];
+  k.llm.transcribe = async (/** @type {any} */ c) => {
+    asked.push(c.languages?.spoken.length ?? -1);
+    if (c.languages?.spoken.length) throw new ProviderError('bad-request', "Unknown parameter: 'languages'. Supported language codes are ISO-639-1.");
+    return real(c);
+  };
+  const text = await k.voice.transcribe(await hear(k), 't1');
+  assert.equal(text, 'what was said');
+  assert.deepEqual(asked, [2, 0], 'refused with the hint, answered without');
+  await k.voice.transcribe(await hear(k), 't1');
+  assert.deepEqual(asked, [2, 0, 0], 'and the hint is not sent again');
+  // Another model is its own.
+  await k.voice.transcribe(await hear(k), 't2');
+  assert.deepEqual(asked.slice(3), [2, 0]);
+});
+
+test('the speaking style Koe live is told is the first Gemini voice\'s: the description\'s default or the user\'s own, and none once it is cleared or no Gemini voice is listed (nit)', async () => {
+  const k = await kit();
+  const cfg = await k.llm.config();
+  assert.equal(await k.voice.speakingStyle(), '', 'no Gemini voice listed');
+  cfg.providers.pg = { id: 'pg', plugin: 'p', template: null, user: { abilities: { voice: { kind: 'voice', type: 'gemini-speech' } } }, created: 0 };
+  cfg.models.g1 = { id: 'g1', provider: 'pg', ability: 'voice', template: null, user: { providerId: 'gemini-3.8-flash-lite-tts', tunables: { style: 'young, cheerful and lively, yet calm and gentle' } }, created: 0 };
+  cfg.roles['speech-out'].models = ['g1', 'browser-voice'];
+  assert.equal(await k.voice.speakingStyle(), 'young, cheerful and lively, yet calm and gentle');
+  cfg.models.g1.user.tunables = { style: '  slow   and\n gentle. ' };
+  assert.equal(await k.voice.speakingStyle(), 'slow and gentle', 'the user\'s own, in plain words');
+  cfg.models.g1.user.tunables = { style: '' };
+  assert.equal(await k.voice.speakingStyle(), '', 'cleared: none');
+  cfg.models.g1.user.tunables = { style: 'calm', styled: false };
+  assert.equal(await k.voice.speakingStyle(), '', 'a voice that takes no style');
+});

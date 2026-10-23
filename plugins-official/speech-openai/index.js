@@ -88,7 +88,7 @@ export function activate(annai) {
         const codes = [...new Set((languages?.spoken ?? []).map((/** @type {any} */ l) => l?.iso).filter(Boolean))];
         if (t.language) form.append('language', String(t.language));
         else if (/(?:^|\/)gpt-(?:live-)?transcribe(?:-|$)/.test(model.providerId)) for (const c of codes) form.append('languages[]', c);
-        else if (codes.length === 1) form.append('language', codes[0]);
+        else if (codes.length === 1 && /^[a-z]{2}$/.test(codes[0])) form.append('language', codes[0]); // ISO-639-1 only: no `yue`
         if (t.prompt) form.append('prompt', String(t.prompt));
         return { url: join(endpoint.baseUrl, t.path), headers: auth(endpoint, key), body: form };
       },

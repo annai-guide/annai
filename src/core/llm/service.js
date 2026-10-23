@@ -544,7 +544,10 @@ export function createLlm({
         type, endpoint, model, key, tunables, setup, trace,
         registry: plugins.registry, wake, ...(openSocket ? { socket: openSocket } : {}),
       });
-      session.ready.then(() => { if (session.tunables !== tunables) liveTunables.set(modelId, session.tunables); }, () => {});
+      // What a refusal taught the protocol (its language hints, its proactive audio) is remembered for the model, even when the session it
+      // reopened then fails for another reason: the next one need not pay a refused socket again.
+      const learned = () => { if (session.tunables !== tunables) liveTunables.set(modelId, session.tunables); };
+      session.ready.then(learned, learned);
       session.closed.then(({ kind }) => {
         if (kind === 'auth' || kind === 'rate' || kind === 'server' || (kind === 'not-found' && !setup.resume)) bench.bench(modelId, COOLDOWN_MS);
       });

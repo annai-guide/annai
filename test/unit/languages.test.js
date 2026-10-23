@@ -8,11 +8,12 @@ test('every language has a name and the codes each model takes, and the browser 
   const ids = new Set(LANGUAGES.map((l) => l.id));
   assert.equal(ids.size, LANGUAGES.length);
   for (const l of LANGUAGES) {
-    assert.ok(l.name && l.locale && l.iso && l.live, l.id);
+    assert.ok(l.name && l.locale && l.iso && (l.live || l.id === 'yue'), l.id);
     assert.match(l.locale, /^[a-z]{2,3}(-[A-Za-z0-9]+)+$/, l.id);
   }
   assert.deepEqual(['ja', 'zh', 'es'].map((id) => nativeName(/** @type {any} */ (LANGUAGES.find((l) => l.id === id)))), ['日本語', '中文', 'español']);
   assert.equal(LANGUAGES.length, 41, 'the list has 41 languages');
+  assert.equal(LANGUAGES.find((l) => l.id === 'yue')?.live, null, "Gemini Live's zh-Hant is not Cantonese: Cantonese has no Live code (review item 12)");
   const zh = LANGUAGES.find((l) => l.id === 'zh');
   assert.deepEqual([zh?.name, zh?.iso, zh?.live, zh?.google, zh?.locale], ['Chinese (Mandarin)', 'zh', 'zh-Hans', 'cmn-Hans-CN', 'zh-CN']);
 });

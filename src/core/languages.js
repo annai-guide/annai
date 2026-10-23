@@ -16,7 +16,7 @@
  * @type {[string, string, string, string?, (string | null)?, (string | null)?][]}
  */
 const ROWS = [
-  ['en', 'English', 'en-US'], ['zh', 'Chinese (Mandarin)', 'zh-CN', 'zh', 'zh-Hans', 'cmn-Hans-CN'], ['yue', 'Cantonese', 'yue-Hant-HK', 'yue', 'zh-Hant'],
+  ['en', 'English', 'en-US'], ['zh', 'Chinese (Mandarin)', 'zh-CN', 'zh', 'zh-Hans', 'cmn-Hans-CN'], ['yue', 'Cantonese', 'yue-Hant-HK', 'yue', null],
   ['ja', 'Japanese', 'ja-JP'], ['ko', 'Korean', 'ko-KR'], ['es', 'Spanish', 'es-ES', 'es', 'es', 'es-419'], ['fr', 'French', 'fr-FR'],
   ['de', 'German', 'de-DE'], ['it', 'Italian', 'it-IT'], ['pt', 'Portuguese', 'pt-BR', 'pt', 'pt-BR'], ['nl', 'Dutch', 'nl-NL'],
   ['ru', 'Russian', 'ru-RU'], ['uk', 'Ukrainian', 'uk-UA'], ['pl', 'Polish', 'pl-PL'], ['cs', 'Czech', 'cs-CZ'],
@@ -33,23 +33,16 @@ const ROWS = [
 export const LANGUAGES = ROWS.map(([id, name, locale, iso = id, live = id, google = locale]) => ({ id, name, locale, iso, live, google }));
 const BY_ID = new Map(LANGUAGES.map((l) => [l.id, l]));
 
-/** A language's name for itself, which the browser knows (Intl.DisplayNames); its English one where it doesn't. @param {Language} l */
-export const nativeName = (l) => {
+/** A language's name in a language, as the browser knows it (Intl.DisplayNames), else the fallback. @param {string} in_ @param {string} code @param {string} fallback */
+const display = (in_, code, fallback) => {
   try {
-    return new Intl.DisplayNames([l.id], { type: 'language' }).of(l.id) ?? l.name;
+    return new Intl.DisplayNames([in_], { type: 'language' }).of(code) ?? fallback;
   } catch {
-    return l.name;
+    return fallback;
   }
 };
-
-/** A language's English name, as the browser knows it ("Estonian"), else its code. @param {string} code */
-const englishName = (code) => {
-  try {
-    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code;
-  } catch {
-    return code;
-  }
-};
+/** A language's name for itself ("日本語"). @param {Language} l */
+export const nativeName = (l) => display(l.id, l.id, l.name);
 
 /** What a browser's language tag is, as a language: the browser's own tag stays the locale (zh-Hant-TW, nb-NO, et-EE), as it was before this branch. @param {unknown} locale @returns {Language} */
 function browserLanguage(locale) {
@@ -59,7 +52,7 @@ function browserLanguage(locale) {
   const id = BY_ID.has(code) ? code : ({ nb: 'no', nn: 'no', iw: 'he', tl: 'fil' }[/** @type {'nb'} */ (code)] ?? null);
   const known = id ? BY_ID.get(id) : null;
   // A language annai has no codes for is still named, and still the browser's own tag: no hint is ever sent for it.
-  return known ? { ...known, locale: raw } : { id: code, name: englishName(code), locale: raw, iso: code, live: code, google: null };
+  return known ? { ...known, locale: raw } : { id: code, name: display('en', code, code), locale: raw, iso: code, live: code, google: null };
 }
 
 /**
@@ -229,5 +222,4 @@ export const LANGUAGE_WORDS = {
   answerLabel: 'Shiori answers in',
   follow: 'The language you speak to her',
   empty: 'None picked: annai uses the browser’s language.',
-  browser: 'the browser’s language',
 };

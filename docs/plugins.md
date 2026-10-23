@@ -430,6 +430,8 @@ The user lists the languages they speak, and the one Shiori answers in, in Setti
 
 - **A transcription type** gets `languages` beside `audio` in `transcribeRequest`: `{ spoken: Language[], answer: Language | null }`, empty `spoken` until the user has chosen. A live type gets the same as `setup.languages`.
 - **A `Language`** is `{ id, name, locale, iso, live, google }`: annai's id (`ja`), its English name, a BCP-47 tag for browsers (`ja-JP`), the code Whisper-style models take (`ja`; ISO 639-1, or 639-3 where OpenAI takes it), Gemini Live's code (`ja`, `zh-Hans`) and Gemini's transcription tag (`ja-JP`, `cmn-Hans-CN`; null where it has none).
+- **All of them or none.** A hint that names only some of the languages listed (a language the provider has no code for left out) biases the transcript against the rest: send none then. `live` and `google` are null where a protocol has no code for a language.
+- **A provider may refuse the field.** Read a refusal that names it, send the request again without the hint, once, and remember that for the model (a live protocol's `reopen()` is called up to twice before a session is ready, for two fields).
 - **Send what the provider takes, and no more.** A field that takes one language (Whisper's `language`) gets one only when exactly one is listed; several are better left to the model to detect than cut to the first. A voice API that takes none is sent none: the text decides. A tunable the user typed by hand (`language`) wins over the setting.
 
 ### Audio formats

@@ -50,7 +50,7 @@
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.",
       "category": "developer",
       "keywords": [],
@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 63935,
+      "size": 64124,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -68,20 +68,20 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "9f4886338d5af73c0d7c75ac6c0951541ff6b23a01946a39012d3d8a67328cc8",
+        "annai-plugin.json": "4bb0f0bfc649170104ce603b028fa567c96b3c0b9b4f3751606b8fa8d5514b66",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "schema.js": "1565a0cb2a53fa22b7061c454c7421be6a5e971e297e651f958f213685f473d6",
-        "speech.js": "1b90dd8ca82c5e432a64c1917a9fb81398ab48241dd3fdeecc1cf0edd7da70c1",
+        "speech.js": "c2bac69131fe23026545899fa60befa9848175308ea07e71cbbaaec5610191b4",
         "steps.js": "dbcf97565b97807d0ad44a159a327526cb5fa7804032424a42b2f4519b5576d2"
       }
     },
     {
       "id": "gemini-live",
       "name": "Gemini Live",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -89,7 +89,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 10529,
+      "size": 10943,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -97,14 +97,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "cb30fb5129e9820c1d54799e259dd04c4667e91b7b7b312b356f4225fa807dbc",
-        "index.js": "957f5fc26cf91b319aa0e1e48e4b3fc6fc251ae6bbf51fbc3f97933f259e90c5"
+        "annai-plugin.json": "d096677ac2b2ae5457b74927ddff6fa61bf3477116d4d2c12a00ccf9175f91ae",
+        "index.js": "224e6fb5c514ca96581f50fe3ffbb6765a6da4302dbc71faf4b294e6a36823f7"
       }
     },
     {
       "id": "openai-realtime",
       "name": "OpenAI Realtime",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -112,7 +112,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 20433,
+      "size": 22300,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -120,8 +120,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "11f898e64e40c4e29709bc897e1bed0c0c2f0fb3fe84b801098c2426059a2a2c",
-        "index.js": "04322b7d4585e044495fdfff31e41a9d31bfda7f85a28dc12c3fcea7ad4a79e9"
+        "annai-plugin.json": "14071410ab7b0fa6ff1347cbcedc209e9672e2a7805c594d6eea7c2403973b8d",
+        "index.js": "12961e22c318ee3ac72df8d5a04d6f857949cd1e25aaec5f87062b0d4518a297"
       }
     },
     {
@@ -232,7 +232,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "2.5.0",
+      "version": "2.5.1",
       "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
@@ -245,7 +245,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 11305,
+      "size": 11371,
       "requires": [
         {
           "id": "gemini-api",
@@ -254,7 +254,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "00c26505ad3cd9c13d62feb951b69a370525a6ced761840a702c696b30ba011a"
+        "annai-plugin.json": "dc26b413a54174d0d9baa4a0f27ad4c69dc074f195bf65b66b51556ec18a12d4"
       }
     },
     {
@@ -610,7 +610,7 @@
     {
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "description": "Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.",
       "category": "developer",
       "keywords": [],
@@ -618,7 +618,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 9258,
+      "size": 9317,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -627,8 +627,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "f79ac1c150898453b6b9d4bf9274c877a26ea8a3bdde5b641ad3e3e311424a66",
-        "index.js": "d8d88ef682111cc4a92c23127aa57bafd5fa7b82709d5048da0e1b6d400a8967"
+        "annai-plugin.json": "ac2ad686e60fb1eda0e124a282543c5a114620702b41009aa5c1ff90d5e9b66c",
+        "index.js": "30b8769b558d7a8d5f279709442c1a4731cca785d6c99ea66fa6d17befa30a92"
       }
     },
     {

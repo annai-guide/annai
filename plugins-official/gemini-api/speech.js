@@ -15,8 +15,8 @@ import { levelsFor } from './levels.js';
  *   sooner than a whole reply (1.1 s against 1.5–1.9 s). readSpeechStream gives the PCM as it comes, which
  *   annai plays once it won't stutter; readSpeech gives the whole clip as WAV (the stream switch off).
  * - Languages (phase 2; Google's transcription and speech guides, read 2026-10-22): the transcription model takes
- *   transcription_config.language_codes, several BCP-47 tags in Google's own list (en-US, ja-JP, cmn-Hans-CN: a language it has no tag for
- *   is left out), "If omitted or empty, the model automatically detects the language and handles code-switching"; any other model is told
+ *   transcription_config.language_codes, several BCP-47 tags in Google's own list (en-US, ja-JP, cmn-Hans-CN; none at all when a language
+ *   listed has no tag), "If omitted or empty, the model automatically detects the language and handles code-switching"; any other model is told
  *   in the prompt which languages the speaker uses. The voice is given none: "The TTS models detect the input language automatically."
  */
 export const INSTRUCTION = 'Transcribe this speech exactly, in its own language. Output only the words.';
@@ -99,7 +99,9 @@ export function transcriptionType(annai) {
       const sound = toContent({ type: 'audio', mediaType: audio.mediaType, data: base64.encode(audio.data) });
       if (/transcribe/.test(id)) {
         const own = String(t.language ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-        const language_codes = own.length ? own : [...new Set((languages?.spoken ?? []).map((/** @type {any} */ l) => l?.google).filter(Boolean))];
+        // All the languages listed, or none: a list missing one (Tamil has no tag) would bias the transcript against it.
+        const tags = (languages?.spoken ?? []).map((/** @type {any} */ l) => l?.google);
+        const language_codes = own.length ? own : tags.some((/** @type {unknown} */ c) => !c) ? [] : [...new Set(tags)];
         return post(endpoint, key, { model: id, store: false, input: [{ type: 'user_input', content: [sound] }], generation_config: { transcription_config: { language_codes } } });
       }
       return post(endpoint, key, {
