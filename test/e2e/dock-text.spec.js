@@ -173,19 +173,30 @@ test("Enter as keyCode 229 holds back only while composing or right after a comp
   await onTrips(page);
   await typeButton(page).click();
   await box(page).fill('hello');
-  const enter229 = () => page.evaluate(() => {
-    const e = new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true });
-    /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).dispatchEvent(e);
-    return e.defaultPrevented;
+  // The whole sequence in the page: the box holds a 229 Enter back for 100 ms after a composition ended (by the events' own time stamps),
+  // so "right after" has to be right after in the page's own time, not after a round trip to the test, which a slow machine stretches
+  // past the 100 ms. "A while after" is a wait in the page too, and a timer never fires early.
+  const held = await page.evaluate(async () => {
+    const input = /** @type {HTMLInputElement} */ (document.getElementById('dock-text'));
+    const enter229 = () => {
+      const e = new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true });
+      input.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    const composition = (/** @type {'compositionstart' | 'compositionend'} */ type) => input.dispatchEvent(new CompositionEvent(type, { bubbles: true }));
+    const out = { android: enter229(), composing: false, afterwards: false, later: true };
+    composition('compositionstart');
+    out.composing = enter229();
+    composition('compositionend');
+    out.afterwards = enter229();
+    await new Promise((r) => setTimeout(r, 150));
+    out.later = enter229();
+    return out;
   });
-  const composition = (/** @type {'compositionstart' | 'compositionend'} */ type) => page.evaluate((t) => { /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).dispatchEvent(new CompositionEvent(t, { bubbles: true })); }, type);
-  expect(await enter229(), 'no composition: Android').toBe(false);
-  await composition('compositionstart');
-  expect(await enter229(), 'while composing').toBe(true);
-  await composition('compositionend');
-  expect(await enter229(), "Safari's Enter that confirms a candidate").toBe(true);
-  await page.waitForTimeout(300);
-  expect(await enter229(), 'a while after the composition ended').toBe(false);
+  expect(held.android, 'no composition: Android').toBe(false);
+  expect(held.composing, 'while composing').toBe(true);
+  expect(held.afterwards, "Safari's Enter that confirms a candidate").toBe(true);
+  expect(held.later, 'a while after the composition ended').toBe(false);
 });
 
 test('a composition the box lost (it closed, or lost focus) holds back nothing: a real Enter afterwards sends', async ({ page }) => {
@@ -210,12 +221,14 @@ test('a press elsewhere that brings no click (iOS, on plain content) still close
   await onTrips(page);
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
-  await page.evaluate(() => {
+  // It is still open as the pointer comes up (looked at in the page, in the same task): the box closes 400 ms later, by its own timer, and a
+  // slow machine can make a look from the test come after that.
+  const stillOpen = await page.evaluate(() => {
     const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
     for (const type of ['pointerdown', 'pointerup']) el.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, pointerType: 'touch' }));
+    return /** @type {HTMLElement} */ (document.getElementById('dock-text')).offsetParent !== null;
   });
-  await page.waitForTimeout(100);
-  await expect(box(page)).toBeVisible();
+  expect(stillOpen, 'open when the pointer is up').toBe(true);
   await expect(box(page)).toBeHidden({ timeout: 2000 });
 });
 
