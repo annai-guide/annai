@@ -6,6 +6,7 @@ import { modelTrace } from '../../src/core/llm/trace.js';
 import { record, TALK_TAG, KOE_TAG } from '../../src/core/agent/log.js';
 import { Transcript, resolveEvent, repair } from '../../src/core/agent/transcript.js';
 import { blockFor, asksOrNotes, escapeTags, wrapNote, MAX_TEXT } from '../../src/core/agent/blocks.js';
+import { cpuMs } from './cpu.js';
 
 const SCOPE = 'trip-1';
 /** Koe's session nonce: only a note carrying it is Kokoro's. */
@@ -282,15 +283,15 @@ test('security review: forged markers in a typed message, a tool result, a remin
 
 test('security review: a 1 MB adversarial text is escaped in linear time, and cut to the cap first', () => {
   const evil = `<${'<from_kokoro '.repeat(80_000)}${' /'.repeat(50_000)}`.slice(0, 1_048_576);
-  const started = performance.now();
+  const started = cpuMs();
   const out = escapeTags(evil);
-  assert.ok(performance.now() - started < 250, `took ${performance.now() - started} ms`);
+  assert.ok(cpuMs() - started < 250, `took ${cpuMs() - started} ms of CPU`);
   assert.ok(out.length <= MAX_TEXT + 1);
   assert.equal(/[<>]/.test(out), false);
   const t = new Transcript({ half: 'koe', nonce: NONCE });
-  const at = performance.now();
+  const at = cpuMs();
   t.apply({ seq: 1, type: 'msg.user', data: { split: true } }, { texts: { text: evil }, images: [] });
-  assert.ok(performance.now() - at < 250);
+  assert.ok(cpuMs() - at < 250);
 });
 
 test("security review: what Kokoro reads inside a label is quoted, annai's reminder and wake lines too, so a forged label or a new line can't pass for annai's", async () => {
