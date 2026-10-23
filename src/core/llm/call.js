@@ -3,6 +3,7 @@ import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
+import { sha256Hex } from '../hash.js';
 import { UPLOAD_TTL_S } from './uploads.js';
 import { deleteTurn, keyPrint } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
@@ -349,17 +350,22 @@ const EXT = /** @type {Record<string, string>} */ ({ 'image/webp': 'webp', 'imag
  */
 async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now }) {
   if (!uploads || !type.uploadRequest || !type.readUpload || endpoint.tunables?.uploads === false || uploads.isOff(endpoint.id) || !model.input.includes('image')) return request;
-  /** @type {Map<string, string>} */
+  /** @type {Map<string, string>} upload ids, by the hash of the bytes uploaded */
   const ids = new Map();
+  /** @type {Map<string, string>} each photo's hash, by its data: the bytes' own, never the hash a part claims (review, 1) */
+  const hashes = new Map();
+  const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await sha256Hex(fromBase64(data))).get(data);
   for (const m of request.messages) {
     for (const p of m.parts) {
-      if (p.type !== 'image' || !p.hash || !p.data || ids.has(p.hash) || uploads.isOff(endpoint.id)) continue;
-      const known = await uploads.get(endpoint.id, p.hash, now());
+      if (p.type !== 'image' || !p.hash || !p.data || uploads.isOff(endpoint.id)) continue;
+      const hash = /** @type {string} */ (await hashOf(p.data));
+      if (ids.has(hash)) continue;
+      const known = await uploads.get(endpoint.id, hash, now());
       if (known) {
-        ids.set(p.hash, known);
+        ids.set(hash, known);
         continue;
       }
-      const r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: `annai-${p.hash.slice(0, 16)}.${EXT[p.mediaType] ?? 'bin'}`, expiresInSeconds: UPLOAD_TTL_S });
+      const r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: `annai-${hash.slice(0, 16)}.${EXT[p.mediaType] ?? 'bin'}`, expiresInSeconds: UPLOAD_TTL_S });
       const started = now();
       let traced = false;
       try {
@@ -370,8 +376,8 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         noRedirect(res, endpoint);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const up = type.readUpload(await res.json());
-        await uploads.set(endpoint.id, p.hash, up.id, up.expiresAt ?? now() + UPLOAD_TTL_S * 1000, now());
-        ids.set(p.hash, up.id);
+        await uploads.set(endpoint.id, hash, up.id, up.expiresAt ?? now() + UPLOAD_TTL_S * 1000, now());
+        ids.set(hash, up.id);
       } catch (e) {
         if (signal?.aborted) throw e;
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: r.url, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
@@ -380,5 +386,6 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
     }
   }
   if (!ids.size) return request;
-  return { ...request, messages: request.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' && p.hash && ids.has(p.hash) ? { ...p, fileId: ids.get(p.hash) } : p)) })) };
+  const id = (/** @type {any} */ p) => (p.type === 'image' && p.hash && p.data ? ids.get(/** @type {string} */ (hashes.get(p.data))) : undefined);
+  return { ...request, messages: request.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (id(p) ? { ...p, fileId: id(p) } : p)) })) };
 }

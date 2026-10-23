@@ -298,6 +298,44 @@ test('an attribution is kept beside the reply\'s parts, never in them, so no mod
   assert.equal(plain.attribution, undefined);
 });
 
+test("uploads are known by the hash of the bytes sent, never by the hash a part claims: another photo's upload is never reused for other bytes (review, 1)", async () => {
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { Uploads } = await import('../../src/core/llm/uploads.js');
+  const { sha256Hex } = await import('../../src/core/hash.js');
+  const { fromBase64 } = await import('../../src/core/bytes.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const uploads = new Uploads(ws);
+  /** @type {string[]} */
+  const sent = [];
+  let n = 0;
+  const get = async (/** @type {string} */ url, /** @type {any} */ init) => {
+    if (url.endsWith('/v1/files')) {
+      sent.push(await (/** @type {Blob} */ (init.body.get('file'))).text());
+      return new Response(JSON.stringify({ id: `file_${++n}`, expires_at: new Date(Date.now() + 172_800_000).toISOString() }));
+    }
+    sent.push(JSON.parse(init.body).images.join());
+    return new Response('');
+  };
+  const t = httpType([{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }], {
+    uploadRequest: (/** @type {any} */ c) => { const f = new FormData(); f.set('file', new Blob([c.bytes], { type: c.mediaType }), c.name); return { url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: f }; },
+    readUpload: (/** @type {any} */ j) => ({ id: j.id, expiresAt: Date.parse(j.expires_at) }),
+    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+  });
+  const m = model({ input: ['text', 'image'] });
+  const kyoto = 'a2lvdG8gcGhvdG8='; // "kioto photo"
+  const theirs = await sha256Hex(fromBase64(kyoto));
+  const photo = (/** @type {string} */ data) => ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data, hash: theirs }] }] });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (photo(kyoto)), fetch: /** @type {any} */ (get), uploads });
+  // Other bytes claiming that photo's hash: uploaded as themselves, not sent as file_1.
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (photo('b3RoZXI=')), fetch: /** @type {any} */ (get), uploads });
+  assert.deepEqual(sent, ['kioto photo', 'file_1', 'other', 'file_2']);
+  // The real photo again: its upload is reused.
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (photo(kyoto)), fetch: /** @type {any} */ (get), uploads });
+  assert.equal(sent.at(-1), 'file_1');
+});
+
 test('uploads: each photo is uploaded once and sent by id; a failed upload sends the bytes and stops uploading', async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');

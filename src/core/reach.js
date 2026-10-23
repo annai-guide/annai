@@ -1,5 +1,5 @@
 import { ME, kindOf } from './scopes.js';
-import { blobsOf } from './events.js';
+import { blobsOf, isName } from './events.js';
 
 /**
  * Reading stored content by its hash for one scope (spec §4.1). Content is stored once for every trip, so a hash alone
@@ -12,8 +12,9 @@ import { blobsOf } from './events.js';
 
 /** Whether a scope reaches a hash, in a transaction over files and events. @param {import('./types.js').Tx} t @param {string} scope @param {unknown} hash */
 export async function reachable(t, scope, hash) {
-  if (typeof hash !== 'string' || !hash) return false;
-  return (await t.blobNamedIn(hash, scope)) || (kindOf(scope) === 'trip' && t.blobNamedIn(hash, ME, { events: false }));
+  if (!isName(hash)) return false;
+  const h = /** @type {string} */ (hash);
+  return (await t.blobNamedIn(h, scope)) || (kindOf(scope) === 'trip' && t.blobNamedIn(h, ME, { events: false }));
 }
 
 /**
@@ -21,12 +22,13 @@ export async function reachable(t, scope, hash) {
  * @param {{ named?: { scope: string, data?: any, refs?: string[] }, via?: string }} o @param {boolean} bytes
  */
 async function look(store, scope, hash, o, bytes) {
-  if (typeof hash !== 'string' || !hash) return undefined;
-  const own = o.named?.scope === scope && blobsOf(o.named).includes(hash);
-  const got = await store.tx(own ? ['blobs'] : ['files', 'events', 'blobs'], 'readonly', async (t) => (own || (await reachable(t, scope, hash))
-    ? { found: bytes ? await t.getBlob(hash) : await t.hasBlob(hash) }
-    : { held: await t.hasBlob(hash) }));
-  if (got.held) await refused(store, scope, hash, o.via);
+  if (!isName(hash)) return undefined;
+  const h = /** @type {string} */ (hash);
+  const own = o.named?.scope === scope && blobsOf(o.named).includes(h);
+  const got = await store.tx(own ? ['blobs'] : ['files', 'events', 'blobs'], 'readonly', async (t) => (own || (await reachable(t, scope, h))
+    ? { found: bytes ? await t.getBlob(h) : await t.hasBlob(h) }
+    : { held: await t.hasBlob(h) }));
+  if (got.held) await refused(store, scope, h, o.via);
   return got.found;
 }
 

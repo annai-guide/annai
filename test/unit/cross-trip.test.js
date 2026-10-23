@@ -308,3 +308,46 @@ test("an import stores only content the scopes it takes name: a skipped trip's o
   await importArchive(v.store, opened, { trips: Object.fromEntries(opened.manifest.scopes.filter((s) => s.record.kind === 'trip').map((s) => [s.record.id, 'skip'])) });
   assert.equal(await held(v.store, old), false);
 });
+
+// The review's fix pass (b036a4c): what a writer stores is always the hash of its bytes; names are 64-hex fingerprints.
+test("record() keeps bytes under their own hash: a hash claimed beside other bytes is refused, so it neither plants a name nor poisons content (review P2a, P2b)", async () => {
+  const v = await twoTrips();
+  await assert.rejects(record(v.store, v.b, { type: 'x', actor: 'plugin:p', data: {}, blobs: [{ hash: v.aPhoto, bytes: utf8('junk'), type: 'image/jpeg' }] }), /has another fingerprint/);
+  assert.equal(await blobBytes(v.store, v.b, v.aPhoto), null);
+  // Content nobody holds yet, claimed for other bytes: nothing is stored under its hash.
+  const real = utf8('the real ticket');
+  const H = await sha256Hex(real);
+  await assert.rejects(record(v.store, v.b, { type: 'x', actor: 'plugin:p', data: {}, blobs: [{ hash: H, bytes: utf8('poison'), type: 'application/pdf' }] }), /has another fingerprint/);
+  assert.equal(await held(v.store, H), false);
+  await v.ws.write(v.a, '/files/ticket.pdf', real, { author: 'user', type: 'application/pdf' });
+  assert.equal(await v.ws.readText(v.a, '/files/ticket.pdf'), 'the real ticket');
+  // Bytes with their own hash, and bytes alone, are kept as before.
+  const ok = await record(v.store, v.b, { type: 'x', actor: 'plugin:p', data: {}, blobs: [{ hash: H, bytes: real, type: 'application/pdf' }, { bytes: utf8('a note'), type: 'text/plain' }] });
+  assert.deepEqual(ok.refs, [H, await sha256Hex(utf8('a note'))]);
+});
+
+test("a plugin's log entry may say what changed in words: only 64-hex fingerprints in data.old and data.new name content (review P3)", async () => {
+  const v = await twoTrips();
+  const e = await record(v.store, v.b, { type: 'place.change', actor: 'plugin:p', data: { old: 'Tokyo', new: 'Kyoto' } });
+  assert.deepEqual(e.data, { old: 'Tokyo', new: 'Kyoto' });
+  const { blobsOf } = await import('../../src/core/events.js');
+  assert.deepEqual(blobsOf({ data: { old: 'Tokyo', new: v.aPhoto.toUpperCase() }, refs: ['', 'h1', v.aPhoto] }), [v.aPhoto]);
+  // A Backup of the trip doesn't look for content called "Tokyo".
+  const { manifest } = await exportArchive(v.store, { kind: 'trip', scopes: [v.b], include: PRESETS.backup, app: '0.1.0' });
+  assert.ok(manifest.files.length > 0);
+});
+
+test('logEvent writes no names: an entry that names stored content goes through record(), held to the rule (Step, 8)', async () => {
+  const v = await twoTrips();
+  await assert.rejects(logEvent(v.store, v.b, { type: 'x', refs: [v.aPhoto] }), /record\(\)/);
+  await assert.rejects(logEvent(v.store, v.b, { type: 'x', data: { new: v.aPhoto } }), /record\(\)/);
+  assert.equal((await v.store.tx(['events'], 'readonly', (t) => t.listEvents(v.b, { types: ['x'] }))).length, 0);
+  assert.ok(await logEvent(v.store, v.b, { type: 'x', data: { old: 'Tokyo', new: 'Kyoto' } }));
+});
+
+test("an entry that says it stored texts but names none reads as none (Step, 9)", async () => {
+  const v = await twoTrips();
+  const e = await v.store.tx(['events'], 'readwrite', (t) => t.appendEvent(v.b, { ts: 1, type: 'msg.user', actor: 'user', data: { stored: ['text', 'more'] }, refs: [''] }));
+  const { storedTexts } = await import('../../src/core/agent/log.js');
+  assert.deepEqual(await storedTexts(v.store, e), {});
+});
