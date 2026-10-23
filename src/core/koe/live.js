@@ -343,9 +343,7 @@ export class LiveKoe {
 
   /** The microphone opens on the open session; what is said streams live, only while someone speaks. */
   listen() {
-    // One at a time: two in flight would open two microphones (review). A close lets go of the one in flight (the next session's listen
-    // is its own: it must not be handed the start of a microphone that belonged to a session now closed), and only the one that is
-    // current clears it when it ends.
+    // One at a time: two in flight would open two microphones (review); a close lets go of the one in flight, so the next session starts its own.
     if (this.#listening) return this.#listening;
     const p = this.#listen().finally(() => { if (this.#listening === p) this.#listening = null; });
     this.#listening = p;
@@ -453,7 +451,7 @@ export class LiveKoe {
     this.#cutHearing();
     const input = this.#input;
     this.#input = null;
-    this.#listening = null; // a microphone still starting belonged to this session: the next one opens its own
+    this.#listening = null;
     this.listening = false;
     clearTimeout(this.#stall);
     input?.stop();
