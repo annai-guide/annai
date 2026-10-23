@@ -1,0 +1,24 @@
+{
+  "id": "search-serper",
+  "name": "Serper Search",
+  "version": "0.1.0",
+  "api": 1,
+  "entry": "index.js",
+  "description": "Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.",
+  "category": "tools",
+  "keywords": ["Serper", "Google"],
+  "homepage": "https://serper.dev",
+  "provides": { "search": ["serper"] },
+  "search": {
+    "id": "serper",
+    "kind": "web",
+    "origins": ["https://google.serper.dev"],
+    "key": { "setting": "key", "url": "https://serper.dev", "note": "2,500 free searches on sign-up, no card." }
+  },
+  "settings": {
+    "type": "object",
+    "properties": {
+      "key": { "type": "string", "title": "Serper API key", "writeOnly": true }
+    }
+  }
+}

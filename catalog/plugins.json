@@ -608,6 +608,83 @@
       }
     },
     {
+      "id": "search-searxng",
+      "name": "SearXNG Search",
+      "version": "0.1.0",
+      "description": "Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.",
+      "category": "tools",
+      "keywords": [
+        "SearXNG",
+        "self-hosted"
+      ],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 3093,
+      "requires": [],
+      "provides": {
+        "search": [
+          "searxng"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "a2a736434887f6be531116c1979102fc874d3cec948a958c019481dd162b52a6",
+        "index.js": "20461204a29e32f4b935eec23563c2fc766ba2cd8495b478824e41461c377bdb"
+      }
+    },
+    {
+      "id": "search-serper",
+      "name": "Serper Search",
+      "version": "0.1.0",
+      "description": "Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.",
+      "category": "tools",
+      "keywords": [
+        "Serper",
+        "Google"
+      ],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 2655,
+      "requires": [],
+      "provides": {
+        "search": [
+          "serper"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "d2ba6042e71ff468b04720d3dbc124d492177222afe58eb4701d229509d822cf",
+        "index.js": "d232327fe057d22e1ee18d0a226e999880c53d19763b42f1c96328eca90c44d1"
+      }
+    },
+    {
+      "id": "search-tavily",
+      "name": "Tavily Search",
+      "version": "0.1.0",
+      "description": "Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.",
+      "category": "tools",
+      "keywords": [
+        "Tavily"
+      ],
+      "abilities": [],
+      "free": false,
+      "local": false,
+      "code": true,
+      "size": 2758,
+      "requires": [],
+      "provides": {
+        "search": [
+          "tavily"
+        ]
+      },
+      "files": {
+        "annai-plugin.json": "20e64046a9521f8247bee1cabd1986e528112aa6144e68385c758063552273b5",
+        "index.js": "936fcb1ab2a6d5a807f34d39d922b4258ae7b8093ea17fd965144938fff7cce7"
+      }
+    },
+    {
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
       "version": "0.4.1",
