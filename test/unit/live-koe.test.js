@@ -1433,3 +1433,24 @@ test('P2: a tap while the microphone starts stops the session, as a tap on a lis
     await k.done();
   }
 });
+
+test('F1: tap, tap, tap with a slow microphone: the third session opens a microphone of its own, not the first one\'s start that was let go', async () => {
+  const k = await liveKit([]);
+  try {
+    const release = slowMic(k);
+    k.agent.tap(); // opens a session; its microphone is being asked for
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    assert.equal(k.agent.tap(), 'stopped'); // closes it, the microphone's start still out
+    assert.equal(k.agent.live.state, 'closed');
+    assert.equal(k.agent.tap(), 'listening'); // a new session, which listens
+    await until(() => k.agent.live.state === 'open', 5000);
+    release();
+    await until(() => k.agent.live.listening, 3000); // before the change: never (the new session was given the first one's start)
+    assert.equal(k.platform.mic.isOpen(), true, 'the third session has a microphone');
+    assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 2, 'the first start finished, and let go; the third opened its own');
+    await say(k, 'where-eat'); // and what it hears goes to the provider
+    await soon(async () => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
+  } finally {
+    await k.done();
+  }
+});
