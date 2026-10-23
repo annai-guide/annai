@@ -100,6 +100,8 @@ export const LABELS = Object.freeze({
   away: 'Working on …', offline: 'Offline · reminders still work',
 });
 export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen; the user may type.";
+/** What Start fresh did: done; nothing, no line yet; already, none since the last fresh start; opening, the conversation still opens. @typedef {'done' | 'nothing' | 'already' | 'opening'} Fresh */
+
 /** Kokoro's notes that aren't for the user: Koe hears them, and may end quietly. */
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
@@ -256,6 +258,10 @@ export class Agent {
   #checking = 0;
   /** Housekeeping is due (spec §6.5): it waits for a pause. */
   #due = false;
+  /** Start fresh holds this half still: no turn and no housekeeping starts until it lets go (holdStill). */
+  #still = false;
+  /** Kokoro's notes for the user that the turn running owes (Koe's), taken: Start fresh shows them instead. @type {(() => Wake[]) | null} */
+  #owing = null;
   /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
   #timer = null;
   /** The prompt the last call sent, in tokens, as the provider counted it. */
@@ -1006,11 +1012,11 @@ export class Agent {
   }
 
   async #drain() {
-    if (this.#busy || this.#opens) return;
+    if (this.#busy || this.#opens || this.#still) return;
     this.#busy = true;
     this.#clearTimer();
     try {
-      while (!this.#opens && this.#queue.some((w) => w.scope === this.scope)) {
+      while (!this.#opens && !this.#still && this.#queue.some((w) => w.scope === this.scope)) {
         await this.#gather();
         if (this.#opens) break;
         const wakes = this.#take();
@@ -1021,6 +1027,7 @@ export class Agent {
     } finally {
       this.#busy = false;
       this.#abort = null;
+      this.#owing = null;
       // A tap's listening window outlives the turn until something is said, or a silence (spec §10.4).
       const tapped = this.#ear?.owner === 'tap';
       this.#setState(tapped ? 'listening' : this.online() ? 'sleeping' : 'offline');
@@ -1033,7 +1040,7 @@ export class Agent {
   /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5). */
   #schedule() {
     this.#clearTimer();
-    if (!this.#due || this.#opens) return;
+    if (!this.#due || this.#opens || this.#still) return;
     const last = this.#warmth.last;
     const wait = last ? last.at + last.ttlMs - WARM_LEAD_MS - this.now() : 0;
     if (wait <= 0) this.#housekeep('cold');
@@ -1042,7 +1049,7 @@ export class Agent {
 
   /** @param {'warm' | 'cold'} mode */
   async #housekeep(mode) {
-    if (this.#busy || this.#opens) return;
+    if (this.#busy || this.#opens || this.#still) return;
     this.#busy = true;
     try {
       await this.compact(mode);
@@ -1146,6 +1153,9 @@ export class Agent {
     const language = summaryLanguage(said);
     const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language) : await this.#coldSummary(cut, language);
     if (!summary) return false;
+    // Start fresh wrote a compaction meanwhile: this one, cut before it, would bring back the lines it left.
+    const [now] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
+    if (now?.seq !== latest?.seq) return false;
     const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
     await this.#serially(async () => {
       await this.reread();
@@ -1163,7 +1173,7 @@ export class Agent {
    * @returns {Promise<'done' | 'nothing' | 'busy' | 'failed'>} nothing: too little to summarize; busy: she is working or a conversation is opening
    */
   async summarizeNow() {
-    if (this.#busy || this.#opens) return 'busy';
+    if (this.#busy || this.#opens || this.#still) return 'busy';
     this.#clearTimer();
     this.#busy = true;
     const warm = Boolean(this.cacheState()?.warm);
@@ -1181,41 +1191,75 @@ export class Agent {
   }
 
   /**
-   * "Start fresh" on the Conversation screen (spec §6.5, §16.2): from this point she starts a new context. A compaction event of mode
-   * "fresh" covers everything so far and has no summary, so the context holds none of the earlier lines (only a note that they exist);
-   * they stay in the log, shown, searched and recalled. Her turn, if one runs, is stopped first; what was heard and not yet written
-   * down is written first, as housekeeping does. @returns {Promise<boolean>} false: nothing to start fresh from
+   * Start fresh's first step (spec §6.5): nothing new starts, no turn and no housekeeping (a due one is let go: the fresh start
+   * leaves nothing to summarize), and a turn that runs is stopped. Settles once none runs; letGo() ends it.
    */
-  async startFresh() {
-    if (this.#opens) return false;
-    if (this.#busy) {
+  async holdStill() {
+    this.#still = true;
+    this.#due = false;
+    this.#clearTimer();
+    while (this.#busy) {
       this.interrupt();
       await this.#whenFree();
     }
-    this.#clearTimer();
+  }
+
+  /** Start fresh is done: what waited (the user's words meanwhile) runs. */
+  letGo() {
+    if (!this.#still) return;
+    this.#still = false;
+    this.#settle();
+    if (this.#queue.length) this.#drain();
+  }
+
+  /**
+   * Kokoro's notes for the user that this half owes (Koe's, §6.8), queued or in the turn that runs, taken from it: Start fresh shows
+   * their words above its divider before the turn is stopped, which would drop them. @returns {Wake[]}
+   */
+  takeOwed() {
+    const queued = this.#queue.filter((w) => w.scope === this.scope && isForUser(w));
+    this.#queue = this.#queue.filter((w) => !queued.includes(w));
+    return [...queued, ...(this.#owing?.() ?? [])];
+  }
+
+  /**
+   * "Start fresh" on the Conversation screen (spec §6.5, §16.2): from this point she starts a new context. A compaction event of mode
+   * "fresh" covers everything so far and has no summary, so the context holds none of the earlier lines (only a note that they exist);
+   * they stay in the log, shown, searched and recalled. Her turn, if one runs, is stopped first, and nothing new starts until it is
+   * done; what was heard and not yet written down is written first, as housekeeping does.
+   * @returns {Promise<Fresh>}
+   */
+  async startFresh() {
+    if (this.#opens) return 'opening';
+    await this.holdStill();
+    if (this.#opens) {
+      this.letGo();
+      return 'opening';
+    }
     this.#busy = true;
     try {
       const unwritten = this.transcript.unwritten();
       if (unwritten.length) await this.#writeDown('fresh', unwritten, { final: true });
-      let started = false;
+      /** @type {Fresh} */
+      let result = 'nothing';
       await this.#serially(async () => {
         const [last] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { reverse: true, limit: 1 }));
         const fresh = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true }))).find((e) => e.data?.mode === 'fresh');
         const [said] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], reverse: true, limit: 1, ...(fresh ? { after: fresh.seq } : {}) }));
-        if (!last || !said) return; // no line since the last fresh start, or none at all
+        if (!last || !said) return void (result = fresh ? 'already' : 'nothing');
         const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: last.seq, mode: 'fresh' } });
         await this.reread();
         await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
-        started = true;
+        result = 'done';
       });
       this.#snapshot = null;
       this.#due = false;
-      return started;
+      return result;
     } finally {
       this.#busy = false;
       this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.letGo();
       this.#settle();
-      if (this.#queue.length) this.#drain();
     }
   }
 
@@ -1505,6 +1549,11 @@ export class Agent {
      * message of theirs that reached it inside its wait. @type {Wake[]}
      */
     let notes = [];
+    this.#owing = () => {
+      const taken = notes;
+      notes = [];
+      return taken;
+    };
     let wrote = false;
     const owes = () => notes.length > 0 || wrote;
     /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */

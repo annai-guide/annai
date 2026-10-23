@@ -23,10 +23,12 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace }} LiveHost
+ *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
+ *   held?: () => Promise<void> | null }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
- *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown
+ *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
+ *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -238,9 +240,13 @@ export class LiveKoe {
 
   /** @param {string} why */
   async #start(why) {
+    // Start fresh runs: a session opens once it is done, its setup from the fresh start; a close meanwhile wins.
+    const asked = this.#gen;
+    const held = this.c.held?.();
+    if (held) await held;
     const id = this.c.model();
     // Never from a page out of view: what comes meanwhile waits for it (shown()).
-    if (!id || !this.c.visible()) return false;
+    if (asked !== this.#gen || !id || !this.c.visible()) return false;
     const gen = ++this.#gen;
     this.state = 'opening'; // a close from now on wins
     this.#changed();
@@ -423,7 +429,10 @@ export class LiveKoe {
     input?.stop();
     this.#old?.close(why); // one being left for a new connection
     this.#old = null;
-    if (was === 'closed') return this.#changed();
+    if (was === 'closed') {
+      if (this.#opening) this.#gen++; // one waiting for Start fresh to end
+      return this.#changed();
+    }
     this.#gen++;
     const s = this.#s;
     this.#s = null;

@@ -270,6 +270,7 @@ export class Halves {
       koe: this.koe, llm: c.llm, voice: c.voice ?? null, store: c.store, nonce: this.nonce,
       model: () => this.#liveId,
       setup: () => this.#liveSetup(),
+      held: () => this.#fresh?.held ?? null,
       visible: () => this.#visible(),
       release: () => { this.kokoro.release(); this.koe.release(); },
       notice: (n) => this.#notice(n),
@@ -282,11 +283,7 @@ export class Halves {
       unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
       owed: (notes) => this.#handOn(notes),
       spoke: () => this.#retold(),
-      // Kokoro's words for the user that a switch left unsaid: shown in the conversation left, not aloud (Koe is in another now).
-      left: (notes) => {
-        const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
-        if (list.length) this.#left.push(this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {}));
-      },
+      left: (notes) => this.#leftUnsaid(notes),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     // A change to the models, Koe's lists or its mode (Settings → Models, the voice chip) applies at once, not at the next voice change.
@@ -325,6 +322,19 @@ export class Halves {
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
   /** @type {Promise<unknown>[]} Kokoro's owed words being shown in the conversation left or started fresh from */
   #left = [];
+  /** Start fresh, while it runs: held settles once it is done, and a live session opens only then. @type {{ held: Promise<void>, done: Promise<import('./loop.js').Fresh> } | null} */
+  #fresh = null;
+
+  /**
+   * Kokoro's words for the user that a switch or Start fresh left unsaid (tell_koe's for_user): shown in the conversation left, or
+   * above the divider, never aloud (Koe is in another now, or starts fresh). @param {Wake[]} notes
+   */
+  #leftUnsaid(notes) {
+    const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
+    if (!list.length) return;
+    const shown = this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
+    this.#left.push(shown);
+  }
   get busy() { return this.#routes > 0 || this.#sending.size > 0 || this.kokoro.busy || this.koe.busy || this.live.busy; }
   /** @param {(() => { place?: string, activity?: string }) | null} fn */
   set sense(fn) { this.kokoro.sense = fn; this.koe.sense = fn; }
@@ -536,9 +546,14 @@ export class Halves {
     return { instructions: koeSystem(s, true), context: [await this.#recent(), tail].filter(Boolean).join('\n') };
   }
 
-  /** The conversation's last 12 lines, for a live session that starts without a handle: annai's labels, every word quoted and escaped. */
+  /**
+   * The conversation's last 12 lines, for a live session that starts without a handle: annai's labels, every word quoted and escaped.
+   * Only those since the last Start fresh: the session starts fresh too.
+   */
   async #recent() {
-    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.koe.scope, { types: [...LINES, 'heard.text'], reverse: true, limit: 40 }));
+    const scope = this.koe.scope;
+    const fresh = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true }))).find((e) => e.data?.mode === 'fresh');
+    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: [...LINES, 'heard.text'], reverse: true, limit: 40, ...(fresh ? { after: fresh.seq } : {}) }));
     /** @type {Map<string, string>} */
     const later = new Map();
     /** @type {string[]} */
@@ -661,17 +676,38 @@ export class Halves {
 
   /**
    * "Start fresh": both halves read the conversation again from this point with none of the earlier lines, and a live session closes
-   * with its handle forgotten, so the next one opens fresh. Her turn, if one runs, is stopped.
+   * with its handle forgotten, so the next one opens fresh. In order: nothing new starts (no live session opens until it is done, no
+   * turn, no housekeeping); Kokoro's words for the user still owed are shown above the divider; both halves' turns are stopped; the
+   * fresh compaction is written; live is closed once more, for anything that slipped in. A second call while it runs gets the first's.
+   * @returns {Promise<import('./loop.js').Fresh>}
    */
-  async startFresh() {
-    this.live.close('fresh', { forget: true });
-    await Promise.all(this.#left.splice(0)); // Kokoro's notes still owed are shown above the divider first
-    this.#retell = [];
-    if (this.koe.busy) {
-      this.koe.interrupt();
-      await this.koe.idle();
+  startFresh() {
+    if (this.#fresh) return this.#fresh.done;
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((r) => { release = () => r(undefined); });
+    const done = this.#startFresh().finally(() => {
+      this.#fresh = null;
+      release();
+    });
+    this.#fresh = { held, done };
+    return done;
+  }
+
+  async #startFresh() {
+    try {
+      this.live.close('fresh', { forget: true }); // its owed notes are shown (left)
+      this.#leftUnsaid(this.koe.takeOwed()); // Koe · Classic's, before its turn is stopped
+      this.#unsaid = [];
+      this.#retell = [];
+      await Promise.all([this.koe.holdStill(), this.kokoro.holdStill()]);
+      await Promise.all(this.#left); // shown above the divider
+      return await this.kokoro.startFresh();
+    } finally {
+      if (this.live.state !== 'closed') this.live.close('fresh', { forget: true });
+      this.koe.letGo();
+      this.kokoro.letGo();
     }
-    return this.kokoro.startFresh();
   }
 
   /**

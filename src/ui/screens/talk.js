@@ -290,6 +290,7 @@ function tidyMenu(ctx) {
     toggle.setAttribute('aria-expanded', 'false');
   };
   toggle.addEventListener('click', () => {
+    if (toggle.getAttribute('aria-disabled') === 'true') return;
     menu.hidden = !menu.hidden;
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
   });
@@ -303,6 +304,12 @@ function tidyMenu(ctx) {
       if (r === 'done') ctx.render();
     },
   }, 'Summarize now');
+  /** Start fresh runs: the toggle says so, and opens nothing meanwhile. @param {boolean} on */
+  const working = (on) => {
+    toggle.setAttribute('aria-busy', String(on));
+    toggle.setAttribute('aria-disabled', String(on));
+    toggle.textContent = on ? 'Starting fresh…' : 'Tidy up';
+  };
   const fresh = h('button', {
     class: 'btn', type: 'button',
     onclick: async () => {
@@ -312,10 +319,24 @@ function tidyMenu(ctx) {
         body: "Shiori will start a new context from here, and won't have the earlier lines in mind. They all stay in the conversation, to read, search and have her recall: nothing is deleted. A live voice session restarts too.",
         yes: 'Start fresh',
       });
-      if (!yes) return;
-      const started = await agent.startFresh();
-      ctx.notices.toast(started ? 'Started fresh.' : 'There is nothing to start fresh from yet.');
-      if (started) ctx.render();
+      if (!yes) return void toggle.focus();
+      working(true);
+      /** @type {import('../../core/agent/loop.js').Fresh} */
+      let r;
+      try {
+        r = await agent.startFresh();
+      } catch (e) {
+        working(false);
+        ctx.notices.toast(`She couldn't start fresh: ${String(/** @type {any} */ (e)?.message ?? e)}`);
+        return void toggle.focus();
+      }
+      ctx.notices.toast({ done: 'Started fresh.', nothing: 'There is nothing to start fresh from yet.', already: 'Already fresh: nothing has been said since.', opening: 'The conversation is still opening. Try again in a moment.' }[r]);
+      if (r !== 'done') {
+        working(false);
+        return void toggle.focus();
+      }
+      await ctx.render();
+      /** @type {HTMLElement | null} */ (document.querySelector('.tidy-toggle'))?.focus(); // the new screen's, after the divider
     },
   }, 'Start fresh');
   // A tap elsewhere closes it.

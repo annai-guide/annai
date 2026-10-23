@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, until } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 
 // "do you think we should have some way to let the user compact or clear the transcript / session manually?" (the user, 2026-10-23):
@@ -19,7 +19,7 @@ async function talk(k) {
 test('Start fresh: the context holds none of the earlier lines, the next request neither, and the log, the divider and recall keep them all', async () => {
   const k = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i} about pelicans`)), say('A fresh answer'), { toolCalls: [{ name: 'recall', input: { query: 'Question 0' } }] }, sleep]]);
   await talk(k);
-  assert.equal(await k.agent.startFresh(), true);
+  assert.equal(await k.agent.startFresh(), 'done');
   const [c] = await k.events(['compaction']);
   assert.equal(c.data.mode, 'fresh');
   assert.equal(c.data.summary, undefined, 'no summary: nothing of the earlier lines is carried');
@@ -43,14 +43,14 @@ test('Start fresh: the context holds none of the earlier lines, the next request
   assert.match(recalled.data.content ?? '', /Shiori said: Answer 0 about pelicans/);
 });
 
-test('Start fresh with nothing in the conversation, or twice in a row, starts nothing', async () => {
+test('Start fresh with nothing in the conversation, or twice in a row, starts nothing, and says which', async () => {
   const k = await agentKit([[say('Hi')]]);
-  assert.equal(await k.agent.startFresh(), false);
+  assert.equal(await k.agent.startFresh(), 'nothing');
   assert.deepEqual(await k.events(['compaction']), []);
   k.agent.send('Hello');
   await k.agent.idle();
-  assert.equal(await k.agent.startFresh(), true);
-  assert.equal(await k.agent.startFresh(), false, 'nothing came since');
+  assert.equal(await k.agent.startFresh(), 'done');
+  assert.equal(await k.agent.startFresh(), 'already', 'nothing came since');
   assert.equal((await k.events(['compaction'])).length, 1);
 });
 
@@ -116,7 +116,7 @@ test('Start fresh with both halves: each reads the conversation again from there
   const closed = [];
   const close = k.agent.live.close.bind(k.agent.live);
   k.agent.live.close = (/** @type {string} */ why, /** @type {any} */ o) => { closed.push([why, o]); return close(why, o); };
-  assert.equal(await k.agent.startFresh(), true);
+  assert.equal(await k.agent.startFresh(), 'done');
   assert.deepEqual(closed, [['fresh', { forget: true }]]);
   assert.equal(JSON.stringify(k.agent.koe.transcript.messages).includes('otters'), false, 'Koe starts fresh');
   assert.equal(JSON.stringify(k.agent.kokoro.transcript.messages).includes('otters'), false, 'Kokoro starts fresh');
@@ -140,3 +140,63 @@ for (const window of [null, 1_000_000]) {
     assert.match(ctx, /SUMMARY/);
   });
 }
+
+// Fix pass 2, item 4: as her stopped turn ended, a due housekeeping started cold at once, and its compaction, written after the
+// fresh one, brought the old lines back (the review's repro: compactions 48:fresh:4-47, then 51:cold:48-21).
+const big = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 7500, output: 5 } });
+
+test('Start fresh while housekeeping is due as her turn stops: no housekeeping runs under it, and her context holds none of the earlier lines', async () => {
+  let clock = Date.now();
+  const k = await agentKit([[big('Answer A about pelicans'), big('Answer B about pelicans'), big('Answer C about pelicans'), big('Answer D about pelicans'),
+    { toolCalls: [{ name: 'ask', input: { question: 'Which beach?', options: ['North', 'South'] } }], usage: { input: 7500, output: 5 } }, say('A fresh reply')]], {
+    models: [{ contextWindow: 10000 }], utility: [{ text: 'OLD SUMMARY: they asked about pelicans.' }],
+    agent: { now: () => clock, timers: { set: () => 1, clear: () => {} } },
+  });
+  for (const q of ['Q1 pelicans', 'Q2 pelicans', 'Q3 pelicans', 'Q4 pelicans']) {
+    k.agent.send(`${q} ${'x'.repeat(4000)}`);
+    await k.agent.idle();
+  }
+  k.agent.send('Q5 pelicans');
+  await until(() => k.agent.pendingId); // she waits on the user's answer
+  /** @type {string[]} */
+  const ran = [];
+  const compact = k.agent.compact.bind(k.agent);
+  k.agent.compact = async (/** @type {any[]} */ ...a) => { ran.push(a[0]); return compact(...a); };
+  const call = k.agent.llm.call.bind(k.agent.llm);
+  k.agent.llm.call = async (/** @type {any} */ c) => { if (c.role === 'utility') await new Promise((r) => setTimeout(r, 200)); return call(c); };
+  // Every read and write a little slower, as on a phone, so housekeeping started at the turn's end reads before the fresh start writes.
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = async (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => { await new Promise((r) => setTimeout(r, 5)); return tx(stores, mode, fn); };
+  clock += 10 * 60_000; // past her cache's life: a due housekeeping runs cold, at once
+  assert.equal(await k.agent.startFresh(), 'done');
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 400));
+  assert.deepEqual(ran, [], 'no housekeeping ran under Start fresh');
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['fresh']);
+  const t = await Transcript.load(k.store, k.trip);
+  assert.equal(/pelicans/.test(JSON.stringify(t.messages)), false);
+  assert.equal(/pelicans/.test(JSON.stringify(k.agent.transcript.messages)), false);
+});
+
+test('a housekeeping that began before Start fresh wrote its compaction drops its own, so the old lines never come back', async () => {
+  const k = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i} about pelicans`))]], { utility: [{ text: 'OLD SUMMARY: pelicans.' }] });
+  await talk(k);
+  const call = k.agent.llm.call.bind(k.agent.llm);
+  k.agent.llm.call = async (/** @type {any} */ c) => { if (c.role === 'utility') await new Promise((r) => setTimeout(r, 200)); return call(c); };
+  const cold = k.agent.compact('cold', { forced: true, keepTokens: 0 }); // its summary takes a while
+  await until(() => k.agent.state.name === 'away');
+  assert.equal(await k.agent.startFresh(), 'done');
+  assert.equal(await cold, false, 'the conversation started fresh under it');
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['fresh']);
+  assert.equal(/pelicans/.test(JSON.stringify((await Transcript.load(k.store, k.trip)).messages)), false);
+});
+
+test('Start fresh while the conversation is still opening says so, and starts nothing', async () => {
+  const k = await agentKit([[say('Hi')]]);
+  k.agent.send('Hello');
+  await k.agent.idle();
+  const opening = k.agent.open(k.trip);
+  assert.equal(await k.agent.startFresh(), 'opening');
+  await opening;
+  assert.deepEqual(await k.events(['compaction']), []);
+});
