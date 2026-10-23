@@ -90,3 +90,14 @@ test('fix pass: an endpoint file that names no id (a broken record, a truncated 
   assert.deepEqual(await store.tx(['secrets'], 'readonly', (t) => t.listSecretIds()), []);
   assert.deepEqual(await ws.list(SYS_SETTINGS, '/llm/endpoints/'), []);
 });
+
+test("moving over keeps Koe's mode in roles.json as it is: a string, never turned into a role", async () => {
+  const { store, ws } = await setup();
+  await oldSetup(ws, store);
+  const roles = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
+  await ws.write(SYS_SETTINGS, '/llm/roles.json', { ...roles, 'koe-mode': 'classic' }, { author: 'user' });
+  await moveOver(ws, store);
+  const file = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json');
+  assert.equal(file['koe-mode'], 'classic');
+  assert.equal((await readConfig(ws)).koeMode, 'classic');
+});

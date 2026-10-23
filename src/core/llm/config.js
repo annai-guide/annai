@@ -305,13 +305,22 @@ function rolesFrom(saved, cfg) {
   const old = one ?? (talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))], firstOutputSeconds: talk?.firstOutputSeconds ?? type?.firstOutputSeconds } : undefined);
   // The one list before it was two again (the user, 2026-10-22): its realtime models make Realtime, the rest Classic, each in its
   // order, Classic keeping the list's level and wait; the mode is the kind of its first model that could answer (its ability on).
-  if (old && !s[KOE_REALTIME] && !s[KOE_CLASSIC]) {
+  if (old) {
     const ids = (Array.isArray(old.models) ? old.models : []).filter((/** @type {any} */ id) => typeof id === 'string' && models[id]);
     const live = (/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime';
-    s[KOE_REALTIME] = { models: ids.filter(live) };
-    s[KOE_CLASSIC] = { models: ids.filter((/** @type {string} */ id) => !live(id)), level: old.level, firstOutputSeconds: old.firstOutputSeconds };
-    const first = ids.find((/** @type {string} */ id) => abilityOf(cfg, id)?.on) ?? ids[0];
-    chosen ??= first ? (live(first) ? 'realtime' : 'classic') : null;
+    if (!s[KOE_REALTIME] && !s[KOE_CLASSIC]) {
+      s[KOE_REALTIME] = { models: ids.filter(live) };
+      s[KOE_CLASSIC] = { models: ids.filter((/** @type {string} */ id) => !live(id)), level: old.level, firstOutputSeconds: old.firstOutputSeconds };
+      const first = ids.find((/** @type {string} */ id) => abilityOf(cfg, id)?.on) ?? ids[0];
+      chosen ??= first ? (live(first) ? 'realtime' : 'classic') : null;
+    } else {
+      // Left beside the new lists (an old tab's save): what isn't in either joins them by kind, at the end; their settings stay.
+      const has = new Set([s[KOE_REALTIME]?.models, s[KOE_CLASSIC]?.models].flatMap((m) => (Array.isArray(m) ? m : [])));
+      for (const id of ids.filter((/** @type {string} */ x) => !has.has(x))) {
+        const r = live(id) ? KOE_REALTIME : KOE_CLASSIC;
+        s[r] = { ...s[r], models: [...(Array.isArray(s[r]?.models) ? s[r].models : []), id] };
+      }
+    }
   }
   /** @type {Roles} */
   const out = {};
@@ -361,6 +370,18 @@ export async function saveRoles(ws, roles, { koeMode } = {}) {
   const file = rolesFile(roles, koeMode ?? (await readConfig(ws)).koeChosen);
   check(ROLES_SCHEMA, file, ROLES_PATH);
   await ws.write(SYS_SETTINGS, ROLES_PATH, file, { author: 'user' });
+}
+
+/**
+ * Writes the split of Koe's old list once, at start-up and after a restore, while the file still holds it (koe, or koe-talk and
+ * koe-type): until then the mode it implied is worked out at each read, from abilities that may change meanwhile.
+ * @param {Workspace} ws @returns {Promise<boolean>} whether it wrote
+ */
+export async function splitOldKoe(ws) {
+  const saved = await ws.readJSON(SYS_SETTINGS, ROLES_PATH).catch(() => null);
+  if (!saved || typeof saved !== 'object' || !['koe', 'koe-talk', 'koe-type'].some((k) => k in saved)) return false;
+  await saveRoles(ws, (await readConfig(ws)).roles);
+  return true;
 }
 
 /** Chooses Koe's mode (the voice chip's switch); the lists stay as they are. @param {Workspace} ws @param {KoeMode} mode */

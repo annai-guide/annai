@@ -15,7 +15,7 @@ test('a provider description with abilities, models and roles is valid; each mis
   assert.match(checkProviderDesc({ ...OPENAI_LIKE, roles: { recommended: { main: ['no-such-model'] } } }).join(), /roles\.recommended\.main/);
   assert.match(checkProviderDesc({ ...OPENAI_LIKE, roles: { recommended: { 'speech-out': ['gpt-6-luna'] } } }).join(), /speech-out/); // a chat model can't be a voice
   assert.match(checkProviderDesc(withAbility(OPENAI_LIKE, 'Bad Id', { kind: 'chat', type: 'x' })).join(), /ability id/);
-  assert.match(checkProviderDesc({ ...OPENAI_LIKE, roles: { recommended: { sing: ['gpt-6-luna'] } } }).join(), /roles\.recommended\.sing/);
+  assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, roles: { recommended: { sing: ['gpt-6-luna'] } } }), [], 'a role annai doesn\'t know is skipped, not refused (a later rename never breaks an older tab)');
   assert.match(checkProviderDesc(withAbility(OPENAI_LIKE, 'chat', { kind: 'chat', type: 'openai-responses', models: [{ name: 'no id' }] })).join(), /models\[0\]\.providerId/);
   assert.match(checkProviderDesc({ ...OPENAI_LIKE, abilities: {} }).join(), /at least one ability/);
   assert.match(checkProviderDesc(null).join(), /\$/);

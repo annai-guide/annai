@@ -83,13 +83,27 @@ test("the voice chip says which of Koe's lists talks and switches it, kept acros
     await use.uncheck();
     await expect(savedBy(use)).toHaveText('Saved', { timeout: 30_000 });
     await page.goto('/#/talk');
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Classic (Realtime unavailable)');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Classic (Realtime off)');
+    // The reason stays on one line: a narrow phone wraps before it.
+    await expect(page.locator('.voice-chip .voice-chip-why')).toHaveCSS('white-space', 'nowrap');
     m = await menu(page);
-    await expect(m.getByText("Realtime can't answer now. Classic talks until it can.")).toBeVisible();
+    await expect(m.getByText("Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.")).toBeVisible();
     await expect(m.getByRole('group', { name: 'Koe' }).getByRole('button', { name: 'Realtime', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('Escape');
-    // Realtime's list emptied in Settings → Models: it has no model.
+    // Classic emptied too: Koe is down and Kokoro answers directly, which the chip says; never "Classic".
     await page.goto('/#/models');
+    await page.getByRole('button', { name: 'Remove koe-model from Koe · Classic' }).click();
+    await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('Empty: in Classic', { exact: false })).toBeVisible();
+    await page.goto('/#/talk');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime off');
+    m = await menu(page);
+    await expect(m.getByText('Shiori answers directly until it can.')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.goto('/#/models');
+    await page.getByLabel('Add a model to Koe · Classic').selectOption({ label: 'koe-model' });
+    await page.getByRole('button', { name: 'Add to Koe · Classic' }).click();
+    await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. koe-model')).toBeVisible();
+    // Realtime's list emptied in Settings → Models: it has no model.
     await page.getByRole('button', { name: 'Remove Gemini 3.8 Live from Koe · Realtime' }).click();
     await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('Empty: Koe has no realtime voice', { exact: false })).toBeVisible();
     await page.goto('/#/talk');

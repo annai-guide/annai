@@ -119,10 +119,10 @@ export function candidates(config, role) {
 export const chatCandidates = (cfg, role) => candidates(cfg, role).filter((id) => { const a = abilityOf(cfg, id); return a?.on && a.kind !== 'realtime'; });
 
 /**
- * @typedef {{ mode: import('./config.js').KoeMode, using: import('./config.js').KoeMode, why: '' | 'voice off' | 'none' | 'unavailable', koe: boolean,
+ * @typedef {{ mode: import('./config.js').KoeMode, using: import('./config.js').KoeMode, why: '' | 'voice off' | 'none' | 'resting' | 'off', koe: boolean,
  *   split: boolean, path: { kind: 'live', modelId: string } | { kind: 'text' } | null }} KoeWay
  *   mode: the one chosen; using: the list Koe runs on now; why: why Classic stands in for a chosen Realtime ('none': its list is empty;
- *   'unavailable': none of its models can answer now); koe: a Koe list holds a model; split: Shiori is two halves; path: Koe's
+ *   'resting': a model of it rests after a failure, and will answer again; 'off': none can, switched off or without its protocol running); koe: a Koe list holds a model; split: Shiori is two halves; path: Koe's
  *   pathway (a live session, or the loop), null when Koe is down
  */
 
@@ -148,8 +148,9 @@ export function koeWay(cfg, { voiceOn, types, until, now }) {
   const wanted = mode === 'realtime' && voiceOn;
   const live = wanted ? realtime.find((id) => { const a = can(id); return a?.kind === 'realtime' && types.get(a.type)?.realtime; }) : undefined;
   if (live) return { mode, using: 'realtime', why: '', koe, split: true, path: { kind: 'live', modelId: live } };
+  const rests = (/** @type {string} */ id) => { const a = abilityOf(cfg, id); return Boolean(cfg.models[id] && a?.on && a.kind === 'realtime' && types.get(a.type)?.realtime && until(id) > now); };
   /** @type {KoeWay['why']} */
-  const why = mode !== 'realtime' ? '' : !voiceOn ? 'voice off' : realtime.length ? 'unavailable' : 'none';
+  const why = mode !== 'realtime' ? '' : !voiceOn ? 'voice off' : !realtime.length ? 'none' : realtime.some(rests) ? 'resting' : 'off';
   const text = classic.some((id) => { const a = can(id); return a && a.kind !== 'realtime'; });
   return { mode, using: 'classic', why, koe, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
 }

@@ -39,7 +39,8 @@ export async function moveOver(ws, store) {
   await forget(store, SYS_SETTINGS, { files: (p) => old.has(p), history: (p) => old.has(p) });
   const roles = await ws.readJSON(SYS_SETTINGS, '/llm/roles.json').catch(() => null);
   if (roles && typeof roles === 'object') {
-    const kept = Object.fromEntries(Object.entries(roles).map(([role, r]) => [role, { ...r, models: Array.isArray(r?.models) ? r.models.filter((/** @type {any} */ id) => !models.has(id)) : [] }]));
+    // A value that isn't a role (Koe's mode, a string) stays as it is.
+    const kept = Object.fromEntries(Object.entries(roles).map(([role, r]) => [role, r && typeof r === 'object' ? { ...r, models: Array.isArray(r.models) ? r.models.filter((/** @type {any} */ id) => !models.has(id)) : [] } : r]));
     await ws.write(SYS_SETTINGS, '/llm/roles.json', kept, { author: 'system' });
   }
   // Uploads were kept by endpoint; a provider's are "<provider>/<ability>".
