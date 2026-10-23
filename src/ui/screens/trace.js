@@ -171,7 +171,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'backup') return `${d.type} · ${d.reason} · ${d.files ?? '?'} files sent, ${bytes(d.uploaded ?? 0)} · ${d.ms ?? '?'} ms`;
   if (e.type === 'backup.newer') return `${d.type} · a newer backup from ${d.remote?.label ? withArticle(d.remote.label) : 'another device'} is there`;
   if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;
-  if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}`;
+  if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}${d.stopped ? ', then stopped: thrown away' : ''}`;
   if (e.type === 'backup.peek') return `${d.type} · ${d.backup} can't be opened: ${cut(d.problem)}`;
   if (e.type === 'backup.prune') return `${d.type} · deleted an older backup, ${d.backup}`;
   if (e.type === 'plugin.reset') {

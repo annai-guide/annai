@@ -67,6 +67,7 @@ function holdCard(ctx, t) {
     ctx.notices.card({
       tone: 'warn', title: `A newer backup is on ${t.name}`, body: newerText(t, { where: whereOf(ctx, t), noun, tree }),
       actions: [
+        // No signal: a card belongs to no screen, so there is no leaving to stop it; it ends by opening the import screen, which has Cancel.
         { label: 'Import it as a copy', primary: true, run: () => { restoreFrom(ctx, t, h.remote, say); } },
         { label: `Back up this ${noun} over it`, run: () => { backUpFromCard(ctx, t.id, { over: true }); } },
       ],

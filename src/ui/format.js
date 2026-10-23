@@ -142,7 +142,6 @@ const PHASES = {
   building: () => 'Getting the backup ready…',
   checking: (of) => `Comparing files${of}…`,
   uploading: (of) => `Uploading${of}…`,
-  downloading: () => 'Getting the backup…',
 };
 
 /**

@@ -1,5 +1,5 @@
 import { test } from 'node:test';
-import { isArchiveName, takePendingImport } from '../../src/ui/import-state.js';
+import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
@@ -271,6 +271,7 @@ test('the trace says what each backup did (spec §15)', () => {
   assert.equal(traceSummary({ type: 'backup.newer', data: { type: 'github', remote: { id: 'c2', at: 0, label: 'Android phone' } } }), 'github · a newer backup from an Android phone is there');
   assert.equal(traceSummary({ type: 'backup.error', data: { type: 'github', kind: 'auth', message: 'GitHub refused the token.' } }), 'github · auth: GitHub refused the token.');
   assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096 } }), 'github · downloaded c2, 4.0 KB');
+  assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096, stopped: true } }), 'github · downloaded c2, 4.0 KB, then stopped: thrown away');
   assert.equal(traceSummary({ type: 'backup.peek', data: { type: 'forgejo', backup: 'c2', problem: '$.files[0].hash: does not match' } }), "forgejo · c2 can't be opened: $.files[0].hash: does not match");
   assert.equal(traceSummary({ type: 'backup.prune', data: { type: 's3', backup: 'annai-backup-1.annai.zip' } }), 's3 · deleted an older backup, annai-backup-1.annai.zip');
 });
@@ -347,6 +348,51 @@ test('a restore falls back to the download when the place has nothing to peek wi
   went.length = 0;
   await restoreFrom(ctx({ ...backups, typeOf: () => ({ stores: 'file', peek() {} }) }), /** @type {any} */ ({ id: 'bt-1', type: 'x' }), { id: 'c1', at: 0 }, (s) => said.push(s));
   assert.deepEqual([peeked, downloaded, went], [1, 2, ['#/import']], 'a place of whole files is not peeked at');
+  takePendingImport();
+});
+
+test('the import screen listens for leaving until it is left or done, and a finished import is not touched by later moves', () => {
+  /** @type {Set<() => void>} */
+  const heard = new Set();
+  const target = { addEventListener: (/** @type {string} */ _t, /** @type {() => void} */ fn) => { heard.add(fn); }, removeEventListener: (/** @type {string} */ _t, /** @type {() => void} */ fn) => { heard.delete(fn); } };
+  const left = leaveSignal(/** @type {any} */ (target));
+  assert.equal(heard.size, 1);
+  for (const fn of [...heard]) fn(); // a move to another screen
+  assert.equal(left.signal.aborted, true);
+  assert.equal(heard.size, 0, 'let go once left');
+  const finished = leaveSignal(/** @type {any} */ (target));
+  finished.done();
+  assert.equal(heard.size, 0, 'let go once the import is done');
+  assert.equal(finished.signal.aborted, false);
+});
+
+test('an import that finishes after the user left says so in a toast, with what came in and from where', () => {
+  /** @type {string[]} */
+  const toasts = [];
+  const ctx = { notices: { toast: (/** @type {string} */ s) => toasts.push(s) } };
+  const here = new AbortController();
+  toldIfLeft(ctx, here.signal, ['Big Sur'], 'Forgejo / Gitea');
+  assert.deepEqual(toasts, [], 'the user is still here: the screen says it');
+  here.abort();
+  toldIfLeft(ctx, here.signal, ['Big Sur'], 'Forgejo / Gitea');
+  toldIfLeft(ctx, here.signal, ['Big Sur', 'Kyoto'], null);
+  toldIfLeft(ctx, here.signal, ['A', 'B', 'C'], 'Forgejo / Gitea');
+  toldIfLeft(ctx, here.signal, [], 'Forgejo / Gitea');
+  assert.deepEqual(toasts, ['Imported Big Sur from Forgejo / Gitea.', 'Imported Big Sur and Kyoto.', 'Imported 3 trips from Forgejo / Gitea.', 'Imported from Forgejo / Gitea.']);
+});
+
+test('a restore passes the screen\'s signal to the peek and to the download', async () => {
+  const stop = new AbortController();
+  /** @type {unknown[]} */
+  const seen = [];
+  const backups = {
+    typeOf: () => ({ stores: 'tree', peek() {} }),
+    peek: async (/** @type {string} */ _a, /** @type {string} */ _b, /** @type {any} */ o) => { seen.push(o.signal); return null; },
+    download: async (/** @type {string} */ _a, /** @type {string} */ _b, /** @type {any} */ o) => { seen.push(o.signal); return new Blob(['zip']); },
+    on: () => () => {}, progress: () => null, running: () => [],
+  };
+  await restoreFrom(/** @type {any} */ ({ backups, store: null, notices: null, go: () => {} }), /** @type {any} */ ({ id: 'bt-1', type: 'x' }), { id: 'c1', at: 0 }, () => {}, { signal: stop.signal });
+  assert.deepEqual(seen, [stop.signal, stop.signal]);
   takePendingImport();
 });
 

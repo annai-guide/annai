@@ -1,7 +1,7 @@
 import { h, field, checkbox, radios } from '../dom.js';
 import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } from '../../core/archive.js';
 import { PassphraseError } from '../../core/archive-crypto.js';
-import { takePendingImport, setPendingImport, isArchiveName } from '../import-state.js';
+import { takePendingImport, setPendingImport, isArchiveName, leaveSignal, toldIfLeft } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
 import { relTime, bytes, placeHref, gettingFiles } from '../format.js';
 import { listTrips } from '../../core/scopes.js';
@@ -172,8 +172,8 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   const keys = desc.hasSecrets ? checkbox('Restore API keys (keys already on this device are kept)', false) : null;
   const status = h('p', { class: 'sub', role: 'status' });
   // Leaving this screen any way (Cancel, the crumb, Back, the dock, a swipe) is a Cancel: the download stops and nothing is imported.
-  const quit = new AbortController();
-  addEventListener('hashchange', () => quit.abort(), { once: true });
+  const leaving = leaveSignal();
+  const quit = { signal: leaving.signal, abort: leaving.abort };
   const go = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
@@ -202,6 +202,9 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
         if (result.settings) status.textContent = 'Installing the plugins your providers use…';
         const plugged = result.settings && ctx.llm ? pluginsBrought(ctx, await restorePlugins(ctx, result.plugins), result.plugins) : null;
         const titles = desc.trips.map((/** @type {any} */ t) => t.title);
+        // The import is over: nothing is listening for the user's leaving, and one who left in its last step is told by a toast.
+        leaving.done();
+        toldIfLeft(ctx, quit.signal, titles, from ? (await ctx.backups?.get(from.target).catch(() => null))?.name : null);
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: 'Imported.' }),
           h('div', { class: 'acts' }, ...result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, `Open ${titles[i] ?? 'trip'}`))),

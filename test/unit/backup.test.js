@@ -452,3 +452,38 @@ test('a download that is stopped while it runs stops the place, and nothing is l
   // The one before it left nothing behind: the next download works.
   await assert.rejects(phone.backups.download(id, 'b1', { signal: AbortSignal.abort() }), (e) => /** @type {any} */ (e).name === 'AbortError');
 });
+
+test('a cancel that lands while the place is being read stops the download before it asks for any file', async () => {
+  const place = memoryPlace();
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  await phone.backups.backUp(id);
+  const stop = new AbortController();
+  // The user cancels at the moment the backup place's record is read, after the download's first look at the signal.
+  const read = /** @type {(...a: any[]) => Promise<any>} */ (phone.ws.readJSON.bind(phone.ws));
+  let armed = true;
+  phone.ws.readJSON = /** @type {any} */ (async (/** @type {any[]} */ ...args) => {
+    if (armed) { armed = false; stop.abort(); }
+    return read(...args);
+  });
+  await assert.rejects(phone.backups.download(id, 'b1', { signal: stop.signal }), (e) => /** @type {any} */ (e).name === 'AbortError');
+  assert.equal(place.gets(), 0, 'get never ran');
+  assert.deepEqual(phone.backups.running(), []);
+});
+
+test('a cancel that lands as the download ends throws the backup away, and the trace says it was stopped', async () => {
+  const place = memoryPlace();
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  await phone.backups.backUp(id);
+  const stop = new AbortController();
+  const get = /** @type {(...a: any[]) => Promise<Blob>} */ (place.type.get);
+  place.type.get = /** @type {any} */ (async (/** @type {any} */ ...args) => {
+    const blob = await get(...args);
+    stop.abort();
+    return blob;
+  });
+  await assert.rejects(phone.backups.download(id, 'b1', { signal: stop.signal }), (e) => /** @type {any} */ (e).name === 'AbortError');
+  const [line] = await phone.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.download'] }));
+  assert.deepEqual([line.data.backup, line.data.stopped, line.data.bytes > 0], ['b1', true, true]);
+});
