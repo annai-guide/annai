@@ -4,7 +4,8 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { checkManifest, checkSearchDesc, originsOf, inspectPackage } from '../../src/core/packages.js';
 import { addressProblem } from '../../src/core/llm/provider-desc.js';
-import { keysNote, whatItBrings } from '../../src/ui/screens/plugin-install.js';
+import { readAnswer, TargetError } from '../../src/core/storage-types.js';
+import { keysNote, whatItBrings, searchKeyInfo } from '../../src/ui/screens/plugin-install.js';
 import { cooldowns } from '../../src/core/web-search.js';
 import { Registry } from '../../src/core/registry.js';
 import { activate as tavily } from '../../plugins-official/search-tavily/index.js';
@@ -22,7 +23,7 @@ function host(/** @type {Record<string, any>} */ secrets = {}, /** @type {Record
     register: (/** @type {string} */ kind, /** @type {any} */ item) => { assert.equal(kind, 'search'); provider = item; return () => {}; },
     secrets: { get: async (/** @type {string} */ n) => secrets[n] ?? null },
     settings: { get: async () => settings },
-    helpers: { addressProblem },
+    helpers: { addressProblem, readAnswer },
   };
   return { annai, get provider() { return provider; } };
 }
@@ -61,8 +62,8 @@ test('the install screen says where searches and the key go, and an update that 
   assert.equal(pkg.search?.id, 'tavily');
   assert.equal(keysNote(pkg), 'Your search words and the key you give it are sent to https://api.tavily.com.');
   assert.equal(keysNote({ search: { origins: [] } }), 'Your search words are sent only to the address you give it.');
-  assert.deepEqual(whatItBrings({ code: true, skills: [], personalities: [], search: pkg.search, origins: ['https://api.tavily.com'] }),
-    ['Code that runs in annai', 'A search provider for web_search', 'Its searches and key now go to https://api.tavily.com']);
+  assert.deepEqual(whatItBrings({ code: true, skills: [], personalities: [], search: pkg.search, origins: ['https://api.tavily.com'], searchOrigins: ['https://api.tavily.com'] }),
+    ['Code that runs in annai', 'A search provider for web_search', 'Its searches now go to https://api.tavily.com']);
 });
 
 test('Tavily, against a stand-in of its API: the bearer key, a JSON body, rows from results[].content; its limits and refusals in words', async () => {
@@ -91,7 +92,10 @@ test('Tavily, against a stand-in of its API: the bearer key, a JSON body, rows f
   tavily(wrong.annai);
   await assert.rejects(wrong.provider.search('q', { fetch: api, signal: never }), (/** @type {any} */ e) => e.status === 401 && e.message === 'Tavily refused the key');
   for (const s of [432, 433]) await assert.rejects(h.provider.search('q', { fetch: async () => ok({ detail: { error: 'limit' } }, s), signal: never }), (/** @type {any} */ e) => e.status === 429 && /out of credits/.test(e.message));
-  assert.deepEqual(await h.provider.search('q', { fetch: async () => new Response('<html>'), signal: never }), []);
+  await assert.rejects(h.provider.search('q', { fetch: async () => new Response('<html>'), signal: never }), (/** @type {any} */ e) => e instanceof TargetError && /can't read/.test(e.message));
+  // An answer larger than annai reads is refused unread; a key refused with no CORS header (Tavily's 401) reads as a failed request: said as that.
+  await assert.rejects(h.provider.search('q', { fetch: async () => new Response('x', { headers: { 'content-length': String(9 * 2 ** 20) } }), signal: never }), (/** @type {any} */ e) => e instanceof TargetError && /larger than annai reads/.test(e.message));
+  await assert.rejects(h.provider.search('q', { fetch: async () => { throw new TypeError('Failed to fetch'); }, signal: never }), (/** @type {any} */ e) => e.kind === 'cors' && /couldn't reach Tavily; check the key, or the device is offline/.test(e.message));
 });
 
 test('Serper, against a stand-in of its API: X-API-KEY, { q, num }, the answer box then organic[].link; out of credits comes as a limit', async () => {
@@ -117,6 +121,7 @@ test('Serper, against a stand-in of its API: X-API-KEY, { q, num }, the answer b
   await assert.rejects(wrong.provider.search('q', { fetch: api, signal: never }), (/** @type {any} */ e) => e.status === 403 && e.message === 'Serper refused the key');
   await assert.rejects(h.provider.search('q', { fetch: async () => ok({ message: 'Not enough credits', statusCode: 400 }, 400), signal: never }), (/** @type {any} */ e) => e.status === 402 && /out of credits/.test(e.message));
   assert.deepEqual(await h.provider.search('q', { fetch: async () => ok({ organic: 'nope' }), signal: never }), []);
+  await assert.rejects(h.provider.search('q', { fetch: async () => new Response('x', { headers: { 'content-length': String(9 * 2 ** 20) } }), signal: never }), (/** @type {any} */ e) => e instanceof TargetError && /larger than annai reads/.test(e.message));
 });
 
 /** A stand-in SearXNG: /search?q=…&format=json as its documentation shows, with the CORS header an operator adds. @param {{ json?: boolean }} [o] */
@@ -170,6 +175,7 @@ test('SearXNG, against a stand-in instance: a plain GET of /search with format=j
   const h = host({}, { url: off.url });
   searxng(h.annai);
   await assert.rejects(h.provider.search('q', { fetch, signal: never }), (/** @type {any} */ e) => e.kind === 'cors' && /Access-Control-Allow-Origin/.test(e.message));
+  await assert.rejects(h.provider.search('q', { fetch: async () => new Response('x', { headers: { 'content-length': String(9 * 2 ** 20) } }), signal: never }), (/** @type {any} */ e) => e instanceof TargetError && /larger than annai reads/.test(e.message));
 });
 
 test('a plugin\'s search provider joins the chain before the free services, and the user can switch it off', async () => {
@@ -191,4 +197,36 @@ test('a plugin\'s search provider joins the chain before the free services, and 
   assert.match(await tool.run({ query: 'q' }, call), /From Tavily/);
   await updateAppSettings(ws, { web: { searchOff: ['tavily'] } });
   await assert.rejects(tool.run({ query: 'q' }, call), /Web search didn't work: .*Exa couldn't be reached/);
+  // After the user has reordered the list (so web.search is saved without Tavily), Tavily still comes before the free services (M1).
+  await updateAppSettings(ws, { web: { searchOff: [], search: ['jina', 'parallel', 'exa', 'firecrawl', 'wiki'] } });
+  const asked = /** @type {string[]} */ ([]);
+  assert.match(await tool.run({ query: 'q' }, { ...call, fetch: async (/** @type {string} */ u) => { asked.push(u); throw new TypeError('x'); } }), /From Tavily/);
+  assert.deepEqual(asked, []);
+});
+
+test('S6: a manifest with both a provider and a search block: both sets of origins are recorded, both are told, and an update that adds a search origin asks', async () => {
+  const { addedParts, addedWords } = await import('../../src/core/packages.js');
+  const m = { provider: { baseUrl: 'https://api.example.com/v1', abilities: {} }, search: { id: 's', kind: 'web', origins: ['https://search.example', 'https://api.example.com'] } };
+  assert.deepEqual(originsOf(m), ['https://api.example.com', 'https://search.example']);
+  assert.deepEqual(keysNote({ provider: m.provider, search: m.search }), 'Keys you give this provider are sent to https://api.example.com. Your search words are sent to https://api.example.com and https://search.example.');
+  // Installed with the provider's origin alone; the update adds a search origin: that asks, and says it is searches that go there.
+  const added = addedParts({ code: true, skills: [], personalities: [], origins: ['https://api.example.com'] }, /** @type {any} */ ({ skills: [], personalities: [], code: true, manifest: m }));
+  assert.deepEqual(added.origins, ['https://search.example']);
+  assert.equal(addedWords(added), 'an address your searches are sent to: https://search.example');
+  assert.deepEqual(whatItBrings({ code: false, skills: [], personalities: [], origins: added.origins, searchOrigins: added.searchOrigins }), ['Its searches now go to https://search.example']);
+  assert.deepEqual(whatItBrings({ code: false, skills: [], personalities: [], origins: ['https://api.b.test'], searchOrigins: [] }), ['Its provider now sends keys you give it to https://api.b.test']);
+});
+
+test('the install screen shows where to get a search plugin\'s key and its free-tier line; a search block holds no credit that nothing shows', async () => {
+  const m = await manifest('search-tavily');
+  assert.deepEqual(searchKeyInfo({ search: m.search }), { url: 'https://app.tavily.com', text: m.search.key.note });
+  assert.equal(searchKeyInfo({ search: (await manifest('search-searxng')).search }), null);
+  assert.equal(searchKeyInfo({}), null);
+  assert.match(checkSearchDesc({ id: 'x', kind: 'web', origins: [], credit: 'By X.' }, {}).join(), /credit: is not allowed/);
+});
+
+test('a manifest with a search block and no entry is refused: a search provider is code', () => {
+  const search = { id: 'x-search', kind: 'web', origins: [] };
+  assert.throws(() => checkManifest({ id: 'x-search', name: 'X', version: '1.0.0', api: 1, search }), /search provider.*entry/);
+  checkManifest({ id: 'x-search', name: 'X', version: '1.0.0', api: 1, entry: 'index.js', search });
 });

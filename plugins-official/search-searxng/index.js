@@ -27,7 +27,7 @@ export function activate(annai) {
       }
       if (res.status === 403) throw Object.assign(new Error('Your SearXNG refused JSON: put json under search: formats: in its settings.yml.'), { status: 403 });
       if (!res.ok) throw Object.assign(new Error(`Your SearXNG answered ${res.status}`), { status: res.status });
-      const body = await res.json().catch(() => null);
+      const body = await annai.helpers.readAnswer(res, 'json', 'Your SearXNG');
       if (!body || typeof body !== 'object') throw new Error('Your SearXNG sent an answer annai can\'t read: json must be one of its search formats.');
       return (Array.isArray(body.results) ? body.results : []).slice(0, limit).map((/** @type {any} */ r) => ({ title: r?.title, url: r?.url, snippet: r?.content }));
     },

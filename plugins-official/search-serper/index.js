@@ -22,12 +22,12 @@ export function activate(annai) {
         body: JSON.stringify({ q: query, num: limit }),
       });
       if (!res.ok) {
-        const said = String((await res.json().catch(() => null))?.message ?? '');
+        const said = String((await annai.helpers.readAnswer(res, 'json', 'Serper').catch(() => null))?.message ?? '');
         // Out of credits comes as a 400 "Not enough credits": a limit, to rest on.
         const s = /credit/i.test(said) ? 402 : res.status;
         throw Object.assign(new Error(s === 402 ? 'Serper is out of credits' : s === 401 || s === 403 ? 'Serper refused the key' : `Serper answered ${res.status}`), { status: s });
       }
-      const body = await res.json().catch(() => null);
+      const body = await annai.helpers.readAnswer(res, 'json', 'Serper');
       const box = body?.answerBox;
       const answer = box && (box.link || box.url) ? [{ title: box.title ?? 'Answer', url: box.link ?? box.url, snippet: box.answer ?? box.snippet }] : [];
       return [...answer, ...(Array.isArray(body?.organic) ? body.organic : []).map((/** @type {any} */ r) => ({ title: r?.title, url: r?.link, snippet: r?.snippet }))];
