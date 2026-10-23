@@ -1109,14 +1109,15 @@ export class Agent {
   /**
    * Housekeeping (spec §6.5): the older part of the conversation becomes a compaction event; the
    * most recent part stays word for word. Returns whether anything was compacted.
-   * @param {'warm' | 'cold'} mode @param {{ forced?: boolean }} [o]
+   * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, keepTokens?: number }} [o] forced: down to the last exchange, if the
+   * kept part is still about a third of the threshold; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only)
    */
   async compact(mode, o = {}) {
     const settings = await this.settings();
     const window = (await this.#mainModel())?.contextWindow ?? null;
-    const keepTokens = window
+    const keepTokens = o.keepTokens ?? (window
       ? (settings.compaction.threshold * window) / 3
-      : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3;
+      : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3);
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     // The conversation only, by type (A6): what the summary is made of, and what the cut is measured on (not Koe's).
     const split = this.#rules() === 'kokoro';
@@ -1157,7 +1158,8 @@ export class Agent {
 
   /**
    * "Summarize now" on the Conversation screen (spec §6.5, §16.2): housekeeping when the user asks, as it would run: warm while the cache
-   * is, else cold, whatever the size, with the last exchange kept. The earlier words stay in the log, and recall brings them back.
+   * is, else cold, whatever the size, with only the last exchange kept word for word. The earlier words stay in the log, and recall
+   * brings them back.
    * @returns {Promise<'done' | 'nothing' | 'busy' | 'failed'>} nothing: too little to summarize; busy: she is working or a conversation is opening
    */
   async summarizeNow() {
@@ -1166,7 +1168,7 @@ export class Agent {
     this.#busy = true;
     const warm = Boolean(this.cacheState()?.warm);
     try {
-      return (await this.compact(warm ? 'warm' : 'cold', { forced: true })) ? 'done' : 'nothing';
+      return (await this.compact(warm ? 'warm' : 'cold', { forced: true, keepTokens: 0 })) ? 'done' : 'nothing';
     } catch (e) {
       await this.#notice({ tone: 'info', title: "Shiori couldn't summarize the conversation", body: this.#explain(e, warm ? 'main' : 'utility') });
       return 'failed';

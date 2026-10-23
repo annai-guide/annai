@@ -68,8 +68,8 @@ test('the Conversation has a menu with Summarize now and Start fresh; Start fres
   }
 });
 
-test('Summarize now: with too little said it says so; after a few exchanges it summarizes, and the lines stay in the conversation', async ({ page }) => {
-  const llm = await startModelServer({ '/b/v1/messages': [speak('One.'), speak('Two.'), speak('Three.'), speak('Four.'), sse(anthropicToolReply([], 'They talked about numbers.'))] });
+test('Summarize now: with too little said it says so; after a few exchanges it summarizes, keeping only the last exchange word for word, and the lines stay in the conversation', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [speak('One.'), speak('Two.'), speak('Three.'), speak('Four.'), sse(anthropicToolReply([], 'They talked about numbers.')), speak('Five.')] });
   try {
     await setUp(page, llm.origin);
     await say(page, 'First', 1);
@@ -84,6 +84,12 @@ test('Summarize now: with too little said it says so; after a few exchanges it s
     await expect(page.locator('.convo .system-line', { hasText: 'Earlier conversation summarized.' })).toBeVisible({ timeout: 20_000 });
     await expect(page.locator('.convo .you')).toHaveText(['First', 'Second', 'Third', 'Fourth']);
     await expect(page.locator('.convo .fresh-divider')).toHaveCount(0);
+    // Her next request: the summary, then only the last exchange word for word (spec §6.5).
+    await say(page, 'Fifth', 5);
+    const sent = JSON.stringify(llm.bodies('/b/v1/messages').at(-1).messages);
+    expect(sent).toContain('They talked about numbers.');
+    for (const gone of ['Second', 'Third', 'Two.', 'Three.']) expect(sent).not.toContain(gone);
+    for (const kept of ['Fourth', 'Four.', 'Fifth']) expect(sent).toContain(kept);
   } finally {
     await llm.stop();
   }
