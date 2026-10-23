@@ -1,5 +1,5 @@
 import { SYS } from '../scopes.js';
-import { readConfig, getKey, endpointOf, modelOf, saveModel, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
+import { readConfig, getKey, endpointOf, modelOf, markVerified, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
 import { ROLE_KINDS, OLD_KOE } from './provider-desc.js';
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
@@ -626,7 +626,7 @@ export function createLlm({
           .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
       if (found.access && found.key !== false) bench.clear(modelId); // reachable with a working key: no reason to rest
-      await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), ...found, at: Date.now() } });
+      await markVerified(ws, modelId, { ...found, at: Date.now() });
       return withoutSecretsIn(store, result);
     },
     /**
@@ -640,7 +640,7 @@ export function createLlm({
     async testLevels(modelId) {
       const { rec, type, endpoint, model, key } = await resolve(modelId, { install: true });
       const levels = await withoutSecretsIn(store, await testLevels({ type, endpoint, model, key, fetch: get }));
-      await saveModel(ws, { ...rec, verified: { ...(rec.verified ?? {}), levels, levelsAt: Date.now() } });
+      await markVerified(ws, modelId, { levels, levelsAt: Date.now() });
       return levels;
     },
     /**

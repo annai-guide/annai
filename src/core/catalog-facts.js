@@ -1,3 +1,5 @@
+import { pricesAt } from './llm/cost.js';
+
 /**
  * A plugin's facts in the catalog (spec §5.3), for annai's and an installed one alike.
  * @typedef {{ id: string, name: string, version: string, description: string, category: string, keywords: string[], abilities: string[],
@@ -8,7 +10,7 @@
 
 /** Whether prices say a model costs nothing: every price there is 0. @param {any} prices */
 function isFree(prices) {
-  const numbers = prices && typeof prices === 'object' ? Object.values(prices).filter((v) => typeof v === 'number') : [];
+  const numbers = prices && typeof prices === 'object' ? Object.values(pricesAt(prices, Date.now())).filter((v) => typeof v === 'number') : [];
   return numbers.length > 0 && numbers.every((v) => v === 0);
 }
 

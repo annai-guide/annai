@@ -212,7 +212,10 @@ test('no request carries a model or an input, and a chat path is asked for one t
   const k = await hostKit();
   const s = await startFakeServer({ flavour: 'llamacpp', key: KEY });
   const elsewhere = await startFakeServer({ flavour: 'whole' });
-  const moved = await tiny(() => [307, { location: `${elsewhere.origin}/v1/chat/completions` }, '']);
+  const moved = await tiny(() => [307, { location: `${elsewhere.origin}/v1/chat/completions` }, '']).catch(async (e) => {
+    await Promise.all([s.stop(), elsewhere.stop()]);
+    throw e;
+  });
   try {
     const traced = tracedFetch(k.store, SYS, { tool: 'plugin:provider-another-address' }, browserFetch(ANNAI));
     await probe(s.origin, KEY, io({ fetch: traced }));

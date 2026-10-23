@@ -35,21 +35,31 @@ export function activate(annai) {
     const tail = String(request?.tail ?? '');
     const woke = /^woke for: (.*)$/m.exec(tail)?.[1] ?? tail;
     const last = request?.messages?.at(-1);
-    // Results of its own tool calls come last; a new wake's words would follow them in the same message.
-    const followUp = last?.role === 'user' && last.parts?.at(-1)?.type === 'tool_result';
+    // Results of its own tool calls come last, or a new wake's words follow them in the same message. Words after the results that
+    // are no wake (what the other half said meanwhile) leave it a follow-up: its rule's `then`. A wake that joined the turn (its
+    // reason is in the "woke for" line) is matched by the rules as a new request does, and when none matches it is the follow-up still.
+    const hasResults = last?.role === 'user' && last.parts?.some((/** @type {any} */ x) => x.type === 'tool_result');
+    const followUp = hasResults && (last.parts.at(-1)?.type === 'tool_result' || !/^woke for: /m.test(tail));
     const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
-    if (followUp && lastRule.has(endpoint.id)) return lastRule.get(endpoint.id).then ?? sleep;
+    // A step that sleeps ends the turn, and its rule's `then` with it: the next turn's first request carries this one's tool results,
+    // and a wake no rule matches must not be answered by the last rule's `then`.
+    /** @param {any} step */
+    const out = (step) => {
+      if (step.toolCalls?.some((/** @type {any} */ c) => c.name === 'sleep')) lastRule.delete(endpoint.id);
+      return step;
+    };
+    if (followUp && lastRule.has(endpoint.id)) return out(lastRule.get(endpoint.id).then ?? sleep);
     let i = 0;
     for (const r of rules) {
       const key = `${endpoint.id}:${i++}`;
       if (typeof r?.match !== 'string' || !new RegExp(r.match, 'i').test(woke)) continue;
       if (typeof r.times === 'number' && (used.get(key) ?? 0) >= r.times && !followUp) continue;
-      if (followUp) return r.then ?? sleep;
+      if (followUp) return out(r.then ?? sleep);
       used.set(key, (used.get(key) ?? 0) + 1);
       lastRule.set(endpoint.id, r);
-      return r.reply ?? sleep;
+      return out(r.reply ?? sleep);
     }
-    return sleep;
+    return hasResults && lastRule.has(endpoint.id) ? out(lastRule.get(endpoint.id).then ?? sleep) : sleep;
   };
   return annai.providers.register({
     type: 'scripted',

@@ -98,3 +98,13 @@ test("the note every local server's page shows: a phone's localhost, https only,
   }
   assert.match(localNote(''), /http:\/\/localhost:8080 where the server is/, 'a provider with no address of its own: a usual port');
 });
+
+test("a description's prices are checked: base prices not negative, and a schedule's entries with a real date each once, naming only prices annai knows", () => {
+  /** @param {any} prices */
+  const priced = (prices) => withAbility(OPENAI_LIKE, 'chat', { ...OPENAI_LIKE.abilities.chat, models: [{ providerId: 'gpt-6-luna', name: 'GPT-6 Luna', prices }] });
+  assert.deepEqual(checkProviderDesc(priced({ input: 1, output: 4, schedule: [{ from: '2027-01-01', input: 2, output: 8 }, { from: '2027-07-01', output: 10 }] })), []);
+  assert.match(checkProviderDesc(priced({ input: -1 })).join(), /prices.*input.*not a price/);
+  assert.match(checkProviderDesc(priced({ input: 1, schedule: [{ from: '2027-01-01', input: 2 }, { from: '2027-01-01', output: 3 }] })).join(), /schedule.*2027-01-01.*twice/);
+  assert.match(checkProviderDesc(priced({ input: 1, schedule: [{ from: '2027-01-01', inptu: 2 }] })).join(), /schedule.*inptu/);
+  assert.match(checkProviderDesc(priced({ input: 1, schedule: [{ from: '2027-02-30', input: 2 }] })).join(), /schedule.*date/);
+});

@@ -192,7 +192,8 @@ const holdSaves = (page) => page.evaluate(async () => {
 /**
  * Taps Save with the queue held: "Saving…" is on screen, beside the button on its line (not at the top of the page, under the bar),
  * until the queue is let go; with field, until the field shows the key saved, and the toast no sooner.
- * @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} save @param {{ label: string, saved: RegExp }} [field]
+ * @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} save @param {{ label: string, saved: RegExp, redraws?: boolean }} [field]
+ *   redraws: the screen is asked to draw again every few ms from the release on, as a plugin or a setting changing does
  */
 async function savingBesideIt(page, save, field) {
   await holdSaves(page);
@@ -211,14 +212,22 @@ async function savingBesideIt(page, save, field) {
       const w = /** @type {any} */ (window);
       const placeholder = () => [...document.querySelectorAll('label.field')].find((l) => l.querySelector('.field-label')?.textContent === label)?.querySelector('input')?.placeholder ?? null;
       w.seen = {};
+      // A toast from an earlier step (they last 3.5 s) is not the one this save brings.
+      const earlier = new Set(document.querySelectorAll('.toast'));
       const look = () => {
         if (!w.seen.gone && ![...document.querySelectorAll('.sub')].some((e) => e.textContent === 'Saving…')) w.seen.gone = placeholder();
-        if (!w.seen.toast && document.querySelector('.toast')) w.seen.toast = placeholder();
+        if (!w.seen.toast && [...document.querySelectorAll('.toast')].some((t) => !earlier.has(t))) w.seen.toast = placeholder();
       };
       new MutationObserver(look).observe(document.body, { childList: true, subtree: true, characterData: true });
     }, field.label);
   }
   await page.evaluate(() => /** @type {any} */ (window).release());
+  if (field?.redraws) {
+    await page.evaluate(() => {
+      const again = setInterval(() => dispatchEvent(new HashChangeEvent('hashchange')), 4);
+      setTimeout(() => clearInterval(again), 1500);
+    });
+  }
   await expect(note).toHaveCount(0);
   if (field) {
     await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).seen.toast ?? null)).not.toBeNull();
@@ -250,5 +259,16 @@ test('a key field says "Saving…" beside its Save button, on screen, until the 
   await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel('API key').fill('sk-or-typed-key-123');
   await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }), { label: 'API key', saved: /^saved/ });
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+});
+
+test("a provider's key saved while the screen is drawn again and again: the toast still comes only when the field shows the key saved (CI flake: it showed \"not set\")", async ({ page }) => {
+  await openApp(page, '#/models');
+  await tapAdd(page, 'OpenRouter');
+  await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Add by hand' }).click();
+  await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel('API key').fill('sk-or-typed-key-123');
+  await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }), { label: 'API key', saved: /^saved/, redraws: true });
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
 });

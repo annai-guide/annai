@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NO_USAGE, mergeUsage, addUsage, costOf, addCost } from '../../src/core/llm/cost.js';
+import { NO_USAGE, mergeUsage, addUsage, costOf, addCost, speechCost, pricesProblem, pricesAt } from '../../src/core/llm/cost.js';
 import { LEVELS, ROLE_LEVELS, nearestLevel, levelPatch } from '../../src/core/llm/reasoning.js';
 
 /** @param {number | undefined} a @param {number} b */
@@ -106,4 +106,238 @@ test("a provider marked free tier costs nothing: a call's reply and trace, and a
   assert.equal(spoken.cost, 0);
   const costs = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS))).map((/** @type {any} */ e) => e.data.cost);
   assert.deepEqual(costs, [0, 0], 'the trace says free, and Spend per day adds nothing');
+});
+
+// ---- A price with a date it starts from (Gemini's prices double on 2027-01-01) ----
+
+test('a price schedule: an entry applies from its date (UTC midnight), later entries lay over earlier ones, and an entry with no usable date never applies', () => {
+  const prices = { input: 1, output: 4, schedule: [{ from: '2027-01-01', input: 2, output: 8 }, { from: '2027-07-01', output: 10 }, { from: 'soon', input: 99 }, { from: '2027-13-45', input: 98 }] };
+  const usage = { ...NO_USAGE, input: 1_000_000, output: 1_000_000 };
+  const day = (/** @type {string} */ iso) => Date.parse(iso);
+  close(costOf(usage, prices, [], day('2026-12-31T23:59:59.999Z')), 5);
+  close(costOf(usage, prices, [], day('2027-01-01T00:00:00Z')), 10);
+  close(costOf(usage, prices, [], day('2027-06-30T23:59:59Z')), 10);
+  close(costOf(usage, prices, [], day('2027-07-01T00:00:00Z')), 12); // an entry names only what changes
+  close(costOf(usage, { input: 1, output: 4 }, [], day('2030-01-01T00:00:00Z')), 5); // no schedule, no change
+  close(speechCost({ perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] }, { chars: 1_000_000, at: day('2026-12-31T12:00:00Z') }), 15);
+  close(speechCost({ perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] }, { chars: 1_000_000, at: day('2027-01-01T12:00:00Z') }), 30);
+});
+
+test("provider-gemini's prices: 3.8 and 3.6 Flash and the TTS voices double from 2027-01-01 on Google's pricing page (checked 2026-10-23); Flash Lite, Live and transcription do not", async () => {
+  const { readFile } = await import('node:fs/promises');
+  const d = JSON.parse(await readFile(new URL('../../plugins-official/provider-gemini/annai-plugin.json', import.meta.url), 'utf8'));
+  const models = Object.fromEntries(Object.values(d.provider.abilities).flatMap((/** @type {any} */ a) => a.models.map((/** @type {any} */ m) => [`${a.kind}/${m.providerId}`, m.prices])));
+  const before = Date.parse('2026-12-31T23:59:59Z');
+  const after = Date.parse('2027-01-01T00:00:00Z');
+  const usage = { ...NO_USAGE, input: 1_000_000, cacheRead: 1_000_000, output: 1_000_000 };
+  for (const id of ['chat/gemini-3.8-flash', 'chat/gemini-3.6-flash']) {
+    close(costOf(usage, models[id], [], before), 0.75 + 0.075 + 3.75);
+    close(costOf(usage, models[id], [], after), 1.5 + 0.15 + 7.5);
+  }
+  for (const [id, was] of [['voice/gemini-3.8-flash-tts', 15], ['voice/gemini-3.8-flash-lite-tts', 10]]) {
+    close(speechCost(models[String(id)], { chars: 1_000_000, at: before }), Number(was));
+    close(speechCost(models[String(id)], { chars: 1_000_000, at: after }), Number(was) * 2);
+  }
+  for (const id of ['chat/gemini-3.5-flash-lite', 'realtime/gemini-3.8-live', 'transcription/gemini-3.5-transcribe']) {
+    assert.equal(models[id].schedule, undefined, id);
+  }
+});
+
+test("a call is priced at the time it was made: the same Gemini 3.8 Flash call costs twice as much after the date (callOnce, with its clock)", async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { callOnce } = await import('../../src/core/llm/call.js');
+  const { startGeminiServer } = await import('../fakes/gemini-server.js');
+  const { loadGemini, endpointOf, modelOf, KEY } = await import('./gemini-kit.js');
+  const d = JSON.parse(await readFile(new URL('../../plugins-official/provider-gemini/annai-plugin.json', import.meta.url), 'utf8'));
+  const prices = d.provider.abilities.chat.models.find((/** @type {any} */ m) => m.providerId === 'gemini-3.8-flash').prices;
+  const type = loadGemini();
+  const s = await startGeminiServer({ key: KEY, replies: [{ text: 'OK' }, { text: 'OK' }] });
+  try {
+    /** @param {string} iso */
+    const costAt = async (iso) => (await callOnce({
+      type, endpoint: endpointOf(type, { baseUrl: s.url }), model: modelOf({ providerId: 'gemini-3.8-flash', prices }), key: KEY,
+      request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] }, now: () => Date.parse(iso),
+    })).cost;
+    const early = await costAt('2026-12-31T12:00:00Z');
+    const late = await costAt('2027-01-02T12:00:00Z');
+    close(early, (100 * 0.75 + 10 * 3.75) / 1e6);
+    close(late, (100 * 1.5 + 10 * 7.5) / 1e6);
+  } finally {
+    await s.close();
+  }
+});
+
+test("a model's prices with a schedule are valid when each entry has a real date and prices that are not negative; anything else is refused", async () => {
+  const { saveModel, newModel, saveProvider, newProvider } = await import('../../src/core/llm/config.js');
+  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const provider = newProvider('provider-x', { user: { name: 'X', abilities: { chat: { kind: 'chat', type: 'x' } } } });
+  await saveProvider(ws, provider);
+  const save = (/** @type {any} */ prices) => saveModel(ws, newModel(provider.id, 'chat', { user: { providerId: 'm', prices } }));
+  await save({ input: 1, output: 2, schedule: [{ from: '2027-01-01', input: 2, output: 4 }] });
+  for (const bad of [[{ input: 2 }], [{ from: '2027-13-45', input: 2 }], [{ from: 'soon', input: 2 }], [{ from: '2027-01-01', input: -1 }], 'tomorrow']) {
+    await assert.rejects(save({ input: 1, schedule: bad }), undefined, JSON.stringify(bad));
+  }
+});
+
+// ---- A typed price against a description's schedule ----
+
+/** A scheduled model as a description gives it, and a way to save the user's changes to it. */
+async function scheduledModel() {
+  const { saveModel, saveProvider, newProvider, newModel } = await import('../../src/core/llm/config.js');
+  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const provider = newProvider('provider-x', { user: { name: 'X', abilities: { chat: { kind: 'chat', type: 'x' } } } });
+  await saveProvider(ws, provider);
+  const prices = { input: 0.75, output: 3.75, cacheRead: 0.075, schedule: [{ from: '2027-01-01', input: 1.5, output: 7.5, cacheRead: 0.15 }] };
+  const rec = newModel(provider.id, 'chat', { template: { id: 'x/chat/m', version: '1.0.0', values: { providerId: 'm', prices } } });
+  await saveModel(ws, rec);
+  return { ws, rec, saveModel };
+}
+
+test("a price the user typed stays theirs after a scheduled date: the description's schedule never lays over a field the user set", async () => {
+  const { modelOf, diffLayer, modelBase } = await import('../../src/core/llm/config.js');
+  const { rec } = await scheduledModel();
+  const usage = { ...NO_USAGE, input: 1_000_000, cacheRead: 1_000_000, output: 1_000_000 };
+  const before = Date.parse('2026-12-31T12:00:00Z');
+  const after = Date.parse('2027-01-02T12:00:00Z');
+  // The Prices box shows the prices in force; the user changes input to 0.5 and the editor saves the difference.
+  const shown = modelOf(rec).prices;
+  const edited = { ...rec, user: diffLayer({ prices: { ...shown, input: 0.5 } }, modelBase(rec)) };
+  const prices = /** @type {any} */ (modelOf(edited).prices);
+  close(costOf(usage, prices, [], before), 0.5 + 0.075 + 3.75);
+  close(costOf(usage, prices, [], after), 0.5 + 0.15 + 7.5); // input stays 0.5; what the user left alone still follows the schedule
+  // A field the user set and the schedule changes: all of them set, none follows.
+  const all = modelOf(/** @type {any} */ ({ ...rec, user: { prices: { input: 1, output: 2, cacheRead: 0.1 } } })).prices;
+  close(costOf(usage, all, [], after), 1 + 0.1 + 2);
+});
+
+test('the schedule can be deleted in the Prices box: null on the user layer removes the description\'s, and it saves', async () => {
+  const { modelOf, diffLayer, modelBase } = await import('../../src/core/llm/config.js');
+  const { ws, rec, saveModel: save } = await scheduledModel();
+  const { schedule: _gone, ...without } = /** @type {any} */ (modelOf(rec).prices);
+  const next = { ...rec, user: diffLayer({ prices: without }, modelBase(rec)) };
+  assert.deepEqual(next.user, { prices: { schedule: null } });
+  await save(ws, next);
+  const prices = modelOf(next).prices;
+  assert.equal(/** @type {any} */ (prices).schedule, undefined);
+  close(costOf({ ...NO_USAGE, input: 1_000_000 }, prices, [], Date.parse('2027-06-01T00:00:00Z')), 0.75);
+});
+
+test("pricesProblem: what is wrong with a model's prices, in plain words, or nothing (the editor's save path)", () => {
+  assert.equal(pricesProblem({ input: 1, output: 4, perMinute: 0, tiers: [{ above: 200000, input: 2 }], schedule: [{ from: '2027-01-01', input: 2 }] }), null);
+  assert.match(String(pricesProblem({ input: -1 })), /input.*not a price/);
+  assert.match(String(pricesProblem({ output: '4' })), /output.*not a price/);
+  assert.match(String(pricesProblem({ schedule: 'later' })), /schedule.*list/);
+  assert.match(String(pricesProblem({ schedule: [{ input: 2 }] })), /from/);
+  assert.match(String(pricesProblem({ schedule: [{ from: '2027-02-30', input: 2 }] })), /2027-02-30.*not a date/);
+  assert.match(String(pricesProblem({ schedule: [{ from: '2027-01-01', input: 2 }, { from: '2027-01-01', output: 3 }] })), /2027-01-01.*twice/);
+  assert.match(String(pricesProblem({ schedule: [{ from: '2027-01-01', inptu: 2 }] })), /inptu.*isn't a price/);
+  assert.match(String(pricesProblem({ schedule: [{ from: '2027-01-01', input: -2 }] })), /input.*not a price/);
+});
+
+test("the Prices box: editing one price after another keeps each the user's past the date, an untouched schedule stays the description's, and a bad price is refused by the box", async () => {
+  const { fieldSaver, pricesInto } = await import('../../src/ui/screens/model.js');
+  const { modelOf, readConfig } = await import('../../src/core/llm/config.js');
+  const { ws, rec } = await scheduledModel();
+  const ctx = { ws, llm: { config: () => readConfig(ws), bench: { clear() {} } } };
+  // The box's text is what is in effect; each edit changes one price in it.
+  const current = async () => modelOf((await ctx.llm.config()).models[rec.id]).prices;
+  const save = fieldSaver(/** @type {any} */ (ctx), rec.id);
+  await save('prices', { .../** @type {any} */ (await current()), input: 0.5 });
+  await save('prices', { .../** @type {any} */ (await current()), output: 3 });
+  const prices = /** @type {any} */ (await current());
+  const usage = { ...NO_USAGE, input: 1_000_000, cacheRead: 1_000_000, output: 1_000_000 };
+  close(costOf(usage, prices, [], Date.parse('2027-02-01T00:00:00Z')), 0.5 + 0.15 + 3); // input and output stay the user's; cacheRead follows the schedule
+  assert.throws(() => pricesInto({ input: -1 }), /input is not a price/);
+  assert.equal(pricesInto({}), null);
+});
+
+test("a model is free by the prices in force today: free that a past schedule made paid is not free, free until a date to come is", async () => {
+  const { free } = await import('../../src/core/llm/providers.js');
+  const { newProvider, newModel } = await import('../../src/core/llm/config.js');
+  /** @param {string} from */
+  const cfgFor = (from) => {
+    const provider = newProvider('provider-x', { user: { name: 'X', abilities: { chat: { kind: 'chat', type: 'x' } } } });
+    const model = newModel(provider.id, 'chat', { user: { providerId: 'm', prices: { input: 0, output: 0, schedule: [{ from, input: 1, output: 4 }] } } });
+    return /** @type {any} */ ({ providers: { [provider.id]: provider }, models: { [model.id]: model }, roles: {} });
+  };
+  for (const [from, was] of [['2020-01-01', false], ['2999-01-01', true]]) {
+    const cfg = cfgFor(String(from));
+    assert.equal(free(cfg, Object.keys(cfg.models)[0]), was, String(from));
+  }
+});
+
+// ---- Verification findings on prices: malformed schedules, a deleted schedule's stored form, an edited schedule against typed prices ----
+
+/** The Prices box on a scheduled model: its text is the prices in effect, and each edit saves the box. */
+async function priceBox() {
+  const { fieldSaver, pricesInto } = await import('../../src/ui/screens/model.js');
+  const { modelOf, readConfig } = await import('../../src/core/llm/config.js');
+  const { ws, rec } = await scheduledModel();
+  const ctx = { ws, llm: { config: () => readConfig(ws), bench: { clear() {} } } };
+  const save = fieldSaver(/** @type {any} */ (ctx), rec.id);
+  const stored = async () => (await readConfig(ws)).models[rec.id];
+  const box = async () => JSON.parse(JSON.stringify(modelOf(await stored()).prices ?? {}));
+  /** @param {(b: any) => void} change */
+  const edit = async (change) => {
+    const b = await box();
+    change(b);
+    await save('prices', pricesInto(b));
+  };
+  return { ws, rec, save, stored, box, edit, effective: async () => modelOf(await stored()).prices };
+}
+const AFTER = Date.parse('2027-01-02T00:00:00Z');
+
+test('a malformed schedule is ignored, never thrown at: not a list, entries that are not objects, entries without a real date', async () => {
+  const { catalogFacts } = await import('../../src/core/catalog-facts.js');
+  for (const schedule of ['later', {}, 5, [null, 5, 'a', [], { from: 'soon', input: 9 }, { input: 9 }]]) {
+    assert.deepEqual(pricesAt(/** @type {any} */ ({ input: 1, schedule }), AFTER), { input: 1 }, JSON.stringify(schedule));
+  }
+  assert.deepEqual(pricesAt(/** @type {any} */ ({ input: 1, schedule: [null, { from: '2027-01-01', input: 2 }] }), AFTER), { input: 2 });
+  const facts = catalogFacts({ id: 'x', name: 'X', version: '1.0.0', api: 1, provider: { abilities: { a: { kind: 'chat', models: [{ providerId: 'p', prices: { input: 0, schedule: [null, 'x'] } }] } } } });
+  assert.equal(facts.free, true);
+});
+
+test('deleting the schedule in the Prices box stores an empty list, which older builds accept; null on the user layer still reads as removed', async () => {
+  const { modelOf } = await import('../../src/core/llm/config.js');
+  const { rec, edit, stored, effective } = await priceBox();
+  await edit((b) => { delete b.schedule; });
+  assert.deepEqual((await stored()).user.prices, { schedule: [] });
+  assert.equal(/** @type {any} */ (await effective()).schedule, undefined, 'no schedule in effect, and none shown');
+  assert.equal(/** @type {any} */ (modelOf({ ...rec, user: { prices: { schedule: null } } }).prices).schedule, undefined);
+});
+
+test("a price the user typed wins over a schedule the user edited too: the user's entries lose the fields the user typed", async () => {
+  const { edit, effective } = await priceBox();
+  await edit((b) => { b.schedule[0].output = 9; });
+  await edit((b) => { b.input = 0.4; });
+  const prices = /** @type {any} */ (await effective());
+  assert.deepEqual(pricesAtOf(prices), { input: 0.4, output: 9, cacheRead: 0.15 }, 'input stays 0.4; output and cacheRead follow the edited schedule');
+});
+
+/** @param {any} prices */
+const pricesAtOf = (prices) => pricesAt(prices, AFTER);
+
+test('the box emptied and a price typed again shows no schedule of nothing', async () => {
+  const { edit, save, effective, box } = await priceBox();
+  await save('prices', null);
+  await edit((b) => { b.input = 1; });
+  assert.deepEqual(await box(), { input: 1 });
+  assert.equal(/** @type {any} */ (await effective()).schedule, undefined);
+});
+
+test('pricesProblem also flags a base name annai does not know and a bad tier', () => {
+  assert.match(String(pricesProblem({ inptu: 3 })), /inptu.*isn't a price/);
+  assert.equal(pricesProblem({ input: 1, tiers: [{ above: 200000, input: 2 }] }), null);
+  assert.match(String(pricesProblem({ tiers: 'big' })), /tiers.*list/);
+  assert.match(String(pricesProblem({ tiers: [{ above: 'x', input: 2 }] })), /tier.*above/);
+  assert.match(String(pricesProblem({ tiers: [{ above: 100, input: -5 }] })), /input is not a price/);
+  assert.match(String(pricesProblem({ schedule: [{ from: '2027-01-01', tiers: [{ above: 'x' }] }] })), /tier.*above/);
 });

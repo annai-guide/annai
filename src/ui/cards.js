@@ -36,6 +36,9 @@ const httpUrl = (url) => {
 /** The running plugin's type a card names, or null. @param {any} ctx @param {any} card */
 const typeOf = (ctx, card) => (typeof card?.type === 'string' ? (ctx?.registry?.entries('ui:card-type') ?? []).find((/** @type {any} */ e) => e.item?.type === card.type) ?? null : null);
 
+/** The name of a plugin's kind of card, as its plugin gave it, or '' for annai's own cards. @param {any} ctx @param {any} card */
+export const cardKind = (ctx, card) => String(typeOf(ctx, card)?.item.name ?? '');
+
 /** The label over a card: SHIORI, or SHIORI · <KIND> for a plugin's kind of card (spec §16.4). @param {any} ctx @param {any} card */
 export function cardWho(ctx, card) {
   const t = typeOf(ctx, card);

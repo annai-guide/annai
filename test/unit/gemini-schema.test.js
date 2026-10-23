@@ -307,25 +307,35 @@ const hostileCases = () => [
     { items: Array.from({ length: 7_000 }, (_, i) => ({ id: `r${i}`, meta: `{"n":${i}}` })) }, (b) => assert.deepEqual(b.items[6_999], { id: 'r6999', meta: { n: 6_999 } })],
 ];
 
+/**
+ * The CPU time this process has used, in ms. The budgets below count work done, not time passed: wall-clock time also counts the
+ * seconds a busy machine takes the process off its CPU, which is what made them flake under load. The bounds are loose on purpose:
+ * a walk that is quadratic in a schema of 24,000 keys or more takes seconds of CPU, far over any of them.
+ */
+const cpuMs = () => {
+  const u = process.cpuUsage();
+  return (u.user + u.system) / 1000;
+};
+
 /** A note as it is in JSON text. @param {string} s */
 const inJSON = (s) => JSON.stringify(s).slice(1, -1);
 
-test("every hostile schema of both reviews costs under 50 ms a call, there and back, and none grows the request: nothing is followed, and a schema too big or deep goes as it is", (t) => {
+test("every hostile schema of both reviews costs under 200 ms of CPU a call, there and back, and none grows the request: nothing is followed, and a schema too big or deep goes as it is", (t) => {
   for (const [name, schema, args, holds] of hostileCases()) {
     /** @type {number[]} */
     const ms = [];
     /** @template T @param {() => T} fn @returns {T} */
     const timed = (fn) => {
-      const started = performance.now();
+      const started = cpuMs();
       const out = fn();
-      ms.push(performance.now() - started);
+      ms.push(cpuMs() - started);
       return out;
     };
     const sent = timed(() => forGemini(schema));
     const back = timed(() => fromGemini(schema, args));
     timed(() => toGeminiArgs(schema, back));
     t.diagnostic(`${ms.map((x) => x.toFixed(1)).join(' + ')} ms: ${name}`);
-    assert.ok(Math.max(...ms) < 50, `${ms.map((x) => x.toFixed(1)).join(', ')} ms for ${name}`);
+    assert.ok(Math.max(...ms) < 200, `${ms.map((x) => x.toFixed(1)).join(', ')} ms for ${name}`);
     holds(back, args);
     // Never more than the input and each free-form object's note (with its "description" and "type"); a schema sent as
     // it is is the same object.
@@ -349,11 +359,11 @@ test('a schema over the budget or the depth is sent as it is, and its calls come
   assert.deepEqual(forGemini(kept).properties, { a: { type: 'string', description: OBJECT_TEXT }, b: { type: 'string', description: OBJECT_TEXT } });
   // Just within it, 24,000 free-form properties are each made text once: the most a call can cost, linear in the schema.
   const near = { type: 'object', properties: many(24_000, { type: 'object' }) };
-  const started = performance.now();
+  const started = cpuMs();
   const sent = forGemini(near);
-  const ms = performance.now() - started;
+  const ms = cpuMs() - started;
   t.diagnostic(`${ms.toFixed(1)} ms: forGemini of 24,000 free-form properties`);
-  assert.ok(ms < 200, `${ms.toFixed(1)} ms`);
+  assert.ok(ms < 800, `${ms.toFixed(1)} ms`);
   assert.deepEqual(sent.properties.k23999, { type: 'string', description: OBJECT_TEXT });
   assert.deepEqual(fromGemini(near, { k0: '{"x":1}', k23999: '[]' }), { k0: { x: 1 }, k23999: '[]' });
   // More than 100 levels deep: as it is; within it, translated all the way down and back.
@@ -368,7 +378,7 @@ test('a schema over the budget or the depth is sent as it is, and its calls come
   assert.deepEqual(nest(90, fromGemini(fine, value(90)), (v) => v.n).leaf, { a: 1 });
 });
 
-test("history: 200 past calls to a tool with a large schema cost the request under 100 ms, over the budget or within it: a schema is counted once, not once a call", (t) => {
+test("history: 200 past calls to a tool with a large schema cost the request under 400 ms of CPU, over the budget or within it: a schema is counted once, not once a call", (t) => {
   const MODEL = 'gemini-3.5-flash-lite';
   /** A conversation of 200 calls to `name`, each answered. @param {string} name */
   const history = (name) => Array.from({ length: 200 }, (_, i) => [
@@ -379,12 +389,12 @@ test("history: 200 past calls to a tool with a large schema cost the request und
   for (const [what, keys] of /** @type {const} */ ([['over the budget', 100_000], ['within the budget', 20_000]])) {
     const input = { type: 'object', properties: { ...many(keys, { type: 'string' }), k0: { type: 'object' }, k1: { type: 'string' } } };
     const messages = history('big');
-    const started = performance.now();
+    const started = cpuMs();
     const sent = toolSchema({ name: 'big', description: 'Big.', input });
     const steps = toInput(messages, { model: MODEL, tools: [{ name: 'big', input }] });
-    const ms = performance.now() - started;
+    const ms = cpuMs() - started;
     t.diagnostic(`${ms.toFixed(1)} ms: tool schema and 200 past calls, ${what} (${keys.toLocaleString('en')} keys)`);
-    assert.ok(ms < 100, `${ms.toFixed(1)} ms ${what}`);
+    assert.ok(ms < 400, `${ms.toFixed(1)} ms ${what}`);
     const calls = steps.filter((x) => x.type === 'function_call');
     assert.equal(calls.length, 200);
     // Over the budget, as it is; within it, the free-form k0 as JSON text.

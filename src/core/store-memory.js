@@ -104,7 +104,7 @@ function makeTx(d, mode, allowed) {
     async appendEvent(scope, ev) {
       use('events', true);
       const seq = (await t.lastSeq(scope)) + 1;
-      const rec = { ...structuredClone(ev), scope, seq };
+      const rec = { ...structuredClone(ev), scope, seq, at: Date.now() };
       d.events.set(ekey(scope, seq), rec);
       return structuredClone(rec);
     },

@@ -75,7 +75,9 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await filterTrace(page, { kind: 'Web' });
     await expect(page.locator('.trace li', { hasText: 'plugin:storage-forgejo · POST' }).first()).toBeVisible();
 
-    // This phone is wiped. The same place, set up again, brings everything back.
+    // This phone is wiped. The same place, set up again, brings everything back. What the place holds now:
+    const had = fj.commits(REPO).length;
+    const head = fj.commits(REPO)[0].sha;
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
@@ -110,11 +112,12 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
     // The restored phone builds on that backup: its next one goes on top, with no warning.
-    // How many it makes is not fixed: the import and opening a trip are each a change, and each may be backed up on its own.
-    // Whatever it makes goes on top of the one before, in a line with no merge.
-    await expect.poll(() => fj.commits(REPO).length, { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+    // How many it makes is not fixed (the import and opening a trip are each a change). The first goes on top of the head the phone restored from, and each after it on top of the one before.
+    await expect.poll(() => fj.commits(REPO).length, { timeout: 30_000 }).toBeGreaterThan(had);
     const log = fj.commits(REPO);
-    for (const [i, commit] of log.slice(0, -1).entries()) expect(commit.parents, `commit ${i}`).toEqual([log[i + 1].sha]);
+    for (const [i, commit] of log.slice(0, log.length - had).entries()) expect(commit.parents, `new commit ${i}`).toEqual([log[i + 1].sha]);
+    expect(log[log.length - had - 1].parents).toEqual([head]);
+    expect(log[log.length - had].sha).toBe(head);
   } finally {
     await fj.stop();
   }

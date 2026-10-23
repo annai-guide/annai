@@ -46,9 +46,9 @@ export function fakeSource(service) {
  * @param {() => number} now
  */
 export async function relayRig(now) {
+  const jwk = await newVapidJwk();
   const service = await startPushService({ now });
   const { worker, PushRelay } = makeRelay({ now, send: (url, init) => fetch(url, init) });
-  const jwk = await newVapidJwk();
   /** @type {any} */
   const env = { VAPID_KEY: jwk, ORIGINS: '', EXTRA_PUSH_ORIGINS: service.origin };
   env.RELAY = memoryNamespace(PushRelay, env, { now, timers: false });
@@ -80,7 +80,10 @@ export async function pushKit(o) {
   /** @type {any[]} */
   const notices = [];
   const mirror = new PushMirror({ store: k.store, ws: k.ws, live: k.live, source, fetch: tracedFetch(k.store, SYS_DEVICE, { tool: 'push relay' }, relayFetch), clock: k.clock, notice: (n) => notices.push(n), online: () => net.online });
-  await mirror.start();
+  await mirror.start().catch(async (e) => {
+    await service.stop();
+    throw e;
+  });
   const kit = {
     ...k, service, env, net, source, mirror, notices,
     key: async () => (await readVapidKey(env.VAPID_KEY)).publicKey,

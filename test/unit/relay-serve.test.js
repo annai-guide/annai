@@ -41,8 +41,12 @@ test('the Node runner: the same relay over HTTP, its key in a file only its owne
 });
 
 test('over HTTP, on real timers, a reminder reaches the push service at its time', async () => {
+  const jwk = await newVapidJwk();
   const service = await startPushService();
-  const r = await startRelay({ jwk: await newVapidJwk(), extraPushOrigins: [service.origin] });
+  const r = await startRelay({ jwk, extraPushOrigins: [service.origin] }).catch(async (e) => {
+    await service.stop();
+    throw e;
+  });
   try {
     const sub = await service.subscribe(r.key);
     const payload = await encryptPush(sub, utf8('Now.'), { pad: 3072 });
@@ -92,15 +96,18 @@ test('with a data file, the reminders waiting and their times survive a restart,
     const jwk = await newVapidJwk();
     const data = join(dir, 'state', 'relay.json');
     const a = await startRelay({ jwk, data, extraPushOrigins: [service.origin] });
-    const sub = await service.subscribe(a.key);
-    const send = async (/** @type {string} */ origin, /** @type {string} */ text, /** @type {number} */ sendAt) => fetch(`${origin}/v1/schedule`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${toB64u(crypto.getRandomValues(new Uint8Array(32)))}` },
-      body: JSON.stringify({ endpoint: sub.endpoint, key: a.key, sendAt, payload: toB64u(await encryptPush(sub, utf8(text), { pad: 3072 })) }),
-    });
-    assert.equal((await send(a.origin, 'Hello.', Date.now())).status, 201, 'a reminder due now confirms the subscription');
-    for (let i = 0; i < 50 && service.received.length < 1; i++) await new Promise((done) => setTimeout(done, 50));
-    assert.equal((await send(a.origin, 'After the restart.', Date.now() + 1500)).status, 201);
-    await a.close();
+    try {
+      const sub = await service.subscribe(a.key);
+      const send = async (/** @type {string} */ origin, /** @type {string} */ text, /** @type {number} */ sendAt) => fetch(`${origin}/v1/schedule`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${toB64u(crypto.getRandomValues(new Uint8Array(32)))}` },
+        body: JSON.stringify({ endpoint: sub.endpoint, key: a.key, sendAt, payload: toB64u(await encryptPush(sub, utf8(text), { pad: 3072 })) }),
+      });
+      assert.equal((await send(a.origin, 'Hello.', Date.now())).status, 201, 'a reminder due now confirms the subscription');
+      for (let i = 0; i < 50 && service.received.length < 1; i++) await new Promise((done) => setTimeout(done, 50));
+      assert.equal((await send(a.origin, 'After the restart.', Date.now() + 1500)).status, 201);
+    } finally {
+      await a.close();
+    }
     assert.equal((await stat(data)).mode & 0o777, 0o600);
     const b = await startRelay({ jwk, data, extraPushOrigins: [service.origin] });
     try {

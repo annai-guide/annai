@@ -132,7 +132,7 @@ const MANIFEST_SCHEMA = {
 const EVENT_SCHEMA = {
   type: 'object',
   required: ['seq', 'ts', 'type', 'actor'],
-  properties: { seq: { type: 'integer', minimum: 1 }, ts: TIME, type: { type: 'string', minLength: 1 }, actor: TEXT, refs: { type: 'array', items: TEXT } },
+  properties: { seq: { type: 'integer', minimum: 1 }, ts: TIME, at: TIME, type: { type: 'string', minLength: 1 }, actor: TEXT, refs: { type: 'array', items: TEXT } },
 };
 
 /**

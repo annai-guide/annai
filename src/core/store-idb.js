@@ -256,7 +256,7 @@ function makeTx(t) {
     }),
     appendEvent: async (scope, ev) => {
       const seq = (await tx.lastSeq(scope)) + 1;
-      const rec = { ...ev, scope, seq };
+      const rec = { ...ev, scope, seq, at: Date.now() };
       await req(os('events').add(rec));
       return rec;
     },
