@@ -4,6 +4,7 @@ import { pointsOf, segmentsOf, legsOf, thin, positionAt, fractionAt, fit, jumps 
 import { meters } from '../../src/core/live/geo.js';
 import { at, off, MONTEREY, BIXBY, NEPENTHE, HEARST, CAMBRIA } from './live-kit.js';
 import { road, MORNING } from './after-kit.js';
+import { cpuMs } from './cpu.js';
 
 const MIN = 60_000;
 
@@ -48,14 +49,14 @@ test('the drawn route keeps at most 1500 points, its ends, and its shape, quickl
   /** @type {any[]} */
   const wiggly = [];
   for (let i = 0; i < 50_000; i++) wiggly.push({ lat: 36 + i * 1e-5, lng: -121.5 + Math.sin(i / 50) * 0.01, at: i * 5000 });
-  const t0 = performance.now();
+  const t0 = cpuMs();
   const drawn = thin(segmentsOf(wiggly));
-  const ms = performance.now() - t0;
+  const ms = cpuMs() - t0;
   const n = drawn.reduce((s, x) => s + x.length, 0);
   assert.ok(n <= 1500 && n > 200, String(n));
   assert.deepEqual(drawn[0][0], wiggly[0]);
   assert.deepEqual(drawn.at(-1)?.at(-1), wiggly.at(-1));
-  assert.ok(ms < 3000, `${Math.round(ms)} ms`);
+  assert.ok(ms < 3000, `${Math.round(ms)} ms of CPU`); // 0.4 s here; a quadratic thinning of 50,000 points takes minutes
   assert.deepEqual(thin([[{ lat: 1, lng: 1, at: 0 }]]), [[{ lat: 1, lng: 1, at: 0 }]]);
 });
 

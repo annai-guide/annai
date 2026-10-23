@@ -5,6 +5,7 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { WRITE_DOWN } from '../../src/core/voice/voice.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { record } from '../../src/core/agent/log.js';
+import { useClock } from './clock.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const speakOnly = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }] });
@@ -16,7 +17,8 @@ async function tapAndSay(k, name) {
   await k.agent.idle();
 }
 
-test('after a turn that worked, what was heard is written down and its sound let go; later turns send the words (spec §10.3)', async () => {
+test('after a turn that worked, what was heard is written down and its sound let go; later turns send the words (spec §10.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Tacos are close.'), say('Still tacos.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
   await tapAndSay(k, 'where-eat');
   const [written] = await k.events(['heard.text']);
@@ -29,7 +31,8 @@ test('after a turn that worked, what was heard is written down and its sound let
   assert.deepEqual(k.requests[1].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: 'where should we eat' }]);
 });
 
-test('sound sent to a model that takes audio is written down by that model, after the turn (spec §10.3)', async () => {
+test('sound sent to a model that takes audio is written down by that model, after the turn (spec §10.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Tacos are close.'), { text: 'where should we eat' }]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
   assert.equal(k.requests[0].messages[0].parts[1].type, 'audio');
@@ -40,7 +43,8 @@ test('sound sent to a model that takes audio is written down by that model, afte
   assert.deepEqual(k.transcribed, []);
 });
 
-test('a turn that fails keeps what was heard; the next one still has the words, transcribed once (spec §10.3)', async () => {
+test('a turn that fails keeps what was heard; the next one still has the words, transcribed once (spec §10.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ error: 'bad-request', status: 400 }, say('Now I hear you.')]], { voice: { speechIn: ['m-hear'], hears: ['find a gas station'] } });
   await tapAndSay(k, 'gas-station');
   assert.equal(k.notices.at(-1)?.title, "Shiori can't reach her model");
@@ -54,7 +58,8 @@ test('a turn that fails keeps what was heard; the next one still has the words, 
   assert.equal(k.voice.memory.size, 0);
 });
 
-test('keep voice clips: each clip is kept with the conversation, named by its heard event; off by default (spec §10.2, §4.9)', async () => {
+test('keep voice clips: each clip is kept with the conversation, named by its heard event; off by default (spec §10.2, §4.9)', async (t) => {
+  useClock(t);
   const kept = await agentKit([[say('Noted.')]], { voice: { speechIn: ['m-hear'], keepClips: true } });
   await tapAndSay(kept, 'where-eat');
   const [heard] = await kept.events(['heard']);
@@ -73,7 +78,8 @@ test('keep voice clips: each clip is kept with the conversation, named by its he
   assert.ok(!types.some((t) => String(t).startsWith('audio/')), 'no sound is stored');
 });
 
-test('a kept clip is stored as the smallest format the device makes and plays, named by its heard event (§4.9); after a restart it is heard again from that file', async () => {
+test('a kept clip is stored as the smallest format the device makes and plays, named by its heard event (§4.9); after a restart it is heard again from that file', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Noted.'), say('Again.')]], { voice: { speechIn: ['m-hear'], keepClips: true, encoder: { makes: ['ogg', 'webm'] }, plays: ['ogg', 'webm', 'mp3', 'wav'] } });
   await tapAndSay(k, 'where-eat');
   const [heard] = await k.events(['heard']);
@@ -92,7 +98,8 @@ test('a kept clip is stored as the smallest format the device makes and plays, n
   assert.ok(k.platform.log.includes('decode'));
 });
 
-test('after a reload, the conversation has the same heard speech (spec §6.7)', async () => {
+test('after a reload, the conversation has the same heard speech (spec §6.7)', async (t) => {
+  useClock(t);
   const k = await agentKit([[speakOnly('Want tacos?'), say('Done.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'yes'] } });
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
@@ -103,7 +110,8 @@ test('after a reload, the conversation has the same heard speech (spec §6.7)', 
   assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages);
 });
 
-test("no usable entry: a tap says what to add; speak says it couldn't listen, without a card each time (spec §10.3)", async () => {
+test("no usable entry: a tap says what to add; speak says it couldn't listen, without a card each time (spec §10.3)", async (t) => {
+  useClock(t);
   const k = await agentKit([[speakOnly('Hello?'), speakOnly('Still there?'), { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: { speechIn: [] } });
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.notices.length === 1);
@@ -117,7 +125,8 @@ test("no usable entry: a tap says what to add; speak says it couldn't listen, wi
   assert.equal(k.platform.opens, 0);
 });
 
-test('a microphone that is refused: a card with this phone’s steps (spec §17 rule 3)', async () => {
+test('a microphone that is refused: a card with this phone’s steps (spec §17 rule 3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('x')]], { voice: { micFails: 'NotAllowedError' } });
   k.agent.tap();
   await until(() => k.notices.length === 1);
@@ -126,7 +135,8 @@ test('a microphone that is refused: a card with this phone’s steps (spec §17 
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
-test('phone dictation in the loop: its words need no transcription; when it fails, recording takes over (spec §10.3)', async () => {
+test('phone dictation in the loop: its words need no transcription; when it fails, recording takes over (spec §10.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('A gas station is 2 miles on.'), say('And a café.')]], { voice: { dictation: true, speechIn: ['dictation', 'm-hear'], hears: ['and a coffee'] } });
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
@@ -144,7 +154,8 @@ test('phone dictation in the loop: its words need no transcription; when it fail
   assert.match(JSON.stringify(k.requests[1].messages.at(-1)), /and a coffee/);
 });
 
-test('phone dictation that hears a noise and no words: the silence limit starts again, so speak hears nothing and a tap window closes (spec §7.1, §10.4)', async () => {
+test('phone dictation that hears a noise and no words: the silence limit starts again, so speak hears nothing and a tap window closes (spec §7.1, §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[speakOnly('Anything else?'), { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: { dictation: true, speechIn: ['dictation'] } });
   k.agent.send('Thanks');
   await until(() => k.agent.state.name === 'listening');
@@ -160,7 +171,8 @@ test('phone dictation that hears a noise and no words: the silence limit starts 
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('dictation ')).at(-1), 'dictation close');
 });
 
-test('a write-down that fails keeps the sound: nothing is written as not transcribed, and the next turn that works writes the words (spec §10.3)', async () => {
+test('a write-down that fails keeps the sound: nothing is written as not transcribed, and the next turn that works writes the words (spec §10.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Tacos are close.'), { error: 'bad-request', status: 400 }, say('Still tacos.'), { text: 'where should we eat' }]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
   assert.equal(k.requests[1].system, WRITE_DOWN);
@@ -173,7 +185,8 @@ test('a write-down that fails keeps the sound: nothing is written as not transcr
   assert.equal(k.voice.memory.size, 0);
 });
 
-test('a segment that three turns in a row could not write down is written as not transcribed, and its sound let go (spec §10.3)', async () => {
+test('a segment that three turns in a row could not write down is written as not transcribed, and its sound let go (spec §10.3)', async (t) => {
+  useClock(t);
   const fail = { error: 'bad-request', status: 400 };
   const k = await agentKit([[say('One.'), fail, say('Two.'), fail, say('Three.'), fail]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
@@ -186,7 +199,8 @@ test('a segment that three turns in a row could not write down is written as not
   assert.equal(k.voice.memory.size, 0);
 });
 
-test('housekeeping first writes down what was heard in the part it summarizes: the summary and the log have the words (spec §10.3, §6.5)', async () => {
+test('housekeeping first writes down what was heard in the part it summarizes: the summary and the log have the words (spec §10.3, §6.5)', async (t) => {
+  useClock(t);
   const fail = { error: 'bad-request', status: 400 };
   const k = await agentKit([[fail, fail]], { utility: [{ text: 'They looked for food.' }], voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
   await tapAndSay(k, 'where-eat'); // the turn fails: the words aren't written down yet
@@ -199,7 +213,8 @@ test('housekeeping first writes down what was heard in the part it summarizes: t
   assert.equal(k.voice.memory.size, 0);
 });
 
-test('housekeeping waits while what was heard can\'t be written down, unless the conversation would overflow: then it is written as not transcribed (spec §10.3)', async () => {
+test('housekeeping waits while what was heard can\'t be written down, unless the conversation would overflow: then it is written as not transcribed (spec §10.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ text: 'never reached' }]], { utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], failing: ['m-hear'] } });
   await tapAndSay(k, 'where-eat');
   for (let i = 0; i < 4; i++) {
@@ -215,7 +230,8 @@ test('housekeeping waits while what was heard can\'t be written down, unless the
   assert.equal(k.voice.memory.size, 0);
 });
 
-test('heard sound that is no longer in memory (annai restarted) is written as not transcribed after the next turn that works, so its bubble gets words (spec §10.3)', async () => {
+test('heard sound that is no longer in memory (annai restarted) is written as not transcribed after the next turn that works, so its bubble gets words (spec §10.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Hello again.')]], { voice: { speechIn: ['m-hear'] }, open: false });
   // Heard before a restart: the event is in the log, its sound went with the page.
   await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'h-gone', ms: 1200, source: 'mic' } });
@@ -228,7 +244,8 @@ test('heard sound that is no longer in memory (annai restarted) is written as no
 });
 
 // Phase 2 (Step S3): the stray flag is not the live path's alone.
-test('a short dictated line in a language the user does not speak is flagged in the Trace and read by the model with a note; a sentence, or a listed language, is not (Step S3)', async () => {
+test('a short dictated line in a language the user does not speak is flagged in the Trace and read by the model with a note; a sentence, or a listed language, is not (Step S3)', async (t) => {
+  useClock(t);
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await agentKit([[say('Sorry?'), say('A station is near.')]], { voice: { dictation: true, speechIn: ['dictation', 'm-hear'] } });
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
@@ -249,7 +266,8 @@ test('a short dictated line in a language the user does not speak is flagged in 
   assert.doesNotMatch(JSON.stringify(k.requests[1].messages.at(-1)), /misheard/);
 });
 
-test('words written down later (heard.text) are flagged too, and the model reads the note on later turns (Step S3)', async () => {
+test('words written down later (heard.text) are flagged too, and the model reads the note on later turns (Step S3)', async (t) => {
+  useClock(t);
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await agentKit([[say('Sorry?'), say('Still here.')]], { voice: { speechIn: ['m-hear'], hears: ['¿Qué?'] } });
   await updateAppSettings(k.ws, { languages: { spoken: ['en'] } });

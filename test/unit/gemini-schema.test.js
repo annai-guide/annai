@@ -10,6 +10,7 @@ import { runTool } from '../../src/core/agent/tools.js';
 import { ME } from '../../src/core/scopes.js';
 import { readFile } from 'node:fs/promises';
 import { loadGemini, spec, endpointOf, modelOf, KEY, tripFiles } from './gemini-kit.js';
+import { cpuMs } from './cpu.js';
 
 // Measured 2026-10-22 on the Interactions API (gemini-3.5-flash-lite, and gemini-3.5-flash for keys): an object with no
 // properties is filled only as {} (type: object, type: [string, object], anyOf alike), and an open one
@@ -307,15 +308,6 @@ const hostileCases = () => [
     { items: Array.from({ length: 7_000 }, (_, i) => ({ id: `r${i}`, meta: `{"n":${i}}` })) }, (b) => assert.deepEqual(b.items[6_999], { id: 'r6999', meta: { n: 6_999 } })],
 ];
 
-/**
- * The CPU time this process has used, in ms. The budgets below count work done, not time passed: wall-clock time also counts the
- * seconds a busy machine takes the process off its CPU, which is what made them flake under load. The bounds are loose on purpose:
- * a walk that is quadratic in a schema of 24,000 keys or more takes seconds of CPU, far over any of them.
- */
-const cpuMs = () => {
-  const u = process.cpuUsage();
-  return (u.user + u.system) / 1000;
-};
 
 /** A note as it is in JSON text. @param {string} s */
 const inJSON = (s) => JSON.stringify(s).slice(1, -1);

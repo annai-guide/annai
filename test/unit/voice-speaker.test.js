@@ -2,13 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Speaker, speechOutEntries, wordStart } from '../../src/core/voice/speaker.js';
 import { fakePlatform, fakeVoices } from './voice-fakes.js';
+import { useClock } from './clock.js';
 
 /** @param {ReturnType<typeof fakeVoices>} v @param {ReturnType<typeof fakePlatform>} p */
 const speaker = (v, p) => new Speaker({ entries: v.entries, synthesize: v.synthesize, bench: v.bench, platform: () => /** @type {any} */ (p), locale: 'en' });
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 const plays = (/** @type {string[]} */ log) => log.filter((l) => l.startsWith('play ') || l.startsWith('browser ')).map((l) => l.replace(/^\S+ /, ''));
 
-test('sentences play as they stream in, and the next is fetched while one plays (spec §10.1)', async () => {
+test('sentences play as they stream in, and the next is fetched while one plays (spec §10.1)', async (t) => {
+  useClock(t);
   const p = fakePlatform();
   const v = fakeVoices(['v1']);
   const u = speaker(v, p).begin();
@@ -26,7 +28,8 @@ test('sentences play as they stream in, and the next is fetched while one plays 
   assert.deepEqual(p.sessions, ['playback'], 'playback while she speaks: heard with the silent switch on (spec §10.1)');
 });
 
-test('the next clip is fetched while one plays: no gap waiting for it', async () => {
+test('the next clip is fetched while one plays: no gap waiting for it', async (t) => {
+  useClock(t);
   const p = fakePlatform({ playMs: 30 });
   const v = fakeVoices(['v1'], { fetchMs: 5 });
   const u = speaker(v, p).begin();
@@ -36,7 +39,8 @@ test('the next clip is fetched while one plays: no gap waiting for it', async ()
   await u.done;
 });
 
-test('a voice that fails partway is benched; the same sentence plays on the next voice, and so does the rest (spec §10.1)', async () => {
+test('a voice that fails partway is benched; the same sentence plays on the next voice, and so does the rest (spec §10.1)', async (t) => {
+  useClock(t);
   const p = fakePlatform();
   const v = fakeVoices(['v1', 'v2'], { failing: { v1: 'Second' } });
   const u = speaker(v, p).begin();
@@ -48,7 +52,8 @@ test('a voice that fails partway is benched; the same sentence plays on the next
   assert.deepEqual(done.voices, ['v1', 'v2']);
 });
 
-test('done names the voices that failed and why, for the Voice test to say before who spoke (the second emulator re-check, N39)', async () => {
+test('done names the voices that failed and why, for the Voice test to say before who spoke (the second emulator re-check, N39)', async (t) => {
+  useClock(t);
   const p = fakePlatform();
   const v = fakeVoices(['v1', 'v2'], { failing: { v1: true } });
   const u = speaker(v, p).begin();
@@ -63,7 +68,8 @@ test('done names the voices that failed and why, for the Voice test to say befor
   assert.deepEqual((await u2.done).failedVoices, []);
 });
 
-test('the browser voice speaks when it comes first, or when every API voice failed; a cut is kept by word', async () => {
+test('the browser voice speaks when it comes first, or when every API voice failed; a cut is kept by word', async (t) => {
+  useClock(t);
   const p = fakePlatform({ playMs: 40 });
   const v = fakeVoices(['v1'], { failing: { v1: true }, browser: true });
   const s = speaker(v, p);
@@ -80,7 +86,8 @@ test('the browser voice speaks when it comes first, or when every API voice fail
   assert.equal(s.speaking, false);
 });
 
-test('cut off while a clip is still downloading: done settles at once, nothing plays, the download stops', async () => {
+test('cut off while a clip is still downloading: done settles at once, nothing plays, the download stops', async (t) => {
+  useClock(t);
   const p = fakePlatform();
   const v = fakeVoices(['v1'], { fetchMs: 200 });
   const u = speaker(v, p).begin();
@@ -96,7 +103,8 @@ test('cut off while a clip is still downloading: done settles at once, nothing p
   assert.equal(done.heard, '');
 });
 
-test('cut off between sentences, while the rest is still being written: what was said is kept', async () => {
+test('cut off between sentences, while the rest is still being written: what was said is kept', async (t) => {
+  useClock(t);
   const p = fakePlatform();
   const v = fakeVoices(['v1']);
   const u = speaker(v, p).begin();
@@ -110,7 +118,8 @@ test('cut off between sentences, while the rest is still being written: what was
   assert.equal(done.heard, 'One.');
 });
 
-test('a cut in a clip is kept by the fraction played, back to a word', async () => {
+test('a cut in a clip is kept by the fraction played, back to a word', async (t) => {
+  useClock(t);
   const p = fakePlatform({ playMs: 100 });
   const v = fakeVoices(['v1']);
   const u = speaker(v, p).begin();
@@ -125,7 +134,8 @@ test('a cut in a clip is kept by the fraction played, back to a word', async () 
   assert.equal(wordStart('Bixby', 1), 5);
 });
 
-test('utterances play one after another; a stop cuts them all', async () => {
+test('utterances play one after another; a stop cuts them all', async (t) => {
+  useClock(t);
   const p = fakePlatform();
   const v = fakeVoices(['v1']);
   const s = speaker(v, p);
@@ -147,7 +157,8 @@ test('utterances play one after another; a stop cuts them all', async () => {
   assert.ok(!plays(p.log).includes('v1:Never said.'));
 });
 
-test('no voice works, or the page may not play sound yet: done says so, and a blocked page benches no voice', async () => {
+test('no voice works, or the page may not play sound yet: done says so, and a blocked page benches no voice', async (t) => {
+  useClock(t);
   const blank = speaker(fakeVoices([]), fakePlatform()).begin();
   blank.end('   ');
   assert.equal((await blank.done).failed, null, 'nothing to say is no failure');

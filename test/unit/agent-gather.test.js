@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { GATHER } from '../../src/core/agent/loop.js';
+import { useClock } from './clock.js';
 
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
@@ -22,7 +23,8 @@ test('the values: quiet 1.5 s, 3 s after a photo on its own, typing that lapses 
   assert.deepEqual(GATHER, { quiet: 1.5, photo: 3, typing: 5, most: 20 });
 });
 
-test('behind Koe, two typed lines close together reach Kokoro in one turn; Koe answers each at once', async () => {
+test('behind Koe, two typed lines close together reach Kokoro in one turn; Koe answers each at once', async (t) => {
+  useClock(t);
   const k = await halves();
   k.agent.send('Also,');
   await pause(50);
@@ -33,7 +35,8 @@ test('behind Koe, two typed lines close together reach Kokoro in one turn; Koe a
   assert.equal(k.sent['model-koe'].length, 2, 'Koe took each line as it came');
 });
 
-test('behind Koe, a photo on its own waits longer for the words that follow it', async () => {
+test('behind Koe, a photo on its own waits longer for the words that follow it', async (t) => {
+  useClock(t);
   const k = await halves();
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
@@ -44,7 +47,8 @@ test('behind Koe, a photo on its own waits longer for the words that follow it',
   assert.match(JSON.stringify(k.sent['model-0'][0].messages), /What is this\?/);
 });
 
-test("behind Koe, words sent while the camera's photo is still being made wait for it: Kokoro starts a photo's window after the photo, with both in one turn (the re-check: the photo came 5 s after the check mark)", async () => {
+test("behind Koe, words sent while the camera's photo is still being made wait for it: Kokoro starts a photo's window after the photo, with both in one turn (the re-check: the photo came 5 s after the check mark)", async (t) => {
+  useClock(t);
   const k = await halves();
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.photoComing(true); // the camera came back; the photo is being made
@@ -62,7 +66,8 @@ test("behind Koe, words sent while the camera's photo is still being made wait f
   assert.match(JSON.stringify(k.sent['model-0'][0].messages), /"type":"image"/);
 });
 
-test("two quick camera photos: the first one's photo being made lets go of the hold only for itself, not for the second (the fix pass)", async () => {
+test("two quick camera photos: the first one's photo being made lets go of the hold only for itself, not for the second (the fix pass)", async (t) => {
+  useClock(t);
   const k = await halves();
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.photoComing(true); // the first photo
@@ -79,7 +84,8 @@ test("two quick camera photos: the first one's photo being made lets go of the h
   assert.equal(k.sent['model-0'].length, 1, 'one turn for all');
 });
 
-test('a photo that never comes does not hold Kokoro past the 20 s cap, and the hook lets go of itself', async () => {
+test('a photo that never comes does not hold Kokoro past the 20 s cap, and the hook lets go of itself', async (t) => {
+  useClock(t);
   const k = await halves();
   k.agent.photoComing(true);
   const sent = Date.now();
@@ -89,7 +95,8 @@ test('a photo that never comes does not hold Kokoro past the 20 s cap, and the h
   await k.agent.idle();
 });
 
-test('behind Koe, a heard segment resets the quiet', async () => {
+test('behind Koe, a heard segment resets the quiet', async (t) => {
+  useClock(t);
   const k = await halves();
   k.agent.send('Where can we');
   await pause(100);
@@ -100,7 +107,8 @@ test('behind Koe, a heard segment resets the quiet', async () => {
   await k.agent.idle();
 });
 
-test('behind Koe, Kokoro waits while the user is typing, up to 20 s', async () => {
+test('behind Koe, Kokoro waits while the user is typing, up to 20 s', async (t) => {
+  useClock(t);
   const k = await halves();
   k.agent.typing(true);
   k.agent.send('Is Nepenthe open');
@@ -121,7 +129,8 @@ test('behind Koe, Kokoro waits while the user is typing, up to 20 s', async () =
   await capped.agent.idle();
 });
 
-test("behind Koe, Koe's question after the user has finished starts Kokoro at once: its quiet counts from the user's input", async () => {
+test("behind Koe, Koe's question after the user has finished starts Kokoro at once: its quiet counts from the user's input", async (t) => {
+  useClock(t);
   const k = await halves({ secondMs: 1000 }); // quiet 1.5 s
   k.agent.send('Is Nepenthe open tonight?');
   await k.agent.idle();
@@ -133,7 +142,8 @@ test("behind Koe, Koe's question after the user has finished starts Kokoro at on
   await k.agent.idle();
 });
 
-test('one Shiori: no fixed wait, but a turn of the user\'s holds while they type, up to 20 s', async () => {
+test('one Shiori: no fixed wait, but a turn of the user\'s holds while they type, up to 20 s', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Hi.')]], { agent: { secondMs: 1000 } });
   const sent = Date.now();
   k.agent.send('Hello');
@@ -162,7 +172,8 @@ test('one Shiori: no fixed wait, but a turn of the user\'s holds while they type
   await capped.agent.idle();
 });
 
-test("the sign's Stop while Kokoro is still gathering: its turn never starts", async () => {
+test("the sign's Stop while Kokoro is still gathering: its turn never starts", async (t) => {
+  useClock(t);
   const k = await halves();
   k.agent.typing(true);
   k.agent.send('Plan our afternoon');
@@ -173,7 +184,8 @@ test("the sign's Stop while Kokoro is still gathering: its turn never starts", a
   assert.equal(k.sent['model-0'], undefined);
 });
 
-test('opening another conversation while a turn gathers does not wait for the gather (review A2)', async () => {
+test('opening another conversation while a turn gathers does not wait for the gather (review A2)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Hi.')]], { agent: { secondMs: 100 } });
   const other = await createTrip(k.ws, { title: 'Other' });
   k.agent.typing(true);
@@ -186,7 +198,8 @@ test('opening another conversation while a turn gathers does not wait for the ga
   await k.agent.idle();
 });
 
-test('the cap counts from the first wake: a wake that waited out a long turn starts at once after it, typing or not (review a5)', async () => {
+test('the cap counts from the first wake: a wake that waited out a long turn starts at once after it, typing or not (review a5)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ delayMs: 2500, ...say('First.') }, say('Second.')]], { agent: { secondMs: 100 } });
   k.agent.send('One');
   await until(() => k.requests.length === 1);
@@ -199,7 +212,8 @@ test('the cap counts from the first wake: a wake that waited out a long turn sta
   await k.agent.idle();
 });
 
-test('one Shiori: a tap while a turn of the user\'s is gathering stops it, as Stop does for Kokoro; what they sent is kept, not taken up later (review a3)', async () => {
+test('one Shiori: a tap while a turn of the user\'s is gathering stops it, as Stop does for Kokoro; what they sent is kept, not taken up later (review a3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Hi.')]], { agent: { secondMs: 100 } });
   k.agent.typing(true);
   k.agent.send('Hello');
@@ -215,7 +229,8 @@ test('one Shiori: a tap while a turn of the user\'s is gathering stops it, as St
   assert.equal(k.requests.length, 0, 'not taken up when the conversation opens again');
 });
 
-test("a typing box left holding text stops holding Kokoro after 5 s without a keystroke (review A3, the reviewer's probe B)", async () => {
+test("a typing box left holding text stops holding Kokoro after 5 s without a keystroke (review A3, the reviewer's probe B)", async (t) => {
+  useClock(t);
   const k = await halves();
   k.agent.send('Is Nepenthe open tonight?');
   await k.agent.idle();
@@ -228,7 +243,8 @@ test("a typing box left holding text stops holding Kokoro after 5 s without a ke
   await k.agent.idle();
 });
 
-test("behind Koe, what doesn't come from the user (a reminder, a trigger, a review) isn't held while they type (review A3)", async () => {
+test("behind Koe, what doesn't come from the user (a reminder, a trigger, a review) isn't held while they type (review A3)", async (t) => {
+  useClock(t);
   const k = await halves();
   k.agent.typing(true);
   const fired = Date.now();
@@ -239,7 +255,8 @@ test("behind Koe, what doesn't come from the user (a reminder, a trigger, a revi
   await k.agent.idle();
 });
 
-test('the page going away (hush) ends the typing too: Kokoro goes on once the quiet has passed (review A3)', async () => {
+test('the page going away (hush) ends the typing too: Kokoro goes on once the quiet has passed (review A3)', async (t) => {
+  useClock(t);
   const k = await halves({ secondMs: 1000 });
   k.agent.typing(true);
   k.agent.send('Is Nepenthe open');
@@ -251,7 +268,8 @@ test('the page going away (hush) ends the typing too: Kokoro goes on once the qu
   await k.agent.idle();
 });
 
-test("Koe answers at once, typing or not: only Kokoro gathers; the sign shows while it does (the full e2e run)", async () => {
+test("Koe answers at once, typing or not: only Kokoro gathers; the sign shows while it does (the full e2e run)", async (t) => {
+  useClock(t);
   const k = await halves();
   /** @type {any[]} */
   const signs = [];
