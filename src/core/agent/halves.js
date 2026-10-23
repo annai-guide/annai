@@ -650,6 +650,25 @@ export class Halves {
     else this.talking.interrupt();
   }
 
+  /** "Summarize now": Kokoro's housekeeping, now (§6.5). */
+  summarizeNow() {
+    return this.kokoro.summarizeNow();
+  }
+
+  /**
+   * "Start fresh": both halves read the conversation again from this point with none of the earlier lines, and a live session closes
+   * with its handle forgotten, so the next one opens fresh. Her turn, if one runs, is stopped.
+   */
+  async startFresh() {
+    this.live.close('fresh', { forget: true });
+    this.#retell = [];
+    if (this.koe.busy) {
+      this.koe.interrupt();
+      await this.koe.idle();
+    }
+    return this.kokoro.startFresh();
+  }
+
   /**
    * The page went (hidden, or left), or everything is being erased: a live session closes now, its microphone with it.
    * Erase forgets its handle too. @param {'away' | 'erase'} why

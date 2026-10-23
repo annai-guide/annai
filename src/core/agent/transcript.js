@@ -100,7 +100,8 @@ export class Transcript {
       this.compaction = e.seq;
       this.from = e.seq;
       // Koe starts again with its window; Kokoro has the summary.
-      if (!koe) this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
+      if (!koe && d.mode === 'fresh') this.#add('user', [{ type: 'text', text: '[Started fresh: at the user\'s request, the conversation before this point is not in your context. It is all still in the log, and recall brings back the exact words]' }]);
+      else if (!koe) this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);

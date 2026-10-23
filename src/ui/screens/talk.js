@@ -7,6 +7,7 @@ import { storedTexts, blobBytes } from '../../core/agent/log.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
+import { ask } from '../ask.js';
 import { ME } from '../../core/scopes.js';
 
 const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves'];
@@ -179,6 +180,8 @@ export async function renderTalk(ctx) {
       return others.length ? h('li', { class: 'system-line', text: `Shiori woke: ${why.length > 160 ? `${why.slice(0, 160)}…` : why}` }) : null;
     }
     if (e.type === 'paused') return h('li', { class: 'system-line', text: String(d.text ?? '') });
+    // "Start fresh" leaves a divider: everything above stays to read, search and recall; she no longer carries it in mind.
+    if (e.type === 'compaction' && d.mode === 'fresh') return h('li', { class: 'fresh-divider', role: 'separator', text: 'Started fresh' });
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
     // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it).
     if (e.type === 'error' && (d.quiet || d.aside)) return null;
@@ -247,6 +250,7 @@ export async function renderTalk(ctx) {
   showCost();
   const screen = h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Conversation' }),
+    tidyMenu(ctx),
     h('p', { class: 'sub', text: agent.trip ? title : 'No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.' }),
     cost,
     list.childElementCount ? null : empty,
@@ -265,6 +269,70 @@ export async function renderTalk(ctx) {
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;
+}
+
+/**
+ * The Conversation screen's menu (the user, 2026-10-23: "some way to let the user compact or clear the transcript / session manually?"):
+ * Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
+ * Neither deletes a line: the earlier ones stay in the conversation, searchable and recallable (spec §6.5, §16.2).
+ * @param {any} ctx
+ */
+function tidyMenu(ctx) {
+  const agent = ctx.agent;
+  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-haspopup': 'true', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu' }, 'Tidy up');
+  const menu = h('div', { id: 'tidy-menu', class: 'tidy-menu', role: 'group', 'aria-label': 'Tidy up the conversation', hidden: true });
+  const close = () => {
+    menu.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+  toggle.addEventListener('click', () => {
+    menu.hidden = !menu.hidden;
+    toggle.setAttribute('aria-expanded', String(!menu.hidden));
+  });
+  const summarize = h('button', {
+    class: 'btn', type: 'button',
+    onclick: async () => {
+      close();
+      ctx.notices.toast('Summarizing…');
+      const r = await agent.summarizeNow();
+      ctx.notices.toast({ done: 'Earlier conversation summarized. The lines stay here, and she can recall them.', nothing: 'There is not enough yet to summarize.', busy: 'Shiori is working. Try again in a moment.', failed: "She couldn't summarize it. A card says why." }[/** @type {'done' | 'nothing' | 'busy' | 'failed'} */ (r)]);
+      if (r === 'done') ctx.render();
+    },
+  }, 'Summarize now');
+  const fresh = h('button', {
+    class: 'btn', type: 'button',
+    onclick: async () => {
+      close();
+      const yes = await ask({
+        title: 'Start fresh?',
+        body: "Shiori will start a new context from here, and won't have the earlier lines in mind. They all stay in the conversation, to read, search and have her recall: nothing is deleted. A live voice session restarts too.",
+        yes: 'Start fresh',
+      });
+      if (!yes) return;
+      const started = await agent.startFresh();
+      ctx.notices.toast(started ? 'Started fresh.' : 'There is nothing to start fresh from yet.');
+      if (started) ctx.render();
+    },
+  }, 'Start fresh');
+  // A tap elsewhere closes it.
+  const outside = (/** @type {Event} */ e) => { if (!menu.hidden && !menu.contains(/** @type {Node} */ (e.target)) && e.target !== toggle) close(); };
+  document.addEventListener('pointerdown', outside, true);
+  // Escape closes it wherever the focus is (Safari doesn't focus a button on a tap).
+  const escape = (/** @type {KeyboardEvent} */ e) => {
+    if (e.key !== 'Escape' || menu.hidden) return;
+    close();
+    toggle.focus();
+  };
+  document.addEventListener('keydown', escape);
+  const el = h('div', { class: 'tidy' }, toggle, menu);
+  menu.append(
+    h('p', { class: 'sub', text: 'Summarize now: housekeeping, now. The earlier lines stay readable and recallable.' }), summarize,
+    h('p', { class: 'sub', text: 'Start fresh: a new context from this point. Earlier lines stay, with a divider.' }), fresh);
+  whenGone(el, () => {
+    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('keydown', escape);
+  });
+  return el;
 }
 
 /**

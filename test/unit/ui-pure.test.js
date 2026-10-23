@@ -137,6 +137,7 @@ test("the trace's one-line summaries say what Shiori did, sent and read", () => 
   assert.equal(traceSummary(e('tool.result', { name: 'fetch', ok: true, ms: 120, content: 'Source: https://x.test/ (read directly)' })), 'fetch · ok · 120 ms · Source: https://x.test/ (read directly)');
   assert.equal(traceSummary(e('net.request', { kind: 'web', tool: 'fetch', method: 'GET', url: 'https://x.test/', status: 200, ms: 90 })), 'fetch · GET https://x.test/ · 200 · 90 ms');
   assert.equal(traceSummary(e('compaction', { from: 1, to: 80, mode: 'warm' })), 'events 1–80 summarized (warm)');
+  assert.equal(traceSummary(e('compaction', { from: 1, to: 80, mode: 'fresh' })), 'started fresh after event 80');
   assert.equal(traceSummary(e('decide', { result: { stay: 0.2, go: 0.8 }, by: 'decide' })), 'go (80%) · by decide');
   assert.equal(traceSummary(e('error', { kind: 'budget', message: 'Steps used up.' })), 'budget: Steps used up.');
 });
