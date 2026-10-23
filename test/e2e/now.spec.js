@@ -20,21 +20,21 @@ test('Now: where you are, the sun, what is next and the latest card; live mode f
   await expect(page.locator('main.view > *')).toBeVisible();
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Now' }).click();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
-  await expect(page.locator('.now-place')).toHaveText("You're off the road, so annai isn't following where you are.");
+  await expect(page.locator('.now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
   const next = page.getByRole('region', { name: 'Next' });
   await expect(next.locator('.plan-row')).toHaveCount(2);
   await expect(next.locator('.plan-row').first()).toContainText('Bixby Bridge photo stop');
   await expect(page.locator('.now .chips')).toContainText(/Sunrise|Golden|Sunset|Dusk/); // worked out at the next stop
   await expect(page.getByRole('region', { name: 'Latest' })).toContainText('Reminder: Leave soon: Lunch at Nepenthe.');
   await page.locator('.live-chip').click();
-  await page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Start on the road' }).click();
+  await page.getByRole('group', { name: 'GPS' }).getByRole('button', { name: 'Turn GPS on' }).click();
   await expect(page.locator('.now-place')).toHaveText('At Bixby Creek Bridge');
-  await expect(page.locator('.live-chip')).toHaveText(/^On the road\b/);
-  await expect(page.locator('.now .chips')).toContainText(/^On the road/);
+  await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
+  await expect(page.locator('.now .chips')).toContainText(/^GPS on/);
   await page.locator('.live-chip').click();
-  await expect(page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Stop on the road' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('group', { name: 'GPS' }).getByRole('button', { name: 'Turn GPS off' })).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('group', { name: 'On the road' })).toBeHidden();
+  await expect(page.getByRole('group', { name: 'GPS' })).toBeHidden();
 });
 
 test('an empty plan: Now and Driving say nothing more is planned, with live mode on and the sun where you are, and nothing goes wrong', async ({ page, context }) => {
@@ -46,8 +46,8 @@ test('an empty plan: Now and Driving say nothing more is planned, with live mode
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Next' })).toContainText('Nothing more is planned.');
   await page.locator('.live-chip').click();
-  await page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Start on the road' }).click();
-  await expect(page.locator('.now-place')).not.toHaveText(/off the road/);
+  await page.getByRole('group', { name: 'GPS' }).getByRole('button', { name: 'Turn GPS on' }).click();
+  await expect(page.locator('.now-place')).not.toHaveText(/GPS is off/);
   await expect(page.locator('.now .chips')).toContainText(/Sunrise|Golden|Sunset|Dusk/); // where you are: there is no next stop
   await page.goto('/#/drive');
   await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();

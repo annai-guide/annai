@@ -41,7 +41,7 @@ Request-driven: the user interacts, the agent runs its loop.
    they already have; the agent extracts the information and keeps it on
    record.
 
-## During the trip: On the road (live mode)
+## During the trip: GPS on (live mode)
 
 While the user keeps the app open, a mode loops automatically. The agent is
 woken by triggers and then analyses the current situation and responds.

@@ -822,9 +822,9 @@ While Koe · Realtime is in use (§9.6: chosen, voice on, and one of its models 
 
 ## 11. Triggers and live mode
 
-### 11.1 Live mode, called On the road
+### 11.1 Live mode, called GPS on and off
 
-A switch the user sees as **On the road** (the user, 2026-10-22: Gemini's "Live" is realtime voice, so the GPS-following mode took another name). Its chip reads "On the road" while it's on, with what the user is doing ("On the road · moving fast"), "Off the road" while it's off; its menu says "Start on the road" and "Stop on the road". Internal ids and event types (`live`, `setLive`, `state` entries with `live: on|off`) keep the name live. While it's on and annai is on screen:
+A switch the user sees as **GPS** (the user, 2026-10-22: Gemini's "Live" is realtime voice, so the GPS-following mode took another name; and on 2026-10-23, after "On the road" and "Off the road": "sorry let's use GPS on and off. simple and easy for everyone to understand."). Its chip reads "GPS on" while it's on, with what the user is doing ("GPS on · moving fast"), "GPS off" while it's off; its menu says "Turn GPS on" and "Turn GPS off". Every word the user sees, and every word Shiori is told (her instructions, the watch tool's description), says GPS on or off. Internal ids and event types (`live`, `setLive`, `state` entries with `live: on|off`) keep the name live. While it's on and annai is on screen:
 - GPS tracking runs.
 - Triggers are evaluated.
 - The screen wake lock is the user's choice per situation (on the car charger, yes; walking, probably not).
@@ -891,7 +891,7 @@ When the app becomes visible:
 ### 11.6 Push relay (closed app)
 
 - **Scope.** Only time watches are mirrored, and only when notifications are enabled. Location triggers never leave the phone.
-- **Every trip's reminders wait.** Opening another trip, or none, calls nothing off: a trip's plan reminders stay at the relay as they were while On the road follows another trip's plan. Only a cancelled reminder, or a removed or archived trip's, is deleted at the relay.
+- **Every trip's reminders wait.** Opening another trip, or none, calls nothing off: a trip's plan reminders stay at the relay as they were while GPS is on and follows another trip's plan. Only a cancelled reminder, or a removed or archived trip's, is deleted at the relay.
 - **Encryption.** The page encrypts each notification itself with the push subscription's keys (RFC 8291, `aes128gcm`, using WebCrypto's ECDH, HKDF and AES-GCM). The relay never sees the content.
 - **The relay** holds the VAPID keypair and does three things:
   - stores `{push endpoint, ciphertext, sendAt, id, cancel token}`

@@ -133,7 +133,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 
 ### A10. Live mode
 
-- [ ] **m5 #1**: Live chip → on: Android asks for location once (allow "While using the app"); the chip says "Live · finding you", then "Live · stopped". How: `adb emu geo fix`; screen. Then C.
+- [ ] **m5 #1**: GPS chip → on: Android asks for location once (allow "While using the app"); the chip says "GPS on · finding you", then "GPS on · stopped". How: `adb emu geo fix`; screen. Then C.
 - [ ] **m5 #2**: Shiori is woken once ("The user turned live mode on"); Trace → Tools: watch_set. How: Trace.
 - [ ] **m5 #3**: Now shows "At …" or "Near …" a plan stop, the sun chips, what's next and the latest card. How: geo fix at a stop; screen.
 - [ ] **m5 #4**: Close annai fully and open it again: live mode is still on; nothing is asked again. How: `am force-stop`; screen. Then C.
@@ -173,7 +173,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 These use the Big Sur sample now. After Nov 29, Claude runs them again with the real Thanksgiving trip, restored onto the emulator from the GitHub backup (m9).
 
 - [ ] **m7 #1**: Settings → Developer → Simulate a trip → Big Sur sample at 600×: the chip says "Simulation · …"; Now and Driving follow the day (Now hands over to Driving when the drive starts); Shiori wakes (Trace → Live). How: screen; Trace.
-- [ ] **m7 #2**: Pause and Resume from the chip; change the speed; Stop: the chip says "Live off", and live mode is as it was. How: screen.
+- [ ] **m7 #2**: Pause and Resume from the chip; change the speed; Stop: the chip says "GPS off", and live mode is as it was. How: screen.
 - [ ] **m7 #3**: As fast as it can go: it ends in about a minute; Replay and Recap from the screen; remove that trip. How: screen; timing.
 - [ ] **m7 #4**: A real reminder ("Friday at 8 to pack the camera batteries") doesn't fire during a fast simulation and is still there after (nothing new in Trace → Live); it fires on Friday at 8. How: Trace; Claude checks on Friday.
 - [ ] **m7 #5**: Reload in the middle of a simulation: annai opens the trip that was open before; with live mode on, that trip's Trace → Location gets the new points and the simulation's trip gets none. How: geo fix; reload; point counts in storage.
@@ -367,7 +367,7 @@ One sitting, in this order. Keep the Mac open with Safari → Develop → your i
 ### C9. Live mode
 
 - [ ] m5 (setup): A test trip with three stops near home: one fixed, two flexible, with places.
-- [ ] m5 #1, #4 (counted in A): Live chip → on: the iPhone asks for location once (allow While Using); "Live · finding you", then "Live · stopped"; close fully and reopen: still on, nothing asked again.
+- [ ] m5 #1, #4 (counted in A): GPS chip → on: the iPhone asks for location once (allow While Using); "GPS on · finding you", then "GPS on · stopped"; close fully and reopen: still on, nothing asked again.
 - [ ] m5 #5, #7 (counted in A): Refuse location: the card's iPhone steps. Try it in a Safari tab (aA → Website Settings → Location) and in the Home Screen app (Location Services → Safari Websites, and Safari's own Location setting): note whether each path leads to the setting that works, and what it's called on your iOS version. Allow again, live off and on: the GPS works.
 - [ ] **m5 #25**: Download the offline pack: the panel says Safari doesn't tell annai when it's on Wi-Fi; after a plan change it offers "Update (about … KB)".
 - [ ] m5 #19, #20, #21 (counted in A): Airplane mode, voice on, a reminder in 2 minutes with annai open: the iPhone's own voice says it, and a card shows it; back online, Shiori hears it once.
@@ -450,8 +450,8 @@ Before you leave:
 - [ ] m5 #28 (setup): Note each phone's battery level.
 - [ ] m5 #8–#13 (setup): Claude has rehearsed this drive on the emulator (end of A10).
 
-On the road:
-- [ ] **m5 #8**: Drive off: within a minute the chip says "Live · moving fast", voice Auto turns on ("Voice on · moving"), and Now hands over to Driving.
+GPS on:
+- [ ] **m5 #8**: Drive off: within a minute the chip says "GPS on · moving fast", voice Auto turns on ("Voice on · moving"), and Now hands over to Driving.
 - [ ] **m5 #9**: Driving shows You, the next stops with distances and minutes, Directions in Apple or Google Maps, and the quick-ask buttons; each button gets an answer, aloud (a passenger taps, or wait until parked).
 - [ ] **m5 #10**: A moved watch fires every 10–20 km, and she says something worth hearing, or nothing.
 - [ ] **m5 #11**: At a plan stop, after about two minutes stopped, she knows you arrived.

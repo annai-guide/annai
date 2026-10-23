@@ -130,7 +130,7 @@ test('a trigger wake the hourly limit drops still reminds; quiet hours hold Shio
   await q.live.setLive(true);
   await q.settle();
   assert.equal(q.requests.length, 1);
-  assert.match(q.requests[0].tail, /woke for: The user started On the road/);
+  assert.match(q.requests[0].tail, /woke for: The user turned GPS on/);
 });
 
 test('the now block says where the user is and what they are doing (spec §6.3)', async () => {
@@ -174,7 +174,7 @@ test('Shiori sets, lists and cancels watches with her Time tools (spec §7.2)', 
   k.agent.send('Tell me about the road as we go.');
   await k.settle();
   const results = await k.events(['tool.result']);
-  assert.match(results[0].data.content, /^Set w-\S+: after 15 km travelled, every time\. On the road is off, so it waits until the user starts it\. Now: /);
+  assert.match(results[0].data.content, /^Set w-\S+: after 15 km travelled, every time\. GPS is off, so it waits until the user turns it on\. Now: /);
   assert.match(results[1].data.content, /^id\towner\twhen\trepeat\treminder\texpires\tlast_fired\n/);
   assert.match(results[1].data.content, /\tshiori\tafter 15 km travelled\tyes\tPoint Sur is ahead\.\t/);
   assert.match(results[1].data.content, /plan:nepenthe:leave\tsystem\t/);
@@ -186,8 +186,8 @@ test('Shiori sets, lists and cancels watches with her Time tools (spec §7.2)', 
   const set = k.requests[0].tools.find((/** @type {any} */ t) => t.name === 'watch_set');
   assert.deepEqual(set.input.properties.when.properties.type.enum, ['time', 'every', 'enter', 'leave', 'dwell', 'arrived', 'moved', 'activity']);
   assert.match(set.description, /fallback \(required\)/);
-  assert.match(set.description, /need On the road \(GPS\)/);
-  assert.doesNotMatch(set.description, /live mode/i, 'the mode is called On the road wherever Shiori is told');
+  assert.match(set.description, /need GPS on/);
+  assert.doesNotMatch(set.description, /live mode/i, 'the mode is called GPS wherever Shiori is told');
   assert.ok(k.requests[0].tools.some((/** @type {any} */ t) => t.name === 'watch_list') && k.requests[0].tools.some((/** @type {any} */ t) => t.name === 'watch_cancel'));
 });
 
