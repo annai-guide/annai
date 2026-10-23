@@ -190,8 +190,16 @@ export function startShell(root, core) {
     return y;
   };
 
+  /** @type {Promise<unknown>} the newest draw: one it supersedes finishes only when that is on screen, so a caller that awaits a draw sees the screen as drawn */
+  let newest = Promise.resolve();
   /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
-  async function render(o = {}) {
+  function render(o = {}) {
+    const drawn = draw(o);
+    newest = drawn;
+    return drawn;
+  }
+  /** @param {{ moved?: boolean }} o */
+  async function draw(o) {
     const my = ++seq;
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
@@ -219,7 +227,7 @@ export function startShell(root, core) {
     try {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once (minors 15).
       const node = await screen(Object.create(ctx, { seq: { value: my } }), route);
-      if (my !== seq) return;
+      if (my !== seq) return newest;
       main.replaceChildren(node);
       if (pending !== null) {
         const want = pending;
@@ -230,7 +238,7 @@ export function startShell(root, core) {
         if (want && route.name !== 'talk') follow(my, want);
       }
     } catch (e) {
-      if (my !== seq) return;
+      if (my !== seq) return newest;
       main.replaceChildren(h('div', { class: 'screen' },
         h('h1', { class: 'title', text: "This screen couldn't open" }),
         h('p', { text: String(/** @type {any} */ (e)?.message ?? e) }),
