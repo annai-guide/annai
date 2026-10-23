@@ -35,7 +35,10 @@ const keyboardIcon = () => icon('M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1
 export function createDock(ctx) {
   const avatar = dockAvatar(ctx);
   const label = h('span', { class: 'talk-label', text: ctx.agent.state.label });
-  const input = h('textarea', { id: 'dock-text', rows: 2, 'aria-label': 'Message to Shiori', enterkeyhint: 'send' });
+  // A smart text box (the user, 2026-10-23): there only while it is needed. The keyboard button opens it and, tapped again, closes it;
+  // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. A single line, so the keyboard's own key sends.
+  const input = h('input', { id: 'dock-text', type: 'text', 'aria-label': 'Message to Shiori', enterkeyhint: 'send', autocomplete: 'off', autocapitalize: 'sentences' });
+  const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': 'Send', title: 'Send' }, icon('M12 19V6M6.5 11.5L12 6l5.5 5.5'));
   const sheet = h('form', {
     class: 'type-sheet', hidden: true,
     onsubmit: (/** @type {Event} */ e) => {
@@ -43,29 +46,36 @@ export function createDock(ctx) {
       const text = input.value.trim();
       if (!text) return;
       input.value = '';
-      ctx.agent.typing?.(false);
+      closeTyping();
       ctx.agent.send(text);
       if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
     },
-  },
-  input,
-  h('div', { class: 'acts' },
-    h('button', { class: 'btn pri', type: 'submit' }, 'Send'),
-    h('button', { class: 'btn ghost', type: 'button', onclick: () => { sheet.hidden = true; ctx.agent.typing?.(false); } }, 'Close')));
+  }, h('div', { class: 'type-box' }, input, sendArrow));
+  const typeButton = h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', 'aria-expanded': 'false', title: 'Type', onclick: () => (sheet.hidden ? openTyping() : closeTyping()) }, keyboardIcon());
+  /** A tap or press elsewhere on the page: an empty box closes; one with a draft stays. @param {Event} e */
+  const elsewhere = (e) => {
+    const t = /** @type {Node} */ (e.target);
+    if (!input.value.trim() && !sheet.contains(t) && !typeButton.contains(t)) closeTyping();
+  };
+  const closeTyping = () => {
+    sheet.hidden = true;
+    typeButton.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', elsewhere, true);
+    ctx.agent.typing?.(false);
+  };
   // While the box holds text, a turn of the user's waits for them (spec §6.1, item 16).
   input.addEventListener('input', () => ctx.agent.typing?.(Boolean(input.value.trim())));
-  input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-      e.preventDefault();
-      sheet.requestSubmit();
-    } else if (e.key === 'Escape') {
-      sheet.hidden = true;
-      ctx.agent.typing?.(false);
-    }
+  sheet.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
+    if (e.key !== 'Escape') return;
+    closeTyping();
+    typeButton.focus();
   });
   const openTyping = () => {
     sheet.hidden = false;
+    typeButton.setAttribute('aria-expanded', 'true');
     input.focus();
+    document.addEventListener('pointerdown', elsewhere, true);
+    ctx.agent.typing?.(Boolean(input.value.trim())); // a draft kept from before is typed text again
   };
   const camera = h('input', { id: 'dock-camera', type: 'file', accept: 'image/*', capture: 'environment', class: 'visually-hidden' });
   camera.addEventListener('change', async () => {
@@ -153,7 +163,7 @@ export function createDock(ctx) {
       h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, cameraIcon()), camera,
       talk,
       h('span', { class: 'dock-end' },
-        h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, keyboardIcon()),
+        typeButton,
         pluginActions)),
     h('div', { class: 'voice-row' }, chip?.el, live?.el, halves, pluginChips));
   const refreshSlots = () => {
@@ -182,6 +192,7 @@ export function createDock(ctx) {
     el, avatar, refreshSlots,
     dispose: () => {
       for (const off of offs.splice(0)) off?.();
+      document.removeEventListener('pointerdown', elsewhere, true);
       ctx.agent.typing?.(false);
     },
     /** @param {boolean} on */

@@ -109,6 +109,12 @@ test('what she says aloud is shown: its words in the conversation, marked "said 
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();
     await expect(said.getByText('said aloud')).toBeVisible();
     await expect(said.getByRole('button', { name: 'Show what she said' })).toHaveCount(0);
+    // Quieter than a line she wrote or the user's (the user, 2026-10-23: the bubble above her is where they are read live): smaller and muted.
+    const look = (/** @type {import('@playwright/test').Locator} */ l) => l.evaluate((el) => { const s = getComputedStyle(el); return { size: Number.parseFloat(s.fontSize), color: s.color }; });
+    const quiet = await look(said.locator('p'));
+    const loud = await look(page.locator('.convo .you p').first());
+    expect(quiet.size).toBeLessThan(loud.size);
+    expect(quiet.color).not.toBe(loud.color);
     expect(await page.evaluate(() => /** @type {any} */ (window).sawBubble), 'the bubble showed while she spoke').toBe(true);
     await expect(page.locator('.dock .caption')).toHaveText('Nepenthe is 25 minutes south.');
     await expect(page.getByRole('button', { name: 'Captions' })).toHaveCount(0);
