@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, until } from './agent-kit.js';
 import { readRefusal, limitImages } from '../../src/core/agent/refusals.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelOf } from '../../src/core/llm/config.js';
@@ -228,4 +228,27 @@ test("a photo this browser can't read is not dropped quietly: a card says so (re
   assert.equal(k.notices.length, 1);
   assert.match(k.notices[0].title, /photo/);
   assert.match(k.notices[0].body, /\/trip\/files\/bad\.webp/);
+});
+
+test('a model removed while the photo limit it taught is learned needs no limit: nothing is saved, nothing is recreated, no error shows', async () => {
+  const { removeModel, readConfig } = await import('../../src/core/llm/config.js');
+  const k = await agentKit([[{ error: 'image', status: 400, message: 'Picture too chonky for this model' }, done]], {
+    utility: [{ delayMs: 200, toolCalls: [{ name: 'limits', input: { maxEdge: 512 } }] }],
+  });
+  await photo(k);
+  k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+  await until(() => k.requests.some((r) => r.tools?.some((/** @type {any} */ t) => t.name === 'limits')));
+  // The repair that fails is logged as a warning and the turn goes on without it.
+  const was = console.warn;
+  /** @type {string[]} */
+  const warned = [];
+  console.warn = (/** @type {any[]} */ ...a) => { warned.push(a.map(String).join(' ')); };
+  try {
+    await removeModel(k.ws, 'm-0');
+    await k.agent.idle();
+  } finally {
+    console.warn = was;
+  }
+  assert.equal((await readConfig(k.ws)).models['m-0'], undefined, 'not recreated');
+  assert.deepEqual(warned.filter((w) => /photo repair/.test(w)), [], 'the repair does not fail on a model that is gone');
 });

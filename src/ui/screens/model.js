@@ -1,9 +1,10 @@
 import { h, savedField, savedCheck, autosave, twoStep, jsonField, numberIn } from '../dom.js';
-import { modelOf, modelBase, providerOf, endpointOf, saveModel, removeModel, diffLayer } from '../../core/llm/config.js';
+import { modelOf, modelBase, providerOf, endpointOf, updateModel, removeModel, diffLayer } from '../../core/llm/config.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
 import { pricesProblem } from '../../core/llm/cost.js';
+import { NotFoundError } from '../../core/workspace.js';
 
 /**
  * Saves one field into the user's layer of the model as it is now (spec §9.2; a function works the
@@ -11,28 +12,32 @@ import { pricesProblem } from '../../core/llm/cost.js';
  * @param {any} ctx @param {string} id
  */
 export const fieldSaver = (ctx, id) => async (/** @type {string} */ key, /** @type {any} */ value) => {
-  const rec = (await ctx.llm.config()).models[id];
-  if (!rec) throw new Error('This model no longer exists.');
-  const { [key]: _, ...rest } = rec.user ?? {};
-  let v = typeof value === 'function' ? value(modelOf(rec)) : value;
-  // The Prices box shows the prices in effect, a description's schedule with the fields the user set left out of it. Sent back
-  // unchanged, that schedule is the description's still, not a copy of it for the user (which would put the description's
-  // value over a price the user typed later).
-  const was = modelOf(rec).prices;
-  if (key === 'prices' && v && !('schedule' in (rec.user?.prices ?? {})) && modelBase(rec).prices?.schedule && JSON.stringify(v.schedule) === JSON.stringify(was?.schedule)) {
-    v = { ...v, schedule: modelBase(rec).prices?.schedule };
-  } else if (key === 'prices' && v && Array.isArray(v.schedule)) {
-    // A schedule of the user's own, and a price changed in this edit: the price wins from every date (typed, it is theirs).
-    const changed = Object.keys({ ...v, ...was }).filter((k) => k !== 'schedule' && JSON.stringify(v[k]) !== JSON.stringify(was?.[k]));
-    if (changed.length) {
-      v = { ...v, schedule: v.schedule.map((/** @type {any} */ e) => (e && typeof e === 'object' ? Object.fromEntries(Object.entries(e).filter(([k]) => k === 'from' || !changed.includes(k))) : e)).filter((/** @type {any} */ e) => !e || typeof e !== 'object' || Object.keys(e).length > 1) };
+  // Read and written in the model file's lock: a Test's result recorded meanwhile is not written back as it was.
+  const next = await updateModel(ctx.ws, id, (rec) => {
+    const { [key]: _, ...rest } = /** @type {Record<string, any>} */ (rec.user ?? {});
+    let v = typeof value === 'function' ? value(modelOf(rec)) : value;
+    // The Prices box shows the prices in effect, a description's schedule with the fields the user set left out of it. Sent back
+    // unchanged, that schedule is the description's still, not a copy of it for the user (which would put the description's
+    // value over a price the user typed later).
+    const was = modelOf(rec).prices;
+    if (key === 'prices' && v && !('schedule' in (rec.user?.prices ?? {})) && modelBase(rec).prices?.schedule && JSON.stringify(v.schedule) === JSON.stringify(was?.schedule)) {
+      v = { ...v, schedule: modelBase(rec).prices?.schedule };
+    } else if (key === 'prices' && v && Array.isArray(v.schedule)) {
+      // A schedule of the user's own, and a price changed in this edit: the price wins from every date (typed, it is theirs), in each
+      // entry that still has what it had; an entry the same edit changed that field in is the user's word for that date.
+      const changed = Object.keys({ ...v, ...was }).filter((k) => k !== 'schedule' && JSON.stringify(v[k]) !== JSON.stringify(was?.[k]));
+      if (changed.length) {
+        const earlier = (/** @type {any} */ e) => (Array.isArray(was?.schedule) ? was.schedule.find((/** @type {any} */ x) => x?.from === e.from) : undefined);
+        v = { ...v, schedule: v.schedule.map((/** @type {any} */ e) => (e && typeof e === 'object' ? Object.fromEntries(Object.entries(e).filter(([k, x]) => k === 'from' || !changed.includes(k) || JSON.stringify(x) !== JSON.stringify(earlier(e)?.[k]))) : e)).filter((/** @type {any} */ e) => !e || typeof e !== 'object' || Object.keys(e).length > 1) };
+      }
     }
-  }
-  const layer = diffLayer({ [key]: v }, modelBase(rec));
-  // The description's schedule deleted is stored as an empty list: an older build reads that, and drops a model whose schedule is null.
-  if (key === 'prices' && layer.prices?.schedule === null) layer.prices.schedule = [];
-  const next = { ...rec, user: { ...rest, ...layer } };
-  await saveModel(ctx.ws, next);
+    const layer = diffLayer({ [key]: v }, modelBase(rec));
+    // The description's schedule deleted is stored as an empty list: an older build reads that, and drops a model whose schedule is null.
+    if (key === 'prices' && layer.prices?.schedule === null) layer.prices.schedule = [];
+    return { ...rec, user: { ...rest, ...layer } };
+  }).catch((/** @type {unknown} */ e) => {
+    throw e instanceof NotFoundError ? new Error('This model no longer exists.') : e;
+  });
   ctx.llm.bench.clear(id);
   return modelOf(next);
 };
