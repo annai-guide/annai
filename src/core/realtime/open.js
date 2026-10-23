@@ -63,7 +63,8 @@ export function closeKind(type, code, reason) {
  * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, model: import('../llm/config.js').Model, key: string | null,
  *   tunables: Record<string, any>, setup: Omit<LiveSetup, 'audioIn' | 'audioOut'> & Partial<LiveSetup>, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
  *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number,
- *   output?: { sampleRate: number, baseLatency?: number } }} c  output: the phone's sound (its rate, and the output's own latency in s), traced as it is ready
+ *   output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} c  output: the phone's sound (its rate, and its processing and output
+ *   latency in s), traced as it is ready
  * @returns {LiveSession}
  */
 export function openLive(c) {
@@ -185,7 +186,7 @@ export function openLive(c) {
           if (done || st.up) return;
           st.up = true;
           clearTimeout(timer);
-          log(setup.resume ? 'resumed' : 'ready', { ms: now() - started, sampleRate: c.output?.sampleRate, baseLatency: c.output?.baseLatency });
+          log(setup.resume ? 'resumed' : 'ready', { ms: now() - started, ...c.output });
           resolve(undefined);
         }, (e) => broke('ready', e));
         return undefined;

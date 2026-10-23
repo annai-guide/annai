@@ -145,11 +145,14 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'live.session') {
     return [`live session ${d.state}`, d.model, d.ms !== undefined ? (d.ms >= 60_000 ? `${(d.ms / 60_000).toFixed(1)} min` : `${(d.ms / 1000).toFixed(1)} s`) : null, d.why ? cut(d.why) : null, d.kind,
       d.bytesIn !== undefined ? `${bytes(d.bytesIn)} in, ${bytes(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null,
-      d.sampleRate ? `sound at ${(d.sampleRate / 1000).toFixed(1)} kHz${d.baseLatency !== undefined ? `, ${Math.round(d.baseLatency * 1000)} ms output latency` : ''}` : null].filter(Boolean).join(' · ');
+      d.sampleRate ? [`sound at ${(d.sampleRate / 1000).toFixed(1)} kHz`, ...[['processing', d.baseLatency], ['output', d.outputLatency]]
+        .filter(([, x]) => x !== undefined).map(([name, x]) => `${Math.round(x * 1000)} ms ${name} latency`)].join(', ') : null].filter(Boolean).join(' · ');
   }
   // How her voice played in a live session, in numbers only (the pops investigation, 2026-10-23).
   if (e.type === 'live.reply') {
-    return [`her voice: ${((d.ms ?? 0) / 1000).toFixed(1)} s played`, d.cut ? 'cut' : null, d.waitMs !== undefined ? `started after ${d.waitMs} ms` : null,
+    const before = d.cut && !d.ms;
+    return [before ? 'her voice: cut before it played' : `her voice: ${((d.ms ?? 0) / 1000).toFixed(1)} s played`, d.cut && !before ? 'cut' : null,
+      d.stalled ? 'stalled' : null, d.waitMs !== undefined && !before ? `started after ${d.waitMs} ms` : null,
       d.holes !== undefined ? `${d.holes} hole${d.holes === 1 ? '' : 's'}${d.holes ? `, ${d.holeMs ?? 0} ms` : ''}` : null, d.player ? `on ${d.player}` : null].filter(Boolean).join(' · ');
   }
   // How the user's turn in a live session ended, in numbers only (the voice investigation, 2026-10-22).

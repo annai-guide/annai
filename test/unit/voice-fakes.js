@@ -28,8 +28,11 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   let opens = 0;
   let files = 0;
   const platform = {
-    /** How much faster than real time a live stream plays here. */
+    /** How much faster than real time a live stream plays here; stalls: it never plays (a context suspended); running: what its running says. */
     streamSpeed: 20,
+    streamStalls: false,
+    /** @type {boolean | undefined} */
+    streamRunning: undefined,
     /**
      * The phone's speaker heard by its own microphone: a live stream's sound, this many dB re as played, comes back into an open
      * microphone as it plays (at 16 kHz); null: none, as with headphones. @type {number | null}
@@ -108,7 +111,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         return {
           push(/** @type {Int16Array} */ pcm) {
             if (s.playedMs !== null) return;
-            started ||= Date.now();
+            if (!platform.streamStalls) started ||= Date.now();
             const at = s.ms;
             s.ms += (pcm.length / rate) * 1000;
             // Heard when it plays (never before the player has it), as loud as echoDb is then.
@@ -122,6 +125,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
           stop() { s.stopped = true; log.push('stream stop'); return finish(); },
           queued: () => (s.playedMs === null && played() < s.ms ? 1 : 0), // what is still to play
           done,
+          ...(platform.streamRunning === undefined ? {} : { running: Promise.resolve(platform.streamRunning) }),
         };
       },
       /** @param {{ data: Uint8Array }} clip @param {{ signal: AbortSignal, onLevel?: (x: number) => void }} o */

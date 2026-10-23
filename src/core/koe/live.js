@@ -15,7 +15,7 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean }} Turn  one of Koe's; held: its sound until a real word;
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean }} Turn  one of Koe's; held: its sound until a real word;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
  *   heard or written
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
@@ -69,8 +69,14 @@ export function mayPlay(input, { duplex, sinceEndMs, sinceWordMs }) {
   if (input.hearing || sinceEndMs < HOLD_MS) return false;
   return input.stillMs >= STILL_MS || Math.min(sinceEndMs - HOLD_MS, sinceWordMs) >= CAP_MS;
 }
-/** Her voice's stop fades out over 12 ms; this long after it, with the output's own latency, it is surely silent. */
-const FADED_MS = 60;
+/** Her voice's stop fades out over 12 ms at most; with the output's latencies and this margin after, it is surely silent. */
+const STOP_FADE_MS = 12;
+const FADED_MARGIN_MS = 20;
+/**
+ * Her turn's sound all in, its stream is stopped as stalled this long past its length (a context iOS suspends mid-reply never
+ * plays it out, which would leave the microphone deaf and Koe busy until a tap).
+ */
+const STALL_S = 3;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 
@@ -143,6 +149,8 @@ export class LiveKoe {
   #queue = [];
   /** @type {any} */
   #holdTimer = null;
+  /** Playback back once her stopped voice has faded out (close). @type {any} */
+  #toPlayback = null;
   /** @type {Turn | null} */
   #trail = null;
   /** What waits for Koe's turn and voice to end, or for the page to be in view: Kokoro's other notes, wrapped, and triggers. @type {string[]} */
@@ -357,6 +365,7 @@ export class LiveKoe {
       onTurn: (t) => { this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } }); },
     });
     this.listening = true;
+    clearTimeout(this.#toPlayback);
     p.session('play-and-record');
     this.#changed();
     await this.#input.start().then(() => this.#route(), (e) => this.#deaf(e));
@@ -443,9 +452,15 @@ export class LiveKoe {
     clearTimeout(this.#quiet);
     clearTimeout(this.#holdTimer);
     // Playback again once her stopped voice has faded out: the session switched under the fade might be heard (unverified; the
-    // pops investigation). Unless a microphone opened meanwhile, which wants play-and-record.
-    if (!fading) this.c.voice?.platform?.session('playback');
-    else setTimeout(() => { if (!this.#input) this.c.voice?.platform?.session('playback'); }, FADED_MS);
+    // pops investigation). Unless a microphone opened meanwhile, which wants play-and-record; a page going away switches at once.
+    const p = this.c.voice?.platform;
+    clearTimeout(this.#toPlayback);
+    if (!fading || why === 'away') p?.session('playback');
+    else {
+      const o = p?.player.output?.();
+      const ms = STOP_FADE_MS + ((o?.baseLatency ?? 0) + (o?.outputLatency ?? 0)) * 1000 + FADED_MARGIN_MS;
+      this.#toPlayback = setTimeout(() => { if (!this.#input && !p?.mic.inUse?.()) p?.session('playback'); }, ms);
+    }
     s?.close(why);
     this.modelId = null;
     if (this.#toldOpen) this.c.told('live-closed');
@@ -841,12 +856,27 @@ export class LiveKoe {
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;
       t.stream.done.then((r) => {
+        if (r.stalled && !t.cut) Object.assign(t, { cut: true, whole: false, stalled: true }); // the player stopped it: heard this far
         this.#said(t, r.playedMs);
         this.#played(t, r);
       });
-      if (t.done) t.stream.end();
+      t.stream.running?.then((ok) => { if (!ok) this.#stalled(t); }); // the page may not play sound now
+      if (t.done) this.#ending(t);
     } else if (t.done) this.#said(t, null);
     t.held = [];
+  }
+
+  /** All of her turn's sound is in: its stream plays out, or is stopped as stalled STALL_S past its length. @param {Turn} t */
+  #ending(t) {
+    t.stream?.end();
+    setTimeout(() => this.#stalled(t), t.bytes / (this.#rate / 500) + STALL_S * (this.c.secondMs ?? 1000));
+  }
+
+  /** Her voice stopped coming out: cut where it was heard, and traced as stalled. @param {Turn} t */
+  #stalled(t) {
+    if (t.logged || !t.stream) return;
+    t.stalled = true;
+    this.#stop(t);
   }
 
   /** The provider's turn ended: her voice plays out, or her words are a bubble; a turn with no real word is dropped. */
@@ -854,7 +884,7 @@ export class LiveKoe {
     const t = (this.#trail = this.#t);
     this.#t = null;
     this.#tries = 0;
-    if (t?.stream) t.stream.end();
+    if (t?.stream) this.#ending(t);
     else if (t?.spoken && !this.#waits(t)) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
     this.#answered(!t?.spoken && !t?.tools);
@@ -910,12 +940,12 @@ export class LiveKoe {
 
   /**
    * How her voice played, in numbers only, for the Trace (the pops investigation, 2026-10-23): heard ms; the holes where her sound
-   * ran out before more came, and their ms; how long her first sound waited to start; whether it was cut; and which player played it.
+   * ran out before more came, and their ms; how long her first sound waited to start; whether it was cut, or stalled; and which player played it.
    * @param {Turn} t @param {import('../voice/platform.js').Played} r
    */
   #played(t, r) {
     const { playedMs, ...rest } = r;
-    this.#write({ type: 'live.reply', actor: 'system', data: { wake: this.#wake, ms: playedMs, ...rest, cut: t.cut && !t.whole } });
+    this.#write({ type: 'live.reply', actor: 'system', data: { wake: this.#wake, ms: playedMs, ...rest, cut: t.cut && !t.whole, ...(t.stalled ? { stalled: true } : {}) } });
   }
 
   /** What Koe said, written once: whole, or cut where its voice stopped (✂). @param {Turn} t @param {number | null} playedMs null: none played */

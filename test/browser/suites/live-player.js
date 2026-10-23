@@ -95,6 +95,20 @@ async function single(rate, seconds, pcm) {
   return (await off.startRendering()).getChannelData(0);
 }
 
+/** The tone with a slow wobble on it, so that no stretch of it repeats: where a stretch is in it says where it was played from. @param {number} n */
+const wobble = (n) => Int16Array.from({ length: n }, (_, i) => Math.round(0.4 * 32767 * Math.sin((2 * Math.PI * 440 * i) / 24_000) + 3000 * Math.sin(i / 37)));
+/**
+ * Where seg is in ref, every frame within 1e-4 (-1: nowhere). @param {Float32Array} seg @param {Float32Array} ref
+ */
+const placeIn = (seg, ref) => {
+  for (let j = 0; j + seg.length <= ref.length; j++) {
+    let k = 0;
+    while (k < seg.length && Math.abs(seg[k] - ref[j + k]) <= 1e-4) k++;
+    if (k === seg.length) return j;
+  }
+  return -1;
+};
+
 /** The largest one-frame jump in x[a..b). @param {Float32Array} x */
 const largestStep = (x, a = 1, b = x.length) => {
   let m = 0;
@@ -131,25 +145,97 @@ export default function (test, assert) {
       });
     }
 
-    test(`at ${rate} Hz, a piece that comes late leaves silence, and no jump bigger than the tone's own`, async () => {
+    test(`at ${rate} Hz, a piece that comes late leaves silence, no jump bigger than the sound's own, and the sound goes on exactly where it left off`, async () => {
       const sizes = [4800, ...GEMINI.slice(1, 8)];
-      const pcm = tone(sum(sizes));
+      const pcm = wobble(sum(sizes));
       // The first 200 ms at once, the rest 120 ms after they ran out.
       const late = 4800 / 24_000 + 0.12;
-      const { out } = await render({ rate, seconds: pcm.length / 24_000 + 0.5, pcm, sizes, at: [0, ...sizes.slice(1).map(() => late)], endAt: late });
-      const own = largestStep(await single(rate, 1, pcm));
-      // Up to its last sample: end() plays to it, and the tone stops there, as the sound itself does.
+      const seconds = pcm.length / 24_000 + 0.5;
+      const { out } = await render({ rate, seconds, pcm, sizes, at: [0, ...sizes.slice(1).map(() => late)], endAt: late });
+      const ref = await single(rate, seconds, pcm);
+      const own = largestStep(ref, START, START + Math.round(rate * 1.5));
+      // Up to its last sample: end() plays to it, and the sound stops there, as the sound itself does.
       let last = out.length - 1;
       while (last > 0 && out[last] === 0) last--;
       const jump = largestStep(out, 1, last);
-      assert.ok(jump <= own * SLOPE, `largest jump ${jump.toFixed(4)}, the tone's own ${own.toFixed(4)}`);
+      assert.ok(jump <= own * SLOPE, `largest jump ${jump.toFixed(4)}, the sound's own ${own.toFixed(4)}`);
       let run = 0;
       let longest = 0;
+      let after = 0;
       for (let i = START + 1000; i < START + Math.round(rate * 0.5); i++) {
         run = out[i] === 0 ? run + 1 : 0;
-        longest = Math.max(longest, run);
+        if (run > longest) [longest, after] = [run, i + 1];
       }
       assert.ok(longest >= rate * 0.1, `silent for ${((longest / rate) * 1000).toFixed(0)} ms in between`);
+      // Before the hole, as one buffer; after it, faded back in, the same from where it stopped.
+      const fade = fadeFrames(rate);
+      const step = 24_000 / rate;
+      for (let k = 0; START + k < after - longest - fade - 128; k++) {
+        assert.ok(Math.abs(out[START + k] - ref[START + k] * Math.min(1, k / fade)) <= 1e-4, `before the hole, frame ${k}`);
+      }
+      const from = after + fade + 1;
+      const at = placeIn(out.subarray(from, last - 1), ref);
+      assert.ok(at > START, 'after the hole, the same sound as one buffer at every frame');
+      const playedBefore = after - longest - START; // frames of it played before the hole, the fade's last one silent
+      assert.ok(Math.abs(at - (START + playedBefore + fade + 1)) <= 2, `it went on ${at - START - playedBefore - fade - 1} frames from where it stopped`);
+      assert.ok(Math.abs(Math.round((last - 1 - from) * step) - (pcm.length - Math.round((at - START) * step))) <= 3, 'and played to its end');
+    });
+
+    for (const [how, arrives] of /** @type {[string, (t: number) => number][]} */ ([
+      ['about 400 ms ahead', (t) => Math.max(0, t - 0.4)],
+      ['in bursts of 3 s', (t) => Math.max(0, Math.floor(t / 3) * 3 - 0.3)],
+    ])) {
+      test(`at ${rate} Hz, 22 s of Gemini-sized pieces coming ${how} as it plays are the same sound as one buffer at every frame (its buffer let go of, and grown, on the way)`, async () => {
+        const sizes = [...GEMINI, ...GEMINI, ...GEMINI, ...GEMINI];
+        const pcm = wobble(sum(sizes));
+        let t = 0;
+        const at = sizes.map((n) => {
+          const a = arrives(t / 24_000);
+          t += n;
+          return a;
+        });
+        const seconds = pcm.length / 24_000 + 0.2;
+        const { out } = await render({ rate, seconds, pcm, sizes, at, endAt: at.at(-1) });
+        const ref = await single(rate, seconds, pcm);
+        const step = 24_000 / rate;
+        const fade = fadeFrames(rate);
+        let worst = 0;
+        let where = 0;
+        for (let k = 0; k * step <= pcm.length - 2; k++) {
+          const e = Math.abs(out[START + k] - ref[START + k] * Math.min(1, k / fade));
+          if (e > worst) [worst, where] = [e, k];
+        }
+        assert.ok(worst <= 1e-4, `error ${worst.toExponential(2)} at ${(where / rate).toFixed(4)} s`);
+      });
+    }
+
+    test(`at ${rate} Hz, the last piece and the end, coming as it fades out running dry, all play (review 1)`, async () => {
+      const first = 4855;
+      const pcm = tone(first + 2400);
+      const step = 24_000 / rate;
+      // The quantum its dry fade begins in: what is left falls under what a fade and a quantum take (player-worklet.js's low).
+      const low = (fadeFrames(rate) + 128) * step + 2;
+      let m = 0;
+      while (first - m * 128 * step >= low) m++;
+      const all = Math.round((pcm.length * rate) / 24_000);
+      for (const q of [m - 1, m, m + 1, m + 2]) {
+        const t = (q * 128) / rate;
+        const { out } = await render({ rate, seconds: 0.6, pcm, sizes: [first, 2400], at: [0, t], endAt: t });
+        let sound = 0;
+        for (const x of out) if (Math.abs(x) > 1e-4) sound++;
+        assert.ok(sound >= all * 0.98, `${q - m} quanta into the fade: ${sound} frames of sound of ${all}`);
+      }
+    });
+
+    test(`at ${rate} Hz, a stop with less left than its fade fades over what is left: no jump bigger than the sound's own (review 2)`, async () => {
+      const n = 4837;
+      const pcm = tone(n);
+      const own = largestStep(await single(rate, 0.15, pcm), START);
+      for (const leftMs of [4, 6, 8, 10, 12, 14, 20]) {
+        const { out, stopFrame } = await render({ rate, seconds: 0.5, pcm, sizes: [n], stopAt: n / 24_000 - leftMs / 1000 });
+        const jump = largestStep(out, stopFrame - 64);
+        assert.ok(jump <= own * SLOPE, `${leftMs} ms left: largest jump ${jump.toFixed(4)}, the tone's own ${own.toFixed(4)}`);
+      }
     });
 
     test(`at ${rate} Hz, stop() mid-sound fades: no jump bigger than the sound's own, and silent within 15 ms`, async () => {
@@ -277,4 +363,31 @@ export default function (test, assert) {
     proto.addModule = () => Promise.reject(new Error('refused'));
     return () => { proto.addModule = real; };
   }));
+
+  test("a module load that hangs gives up after 1.5 s, the stream on buffers; the next stream tries again, and plays on the worklet (review 5)", async () => {
+    const w = /** @type {any} */ (window);
+    const proto = /** @type {any} */ (AudioWorklet.prototype);
+    const real = { context: w.AudioContext, addModule: proto.addModule };
+    const off = new OfflineAudioContext({ numberOfChannels: 1, length: 48_000, sampleRate: 48_000 });
+    w.AudioContext = function () { return off; };
+    proto.addModule = () => new Promise(() => {});
+    try {
+      const p = /** @type {any} */ (browserPlatform().player);
+      const first = p.stream({ rate: 24_000 });
+      first.push(piece());
+      first.end();
+      await wait(1700); // past the 1.5 s the module may take: on buffers
+      proto.addModule = real.addModule;
+      const second = p.stream({ rate: 24_000 });
+      second.push(piece());
+      second.end();
+      await wait(300); // its module loads
+      await off.startRendering();
+      assert.equal((await first.done).player, 'buffers');
+      assert.equal((await second.done).player, 'worklet');
+    } finally {
+      w.AudioContext = real.context;
+      proto.addModule = real.addModule;
+    }
+  });
 }
