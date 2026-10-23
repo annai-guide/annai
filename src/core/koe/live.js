@@ -31,6 +31,8 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
 const SILENT = ['tell_kokoro', 'show', 'ask', 'already_told'];
 /** The ask once more, as a text Koe's (§6.8), in annai's words. */
 const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
+/** The ask again when the user's turn got no sound and no word (the watchdog, in a session that is alive). */
+const UNANSWERED = `[annai] ${escapeTags(JSON.stringify('Nothing you did reached the user after what they said last: answer them aloud.'))}`;
 /** Tools that pass a note on to the user, as words do, or settle it as passed on. */
 const REACH = ['show', 'ask', 'already_told'];
 /** Where her voice doesn't reach the microphone, so speaking may cut her off (spec §10.4): elsewhere, half-duplex. */
@@ -94,7 +96,11 @@ export class LiveKoe {
   #turnAt = 0;
   #endedAt = 0;
   #pauseMs = 700;
-  /** Waiting for an answer: to a text turn's words, or the user's turn (null); tools: tool calls came, and nothing else yet. @type {{ timer: any, text: string | null, tools: boolean } | null} */
+  /**
+   * Waiting for an answer: to a text turn's words, or the user's turn (null). strict: only sound, a word, or a card or question shown
+   * answers (the user's turn, and annai's ask again); tools: tool calls came, and nothing else yet; alive: the session gave something back.
+   * @type {{ timer: any, text: string | null, strict: boolean, tools: boolean, alive: boolean } | null}
+   */
   #due = null;
   /** A silent session was replaced already, with no answer since: the next silence is only traced. */
   #rescued = false;
@@ -572,18 +578,18 @@ export class LiveKoe {
     else if (this.#waiting.length < 200) this.#waiting.push(fn); // about 20 s of speech
   }
 
-  /** A text turn, which Koe answers; cut: it cuts Koe off, heard this far. @param {string} text @param {{ playedMs?: number }} [cut] */
-  #text(text, cut) {
+  /** A text turn, which Koe answers; cut: it cuts Koe off, heard this far; strict: only sound, a word, a card or a question answers it. @param {string} text @param {{ playedMs?: number }} [cut] */
+  #text(text, cut, strict = false) {
     this.#trail = null;
     this.#poke();
     this.#send((s) => s.text(text, { interrupt: Boolean(cut), ...cut }));
-    this.#answer(text);
+    this.#answer(text, strict);
   }
 
   /** Waits for the answer to a text turn (its words) or the user's turn (null); undefined: stops. @param {string | null | undefined} text */
-  #answer(text) {
+  #answer(text, strict = text === null) {
     clearTimeout(this.#due?.timer);
-    this.#due = text === undefined || this.state === 'closed' ? null : { text, timer: null, tools: false };
+    this.#due = text === undefined || this.state === 'closed' ? null : { text, timer: null, strict, tools: false, alive: false };
     this.#arm();
   }
 
@@ -602,16 +608,26 @@ export class LiveKoe {
     clearTimeout(this.#stall);
   }
 
-  /** Nothing came back in SILENT_S: traced, and once, a fresh session gets the words again; silent again, Koe's next model answers. @param {LiveSession} s */
+  /**
+   * No answer in SILENT_S: while Kokoro works on Koe's question, or a tool call runs, the wait goes on. Else traced, and once, the
+   * session is asked again in annai's words where it gave something back (a tool call alone), or a fresh session gets the words
+   * where it gave nothing (a session gone silent); silent again, Koe's next model answers. @param {LiveSession} s
+   */
   async #silent(s) {
     const due = this.#due;
     if (!due || this.state !== 'open' || s !== this.#s || this.#old) return;
+    if (this.c.asked() || this.#tools) {
+      due.timer = null;
+      return this.#arm();
+    }
     this.#due = null;
     const again = !this.#rescued;
-    this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${again ? ': a fresh one gets it again' : ''}.`, quiet: true } });
+    const how = !again ? '' : due.alive ? ': it is asked again' : ': a fresh one gets it again';
+    this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${how}.`, quiet: true } });
     // Twice in a row: not a session to keep (its cut flag has Halves give the answer to Koe's next model, or Kokoro).
     if (!again) return this.#gone(true);
     this.#rescued = true;
+    if (due.alive) return this.#text(UNANSWERED, undefined, true);
     const heard = cleanSaid(this.#hear?.text ?? '');
     const words = due.text ?? (heard ? theirs(heard) : null);
     if (!(await this.#reconnect('silent', { fresh: true }))) return this.#gone(false);
@@ -710,16 +726,18 @@ export class LiveKoe {
   }
 
   /**
-   * Whether it answers: a text turn, anything; the user's, sound or a word, or an empty turn (not meant for Shiori), never tool
-   * calls alone (already_told left a "yes" in silence: the realtime check, 2026-10-22). @param {import('../llm/contract.js').LiveEvent} e
+   * Whether it answers: a text turn, anything; the user's, sound or a word, a card or question shown (#tool), or an empty turn (not
+   * meant for Shiori), never other tool calls alone (already_told left a "yes" in silence: the realtime check, 2026-10-22).
+   * @param {import('../llm/contract.js').LiveEvent} e
    */
   #answers(e) {
     const due = this.#due;
     if (e.type === 'audio' || (e.type === 'said' && realWord(e.text))) return true;
     if (e.type !== 'tool' && e.type !== 'turn') return false;
-    if (due?.text !== null) return true;
+    if (due) due.alive = true; // the model answers something: a session to ask again, not to replace
+    if (!due?.strict) return true;
     if (e.type === 'tool') due.tools = true;
-    return e.type === 'turn' && !due.tools;
+    return e.type === 'turn' && !due.tools && due.text === null;
   }
 
   /** Koe's first real word: what was heard is written, and its voice starts (decision 11), once the user may have stopped. @param {Turn} t */
@@ -868,8 +886,9 @@ export class LiveKoe {
       await this.#answered(false);
       // Always answered: the model waits for it.
       const out = await this.c.koe.liveCall(e, this.#wake, this.#watched).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
-      // A card or question annai showed passes Kokoro's notes on; one it refused passes nothing on.
+      // A card or question annai showed passes Kokoro's notes on, and answers the user; one it refused does neither.
       if (REACH.includes(e.name) && !out.isError) this.#passed();
+      if ((e.name === 'show' || e.name === 'ask') && !out.isError && this.#due?.strict) this.#answer(undefined);
       const silent = SILENT.includes(e.name);
       const answer = (/** @type {LiveSession} */ x) => x.answer(e.id, e.name, theirs(out.content), { silent });
       // To its session, or to the one that resumed it with the handle, which carries the call; a fresh one never saw it.
