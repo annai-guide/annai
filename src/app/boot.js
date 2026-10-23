@@ -1,5 +1,5 @@
-// The start (localization design, section 3): the page's language and words are set before the app is imported, so a message made
-// at a module's top level is in the right language. What can't be had leaves English.
+// The start (localization design, section 3): the language and its words are set before the app is imported, so a message made at
+// a module's top level is in the right language. What can't be had leaves English.
 import { setWords, dir } from '../core/l10n.js';
 import { SHIPPED } from '../core/l10n-list.js';
 
@@ -13,9 +13,9 @@ else if (!own) {
   // The first of the phone's languages annai has, by language and script: zh-TW is Traditional, not Simplified.
   for (const wanted of navigator.languages ?? []) {
     try {
-      const a = new Intl.Locale(wanted);
-      const found = SHIPPED.find((s) => { const b = new Intl.Locale(s).maximize(); return b.language === a.maximize().language && b.script === a.maximize().script; });
-      if (found) { tag = found; region = a.region ?? ''; break; }
+      const a = new Intl.Locale(wanted).maximize();
+      const found = SHIPPED.find((s) => { const b = new Intl.Locale(s).maximize(); return b.language === a.language && b.script === a.script; });
+      if (found) { tag = found; region = new Intl.Locale(wanted).region ?? ''; break; }
     } catch { /* not a language tag */ }
   }
 }

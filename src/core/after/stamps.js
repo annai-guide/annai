@@ -1,4 +1,5 @@
 import { dayIn, validZone } from '../time.js';
+import { plural } from '../l10n.js';
 
 /**
  * Stamps (spec §13), like a station stamp book: each arrival at a plan place or a named point of
@@ -61,4 +62,4 @@ export function stampLabel(name) {
 }
 
 /** "1 stamp", "5 stamps". @param {number} n */
-export const stampCount = (n) => `${n} ${n === 1 ? 'stamp' : 'stamps'}`;
+export const stampCount = (n) => plural(n, '# stamp', '# stamps');

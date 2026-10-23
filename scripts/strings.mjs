@@ -18,7 +18,11 @@ import { key, holes } from '../src/core/l10n.js';
  * The files whose bare English the check refuses: every user-facing literal in them goes through t. Each step extends it; the last
  * extraction step replaces it with whole folders.
  */
-export const EXTRACTED = /** @type {string[]} */ ([]);
+export const EXTRACTED = [
+  'src/ui/screens/trips.js',
+  'src/ui/languages.js',
+  'src/core/languages.js',
+];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];
 /** The runtime itself and the pseudo-locale mention t and plural without being messages. */
@@ -26,6 +30,8 @@ const SKIP = new Set(['src/core/l10n.js', 'src/core/l10n-pseudo.js', 'src/core/l
 const HEADER = 'key\tstate\ten\ttext\twhere\tnote';
 /** Properties whose value a screen shows as it is, and calls whose first argument it does (the design's "certain places"). */
 const SHOWN_PROPS = new Set(['text', 'title', 'aria-label', 'placeholder', 'label', 'alt', 'body']);
+/** Properties that hold a code, not words: a class, an id, a type, a link. */
+const CODE_PROPS = new Set(['class', 'id', 'name', 'type', 'role', 'href', 'src', 'rel', 'for', 'method', 'inputmode', 'autocomplete', 'pattern', 'accept', 'target', 'lang', 'dir', 'kind', 'mode', 'value']);
 const SHOWN_CALLS = new Set(['field', 'checkbox', 'toast', 'card', 'twoStep']);
 
 /**
@@ -416,7 +422,7 @@ export function findWords(file, text) {
 function skipped(sf, n) {
   const p = n.parent;
   if (ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isCaseClause(p) || ts.isElementAccessExpression(p) || ts.isLiteralTypeNode(p) || ts.isExternalModuleReference(p)) return true;
-  if (ts.isPropertyAssignment(p) && p.name === n) return true;
+  if (ts.isPropertyAssignment(p) && (p.name === n || CODE_PROPS.has(nameOf(p.name)))) return true;
   if (ts.isBinaryExpression(p) && [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.InKeyword].includes(p.operatorToken.kind)) return true;
   if (ts.isCallExpression(p) && ts.isPropertyAccessExpression(p.expression) && ['querySelector', 'querySelectorAll', 'closest', 'matches', 'getElementById', 'setAttribute', 'getAttribute', 'removeAttribute', 'addEventListener', 'includes', 'startsWith', 'endsWith', 'split', 'test', 'matchMedia', 'getItem', 'setItem', 'removeItem', 'has', 'get', 'set', 'delete'].includes(p.expression.name.text)) return true;
   if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && ['require', 'RegExp'].includes(p.expression.text)) return true;
