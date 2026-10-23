@@ -1,7 +1,8 @@
 import { sha256Hex } from '../hash.js';
-import { utf8, text, ownBuffer } from '../bytes.js';
+import { utf8, text, toBytes } from '../bytes.js';
 import { blobsOf, isName } from '../events.js';
 import { reachable, refused } from '../reach.js';
+import { keepBlob } from '../workspace.js';
 
 /**
  * Writing the conversation (spec §4.5). Each step is one event. Its long texts, and any bytes it
@@ -48,13 +49,21 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
   /** @type {string[]} */
   const blobRefs = [];
   for (const b of blobs) {
-    // Bytes are kept under their own hash, never one given beside them (that would name, or overwrite, other content).
-    const hash = b.bytes ? await sha256Hex(b.bytes) : b.hash ?? '';
-    if (b.bytes && b.hash && b.hash !== hash) throw new Error(`The content given as ${b.hash.slice(0, 12)}… has another fingerprint.`);
-    if (!b.bytes && hash && !isName(hash)) throw new Error(`The content ${hash.slice(0, 12)}… is not stored.`);
+    // Bytes are kept as they are, under their own hash, never one given beside them (that would name, or overwrite,
+    // other content); a string or an ArrayBuffer is made bytes first, so what is stored is what was hashed.
+    /** @type {Uint8Array | undefined} */
+    let bytes;
+    try {
+      bytes = b.bytes === undefined ? undefined : toBytes(b.bytes);
+    } catch {
+      throw new Error("The content given isn't bytes: give a Uint8Array, an ArrayBuffer or a string.");
+    }
+    const hash = bytes ? await sha256Hex(bytes) : b.hash ?? '';
+    if (bytes && b.hash && b.hash !== hash) throw new Error(`The content given as ${b.hash.slice(0, 12)}… has another fingerprint.`);
+    if (!bytes && hash && !isName(hash)) throw new Error(`The content ${hash.slice(0, 12)}… is not stored.`);
     if (!hash) continue;
     blobRefs.push(hash);
-    if (b.bytes) keep.push({ hash, bytes: b.bytes, type: b.type });
+    if (bytes) keep.push({ hash, bytes, type: b.type });
   }
   if (stored.length) out.stored = stored;
   const refs = [...textRefs, ...blobRefs];
@@ -66,9 +75,7 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
   try {
     return await store.tx(named.length ? ['blobs', 'events', 'files'] : ['blobs', 'events'], 'readwrite', async (t) => {
       denied = null; // a store that tries again starts over
-      for (const k of keep) {
-        if (!(await t.hasBlob(k.hash))) await t.putBlob({ hash: k.hash, type: k.type, size: k.bytes.byteLength, data: ownBuffer(k.bytes) });
-      }
+      for (const k of keep) await keepBlob(t, k.hash, k.type, k.bytes);
       // Content named by its hash alone must be stored (spec §4.9), and the scope's own (§4.1): never another trip's.
       for (const h of named) {
         const own = await reachable(t, scope, h);

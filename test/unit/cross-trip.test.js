@@ -425,7 +425,7 @@ test("a Share with its history, imported again on the same device: its older pho
   assert.deepEqual((await v.ws.history(t, '/files/temple.jpg')).map((h) => h.new === null), [true, false]);
   const [imported] = await v.store.tx(['events'], 'readonly', (tx) => tx.listEvents(t, { types: ['import'] }));
   assert.equal(imported.data.uncarried, 1);
-  assert.equal(traceSummary(imported), "from a trip's file, annai 0.1.0 · 1 earlier version it didn't hold left out");
+  assert.equal(traceSummary(imported), "from a trip's file, annai 0.1.0 · 1 piece of content it didn't hold left out");
 });
 
 test("restoring everything with 'me' kept: the trips' names of the user's own photos stay, carried by the file's 'me' (review, 3; probes P4, P4b)", async () => {
@@ -511,4 +511,170 @@ test("the user's own photo a trip's conversation sent stays while /me/'s history
   assert.ok(await blobBytes(v.store, v.b, v.mePhoto), 'the trip still has the photo it sent');
   await removeTrip(v.store, v.b);
   assert.equal(await held(v.store, v.mePhoto), true, "/me/'s history still names it: only Erase everything removes that");
+});
+
+// Fix pass 3 (verification of 1655385).
+const { shioriUndos } = await import('../../src/core/plan.js');
+const sizeOf = (/** @type {any} */ store, /** @type {string} */ h) => store.tx(['blobs'], 'readonly', async (/** @type {any} */ t) => (await t.getBlob(h))?.size);
+/** Notes each archive entry an import reads. @param {any} opened */
+const spyReads = (opened) => {
+  /** @type {string[]} */
+  const read = [];
+  const was = opened.zip.read.bind(opened.zip);
+  opened.zip.read = async (/** @type {string} */ name) => { read.push(name); return was(name); };
+  return read;
+};
+
+test('"Replace mine" from a forged file can\'t make an old version of the copy it replaces a current file without carrying it (verification, 1; V2)', async () => {
+  const v = await twoTrips();
+  await v.ws.write(v.a, '/files/temple.jpg', utf8('photo of a temple, edited'), { author: 'user', type: 'image/jpeg' });
+  const tripId = /** @type {any} */ (await v.store.tx(['scopes'], 'readonly', (t) => t.getScope(v.a))).tripId;
+  const size = /** @type {number} */ (await sizeOf(v.store, v.aPhoto));
+  // Built from what a Share with History tells: the trip's id, and an older photo's hash and size, not its bytes.
+  const file = await forged((m, entries) => {
+    m.scopes[0].record.tripId = tripId;
+    m.files = m.files.filter((/** @type {any} */ f) => f.path !== '/files/temple.jpg'); // the maker hasn't the photo itself
+    entries.set(`${m.scopes[0].dir}/files/stolen.jpg`, new Uint8Array(size).fill(0x43));
+    m.files.push({ name: `${m.scopes[0].dir}/files/stolen.jpg`, scope: m.scopes[0].record.id, path: '/files/stolen.jpg', hash: v.aPhoto, size, type: 'image/jpeg', author: 'user', created: 1, modified: 1 });
+  });
+  const opened = await peekArchive(file);
+  await assert.rejects(importArchive(v.store, opened, { trips: { [opened.manifest.scopes[0].record.id]: 'replace' } }), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  assert.deepEqual((await listTrips(v.store)).active.map((t) => t.title).sort(), ['Big Sur', 'Kyoto']);
+});
+
+test('replacing "me" from a forged file can\'t bring a deleted /me/ file back without carrying it (verification, 1)', async () => {
+  const v = await twoTrips();
+  await v.ws.delete(ME, '/files/passport.jpg', { author: 'user' }); // its history still names it
+  const size = /** @type {number} */ (await sizeOf(v.store, v.mePhoto));
+  const x = await twoTrips();
+  const { blob } = await exportArchive(x.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  const entries = await readZip(new Uint8Array(await blob.arrayBuffer()));
+  const manifest = JSON.parse(new TextDecoder().decode(entries.get(MANIFEST_NAME)));
+  const f = manifest.files.find((/** @type {any} */ y) => y.scope === 'me' && y.path === '/files/passport.jpg');
+  entries.set(f.name, new Uint8Array(size).fill(0x45)); // other bytes under the deleted file's hash and size
+  f.hash = v.mePhoto;
+  f.size = size;
+  for (const e of manifest.extras) e.hash = await sha256Hex(/** @type {Uint8Array} */ (entries.get(e.name)));
+  const z = new ZipWriter();
+  for (const [name, bytes] of entries) await z.add(name, name === MANIFEST_NAME ? utf8(JSON.stringify(manifest)) : bytes);
+  const opened = await peekArchive(new Uint8Array(await z.finish().arrayBuffer()));
+  const skip = Object.fromEntries(manifest.scopes.filter((/** @type {any} */ s) => s.record.kind === 'trip').map((/** @type {any} */ s) => [s.record.id, 'skip']));
+  await assert.rejects(importArchive(v.store, opened, { me: 'replace', trips: skip }), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  assert.equal(await v.ws.read(ME, '/files/passport.jpg'), undefined);
+});
+
+test('"Replace mine" with a copy changed while it imports: what the copy no longer vouches for is refused, not taken unread (verification, 5)', async () => {
+  const v = await twoTrips();
+  const { blob } = await exportArchive(v.store, { kind: 'trip', scopes: [v.a], include: PRESETS.backup, app: '0.1.0' });
+  const opened = await peekArchive(new Uint8Array(await blob.arrayBuffer()));
+  const read = spyReads(opened);
+  let done = false;
+  /** @type {any} the store, with Kyoto removed just before the import's last step */
+  const racing = {
+    close: () => v.store.close(),
+    tx(/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) {
+      if (done || mode !== 'readwrite' || !stores.includes('secrets')) return v.store.tx(stores, mode, fn);
+      done = true;
+      // The photo is deleted from the copy meanwhile: still stored, still in its history, no longer its current file.
+      return v.ws.delete(v.a, '/files/temple.jpg', { author: 'user' }).then(() => v.store.tx(stores, mode, fn));
+    },
+  };
+  await assert.rejects(importArchive(racing, opened, { trips: { [opened.manifest.scopes[0].record.id]: 'replace' } }), (e) => e instanceof ArchiveError && /changed on this device while it was importing/.test(e.message));
+  assert.ok(!read.some((n) => n.endsWith('/files/temple.jpg')), 'it was vouched for when the import began');
+  assert.deepEqual((await listTrips(v.store)).active.map((t) => t.title).sort(), ['Big Sur', 'Kyoto']);
+});
+
+for (const kind of ['string', 'ArrayBuffer']) {
+  test(`content a plugin gives as ${kind} is kept as its bytes: no empty record under its hash, and a Backup restores (verification, 2; V10, V10b)`, async () => {
+    const v = await twoTrips();
+    const real = 'the real ticket';
+    const bytes = kind === 'string' ? real : utf8(real).buffer.slice(0);
+    const e = await record(v.store, v.b, { type: 'x', actor: 'plugin:p', data: {}, blobs: [{ bytes: /** @type {any} */ (bytes), type: 'application/pdf' }] });
+    const rec = /** @type {any} */ (await v.store.tx(['blobs'], 'readonly', (t) => t.getBlob(e.refs[0])));
+    assert.deepEqual([rec.size, new TextDecoder().decode(rec.data)], [15, real]);
+    await v.ws.write(v.a, '/files/ticket.pdf', utf8(real), { author: 'user', type: 'application/pdf' });
+    assert.equal(await v.ws.readText(v.a, '/files/ticket.pdf'), real);
+    const { blob } = await exportArchive(v.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+    const d = await freshDevice();
+    await importArchive(d.store, await peekArchive(new Uint8Array(await blob.arrayBuffer())), { me: 'replace' });
+  });
+}
+
+test('content given as anything but bytes is refused in plain words (verification, 2; V10)', async () => {
+  const v = await twoTrips();
+  await assert.rejects(record(v.store, v.b, { type: 'x', actor: 'plugin:p', data: {}, blobs: [{ bytes: /** @type {any} */ ([1, 2, 3]), type: 'application/pdf' }] }), /isn't bytes/);
+});
+
+test('a stored record with no bytes (left by an older annai) is written again by the next write of those bytes, and a Backup leaves it out (verification, 2)', async () => {
+  const v = await twoTrips();
+  const real = utf8('the real ticket');
+  const H = await sha256Hex(real);
+  for (const size of [undefined, real.byteLength]) {
+    await v.store.tx(['blobs', 'events'], 'readwrite', async (t) => {
+      await t.putBlob(/** @type {any} */ ({ hash: H, type: 'application/pdf', size, data: undefined }));
+      await t.appendEvent(v.b, { ts: 1, type: 'x', actor: 'plugin:p', data: {}, refs: [H] });
+    });
+    const { manifest } = await exportArchive(v.store, { kind: 'trip', scopes: [v.b], include: PRESETS.backup, app: '0.1.0' });
+    assert.ok(!manifest.blobs.some((b) => b.hash === H), 'a record without its bytes travels in no Backup');
+    await v.ws.write(v.a, `/files/ticket-${size}.pdf`, real, { author: 'user', type: 'application/pdf' });
+    assert.equal(await v.ws.readText(v.a, `/files/ticket-${size}.pdf`), 'the real ticket');
+  }
+});
+
+test("Undo isn't offered for a plan item whose version from before Shiori an import left out: it isn't one she added (verification, 3; V5b)", async () => {
+  const x = await twoTrips();
+  const first = (await x.ws.write(x.a, '/plan/dinner.json', JSON.stringify({ title: 'Dinner' }), { author: 'user' })).hash;
+  await x.ws.write(x.a, '/plan/dinner.json', JSON.stringify({ title: 'Dinner at 8' }), { author: 'shiori' });
+  const file = await rewriteArchive(await exportArchive(x.store, { kind: 'trip', scopes: [x.a], include: PRESETS.backup, app: '0.1.0' }), (m) => {
+    m.blobs = m.blobs.filter((/** @type {any} */ b) => b.hash !== first); // its maker no longer had the user's version
+  });
+  const d = await freshDevice();
+  const [t] = (await importArchive(d.store, await peekArchive(file))).trips;
+  assert.equal((await shioriUndos(d.ws, t, [{ path: '/plan/dinner.json', author: 'shiori' }])).get('/plan/dinner.json'), undefined);
+  // Without an import, her first write of a new item is still undone by removing it.
+  await d.ws.write(t, '/plan/lunch.json', JSON.stringify({ title: 'Lunch' }), { author: 'shiori' });
+  assert.deepEqual((await shioriUndos(d.ws, t, [{ path: '/plan/lunch.json', author: 'shiori' }])).get('/plan/lunch.json'), { remove: true });
+});
+
+test('a Backup with Photos unticked carries no photo in its history either (verification, 6; V9)', async () => {
+  const v = await twoTrips();
+  await v.ws.write(v.a, '/files/temple.jpg', new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]), { author: 'user', type: 'image/jpeg' });
+  await v.ws.write(v.a, '/notes/n.md', 'first', { author: 'user' });
+  await v.ws.write(v.a, '/notes/n.md', 'second', { author: 'user' });
+  const { manifest } = await exportArchive(v.store, { kind: 'trip', scopes: [v.a], include: { history: true, memory: true, photos: false }, app: '0.1.0' });
+  const types = manifest.blobs.map((b) => b.type);
+  assert.ok(!types.some((t) => t.startsWith('image/')), types.join());
+  assert.ok(manifest.blobs.some((b) => b.hash === v.aPhoto) === false);
+  assert.ok(manifest.blobs.length >= 1, 'older versions of other files still go');
+});
+
+test("the import's Trace line counts what it left out as content, not versions (verification, 7)", () => {
+  assert.equal(traceSummary({ type: 'import', data: { kind: 'trip', app: '0.1.0', uncarried: 2 } }), "from a trip's file, annai 0.1.0 · 2 pieces of content it didn't hold left out");
+  assert.equal(traceSummary({ type: 'import', data: { kind: 'everything', app: '0.1.0', uncarried: 1 } }), "from a backup, annai 0.1.0 · 1 piece of content it didn't hold left out");
+});
+
+/** An exported archive, its manifest changed by edit(). @param {{ blob: Blob }} exported @param {(m: any) => void} edit */
+async function rewriteArchive({ blob }, edit) {
+  const entries = await readZip(new Uint8Array(await blob.arrayBuffer()));
+  const manifest = JSON.parse(new TextDecoder().decode(entries.get(MANIFEST_NAME)));
+  edit(manifest);
+  const z = new ZipWriter();
+  for (const [name, bytes] of entries) await z.add(name, name === MANIFEST_NAME ? utf8(JSON.stringify(manifest)) : bytes);
+  return new Uint8Array(await z.finish().arrayBuffer());
+}
+
+test("an imported file's size is its content's, never what the manifest says, whether its entry is read or not (Haiku's note)", async () => {
+  const v = await twoTrips();
+  const exported = await exportArchive(v.store, { kind: 'trip', scopes: [v.a], include: PRESETS.backup, app: '0.1.0' });
+  const real = /** @type {number} */ (await sizeOf(v.store, v.aPhoto));
+  const lying = await rewriteArchive(exported, (m) => {
+    m.files.find((/** @type {any} */ f) => f.path === '/files/temple.jpg').size = 1;
+  });
+  // Read (a device without it), and not read ("Replace mine" over the copy that has it).
+  const d = await freshDevice();
+  const [fresh] = (await importArchive(d.store, await peekArchive(lying))).trips;
+  assert.equal(/** @type {any} */ (await d.ws.read(fresh, '/files/temple.jpg')).entry.size, real);
+  const opened = await peekArchive(lying);
+  const [replaced] = (await importArchive(v.store, opened, { trips: { [opened.manifest.scopes[0].record.id]: 'replace' } })).trips;
+  assert.equal(/** @type {any} */ (await v.ws.read(replaced, '/files/temple.jpg')).entry.size, real);
 });

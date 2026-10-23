@@ -145,15 +145,17 @@ export function dayLabel(key, locale) {
  * patches to the plan files, so it can be undone"): brings back the version from before all her
  * writes in a row, or, when those began by adding it, removes it. Null when the user changed it
  * last, or her last change was a delete.
- * @param {{ actor: string, type: string, old: string | null }[]} history oldest first
+ * @param {{ actor: string, type: string, old: string | null, was?: { old?: string } }[]} history oldest first
  * @returns {{ restore: string } | { remove: true } | null}
  */
 export function beforeShiori(history) {
   let k = history.length;
   while (k > 0 && history[k - 1].actor === 'shiori' && history[k - 1].type === 'file.write') k--;
   if (k === history.length) return null;
-  const first = history[k].old;
-  return first ? { restore: first } : { remove: true };
+  const first = history[k];
+  if (first.old) return { restore: first.old };
+  // A version from before hers that an import didn't carry (spec §12.3): she didn't add the item, and it can't come back.
+  return first.was?.old ? null : { remove: true };
 }
 
 /**

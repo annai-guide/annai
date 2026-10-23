@@ -123,7 +123,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
   if (e.type === 'import') {
     const n = Number(d.uncarried) || 0;
-    return `from ${d.kind === 'trip' ? "a trip's file" : 'a backup'}, annai ${d.app ?? '?'}${n ? ` · ${n} earlier version${n === 1 ? '' : 's'} it didn't hold left out` : ''}`;
+    return `from ${d.kind === 'trip' ? "a trip's file" : 'a backup'}, annai ${d.app ?? '?'}${n ? ` · ${n} ${n === 1 ? 'piece' : 'pieces'} of content it didn't hold left out` : ''}`;
   }
   // Another trip's content, asked for here by its hash (reach.js): not given.
   if (e.type === 'content.refused') return `${d.via ? `${d.via} · ` : ''}asked for content that isn't ${e.scope?.startsWith('trip-') ? "this trip's" : 'here'}, and got none`;

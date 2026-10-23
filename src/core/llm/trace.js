@@ -1,5 +1,6 @@
 import { sha256Hex } from '../hash.js';
-import { utf8, ownBuffer } from '../bytes.js';
+import { utf8 } from '../bytes.js';
+import { keepBlob } from '../workspace.js';
 
 /**
  * Model calls in the trace (spec §4.5, §9.6, §15): a net.request for every attempt, and a
@@ -91,7 +92,7 @@ export function modelTrace(store, scope) {
       }
       await store.tx(['blobs', 'events'], 'readwrite', async (t) => {
         for (const k of kept) {
-          if (!(await t.hasBlob(k.hash))) await t.putBlob({ hash: k.hash, type: 'text/plain; charset=utf-8', size: k.bytes.byteLength, data: ownBuffer(k.bytes) });
+          await keepBlob(t, k.hash, 'text/plain; charset=utf-8', k.bytes);
         }
         await t.appendEvent(scope, { ...ev, data: { ...ev.data, stored: kept.map((k) => k.name) }, refs: kept.map((k) => k.hash) });
       });

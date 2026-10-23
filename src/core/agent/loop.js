@@ -2068,10 +2068,11 @@ export class Agent {
    * A tool's photos and PDF for a model the loop doesn't run, a helper's (the task tool, the third emulator pass): what that model
    * can't take comes back in words, the same as for her own. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
    * @param {AbortSignal} signal @param {{ input?: string[] }} model @param {Map<string, string>} [failed] the task's failed tellings
+   * @param {string} [scope] the conversation the tool ran for
    */
-  describe(output, wakeId, signal, model, failed) {
+  describe(output, wakeId, signal, model, failed, scope) {
     const blind = (output.images?.length && !model.input?.includes('image')) || (output.document && !model.input?.includes('pdf'));
-    return blind ? this.#described(output, wakeId, signal, model, failed) : Promise.resolve(output);
+    return blind ? this.#described(output, wakeId, signal, model, failed, scope) : Promise.resolve(output);
   }
 
   /** The output tools (spec §7.1). @returns {LoopTool[]} */
