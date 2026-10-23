@@ -18,7 +18,7 @@ function listened() {
 /** Shiori as the dock follows her: her state, and who listens to what. */
 function fakeAgent() {
   /** @type {Record<string, Set<(x: any) => void>>} */
-  const on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set() };
+  const on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), saying: new Set() };
   return {
     state: { name: 'sleeping', label: '' },
     on: (/** @type {string} */ kind, /** @type {(x: any) => void} */ fn) => { on[kind].add(fn); return () => { on[kind].delete(fn); }; },
@@ -226,6 +226,43 @@ export default function (test, assert) {
     assert.equal(caption.textContent, 'second words');
     assert.equal(caption.hidden, false);
     dock.dispose();
+  });
+
+  test("fix pass 2, item 3: a live Koe's words show in the bubble as they come, while she speaks; it is no live region; a long answer shows its latest words", async () => {
+    // The app's own styles, for the bubble's height.
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/src/ui/shiori.css';
+    await new Promise((done) => { link.onload = link.onerror = done; document.head.append(link); });
+    const { registry } = kit();
+    const agent = fakeAgent();
+    const ws = { readJSON: async () => ({}) };
+    const ctx = { registry, agent, ws, store: {}, notices: { card() {}, toast() {} }, go() {}, voice: { mode: { on: true, setting: 'on' }, on: true, onLevel: () => () => {}, onChange: () => () => {}, choose: async () => {} } };
+    const dock = createDock(ctx);
+    document.body.append(dock.el);
+    const caption = /** @type {HTMLElement} */ (dock.el.querySelector('.caption'));
+    const text = /** @type {HTMLElement} */ (dock.el.querySelector('.caption-text'));
+    const tick = () => new Promise((done) => setTimeout(done, 30));
+    try {
+      agent.state = { name: 'speaking', label: '' };
+      agent.emit('state', agent.state);
+      agent.emit('saying', "There's a taco");
+      await tick();
+      assert.deepEqual([caption.hidden, text.textContent], [false, "There's a taco"]);
+      agent.emit('saying', "There's a taco stand two miles ahead.");
+      await tick();
+      assert.equal(text.textContent, "There's a taco stand two miles ahead.");
+      assert.equal(caption.getAttribute('aria-live'), 'off', 'the conversation announces her lines; the bubble does not');
+      agent.emit('saying', `${'And on, word after word, '.repeat(40)}the latest words.`);
+      await tick();
+      assert.ok(text.scrollHeight > text.clientHeight + 1, 'a long answer is cut to a few lines');
+      assert.ok(text.scrollTop + text.clientHeight >= text.scrollHeight - 1, 'its latest words show');
+      assert.ok(text.classList.contains('cut'));
+    } finally {
+      dock.dispose();
+      dock.el.remove();
+      link.remove();
+    }
   });
 
   // Last: it starts a shell, which follows this page's address from then on.

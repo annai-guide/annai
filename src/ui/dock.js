@@ -133,8 +133,9 @@ export function createDock(ctx) {
   offs.push(chip?.dispose, live?.dispose);
   // Her words, in a bubble of their own that points down at her, and never like a box to type in (the user, 2026-10-22). It shows them while
   // she speaks, with voice on, and lets go a moment after she stops; "Show what she says" in Settings → Voice turns it off (the user, 2026-10-23).
+  // Not a live region: the conversation's announcer says each of her lines once, spoken or not (fix pass 2).
   const captionText = h('span', { class: 'caption-text' });
-  const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true }, captionText);
+  const caption = h('p', { class: 'caption', 'aria-live': 'off', hidden: true }, captionText);
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let lingering;
   const hideCaption = () => { clearTimeout(lingering); caption.hidden = true; };
@@ -143,21 +144,37 @@ export function createDock(ctx) {
     clearTimeout(lingering);
     if (ctx.agent.state.name !== 'speaking') lingering = setTimeout(hideCaption, CAPTION_LINGER_MS);
   };
-  // Each line reads the settings and its stored text before it shows: a slower read of an earlier line never replaces a later one's words.
-  let latest = 0;
-  offs.push(ctx.agent.on('event', async (/** @type {any} */ e) => {
-    if (e.type !== 'out.speak' || !e.data?.voice) return;
-    const mine = ++latest;
-    const on = shownSettings(await readAppSettings(ctx.ws)).showWords;
-    const words = on ? String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '') : '';
-    if (mine !== latest || !on) return;
+  /** Her words in the bubble; a long answer shows its latest words, faded at the top. @param {string} words */
+  const showCaption = (words) => {
     captionText.textContent = words;
     caption.hidden = !words;
+    captionText.scrollTop = captionText.scrollHeight;
+    captionText.classList.toggle('cut', captionText.scrollHeight > captionText.clientHeight + 1);
     letGo();
+  };
+  /** Whether "Show what she says" is on, read again as she starts speaking. */
+  let wordsOn = Promise.resolve(true);
+  const readOn = () => { wordsOn = readAppSettings(ctx.ws).then((a) => shownSettings(a).showWords, () => true); };
+  readOn();
+  // Each line reads its stored text before it shows: a slower read of an earlier line never replaces a later one's words.
+  let latest = 0;
+  /** @param {() => Promise<string> | string} words */
+  const show = async (words) => {
+    const mine = ++latest;
+    const on = await wordsOn;
+    const text = on ? await words() : '';
+    if (mine === latest && on) showCaption(text);
+  };
+  offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
+    if (e.type === 'out.speak' && e.data?.voice) show(async () => String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''));
   }));
+  // A live Koe's words as the transcript grows, while she speaks (fix pass 2): its line is written only once she has finished.
+  offs.push(ctx.agent.on('saying', (/** @type {string} */ words) => { show(() => String(words)); }));
   offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
-    if (s.name === 'speaking') clearTimeout(lingering);
-    else if (!caption.hidden) letGo();
+    if (s.name === 'speaking') {
+      clearTimeout(lingering);
+      readOn();
+    } else if (!caption.hidden) letGo();
   }), () => clearTimeout(lingering));
   // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
   const halves = h('span', { class: 'halves-sign', hidden: true },

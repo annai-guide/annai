@@ -169,7 +169,7 @@ export class Halves {
   /** The settings read as annai starts: no turn runs before. @type {Promise<unknown>} */
   #ready;
   /** @type {Record<string, Set<(x: any) => void>>} */
-  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set() };
+  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set(), saying: new Set() };
 
   /** @param {ConstructorParameters<typeof Agent>[0]} c what each half is made with: one voice, the talking half's (plan decision 17) */
   constructor(c) {
@@ -271,6 +271,7 @@ export class Halves {
       model: () => this.#liveId,
       setup: () => this.#liveSetup(),
       held: () => this.#fresh?.held ?? null,
+      saying: (words) => this.#emit('saying', words),
       visible: () => this.#visible(),
       release: () => { this.kokoro.release(); this.koe.release(); },
       notice: (n) => this.#notice(n),
@@ -355,7 +356,7 @@ export class Halves {
     return this.#split;
   }
 
-  /** @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear'} kind @param {(x: any) => void} fn */
+  /** saying: a live Koe's words so far, while she speaks them. @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying'} kind @param {(x: any) => void} fn */
   on(kind, fn) {
     this.#on[kind].add(fn);
     return () => this.#on[kind].delete(fn);
