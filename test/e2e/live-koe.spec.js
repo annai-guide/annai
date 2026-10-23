@@ -91,9 +91,8 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     await expect(said).toHaveCount(2, { timeout: 20_000 });
     await expect(said.nth(0)).toContainText("I'm checking.");
     await expect(said.nth(1)).toContainText("It's open until ten tonight.");
-    // The halves' notes show by default (the user, 2026-10-23), as quiet lines between the bubbles.
-    await expect(page.locator('.convo .system-line').filter({ hasText: /Kokoro|Koe/ })).toHaveText([
-      'annai to Kokoro: A live voice session opened: Koe speaks natively, and its words reach you as [Koe said aloud].',
+    // The halves' notes to each other show by default (the user, 2026-10-23), as notes of their own; annai's blocks to them stay in the Trace.
+    await expect(page.locator('.convo .halves-note')).toHaveText([
       'Koe to Kokoro: Is Nepenthe open now?',
       'Kokoro to Koe: Nepenthe is open until 22:00 tonight (nepenthe.com).',
     ]);
@@ -166,6 +165,33 @@ test("on the phone's speaker, her voice coming back into the microphone never cu
     const input = s.received().filter((/** @type {any} */ m) => m.realtimeInput).map((/** @type {any} */ m) => Object.keys(m.realtimeInput)[0]);
     expect(input.filter((/** @type {string} */ x) => x === 'activityStart')).toHaveLength(1);
     expect(input.filter((/** @type {string} */ x) => x === 'activityEnd')).toHaveLength(1);
+  } finally {
+    await s.stop();
+    await kokoro.stop();
+  }
+});
+
+// Fix pass 2, item 3: a live Koe's line is written only once she has finished; the bubble shows her words as they come, while she speaks.
+test('in Koe · Realtime the bubble over Shiori holds her words while she speaks, before her line is in the conversation', async ({ page }) => {
+  const words = 'There is a taco stand two miles ahead, and a diner just after the bridge.';
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ heard: 'Where should we eat?', said: words, audio: voice(3), usage }] });
+  const kokoro = await startModelServer({ '/kokoro/v1/messages': sse([sleep]) });
+  try {
+    await fakeMicrophone(page, [clipPath('where-eat')]);
+    await liveSetUp(page, kokoro.origin, s.origin);
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const caption = /** @type {HTMLElement} */ (document.querySelector('.dock .caption'));
+      const label = /** @type {HTMLElement} */ (document.querySelector('.dock .talk-label'));
+      w.sawBubble = '';
+      const look = () => { if (!caption.hidden && label.textContent === 'Tap to interrupt' && caption.textContent) w.sawBubble = caption.textContent; };
+      for (const el of [caption, label]) new MutationObserver(look).observe(el, { attributes: true, childList: true, characterData: true, subtree: true });
+    });
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).sawBubble), { timeout: 20_000 }).toBe(words);
+    await expect(page.locator('.dock .caption')).toHaveAttribute('aria-live', 'off');
+    await page.getByRole('link', { name: 'Conversation' }).click();
+    await expect(page.locator('.convo .shiori.said')).toContainText(words, { timeout: 20_000 });
   } finally {
     await s.stop();
     await kokoro.stop();

@@ -24,11 +24,12 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
- *   held?: () => Promise<void> | null }} LiveHost
+ *   held?: () => Promise<void> | null, saying?: (words: string) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
  *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
- *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start
+ *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; saying: her words so far, while she speaks
+ *   them (the dock's bubble), as the transcript grows; her line is written once, at the end
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -768,6 +769,7 @@ export class LiveKoe {
       const t = (this.#t ??= newTurn());
       t.said += e.text;
       if (!t.spoken && realWord(t.said)) this.#speak(t);
+      else if (this.#sounding === t) this.c.saying?.(cleanSaid(t.said));
     }
     this.#changed();
   }
@@ -841,6 +843,7 @@ export class LiveKoe {
       t.stream = v.platform.player.stream({ rate: this.#rate, onLevel: (x) => v.level(x, 'her') });
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;
+      this.c.saying?.(cleanSaid(t.said));
       t.stream.done.then(({ playedMs }) => this.#said(t, playedMs));
       if (t.done) t.stream.end();
     } else if (t.done) this.#said(t, null);

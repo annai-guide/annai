@@ -47,6 +47,15 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     await page.locator('.voice-chip').click();
     await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
     await expect(page.locator('.voice-chip')).toHaveText('Voice on · Classic');
+    // What the conversation's announcer says (fix pass 2, S2: the words heard, once they are in).
+    await page.getByRole('link', { name: 'Conversation' }).click();
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+      w.announced = [];
+      new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, characterData: true, subtree: true });
+    });
 
     await page.getByRole('button', { name: 'Shiori' }).click();
     const sign = page.getByRole('status').filter({ hasText: 'Kokoro is working' });
@@ -71,8 +80,12 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     await expect(page.locator('.convo .system-line').filter({ hasText: 'Heard, not for Shiori' })).toHaveText('Heard, not for Shiori: Did you lock the car?');
     await expect(page.locator('.convo .shiori.said')).toHaveCount(2);
     // The halves' notes show by default (the user, 2026-10-23), as quiet lines between the bubbles.
-    await expect(page.locator('.convo .system-line').filter({ hasText: /Kokoro|Koe/ })).toContainText(['Koe to Kokoro: Is Nepenthe open now?', 'Kokoro to Koe: Nepenthe is open till 10 tonight (nepenthe.com).']);
+    await expect(page.locator('.convo .halves-note')).toContainText(['Koe to Kokoro: Is Nepenthe open now?', 'Kokoro to Koe: Nepenthe is open till 10 tonight (nepenthe.com).']);
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(2);
+    const announced = await page.evaluate(() => /** @type {any} */ (window).announced);
+    // Each once, in whatever order the words heard are written down; never Kokoro's note, nor an empty "Shiori woke" for what was heard.
+    expect(announced.filter((/** @type {string} */ t) => /Heard|Nepenthe|lock the car|Shiori/.test(t)).sort()).toEqual(['Heard, not for Shiori: Did you lock the car?', 'Heard: Is Nepenthe open now?', "Shiori: I'm checking.", "Shiori: It's open till 10 tonight."]);
+    await expect(page.locator('.convo .system-line', { hasText: 'Shiori woke' })).toHaveCount(0);
   } finally {
     await server.stop();
   }

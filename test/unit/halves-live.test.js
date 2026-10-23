@@ -983,3 +983,26 @@ test("a note that comes while Start fresh runs waits for it: the session it open
     await k.done();
   }
 });
+
+test("in Koe · Realtime her words come as the transcript grows, while she speaks, before her line is written (fix pass 2, item 3: the dock's bubble)", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand two miles ahead, on the left.", audio: tone(1.0) }]);
+  try {
+    /** @type {string[]} */
+    const seq = [];
+    k.agent.on('saying', (/** @type {string} */ text) => seq.push(`saying(${k.agent.state.name}): ${text}`));
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.speak') seq.push('out.speak'); });
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
+    await k.agent.idle();
+    const saying = seq.filter((x) => x.startsWith('saying'));
+    assert.ok(saying.length >= 1, `her words come while she speaks: ${seq.join(' | ')}`);
+    assert.ok(seq.indexOf('out.speak') > seq.indexOf(saying.at(-1)), 'all before her line is written');
+    assert.ok(saying.every((x) => x.startsWith('saying(speaking): ')), 'only while she speaks');
+    assert.equal(saying.at(-1), "saying(speaking): There's a taco stand two miles ahead, on the left.");
+    assert.equal((await k.events(['out.speak'])).length, 1, 'her line is written once, at the end, as before');
+  } finally {
+    await k.done();
+  }
+});

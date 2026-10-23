@@ -11,8 +11,8 @@ import { ask } from '../ask.js';
 import { ME } from '../../core/scopes.js';
 
 const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves'];
-/** Wakes that are lines of their own: the user's, and what the halves tell each other. */
-const NOT_WOKE = ['user', 'choice', 'note', 'cue', 'halves'];
+/** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
+const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 
 /**
  * The copy a photo ended up as, following its replacements (each refused copy names the next).
@@ -86,9 +86,11 @@ export async function renderTalk(ctx) {
   const { showWords, showHalves: halves } = shownSettings(await readAppSettings(ctx.ws));
   const scope = agent.scope;
   const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(agent.trip)))?.title ?? 'Trip' : 'No trip open';
-  // Not a live region itself: what she says aloud is announced once, by the dock's caption, and the rest of the new lines by `announce`.
+  // Not a live region itself: `announce` says each new line of hers once, spoken or not, whatever "Show what she says" is (the dock's bubble is
+  // no live region), and what annai heard you say once its words are in; never what you typed, nor the halves' notes (fix pass 2).
   const list = h('ol', { class: 'convo' });
   const announce = h('div', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' });
+  const tell = (/** @type {string} */ text) => { if (built && text) announce.replaceChildren(h('span', { text })); };
   const cost = h('p', { class: 'sub' });
   const showCost = async () => {
     const c = await costs(ctx.store, scope);
@@ -147,7 +149,10 @@ export async function renderTalk(ctx) {
     }
     if (e.type === 'heard.text') {
       const words = unheard.get(d.of);
-      if (words) words.textContent = String(d.text ?? '');
+      if (words) {
+        words.textContent = String(d.text ?? '');
+        tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`);
+      }
       unheard.delete(d.of);
       return null;
     }
@@ -169,11 +174,8 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'reminder') return h('li', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
-    if (e.type === 'note' || e.type === 'halves') {
-      if (!halves) return null;
-      const who = e.type === 'halves' ? 'annai to Kokoro' : d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe';
-      return h('li', { class: 'system-line', text: `${who}: ${String(texts.text ?? '')}` });
-    }
+    // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
+    if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: `${d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe'}:` }), ` ${String(texts.text ?? '')}`) : null;
     if (e.type === 'wake') {
       // Kokoro's wakes are its own: the conversation is Koe's. A watch's wake says a lot, for Shiori: the line is cut.
       if (d.half === 'kokoro') return null;
@@ -237,7 +239,8 @@ export async function renderTalk(ctx) {
         }
         empty.remove();
         list.append(node);
-        if (built && !(e.type === 'out.speak' && e.data?.voice)) announce.replaceChildren(h('span', { text: node.textContent ?? '' }));
+        tell(e.type === 'msg.user' || e.type === 'note' ? '' : e.type === 'out.speak' ? `Shiori: ${node.querySelector('p')?.textContent ?? ''}`
+          : e.type !== 'heard' ? node.textContent ?? '' : typeof e.data?.text !== 'string' ? '' : e.data.dismissed ? node.textContent ?? '' : `Heard: ${e.data.text}`);
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
