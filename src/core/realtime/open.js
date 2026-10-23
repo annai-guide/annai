@@ -64,7 +64,9 @@ export function closeKind(type, code, reason) {
  * the session is ready, with the tunables its reopen() gives (decision 11), twice at most.
  * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, model: import('../llm/config.js').Model, key: string | null,
  *   tunables: Record<string, any>, setup: Omit<LiveSetup, 'audioIn' | 'audioOut'> & Partial<LiveSetup>, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
- *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number }} c
+ *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number,
+ *   output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} c  output: the phone's sound (its rate, and its processing and output
+ *   latency in s), traced as it is ready
  * @returns {LiveSession}
  */
 export function openLive(c) {
@@ -186,7 +188,7 @@ export function openLive(c) {
           if (done || st.up) return;
           st.up = true;
           clearTimeout(timer);
-          log(setup.resume ? 'resumed' : 'ready', { ms: now() - started });
+          log(setup.resume ? 'resumed' : 'ready', { ms: now() - started, ...c.output });
           resolve(undefined);
         }, (e) => broke('ready', e));
         return undefined;

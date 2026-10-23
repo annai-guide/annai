@@ -28,8 +28,11 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
   let opens = 0;
   let files = 0;
   const platform = {
-    /** How much faster than real time a live stream plays here. */
+    /** How much faster than real time a live stream plays here; stalls: it never plays (a context suspended); running: what its running says. */
     streamSpeed: 20,
+    streamStalls: false,
+    /** @type {boolean | undefined} */
+    streamRunning: undefined,
     /**
      * The phone's speaker heard by its own microphone: a live stream's sound, this many dB re as played, comes back into an open
      * microphone as it plays (at 16 kHz); null: none, as with headphones. @type {number | null}
@@ -86,6 +89,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     streams: [],
     player: {
       async unlock() { log.push('unlock'); return true; },
+      output: () => ({ sampleRate: 48_000, baseLatency: 0.01 }),
       ...(plays ? { plays: () => plays } : {}),
       /** A live session's voice: it "plays" streamSpeed times faster than real time, from its first piece. @param {{ rate: number }} o */
       stream({ rate }) {
@@ -97,18 +101,21 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         let settle = () => {};
         const done = new Promise((r) => { settle = r; });
         const played = () => (started ? Math.min(s.ms, (Date.now() - started) * platform.streamSpeed) : 0);
+        /** The player's own numbers, as the worklet's are: no holes, a start at once. @type {any} */
+        let result = null;
         const finish = () => {
-          if (s.playedMs !== null) return { playedMs: s.playedMs };
+          if (result) return result;
           clearInterval(timer);
           s.playedMs = Math.round(played());
-          settle({ playedMs: s.playedMs });
-          return { playedMs: s.playedMs };
+          result = { playedMs: s.playedMs, holes: 0, holeMs: 0, waitMs: 0, player: 'fake' };
+          settle(result);
+          return result;
         };
         const timer = setInterval(() => { if (s.ended && played() >= s.ms) finish(); }, 2);
         return {
           push(/** @type {Int16Array} */ pcm) {
             if (s.playedMs !== null) return;
-            started ||= Date.now();
+            if (!platform.streamStalls) started ||= Date.now();
             const at = s.ms;
             s.ms += (pcm.length / rate) * 1000;
             // Heard when it plays (never before the player has it), as loud as echoDb is then.
@@ -122,6 +129,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
           stop() { s.stopped = true; log.push('stream stop'); return finish(); },
           queued: () => (s.playedMs === null && played() < s.ms ? 1 : 0), // what is still to play
           done,
+          ...(platform.streamRunning === undefined ? {} : { running: Promise.resolve(platform.streamRunning) }),
         };
       },
       /** @param {{ data: Uint8Array }} clip @param {{ signal: AbortSignal, onLevel?: (x: number) => void }} o */
