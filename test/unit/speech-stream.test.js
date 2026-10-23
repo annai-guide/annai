@@ -7,6 +7,7 @@ import { modelTrace } from '../../src/core/llm/trace.js';
 import { speechCall } from '../../src/core/llm/speech.js';
 import { Speaker } from '../../src/core/voice/speaker.js';
 import { fakePlatform } from './voice-fakes.js';
+import { useClock } from './clock.js';
 
 // Streamed voices (G3, "Streamed, sentence by sentence" and "Never stutters"): a voice type that reads its reply as it
 // comes gives 16-bit PCM pieces; annai traces the clip once it has all come, holds it until the start rule says it
@@ -72,7 +73,8 @@ const drain = async (chunks) => {
   return n;
 };
 
-test('a streamed voice: asked for, it resolves at its first piece with its rate; its pieces come as they arrive; it is traced once, when all of it is in, with its cost (G3)', async () => {
+test('a streamed voice: asked for, it resolves at its first piece with its rate; its pieces come as they arrive; it is traced once, when all of it is in, with its cost (G3)', async (t) => {
+  useClock(t);
   const store = createMemoryStore();
   const r = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hello there.', stream: true, trace: modelTrace(store, SYS),
     fetch: slowFetch([{ at: 0 }, { at: 20 }, { at: 40, samples: PIECE / 2 }]) });
@@ -89,7 +91,8 @@ test('a streamed voice: asked for, it resolves at its first piece with its rate;
   assert.ok(Math.abs(req.cost - 12 * 10 / 1e6) < 1e-12, 'per character, as a whole clip');
 });
 
-test("stream off: with the voice's stream tunable off, or a caller that didn't ask, the whole clip comes, as before", async () => {
+test("stream off: with the voice's stream tunable off, or a caller that didn't ask, the whole clip comes, as before", async (t) => {
+  useClock(t);
   const off = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint({ stream: false }), model, key: null, text: 'Hi.', stream: true, fetch: slowFetch([{ at: 0 }]) });
   assert.equal(off.stream, undefined);
   assert.equal(off.clip?.data.length, 2 * PIECE);
@@ -97,7 +100,8 @@ test("stream off: with the voice's stream tunable off, or a caller that didn't a
   assert.equal(unasked.clip?.mediaType, 'audio/wav');
 });
 
-test('the first piece must come within the time limit, and then no gap may be longer; a slow clip of short gaps is fine', async () => {
+test('the first piece must come within the time limit, and then no gap may be longer; a slow clip of short gaps is fine', async (t) => {
+  useClock(t);
   const store = createMemoryStore();
   const trace = modelTrace(store, SYS);
   await assert.rejects(speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, timeoutMs: 60, trace, fetch: slowFetch([{ at: 150 }]) }),
@@ -110,7 +114,8 @@ test('the first piece must come within the time limit, and then no gap may be lo
   assert.deepEqual((await traced(store)).map((d) => d.outcome), ['timeout', 'timeout', 'ok']);
 });
 
-test("a stream's first piece must be 16-bit PCM at a rate the phone plays (3 kHz and up), else the voice failed: traced as the server's (fix pass)", async () => {
+test("a stream's first piece must be 16-bit PCM at a rate the phone plays (3 kHz and up), else the voice failed: traced as the server's (fix pass)", async (t) => {
+  useClock(t);
   const store = createMemoryStore();
   const trace = modelTrace(store, SYS);
   for (const piece of [{ pcm: [1, 2], rate: 24000 }, { pcm: new Int16Array(4), rate: 2000 }, { pcm: new Int16Array(4), rate: Number.NaN }]) {
@@ -121,7 +126,8 @@ test("a stream's first piece must be 16-bit PCM at a rate the phone plays (3 kHz
   assert.deepEqual((await traced(store)).map((d) => d.outcome), ['server', 'server', 'server']);
 });
 
-test('a stream that fails partway is traced as failed, without its cost: the sentence is paid for once, by the voice that says it', async () => {
+test('a stream that fails partway is traced as failed, without its cost: the sentence is paid for once, by the voice that says it', async (t) => {
+  useClock(t);
   const store = createMemoryStore();
   const r = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hello there.', stream: true, trace: modelTrace(store, SYS),
     fetch: slowFetch([{ at: 0 }, { at: 10, fail: true }]) });
@@ -187,7 +193,8 @@ function recordingPlayer(now) {
   return { p, streams };
 }
 
-test('a stream arriving at half real time starts late, and then plays without a gap (Review Focus 4)', async () => {
+test('a stream arriving at half real time starts late, and then plays without a gap (Review Focus 4)', async (t) => {
+  useClock(t);
   const t0 = Date.now();
   const now = () => (Date.now() - t0) * 10; // the test's clock runs ten times faster than real time
   const { p, streams } = recordingPlayer(now);
@@ -210,7 +217,8 @@ test('a stream arriving at half real time starts late, and then plays without a 
   for (let i = 1; i < pieces.length; i++) assert.ok(pieces[i].pushed <= pieces[i - 1].end, `piece ${i} came at ${pieces[i].pushed} ms, before the one before it ended at ${pieces[i - 1].end} ms`);
 });
 
-test('on a good connection a stream starts at once, and the next sentence reads ahead while one plays', async () => {
+test('on a good connection a stream starts at once, and the next sentence reads ahead while one plays', async (t) => {
+  useClock(t);
   const t0 = Date.now();
   const now = () => Date.now() - t0;
   const { p, streams } = recordingPlayer(now);
@@ -231,7 +239,8 @@ test('on a good connection a stream starts at once, and the next sentence reads 
   assert.ok(Number(asked[1].split(' at ')[1]) < streams[0].at(-1).end, 'the second was asked for while the first played');
 });
 
-test('a stream that fails after some of its audio: its player stream stops, the voice is benched, and the same sentence goes to the next voice', async () => {
+test('a stream that fails after some of its audio: its player stream stops, the voice is benched, and the same sentence goes to the next voice', async (t) => {
+  useClock(t);
   const t0 = Date.now();
   const now = () => Date.now() - t0;
   const { p, streams } = recordingPlayer(now);
@@ -261,7 +270,8 @@ test('a stream that fails after some of its audio: its player stream stops, the 
   assert.deepEqual(done.voices, ['v1', 'v2']);
 });
 
-test('cut off mid-stream: the player stream stops at once, and what was heard is kept by the fraction played', async () => {
+test('cut off mid-stream: the player stream stops at once, and what was heard is kept by the fraction played', async (t) => {
+  useClock(t);
   const t0 = Date.now();
   const now = () => Date.now() - t0;
   const { p } = recordingPlayer(now);
@@ -278,7 +288,8 @@ test('cut off mid-stream: the player stream stops at once, and what was heard is
   assert.ok(done.cut && done.cut.at > 0 && done.cut.at < text.length, `cut at ${done.cut?.at}, by the fraction heard`);
 });
 
-test("cut off before the stream has all come: what was heard is a fraction of the whole sentence, not of what had arrived (fix pass)", async () => {
+test("cut off before the stream has all come: what was heard is a fraction of the whole sentence, not of what had arrived (fix pass)", async (t) => {
+  useClock(t);
   const t0 = Date.now();
   const now = () => (Date.now() - t0) * 10; // the test's clock runs ten times faster than real time
   const { p, streams } = recordingPlayer(now);
@@ -298,7 +309,8 @@ test("cut off before the stream has all come: what was heard is a fraction of th
   assert.ok(done.cut && done.cut.at >= 20 && done.cut.at <= 36, `cut at ${done.cut?.at}: ${text.slice(0, done.cut?.at)}`);
 });
 
-test("a voice whose stream fails drops what it read ahead, unpaid: the next voice says both sentences, and the trace has each sentence paid for once (fix pass)", async () => {
+test("a voice whose stream fails drops what it read ahead, unpaid: the next voice says both sentences, and the trace has each sentence paid for once (fix pass)", async (t) => {
+  useClock(t);
   const store = createMemoryStore();
   const trace = modelTrace(store, SYS);
   const { p } = recordingPlayer(Date.now);
@@ -339,7 +351,8 @@ function stuckPlayer({ running } = {}) {
   return p;
 }
 
-test('a stream the player never plays (its audio suspended) gives up a moment after it should have ended, as a page that may not play sound: no utterance waits for ever (fix pass)', { timeout: 5000 }, async () => {
+test('a stream the player never plays (its audio suspended) gives up a moment after it should have ended, as a page that may not play sound: no utterance waits for ever (fix pass)', { timeout: 5000 }, async (t) => {
+  useClock(t);
   const p = stuckPlayer();
   /** @type {string[]} */
   const blocked = [];
