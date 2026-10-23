@@ -522,3 +522,28 @@ export async function koeSetUp(page, origin, trip = 'Big Sur') {
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: trip })).toBeVisible();
 }
+
+/**
+ * The words on a screen that escaped t, for the builder extracting it (localization design, "Tests"): the text nodes of main that
+ * hold plain ASCII words outside ⟦ ⟧ under the en-XA pseudo-locale, apart from what the user wrote. A report, not an assertion: it
+ * also lists what Intl writes in English for en-XA (relative times, dates) and the parts not extracted yet.
+ * @param {import('@playwright/test').Page} page @param {string[]} [mine] the user's own words on the screen, such as trip names
+ * @returns {Promise<string[]>}
+ */
+export async function unmarked(page, mine = []) {
+  return page.evaluate((own) => {
+    /** @type {string[]} */
+    const found = [];
+    const walker = document.createTreeWalker(document.querySelector('main') ?? document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const text = (n.textContent ?? '').replace(/\s+/g, ' ').trim();
+      const el = n.parentElement;
+      if (!text || el?.closest('script, style')) continue;
+      for (const run of text.replace(/⟦[^⟧]*⟧/g, ' ').match(/[A-Za-z]{2,}(?:[ ,.'’-]+[A-Za-z]+)*/g) ?? []) {
+        if (own.some((o) => o.includes(run) || run.includes(o))) continue;
+        found.push(`${run}  (<${el?.tagName.toLowerCase()}${el?.className ? `.${String(el.className).split(' ')[0]}` : ''}>)`);
+      }
+    }
+    return found;
+  }, mine);
+}
