@@ -326,12 +326,14 @@ test('Google Search with Koe on and the halves\' notes hidden: Kokoro\'s grounde
     await page.getByLabel('Add a model to Koe · Classic').selectOption({ label: 'Gemini 3.5 Flash Lite' });
     await page.getByRole('button', { name: 'Add to Koe · Classic' }).click();
     await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. Gemini 3.5 Flash Lite')).toBeVisible();
+    await page.goto('/#/shiori');
+    await page.getByLabel('Show what the halves tell each other').uncheck();
+    await expect(page.locator('.saving', { hasText: 'Show what the halves tell each other' }).locator('.saved')).toHaveText('Saved');
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
     await type(page, 'Is Nepenthe open tonight?');
     await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open until ten.", { timeout: 30_000 });
     await cardShown(page);
-    await expect(page.getByLabel('Show what the halves tell each other')).not.toBeChecked();
     await expect(page.locator('.convo .system-line')).toHaveCount(0);
     expect(s.bodies().filter((b) => offered(b).includes('tell_kokoro')).every((b) => !offered(b).includes('google_search')), "Koe's quick turns never search").toBe(true);
     expect(s.bodies().find((b) => offered(b).includes('google_search')).system_instruction, 'Kokoro writes for Koe, as before').not.toContain('is shown to the user as you write it');

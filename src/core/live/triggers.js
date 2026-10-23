@@ -20,7 +20,7 @@ import { meters, kmText } from './geo.js';
  *   start?: (when: any, m: Moment, mem: Record<string, any>) => void,
  *   check: (when: any, m: Moment, mem: Record<string, any>) => Firing | null,
  *   next?: (when: any, m: Moment, mem: Record<string, any>) => number | null }} TriggerType
- *   gps: it needs On the road (live mode); summary: its line in watch_set's description; start: sets mem from the moment the watch is first seen,
+ *   gps: it needs GPS on (live mode); summary: its line in watch_set's description; start: sets mem from the moment the watch is first seen,
  *   without firing; next: when the clock alone could make it fire (spec §11.2: one timer, for the next due watch)
  */
 

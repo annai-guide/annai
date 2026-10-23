@@ -732,3 +732,77 @@ test('opening a backup reads its files six at a time, and the archive keeps the 
     await fj.stop();
   }
 });
+
+// Backlog: opening a backup used to fetch its 650 files before anything showed. The preview now reads the manifest alone.
+test('peek tells what a 650-file backup holds in two requests, and get still brings and verifies every file', { timeout: 120_000 }, async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {} } });
+  try {
+    const { type } = forgejo();
+    const d = await device();
+    for (let i = 0; i < 650; i++) await d.ws.write(d.trip, `/notes/n${i}.md`, `Note ${i}`, { author: 'user' });
+    const made = await archive(d);
+    const put = await type.put(ctx(fj), made, opts());
+    assert.ok(fj.files(REPO).size > 650);
+    /** The requests the stand-in got since, leaving out the browser's preflights. */
+    const asked = (/** @type {number} */ from) => fj.log.slice(from).filter((/** @type {any} */ l) => l.method !== 'OPTIONS');
+    let from = fj.log.length;
+    const manifest = await type.peek(ctx(fj), put.id, {});
+    assert.deepEqual(manifest, made.manifest);
+    assert.equal(asked(from).length, 2, `peek asked ${asked(from).map((/** @type {any} */ l) => l.path).join(', ')}`);
+    assert.ok(asked(from).every((/** @type {any} */ l) => l.method === 'GET'));
+
+    // Getting the files is a separate step: every file named, once, and the manifest.
+    from = fj.log.length;
+    /** @type {any[]} */
+    const progress = [];
+    const blob = await type.get(ctx(fj), put.id, { onProgress: (/** @type {any} */ p) => progress.push(p) });
+    const names = new Set([...made.manifest.files, ...made.manifest.blobs, ...made.manifest.extras].map((x) => x.name));
+    const media = asked(from).filter((/** @type {any} */ l) => l.path.includes('/media/'));
+    assert.equal(media.length, names.size + 1, 'one request for each file, and one for the manifest');
+    assert.equal(progress.at(-1).done, names.size);
+    const { ws, id } = await restored(blob);
+    assert.equal(await ws.readText(id, '/notes/n649.md'), 'Note 649');
+  } finally {
+    await fj.stop();
+  }
+});
+
+test('a file changed on the server after the backup is refused when it is imported, though the preview showed', async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {} } });
+  try {
+    const { type } = forgejo();
+    const d = await device();
+    const made = await archive(d);
+    const put = await type.put(ctx(fj), made, opts());
+    const files = Object.fromEntries(fj.files(REPO));
+    const note = /** @type {string} */ (Object.keys(files).find((p) => p.endsWith('/notes/bixby.md')));
+    const evil = fj.commitAs(REPO, { ...files, [note]: 'Not what was backed up' }, 'annai backup from iPhone\n\nDevice: phone-a\nannai test\n');
+    assert.deepEqual(await type.peek(ctx(fj), evil, {}), made.manifest, 'the preview is the manifest, which is as it was');
+    const blob = await type.get(ctx(fj), evil, { onProgress: () => {} });
+    await assert.rejects(restored(blob), /was changed/);
+    assert.ok(put.id);
+  } finally {
+    await fj.stop();
+  }
+});
+
+test("peek refuses what isn't a whole backup, in plain words", async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {} } });
+  try {
+    const { type } = forgejo();
+    const made = await archive(await device());
+    const put = await type.put(ctx(fj), made, opts());
+    const files = Object.fromEntries(fj.files(REPO));
+    const part = fj.commitAs(REPO, files, 'Part of an annai backup from iPhone\n\nDevice: phone-a\nannai test\n');
+    await assert.rejects(type.peek(ctx(fj), part, {}), refused('missing', /only part of a backup that was cut off/));
+    const { 'annai-archive.json': _m, ...without } = files;
+    const bare = fj.commitAs(REPO, without, 'Add notes');
+    await assert.rejects(type.peek(ctx(fj), bare, {}), refused('missing', /isn't an annai backup/));
+    await assert.rejects(type.peek(ctx(fj), 'not-a-commit', {}), refused('missing'));
+    fj.answerNext('GET', '/media/annai-archive.json', { status: 200, raw: Buffer.from('<html>Unicorn!</html>') });
+    await assert.rejects(type.peek(ctx(fj), put.id, {}), refused('other', /damaged/));
+    assert.deepEqual(await type.peek(ctx(fj), put.id, {}), made.manifest, 'and the next answer is read as usual');
+  } finally {
+    await fj.stop();
+  }
+});

@@ -18,7 +18,7 @@ function listened() {
 /** Shiori as the dock follows her: her state, and who listens to what. */
 function fakeAgent() {
   /** @type {Record<string, Set<(x: any) => void>>} */
-  const on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set() };
+  const on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), saying: new Set() };
   return {
     state: { name: 'sleeping', label: '' },
     on: (/** @type {string} */ kind, /** @type {(x: any) => void} */ fn) => { on[kind].add(fn); return () => { on[kind].delete(fn); }; },
@@ -208,6 +208,96 @@ export default function (test, assert) {
     assert.ok(all().every((n) => n > 0), JSON.stringify(all()));
     dock.dispose();
     assert.deepEqual(all(), [0, 0, 0, 0, 0]);
+  });
+
+  test('fix pass 5: the caption shows the newest words when a slower read of an earlier line settles after a later one', async () => {
+    const { registry } = kit();
+    const agent = fakeAgent();
+    // The settings are read slowly for the first line only: its answer would arrive after the second's.
+    let reads = 0;
+    const ws = { readJSON: async () => { if (!reads++) await new Promise((done) => setTimeout(done, 120)); return {}; } };
+    const ctx = { registry, agent, ws, store: {}, notices: { card() {}, toast() {} }, go() {}, voice: { mode: { on: true, setting: 'on' }, on: true, onLevel: () => () => {}, onChange: () => () => {}, choose: async () => {} } };
+    const dock = createDock(ctx);
+    const line = (/** @type {number} */ seq, /** @type {string} */ text) => ({ type: 'out.speak', seq, data: { voice: true, text } });
+    agent.emit('event', line(1, 'first words'));
+    agent.emit('event', line(2, 'second words'));
+    await new Promise((done) => setTimeout(done, 300));
+    const caption = /** @type {HTMLElement} */ (dock.el.querySelector('.caption'));
+    assert.equal(caption.textContent, 'second words');
+    assert.equal(caption.hidden, false);
+    dock.dispose();
+  });
+
+  test("fix pass 2, item 3: a live Koe's words show in the bubble as they come, while she speaks; it is no live region; a long answer shows its latest words", async () => {
+    // The app's own styles, for the bubble's height.
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/src/ui/shiori.css';
+    await new Promise((done) => { link.onload = link.onerror = done; document.head.append(link); });
+    const { registry } = kit();
+    const agent = fakeAgent();
+    const ws = { readJSON: async () => ({}) };
+    const ctx = { registry, agent, ws, store: {}, notices: { card() {}, toast() {} }, go() {}, voice: { mode: { on: true, setting: 'on' }, on: true, onLevel: () => () => {}, onChange: () => () => {}, choose: async () => {} } };
+    const dock = createDock(ctx);
+    document.body.append(dock.el);
+    const caption = /** @type {HTMLElement} */ (dock.el.querySelector('.caption'));
+    const text = /** @type {HTMLElement} */ (dock.el.querySelector('.caption-text'));
+    const tick = () => new Promise((done) => setTimeout(done, 30));
+    try {
+      agent.state = { name: 'speaking', label: '' };
+      agent.emit('state', agent.state);
+      agent.emit('saying', "There's a taco");
+      await tick();
+      assert.deepEqual([caption.hidden, text.textContent], [false, "There's a taco"]);
+      agent.emit('saying', "There's a taco stand two miles ahead.");
+      await tick();
+      assert.equal(text.textContent, "There's a taco stand two miles ahead.");
+      assert.equal(caption.getAttribute('aria-live'), 'off', 'the conversation announces her lines; the bubble does not');
+      agent.emit('saying', `${'And on, word after word, '.repeat(40)}the latest words.`);
+      await tick();
+      assert.ok(text.scrollHeight > text.clientHeight + 1, 'a long answer is cut to a few lines');
+      assert.ok(text.scrollTop + text.clientHeight >= text.scrollHeight - 1, 'its latest words show');
+      assert.ok(text.classList.contains('cut'));
+    } finally {
+      dock.dispose();
+      dock.el.remove();
+      link.remove();
+    }
+  });
+
+  test('fix pass 3, items 7 and 8: "Show what she says" is read for each line: turned off while she speaks, the bubble goes at once, and her earlier words never stay in it', async () => {
+    const { registry } = kit();
+    const agent = fakeAgent();
+    /** @type {Record<string, any>} */
+    const app = {};
+    let reads = 0;
+    /** @type {Set<(c: any) => void>} */
+    const changes = new Set();
+    const ws = { readJSON: async () => { reads++; return app; }, onChange: (/** @type {(c: any) => void} */ fn) => { changes.add(fn); return () => changes.delete(fn); } };
+    const ctx = { registry, agent, ws, store: {}, notices: { card() {}, toast() {} }, go() {}, voice: { mode: { on: true, setting: 'on' }, on: true, onLevel: () => () => {}, onChange: () => () => {}, choose: async () => {} } };
+    const dock = createDock(ctx);
+    const caption = /** @type {HTMLElement} */ (dock.el.querySelector('.caption'));
+    const tick = () => new Promise((done) => setTimeout(done, 30));
+    try {
+      agent.state = { name: 'speaking', label: '' };
+      agent.emit('state', agent.state);
+      for (const words of ['It', 'It is', 'It is open']) agent.emit('saying', words);
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [false, 'It is open']);
+      assert.equal(reads, 1, 'read once, not for every piece of her words (follow-up 5)');
+      app.shiori = { showWords: false }; // switched off in Settings → Voice while she speaks
+      for (const fn of changes) fn({ scope: 'sys:settings', path: '/app.json' });
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [true, ''], 'gone at once, with its words');
+      agent.emit('saying', 'It is open until ten');
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [true, '']);
+      agent.emit('event', { type: 'out.speak', seq: 3, data: { voice: true, text: 'Her next line.' } });
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [true, '']);
+    } finally {
+      dock.dispose();
+    }
   });
 
   // Last: it starts a shell, which follows this page's address from then on.

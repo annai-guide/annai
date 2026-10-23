@@ -3,6 +3,8 @@ import { upcoming, sunPlace } from '../../core/now.js';
 import { sunChips } from '../../core/sun.js';
 import { distanceText } from '../../core/plan.js';
 import { storedTexts } from '../../core/agent/log.js';
+import { readAppSettings } from '../../core/settings.js';
+import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho } from '../cards.js';
 import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
@@ -38,7 +40,7 @@ export async function renderNow(ctx) {
     const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
     const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? 'Offline · reminders still work' : null];
     chips.replaceChildren(...words.filter(Boolean).map((t) => h('span', { class: 'chip', text: String(t) })));
-    start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Start on the road')] : []));
+    start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Turn GPS on')] : []));
   };
   draw();
   // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
@@ -123,11 +125,11 @@ export function planRowOf(ctx, trip, r, when, own) {
 
 /** Where the user is, in words for them (Shiori's are in the now block). @param {any} live @param {string} locale */
 export function whereWords(live, locale) {
-  if (!live || !live.on) return "You're off the road, so annai isn't following where you are.";
+  if (!live || !live.on) return "GPS is off, so annai isn't following where you are.";
   const f = knownFix(live);
   if (!f) {
-    if (live.gps === 'denied') return "Location isn't allowed for annai. Tap On the road below to say where you are.";
-    return live.gps === 'unavailable' ? 'No GPS signal right now. Tap On the road below to say where you are.' : 'Finding where you are…';
+    if (live.gps === 'denied') return "Location isn't allowed for annai. Tap GPS below to say where you are.";
+    return live.gps === 'unavailable' ? 'No GPS signal right now. Tap GPS below to say where you are.' : 'Finding where you are…';
   }
   const near = live.near(f);
   if (near) return near.m < 100 ? `At ${near.name}` : `Near ${near.name}, ${distanceText(near.m / 1000, locale)}`;
@@ -160,7 +162,8 @@ export async function eventCard(ctx, e) {
   if (e.type === 'reminder') return h('p', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { text }));
-  // Said aloud: hidden unless asked (spec §2 principle 4).
+  // Said aloud: its words show, marked; with "Show what she says" off they fold away until asked (spec §2 principle 4, §16.1).
+  if (shownSettings(await readAppSettings(ctx.ws)).showWords) return h('div', { class: 'shiori-card' }, h('span', { class: 'who-row' }, who(), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { class: 'said-words', text }));
   const words = h('p', { text, hidden: true });
   const show = h('button', { class: 'btn ghost', type: 'button', onclick: () => { words.hidden = false; show.remove(); } }, 'Show what she said');
   return h('div', { class: 'shiori-card' }, who(), h('span', { class: 'sub', text: 'Said aloud' }), show, words);

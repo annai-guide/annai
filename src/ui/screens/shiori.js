@@ -1,5 +1,6 @@
 import { h, field, savedField, savedCheck, autosave, numberIn, queueSave, messageOf } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
+import { shownSettings } from '../../core/shown.js';
 import { ME } from '../../core/scopes.js';
 import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core/agent/personalities.js';
 import { LABELS } from '../../core/agent/loop.js';
@@ -50,6 +51,7 @@ export async function renderShiori(ctx, route) {
   const chosen = h('ul', { class: 'file-list' }, ...names.map((n) => h('li', {},
     h('label', { class: 'check' }, h('input', { type: 'radio', name: 'personality', value: n, checked: n === active }), h('span', { text: n })),
     h('a', { href: `#/shiori?edit=${encodeURIComponent(n)}`, text: 'Edit' }))));
+  const showHalves = savedCheck('Show what the halves tell each other', shownSettings(app).showHalves, (on) => updateAppSettings(ctx.ws, { shiori: { showHalves: on } }));
   const b = app.shiori?.budgets ?? {};
   const budgets = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { shiori: { budgets: c } });
   const num = (/** @type {string} */ id, /** @type {any} */ value) => h('input', { id, type: 'number', inputmode: 'numeric', min: '1', step: '1', placeholder: 'No limit', value: value ?? '' });
@@ -130,10 +132,13 @@ export async function renderShiori(ctx, route) {
       field('Name for a new one', newName),
       nameError,
       askFirst.el),
+    section('Her two halves',
+      h('p', { class: 'sub', text: 'Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.' }),
+      showHalves.el),
     languagesSection(ctx, app),
     // Spend per day, the cache and housekeeping are on Settings → Models, with the requests they shape (the user, 2026-10-18).
     section('How often she acts on her own',
-      h('p', { class: 'sub', text: 'Plugins, reminders and On the road wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.' }),
+      h('p', { class: 'sub', text: 'Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.' }),
       savedField('Wakes per hour, not counting yours', wakes, () => numberIn(wakes, 1, 10_000, 'Wakes per hour is a whole number from 1; leave it empty for no limit.', { whole: true }), (v) => budgets({ wakesPerHour: v })),
       h('div', { class: 'saving' }, quiet, quietNote, quietHint, quietError),
       savedField('Steps per wake', steps, () => numberIn(steps, 1, 10_000, 'Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.', { whole: true }), (v) => budgets({ stepsPerWake: v }))));

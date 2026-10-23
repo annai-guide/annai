@@ -519,7 +519,36 @@ test('on a short screen (an iPhone SE, 320 × 544) the dock is compact: under a 
   expect(Math.round(voice.y + voice.height)).toBe(544);
 });
 
-test('landscape at SE size (568 × 296) with the dock\'s text panel open: the page keeps about a third of the height (a third less 5 px), and the box, Send and Close still work (the third emulator pass: 11 px)', async ({ page }) => {
+// A long caption is a few lines and an ellipsis, so it never pushes the dock up over the page (fix pass 4).
+for (const [w, h] of [[320, 544], [568, 296]]) {
+  test(`a long caption stays a few lines on a ${w} × ${h} screen: the dock stays under about half of it, the bubble's tail still shows`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await openApp(page, '#/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    const dock = page.locator('nav.dock');
+    const before = /** @type {{ height: number }} */ (await dock.boundingBox());
+    await page.evaluate(() => {
+      const caption = /** @type {HTMLElement} */ (document.querySelector('.dock .caption'));
+      /** @type {HTMLElement} */ (caption.querySelector('.caption-text')).textContent = 'A very long answer, said word after word, that goes on and on. '.repeat(30);
+      caption.hidden = false;
+    });
+    const caption = page.locator('.dock .caption');
+    await expect(caption).toBeVisible();
+    const after = /** @type {{ y: number, height: number }} */ (await dock.boundingBox());
+    // At most four lines (two on a short screen) of the bubble's text were added.
+    const line = await caption.evaluate((el) => Number.parseFloat(getComputedStyle(el).lineHeight) || Number.parseFloat(getComputedStyle(el).fontSize) * 1.4);
+    const lines = h < 420 ? 1 : h < 600 ? 2 : 4;
+    expect(after.height - before.height).toBeLessThanOrEqual(lines * line + 40);
+    expect(after.height).toBeLessThanOrEqual(h * 0.55);
+    // The page keeps about a third of the height, as with the text box open.
+    expect(after.y).toBeGreaterThanOrEqual(h * 0.32);
+    const tail = await caption.evaluate((el) => getComputedStyle(el, '::after').content);
+    expect(tail).toBe('""');
+    expect(await caption.evaluate((el) => getComputedStyle(el).overflow)).toBe('visible');
+  });
+}
+
+test('landscape at SE size (568 × 296) with the dock\'s text box open: the page keeps about a third of the height (a third less 5 px), and the box and its send arrow are on screen, and tapping the keyboard button again closes it (the third emulator pass: 11 px)', async ({ page }) => {
   await page.setViewportSize({ width: 568, height: 296 });
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
@@ -534,12 +563,12 @@ test('landscape at SE size (568 × 296) with the dock\'s text panel open: the pa
   const open = await room();
   expect(open.page).toBeGreaterThanOrEqual(296 * 0.32);
   // Everything in the panel is on screen and can be tapped.
-  for (const b of [box, page.getByRole('button', { name: 'Send' }), page.getByRole('button', { name: 'Close' })]) {
+  for (const b of [box, page.getByRole('button', { name: 'Send' })]) {
     const r = /** @type {{ y: number, height: number }} */ (await b.boundingBox());
     expect(r.y).toBeGreaterThanOrEqual(0);
     expect(r.y + r.height).toBeLessThanOrEqual(296);
   }
   expect((/** @type {{ height: number }} */ (await box.boundingBox())).height).toBeGreaterThanOrEqual(30);
-  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Type', exact: true }).click();
   await expect(box).toBeHidden();
 });

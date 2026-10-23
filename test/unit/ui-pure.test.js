@@ -1,5 +1,5 @@
 import { test } from 'node:test';
-import { isArchiveName } from '../../src/ui/import-state.js';
+import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
@@ -150,6 +150,7 @@ test("the trace's one-line summaries say what Shiori did, sent and read", () => 
   assert.equal(traceSummary(e('tool.result', { name: 'fetch', ok: true, ms: 120, content: 'Source: https://x.test/ (read directly)' })), 'fetch · ok · 120 ms · Source: https://x.test/ (read directly)');
   assert.equal(traceSummary(e('net.request', { kind: 'web', tool: 'fetch', method: 'GET', url: 'https://x.test/', status: 200, ms: 90 })), 'fetch · GET https://x.test/ · 200 · 90 ms');
   assert.equal(traceSummary(e('compaction', { from: 1, to: 80, mode: 'warm' })), 'events 1–80 summarized (warm)');
+  assert.equal(traceSummary(e('compaction', { from: 1, to: 80, mode: 'fresh' })), 'started fresh after event 80');
   assert.equal(traceSummary(e('decide', { result: { stay: 0.2, go: 0.8 }, by: 'decide' })), 'go (80%) · by decide');
   assert.equal(traceSummary(e('error', { kind: 'budget', message: 'Steps used up.' })), 'budget: Steps used up.');
 });
@@ -252,6 +253,9 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(placeStatus(t(), { phase: 'uploading', done: 3, total: 12 }, now), 'Uploading 3 of 12…');
   assert.equal(placeStatus(t(), { phase: 'checking', done: 1, total: 40 }, now), 'Comparing files 1 of 40…');
   assert.equal(placeStatus(t(), { phase: 'building', done: 0, total: 0 }, now), 'Getting the backup ready…');
+  assert.equal(placeStatus(t(), { phase: 'downloading', done: 120, total: 650 }, now), 'Getting files: 120 of 650');
+  assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 1 }, now), 'Getting the backup…', 'one file is no count');
+  assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 0 }, now), 'Getting the backup…');
   assert.deepEqual(['iPhone', 'iPad', 'Android phone', 'computer'].map(withArticle), ['an iPhone', 'an iPad', 'an Android phone', 'a computer']);
   assert.equal(placeHref('bt-1 2'), '#/backups/place?id=bt-1%202');
   const held = t({ last: { ...last, at: now - 86_400_000 }, hold: { kind: 'newer', remote: { id: 'x', at: now - 3_600_000, label: 'Android phone' } } });
@@ -268,6 +272,8 @@ test('the trace says what each backup did (spec §15)', () => {
   assert.equal(traceSummary({ type: 'backup.newer', data: { type: 'github', remote: { id: 'c2', at: 0, label: 'Android phone' } } }), 'github · a newer backup from an Android phone is there');
   assert.equal(traceSummary({ type: 'backup.error', data: { type: 'github', kind: 'auth', message: 'GitHub refused the token.' } }), 'github · auth: GitHub refused the token.');
   assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096 } }), 'github · downloaded c2, 4.0 KB');
+  assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096, stopped: true } }), 'github · downloaded c2, 4.0 KB, then stopped: thrown away');
+  assert.equal(traceSummary({ type: 'backup.peek', data: { type: 'forgejo', backup: 'c2', problem: '$.files[0].hash: does not match' } }), "forgejo · c2 can't be opened: $.files[0].hash: does not match");
   assert.equal(traceSummary({ type: 'backup.prune', data: { type: 's3', backup: 'annai-backup-1.annai.zip' } }), 's3 · deleted an older backup, annai-backup-1.annai.zip');
 });
 
@@ -295,8 +301,100 @@ test('a restore behind a backup the user started says it waits; then it says it 
   changed();
   finish(new Blob(['zip']));
   await done;
-  assert.deepEqual(said.slice(1), ['Downloading the backup…', 'Downloading 2 of 9 files…']);
+  assert.deepEqual(said.slice(1), ['Getting the backup…', 'Getting files: 2 of 9']);
   assert.deepEqual(went, ['#/import']);
+});
+
+test('a restore from a place that can peek opens the import screen at once, with the manifest and no download', async () => {
+  /** @type {string[]} */
+  const said = [];
+  const manifest = { scopes: [] };
+  let downloaded = 0;
+  const backups = {
+    typeOf: () => ({ stores: 'tree', peek() {} }),
+    peek: async () => manifest,
+    download: async () => { downloaded++; return new Blob(); },
+    on: () => () => {}, progress: () => null, running: () => [],
+  };
+  /** @type {string[]} */
+  const went = [];
+  await restoreFrom(/** @type {any} */ ({ backups, store: null, notices: null, go: (/** @type {string} */ h) => went.push(h) }), /** @type {any} */ ({ id: 'bt-1', type: 'forgejo' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([said, went, downloaded], [['Opening the backup…'], ['#/import'], 0]);
+  const pending = takePendingImport();
+  assert.deepEqual([pending?.peeked, pending?.from, pending?.files], [manifest, { target: 'bt-1', remote: { id: 'c1', at: 0 } }, []]);
+  // A backup that can't be peeked at says why in the words the place gave.
+  const broken = { ...backups, peek: async () => { throw new Error("That backup isn't there."); } };
+  said.length = 0;
+  await restoreFrom(/** @type {any} */ ({ backups: broken, store: null, notices: null, go: () => went.push('wrong') }), /** @type {any} */ ({ id: 'bt-1', type: 'forgejo' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([said, went, takePendingImport()], [['Opening the backup…', "That backup isn't there."], ['#/import'], null]);
+});
+
+test('a restore falls back to the download when the place has nothing to peek with, and for a place of whole files', async () => {
+  /** @type {string[]} */
+  const said = [];
+  /** @type {string[]} */
+  const went = [];
+  let downloaded = 0;
+  let peeked = 0;
+  const backups = {
+    typeOf: () => ({ stores: 'tree', peek() {} }),
+    peek: async () => { peeked++; return null; },
+    download: async () => { downloaded++; return new Blob(['zip']); },
+    on: () => () => {}, progress: () => null, running: () => [],
+  };
+  const ctx = (/** @type {any} */ b) => /** @type {any} */ ({ backups: b, store: null, notices: null, go: (/** @type {string} */ h) => went.push(h) });
+  await restoreFrom(ctx(backups), /** @type {any} */ ({ id: 'bt-1', type: 'x' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([peeked, downloaded, went], [1, 1, ['#/import']], 'a null peek goes on to the download');
+  assert.equal(takePendingImport()?.files.length, 1);
+  went.length = 0;
+  await restoreFrom(ctx({ ...backups, typeOf: () => ({ stores: 'file', peek() {} }) }), /** @type {any} */ ({ id: 'bt-1', type: 'x' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([peeked, downloaded, went], [1, 2, ['#/import']], 'a place of whole files is not peeked at');
+  takePendingImport();
+});
+
+test('the import screen listens for leaving until it is left or done, and a finished import is not touched by later moves', () => {
+  /** @type {Set<() => void>} */
+  const heard = new Set();
+  const target = { addEventListener: (/** @type {string} */ _t, /** @type {() => void} */ fn) => { heard.add(fn); }, removeEventListener: (/** @type {string} */ _t, /** @type {() => void} */ fn) => { heard.delete(fn); } };
+  const left = leaveSignal(/** @type {any} */ (target));
+  assert.equal(heard.size, 1);
+  for (const fn of [...heard]) fn(); // a move to another screen
+  assert.equal(left.signal.aborted, true);
+  assert.equal(heard.size, 0, 'let go once left');
+  const finished = leaveSignal(/** @type {any} */ (target));
+  finished.done();
+  assert.equal(heard.size, 0, 'let go once the import is done');
+  assert.equal(finished.signal.aborted, false);
+});
+
+test('an import that finishes after the user left says so in a toast, with what came in and from where', () => {
+  /** @type {string[]} */
+  const toasts = [];
+  const ctx = { notices: { toast: (/** @type {string} */ s) => toasts.push(s) } };
+  const here = new AbortController();
+  toldIfLeft(ctx, here.signal, ['Big Sur'], 'Forgejo / Gitea');
+  assert.deepEqual(toasts, [], 'the user is still here: the screen says it');
+  here.abort();
+  toldIfLeft(ctx, here.signal, ['Big Sur'], 'Forgejo / Gitea');
+  toldIfLeft(ctx, here.signal, ['Big Sur', 'Kyoto'], null);
+  toldIfLeft(ctx, here.signal, ['A', 'B', 'C'], 'Forgejo / Gitea');
+  toldIfLeft(ctx, here.signal, [], 'Forgejo / Gitea');
+  assert.deepEqual(toasts, ['Imported Big Sur from Forgejo / Gitea.', 'Imported Big Sur and Kyoto.', 'Imported 3 trips from Forgejo / Gitea.', 'Imported from Forgejo / Gitea.']);
+});
+
+test('a restore passes the screen\'s signal to the peek and to the download', async () => {
+  const stop = new AbortController();
+  /** @type {unknown[]} */
+  const seen = [];
+  const backups = {
+    typeOf: () => ({ stores: 'tree', peek() {} }),
+    peek: async (/** @type {string} */ _a, /** @type {string} */ _b, /** @type {any} */ o) => { seen.push(o.signal); return null; },
+    download: async (/** @type {string} */ _a, /** @type {string} */ _b, /** @type {any} */ o) => { seen.push(o.signal); return new Blob(['zip']); },
+    on: () => () => {}, progress: () => null, running: () => [],
+  };
+  await restoreFrom(/** @type {any} */ ({ backups, store: null, notices: null, go: () => {} }), /** @type {any} */ ({ id: 'bt-1', type: 'x' }), { id: 'c1', at: 0 }, () => {}, { signal: stop.signal });
+  assert.deepEqual(seen, [stop.signal, stop.signal]);
+  takePendingImport();
 });
 
 test('the limit for an unnamed connection, as typed and as shown', () => {
@@ -363,7 +461,7 @@ test("the trace's one-line summaries of live mode: points, firings, reminders an
   assert.equal(traceSummary({ type: 'trigger.fired', data: { watch: 'plan:hearst:leave', text: 'Plan: time to leave soon for "Hearst Castle tour"', late: 17, offline: true } }),
     'plan:hearst:leave · Plan: time to leave soon for "Hearst Castle tour" · late by 17 min · no connection');
   assert.equal(traceSummary({ type: 'reminder', data: { text: 'Tea time.', aloud: true } }), 'said aloud · Tea time.');
-  assert.equal(traceSummary({ type: 'state', data: { live: 'on' } }), 'on the road on');
+  assert.equal(traceSummary({ type: 'state', data: { live: 'on' } }), 'GPS on');
   assert.equal(traceSummary({ type: 'state', data: { voice: 'on', why: 'moving' } }), 'voice on (moving)');
 });
 
@@ -427,7 +525,7 @@ test("the live chip during a simulation, and where the user is by live mode's ow
   const live = { on: true, gps: 'ok', activity: 'moving-fast', fix, simulating: true, clock: { now: () => fix.at + 5000 } };
   assert.equal(liveText(live), 'Simulation · moving fast');
   assert.equal(knownFix(live), fix); // fresh by the simulation's clock, weeks from today
-  assert.equal(liveText({ ...live, simulating: false, activity: 'still' }), 'On the road · stopped');
+  assert.equal(liveText({ ...live, simulating: false, activity: 'still' }), 'GPS on · stopped');
   assert.equal(knownFix({ ...live, clock: { now: () => fix.at + 3_600_000 } }), null);
 });
 

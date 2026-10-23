@@ -84,6 +84,7 @@ import { anySignal } from '../signals.js';
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended] @property {() => boolean} [hushed]  another voice plays (a live session): annai's reminders are shown, not said
  * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
+ * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -102,6 +103,8 @@ export const LABELS = Object.freeze({
   away: 'Working on …', offline: 'Offline · reminders still work',
 });
 export const SPEAK_RESULT = "Shown on screen. Voice is off, so you didn't listen; the user may type.";
+/** What Start fresh did: done; nothing, no line yet; already, none since the last fresh start; opening, the conversation still opens. @typedef {'done' | 'nothing' | 'already' | 'opening'} Fresh */
+
 /** Kokoro's notes that aren't for the user: Koe hears them, and may end quietly. */
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
@@ -258,6 +261,12 @@ export class Agent {
   #checking = 0;
   /** Housekeeping is due (spec §6.5): it waits for a pause. */
   #due = false;
+  /** Start fresh holds this half still: no turn and no housekeeping starts until it lets go (holdStill). */
+  #still = false;
+  /** What waited in the queue as Start fresh began holding still. @type {Wake[]} */
+  #before = [];
+  /** Kokoro's notes for the user that the turn running owes (Koe's), taken: Start fresh shows them instead. @type {(() => Wake[]) | null} */
+  #owing = null;
   /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
   #timer = null;
   /** The prompt the last call sent, in tokens, as the provider counted it. */
@@ -276,6 +285,8 @@ export class Agent {
   #free = [];
   /** The page is being left. */
   #leaving = false;
+  /** The warm summary's call, which leaving the page or a tap on Shiori cuts short. @type {AbortController | null} */
+  #tidy = null;
   /** @type {PhotoCopies | null} */
   #photos = null;
   /** The wake whose photo couldn't be sent: its card already says why. */
@@ -928,11 +939,13 @@ export class Agent {
    */
   leaving(yes = true) {
     this.#leaving = yes;
+    if (yes) this.#tidy?.abort();
   }
 
   /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7), and her voice if it is this half's. */
   interrupt() {
     this.#userStop = true;
+    this.#tidy?.abort(); // a warm summary under way: its call deletes the turn it borrowed
     if (this.#gathering) this.#stopGathered();
     this.#halt();
   }
@@ -945,6 +958,11 @@ export class Agent {
     const wakes = this.#queue.filter((w) => w.scope === this.scope);
     this.#queue = this.#queue.filter((w) => w.scope !== this.scope);
     this.poke();
+    this.#stopWakes(wakes);
+  }
+
+  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped". @param {Wake[]} wakes */
+  #stopWakes(wakes) {
     if (!wakes.length) return;
     const wakeId = newId('w');
     this.#checking++;
@@ -1017,11 +1035,11 @@ export class Agent {
   }
 
   async #drain() {
-    if (this.#busy || this.#opens) return;
+    if (this.#busy || this.#opens || this.#still) return;
     this.#busy = true;
     this.#clearTimer();
     try {
-      while (!this.#opens && this.#queue.some((w) => w.scope === this.scope)) {
+      while (!this.#opens && !this.#still && this.#queue.some((w) => w.scope === this.scope)) {
         await this.#gather();
         if (this.#opens) break;
         const wakes = this.#take();
@@ -1032,6 +1050,7 @@ export class Agent {
     } finally {
       this.#busy = false;
       this.#abort = null;
+      this.#owing = null;
       // A tap's listening window outlives the turn until something is said, or a silence (spec §10.4).
       const tapped = this.#ear?.owner === 'tap';
       this.#setState(tapped ? 'listening' : this.online() ? 'sleeping' : 'offline');
@@ -1044,7 +1063,7 @@ export class Agent {
   /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5). */
   #schedule() {
     this.#clearTimer();
-    if (!this.#due || this.#opens) return;
+    if (!this.#due || this.#opens || this.#still) return;
     const last = this.#warmth.last;
     const wait = last ? last.at + last.ttlMs - WARM_LEAD_MS - this.now() : 0;
     if (wait <= 0) this.#housekeep('cold');
@@ -1053,11 +1072,12 @@ export class Agent {
 
   /** @param {'warm' | 'cold'} mode */
   async #housekeep(mode) {
-    if (this.#busy || this.#opens) return;
+    if (this.#busy || this.#opens || this.#still) return;
     this.#busy = true;
     try {
       await this.compact(mode);
     } catch (e) {
+      if (e instanceof ProviderError && e.kind === 'cancelled') return; // the user left or tapped her: nothing failed
       await this.#notice({ tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${this.#explain(e, mode === 'cold' ? 'utility' : 'main')} She will try again later.` });
     } finally {
       this.#busy = false;
@@ -1120,14 +1140,15 @@ export class Agent {
   /**
    * Housekeeping (spec §6.5): the older part of the conversation becomes a compaction event; the
    * most recent part stays word for word. Returns whether anything was compacted.
-   * @param {'warm' | 'cold'} mode @param {{ forced?: boolean }} [o]
+   * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, keepTokens?: number }} [o] forced: down to the last exchange, if the
+   * kept part is still about a third of the threshold; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only)
    */
   async compact(mode, o = {}) {
     const settings = await this.settings();
     const window = (await this.#mainModel())?.contextWindow ?? null;
-    const keepTokens = window
+    const keepTokens = o.keepTokens ?? (window
       ? (settings.compaction.threshold * window) / 3
-      : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3;
+      : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3);
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     // The conversation only, by type (A6): what the summary is made of, and what the cut is measured on (not Koe's).
     const split = this.#rules() === 'kokoro';
@@ -1161,6 +1182,9 @@ export class Agent {
     const language = summaryLanguage(said, await this.#languages());
     const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language) : await this.#coldSummary(cut, language);
     if (!summary) return false;
+    // Start fresh wrote a compaction meanwhile: this one, cut before it, would bring back the lines it left.
+    const [now] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
+    if (now?.seq !== latest?.seq) return false;
     const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
     await this.#serially(async () => {
       await this.reread();
@@ -1171,31 +1195,148 @@ export class Agent {
     return true;
   }
 
+  /**
+   * "Summarize now" on the Conversation screen (spec §6.5, §16.2): housekeeping when the user asks, as it would run: warm while the cache
+   * is, else cold, whatever the size, with only the last exchange kept word for word. The earlier words stay in the log, and recall
+   * brings them back.
+   * @returns {Promise<'done' | 'nothing' | 'busy' | 'failed'>} nothing: too little to summarize; busy: she is working or a conversation is opening
+   */
+  async summarizeNow() {
+    if (this.#busy || this.#opens || this.#still) return 'busy';
+    this.#clearTimer();
+    this.#busy = true;
+    const warm = Boolean(this.cacheState()?.warm);
+    try {
+      return (await this.compact(warm ? 'warm' : 'cold', { forced: true, keepTokens: 0 })) ? 'done' : 'nothing';
+    } catch (e) {
+      await this.#notice({ tone: 'info', title: "Shiori couldn't summarize the conversation", body: this.#explain(e, warm ? 'main' : 'utility') });
+      return 'failed';
+    } finally {
+      this.#busy = false;
+      this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.#settle();
+      if (this.#queue.length) this.#drain();
+    }
+  }
+
+  /**
+   * Start fresh's first step (spec §6.5): nothing new starts, no turn and no housekeeping (a due one is let go: the fresh start
+   * leaves nothing to summarize), and a turn that runs is stopped. Settles once none runs; letGo() ends it.
+   */
+  async holdStill() {
+    if (!this.#still) this.#before = this.#queue.filter((w) => w.scope === this.scope);
+    this.#still = true;
+    this.#due = false;
+    this.#clearTimer();
+    while (this.#busy) {
+      this.interrupt();
+      await this.#whenFree();
+    }
+  }
+
+  /**
+   * Start fresh goes ahead: what waited behind the turn it stopped came before it, and the fresh context would have nothing to go on for it,
+   * so it is written down as stopped, a reminder's words still shown. Not before: a conversation opening meanwhile keeps it.
+   */
+  async dropWaiting() {
+    const left = this.#queue.filter((w) => this.#before.includes(w));
+    this.#before = [];
+    this.#queue = this.#queue.filter((w) => !left.includes(w));
+    this.#stopWakes(left);
+    const owed = left.flatMap((w) => w.fallbacks ?? []);
+    if (owed.length) await this.remind(owed, this.scope, { silent: true });
+  }
+
+  /** Start fresh is done: what waited (the user's words meanwhile) runs. */
+  letGo() {
+    if (!this.#still) return;
+    this.#still = false;
+    this.#before = [];
+    this.#settle();
+    if (this.#queue.length) this.#drain();
+  }
+
+  /** Kokoro's notes for the user this half owes (Koe's, §6.8), queued or in its turn, taken: Start fresh shows them. @returns {Wake[]} */
+  takeOwed() {
+    const queued = this.#queue.filter((w) => w.scope === this.scope && isForUser(w));
+    this.#queue = this.#queue.filter((w) => !queued.includes(w));
+    return [...queued, ...(this.#owing?.() ?? [])];
+  }
+
+  /**
+   * "Start fresh" on the Conversation screen (spec §6.5, §16.2): from this point she starts a new context. A compaction event of mode
+   * "fresh" covers everything so far and has no summary, so the context holds none of the earlier lines (only a note that they exist);
+   * they stay in the log, shown, searched and recalled. Her turn, if one runs, is stopped first, and nothing new starts until it is
+   * done; what was heard and not yet written down is written first, as housekeeping does.
+   * @returns {Promise<Fresh>}
+   */
+  async startFresh() {
+    if (this.#opens) return 'opening';
+    await this.holdStill();
+    if (this.#opens) {
+      this.letGo();
+      return 'opening';
+    }
+    this.#busy = true;
+    try {
+      await this.dropWaiting();
+      const unwritten = this.transcript.unwritten();
+      if (unwritten.length) await this.#writeDown('fresh', unwritten, { final: true });
+      /** @type {Fresh} */
+      let result = 'nothing';
+      await this.#serially(async () => {
+        const [last] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { reverse: true, limit: 1 }));
+        const fresh = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true }))).find((e) => e.data?.mode === 'fresh');
+        const [said] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], reverse: true, limit: 1, ...(fresh ? { after: fresh.seq } : {}) }));
+        if (!last || !said) return void (result = fresh ? 'already' : 'nothing');
+        const [first] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { limit: 1 }));
+        const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: first.seq, to: last.seq, mode: 'fresh' } });
+        await this.reread();
+        await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
+        result = 'done';
+      });
+      this.#snapshot = null;
+      this.#due = false;
+      return result;
+    } finally {
+      this.#busy = false;
+      this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.letGo();
+      this.#settle();
+    }
+  }
+
   /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings @param {string} language */
   async #warmSummary(marker, settings, language) {
     const { tools, providerTools, shows } = await this.#toolsNow();
     if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = await this.#sendable();
-    for (let step = 0; step < 4; step++) {
-      const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
-      const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
-      const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
-      if (!calls.length) return r.reply.text.trim() || null;
-      /** @type {import('../llm/contract.js').Part[]} */
-      const results = [];
-      for (const c of calls) {
-        const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
-        const tool = tools.find((t) => t.name === c.name);
-        const out = memory && tool
-          ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
-          : { content: 'Not during housekeeping: only memory moves work now.', isError: true };
-        await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
-        results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
+    const tidy = new AbortController();
+    this.#tidy = tidy;
+    try {
+      for (let step = 0; step < 4; step++) {
+        const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
+        const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
+        const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
+        if (!calls.length) return r.reply.text.trim() || null;
+        /** @type {import('../llm/contract.js').Part[]} */
+        const results = [];
+        for (const c of calls) {
+          const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
+          const tool = tools.find((t) => t.name === c.name);
+          const out = memory && tool
+            ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
+            : { content: 'Not during housekeeping: only memory moves work now.', isError: true };
+          await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
+          results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
+        }
+        messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
       }
-      messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
+      return null;
+    } finally {
+      if (this.#tidy === tidy) this.#tidy = null;
     }
-    return null;
   }
 
   /** Cold: the utility model, from the older part as text. @param {number} cut @param {string} language */
@@ -1457,6 +1598,12 @@ export class Agent {
      * message of theirs that reached it inside its wait. @type {Wake[]}
      */
     let notes = [];
+    this.#owing = () => {
+      settle(); // not those she has reached the user with since
+      const taken = notes;
+      notes = [];
+      return taken;
+    };
     let wrote = false;
     const owes = () => notes.length > 0 || wrote;
     /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
@@ -1692,8 +1839,14 @@ export class Agent {
       }
     }
     settle();
-    // Kokoro's notes for the user, and Koe never passed them on: annai shows what it can of them itself (spec §6.8).
-    if (notes.length && !abort.signal.aborted && !this.#leaving && !failed) await this.#half.unsaid?.(notes);
+    // Kokoro's notes for the user, and Koe never passed them on: annai shows what it can of them itself (spec §6.8), once. A turn Start
+    // fresh stopped shows their words above its divider.
+    const unsaid = notes;
+    notes = [];
+    if (unsaid.length && !this.#leaving && !failed) {
+      if (!abort.signal.aborted) await this.#half.unsaid?.(unsaid);
+      else if (this.#still) this.#half.left?.(unsaid);
+    }
     if (silent && unanswered()) {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = 'Her model finished without saying anything to you.';
@@ -1707,6 +1860,7 @@ export class Agent {
     if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope, { unsaid: answered && !failed });
     // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
     if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
+    this.#owing = null;
     return answered && !failed;
   }
 
@@ -1720,7 +1874,8 @@ export class Agent {
     try {
       return await this.compact(mode, o);
     } catch (e) {
-      if (this.#leaving) return null;
+      // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
+      if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
       const why = await withoutSecrets(this.store, this.#explain(e, mode === 'cold' ? 'utility' : 'main'));
       if (!o.forced) {
         await this.#notice({ tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${why} She will try again later.` });

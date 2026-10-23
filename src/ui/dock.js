@@ -3,8 +3,15 @@ import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
 import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
+import { readAppSettings } from '../core/settings.js';
+import { shownSettings } from '../core/shown.js';
+import { SYS_SETTINGS } from '../core/scopes.js';
+import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
+import { onTap } from './dock-hides.js';
 
+/** How long her last words stay in the bubble once she has stopped, to read them. */
+const CAPTION_LINGER_MS = 2500;
 const SVG = 'http://www.w3.org/2000/svg';
 /** A line icon the dock's buttons show, drawn in the text colour. @param {string} d @param {string} [extra] the shapes beyond the path */
 function icon(d, extra = '') {
@@ -30,37 +37,67 @@ const keyboardIcon = () => icon('M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1
 export function createDock(ctx) {
   const avatar = dockAvatar(ctx);
   const label = h('span', { class: 'talk-label', text: ctx.agent.state.label });
-  const input = h('textarea', { id: 'dock-text', rows: 2, 'aria-label': 'Message to Shiori', enterkeyhint: 'send' });
+  // A smart text box (the user, 2026-10-23): there only while it is needed. The keyboard button opens it and, tapped again, closes it;
+  // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. A single line, so the keyboard's own key sends.
+  const input = h('input', { id: 'dock-text', type: 'text', 'aria-label': 'Message to Shiori', enterkeyhint: 'send', autocomplete: 'off', autocapitalize: 'sentences' });
+  // Chinese and Japanese are typed through an IME, whose Enter picks a candidate: it never sends the half-composed text. Chrome and Firefox
+  // say isComposing on that keydown; Safari ends the composition first and sends the Enter with keyCode 229. Some Android keyboards send
+  // every Enter as 229: one with no composition just ended sends. A composition the box loses (blur, closed) holds nothing back after.
+  let composing = false;
+  let endedAt = -Infinity;
+  input.addEventListener('compositionstart', () => { composing = true; });
+  input.addEventListener('compositionend', (e) => {
+    composing = false;
+    endedAt = e.timeStamp;
+  });
+  input.addEventListener('blur', () => { composing = false; });
+  input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
+    if (e.key === 'Enter' && (e.isComposing || composing || (e.keyCode === 229 && e.timeStamp - endedAt < 100))) e.preventDefault();
+  });
+  const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': 'Send', title: 'Send' }, icon('M12 19V6M6.5 11.5L12 6l5.5 5.5'));
   const sheet = h('form', {
     class: 'type-sheet', hidden: true,
     onsubmit: (/** @type {Event} */ e) => {
       e.preventDefault();
+      if (composing) return; // an IME's candidate is not yet text to send
       const text = input.value.trim();
       if (!text) return;
       input.value = '';
-      ctx.agent.typing?.(false);
+      closeTyping();
+      typeButton.focus(); // not left in the hidden box
       ctx.agent.send(text);
       if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
     },
-  },
-  input,
-  h('div', { class: 'acts' },
-    h('button', { class: 'btn pri', type: 'submit' }, 'Send'),
-    h('button', { class: 'btn ghost', type: 'button', onclick: () => { sheet.hidden = true; ctx.agent.typing?.(false); } }, 'Close')));
+  }, h('div', { class: 'type-box' }, input, sendArrow));
+  const typeButton = h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', 'aria-expanded': 'false', title: 'Type', onclick: () => (sheet.hidden ? openTyping() : closeTyping()) }, keyboardIcon());
+  /** A tap elsewhere on the page (onTap: never at its press): an empty box closes; one with a draft stays. @param {EventTarget | null} at */
+  const elsewhere = (at) => {
+    const t = /** @type {Node} */ (at);
+    if (!input.value.trim() && !sheet.contains(t) && !typeButton.contains(t)) closeTyping();
+  };
+  /** @type {(() => void) | undefined} */
+  let offTap;
+  const closeTyping = () => {
+    sheet.hidden = true;
+    composing = false;
+    typeButton.setAttribute('aria-expanded', 'false');
+    offTap?.();
+    ctx.agent.typing?.(false);
+  };
   // While the box holds text, a turn of the user's waits for them (spec §6.1, item 16).
   input.addEventListener('input', () => ctx.agent.typing?.(Boolean(input.value.trim())));
-  input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-      e.preventDefault();
-      sheet.requestSubmit();
-    } else if (e.key === 'Escape') {
-      sheet.hidden = true;
-      ctx.agent.typing?.(false);
-    }
+  sheet.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
+    if (e.key !== 'Escape') return;
+    closeTyping();
+    typeButton.focus();
   });
   const openTyping = () => {
     sheet.hidden = false;
+    typeButton.setAttribute('aria-expanded', 'true');
     input.focus();
+    offTap?.();
+    offTap = onTap(elsewhere);
+    ctx.agent.typing?.(Boolean(input.value.trim())); // a draft kept from before is typed text again
   };
   const camera = h('input', { id: 'dock-camera', type: 'file', accept: 'image/*', capture: 'environment', class: 'visually-hidden' });
   camera.addEventListener('change', async () => {
@@ -103,26 +140,67 @@ export function createDock(ctx) {
     if ((who === 'her' && s === 'speaking') || (who === 'you' && s === 'hearing')) avatar.setLevel(x, who);
   }));
   avatar.setState(ctx.agent.state.name);
-  // Voice (spec §10.5, §16.2): the chip, Captions, and a larger dock while voice is on.
+  // Voice (spec §10.5, §16.2): the chip, her words, and a larger dock while voice is on.
   const chip = ctx.voice ? voiceChip(ctx) : null;
   const live = ctx.live ? liveChip(ctx) : null;
   offs.push(chip?.dispose, live?.dispose);
-  // Her words, in a bubble of their own that points down at her, and never like a box to type in (the user, 2026-10-22).
-  const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true });
-  let lastSaid = '';
-  const showWords = h('button', {
-    class: 'chip', type: 'button', 'aria-expanded': 'false', hidden: !ctx.voice?.on,
-    onclick: () => {
-      caption.hidden = !caption.hidden;
-      caption.textContent = lastSaid || 'She hasn’t said anything yet.';
-      showWords.setAttribute('aria-expanded', String(!caption.hidden));
-    },
-  }, 'Captions');
-  offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
-    if (e.type !== 'out.speak' || !e.data?.voice) return;
-    lastSaid = String(e.data.text ?? '');
-    if (!caption.hidden) caption.textContent = lastSaid;
+  // Her words, in a bubble of their own that points down at her, and never like a box to type in (the user, 2026-10-22). It shows them while
+  // she speaks, with voice on, and lets go a moment after she stops; "Show what she says" in Settings → Voice turns it off (the user, 2026-10-23).
+  // Not a live region: the conversation's announcer says each of her lines once, spoken or not (fix pass 2).
+  const captionText = h('span', { class: 'caption-text' });
+  const caption = h('p', { class: 'caption', 'aria-live': 'off', hidden: true }, captionText);
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let lingering;
+  const hideCaption = () => { clearTimeout(lingering); caption.hidden = true; };
+  /** Hides the bubble once she is not speaking: at once, if she is not now, else when she stops. */
+  const letGo = () => {
+    clearTimeout(lingering);
+    if (ctx.agent.state.name !== 'speaking') lingering = setTimeout(hideCaption, CAPTION_LINGER_MS);
+  };
+  /** Her words in the bubble; a long answer shows its latest words, faded at the top. @param {string} words */
+  const showCaption = (words) => {
+    captionText.textContent = words;
+    caption.hidden = !words;
+    captionText.scrollTop = captionText.scrollHeight;
+    captionText.classList.toggle('cut', captionText.scrollHeight > captionText.clientHeight + 1);
+    letGo();
+  };
+  const clearCaption = () => {
+    hideCaption();
+    captionText.textContent = '';
+  };
+  /** "Show what she says", read once and again whenever the app settings change: switched off mid-speech, the bubble goes at once, words and all. */
+  const readOn = () => readAppSettings(ctx.ws).then((a) => shownSettings(a).showWords, () => true);
+  let wordsOn = readOn();
+  offs.push(ctx.ws?.onChange?.((/** @type {{ scope: string, path: string }} */ c) => {
+    if (c.scope !== SYS_SETTINGS || c.path !== '/app.json') return;
+    wordsOn = readOn();
+    wordsOn.then((on) => {
+      if (on) return;
+      latest++;
+      clearCaption();
+    });
   }));
+  // Each line reads its stored text before it shows: a slower read of an earlier line never replaces a later one's words.
+  let latest = 0;
+  /** @param {() => Promise<string> | string} words */
+  const show = async (words) => {
+    const mine = ++latest;
+    const on = await wordsOn;
+    const text = on ? await words() : '';
+    if (mine !== latest) return;
+    if (on) showCaption(text);
+    else clearCaption();
+  };
+  offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
+    if (e.type === 'out.speak' && e.data?.voice) show(async () => String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''));
+  }));
+  // A live Koe's words as the transcript grows, while she speaks (fix pass 2): its line is written only once she has finished.
+  offs.push(ctx.agent.on('saying', (/** @type {string} */ words) => { show(() => String(words)); }));
+  offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
+    if (s.name === 'speaking') clearTimeout(lingering);
+    else if (!caption.hidden) letGo();
+  }), () => clearTimeout(lingering));
   // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
   const halves = h('span', { class: 'halves-sign', hidden: true },
     h('span', { class: 'chip', role: 'status', text: 'Kokoro is working' }),
@@ -142,9 +220,9 @@ export function createDock(ctx) {
       h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, cameraIcon()), camera,
       talk,
       h('span', { class: 'dock-end' },
-        h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, keyboardIcon()),
+        typeButton,
         pluginActions)),
-    h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords, halves, pluginChips));
+    h('div', { class: 'voice-row' }, chip?.el, live?.el, halves, pluginChips));
   const refreshSlots = () => {
     cleanUp('dock');
     pluginChips.replaceChildren(...slotEntries(ctx, 'ui:status-chip').map((e) => {
@@ -163,8 +241,7 @@ export function createDock(ctx) {
   /** @param {{ on: boolean }} m */
   const layout = (m) => {
     el.classList.toggle('voice', m.on || large);
-    showWords.hidden = !m.on;
-    if (!m.on) caption.hidden = true;
+    if (!m.on) hideCaption();
   };
   offs.push(ctx.voice?.onChange(layout));
   if (ctx.voice) layout(ctx.voice.mode);
@@ -172,6 +249,8 @@ export function createDock(ctx) {
     el, avatar, refreshSlots,
     dispose: () => {
       for (const off of offs.splice(0)) off?.();
+      composing = false;
+      offTap?.();
       ctx.agent.typing?.(false);
     },
     /** @param {boolean} on */

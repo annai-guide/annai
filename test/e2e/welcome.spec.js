@@ -4,7 +4,7 @@ import { openApp, waitForServiceWorker } from './helpers.js';
 import { SOURCES, FONTS, ART } from '../../src/ui/credits.js';
 
 // The welcome and Settings → About (the user, 2026-10-18).
-const STEPS = ['Welcome to annai', 'What annai can do', 'Your keys and your data', 'The fine print', 'Searching the web', 'Get started'];
+const STEPS = ['Welcome to annai', 'Shiori, Koe and Kokoro', 'What annai can do', 'Your keys and your data', 'The fine print', 'Searching the web', 'Get started'];
 /** The last step (Get started) and the one about searching, found by their titles so a step added between them moves nothing. */
 const LAST = STEPS.length;
 const SEARCH = STEPS.indexOf('Searching the web') + 1;
@@ -168,6 +168,25 @@ test.describe('a link that opens a screen is never interrupted', () => {
     expect(new URL(page.url()).hash).toBe('#/import?inbox=1');
     expect((await appSettings(page)).welcomedAt).toBeUndefined();
   });
+});
+
+// "should we also introduce the user to our main architecture? and explain who is shiori, what is kokoro and what is koe?" (the user, 2026-10-23)
+test('a step says who Shiori is, and what Koe (声) and Kokoro (心) each do, plainly and short', async ({ page }) => {
+  await openApp(page, '#/welcome/2');
+  await expect(h1(page)).toHaveText('Shiori, Koe and Kokoro');
+  const step = page.locator('.welcome');
+  await expect(step).toContainText('Shiori is your guide. She has two halves that work together.');
+  await expect(step.locator('li', { hasText: 'Koe' })).toContainText('声');
+  await expect(step.locator('li', { hasText: 'Koe' })).toContainText('talks with you and answers at once');
+  await expect(step.locator('li', { hasText: 'Kokoro' })).toContainText('心');
+  await expect(step.locator('li', { hasText: 'Kokoro' })).toContainText('thinks things through and does the work');
+  // The Japanese words are marked as such, for a screen reader (fix pass 2); and where the halves' notes are, said rightly.
+  await expect(step.locator('[lang="ja"]')).toHaveText(['声', '心']);
+  await expect(step).toContainText('What they tell each other shows in the conversation; Settings → Shiori can hide it.');
+  await expect(step.getByText(`2 of ${LAST}`)).toBeVisible();
+  // It is skippable like every step: Next goes on, Back returns.
+  await step.getByRole('button', { name: 'Next' }).click();
+  await expect(h1(page)).toHaveText('What annai can do');
 });
 
 test('every step is reached with the keyboard alone, its heading taking the focus; Back goes to the one before', async ({ page }) => {

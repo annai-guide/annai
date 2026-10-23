@@ -13,6 +13,11 @@
  * put(c, archive, o) refuses with TargetError "newer" when the place's newest backup is neither
  * o.base nor one this device made (c.device.id), and with "large" before uploading anything when it
  * would send more than o.maxUpload bytes.
+ * peek(c, id, o) is optional, for a place that stores a "tree" and can tell what a backup holds without sending it: it
+ * returns the backup's annai-archive.json (parsed) alone, in a few requests however many files the backup has (Forgejo: two,
+ * GitHub: one). annai previews a backup with it, and calls get only when the user imports; a place without it
+ * gets the whole backup first. get still brings every file, and its archive must carry the manifest peek returned (annai refuses
+ * the backup if it does not); annai checks each file against that manifest's hash as it imports. Anything but a function is no peek.
  *
  * @typedef {import('./backup-targets.js').RemoteBackup} RemoteBackup
  * @typedef {{ key: string, label: string, placeholder?: string, advanced?: boolean }} Field
@@ -27,6 +32,7 @@
  *   list: (c: TargetContext) => Promise<RemoteBackup[]>,
  *   put: (c: TargetContext, archive: Archive, o: PutOptions) => Promise<{ id: string, at: number, uploaded?: number, files?: number }>,
  *   get: (c: TargetContext, id: string, o: { signal?: AbortSignal, onProgress: (p: Progress) => void }) => Promise<Blob>,
+ *   peek?: (c: TargetContext, id: string, o: { signal?: AbortSignal }) => Promise<unknown>,
  *   delete?: (c: TargetContext, id: string) => Promise<void>, browserAccess?: (origin: string) => { text: string, code: string },
  *   pluginId: string }} StorageType
  *   browserAccess: what the place must allow for annai at this origin, shown on its screen

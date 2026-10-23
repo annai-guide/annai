@@ -172,7 +172,7 @@ test("vLLM's transcription starts off, and brings its protocol when turned on; C
   const v = (await official('provider-vllm')).provider.abilities;
   assert.deepEqual([v.chat.on, v.transcription.on, v.transcription.kind, v.transcription.type], [undefined, false, 'transcription', 'openai-transcription']);
   const another = JSON.parse(await readFile(new URL('plugins-official/provider-another-address/annai-plugin.json', root), 'utf8'));
-  assert.equal(another.version, '2.1.2', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1; named Custom provider in 2.1.2');
+  assert.equal(another.version, '2.1.4', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1; named Custom provider in 2.1.2; keeping the conversation off until turned on, for the Responses protocol, in 2.1.3; keeping left to the default of its type in 2.1.4');
   assert.equal(another.catchAll, true);
   assert.match(another.provider.note, /Wait for the first words/);
   assert.match(another.provider.note, /never streams/);

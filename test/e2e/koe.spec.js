@@ -55,10 +55,18 @@ async function type(page, text) {
   await page.getByRole('button', { name: 'Send', exact: true }).click();
 }
 
-test('a typed question: Koe\'s bubble at once, the "Kokoro is working" sign, then Koe\'s answer from Kokoro; the conversation shows only you and Koe', async ({ page }) => {
+/** Switches off "Show what the halves tell each other" in Settings → Shiori, and waits for it to save. @param {import('@playwright/test').Page} page */
+async function hideHalves(page) {
+  await page.goto('/#/shiori');
+  await page.getByLabel('Show what the halves tell each other').uncheck();
+  await expect(page.locator('.saving', { hasText: 'Show what the halves tell each other' }).locator('.saved')).toHaveText('Saved');
+}
+
+test('a typed question: Koe\'s bubble at once, the "Kokoro is working" sign, then Koe\'s answer from Kokoro; with the halves\' notes hidden, the conversation shows only you and Koe', async ({ page }) => {
   const llm = await startModelServer(halves(2500));
   try {
     await koeSetUp(page, llm.origin);
+    await hideHalves(page);
     await type(page, 'Is Nepenthe open?');
     const said = page.locator('.convo .shiori p');
     await expect(said.first()).toHaveText("I'm checking.");
@@ -67,14 +75,14 @@ test('a typed question: Koe\'s bubble at once, the "Kokoro is working" sign, the
     await expect(said.last()).toHaveText("Good news: it's open till 10 tonight.", { timeout: 15_000 });
     await expect(sign).toBeHidden();
     await expect(page.locator('.convo > li')).toHaveCount(3);
-    await expect(page.locator('.convo .system-line')).toHaveCount(0);
+    await expect(page.locator('.convo .system-line, .convo .halves-note')).toHaveCount(0);
     expect(llm.bodies('/kokoro/v1/messages')[0].system.at(-1).text).toContain('# Working behind Koe');
   } finally {
     await llm.stop();
   }
 });
 
-test("Trace shows both halves' turns and their notes; the toggle shows the notes in the conversation", async ({ page }) => {
+test("Trace shows both halves' turns and their notes; the notes show in the conversation by default, and Settings → Shiori hides them", async ({ page }) => {
   const llm = await startModelServer(halves(300));
   try {
     await koeSetUp(page, llm.origin);
@@ -87,14 +95,51 @@ test("Trace shows both halves' turns and their notes; the toggle shows the notes
     await filterTrace(page, { kind: 'Models', type: 'model.turn' });
     await expect(page.getByText(/Koe · koe-classic: koe-model · 1 attempt/).first()).toBeVisible();
     await expect(page.getByText(/Kokoro · main: kokoro-model · 1 attempt/).first()).toBeVisible();
+    // On by default (the user, 2026-10-23: "always on by default and able to be turned off in the settings"), and no switch on the conversation.
     await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await expect(page.locator('.convo .halves-note').filter({ hasText: 'Koe to Kokoro: Is Nepenthe open now?' })).toBeVisible();
+    await expect(page.locator('.convo .halves-note').filter({ hasText: 'Kokoro to Koe: Nepenthe is open till 10 tonight' })).toBeVisible();
+    await expect(page.getByLabel('Show what the halves tell each other')).toHaveCount(0);
+    await page.goto('/#/shiori');
     const toggle = page.getByLabel('Show what the halves tell each other');
-    await expect(toggle).not.toBeChecked();
-    await toggle.check();
-    await expect(page.locator('.convo .system-line').filter({ hasText: 'Koe to Kokoro: Is Nepenthe open now?' })).toBeVisible();
-    await expect(page.locator('.convo .system-line').filter({ hasText: 'Kokoro to Koe: Nepenthe is open till 10 tonight' })).toBeVisible();
+    await expect(toggle).toBeChecked();
+    await toggle.uncheck();
+    await expect(page.getByRole('status').filter({ hasText: 'Saved' }).first()).toBeVisible();
+    await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open till 10 tonight.");
+    await expect(page.locator('.convo .halves-note')).toHaveCount(0);
     await page.reload();
-    await expect(page.getByLabel('Show what the halves tell each other')).toBeChecked();
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await expect(page.locator('.convo .shiori p').last()).toBeVisible();
+    await expect(page.locator('.convo .halves-note')).toHaveCount(0);
+    await page.goto('/#/shiori');
+    await expect(page.getByLabel('Show what the halves tell each other')).not.toBeChecked();
+  } finally {
+    await llm.stop();
+  }
+});
+
+test("the halves' notes are notes of their own, set apart from her reminders; annai's blocks to them stay in the Trace; the announcer says her lines, never the notes or what you typed (fix pass 2, item 9)", async ({ page }) => {
+  const llm = await startModelServer(halves(300));
+  try {
+    await koeSetUp(page, llm.origin);
+    await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+      w.announced = [];
+      new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, characterData: true, subtree: true });
+    });
+    await type(page, 'Is Nepenthe open?');
+    await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open till 10 tonight.", { timeout: 15_000 });
+    const notes = page.locator('.convo .halves-note');
+    await expect(notes).toHaveText(['Koe to Kokoro: Is Nepenthe open now?', 'Kokoro to Koe: Nepenthe is open till 10 tonight (nepenthe.com).']);
+    expect(await notes.first().evaluate((el) => [el.classList.contains('system-line'), getComputedStyle(el).borderTopStyle])).toEqual([false, 'dashed']);
+    await expect(page.locator('.convo li', { hasText: /^annai to / })).toHaveCount(0);
+    expect(await page.evaluate(() => /** @type {any} */ (window).announced)).toEqual(["Shiori: I'm checking.", "Shiori: Good news: it's open till 10 tonight."]);
   } finally {
     await llm.stop();
   }
