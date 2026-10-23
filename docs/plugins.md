@@ -579,7 +579,8 @@ export function activate(annai) {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
         body: JSON.stringify({ query, max_results: limit }) });
       if (!res.ok) throw Object.assign(new Error(`Tavily answered ${res.status}`), { status: res.status });
-      return (await res.json()).results.map((r) => ({ title: r.title, url: r.url, snippet: r.content }));
+      const body = await annai.helpers.readAnswer(res, 'json', 'Tavily'); // never res.json(): a hostile answer can be huge
+      return body.results.map((r) => ({ title: r.title, url: r.url, snippet: r.content }));
     },
   });
 }
@@ -590,8 +591,10 @@ export function activate(annai) {
 - **`search(query, { fetch, signal, limit })`** returns rows: any list of `{ title, url, snippet }` (`description` and `content` are read as `snippet`). `fetch` is the traced fetch, with secrets blanked; `signal` ends when the user stops Shiori or the step's 25 seconds pass; `limit` is 8. Throw an `Error` in plain words for a failure. Put `status` (the HTTP status) on it, or `kind: 'cors'` for a request the browser couldn't make: a 429, a 402, a 5xx, a timeout and a failed request make the provider **rest**, a minute at first and up to 30 minutes after each failure in a row, in memory only; a 401 or other refusal doesn't, because it is the user's to fix.
 - **An empty answer is no failure and no answer:** with no rows, the next provider is asked. "Nothing found" is said only when every provider that ran found nothing.
 - **annai makes the rows,** so return whatever the service sends: tags and entities are taken out, whitespace folded, addresses must be http(s) and are cleaned of `utm_*`, `srsltid`, `msockid` and the like, one row stays per host and path, a long excerpt is cut to the sentences that share the most words with the query (400 characters), and at most 8 rows go to Shiori as TSV.
-- **`kind`** is `web` (default) or `knowledge`; knowledge providers (an encyclopedia) come last by default. A provider with `always: true` can't be unticked. `free: true` marks a keyless service, listed after keyed ones.
-- **The order** with nothing set is: keyed providers in the order installed, the free ones, the knowledge ones. Whatever the user drags is kept in `web.search`, and what they untick in `web.searchOff`.
+- **`kind`** is `web`. (`knowledge`, `free` and `always`, which put a provider last, among the keyless ones, or beyond the user's ticks, are annai's own web tools' alone: a plugin's provider is always listed as a keyed or self-hosted web one that the user can untick.)
+- **The order** with nothing set is: keyed providers in the order installed, the free ones, the knowledge ones. Whatever the user drags is kept in `web.search`, and what they untick in `web.searchOff`. A provider installed after the user has reordered goes before the first free service in their list. Removing your plugin takes its id out of both lists.
+- **Time:** `ready()` gets 3 seconds, a `search()` its step (25 seconds, or `limitMs` if less); annai stops waiting at the signal even if your code ignores it, and a whole search ends by 45 seconds, with the last 10 kept for the floor. `search` also gets `session`, one random id for the open conversation, kept in memory (annai's own services use it).
+- **`annai.searchProviders()`** answers as of the last read of the settings, without the switched-off ones; `await annai.searchProvidersAsync()` reads them now.
 
 ### A search provider plugin
 
@@ -609,7 +612,7 @@ Describe it in the manifest, so the install screen can say where searches and th
 }
 ```
 
-- **`search.id`** is the id you register. **`kind`**: `web` or `knowledge`.
+- **`search.id`** is the id you register. **`kind`**: `web`.
 - **`search.origins`:** every origin (scheme and host) the searches and the key are sent to, as `https://host` with nothing after. The install screen says "Your search words and the key you give it are sent to …", an update that adds one asks again, and annai's credits list the host. **A provider for the user's own server** (SearXNG) has `"origins": []`, and the install screen says searches go only to the address the user gives it.
 - **`search.key`** names the `writeOnly` setting that holds the key (`setting`), where to get one (`url`, https) and a line about the free tier (`note`). annai keeps the key as the secret `plugin:<id>:key` and draws a password field for it on your plugin's page.
 - **Browser access is yours to check.** A web app can call a service only if it allows annai's address (CORS), including the request's headers: Tavily (`authorization`, `content-type`) and Serper (`x-api-key`) do; Brave, Kagi's REST API, You.com's and Exa's REST API don't, and a plugin for them fails with "Failed to fetch". A SearXNG instance sends no CORS header unless its operator adds one, and has JSON off unless `json` is under `search: formats:` in `settings.yml`; its plugin says so.
