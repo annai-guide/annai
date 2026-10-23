@@ -17,14 +17,22 @@ import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
 export { messageOf };
 
-/** A model's prices in a line: tokens, minutes of speech, or characters; those in force at `at`. @param {import('../../core/llm/cost.js').Prices | null} prices @param {number} [at] */
+/**
+ * A model's prices in a line: tokens, minutes of speech, or characters; those in force at `at`, and a change that is coming, with its date.
+ * @param {import('../../core/llm/cost.js').Prices | null} prices @param {number} [at]
+ */
 export function priceLine(prices, at = Date.now()) {
   if (!prices) return null;
-  prices = pricesAt(prices, at);
-  if (typeof prices.perMinute === 'number') return `$${prices.perMinute} a minute of speech`;
-  if (typeof prices.perMillionChars === 'number') return `$${prices.perMillionChars} per million characters`;
-  if (!prices.input && !prices.output) return 'free';
-  return `$${prices.input ?? '?'} in, $${prices.output ?? '?'} out per million tokens`;
+  /** @param {import('../../core/llm/cost.js').PriceFields} p @returns {[string, string]} the prices, and what they are per */
+  const say = (p) => {
+    if (typeof p.perMinute === 'number') return [`$${p.perMinute} a minute of speech`, ''];
+    if (typeof p.perMillionChars === 'number') return [`$${p.perMillionChars}`, ' per million characters'];
+    if (!p.input && !p.output) return ['free', ''];
+    return [`$${p.input ?? '?'} in, $${p.output ?? '?'} out`, ' per million tokens'];
+  };
+  const [now, per] = say(pricesAt(prices, at));
+  const next = (prices.schedule ?? []).map((e) => e.from).filter((d) => Date.parse(`${d}T00:00:00Z`) > at).sort()[0];
+  return `${now}${per}${next ? ` (from ${next}: ${say(pricesAt(prices, Date.parse(`${next}T00:00:00Z`)))[0]})` : ''}`;
 }
 
 /** The free-tier switch's words: who doesn't charge, as the description names it, else the plugin's name. @param {true | string} freeTier @param {string} pluginName */

@@ -345,6 +345,37 @@ test('hostile model output in a card stays text: no HTML, no javascript: links',
   }
 });
 
+test('the announcer reads a card with choices, a card with nothing to read and a question as her lines ("Shiori: …", "Shiori asks: …"), never the label run into the words', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([
+    { name: 'show', input: { card: { title: 'Dinner', text: 'Nepenthe at 7.', choice: ['Book it', 'Not now'] } } },
+    { name: 'show', input: { card: { image: '/trip/files/menu.jpg' } } },
+    { name: 'ask', input: { question: 'Window seat?', options: ['Yes', 'No'] } },
+    { name: 'sleep', input: {} },
+  ]))] });
+  try {
+    await setUp(page, llm.origin);
+    await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+      w.announced = [];
+      new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, characterData: true, subtree: true });
+    });
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Plan dinner');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.convo .shiori').filter({ hasText: 'Window seat?' })).toBeVisible();
+    expect(await page.evaluate(() => /** @type {any} */ (window).announced)).toEqual([
+      'Shiori: Dinner Nepenthe at 7. Choices: Book it, Not now.',
+      'Shiori: a photo',
+      'Shiori asks: Window seat? Choices: Yes, No.',
+    ]);
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('a tool switched off is not offered to Shiori; the Jina key is saved and never shown', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {

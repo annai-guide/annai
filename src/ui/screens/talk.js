@@ -1,7 +1,7 @@
 import { h, whenGone } from '../dom.js';
 import { readAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
-import { renderCard, cardWho } from '../cards.js';
+import { renderCard, cardWho, cardKind } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
 import { storedTexts, blobBytes } from '../../core/agent/log.js';
 import { openPhotoViewer } from '../photo-viewer.js';
@@ -19,19 +19,34 @@ const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 
 /**
  * What the announcer says of a line: her lines read "Shiori: …" (a plugin's kind of card, "Shiori (Trail): …"; a question,
- * "Shiori asks: …" with its choices), as her spoken lines always did, rather than her label run into the words. Nothing for
- * what you typed or the halves' notes; any other line as written.
- * @param {string} type the event's @param {string} who the label over the line, as drawn: SHIORI, or SHIORI · KIND
- * @param {string} words the line's words without its label @param {string[]} [options] a question's choices
+ * "Shiori asks: …"), with the choices a card or a question offers read after the words, as her spoken lines always did, rather
+ * than her label run into the words. A card with nothing to read says what it is. Nothing for what you typed or the halves'
+ * notes; any other line as written.
+ * @param {string} type the event's @param {string} kind a plugin's kind of card, by the name its plugin gave it, else ''
+ * @param {string} words the line's words without its label @param {string[]} [choices] buttons that answer it
+ * @param {{ image?: unknown }} [card] the card, for one with no words
  */
-export function announcement(type, who, words, options = []) {
+export function announcement(type, kind, words, choices = [], card = {}) {
   if (type === 'msg.user' || type === 'note') return '';
-  const kind = who.split(' · ')[1]?.toLowerCase();
-  const name = kind ? `Shiori (${kind[0].toUpperCase()}${kind.slice(1)})` : 'Shiori';
-  if (type === 'out.speak' || type === 'out.show') return `${name}: ${words}`;
-  if (type === 'out.ask') return `${name} asks: ${words}${options.length ? ` Choices: ${options.join(', ')}.` : ''}`;
+  const name = kind ? `Shiori (${kind})` : 'Shiori';
+  const said = words || (type === 'out.show' ? (card.image ? 'a photo' : 'a card') : '');
+  const pick = choices.length ? ` Choices: ${choices.join(', ')}.` : '';
+  if (type === 'out.speak' || type === 'out.show') return `${name}: ${said}${pick}`;
+  if (type === 'out.ask') return `${name} asks: ${said}${pick}`;
   return words;
 }
+
+/** The words in a node, each piece of text apart, but those inside what a selector names. @param {HTMLElement} root @param {string} skip */
+const textOf = (root, skip) => {
+  /** @type {string[]} */
+  const out = [];
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const t = (n.textContent ?? '').replace(/\s+/g, ' ').trim();
+    if (t && !n.parentElement?.closest(skip)) out.push(t);
+  }
+  return out.join(' ');
+};
 
 /** A line's words as plain text, its blocks apart. @param {HTMLElement} node */
 const plain = (node) => (node.innerText ?? node.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -276,10 +291,16 @@ export async function renderTalk(ctx) {
           if (words && typeof e.data?.text === 'string') hearSoon(e.data.id, words);
         } else {
           const who = node.querySelector('.who');
-          const words = e.type === 'out.speak' ? node.querySelector('p')?.textContent ?? ''
-            : e.type === 'out.ask' ? String(e.data?.question ?? '')
-              : e.type === 'out.show' ? [...node.children].filter((c) => c !== who).map(plain).join(' ') : plain(node);
-          tell(announcement(e.type, who?.textContent ?? '', words, Array.isArray(e.data?.options) ? e.data.options.slice(0, 6).map(String) : []));
+          const choices = (e.type === 'out.ask' ? e.data?.options : e.data?.card?.choice);
+          const pick = Array.isArray(choices) ? choices.slice(0, 6).map(String) : [];
+          let words = plain(node);
+          if (e.type === 'out.speak') words = node.querySelector('p')?.textContent ?? '';
+          else if (e.type === 'out.ask') words = String(e.data?.question ?? '');
+          else if (e.type === 'out.show') {
+            // The card's own words, its blocks apart, without the label and the buttons that answer it (they are read as its choices).
+            words = textOf(node, pick.length ? '.who, .card .acts button' : '.who');
+          }
+          tell(announcement(e.type, e.type === 'out.show' ? cardKind(ctx, e.data?.card) : '', words, pick, e.data?.card ?? {}));
         }
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
