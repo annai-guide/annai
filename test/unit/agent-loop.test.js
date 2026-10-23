@@ -811,6 +811,38 @@ test("housekeeping that fails inside a turn ends it with a card and an error eve
   assert.equal(k.agent.transcript.unanswered, false);
 });
 
+test("a tap on Shiori (or leaving) during housekeeping, in a turn or on its own, is not a failure: no card, no error event", async () => {
+  // In a turn that can't go on without it (the forced tidy-up).
+  const k = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]], { utility: [{ text: 'Summary.' }] });
+  const was = k.llm.call;
+  k.llm.call = async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'compaction') return was(c);
+    k.agent.interrupt(); // the tap
+    throw new ProviderError('cancelled', 'Stopped.');
+  };
+  for (const m of ['first', 'second', 'third']) { k.agent.send(m); await k.agent.idle(); }
+  assert.deepEqual((await k.events(['error'])).map((e) => e.data.kind).filter((x) => x !== 'stopped'), []);
+  assert.equal(k.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0);
+  // On its own, from the timer (#housekeep).
+  const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
+  /** @type {any[]} */
+  const timers = [];
+  const o = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }]], {
+    models: [{ contextWindow: 10_000 }], utility: [{ text: 'Summary.' }],
+    agent: { timers: { set: (/** @type {any} */ fn, /** @type {number} */ ms) => { timers.push({ fn, ms }); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } },
+  });
+  for (const m of ['one', 'two', 'three']) { o.agent.send(m); await o.agent.idle(); }
+  assert.ok(timers.some(Boolean), 'housekeeping is due');
+  const was2 = o.llm.call;
+  o.llm.call = async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'compaction') return was2(c);
+    throw new ProviderError('cancelled', 'Stopped.');
+  };
+  timers.filter(Boolean).at(-1).fn();
+  await o.agent.idle();
+  assert.equal(o.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0);
+});
+
 test('a turn that failed is over: later starts do not wake Shiori again for it', async () => {
   const k = await agentKit([[{ error: 'auth', status: 401 }]]);
   k.agent.send('Hello?');

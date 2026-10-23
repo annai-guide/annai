@@ -370,3 +370,28 @@ export async function deleteTurn({ type, endpoint, key, id, fetch, signal, trace
   await trace?.request({ kind: 'forget', endpoint: endpoint.name, model: '', providerModel: '', url: r.url.replace(encodeURIComponent(id), '…'), status, ms: now() - started, firstMs: null, outcome: done ? 'ok' : 'waiting', usage: null });
   return { done, status, ...(retryAfter ? { retryAfter } : {}) };
 }
+
+/**
+ * Whether the provider has a kept turn: its look-up (the protocol's lookRequest), traced like a deletion without the id. 'there' on a
+ * 200, 'gone' on a 404, 'unknown' on anything else or no answer.
+ * @param {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, key: string | null, id: string,
+ *   fetch: (url: string, init: RequestInit) => Promise<Response>, signal?: AbortSignal, trace?: ReturnType<typeof import('./trace.js').modelTrace>, now: () => number }} c
+ * @returns {Promise<'there' | 'gone' | 'unknown'>}
+ */
+export async function lookTurn({ type, endpoint, key, id, fetch, signal, trace, now }) {
+  if (!type.lookRequest) return 'unknown';
+  const r = type.lookRequest({ endpoint, key, id });
+  const started = now();
+  let status = 0;
+  try {
+    sameOrigin(endpoint, r.url);
+    const res = await fetch(r.url, { method: 'GET', headers: r.headers, redirect: 'manual', signal: anySignal([signal ?? new AbortController().signal, AbortSignal.timeout(10_000)]) });
+    status = res.status;
+    noRedirect(res, endpoint);
+  } catch {
+    // no answer
+  }
+  const found = status >= 200 && status < 300 ? 'there' : status === 404 ? 'gone' : 'unknown';
+  await trace?.request({ kind: 'look', endpoint: endpoint.name, model: '', providerModel: '', url: r.url.replace(encodeURIComponent(id), '…'), status, ms: now() - started, firstMs: null, outcome: found === 'unknown' ? 'waiting' : 'ok', usage: null });
+  return found;
+}

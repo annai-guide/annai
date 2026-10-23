@@ -4,7 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { UPLOAD_TTL_S, MARGIN_MS } from './uploads.js';
-import { deleteTurn, keyPrint } from './kept.js';
+import { deleteTurn, lookTurn, keyPrint } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
@@ -119,7 +119,8 @@ async function billed(usage, tools, tally) {
  * A conversation's turn kept (G2, kept.js): chain false sends it whole; secret: the provider's key the call has (without one,
  * nothing is kept: it couldn't be deleted); borrow: warm housekeeping, which continues the live chain, records nothing and
  * deletes its own response, so the provider's cache sees the same prefix, and sends and stores nothing when there is no chain.
- * @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, secret: string | null, borrow?: boolean }} Keep
+ * again: the chained call is being tried a second time, after a "not found" that looked up as passing
+ * @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, secret: string | null, borrow?: boolean, again?: boolean }} Keep
  */
 
 /**
@@ -151,7 +152,16 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   if (keeping?.borrow && !matched) keeping = null;
   // The id OpenAI repeats in an error for a turn it no longer has is not for the trace.
   if (matched) trace?.secret(matched.id);
-  const { request: sent, expires } = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, from: matched?.from ?? 0 });
+  /** @type {Awaited<ReturnType<typeof withUploads>>} */
+  let uploaded;
+  try {
+    uploaded = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, from: matched?.from ?? 0 });
+  } catch (e) {
+    // A stop during an upload is a stop, not a failure of the protocol's plugin (which would bench the model).
+    const name = /** @type {any} */ (e)?.name;
+    throw signal?.aborted || name === 'AbortError' || name === 'TimeoutError' ? asProviderError(e, signal ?? new AbortController().signal, type, registry) : e;
+  }
+  const { request: sent, expires } = uploaded;
   /** @type {CallSpec} */
   const spec = { endpoint, model, key, tunables, request: { ...sent, messages: portable(sent.messages, model.providerId) } };
   if (keeping) {
@@ -287,13 +297,21 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     if (keeping && spec.kept && (err.kind === 'forgotten' || err.kind === 'bad-request' || err.kind === 'upload' || err.kind === 'image')) {
       // A turn the server lost is dropped; one it still holds (a proxy that dropped the chain) is queued for deletion like the rest.
       const lost = err.kind === 'forgotten' && !err.noChain;
-      // One gone within minutes of its chain's first turn was never stored: the server isn't keeping what it is told to.
+      // One gone within minutes of its chain's first turn may never have been stored (an account with no storage), or the error may be
+      // passing: the server is asked whether it has it. Not there: nothing is kept there until annai starts again. There: once more.
       if (lost && type.keeps?.minLife && (await keeping.kept.ageOf(spec.kept.id).catch(() => Infinity)) < type.keeps.minLife) {
-        keeping.kept.off(endpoint.id);
-        err.message = 'The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.';
+        const found = await lookTurn({ type, endpoint, key, id: spec.kept.id, fetch: get, trace, now }).catch(() => 'unknown');
+        if (found === 'there' && !keeping.again) {
+          err.again = true;
+        } else if (found === 'gone') {
+          keeping.kept.off(endpoint.id);
+          err.message = 'The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.';
+        }
       }
-      await keeping.kept.forget(spec.kept.id, lost).catch(() => {});
-      err.whole = true;
+      if (!err.again) {
+        await keeping.kept.forget(spec.kept.id, lost).catch(() => {});
+        err.whole = true;
+      }
     } else if (err.kind === 'forgotten') err.kind = 'not-found';
     await trace?.request({ ...info(), outcome: err.kind, error: err.message });
     throw err;
