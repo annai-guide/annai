@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Stamps sw.js with a hash of every file in its SHELL list, so the service worker, and the
-// name of its cache, change whenever anything annai ships changes (spec §17 rule 5).
+// name of its cache, change whenever anything annai ships changes (spec §17 rule 5). The catalogs of the languages in its
+// LANGS list (l10n/<tag>.json) are hashed after the shell, so a translation fixed alone makes a new build too.
 //   node scripts/stamp.mjs          writes the hash (the deploy build command)
 //   node scripts/stamp.mjs --check  exits 1 when the hash is out of date (CI)
 import { readFile, writeFile } from 'node:fs/promises';
@@ -24,6 +25,8 @@ export async function stamp(root, { check = false } = {}) {
     const file = path.endsWith('/') ? `${path}index.html` : path;
     hash.update(`${path}\0`).update(await readFile(new URL(file.slice(1), root))).update('\0');
   }
+  const langs = /const LANGS = \[([^\]]*)\];/.exec(sw)?.[1] ?? '';
+  for (const [, tag] of langs.matchAll(/'([^']+)'/g)) hash.update(`/l10n/${tag}.json\0`).update(await readFile(new URL(`l10n/${tag}.json`, root))).update('\0');
   const build = hash.digest('hex').slice(0, 12);
   const next = sw.replace(BUILD_LINE, `const BUILD = '${build}';`);
   const ok = next === sw;

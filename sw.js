@@ -1,12 +1,15 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'b5e6b7d9b6f7';
+const BUILD = '6f97c0aea9ea';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
+// The languages whose words are cached with a new version (written by scripts/strings.mjs): catalogs are not in SHELL, which the
+// size budget counts; scripts/stamp.mjs hashes them, so a fixed translation is a new build.
+const LANGS = [];
 const SHELL = [
   '/',
   '/index.html',
@@ -32,6 +35,7 @@ const SHELL = [
   '/skills/driving-companion/SKILL.md',
   '/skills/plan-a-trip/SKILL.md',
   '/skills/replanning/SKILL.md',
+  '/src/app/boot.js',
   '/src/app/claim.js',
   '/src/app/main.js',
   '/src/app/version.js',

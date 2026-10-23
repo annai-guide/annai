@@ -28,6 +28,27 @@ test('stamp writes a hash of the shell into sw.js, and the check catches a stale
   }
 });
 
+test("a translation changing alone makes a new build: the catalogs of LANGS are hashed with the shell", async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-stamp-'));
+  try {
+    await writeFile(join(dir, 'sw.js'), "const BUILD = 'dev';\nconst SHELL = [\n  '/',\n];\nconst LANGS = ['ja', 'zh-Hans'];\n");
+    await writeFile(join(dir, 'index.html'), '<p>hi</p>');
+    await mkdir(join(dir, 'l10n'));
+    await writeFile(join(dir, 'l10n/ja.json'), '{"a":"b"}');
+    await writeFile(join(dir, 'l10n/zh-Hans.json'), '{"a":"c"}');
+    const root = pathToFileURL(dir + '/');
+    const first = (await stamp(root)).build;
+    assert.equal((await stamp(root, { check: true })).ok, true);
+    await writeFile(join(dir, 'l10n/zh-Hans.json'), '{"a":"d"}');
+    assert.equal((await stamp(root, { check: true })).ok, false, 'a fixed translation is a new build');
+    assert.notEqual((await stamp(root)).build, first);
+    await rm(join(dir, 'l10n/ja.json'));
+    await assert.rejects(stamp(root), /ENOENT/, 'a listed catalog that is missing is an error, not a quiet gap');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("the service worker's cache is named by version and build, so any change to the shell ships", async () => {
   const sw = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
   assert.match(sw, /^const BUILD = '[0-9a-f]{12}';$/m);
