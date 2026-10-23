@@ -206,7 +206,7 @@ let menus = 0;
  * @param {string} role @param {string} id @param {number} i @param {number} n @param {string} name @param {boolean} page @param {string | undefined} note
  * @param {(id: string, by: number) => Promise<void>} move @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list @param {Node} remove
  */
-function reorderable(role, id, i, n, name, page, note, move, list, remove) {
+export function reorderable(role, id, i, n, name, page, note, move, list, remove) {
   const label = h('span', {}, `${i + 1}. `, page ? h('a', { href: `#/models/model?id=${encodeURIComponent(id)}`, text: name }) : name, note ? ` (${note})` : '');
   const menuId = `reorder-menu-${++menus}`;
   const grip = h('button', {

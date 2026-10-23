@@ -5,16 +5,17 @@ import { STEPS as INSTALL_STEPS, installButton } from '../install.js';
 import { platform, isStandalone } from '../platform.js';
 import { readyFeatured } from '../provider-setup.js';
 import { officialPlugins } from '../../core/llm/official.js';
+import { freeTicks } from '../search-panel.js';
 
 /**
- * The welcome (the user, 2026-10-18): five short steps in annai's own words, not Shiori's, at
- * #/welcome and #/welcome/2 to 5. It shows once per device at annai's plain start (../welcome.js), and
+ * The welcome (the user, 2026-10-18): six short steps in annai's own words, not Shiori's, at
+ * #/welcome and #/welcome/2 to 6. It shows once per device at annai's plain start (../welcome.js), and
  * again from Settings → About. Each step's heading takes the focus; Next, Back and Skip are buttons, so
  * a keyboard reaches them in every browser; the last step is the onboarding: installing annai where
  * it isn't, then Settings → Models with the catalog's featured provider's sign-in (spec §9.8).
  */
 
-const TITLES = ['Welcome to annai', 'What annai can do', 'Your keys and your data', 'The fine print', 'Get started'];
+const TITLES = ['Welcome to annai', 'What annai can do', 'Your keys and your data', 'The fine print', 'Searching the web', 'Get started'];
 const LAST = TITLES.length;
 
 /** @param {number} n */
@@ -23,8 +24,8 @@ const stepHash = (n) => (n === 1 ? '#/welcome' : `#/welcome/${n}`);
 /** @param {string} lead @param {string} text */
 const can = (lead, text) => h('li', {}, h('strong', { text: lead }), ' ', text);
 
-/** @param {number} n @param {any} ctx @returns {any[]} */
-function body(n, ctx) {
+/** @param {number} n @param {any} ctx @param {Element | null} ticks the free search services, ticked as saved (step 5) @returns {any[]} */
+function body(n, ctx, ticks) {
   if (n === 1) {
     return [
       h('p', { class: 'lead', text: 'annai is a free, open-source travel guide that lives on your phone.' }),
@@ -46,6 +47,14 @@ function body(n, ctx) {
   }
   if (n === 3) return [h('p', { class: 'lead', text: 'annai is built so your keys and data stay yours. Here is exactly how, and where that stops.' }), ...keysAndData('h2')];
   if (n === 4) return finePrint();
+  if (n === 5) {
+    return [
+      h('p', { class: 'lead', text: 'Shiori can search the web as soon as you start, through free services. No key, nothing to set up.' }),
+      h('p', { text: 'These are on. Untick any you would rather not use.' }),
+      ticks,
+      h('p', { class: 'sub', text: "Only the words she searches for go to the ones ticked, nothing of your trips. They're free tiers that can change or stop. You can change this any time in Settings → Tools." }),
+    ];
+  }
   return start(ctx);
 }
 
@@ -116,7 +125,7 @@ export async function renderWelcome(ctx, route) {
   const screen = h('div', { class: 'screen welcome', dataset: { step: String(n) } },
     h('p', { class: 'step', text: `${n} of ${LAST}` }),
     title,
-    ...body(n, ctx),
+    ...body(n, ctx, n === 5 ? await freeTicks(ctx.ws) : null),
     h('div', { class: 'acts' }, ...nav));
   // Once the shell has put the step on screen, its heading takes the focus, so a screen reader starts there.
   setTimeout(() => { if (title.isConnected) title.focus(); }, 0);
