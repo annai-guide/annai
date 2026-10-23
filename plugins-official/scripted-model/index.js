@@ -41,18 +41,25 @@ export function activate(annai) {
     const hasResults = last?.role === 'user' && last.parts?.some((/** @type {any} */ x) => x.type === 'tool_result');
     const followUp = hasResults && (last.parts.at(-1)?.type === 'tool_result' || !/^woke for: /m.test(tail));
     const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
-    if (followUp && lastRule.has(endpoint.id)) return lastRule.get(endpoint.id).then ?? sleep;
+    // A step that sleeps ends the turn, and its rule's `then` with it: the next turn's first request carries this one's tool results,
+    // and a wake no rule matches must not be answered by the last rule's `then`.
+    /** @param {any} step */
+    const out = (step) => {
+      if (step.toolCalls?.some((/** @type {any} */ c) => c.name === 'sleep')) lastRule.delete(endpoint.id);
+      return step;
+    };
+    if (followUp && lastRule.has(endpoint.id)) return out(lastRule.get(endpoint.id).then ?? sleep);
     let i = 0;
     for (const r of rules) {
       const key = `${endpoint.id}:${i++}`;
       if (typeof r?.match !== 'string' || !new RegExp(r.match, 'i').test(woke)) continue;
       if (typeof r.times === 'number' && (used.get(key) ?? 0) >= r.times && !followUp) continue;
-      if (followUp) return r.then ?? sleep;
+      if (followUp) return out(r.then ?? sleep);
       used.set(key, (used.get(key) ?? 0) + 1);
       lastRule.set(endpoint.id, r);
-      return r.reply ?? sleep;
+      return out(r.reply ?? sleep);
     }
-    return hasResults && lastRule.has(endpoint.id) ? lastRule.get(endpoint.id).then ?? sleep : sleep;
+    return hasResults && lastRule.has(endpoint.id) ? out(lastRule.get(endpoint.id).then ?? sleep) : sleep;
   };
   return annai.providers.register({
     type: 'scripted',
