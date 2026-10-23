@@ -116,7 +116,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
           },
           end() { s.ended = true; log.push('stream end'); },
           stop() { s.stopped = true; log.push('stream stop'); return finish(); },
-          queued: () => (s.playedMs === null ? 1 : 0),
+          queued: () => (s.playedMs === null && played() < s.ms ? 1 : 0), // what is still to play
           done,
         };
       },

@@ -172,9 +172,10 @@ const yes = (() => {
   return gas.slice(best, best + n);
 })();
 
-// voice-fix fix pass M1: the 300 ms after her voice must not swallow a quick reply.
-test('half-duplex: a quick "yes" 0, 100 or 200 ms after her voice ends is sent whole, its start included', async () => {
-  for (const after of [0, 100, 200]) {
+// voice-fix fix pass M1: the 300 ms after her voice must not swallow a quick reply. (Speech already going on as her voice ends began
+// over her: the next test.)
+test('half-duplex: a quick "yes" 100 or 200 ms after her voice ends is sent whole, its start included', async () => {
+  for (const after of [100, 200]) {
     let playing = false;
     const r = rig({ speaking: () => playing });
     await r.input.start();
@@ -191,6 +192,28 @@ test('half-duplex: a quick "yes" 0, 100 or 200 ms after her voice ends is sent w
   }
 });
 
+// realtime-fix2 P2: speech begun over her voice on the speaker, going on after it, had its tail sent as a turn ("on the way."), and answered.
+test('half-duplex: speech begun over her voice and going on after it ends is let go whole, until a real pause; what follows the pause is a turn', async () => {
+  let playing = false;
+  let over = 0;
+  const r = rig({ speaking: () => playing, onOver: () => over++ });
+  await r.input.start();
+  r.feed(quiet(1), RATE);
+  playing = true;
+  r.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), RATE); // the user starts while she speaks
+  playing = false;
+  r.feed(cat(lunch.subarray(lunch.length >> 1), quiet(1)), RATE); // and goes on after she stops
+  assert.equal(r.sent.length, 0, 'nothing of it sent'); // (counted: a diff of the audio takes long to print)
+  assert.equal(over, 1);
+  r.feed(cat(gas, quiet(1.5)), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  const ms = msOf(r.sent);
+  const said = (gas.length / RATE) * 1000;
+  assert.ok(ms > said && ms < said + 1400, `${ms} ms sent for ${said} ms: none of the run over her`);
+  assert.equal(over, 1);
+  r.input.stop();
+});
+
 test('her voice tapped off mid-word (a tap cut): the user speaking at once is sent whole too', async () => {
   let playing = false;
   const r = rig({ speaking: () => playing });
@@ -199,6 +222,7 @@ test('her voice tapped off mid-word (a tap cut): the user speaking at once is se
   playing = true;
   r.feed(lunch.subarray(0, lunch.length >> 1).map((x) => x * 0.3), RATE);
   playing = false; // the tap: her voice stops now
+  r.input.tapped();
   r.feed(cat(yes, quiet(1.5)), RATE);
   assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
   assert.ok(msOf(r.sent) >= 450 + 700 - 20, `${Math.round(msOf(r.sent))} ms`);

@@ -181,6 +181,57 @@ for (const [where, devices, input] of /** @type {const} */ ([
   });
 }
 
+// realtime-fix2 P2: on the speaker, a question begun over her had its tail sent ("on the way.") and answered as the question.
+test("on the phone's speaker, speech begun over her and going on after her voice ends sends nothing; a second time in the session, a quiet card says a tap talks over her, once", async () => {
+  const words = 'Let me check what great trails are nearby for you.';
+  const k = await liveKit([{ said: words, audio: tone(1.2) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    const over = cat(await clip('where-lunch'), quiet(1)); // from her first sound: over her 1.2 s, and on 0.6 s after
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await talk(k, quiet(0.5));
+    for (const n of [1, 2, 3]) {
+      k.agent.send(`Tell me about a hike (${n})`);
+      await until(() => k.agent.live.view.name === 'speaking');
+      await talk(k, over);
+      await soon(async () => (await k.events(['out.speak'])).length === n, 3000);
+    }
+    assert.ok(!got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart), 'no turn of what was begun over her');
+    assert.ok((await k.events(['out.speak'])).every((/** @type {any} */ e) => e.data.text === words && !e.data.cut), 'she was never cut');
+    const hints = k.notices.filter((/** @type {any} */ n) => /Tap Shiori/.test(n.title));
+    assert.equal(hints.length, 1, 'once');
+    assert.equal(hints[0].tone, 'info');
+  } finally {
+    await k.done();
+  }
+});
+
+test("a quick reply as her sound ends, while her turn's end is still to come, is heard from its start: her voice no longer plays, so the microphone hears", async () => {
+  // pace 2: the stand-in's turn ends a second after its 1 s of sound has played, as Gemini's turnComplete comes after her last sound.
+  const k = await liveKit([{ said: 'Where are you now?', audio: tone(1) }, { heard: 'Big Sur', said: 'Lovely.', audio: tone(0.2) }], { pace: 2 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    const gas = await clip('gas-station');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await talk(k, quiet(0.5));
+    k.agent.send('Find me a beach');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await new Promise((r) => setTimeout(r, 1200)); // her sound has played; her turn hasn't ended
+    assert.equal(k.agent.live.view.name, 'speaking');
+    await talk(k, cat(gas, quiet(1.2)));
+    await soon(async () => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd), 3000);
+    const sent = got(k, 'realtimeInput').filter((/** @type {any} */ m) => m.realtimeInput.audio).reduce((n, /** @type {any} */ m) => n + Buffer.from(m.realtimeInput.audio.data, 'base64').length, 0);
+    const ms = (sent / 2 / 16_000) * 1000;
+    assert.ok(ms >= (gas.length / 16_000) * 1000, `${Math.round(ms)} ms sent for ${Math.round((gas.length / 16_000) * 1000)} ms said`);
+  } finally {
+    await k.done();
+  }
+});
+
 // Review S1: AirPods taken out mid-session.
 test('AirPods taken out while she speaks: at once half-duplex, so her voice from the speaker never cuts her off (voice On)', async () => {
   const words = 'The bridge ahead was built in 1932 and it is one of the most photographed bridges on the coast.';
