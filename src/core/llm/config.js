@@ -385,13 +385,23 @@ export async function saveModel(ws, rec) {
 
 /**
  * Changes a model as it is stored: fn gets the record and gives the new one, read and written in the file's lock, so what is
- * recorded between (a Test's result, a field saved from another page) is not lost. Checked as saveModel checks.
+ * recorded between (a Test's result, a field saved from another page) is not lost. The checks that look at other records (its
+ * provider, its name) are made on the record fn gives first, before the lock, so an autosave does not hold the lock across a scan of
+ * every provider and model; in the lock the record is checked on its own, and in full again if its provider, ability or name came
+ * out otherwise. fn is called more than once, so it makes its answer from the record alone.
  * @param {Workspace} ws @param {string} id @param {(rec: ModelRecord) => ModelRecord} fn @returns {Promise<ModelRecord>} the record as saved
  */
-export function updateModel(ws, id, fn) {
-  return ws.update(SYS_SETTINGS, modelPath(id), async (/** @type {ModelRecord} */ rec) => {
+export async function updateModel(ws, id, fn) {
+  const path = modelPath(id);
+  const seen = await ws.readJSON(SYS_SETTINGS, path);
+  if (seen === undefined) throw new NotFoundError(path);
+  const checked = fn(seen);
+  await checkModel(ws, checked);
+  const key = (/** @type {ModelRecord} */ r) => JSON.stringify([r.provider, r.ability, modelOf(r).name.toLowerCase()]);
+  return ws.update(SYS_SETTINGS, path, async (/** @type {ModelRecord} */ rec) => {
     const next = fn(rec);
-    await checkModel(ws, next);
+    if (key(next) === key(checked)) check(MODEL_SCHEMA, next, path);
+    else await checkModel(ws, next);
     return next;
   }, { author: 'user' });
 }
