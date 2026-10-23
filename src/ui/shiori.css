@@ -140,6 +140,12 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .live-menu { flex-direction: column; align-items: stretch; width: min(260px, calc(100vw - 24px)); max-height: 60vh; overflow-y: auto; }
 .live-menu .sub { margin: 4px 6px 0; }
 .caption { position: relative; max-width: 560px; margin: 0 auto 12px; padding: 8px 14px; border-radius: 16px; background: var(--ai-wash); border: 0; font-style: italic; white-space: pre-line; overflow-wrap: anywhere; }
+/* A few lines, then an ellipsis: a long answer never pushes the dock up over the page (the conversation has every word). It is the text's own
+   box that is clipped, so the bubble's tail below it still shows. */
+.caption-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+@media (max-height: 600px) { .caption-text { -webkit-line-clamp: 2; line-clamp: 2; } }
+/* A phone on its side has little height: one line, and a slimmer bubble. */
+@media (orientation: landscape) and (max-height: 420px) { .caption-text { -webkit-line-clamp: 1; line-clamp: 1; } .caption { margin-bottom: 10px; padding: 4px 14px; } }
 /* A speech bubble's tail, toward Shiori below it: nothing an input has. */
 .caption::after { content: ''; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 8px; margin-left: -8px; background: var(--ai-wash); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .dock.voice .seat.dock { width: 92px; height: 92px; }

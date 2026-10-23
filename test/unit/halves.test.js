@@ -540,3 +540,13 @@ test("Fix pass 12: Kokoro's errors are set aside from the conversation only whil
   const last = kokoro.at(-1);
   assert.equal(Boolean(last.data.quiet || last.data.aside), false, "Koe down: Kokoro's own error is the conversation's");
 });
+
+test("Summarize now while Koe is mid-turn says busy and leaves Koe's window alone; when both halves are done, housekeeping runs (fix pass 2)", async () => {
+  const k = await agentKit([KOKORO], { koe: { type: KOE } });
+  k.agent.send('Is Nepenthe open?');
+  assert.equal(await k.agent.summarizeNow(), 'busy', 'her turn is only just under way');
+  assert.deepEqual(await k.events(['compaction']), []);
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.agent.koe.transcript.messages), /Nepenthe/);
+  assert.equal(await k.agent.summarizeNow(), 'nothing', 'free again: it ran, and one exchange is too little to summarize');
+});

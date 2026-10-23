@@ -901,3 +901,38 @@ test("Kokoro's note that comes while the user is still speaking goes in as soon 
     await k.done();
   }
 });
+
+test("Start fresh with Kokoro's note still owed shows its words for the user (for_user) above the divider, not aloud, and the fresh context holds none of it (fix pass 6)", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    const { clip } = await import('./voice-kit.js');
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000); // still speaking: the notes wait
+    await until(() => k.agent.live.view.name === 'hearing');
+    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    await until(() => k.agent.live.owing);
+    assert.equal(await k.agent.startFresh(), true);
+    const all = await k.events(['reminder', 'compaction']);
+    assert.deepEqual(all.map((/** @type {any} */ e) => e.type), ['reminder', 'compaction'], 'the words come before the fresh start');
+    assert.deepEqual([all[0].data.title, all[0].data.text, all[0].data.unsaid, all[0].data.aloud], ["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]);
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('Highway')), 'not said');
+    assert.equal(k.agent.live.owing, false);
+    assert.equal(JSON.stringify(k.agent.kokoro.transcript.messages).includes('Highway'), false);
+  } finally {
+    await k.done();
+  }
+});
+
+test("Summarize now while a live session is opening or replying says busy and writes nothing under it (fix pass 2)", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }]);
+  try {
+    k.agent.tap(); // the session is opening
+    assert.equal(k.agent.live.busy, true);
+    assert.equal(await k.agent.summarizeNow(), 'busy');
+    assert.deepEqual(await k.events(['compaction']), []);
+  } finally {
+    await k.done();
+  }
+});

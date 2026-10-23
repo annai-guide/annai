@@ -285,7 +285,7 @@ export class Halves {
       // Kokoro's words for the user that a switch left unsaid: shown in the conversation left, not aloud (Koe is in another now).
       left: (notes) => {
         const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
-        if (list.length) this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {});
+        if (list.length) this.#left.push(this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {}));
       },
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
@@ -323,6 +323,8 @@ export class Halves {
   #visible() { return globalThis.document?.visibilityState !== 'hidden'; }
   /** Koe talks with the user: through the loop, or live. */
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
+  /** @type {Promise<unknown>[]} Kokoro's owed words being shown in the conversation left or started fresh from */
+  #left = [];
   get busy() { return this.#routes > 0 || this.#sending.size > 0 || this.kokoro.busy || this.koe.busy || this.live.busy; }
   /** @param {(() => { place?: string, activity?: string }) | null} fn */
   set sense(fn) { this.kokoro.sense = fn; this.koe.sense = fn; }
@@ -651,7 +653,9 @@ export class Halves {
   }
 
   /** "Summarize now": Kokoro's housekeeping, now (§6.5). */
-  summarizeNow() {
+  async summarizeNow() {
+    // Kokoro's compaction makes Koe read its window again (observe → reread): never under Koe's turn or a live session's reply.
+    if (this.busy) return 'busy';
     return this.kokoro.summarizeNow();
   }
 
@@ -661,6 +665,7 @@ export class Halves {
    */
   async startFresh() {
     this.live.close('fresh', { forget: true });
+    await Promise.all(this.#left.splice(0)); // Kokoro's notes still owed are shown above the divider first
     this.#retell = [];
     if (this.koe.busy) {
       this.koe.interrupt();

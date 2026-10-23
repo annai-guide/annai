@@ -394,8 +394,8 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
-    // Another conversation: Kokoro's notes it owed are shown in the one left, never lost (review S4).
-    if (forget && why === 'switch' && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
+    // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost (review S4).
+    if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
     clearTimeout(this.#hearFirst);
     this.#hearFirst = null;

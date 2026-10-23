@@ -210,6 +210,24 @@ export default function (test, assert) {
     assert.deepEqual(all(), [0, 0, 0, 0, 0]);
   });
 
+  test('fix pass 5: the caption shows the newest words when a slower read of an earlier line settles after a later one', async () => {
+    const { registry } = kit();
+    const agent = fakeAgent();
+    // The settings are read slowly for the first line only: its answer would arrive after the second's.
+    let reads = 0;
+    const ws = { readJSON: async () => { if (!reads++) await new Promise((done) => setTimeout(done, 120)); return {}; } };
+    const ctx = { registry, agent, ws, store: {}, notices: { card() {}, toast() {} }, go() {}, voice: { mode: { on: true, setting: 'on' }, on: true, onLevel: () => () => {}, onChange: () => () => {}, choose: async () => {} } };
+    const dock = createDock(ctx);
+    const line = (/** @type {number} */ seq, /** @type {string} */ text) => ({ type: 'out.speak', seq, data: { voice: true, text } });
+    agent.emit('event', line(1, 'first words'));
+    agent.emit('event', line(2, 'second words'));
+    await new Promise((done) => setTimeout(done, 300));
+    const caption = /** @type {HTMLElement} */ (dock.el.querySelector('.caption'));
+    assert.equal(caption.textContent, 'second words');
+    assert.equal(caption.hidden, false);
+    dock.dispose();
+  });
+
   // Last: it starts a shell, which follows this page's address from then on.
   test("minors 15: what a render the shell gave up on drew is cleaned up as it comes, not at the next render", async () => {
     const registry = new Registry();

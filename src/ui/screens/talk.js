@@ -86,7 +86,9 @@ export async function renderTalk(ctx) {
   const { showWords, showHalves: halves } = shownSettings(await readAppSettings(ctx.ws));
   const scope = agent.scope;
   const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(agent.trip)))?.title ?? 'Trip' : 'No trip open';
-  const list = h('ol', { class: 'convo', 'aria-live': 'polite' });
+  // Not a live region itself: what she says aloud is announced once, by the dock's caption, and the rest of the new lines by `announce`.
+  const list = h('ol', { class: 'convo' });
+  const announce = h('div', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' });
   const cost = h('p', { class: 'sub' });
   const showCost = async () => {
     const c = await costs(ctx.store, scope);
@@ -235,6 +237,7 @@ export async function renderTalk(ctx) {
         }
         empty.remove();
         list.append(node);
+        if (built && !(e.type === 'out.speak' && e.data?.voice)) announce.replaceChildren(h('span', { text: node.textContent ?? '' }));
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
@@ -254,7 +257,8 @@ export async function renderTalk(ctx) {
     h('p', { class: 'sub', text: agent.trip ? title : 'No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.' }),
     cost,
     list.childElementCount ? null : empty,
-    list);
+    list,
+    announce);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
     wasShown = true;

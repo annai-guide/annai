@@ -38,11 +38,20 @@ export function createDock(ctx) {
   // A smart text box (the user, 2026-10-23): there only while it is needed. The keyboard button opens it and, tapped again, closes it;
   // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. A single line, so the keyboard's own key sends.
   const input = h('input', { id: 'dock-text', type: 'text', 'aria-label': 'Message to Shiori', enterkeyhint: 'send', autocomplete: 'off', autocapitalize: 'sentences' });
+  // Chinese and Japanese are typed through an IME, whose Enter picks a candidate: it never sends the half-composed text. Chrome and Firefox
+  // say isComposing on that keydown; Safari ends the composition first and sends the Enter with keyCode 229.
+  let composing = false;
+  input.addEventListener('compositionstart', () => { composing = true; });
+  input.addEventListener('compositionend', () => { composing = false; });
+  input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
+    if (e.key === 'Enter' && (e.isComposing || composing || e.keyCode === 229)) e.preventDefault();
+  });
   const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': 'Send', title: 'Send' }, icon('M12 19V6M6.5 11.5L12 6l5.5 5.5'));
   const sheet = h('form', {
     class: 'type-sheet', hidden: true,
     onsubmit: (/** @type {Event} */ e) => {
       e.preventDefault();
+      if (composing) return; // an IME's candidate is not yet text to send
       const text = input.value.trim();
       if (!text) return;
       input.value = '';
@@ -124,7 +133,8 @@ export function createDock(ctx) {
   offs.push(chip?.dispose, live?.dispose);
   // Her words, in a bubble of their own that points down at her, and never like a box to type in (the user, 2026-10-22). It shows them while
   // she speaks, with voice on, and lets go a moment after she stops; "Show what she says" in Settings → Voice turns it off (the user, 2026-10-23).
-  const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true });
+  const captionText = h('span', { class: 'caption-text' });
+  const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true }, captionText);
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let lingering;
   const hideCaption = () => { clearTimeout(lingering); caption.hidden = true; };
@@ -133,11 +143,16 @@ export function createDock(ctx) {
     clearTimeout(lingering);
     if (ctx.agent.state.name !== 'speaking') lingering = setTimeout(hideCaption, CAPTION_LINGER_MS);
   };
+  // Each line reads the settings and its stored text before it shows: a slower read of an earlier line never replaces a later one's words.
+  let latest = 0;
   offs.push(ctx.agent.on('event', async (/** @type {any} */ e) => {
     if (e.type !== 'out.speak' || !e.data?.voice) return;
-    if (!shownSettings(await readAppSettings(ctx.ws)).showWords) return;
-    caption.textContent = String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '');
-    caption.hidden = !caption.textContent;
+    const mine = ++latest;
+    const on = shownSettings(await readAppSettings(ctx.ws)).showWords;
+    const words = on ? String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '') : '';
+    if (mine !== latest || !on) return;
+    captionText.textContent = words;
+    caption.hidden = !words;
     letGo();
   }));
   offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
